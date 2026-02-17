@@ -11,6 +11,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
+  Crosshair,
+  Shield,
+  Scale,
+  DollarSign,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -18,7 +22,11 @@ const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: Search, label: 'Licitações', path: '/licitacoes' },
   { icon: Kanban, label: 'Kanban', path: '/kanban' },
+  { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
   { icon: Users, label: 'Concorrentes', path: '/concorrentes' },
+  { icon: Shield, label: 'Documentos', path: '/documentos' },
+  { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
+  { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
   { icon: Bot, label: 'Assistente IA', path: '/assistente' },
   { icon: BarChart3, label: 'Analytics', path: '/analytics' },
   { icon: Settings, label: 'Configurações', path: '/configuracoes' },
