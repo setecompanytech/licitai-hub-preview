@@ -15,6 +15,7 @@ import {
   Shield,
   Scale,
   DollarSign,
+  Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +28,7 @@ const navItems = [
   { icon: Shield, label: 'Documentos', path: '/documentos' },
   { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
   { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
+  { icon: Download, label: 'Editais', path: '/monitoramento-editais' },
   { icon: Bot, label: 'Assistente IA', path: '/assistente' },
   { icon: BarChart3, label: 'Analytics', path: '/analytics' },
   { icon: Settings, label: 'Configurações', path: '/configuracoes' },
