@@ -13,6 +13,7 @@ import ApoioJuridico from "./pages/ApoioJuridico";
 import Precificacao from "./pages/Precificacao";
 import Assistente from "./pages/Assistente";
 import Analytics from "./pages/Analytics";
+import MonitoramentoEditais from "./pages/MonitoramentoEditais";
 import Configuracoes from "./pages/Configuracoes";
 import NotFound from "./pages/NotFound";
 
@@ -35,6 +36,7 @@ const App = () => (
           <Route path="/precificacao" element={<Precificacao />} />
           <Route path="/assistente" element={<Assistente />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="/monitoramento-editais" element={<MonitoramentoEditais />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
