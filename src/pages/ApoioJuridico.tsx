@@ -10,6 +10,7 @@ import {
   BookOpen, Gavel, FileWarning, MessageSquare, ShieldQuestion,
   ArrowUpDown, Calculator
 } from 'lucide-react';
+import ReequilibrioIA from '@/components/apoio-juridico/ReequilibrioIA';
 
 type Modelo = {
   id: string;
@@ -63,6 +64,7 @@ export default function ApoioJuridico() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="modelos">Modelos e Templates</TabsTrigger>
+            <TabsTrigger value="reequilibrio">Reequilíbrio IA</TabsTrigger>
             <TabsTrigger value="gerador">Gerador IA</TabsTrigger>
             <TabsTrigger value="legislacao">Legislação</TabsTrigger>
           </TabsList>
@@ -122,6 +124,11 @@ export default function ApoioJuridico() {
                 </div>
               );
             })}
+          </TabsContent>
+
+          {/* Reequilíbrio IA */}
+          <TabsContent value="reequilibrio">
+            <ReequilibrioIA />
           </TabsContent>
 
           {/* Gerador IA */}
