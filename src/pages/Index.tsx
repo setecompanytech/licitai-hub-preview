@@ -3,6 +3,8 @@ import StatCard from '@/components/dashboard/StatCard';
 import LicitacoesChart from '@/components/dashboard/LicitacoesChart';
 import ValorChart from '@/components/dashboard/ValorChart';
 import RecentLicitacoes from '@/components/dashboard/RecentLicitacoes';
+import EmpresaSelector from '@/components/empresa/EmpresaSelector';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { kpiData } from '@/data/mockData';
 import { Eye, Send, Trophy, TrendingUp, DollarSign, Zap } from 'lucide-react';
 
@@ -10,13 +12,22 @@ const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(v);
 
 export default function Index() {
+  const { empresaAtiva, todasSelecionadas } = useEmpresa();
+
+  const empresaLabel = todasSelecionadas
+    ? 'Todas as Empresas'
+    : empresaAtiva?.nome_fantasia || empresaAtiva?.razao_social || 'Empresa';
+
   return (
     <AppLayout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Visão geral das licitações — Região Norte / PA
-        </p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Resultados de: <span className="font-medium text-foreground">{empresaLabel}</span>
+          </p>
+        </div>
+        <EmpresaSelector />
       </div>
 
       {/* KPI Grid */}
