@@ -9,6 +9,7 @@ import {
   Bot, Play, Pause, Settings, Globe, Clock, TrendingDown,
   AlertTriangle, CheckCircle2, ExternalLink, RefreshCw
 } from 'lucide-react';
+import CredenciaisPortalForm from '@/components/robo-lances/CredenciaisPortalForm';
 
 const portais = [
   { id: 'pncp', nome: 'PNCP', url: 'pncp.gov.br', status: 'conectado', sessoes: 3 },
@@ -162,7 +163,9 @@ export default function RoboLances() {
           </TabsContent>
 
           {/* Portais */}
-          <TabsContent value="portais" className="space-y-4">
+          <TabsContent value="portais" className="space-y-6">
+            <CredenciaisPortalForm />
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {portais.map((portal) => (
                 <div key={portal.id} className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
