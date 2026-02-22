@@ -8,7 +8,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
-import Licitacoes from "./pages/Licitacoes";
+import { Navigate } from "react-router-dom";
 import KanbanPage from "./pages/KanbanPage";
 import RoboLances from "./pages/RoboLances";
 import Concorrentes from "./pages/Concorrentes";
@@ -38,7 +38,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/" element={<ProtectedPages><Index /></ProtectedPages>} />
-            <Route path="/licitacoes" element={<ProtectedPages><Licitacoes /></ProtectedPages>} />
+            <Route path="/licitacoes" element={<Navigate to="/monitoramento-editais" replace />} />
             <Route path="/kanban" element={<ProtectedPages><KanbanPage /></ProtectedPages>} />
             <Route path="/robo-lances" element={<ProtectedPages><RoboLances /></ProtectedPages>} />
             <Route path="/concorrentes" element={<ProtectedPages><Concorrentes /></ProtectedPages>} />
