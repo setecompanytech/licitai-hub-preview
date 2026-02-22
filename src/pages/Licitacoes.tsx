@@ -57,6 +57,7 @@ export default function Licitacoes() {
   const [regiaoFilter, setRegiaoFilter] = useState<string>('all');
   const [ufFilter, setUfFilter] = useState<string>('all');
   const [municipioFilter, setMunicipioFilter] = useState<string>('all');
+  const [uasgSearch, setUasgSearch] = useState('');
 
   const ufsDisponiveis = regiaoFilter === 'all'
     ? Object.values(regioes).flat()
@@ -88,7 +89,10 @@ export default function Licitacoes() {
       ? (regiaoFilter === 'all' || ufsDisponiveis.includes(l.uf))
       : l.uf === ufFilter;
     const matchMunicipio = municipioFilter === 'all' || l.cidade === municipioFilter;
-    return matchSearch && matchStatus && matchModalidade && matchUf && matchMunicipio;
+    const matchUasg = !uasgSearch || 
+      (l.uasg?.toLowerCase().includes(uasgSearch.toLowerCase()) || 
+       l.unidadeCompradora?.toLowerCase().includes(uasgSearch.toLowerCase()));
+    return matchSearch && matchStatus && matchModalidade && matchUf && matchMunicipio && matchUasg;
   });
 
   return (
@@ -101,7 +105,7 @@ export default function Licitacoes() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-3 mb-3">
         <div className="relative flex-1 min-w-[250px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -109,6 +113,15 @@ export default function Licitacoes() {
             className="pl-9 bg-card border-border/50"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="relative min-w-[220px] max-w-xs">
+          <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="UASG / Unidade Compradora..."
+            className="pl-9 bg-card border-border/50"
+            value={uasgSearch}
+            onChange={(e) => setUasgSearch(e.target.value)}
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -175,6 +188,7 @@ export default function Licitacoes() {
         )}
       </div>
 
+
       {/* Table */}
       <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -182,8 +196,8 @@ export default function Licitacoes() {
             <thead>
               <tr className="border-b border-border/50 bg-muted/30">
                 <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Nº / Objeto</th>
-                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Órgão</th>
-                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Modalidade</th>
+                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Órgão / UASG</th>
+                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Unidade Compradora</th>
                 <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>
                 <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Encerramento</th>
                 <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
@@ -208,12 +222,17 @@ export default function Licitacoes() {
                         <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                         <span className="line-clamp-1">{lic.orgao}</span>
                       </div>
+                      {lic.uasg && (
+                        <span className="text-xs font-mono text-muted-foreground mt-0.5 block">UASG: {lic.uasg}</span>
+                      )}
                       <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                         <MapPin className="w-3 h-3" />
                         {lic.cidade}/{lic.uf}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm">{lic.modalidade}</td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm line-clamp-2">{lic.unidadeCompradora || '-'}</span>
+                    </td>
                     <td className="px-4 py-3 text-sm text-right font-semibold">{formatCurrency(lic.valor)}</td>
                     <td className="px-4 py-3 text-center">
                       <span className="text-sm flex items-center justify-center gap-1">
