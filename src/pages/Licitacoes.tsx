@@ -194,6 +194,10 @@ export default function Licitacoes() {
             </SelectContent>
           </Select>
         )}
+        <Button className="gap-2">
+          <Search className="w-4 h-4" />
+          Buscar
+        </Button>
       </div>
 
 
