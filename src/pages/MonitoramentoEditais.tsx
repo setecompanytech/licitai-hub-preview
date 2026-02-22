@@ -301,8 +301,13 @@ export default function MonitoramentoEditais() {
               <h3 className="text-sm font-semibold">Configuração de Pesquisa Automática</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-muted-foreground">CNAE para filtro</label>
-                  <Input defaultValue="42.11-1 – Construção de rodovias e ferrovias" className="mt-1" />
+                  <label className="text-xs text-muted-foreground">CNAE Principal</label>
+                  <Input defaultValue="42.11-1 – Construção de rodovias e ferrovias" className="mt-1" readOnly />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">CNAEs Secundários (cadastrados)</label>
+                  <Input defaultValue="42.13-8, 41.20-4" className="mt-1" readOnly />
+                  <p className="text-[10px] text-muted-foreground mt-1">Gerencie em Configurações → CNAEs Secundários</p>
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">Palavras-chave</label>
