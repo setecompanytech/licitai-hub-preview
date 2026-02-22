@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Building2, Globe, FileText, CheckCircle2, AlertTriangle, Loader2, ExternalLink, Download, FileSpreadsheet, FileDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { downloadCSV, downloadTextReport } from '@/lib/download-utils';
+import { downloadCSV, downloadTextReport, downloadPDF } from '@/lib/download-utils';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -176,6 +176,31 @@ export default function ConsultaCNPJ() {
                     toast.success('Relatório exportado!');
                   }}>
                     <FileDown className="w-4 h-4 mr-2" /> Exportar Relatório TXT
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    downloadPDF(
+                      `cnpj-${resultado.cnpj.replace(/\D/g, '')}`,
+                      `Consulta CNPJ – ${resultado.razaoSocial}`,
+                      ['Campo', 'Valor'],
+                      [
+                        ['Razão Social', resultado.razaoSocial],
+                        ['Nome Fantasia', resultado.nomeFantasia],
+                        ['CNPJ', resultado.cnpj],
+                        ['Situação', resultado.situacao],
+                        ['Data Abertura', resultado.dataAbertura],
+                        ['CNAE Principal', resultado.cnaePrincipal],
+                        ['Porte', resultado.porte],
+                        ['Capital Social', resultado.capitalSocial],
+                        ['Endereço', resultado.endereco],
+                        ['Município/UF', `${resultado.municipio}/${resultado.uf}`],
+                        ['E-mail', resultado.email],
+                        ['Telefone', resultado.telefone],
+                        ...resultado.cnaesSecundarios.map((c, i) => [`CNAE Secundário ${i + 1}`, c]),
+                      ]
+                    );
+                    toast.success('PDF exportado!');
+                  }}>
+                    <FileText className="w-4 h-4 mr-2" /> Exportar PDF
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
