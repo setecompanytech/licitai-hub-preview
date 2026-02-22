@@ -8,8 +8,9 @@ import { Progress } from '@/components/ui/progress';
 import {
   Download, Search, FileText, AlertTriangle, XCircle, Clock,
   CheckCircle2, RefreshCw, Globe, Building2, Filter, CalendarDays,
-  PauseCircle, FileCheck, Award, Ban, ArrowUpDown
+  PauseCircle, FileCheck, Award, Ban, ArrowUpDown, List
 } from 'lucide-react';
+import LicitacoesTab from '@/components/monitoramento/LicitacoesTab';
 
 type TipoDocumento =
   | 'edital' | 'aviso' | 'cancelamento' | 'suspenso'
@@ -171,12 +172,18 @@ export default function MonitoramentoEditais() {
           })}
         </div>
 
-        <Tabs defaultValue="resultados" className="space-y-4">
+        <Tabs defaultValue="licitacoes" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="licitacoes"><List className="w-4 h-4 mr-1" />Licitações</TabsTrigger>
             <TabsTrigger value="resultados">Resultados ({documentosFiltrados.length})</TabsTrigger>
             <TabsTrigger value="portais">Portais Monitorados</TabsTrigger>
             <TabsTrigger value="config">Configuração de Pesquisa</TabsTrigger>
           </TabsList>
+
+          {/* Licitações */}
+          <TabsContent value="licitacoes">
+            <LicitacoesTab />
+          </TabsContent>
 
           {/* Resultados */}
           <TabsContent value="resultados" className="space-y-4">
