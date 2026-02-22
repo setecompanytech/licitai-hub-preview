@@ -294,6 +294,92 @@ export type Database = {
           },
         ]
       }
+      empresa_membros: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          papel: Database["public"]["Enums"]["empresa_papel"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          papel?: Database["public"]["Enums"]["empresa_papel"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          papel?: Database["public"]["Enums"]["empresa_papel"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empresa_membros_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      empresas: {
+        Row: {
+          certificado_nome: string | null
+          certificado_path: string | null
+          certificado_tipo: string | null
+          certificado_validade: string | null
+          cnae_principal: string | null
+          cnpj: string
+          created_at: string
+          created_by: string
+          endereco: string | null
+          id: string
+          municipio: string | null
+          nome_fantasia: string | null
+          razao_social: string
+          uf: string | null
+          updated_at: string
+        }
+        Insert: {
+          certificado_nome?: string | null
+          certificado_path?: string | null
+          certificado_tipo?: string | null
+          certificado_validade?: string | null
+          cnae_principal?: string | null
+          cnpj: string
+          created_at?: string
+          created_by: string
+          endereco?: string | null
+          id?: string
+          municipio?: string | null
+          nome_fantasia?: string | null
+          razao_social: string
+          uf?: string | null
+          updated_at?: string
+        }
+        Update: {
+          certificado_nome?: string | null
+          certificado_path?: string | null
+          certificado_tipo?: string | null
+          certificado_validade?: string | null
+          cnae_principal?: string | null
+          cnpj?: string
+          created_at?: string
+          created_by?: string
+          endereco?: string | null
+          id?: string
+          municipio?: string | null
+          nome_fantasia?: string | null
+          razao_social?: string
+          uf?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       kanban_tasks: {
         Row: {
           created_at: string
@@ -625,6 +711,7 @@ export type Database = {
           cnpj: string | null
           created_at: string
           empresa: string | null
+          empresa_ativa_id: string | null
           id: string
           nome_completo: string | null
           telefone: string | null
@@ -637,6 +724,7 @@ export type Database = {
           cnpj?: string | null
           created_at?: string
           empresa?: string | null
+          empresa_ativa_id?: string | null
           id?: string
           nome_completo?: string | null
           telefone?: string | null
@@ -649,13 +737,22 @@ export type Database = {
           cnpj?: string | null
           created_at?: string
           empresa?: string | null
+          empresa_ativa_id?: string | null
           id?: string
           nome_completo?: string | null
           telefone?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_empresa_ativa_id_fkey"
+            columns: ["empresa_ativa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -687,9 +784,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_empresa_admin: {
+        Args: { _empresa_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_empresa_member: {
+        Args: { _empresa_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "viewer"
+      empresa_papel: "admin" | "operador" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -818,6 +924,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user", "viewer"],
+      empresa_papel: ["admin", "operador", "viewer"],
     },
   },
 } as const

@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Zap, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
+import { Zap, Mail, Lock, User, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import CadastroCertificado from '@/components/empresa/CadastroCertificado';
 
 export default function Auth() {
-  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot' | 'certificado'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nome, setNome] = useState('');
@@ -72,98 +73,134 @@ export default function Auth() {
 
         {/* Card */}
         <div className="bg-card rounded-2xl border border-border/50 shadow-2xl p-8">
-          <h2 className="text-xl font-bold text-center mb-1">
-            {mode === 'login' && 'Entrar no sistema'}
-            {mode === 'signup' && 'Criar sua conta'}
-            {mode === 'forgot' && 'Recuperar senha'}
-          </h2>
-          <p className="text-sm text-muted-foreground text-center mb-6">
-            {mode === 'login' && 'Gerencie suas licitações com inteligência artificial'}
-            {mode === 'signup' && 'Preencha os dados para começar'}
-            {mode === 'forgot' && 'Informe seu e-mail para receber o link de recuperação'}
-          </p>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'signup' && (
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Nome completo"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            )}
-
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                type="email"
-                placeholder="Seu e-mail"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pl-10"
-                required
-              />
-            </div>
-
-            {mode !== 'forgot' && (
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="password"
-                  placeholder="Sua senha"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                  minLength={6}
-                />
-              </div>
-            )}
-
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={loading}>
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <ArrowRight className="w-4 h-4 mr-2" />
-              )}
-              {mode === 'login' && 'Entrar'}
-              {mode === 'signup' && 'Criar conta'}
-              {mode === 'forgot' && 'Enviar link'}
-            </Button>
-          </form>
-
-          <div className="mt-6 space-y-2 text-center text-sm">
-            {mode === 'login' && (
-              <>
-                <button onClick={() => setMode('forgot')} className="text-accent hover:underline block mx-auto">
-                  Esqueceu a senha?
-                </button>
-                <p className="text-muted-foreground">
-                  Não tem conta?{' '}
-                  <button onClick={() => setMode('signup')} className="text-accent hover:underline font-medium">
-                    Criar conta
-                  </button>
-                </p>
-              </>
-            )}
-            {mode === 'signup' && (
-              <p className="text-muted-foreground">
-                Já tem conta?{' '}
-                <button onClick={() => setMode('login')} className="text-accent hover:underline font-medium">
-                  Fazer login
-                </button>
+          {mode === 'certificado' ? (
+            <>
+              <h2 className="text-xl font-bold text-center mb-1">Acessar com Certificado Digital</h2>
+              <p className="text-sm text-muted-foreground text-center mb-6">
+                Faça upload do seu certificado digital para autenticação
               </p>
-            )}
-            {mode === 'forgot' && (
-              <button onClick={() => setMode('login')} className="text-accent hover:underline">
-                Voltar ao login
-              </button>
-            )}
-          </div>
+              <div className="mb-4 p-3 rounded-lg bg-info/10 border border-info/20 text-xs text-muted-foreground">
+                <p><strong>Nota:</strong> Para acessar via certificado digital, primeiro crie sua conta com e-mail e senha, depois cadastre seus certificados na área de empresas.</p>
+              </div>
+              <div className="space-y-3 text-center">
+                <Button
+                  onClick={() => setMode('signup')}
+                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                >
+                  <User className="w-4 h-4 mr-2" />
+                  Criar conta para começar
+                </Button>
+                <button onClick={() => setMode('login')} className="text-accent hover:underline text-sm">
+                  Já tenho conta, fazer login
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h2 className="text-xl font-bold text-center mb-1">
+                {mode === 'login' && 'Entrar no sistema'}
+                {mode === 'signup' && 'Criar sua conta'}
+                {mode === 'forgot' && 'Recuperar senha'}
+              </h2>
+              <p className="text-sm text-muted-foreground text-center mb-6">
+                {mode === 'login' && 'Gerencie suas licitações com inteligência artificial'}
+                {mode === 'signup' && 'Preencha os dados para começar'}
+                {mode === 'forgot' && 'Informe seu e-mail para receber o link de recuperação'}
+              </p>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {mode === 'signup' && (
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Nome completo"
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                )}
+
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="email"
+                    placeholder="Seu e-mail"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+
+                {mode !== 'forgot' && (
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      type="password"
+                      placeholder="Sua senha"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-10"
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                )}
+
+                <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={loading}>
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <ArrowRight className="w-4 h-4 mr-2" />
+                  )}
+                  {mode === 'login' && 'Entrar'}
+                  {mode === 'signup' && 'Criar conta'}
+                  {mode === 'forgot' && 'Enviar link'}
+                </Button>
+              </form>
+
+              {mode === 'login' && (
+                <button
+                  onClick={() => setMode('certificado')}
+                  className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border/50 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-accent/50 transition-colors"
+                >
+                  <ShieldCheck className="w-4 h-4 text-accent" />
+                  Acessar com Certificado Digital
+                </button>
+              )}
+
+              <div className="mt-6 space-y-2 text-center text-sm">
+                {mode === 'login' && (
+                  <>
+                    <button onClick={() => setMode('forgot')} className="text-accent hover:underline block mx-auto">
+                      Esqueceu a senha?
+                    </button>
+                    <p className="text-muted-foreground">
+                      Não tem conta?{' '}
+                      <button onClick={() => setMode('signup')} className="text-accent hover:underline font-medium">
+                        Criar conta
+                      </button>
+                    </p>
+                  </>
+                )}
+                {mode === 'signup' && (
+                  <p className="text-muted-foreground">
+                    Já tem conta?{' '}
+                    <button onClick={() => setMode('login')} className="text-accent hover:underline font-medium">
+                      Fazer login
+                    </button>
+                  </p>
+                )}
+                {mode === 'forgot' && (
+                  <button onClick={() => setMode('login')} className="text-accent hover:underline">
+                    Voltar ao login
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
