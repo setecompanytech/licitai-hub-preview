@@ -1,12 +1,11 @@
 import AppLayout from '@/components/layout/AppLayout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { modalidadeDistribuicao } from '@/data/mockData';
 import LicitacoesChart from '@/components/dashboard/LicitacoesChart';
 import ValorChart from '@/components/dashboard/ValorChart';
 import { useDashboardData } from '@/hooks/useDashboardData';
 
 export default function Analytics() {
-  const { chartMensal, chartValor } = useDashboardData();
+  const { chartMensal, chartValor, modalidades } = useDashboardData();
 
   return (
     <AppLayout>
@@ -19,33 +18,37 @@ export default function Analytics() {
         <LicitacoesChart data={chartMensal} />
         <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
           <h3 className="text-sm font-semibold mb-4">Distribuição por Modalidade</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie
-                data={modalidadeDistribuicao}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={3}
-                dataKey="value"
-              >
-                {modalidadeDistribuicao.map((entry, i) => (
-                  <Cell key={i} fill={entry.fill} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  background: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                  fontSize: 12,
-                }}
-                formatter={(v: number, name: string) => [`${v}%`, name]}
-              />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-            </PieChart>
-          </ResponsiveContainer>
+          {modalidades.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma licitação cadastrada ainda.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie
+                  data={modalidades}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {modalidades.map((entry, i) => (
+                    <Cell key={i} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    background: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                    fontSize: 12,
+                  }}
+                  formatter={(v: number, name: string) => [`${v}%`, name]}
+                />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 

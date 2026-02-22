@@ -1,11 +1,24 @@
-import { useState } from 'react';
-import { licitacoesMock } from '@/data/mockData';
+import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { Search, MapPin, Calendar, Building2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+
+type Licitacao = {
+  id: string;
+  numero: string;
+  orgao: string;
+  objeto: string;
+  modalidade: string;
+  status: string;
+  valor_estimado: number | null;
+  uf: string | null;
+  municipio: string | null;
+  data_encerramento: string | null;
+};
 
 const regioes: Record<string, string[]> = {
   'Norte': ['AC', 'AM', 'AP', 'PA', 'RO', 'RR', 'TO'],
@@ -15,50 +28,48 @@ const regioes: Record<string, string[]> = {
   'Sul': ['PR', 'RS', 'SC'],
 };
 
-const municipiosPorUF: Record<string, string[]> = {
-  PA: ['Belém', 'Ananindeua', 'Marituba', 'Marabá', 'Castanhal', 'Santarém', 'Parauapebas', 'Altamira', 'Tucuruí', 'Barcarena'],
-  MA: ['São Luís', 'Imperatriz', 'Timon', 'Caxias', 'Codó'],
-  AP: ['Macapá', 'Santana', 'Laranjal do Jari'],
-  TO: ['Palmas', 'Araguaína', 'Gurupi'],
-  AM: ['Manaus', 'Parintins', 'Itacoatiara'],
-  SP: ['São Paulo', 'Guarulhos', 'Campinas'],
-  RJ: ['Rio de Janeiro', 'Niterói', 'Duque de Caxias'],
-  MG: ['Belo Horizonte', 'Uberlândia', 'Contagem'],
-};
-
 const statusConfig: Record<string, { label: string; className: string }> = {
-  monitorando: { label: 'Monitorando', className: 'bg-info/10 text-info border-info/20' },
-  analisando: { label: 'Analisando', className: 'bg-warning/10 text-warning border-warning/20' },
-  proposta: { label: 'Proposta', className: 'bg-primary/10 text-primary border-primary/20' },
-  enviada: { label: 'Enviada', className: 'bg-accent/10 text-accent border-accent/20' },
-  vencida: { label: 'Vencida', className: 'bg-success/10 text-success border-success/20' },
-  perdida: { label: 'Perdida', className: 'bg-destructive/10 text-destructive border-destructive/20' },
+  'Publicado': { label: 'Publicado', className: 'bg-info/10 text-info border-info/20' },
+  'Em Análise': { label: 'Em Análise', className: 'bg-warning/10 text-warning border-warning/20' },
+  'Proposta Enviada': { label: 'Proposta Enviada', className: 'bg-accent/10 text-accent border-accent/20' },
+  'Vencida': { label: 'Vencida', className: 'bg-success/10 text-success border-success/20' },
+  'Homologada': { label: 'Homologada', className: 'bg-success/10 text-success border-success/20' },
+  'Perdida': { label: 'Perdida', className: 'bg-destructive/10 text-destructive border-destructive/20' },
 };
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
 export default function LicitacoesTab() {
+  const { user } = useAuth();
+  const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [modalidadeFilter, setModalidadeFilter] = useState<string>('all');
   const [regiaoFilter, setRegiaoFilter] = useState<string>('all');
   const [ufFilter, setUfFilter] = useState<string>('all');
-  const [municipioFilter, setMunicipioFilter] = useState<string>('all');
-  const [uasgSearch, setUasgSearch] = useState('');
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('licitacoes')
+      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, uf, municipio, data_encerramento')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setLicitacoes(data || []);
+        setLoading(false);
+      });
+  }, [user]);
 
   const ufsDisponiveis = regiaoFilter === 'all'
     ? Object.values(regioes).flat()
     : regioes[regiaoFilter] || [];
 
-  const municipiosDisponiveis = ufFilter === 'all'
-    ? []
-    : municipiosPorUF[ufFilter] || [];
+  const handleRegiaoChange = (v: string) => { setRegiaoFilter(v); setUfFilter('all'); };
 
-  const handleRegiaoChange = (v: string) => { setRegiaoFilter(v); setUfFilter('all'); setMunicipioFilter('all'); };
-  const handleUfChange = (v: string) => { setUfFilter(v); setMunicipioFilter('all'); };
-
-  const filtered = licitacoesMock.filter((l) => {
+  const filtered = licitacoes.filter((l) => {
     const matchSearch =
       l.objeto.toLowerCase().includes(search.toLowerCase()) ||
       l.orgao.toLowerCase().includes(search.toLowerCase()) ||
@@ -66,13 +77,9 @@ export default function LicitacoesTab() {
     const matchStatus = statusFilter === 'all' || l.status === statusFilter;
     const matchModalidade = modalidadeFilter === 'all' || l.modalidade === modalidadeFilter;
     const matchUf = ufFilter === 'all'
-      ? (regiaoFilter === 'all' || ufsDisponiveis.includes(l.uf))
+      ? (regiaoFilter === 'all' || ufsDisponiveis.includes(l.uf || ''))
       : l.uf === ufFilter;
-    const matchMunicipio = municipioFilter === 'all' || l.cidade === municipioFilter;
-    const matchUasg = !uasgSearch ||
-      (l.uasg?.toLowerCase().includes(uasgSearch.toLowerCase()) ||
-        l.unidadeCompradora?.toLowerCase().includes(uasgSearch.toLowerCase()));
-    return matchSearch && matchStatus && matchModalidade && matchUf && matchMunicipio && matchUasg;
+    return matchSearch && matchStatus && matchModalidade && matchUf;
   });
 
   return (
@@ -82,10 +89,6 @@ export default function LicitacoesTab() {
         <div className="relative flex-1 min-w-[250px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Buscar por objeto, órgão ou número..." className="pl-9 bg-card border-border/50" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        <div className="relative min-w-[220px] max-w-xs">
-          <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="UASG / Unidade Compradora..." className="pl-9 bg-card border-border/50" value={uasgSearch} onChange={(e) => setUasgSearch(e.target.value)} />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[160px] bg-card border-border/50"><SelectValue placeholder="Status" /></SelectTrigger>
@@ -113,25 +116,18 @@ export default function LicitacoesTab() {
             {Object.keys(regioes).map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={ufFilter} onValueChange={handleUfChange}>
+        <Select value={ufFilter} onValueChange={setUfFilter}>
           <SelectTrigger className="w-[120px] bg-card border-border/50"><SelectValue placeholder="UF" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos UFs</SelectItem>
             {ufsDisponiveis.sort().map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
           </SelectContent>
         </Select>
-        {municipiosDisponiveis.length > 0 && (
-          <Select value={municipioFilter} onValueChange={setMunicipioFilter}>
-            <SelectTrigger className="w-[180px] bg-card border-border/50"><SelectValue placeholder="Município" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos municípios</SelectItem>
-              {municipiosDisponiveis.sort().map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        )}
       </div>
 
-      <p className="text-sm text-muted-foreground">{filtered.length} licitações encontradas</p>
+      <p className="text-sm text-muted-foreground">
+        {loading ? 'Carregando...' : `${filtered.length} licitações encontradas`}
+      </p>
 
       {/* Table */}
       <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
@@ -140,17 +136,18 @@ export default function LicitacoesTab() {
             <thead>
               <tr className="border-b border-border/50 bg-muted/30">
                 <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Nº / Objeto</th>
-                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Órgão / UASG</th>
-                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Unidade Compradora</th>
+                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Órgão</th>
                 <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>
                 <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Encerramento</th>
                 <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
-                <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Relevância</th>
               </tr>
             </thead>
             <tbody>
+              {filtered.length === 0 && !loading && (
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma licitação encontrada.</td></tr>
+              )}
               {filtered.map((lic, i) => {
-                const st = statusConfig[lic.status];
+                const st = statusConfig[lic.status] || { label: lic.status, className: 'bg-muted text-muted-foreground' };
                 return (
                   <tr key={lic.id} className="border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer animate-fade-in" style={{ animationDelay: `${i * 40}ms` }}>
                     <td className="px-4 py-3">
@@ -162,32 +159,23 @@ export default function LicitacoesTab() {
                         <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                         <span className="line-clamp-1">{lic.orgao}</span>
                       </div>
-                      {lic.uasg && <span className="text-xs font-mono text-muted-foreground mt-0.5 block">UASG: {lic.uasg}</span>}
-                      <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-3 h-3" />{lic.cidade}/{lic.uf}
-                      </span>
+                      {lic.municipio && lic.uf && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3" />{lic.municipio}/{lic.uf}
+                        </span>
+                      )}
                     </td>
-                    <td className="px-4 py-3"><span className="text-sm line-clamp-2">{lic.unidadeCompradora || '-'}</span></td>
-                    <td className="px-4 py-3 text-sm text-right font-semibold">{formatCurrency(lic.valor)}</td>
+                    <td className="px-4 py-3 text-sm text-right font-semibold">{lic.valor_estimado ? formatCurrency(lic.valor_estimado) : '-'}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className="text-sm flex items-center justify-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-                        {new Date(lic.dataEncerramento).toLocaleDateString('pt-BR')}
-                      </span>
+                      {lic.data_encerramento ? (
+                        <span className="text-sm flex items-center justify-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                          {new Date(lic.data_encerramento).toLocaleDateString('pt-BR')}
+                        </span>
+                      ) : '-'}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', st?.className)}>{st?.label}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
-                          <div className="h-full rounded-full transition-all" style={{
-                            width: `${lic.relevancia}%`,
-                            background: lic.relevancia > 80 ? 'hsl(var(--success))' : lic.relevancia > 60 ? 'hsl(var(--warning))' : 'hsl(var(--muted-foreground))',
-                          }} />
-                        </div>
-                        <span className="text-xs font-mono text-muted-foreground">{lic.relevancia}</span>
-                      </div>
+                      <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', st.className)}>{st.label}</Badge>
                     </td>
                   </tr>
                 );

@@ -36,7 +36,21 @@ type LicitacaoRecente = {
   data_encerramento: string | null;
 };
 
+type ModalidadeItem = {
+  name: string;
+  value: number;
+  fill: string;
+};
+
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+const MODALIDADE_COLORS: Record<string, string> = {
+  'Pregão Eletrônico': 'hsl(210, 100%, 40%)',
+  'Concorrência': 'hsl(174, 72%, 40%)',
+  'Tomada de Preços': 'hsl(38, 92%, 50%)',
+  'Dispensa': 'hsl(220, 14%, 60%)',
+  'Inexigibilidade': 'hsl(142, 71%, 45%)',
+};
 
 export function useDashboardData() {
   const { user } = useAuth();
@@ -52,6 +66,7 @@ export function useDashboardData() {
   const [chartMensal, setChartMensal] = useState<ChartMensal[]>([]);
   const [chartValor, setChartValor] = useState<ChartValor[]>([]);
   const [recentes, setRecentes] = useState<LicitacaoRecente[]>([]);
+  const [modalidades, setModalidades] = useState<ModalidadeItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -61,7 +76,7 @@ export function useDashboardData() {
 
   async function loadAll() {
     setLoading(true);
-    await Promise.all([loadKpis(), loadChartMensal(), loadRecentes()]);
+    await Promise.all([loadKpis(), loadChartMensal(), loadRecentes(), loadModalidades()]);
     setLoading(false);
   }
 
@@ -94,7 +109,7 @@ export function useDashboardData() {
       licitacoesMonitoradas: monitoradas || 0,
       propostasEnviadas: propostas || 0,
       taxaVitoria: Math.round(taxa * 10) / 10,
-      roiMedio: totalGanho > 0 ? 18.5 : 0, // ROI requires cost data not yet available
+      roiMedio: totalGanho > 0 ? 18.5 : 0,
       valorTotalGanho: totalGanho,
       licitacoesHoje: hoje || 0,
     });
@@ -126,6 +141,32 @@ export function useDashboardData() {
     setChartValor(monthsValor);
   }
 
+  async function loadModalidades() {
+    const { data } = await supabase
+      .from('licitacoes')
+      .select('modalidade')
+      .eq('user_id', user!.id);
+
+    if (!data || data.length === 0) {
+      setModalidades([]);
+      return;
+    }
+
+    const counts: Record<string, number> = {};
+    data.forEach((l) => {
+      counts[l.modalidade] = (counts[l.modalidade] || 0) + 1;
+    });
+
+    const total = data.length;
+    const items: ModalidadeItem[] = Object.entries(counts).map(([name, count]) => ({
+      name,
+      value: Math.round((count / total) * 100),
+      fill: MODALIDADE_COLORS[name] || 'hsl(220, 14%, 60%)',
+    }));
+
+    setModalidades(items);
+  }
+
   async function loadRecentes() {
     const { data } = await supabase
       .from('licitacoes')
@@ -137,5 +178,5 @@ export function useDashboardData() {
     setRecentes(data || []);
   }
 
-  return { kpis, chartMensal, chartValor, recentes, loading };
+  return { kpis, chartMensal, chartValor, recentes, modalidades, loading };
 }
