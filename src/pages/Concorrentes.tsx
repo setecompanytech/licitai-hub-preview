@@ -3,6 +3,8 @@ import { concorrentesMock } from '@/data/mockData';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Shield, AlertTriangle, CheckCircle, Trophy, XCircle, DollarSign } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ConsultaCNPJ from '@/components/concorrentes/ConsultaCNPJ';
 
 const riscoConfig: Record<string, { label: string; className: string; icon: typeof Shield }> = {
   baixo: { label: 'Baixo', className: 'bg-success/10 text-success border-success/20', icon: CheckCircle },
@@ -23,60 +25,73 @@ export default function Concorrentes() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {concorrentesMock.map((c, i) => {
-          const risco = riscoConfig[c.risco];
-          const taxa = ((c.vitorias / (c.vitorias + c.derrotas)) * 100).toFixed(1);
-          return (
-            <div
-              key={c.id}
-              className="bg-card rounded-xl border border-border/50 p-5 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer animate-fade-in"
-              style={{ animationDelay: `${i * 80}ms` }}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="text-sm font-semibold">{c.razaoSocial}</h3>
-                  <p className="text-xs font-mono text-muted-foreground mt-0.5">{c.cnpj}</p>
-                </div>
-                <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', risco.className)}>
-                  <risco.icon className="w-3 h-3 mr-1" />
-                  Risco {risco.label}
-                </Badge>
-              </div>
+      <Tabs defaultValue="lista" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="lista">Concorrentes ({concorrentesMock.length})</TabsTrigger>
+          <TabsTrigger value="consulta-cnpj">Consulta CNPJ</TabsTrigger>
+        </TabsList>
 
-              <div className="grid grid-cols-3 gap-3 mt-4">
-                <div className="text-center p-2 rounded-lg bg-muted/50">
-                  <Trophy className="w-4 h-4 mx-auto text-success mb-1" />
-                  <p className="text-lg font-bold">{c.vitorias}</p>
-                  <p className="text-[10px] text-muted-foreground">Vitórias</p>
-                </div>
-                <div className="text-center p-2 rounded-lg bg-muted/50">
-                  <XCircle className="w-4 h-4 mx-auto text-destructive mb-1" />
-                  <p className="text-lg font-bold">{c.derrotas}</p>
-                  <p className="text-[10px] text-muted-foreground">Derrotas</p>
-                </div>
-                <div className="text-center p-2 rounded-lg bg-muted/50">
-                  <DollarSign className="w-4 h-4 mx-auto text-accent mb-1" />
-                  <p className="text-lg font-bold">{formatCurrency(c.lanceMedio)}</p>
-                  <p className="text-[10px] text-muted-foreground">Lance Médio</p>
-                </div>
-              </div>
+        <TabsContent value="lista">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {concorrentesMock.map((c, i) => {
+              const risco = riscoConfig[c.risco];
+              const taxa = ((c.vitorias / (c.vitorias + c.derrotas)) * 100).toFixed(1);
+              return (
+                <div
+                  key={c.id}
+                  className="bg-card rounded-xl border border-border/50 p-5 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer animate-fade-in"
+                  style={{ animationDelay: `${i * 80}ms` }}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="text-sm font-semibold">{c.razaoSocial}</h3>
+                      <p className="text-xs font-mono text-muted-foreground mt-0.5">{c.cnpj}</p>
+                    </div>
+                    <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', risco.className)}>
+                      <risco.icon className="w-3 h-3 mr-1" />
+                      Risco {risco.label}
+                    </Badge>
+                  </div>
 
-              <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/30">
-                <div className="text-xs text-muted-foreground">
-                  Taxa de vitória: <span className="font-semibold text-foreground">{taxa}%</span>
+                  <div className="grid grid-cols-3 gap-3 mt-4">
+                    <div className="text-center p-2 rounded-lg bg-muted/50">
+                      <Trophy className="w-4 h-4 mx-auto text-success mb-1" />
+                      <p className="text-lg font-bold">{c.vitorias}</p>
+                      <p className="text-[10px] text-muted-foreground">Vitórias</p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg bg-muted/50">
+                      <XCircle className="w-4 h-4 mx-auto text-destructive mb-1" />
+                      <p className="text-lg font-bold">{c.derrotas}</p>
+                      <p className="text-[10px] text-muted-foreground">Derrotas</p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg bg-muted/50">
+                      <DollarSign className="w-4 h-4 mx-auto text-accent mb-1" />
+                      <p className="text-lg font-bold">{formatCurrency(c.lanceMedio)}</p>
+                      <p className="text-[10px] text-muted-foreground">Lance Médio</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/30">
+                    <div className="text-xs text-muted-foreground">
+                      Taxa de vitória: <span className="font-semibold text-foreground">{taxa}%</span>
+                    </div>
+                    {c.sancoes > 0 && (
+                      <span className="text-xs text-destructive font-medium flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        {c.sancoes} sanção(ões)
+                      </span>
+                    )}
+                  </div>
                 </div>
-                {c.sancoes > 0 && (
-                  <span className="text-xs text-destructive font-medium flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />
-                    {c.sancoes} sanção(ões)
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="consulta-cnpj">
+          <ConsultaCNPJ />
+        </TabsContent>
+      </Tabs>
     </AppLayout>
   );
 }

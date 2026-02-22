@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Building2, Bell, Globe, Shield } from 'lucide-react';
+import CnaesSecundarios from '@/components/configuracoes/CnaesSecundarios';
 
 export default function Configuracoes() {
   return (
@@ -88,6 +89,9 @@ export default function Configuracoes() {
               ))}
             </div>
           </section>
+
+          {/* CNAEs Secundários */}
+          <CnaesSecundarios />
 
           <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
             Salvar Configurações
