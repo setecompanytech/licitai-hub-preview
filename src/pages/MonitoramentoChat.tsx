@@ -1,0 +1,233 @@
+import { useState } from 'react';
+import AppLayout from '@/components/layout/AppLayout';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  MessageSquare, Bell, AlertTriangle, CheckCircle2, Clock,
+  Search, RefreshCw, Eye, Volume2, VolumeX, Filter, Play, Pause
+} from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+
+type MensagemChat = {
+  id: string;
+  pregaoNumero: string;
+  orgao: string;
+  portal: string;
+  tipo: 'sistema' | 'pregoeiro' | 'fornecedor' | 'convocacao';
+  remetente: string;
+  mensagem: string;
+  horario: string;
+  destaque: boolean;
+};
+
+type PregaoMonitorado = {
+  id: string;
+  numero: string;
+  orgao: string;
+  portal: string;
+  objeto: string;
+  status: 'ao_vivo' | 'encerrado' | 'suspenso' | 'agendado';
+  totalMensagens: number;
+  alertas: number;
+  ultimaAtualizacao: string;
+};
+
+const mockPregoes: PregaoMonitorado[] = [
+  { id: '1', numero: 'PE-001/2026', orgao: 'Prefeitura de Belém', portal: 'Compras.gov.br', objeto: 'Construção de ponte sobre o Rio Guamá', status: 'ao_vivo', totalMensagens: 47, alertas: 3, ultimaAtualizacao: '14:32' },
+  { id: '2', numero: 'PE-045/2026', orgao: 'SEDOP/PA', portal: 'PNCP', objeto: 'Pavimentação asfáltica BR-316', status: 'ao_vivo', totalMensagens: 23, alertas: 1, ultimaAtualizacao: '14:28' },
+  { id: '3', numero: 'PE-012/2026', orgao: 'DNIT', portal: 'Licitações-e (BB)', objeto: 'Obra de contenção na PA-150', status: 'suspenso', totalMensagens: 89, alertas: 0, ultimaAtualizacao: '13:45' },
+  { id: '4', numero: 'PE-078/2026', orgao: 'SETRAN/PA', portal: 'Compras.gov.br', objeto: 'Sinalização viária em Ananindeua', status: 'agendado', totalMensagens: 0, alertas: 0, ultimaAtualizacao: '—' },
+  { id: '5', numero: 'PE-099/2025', orgao: 'COSANPA', portal: 'BLL Compras', objeto: 'Sistema de abastecimento de água', status: 'encerrado', totalMensagens: 156, alertas: 5, ultimaAtualizacao: '11:20' },
+];
+
+const mockMensagens: MensagemChat[] = [
+  { id: '1', pregaoNumero: 'PE-001/2026', orgao: 'Prefeitura de Belém', portal: 'Compras.gov.br', tipo: 'pregoeiro', remetente: 'Pregoeiro(a)', mensagem: 'Boa tarde. Iniciamos a fase de lances do item 1. Favor verificar propostas.', horario: '14:30', destaque: false },
+  { id: '2', pregaoNumero: 'PE-001/2026', orgao: 'Prefeitura de Belém', portal: 'Compras.gov.br', tipo: 'convocacao', remetente: 'Sistema', mensagem: '⚠️ CONVOCAÇÃO: Empresa CNPJ **12.345.678/0001-90** convocada para envio de documentos. Prazo: 2 horas.', horario: '14:31', destaque: true },
+  { id: '3', pregaoNumero: 'PE-001/2026', orgao: 'Prefeitura de Belém', portal: 'Compras.gov.br', tipo: 'fornecedor', remetente: 'Fornecedor A', mensagem: 'Lance enviado: R$ 12.450.000,00', horario: '14:32', destaque: false },
+  { id: '4', pregaoNumero: 'PE-001/2026', orgao: 'Prefeitura de Belém', portal: 'Compras.gov.br', tipo: 'sistema', remetente: 'Sistema', mensagem: 'Melhor lance atual: R$ 12.450.000,00 (Fornecedor A)', horario: '14:32', destaque: false },
+  { id: '5', pregaoNumero: 'PE-045/2026', orgao: 'SEDOP/PA', portal: 'PNCP', tipo: 'pregoeiro', remetente: 'Pregoeiro(a)', mensagem: 'Fase de habilitação em andamento. Aguardando documentos do licitante vencedor.', horario: '14:25', destaque: false },
+  { id: '6', pregaoNumero: 'PE-045/2026', orgao: 'SEDOP/PA', portal: 'PNCP', tipo: 'convocacao', remetente: 'Sistema', mensagem: '🔔 ALERTA: Prazo para envio de proposta readequada expira em 30 minutos.', horario: '14:28', destaque: true },
+];
+
+const statusConfig = {
+  ao_vivo: { label: 'Ao Vivo', color: 'bg-destructive/15 text-destructive border-destructive/30', icon: Play },
+  encerrado: { label: 'Encerrado', color: 'bg-muted text-muted-foreground border-border', icon: CheckCircle2 },
+  suspenso: { label: 'Suspenso', color: 'bg-warning/15 text-warning border-warning/30', icon: Pause },
+  agendado: { label: 'Agendado', color: 'bg-info/15 text-info border-info/30', icon: Clock },
+};
+
+const tipoMsgConfig = {
+  sistema: 'text-muted-foreground bg-muted/50',
+  pregoeiro: 'text-info bg-info/10 border-l-4 border-info',
+  fornecedor: 'text-foreground bg-card',
+  convocacao: 'text-warning bg-warning/10 border-l-4 border-warning font-medium',
+};
+
+export default function MonitoramentoChat() {
+  const [busca, setBusca] = useState('');
+  const [pregaoSelecionado, setPregaoSelecionado] = useState<string | null>('1');
+  const [alertaSonoro, setAlertaSonoro] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+
+  const pregoesFiltrados = mockPregoes.filter(p =>
+    !busca || p.numero.toLowerCase().includes(busca.toLowerCase()) ||
+    p.orgao.toLowerCase().includes(busca.toLowerCase()) ||
+    p.objeto.toLowerCase().includes(busca.toLowerCase())
+  );
+
+  const mensagensFiltradas = mockMensagens.filter(m =>
+    !pregaoSelecionado || mockPregoes.find(p => p.id === pregaoSelecionado)?.numero === m.pregaoNumero
+  );
+
+  const pregaoAtivo = mockPregoes.find(p => p.id === pregaoSelecionado);
+
+  return (
+    <AppLayout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              <MessageSquare className="w-6 h-6 text-accent" />
+              Monitoramento de Chat do Pregão
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Acompanhe em tempo real o chat dos pregões eletrônicos
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Auto-refresh</span>
+              <Switch checked={autoRefresh} onCheckedChange={setAutoRefresh} />
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              {alertaSonoro ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              <Switch checked={alertaSonoro} onCheckedChange={setAlertaSonoro} />
+            </div>
+            <Button size="sm" variant="outline">
+              <RefreshCw className="w-4 h-4 mr-1" /> Atualizar
+            </Button>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-3">
+          <div className="stat-card text-center">
+            <Play className="w-5 h-5 mx-auto mb-1 text-destructive" />
+            <p className="text-lg font-bold">{mockPregoes.filter(p => p.status === 'ao_vivo').length}</p>
+            <p className="text-[10px] text-muted-foreground">Ao Vivo</p>
+          </div>
+          <div className="stat-card text-center">
+            <Clock className="w-5 h-5 mx-auto mb-1 text-info" />
+            <p className="text-lg font-bold">{mockPregoes.filter(p => p.status === 'agendado').length}</p>
+            <p className="text-[10px] text-muted-foreground">Agendados</p>
+          </div>
+          <div className="stat-card text-center">
+            <Bell className="w-5 h-5 mx-auto mb-1 text-warning" />
+            <p className="text-lg font-bold">{mockPregoes.reduce((a, p) => a + p.alertas, 0)}</p>
+            <p className="text-[10px] text-muted-foreground">Alertas</p>
+          </div>
+          <div className="stat-card text-center">
+            <MessageSquare className="w-5 h-5 mx-auto mb-1 text-accent" />
+            <p className="text-lg font-bold">{mockPregoes.reduce((a, p) => a + p.totalMensagens, 0)}</p>
+            <p className="text-[10px] text-muted-foreground">Mensagens</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Left: Lista de pregões */}
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Buscar pregão..." value={busca} onChange={e => setBusca(e.target.value)} className="pl-10" />
+            </div>
+            <div className="space-y-2 max-h-[calc(100vh-380px)] overflow-y-auto pr-1">
+              {pregoesFiltrados.map(pregao => {
+                const cfg = statusConfig[pregao.status];
+                const Icon = cfg.icon;
+                return (
+                  <button
+                    key={pregao.id}
+                    onClick={() => setPregaoSelecionado(pregao.id)}
+                    className={`w-full text-left bg-card rounded-xl border p-3 shadow-sm hover:shadow-md transition-shadow ${pregaoSelecionado === pregao.id ? 'ring-2 ring-accent border-accent/50' : 'border-border/50'}`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-sm">{pregao.numero}</span>
+                      <Badge variant="outline" className={cfg.color + ' text-[10px]'}>
+                        <Icon className="w-3 h-3 mr-1" /> {cfg.label}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{pregao.objeto}</p>
+                    <div className="flex items-center justify-between mt-2 text-[10px] text-muted-foreground">
+                      <span>{pregao.orgao}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-0.5"><MessageSquare className="w-3 h-3" /> {pregao.totalMensagens}</span>
+                        {pregao.alertas > 0 && (
+                          <span className="flex items-center gap-0.5 text-warning"><Bell className="w-3 h-3" /> {pregao.alertas}</span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Right: Chat */}
+          <div className="lg:col-span-2">
+            {pregaoAtivo ? (
+              <Card className="p-0 overflow-hidden">
+                <div className="bg-card border-b border-border/50 p-4 flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-sm">{pregaoAtivo.numero}</h3>
+                      <Badge variant="outline" className={statusConfig[pregaoAtivo.status].color + ' text-[10px]'}>
+                        {statusConfig[pregaoAtivo.status].label}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">• {pregaoAtivo.portal}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{pregaoAtivo.orgao} — {pregaoAtivo.objeto}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline"><Eye className="w-3 h-3 mr-1" /> Ver no Portal</Button>
+                  </div>
+                </div>
+
+                <div className="p-4 space-y-3 max-h-[calc(100vh-440px)] overflow-y-auto bg-muted/30">
+                  {mensagensFiltradas.length > 0 ? mensagensFiltradas.map(msg => (
+                    <div key={msg.id} className={`rounded-lg p-3 text-sm ${tipoMsgConfig[msg.tipo]}`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-xs">{msg.remetente}</span>
+                        <span className="text-[10px] text-muted-foreground">{msg.horario}</span>
+                      </div>
+                      <p className="text-sm">{msg.mensagem}</p>
+                    </div>
+                  )) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                      <p className="text-sm">Nenhuma mensagem ainda neste pregão.</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-border/50 p-3 bg-card text-xs text-muted-foreground flex items-center justify-between">
+                  <span>Última atualização: {pregaoAtivo.ultimaAtualizacao}</span>
+                  <span>{pregaoAtivo.totalMensagens} mensagens • {pregaoAtivo.alertas} alertas</span>
+                </div>
+              </Card>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <div className="text-center">
+                  <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">Selecione um pregão para visualizar o chat</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </AppLayout>
+  );
+}

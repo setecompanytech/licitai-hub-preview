@@ -26,6 +26,12 @@ import LandingPage from "./pages/LandingPage";
 import FaqPage from "./pages/FaqPage";
 import Suporte from "./pages/Suporte";
 import AdminFinanceiro from "./pages/AdminFinanceiro";
+import MonitoramentoChat from "./pages/MonitoramentoChat";
+import AnaliseMercado from "./pages/AnaliseMercado";
+import LicitacoesEstrategicas from "./pages/LicitacoesEstrategicas";
+import AssessoriaCadastral from "./pages/AssessoriaCadastral";
+import Blog from "./pages/Blog";
+import Boletins from "./pages/Boletins";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +69,12 @@ const App = () => (
               <Route path="/suporte" element={<ProtectedPages><Suporte /></ProtectedPages>} />
               <Route path="/admin/templates" element={<ProtectedPages><AdminTemplates /></ProtectedPages>} />
               <Route path="/admin/financeiro" element={<ProtectedPages><AdminFinanceiro /></ProtectedPages>} />
+              <Route path="/monitoramento-chat" element={<ProtectedPages><MonitoramentoChat /></ProtectedPages>} />
+              <Route path="/analise-mercado" element={<ProtectedPages><AnaliseMercado /></ProtectedPages>} />
+              <Route path="/licitacoes-estrategicas" element={<ProtectedPages><LicitacoesEstrategicas /></ProtectedPages>} />
+              <Route path="/assessoria-cadastral" element={<ProtectedPages><AssessoriaCadastral /></ProtectedPages>} />
+              <Route path="/blog" element={<ProtectedPages><Blog /></ProtectedPages>} />
+              <Route path="/boletins" element={<ProtectedPages><Boletins /></ProtectedPages>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </EmpresaProvider>
