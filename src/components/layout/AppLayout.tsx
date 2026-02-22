@@ -2,8 +2,7 @@ import { ReactNode, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppSidebar from './AppSidebar';
-import { Bell, Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Bell } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -20,13 +19,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <AppSidebar />
       <div className="ml-[240px] transition-all duration-300">
         <header className="sticky top-0 z-30 h-16 bg-background/80 backdrop-blur-lg border-b border-border flex items-center justify-between px-6">
-          <div className="relative w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar licitações, órgãos, editais..."
-              className="pl-9 bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-accent"
-            />
-          </div>
+          <div />
           <div className="flex items-center gap-4">
             <EmpresaSelector />
             <button
