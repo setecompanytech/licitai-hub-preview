@@ -46,6 +46,7 @@ const navItems = [
   { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
   { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
   { icon: BookOpen, label: 'Blog', path: '/blog' },
+  { icon: Download, label: 'E-book', path: '/ebook' },
   { icon: Bot, label: 'Assistente IA', path: '/assistente' },
   { icon: BarChart3, label: 'Analytics', path: '/analytics' },
   { icon: Building2, label: 'Empresas', path: '/empresas' },
