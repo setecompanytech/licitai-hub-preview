@@ -13,6 +13,8 @@ export type Licitacao = {
   cnae: string;
   portal: string;
   relevancia: number; // 0-100
+  uasg?: string;
+  unidadeCompradora?: string;
 };
 
 export type Concorrente = {
@@ -43,6 +45,8 @@ export const licitacoesMock: Licitacao[] = [
     cnae: '42.11-1',
     portal: 'Compras.gov.br',
     relevancia: 95,
+    uasg: '925373',
+    unidadeCompradora: 'Prefeitura Municipal de Belém - SEURB',
   },
   {
     id: '2',
@@ -59,6 +63,8 @@ export const licitacoesMock: Licitacao[] = [
     cnae: '42.13-8',
     portal: 'PNCP',
     relevancia: 88,
+    uasg: '926004',
+    unidadeCompradora: 'SETRAN - Secretaria de Transportes',
   },
   {
     id: '3',
@@ -75,6 +81,8 @@ export const licitacoesMock: Licitacao[] = [
     cnae: '41.20-4',
     portal: 'Compras.gov.br',
     relevancia: 82,
+    uasg: '926102',
+    unidadeCompradora: 'SESPA - Secretaria de Saúde do Pará',
   },
   {
     id: '4',
@@ -91,6 +99,8 @@ export const licitacoesMock: Licitacao[] = [
     cnae: '42.13-8',
     portal: 'Compras.gov.br',
     relevancia: 76,
+    uasg: '393003',
+    unidadeCompradora: 'DNIT - Superintendência Regional PA',
   },
   {
     id: '5',
@@ -107,6 +117,8 @@ export const licitacoesMock: Licitacao[] = [
     cnae: '41.20-4',
     portal: 'PNCP',
     relevancia: 70,
+    uasg: '925501',
+    unidadeCompradora: 'Prefeitura Municipal de Ananindeua - SEOB',
   },
   {
     id: '6',
@@ -123,6 +135,8 @@ export const licitacoesMock: Licitacao[] = [
     cnae: '41.20-4',
     portal: 'Compras.gov.br',
     relevancia: 65,
+    uasg: '153063',
+    unidadeCompradora: 'UFPA - Prefeitura do Campus',
   },
   {
     id: '7',
@@ -139,6 +153,8 @@ export const licitacoesMock: Licitacao[] = [
     cnae: '42.22-7',
     portal: 'PNCP',
     relevancia: 60,
+    uasg: '920010',
+    unidadeCompradora: 'Prefeitura Municipal de Manaus - SEMINF',
   },
   {
     id: '8',
@@ -155,6 +171,8 @@ export const licitacoesMock: Licitacao[] = [
     cnae: '42.91-0',
     portal: 'Compras.gov.br',
     relevancia: 92,
+    uasg: '926200',
+    unidadeCompradora: 'SEDOP - Secretaria de Desenvolvimento',
   },
 ];
 
