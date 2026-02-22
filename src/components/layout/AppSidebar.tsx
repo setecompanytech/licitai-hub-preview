@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard,
   Search,
@@ -16,6 +17,7 @@ import {
   Scale,
   DollarSign,
   Download,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +40,7 @@ export default function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { signOut, user } = useAuth();
 
   return (
     <aside
@@ -80,8 +83,15 @@ export default function AppSidebar() {
         })}
       </nav>
 
-      {/* Collapse toggle */}
-      <div className="p-3 border-t" style={{ borderColor: `hsl(var(--sidebar-border))` }}>
+      {/* Bottom section */}
+      <div className="p-3 border-t space-y-1" style={{ borderColor: `hsl(var(--sidebar-border))` }}>
+        <button
+          onClick={async () => { await signOut(); navigate('/auth'); }}
+          className="sidebar-item sidebar-item-idle w-full text-destructive/80 hover:text-destructive"
+        >
+          <LogOut className="w-5 h-5 flex-shrink-0" />
+          {!collapsed && <span>Sair</span>}
+        </button>
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="sidebar-item sidebar-item-idle w-full justify-center"

@@ -14,16 +14,634 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      apoio_juridico: {
+        Row: {
+          conteudo: string | null
+          created_at: string
+          fundamentacao: string | null
+          id: string
+          licitacao_id: string | null
+          status: string | null
+          tipo: string
+          titulo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conteudo?: string | null
+          created_at?: string
+          fundamentacao?: string | null
+          id?: string
+          licitacao_id?: string | null
+          status?: string | null
+          tipo?: string
+          titulo: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conteudo?: string | null
+          created_at?: string
+          fundamentacao?: string | null
+          id?: string
+          licitacao_id?: string | null
+          status?: string | null
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apoio_juridico_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      concorrentes: {
+        Row: {
+          capital_social: number | null
+          cnae_principal: string | null
+          cnaes_secundarios: string[] | null
+          cnpj: string
+          created_at: string
+          email: string | null
+          endereco: string | null
+          id: string
+          municipio: string | null
+          nome_fantasia: string | null
+          notas: string | null
+          porte: string | null
+          razao_social: string
+          situacao: string | null
+          telefone: string | null
+          uf: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          capital_social?: number | null
+          cnae_principal?: string | null
+          cnaes_secundarios?: string[] | null
+          cnpj: string
+          created_at?: string
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          municipio?: string | null
+          nome_fantasia?: string | null
+          notas?: string | null
+          porte?: string | null
+          razao_social: string
+          situacao?: string | null
+          telefone?: string | null
+          uf?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          capital_social?: number | null
+          cnae_principal?: string | null
+          cnaes_secundarios?: string[] | null
+          cnpj?: string
+          created_at?: string
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          municipio?: string | null
+          nome_fantasia?: string | null
+          notas?: string | null
+          porte?: string | null
+          razao_social?: string
+          situacao?: string | null
+          telefone?: string | null
+          uf?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      configuracoes: {
+        Row: {
+          cnaes_monitorados: string[] | null
+          created_at: string
+          id: string
+          municipios_interesse: string[] | null
+          notificacoes_email: boolean | null
+          notificacoes_push: boolean | null
+          palavras_chave: string[] | null
+          ufs_interesse: string[] | null
+          updated_at: string
+          user_id: string
+          valor_maximo: number | null
+          valor_minimo: number | null
+        }
+        Insert: {
+          cnaes_monitorados?: string[] | null
+          created_at?: string
+          id?: string
+          municipios_interesse?: string[] | null
+          notificacoes_email?: boolean | null
+          notificacoes_push?: boolean | null
+          palavras_chave?: string[] | null
+          ufs_interesse?: string[] | null
+          updated_at?: string
+          user_id: string
+          valor_maximo?: number | null
+          valor_minimo?: number | null
+        }
+        Update: {
+          cnaes_monitorados?: string[] | null
+          created_at?: string
+          id?: string
+          municipios_interesse?: string[] | null
+          notificacoes_email?: boolean | null
+          notificacoes_push?: boolean | null
+          palavras_chave?: string[] | null
+          ufs_interesse?: string[] | null
+          updated_at?: string
+          user_id?: string
+          valor_maximo?: number | null
+          valor_minimo?: number | null
+        }
+        Relationships: []
+      }
+      documentos: {
+        Row: {
+          arquivo_path: string | null
+          arquivo_url: string | null
+          created_at: string
+          descricao: string | null
+          id: string
+          licitacao_id: string | null
+          nome: string
+          tamanho_bytes: number | null
+          tipo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          arquivo_path?: string | null
+          arquivo_url?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          licitacao_id?: string | null
+          nome: string
+          tamanho_bytes?: number | null
+          tipo?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          arquivo_path?: string | null
+          arquivo_url?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          licitacao_id?: string | null
+          nome?: string
+          tamanho_bytes?: number | null
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documentos_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kanban_tasks: {
+        Row: {
+          created_at: string
+          data_limite: string | null
+          descricao: string | null
+          id: string
+          licitacao_id: string | null
+          ordem: number | null
+          prioridade: string | null
+          responsavel: string | null
+          status: string
+          titulo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data_limite?: string | null
+          descricao?: string | null
+          id?: string
+          licitacao_id?: string | null
+          ordem?: number | null
+          prioridade?: string | null
+          responsavel?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data_limite?: string | null
+          descricao?: string | null
+          id?: string
+          licitacao_id?: string | null
+          ordem?: number | null
+          prioridade?: string | null
+          responsavel?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kanban_tasks_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lances: {
+        Row: {
+          automatico: boolean | null
+          created_at: string
+          data_lance: string | null
+          decremento: number | null
+          id: string
+          licitacao_id: string | null
+          resultado: string | null
+          status: string | null
+          user_id: string
+          valor_lance: number
+          valor_minimo: number | null
+        }
+        Insert: {
+          automatico?: boolean | null
+          created_at?: string
+          data_lance?: string | null
+          decremento?: number | null
+          id?: string
+          licitacao_id?: string | null
+          resultado?: string | null
+          status?: string | null
+          user_id: string
+          valor_lance: number
+          valor_minimo?: number | null
+        }
+        Update: {
+          automatico?: boolean | null
+          created_at?: string
+          data_lance?: string | null
+          decremento?: number | null
+          id?: string
+          licitacao_id?: string | null
+          resultado?: string | null
+          status?: string | null
+          user_id?: string
+          valor_lance?: number
+          valor_minimo?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lances_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      licitacoes: {
+        Row: {
+          created_at: string
+          data_abertura: string | null
+          data_encerramento: string | null
+          id: string
+          modalidade: string
+          municipio: string | null
+          numero: string
+          objeto: string
+          observacoes: string | null
+          orgao: string
+          portal: string | null
+          status: string
+          uf: string | null
+          updated_at: string
+          url_edital: string | null
+          user_id: string
+          valor_estimado: number | null
+        }
+        Insert: {
+          created_at?: string
+          data_abertura?: string | null
+          data_encerramento?: string | null
+          id?: string
+          modalidade?: string
+          municipio?: string | null
+          numero: string
+          objeto: string
+          observacoes?: string | null
+          orgao: string
+          portal?: string | null
+          status?: string
+          uf?: string | null
+          updated_at?: string
+          url_edital?: string | null
+          user_id: string
+          valor_estimado?: number | null
+        }
+        Update: {
+          created_at?: string
+          data_abertura?: string | null
+          data_encerramento?: string | null
+          id?: string
+          modalidade?: string
+          municipio?: string | null
+          numero?: string
+          objeto?: string
+          observacoes?: string | null
+          orgao?: string
+          portal?: string | null
+          status?: string
+          uf?: string | null
+          updated_at?: string
+          url_edital?: string | null
+          user_id?: string
+          valor_estimado?: number | null
+        }
+        Relationships: []
+      }
+      monitoramento_editais: {
+        Row: {
+          cnae_compativel: boolean | null
+          created_at: string
+          data_abertura: string | null
+          data_publicacao: string | null
+          id: string
+          lido: boolean | null
+          municipio: string | null
+          orgao: string
+          palavras_chave: string[] | null
+          portal: string | null
+          relevancia_score: number | null
+          status: string | null
+          tipo: string | null
+          titulo: string
+          uf: string | null
+          updated_at: string
+          url: string | null
+          user_id: string
+          valor_estimado: number | null
+        }
+        Insert: {
+          cnae_compativel?: boolean | null
+          created_at?: string
+          data_abertura?: string | null
+          data_publicacao?: string | null
+          id?: string
+          lido?: boolean | null
+          municipio?: string | null
+          orgao: string
+          palavras_chave?: string[] | null
+          portal?: string | null
+          relevancia_score?: number | null
+          status?: string | null
+          tipo?: string | null
+          titulo: string
+          uf?: string | null
+          updated_at?: string
+          url?: string | null
+          user_id: string
+          valor_estimado?: number | null
+        }
+        Update: {
+          cnae_compativel?: boolean | null
+          created_at?: string
+          data_abertura?: string | null
+          data_publicacao?: string | null
+          id?: string
+          lido?: boolean | null
+          municipio?: string | null
+          orgao?: string
+          palavras_chave?: string[] | null
+          portal?: string | null
+          relevancia_score?: number | null
+          status?: string | null
+          tipo?: string | null
+          titulo?: string
+          uf?: string | null
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+          valor_estimado?: number | null
+        }
+        Relationships: []
+      }
+      notificacoes: {
+        Row: {
+          created_at: string
+          id: string
+          lida: boolean | null
+          link: string | null
+          mensagem: string | null
+          tipo: string | null
+          titulo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lida?: boolean | null
+          link?: string | null
+          mensagem?: string | null
+          tipo?: string | null
+          titulo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lida?: boolean | null
+          link?: string | null
+          mensagem?: string | null
+          tipo?: string | null
+          titulo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      precificacao: {
+        Row: {
+          bdi_percentual: number | null
+          created_at: string
+          custo_unitario: number | null
+          descricao: string | null
+          fonte_preco: string | null
+          id: string
+          item: string
+          licitacao_id: string | null
+          preco_total: number | null
+          preco_unitario: number | null
+          quantidade: number | null
+          referencia_sinapi: string | null
+          unidade: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bdi_percentual?: number | null
+          created_at?: string
+          custo_unitario?: number | null
+          descricao?: string | null
+          fonte_preco?: string | null
+          id?: string
+          item: string
+          licitacao_id?: string | null
+          preco_total?: number | null
+          preco_unitario?: number | null
+          quantidade?: number | null
+          referencia_sinapi?: string | null
+          unidade?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bdi_percentual?: number | null
+          created_at?: string
+          custo_unitario?: number | null
+          descricao?: string | null
+          fonte_preco?: string | null
+          id?: string
+          item?: string
+          licitacao_id?: string | null
+          preco_total?: number | null
+          preco_unitario?: number | null
+          quantidade?: number | null
+          referencia_sinapi?: string | null
+          unidade?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "precificacao_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          cargo: string | null
+          cnpj: string | null
+          created_at: string
+          empresa: string | null
+          id: string
+          nome_completo: string | null
+          telefone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          cargo?: string | null
+          cnpj?: string | null
+          created_at?: string
+          empresa?: string | null
+          id?: string
+          nome_completo?: string | null
+          telefone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          cargo?: string | null
+          cnpj?: string | null
+          created_at?: string
+          empresa?: string | null
+          id?: string
+          nome_completo?: string | null
+          telefone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +768,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user", "viewer"],
+    },
   },
 } as const
