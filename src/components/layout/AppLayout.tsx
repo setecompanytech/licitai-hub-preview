@@ -1,5 +1,6 @@
 import { ReactNode, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import AppSidebar from './AppSidebar';
 import { Bell, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -8,6 +9,11 @@ import NotificationCenter from '@/components/notifications/NotificationCenter';
 export default function AppLayout({ children }: { children: ReactNode }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const initials = user?.user_metadata?.nome_completo
+    ? user.user_metadata.nome_completo.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
+    : user?.email?.slice(0, 2).toUpperCase() ?? 'LI';
 
   return (
     <div className="min-h-screen bg-background">
@@ -32,7 +38,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               </span>
             </button>
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-semibold">
-              LI
+              {initials}
             </div>
           </div>
         </header>
