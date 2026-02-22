@@ -11,7 +11,7 @@ import {
   PauseCircle, FileCheck, Award, Ban, ArrowUpDown, List, FileDown, FileSpreadsheet
 } from 'lucide-react';
 import LicitacoesTab from '@/components/monitoramento/LicitacoesTab';
-import { downloadCSV, downloadTextReport } from '@/lib/download-utils';
+import { downloadCSV, downloadTextReport, downloadPDF } from '@/lib/download-utils';
 import { toast } from 'sonner';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -235,6 +235,21 @@ export default function MonitoramentoEditais() {
                     toast.success('Relatório exportado com sucesso!');
                   }}>
                     <FileDown className="w-4 h-4 mr-2" /> Exportar Relatório TXT
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    downloadPDF(
+                      'editais-monitoramento',
+                      'Relatório de Editais Monitorados',
+                      ['Número', 'Tipo', 'Órgão', 'Portal', 'Objeto', 'Data', 'Valor'],
+                      documentosFiltrados.map(d => [
+                        d.numero, tipoConfig[d.tipo].label, d.orgao, d.portal, d.objeto,
+                        new Date(d.dataPublicacao).toLocaleDateString('pt-BR'),
+                        formatCurrency(d.valor),
+                      ])
+                    );
+                    toast.success('PDF exportado com sucesso!');
+                  }}>
+                    <FileText className="w-4 h-4 mr-2" /> Exportar PDF
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

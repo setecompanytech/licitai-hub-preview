@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.busca-licitacoes]
 verify_jwt = false
+
+[functions.consulta-sintegra]
+verify_jwt = false
+
+[functions.certidoes-negativas]
+verify_jwt = false

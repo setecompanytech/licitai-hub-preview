@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 import { Shield, AlertTriangle, CheckCircle, Trophy, XCircle, DollarSign } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ConsultaCNPJ from '@/components/concorrentes/ConsultaCNPJ';
+import ConsultaSintegra from '@/components/concorrentes/ConsultaSintegra';
+import CertidoesNegativas from '@/components/concorrentes/CertidoesNegativas';
 
 const riscoConfig: Record<string, { label: string; className: string; icon: typeof Shield }> = {
   baixo: { label: 'Baixo', className: 'bg-success/10 text-success border-success/20', icon: CheckCircle },
@@ -29,6 +31,8 @@ export default function Concorrentes() {
         <TabsList>
           <TabsTrigger value="lista">Concorrentes ({concorrentesMock.length})</TabsTrigger>
           <TabsTrigger value="consulta-cnpj">Consulta CNPJ</TabsTrigger>
+          <TabsTrigger value="sintegra">SINTEGRA</TabsTrigger>
+          <TabsTrigger value="certidoes">Certidões Negativas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="lista">
@@ -90,6 +94,14 @@ export default function Concorrentes() {
 
         <TabsContent value="consulta-cnpj">
           <ConsultaCNPJ />
+        </TabsContent>
+
+        <TabsContent value="sintegra">
+          <ConsultaSintegra />
+        </TabsContent>
+
+        <TabsContent value="certidoes">
+          <CertidoesNegativas />
         </TabsContent>
       </Tabs>
     </AppLayout>
