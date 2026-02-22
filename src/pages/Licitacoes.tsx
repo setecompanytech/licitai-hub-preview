@@ -8,6 +8,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { Search, Filter, MapPin, Calendar, Building2, ArrowUpDown } from 'lucide-react';
 
+const regioes: Record<string, string[]> = {
+  'Norte': ['AC', 'AM', 'AP', 'PA', 'RO', 'RR', 'TO'],
+  'Nordeste': ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'],
+  'Centro-Oeste': ['DF', 'GO', 'MS', 'MT'],
+  'Sudeste': ['ES', 'MG', 'RJ', 'SP'],
+  'Sul': ['PR', 'RS', 'SC'],
+};
+
+const municipiosPorUF: Record<string, string[]> = {
+  PA: ['Belém', 'Ananindeua', 'Santarém', 'Marabá', 'Castanhal', 'Tucuruí', 'Parauapebas', 'Altamira'],
+  AM: ['Manaus', 'Parintins', 'Itacoatiara', 'Manacapuru', 'Coari'],
+  AP: ['Macapá', 'Santana', 'Laranjal do Jari'],
+  AC: ['Rio Branco', 'Cruzeiro do Sul'],
+  RO: ['Porto Velho', 'Ji-Paraná'],
+  RR: ['Boa Vista'],
+  TO: ['Palmas', 'Araguaína'],
+  MA: ['São Luís', 'Imperatriz'],
+  SP: ['São Paulo', 'Campinas', 'Santos'],
+  RJ: ['Rio de Janeiro', 'Niterói'],
+  MG: ['Belo Horizonte', 'Uberlândia'],
+  BA: ['Salvador', 'Feira de Santana'],
+  CE: ['Fortaleza', 'Juazeiro do Norte'],
+  PE: ['Recife', 'Olinda'],
+  GO: ['Goiânia', 'Anápolis'],
+  DF: ['Brasília'],
+  PR: ['Curitiba', 'Londrina'],
+  RS: ['Porto Alegre', 'Caxias do Sul'],
+  SC: ['Florianópolis', 'Joinville'],
+};
+
 const statusConfig: Record<string, { label: string; className: string }> = {
   monitorando: { label: 'Monitorando', className: 'bg-info/10 text-info border-info/20' },
   analisando: { label: 'Analisando', className: 'bg-warning/10 text-warning border-warning/20' },
@@ -24,6 +54,28 @@ export default function Licitacoes() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [modalidadeFilter, setModalidadeFilter] = useState<string>('all');
+  const [regiaoFilter, setRegiaoFilter] = useState<string>('all');
+  const [ufFilter, setUfFilter] = useState<string>('all');
+  const [municipioFilter, setMunicipioFilter] = useState<string>('all');
+
+  const ufsDisponiveis = regiaoFilter === 'all'
+    ? Object.values(regioes).flat()
+    : regioes[regiaoFilter] || [];
+
+  const municipiosDisponiveis = ufFilter === 'all'
+    ? []
+    : municipiosPorUF[ufFilter] || [];
+
+  const handleRegiaoChange = (v: string) => {
+    setRegiaoFilter(v);
+    setUfFilter('all');
+    setMunicipioFilter('all');
+  };
+
+  const handleUfChange = (v: string) => {
+    setUfFilter(v);
+    setMunicipioFilter('all');
+  };
 
   const filtered = licitacoesMock.filter((l) => {
     const matchSearch =
@@ -32,7 +84,11 @@ export default function Licitacoes() {
       l.numero.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all' || l.status === statusFilter;
     const matchModalidade = modalidadeFilter === 'all' || l.modalidade === modalidadeFilter;
-    return matchSearch && matchStatus && matchModalidade;
+    const matchUf = ufFilter === 'all'
+      ? (regiaoFilter === 'all' || ufsDisponiveis.includes(l.uf))
+      : l.uf === ufFilter;
+    const matchMunicipio = municipioFilter === 'all' || l.cidade === municipioFilter;
+    return matchSearch && matchStatus && matchModalidade && matchUf && matchMunicipio;
   });
 
   return (
@@ -81,6 +137,42 @@ export default function Licitacoes() {
             <SelectItem value="Dispensa">Dispensa</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={regiaoFilter} onValueChange={handleRegiaoChange}>
+          <SelectTrigger className="w-[160px] bg-card border-border/50">
+            <MapPin className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+            <SelectValue placeholder="Região" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas regiões</SelectItem>
+            {Object.keys(regioes).map((r) => (
+              <SelectItem key={r} value={r}>{r}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={ufFilter} onValueChange={handleUfChange}>
+          <SelectTrigger className="w-[120px] bg-card border-border/50">
+            <SelectValue placeholder="UF" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos UFs</SelectItem>
+            {ufsDisponiveis.sort().map((uf) => (
+              <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {municipiosDisponiveis.length > 0 && (
+          <Select value={municipioFilter} onValueChange={setMunicipioFilter}>
+            <SelectTrigger className="w-[180px] bg-card border-border/50">
+              <SelectValue placeholder="Município" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos municípios</SelectItem>
+              {municipiosDisponiveis.sort().map((m) => (
+                <SelectItem key={m} value={m}>{m}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Table */}
