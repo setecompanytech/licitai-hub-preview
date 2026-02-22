@@ -21,6 +21,7 @@ import {
   LogOut,
   Building2,
   ShieldCheck,
+  HeadphonesIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -36,11 +37,13 @@ const navItems = [
   { icon: Bot, label: 'Assistente IA', path: '/assistente' },
   { icon: BarChart3, label: 'Analytics', path: '/analytics' },
   { icon: Building2, label: 'Empresas', path: '/empresas' },
+  { icon: HeadphonesIcon, label: 'Suporte', path: '/suporte' },
   { icon: Settings, label: 'Configurações', path: '/configuracoes' },
 ];
 
 const adminItems = [
   { icon: ShieldCheck, label: 'Templates IA', path: '/admin/templates' },
+  { icon: DollarSign, label: 'Financeiro', path: '/admin/financeiro' },
 ];
 
 export default function AppSidebar() {

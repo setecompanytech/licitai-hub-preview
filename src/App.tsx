@@ -22,6 +22,10 @@ import MonitoramentoEditais from "./pages/MonitoramentoEditais";
 import Configuracoes from "./pages/Configuracoes";
 import Empresas from "./pages/Empresas";
 import AdminTemplates from "./pages/AdminTemplates";
+import LandingPage from "./pages/LandingPage";
+import FaqPage from "./pages/FaqPage";
+import Suporte from "./pages/Suporte";
+import AdminFinanceiro from "./pages/AdminFinanceiro";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +43,8 @@ const App = () => (
         <AuthProvider>
           <EmpresaProvider>
             <Routes>
+              <Route path="/landing" element={<LandingPage />} />
+              <Route path="/faq" element={<FaqPage />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/" element={<ProtectedPages><Index /></ProtectedPages>} />
@@ -54,7 +60,9 @@ const App = () => (
               <Route path="/monitoramento-editais" element={<ProtectedPages><MonitoramentoEditais /></ProtectedPages>} />
               <Route path="/configuracoes" element={<ProtectedPages><Configuracoes /></ProtectedPages>} />
               <Route path="/empresas" element={<ProtectedPages><Empresas /></ProtectedPages>} />
+              <Route path="/suporte" element={<ProtectedPages><Suporte /></ProtectedPages>} />
               <Route path="/admin/templates" element={<ProtectedPages><AdminTemplates /></ProtectedPages>} />
+              <Route path="/admin/financeiro" element={<ProtectedPages><AdminFinanceiro /></ProtectedPages>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </EmpresaProvider>
