@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 import {
   LayoutDashboard,
   Search,
@@ -19,6 +20,7 @@ import {
   Download,
   LogOut,
   Building2,
+  ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -37,11 +39,16 @@ const navItems = [
   { icon: Settings, label: 'Configurações', path: '/configuracoes' },
 ];
 
+const adminItems = [
+  { icon: ShieldCheck, label: 'Templates IA', path: '/admin/templates' },
+];
+
 export default function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
+  const { isAdmin } = useUserRole();
 
   return (
     <aside
@@ -82,6 +89,31 @@ export default function AppSidebar() {
             </button>
           );
         })}
+
+        {isAdmin && (
+          <>
+            <div className="pt-3 pb-1 px-2">
+              {!collapsed && <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Admin</span>}
+            </div>
+            {adminItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className={cn(
+                    'sidebar-item w-full',
+                    isActive ? 'sidebar-item-active' : 'sidebar-item-idle'
+                  )}
+                  title={collapsed ? item.label : undefined}
+                >
+                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  {!collapsed && <span>{item.label}</span>}
+                </button>
+              );
+            })}
+          </>
+        )}
       </nav>
 
       {/* Bottom section */}

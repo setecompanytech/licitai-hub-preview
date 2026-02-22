@@ -21,6 +21,7 @@ import Analytics from "./pages/Analytics";
 import MonitoramentoEditais from "./pages/MonitoramentoEditais";
 import Configuracoes from "./pages/Configuracoes";
 import Empresas from "./pages/Empresas";
+import AdminTemplates from "./pages/AdminTemplates";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/monitoramento-editais" element={<ProtectedPages><MonitoramentoEditais /></ProtectedPages>} />
               <Route path="/configuracoes" element={<ProtectedPages><Configuracoes /></ProtectedPages>} />
               <Route path="/empresas" element={<ProtectedPages><Empresas /></ProtectedPages>} />
+              <Route path="/admin/templates" element={<ProtectedPages><AdminTemplates /></ProtectedPages>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </EmpresaProvider>

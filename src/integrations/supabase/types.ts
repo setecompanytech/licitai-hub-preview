@@ -244,6 +244,48 @@ export type Database = {
         }
         Relationships: []
       }
+      document_templates: {
+        Row: {
+          ativo: boolean
+          categoria: string
+          created_at: string
+          created_by: string
+          descricao: string | null
+          id: string
+          legislacao_base: string | null
+          modelo_conteudo: string | null
+          nome: string
+          prompt_sistema: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          categoria?: string
+          created_at?: string
+          created_by: string
+          descricao?: string | null
+          id?: string
+          legislacao_base?: string | null
+          modelo_conteudo?: string | null
+          nome: string
+          prompt_sistema: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string
+          created_at?: string
+          created_by?: string
+          descricao?: string | null
+          id?: string
+          legislacao_base?: string | null
+          modelo_conteudo?: string | null
+          nome?: string
+          prompt_sistema?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       documentos: {
         Row: {
           arquivo_path: string | null
