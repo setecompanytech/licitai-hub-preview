@@ -127,6 +127,75 @@ export type Database = {
           },
         ]
       }
+      boletim_envios: {
+        Row: {
+          created_at: string
+          email: string
+          erro: string | null
+          id: string
+          resend_id: string | null
+          status: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          erro?: string | null
+          id?: string
+          resend_id?: string | null
+          status?: string
+          tipo?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          erro?: string | null
+          id?: string
+          resend_id?: string | null
+          status?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      boletim_preferencias: {
+        Row: {
+          boletim_manha: boolean
+          boletim_meiodia: boolean
+          boletim_tarde: boolean
+          created_at: string
+          email: string
+          id: string
+          notificacao_push: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          boletim_manha?: boolean
+          boletim_meiodia?: boolean
+          boletim_tarde?: boolean
+          created_at?: string
+          email: string
+          id?: string
+          notificacao_push?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          boletim_manha?: boolean
+          boletim_meiodia?: boolean
+          boletim_tarde?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          notificacao_push?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
