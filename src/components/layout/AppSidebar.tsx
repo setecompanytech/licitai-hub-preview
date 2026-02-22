@@ -18,6 +18,7 @@ import {
   DollarSign,
   Download,
   LogOut,
+  Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +33,7 @@ const navItems = [
   { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
   { icon: Bot, label: 'Assistente IA', path: '/assistente' },
   { icon: BarChart3, label: 'Analytics', path: '/analytics' },
+  { icon: Building2, label: 'Empresas', path: '/empresas' },
   { icon: Settings, label: 'Configurações', path: '/configuracoes' },
 ];
 

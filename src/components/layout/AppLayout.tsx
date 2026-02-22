@@ -5,7 +5,7 @@ import AppSidebar from './AppSidebar';
 import { Bell, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
-
+import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 export default function AppLayout({ children }: { children: ReactNode }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const navigate = useNavigate();
@@ -28,6 +28,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             />
           </div>
           <div className="flex items-center gap-4">
+            <EmpresaSelector />
             <button
               className="relative p-2 rounded-lg hover:bg-muted transition-colors"
               onClick={() => setNotifOpen(!notifOpen)}
