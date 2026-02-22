@@ -2,9 +2,13 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Building2, Globe, FileText, CheckCircle2, AlertTriangle, Loader2, ExternalLink } from 'lucide-react';
+import { Search, Building2, Globe, FileText, CheckCircle2, AlertTriangle, Loader2, ExternalLink, Download, FileSpreadsheet, FileDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { downloadCSV, downloadTextReport } from '@/lib/download-utils';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 type DadosCNPJ = {
   razaoSocial: string;
@@ -113,11 +117,74 @@ export default function ConsultaCNPJ() {
               <FileText className="w-4 h-4 text-accent" />
               Resultado da Consulta
             </h3>
-            <Badge variant="outline" className={
-              resultado.situacao === 'ATIVA' ? 'bg-success/15 text-success border-success/30' : 'bg-destructive/15 text-destructive border-destructive/30'
-            }>
-              <CheckCircle2 className="w-3 h-3 mr-1" /> {resultado.situacao}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline">
+                    <Download className="w-3.5 h-3.5 mr-1" /> Exportar
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => {
+                    downloadCSV(
+                      `cnpj-${resultado.cnpj.replace(/\D/g, '')}`,
+                      ['Campo', 'Valor'],
+                      [
+                        ['Razão Social', resultado.razaoSocial],
+                        ['Nome Fantasia', resultado.nomeFantasia],
+                        ['CNPJ', resultado.cnpj],
+                        ['Situação', resultado.situacao],
+                        ['Data Abertura', resultado.dataAbertura],
+                        ['Natureza Jurídica', resultado.naturezaJuridica],
+                        ['CNAE Principal', resultado.cnaePrincipal],
+                        ['Porte', resultado.porte],
+                        ['Capital Social', resultado.capitalSocial],
+                        ['Endereço', resultado.endereco],
+                        ['Município/UF', `${resultado.municipio}/${resultado.uf}`],
+                        ['E-mail', resultado.email],
+                        ['Telefone', resultado.telefone],
+                        ...resultado.cnaesSecundarios.map((c, i) => [`CNAE Secundário ${i + 1}`, c]),
+                      ]
+                    );
+                    toast.success('CSV exportado!');
+                  }}>
+                    <FileSpreadsheet className="w-4 h-4 mr-2" /> Exportar CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    const report = [
+                      `CONSULTA CNPJ – ${resultado.cnpj}`,
+                      `Gerado em: ${new Date().toLocaleString('pt-BR')}`,
+                      '='.repeat(50),
+                      '',
+                      `Razão Social: ${resultado.razaoSocial}`,
+                      `Nome Fantasia: ${resultado.nomeFantasia}`,
+                      `Situação: ${resultado.situacao}`,
+                      `Data Abertura: ${resultado.dataAbertura}`,
+                      `Natureza Jurídica: ${resultado.naturezaJuridica}`,
+                      `CNAE Principal: ${resultado.cnaePrincipal}`,
+                      `Porte: ${resultado.porte}`,
+                      `Capital Social: ${resultado.capitalSocial}`,
+                      `Endereço: ${resultado.endereco}`,
+                      `Município/UF: ${resultado.municipio}/${resultado.uf}`,
+                      `E-mail: ${resultado.email}`,
+                      `Telefone: ${resultado.telefone}`,
+                      '',
+                      `CNAEs Secundários (${resultado.cnaesSecundarios.length}):`,
+                      ...resultado.cnaesSecundarios.map(c => `  • ${c}`),
+                    ].join('\n');
+                    downloadTextReport(`cnpj-${resultado.cnpj.replace(/\D/g, '')}`, report);
+                    toast.success('Relatório exportado!');
+                  }}>
+                    <FileDown className="w-4 h-4 mr-2" /> Exportar Relatório TXT
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Badge variant="outline" className={
+                resultado.situacao === 'ATIVA' ? 'bg-success/15 text-success border-success/30' : 'bg-destructive/15 text-destructive border-destructive/30'
+              }>
+                <CheckCircle2 className="w-3 h-3 mr-1" /> {resultado.situacao}
+              </Badge>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

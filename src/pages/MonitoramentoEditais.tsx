@@ -8,9 +8,14 @@ import { Progress } from '@/components/ui/progress';
 import {
   Download, Search, FileText, AlertTriangle, XCircle, Clock,
   CheckCircle2, RefreshCw, Globe, Building2, Filter, CalendarDays,
-  PauseCircle, FileCheck, Award, Ban, ArrowUpDown, List
+  PauseCircle, FileCheck, Award, Ban, ArrowUpDown, List, FileDown, FileSpreadsheet
 } from 'lucide-react';
 import LicitacoesTab from '@/components/monitoramento/LicitacoesTab';
+import { downloadCSV, downloadTextReport } from '@/lib/download-utils';
+import { toast } from 'sonner';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 type TipoDocumento =
   | 'edital' | 'aviso' | 'cancelamento' | 'suspenso'
@@ -201,9 +206,38 @@ export default function MonitoramentoEditais() {
               <Button variant="outline" size="sm" onClick={() => { setBusca(''); setTipoFiltro('todos'); }}>
                 <Filter className="w-4 h-4 mr-1" /> Limpar Filtros
               </Button>
-              <Button variant="outline" size="sm">
-                <Download className="w-4 h-4 mr-1" /> Baixar Todos
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Download className="w-4 h-4 mr-1" /> Exportar
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => {
+                    downloadCSV(
+                      'editais-monitoramento',
+                      ['Número', 'Tipo', 'Órgão', 'Portal', 'Objeto', 'Data Publicação', 'Valor', 'Status'],
+                      documentosFiltrados.map(d => [
+                        d.numero, tipoConfig[d.tipo].label, d.orgao, d.portal, d.objeto,
+                        new Date(d.dataPublicacao).toLocaleDateString('pt-BR'),
+                        formatCurrency(d.valor), d.baixado ? 'Baixado' : 'Pendente',
+                      ])
+                    );
+                    toast.success('CSV exportado com sucesso!');
+                  }}>
+                    <FileSpreadsheet className="w-4 h-4 mr-2" /> Exportar CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    const lines = documentosFiltrados.map(d =>
+                      `${d.numero} | ${tipoConfig[d.tipo].label} | ${d.orgao}\n  Objeto: ${d.objeto}\n  Portal: ${d.portal} | Data: ${new Date(d.dataPublicacao).toLocaleDateString('pt-BR')} | Valor: ${formatCurrency(d.valor)}\n`
+                    );
+                    downloadTextReport('editais-relatorio', `RELATÓRIO DE EDITAIS MONITORADOS\nGerado em: ${new Date().toLocaleString('pt-BR')}\nTotal: ${documentosFiltrados.length} documentos\n${'='.repeat(60)}\n\n${lines.join('\n')}`);
+                    toast.success('Relatório exportado com sucesso!');
+                  }}>
+                    <FileDown className="w-4 h-4 mr-2" /> Exportar Relatório TXT
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Document list */}
