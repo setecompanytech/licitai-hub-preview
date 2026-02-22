@@ -1,49 +1,56 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Bot, Send, Sparkles, FileText, Scale, BarChart3 } from 'lucide-react';
-
-type Message = { role: 'user' | 'assistant'; content: string };
+import { Bot, Send, Sparkles, FileText, Scale, BarChart3, Loader2 } from 'lucide-react';
+import { streamAIChat, ChatMessage } from '@/lib/ai-stream';
+import { toast } from 'sonner';
 
 const suggestions = [
-  { icon: FileText, text: 'Resuma o edital PE-001/2026' },
-  { icon: Scale, text: 'Quais são os requisitos de habilitação da Lei 14.133/2021?' },
-  { icon: BarChart3, text: 'Análise SWOT da licitação CC-012/2026' },
-  { icon: Sparkles, text: 'Gere uma impugnação para o edital PE-045/2026' },
+  { icon: FileText, text: 'Resuma os requisitos de habilitação da Lei 14.133/2021' },
+  { icon: Scale, text: 'Quais são os critérios de julgamento previstos na Lei 14.133/2021?' },
+  { icon: BarChart3, text: 'Como calcular o BDI para obras públicas?' },
+  { icon: Sparkles, text: 'Gere um modelo de impugnação de edital por restrição à competitividade' },
 ];
 
-const mockResponses: Record<string, string> = {
-  default: `**Análise do Edital PE-001/2026**
-
-📋 **Resumo:**
-- **Objeto:** Construção de ponte sobre o Rio Guamá - Trecho Norte
-- **Órgão:** Prefeitura Municipal de Belém
-- **Valor estimado:** R$ 4.500.000,00
-- **Modalidade:** Pregão Eletrônico
-
-⚖️ **Requisitos de Habilitação (Lei 14.133/2021):**
-- Art. 62: Habilitação jurídica
-- Art. 65: Qualificação técnica-profissional
-- Art. 69: Regularidade fiscal e trabalhista
-
-🎯 **Recomendação IA:** Relevância alta (95%). Histórico favorável na região. Lance sugerido: R$ 4.200.000 (-6.7% do estimado).`,
-};
-
 export default function Assistente() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = (text?: string) => {
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async (text?: string) => {
     const msg = text || input;
-    if (!msg.trim()) return;
-    const newMessages: Message[] = [
-      ...messages,
-      { role: 'user', content: msg },
-      { role: 'assistant', content: mockResponses.default },
-    ];
-    setMessages(newMessages);
+    if (!msg.trim() || isLoading) return;
+
+    const userMsg: ChatMessage = { role: 'user', content: msg };
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
+    setIsLoading(true);
+
+    let assistantContent = '';
+    const allMessages = [...messages, userMsg];
+
+    await streamAIChat({
+      messages: allMessages,
+      action: 'assistente',
+      onDelta: (chunk) => {
+        assistantContent += chunk;
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.role === 'assistant') {
+            return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantContent } : m);
+          }
+          return [...prev, { role: 'assistant', content: assistantContent }];
+        });
+      },
+      onDone: () => setIsLoading(false),
+      onError: (error) => toast.error(error),
+    });
   };
 
   return (
@@ -55,13 +62,12 @@ export default function Assistente() {
             Assistente IA Jurídico
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            RAG jurídico com citação de leis, artigos e jurisprudências
+            IA especializada em licitações com base na Lei 14.133/2021
           </p>
         </div>
 
-        {/* Chat area */}
         <div className="bg-card rounded-xl border border-border/50 shadow-sm min-h-[500px] flex flex-col">
-          <div className="flex-1 p-6 space-y-4 overflow-y-auto">
+          <div className="flex-1 p-6 space-y-4 overflow-y-auto max-h-[60vh]">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-12">
                 <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mb-4">
@@ -69,7 +75,7 @@ export default function Assistente() {
                 </div>
                 <h2 className="text-lg font-semibold mb-2">Como posso ajudar?</h2>
                 <p className="text-sm text-muted-foreground text-center mb-6 max-w-md">
-                  Pergunte sobre editais, requisitos legais, análises SWOT ou gere documentos automaticamente.
+                  Pergunte sobre editais, requisitos legais, análises ou gere documentos jurídicos automaticamente.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
                   {suggestions.map((s, i) => (
@@ -85,42 +91,39 @@ export default function Assistente() {
                 </div>
               </div>
             ) : (
-              messages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-xl px-4 py-3 text-sm whitespace-pre-wrap ${
-                      msg.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
-                    }`}
-                  >
-                    {msg.content}
+              <>
+                {messages.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+                    <div className={`max-w-[80%] rounded-xl px-4 py-3 text-sm whitespace-pre-wrap ${
+                      msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                    }`}>
+                      {msg.content}
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+                {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
+                  <div className="flex justify-start">
+                    <div className="bg-muted rounded-xl px-4 py-3">
+                      <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </>
             )}
           </div>
 
-          {/* Input */}
           <div className="border-t border-border/50 p-4">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSend();
-              }}
-              className="flex gap-2"
-            >
+            <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex gap-2">
               <Input
                 placeholder="Pergunte sobre licitações, leis, concorrentes..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 className="bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-accent"
+                disabled={isLoading}
               />
-              <Button type="submit" size="icon" className="bg-accent hover:bg-accent/90 text-accent-foreground flex-shrink-0">
-                <Send className="w-4 h-4" />
+              <Button type="submit" size="icon" className="bg-accent hover:bg-accent/90 text-accent-foreground flex-shrink-0" disabled={isLoading}>
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
             </form>
           </div>

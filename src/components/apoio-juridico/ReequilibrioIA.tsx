@@ -3,10 +3,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { streamAIChat } from '@/lib/ai-stream';
+import { toast } from 'sonner';
 import {
   Newspaper, AlertTriangle, TrendingUp, Search, Sparkles,
   ExternalLink, CloudRain, Flame, Truck, MapPin, RefreshCw,
-  FileText, Scale
+  FileText, Scale, Loader2
 } from 'lucide-react';
 
 type NewsItem = {
@@ -103,6 +105,12 @@ export default function ReequilibrioIA() {
   const [loading, setLoading] = useState(false);
   const [showGenerator, setShowGenerator] = useState(false);
   const [selectedNews, setSelectedNews] = useState<string[]>([]);
+  const [contrato, setContrato] = useState('');
+  const [orgao, setOrgao] = useState('');
+  const [itensAfetados, setItensAfetados] = useState('');
+  const [observacoes, setObservacoes] = useState('');
+  const [generatingPedido, setGeneratingPedido] = useState(false);
+  const [pedidoGerado, setPedidoGerado] = useState('');
 
   const filtered = mockNews.filter(
     (n) =>
@@ -117,6 +125,35 @@ export default function ReequilibrioIA() {
   const handleRefresh = () => {
     setLoading(true);
     setTimeout(() => setLoading(false), 2000);
+  };
+
+  const handleGerarPedido = async () => {
+    const eventosTexto = selectedNews.map(id => {
+      const n = mockNews.find(m => m.id === id);
+      return n ? `- ${n.titulo} (${n.categoria}, Impacto: ${n.impacto}, Variação: ${n.variacaoPreco}): ${n.resumo}` : '';
+    }).join('\n');
+
+    const prompt = `Gere um pedido formal de reequilíbrio econômico-financeiro com os seguintes dados:
+Contrato: ${contrato || 'Não informado'}
+Órgão Contratante: ${orgao || 'Não informado'}
+Itens afetados: ${itensAfetados || 'Não informado'}
+Observações: ${observacoes || 'Nenhuma'}
+
+Eventos de fundamentação:
+${eventosTexto}
+
+Gere o documento completo com: cabeçalho, fundamentação legal (Lei 14.133/2021), demonstração da onerosidade, pedido e conclusão.`;
+
+    setGeneratingPedido(true);
+    setPedidoGerado('');
+
+    await streamAIChat({
+      messages: [{ role: 'user', content: prompt }],
+      action: 'reequilibrio',
+      onDelta: (chunk) => setPedidoGerado(prev => prev + chunk),
+      onDone: () => setGeneratingPedido(false),
+      onError: (error) => { toast.error(error); setGeneratingPedido(false); },
+    });
   };
 
   return (
@@ -248,11 +285,11 @@ export default function ReequilibrioIA() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-muted-foreground">Nº do Contrato</label>
-              <Input placeholder="CT-001/2025" className="mt-1" />
+              <Input placeholder="CT-001/2025" className="mt-1" value={contrato} onChange={e => setContrato(e.target.value)} />
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Órgão Contratante</label>
-              <Input placeholder="Prefeitura de Belém" className="mt-1" />
+              <Input placeholder="Prefeitura de Belém" className="mt-1" value={orgao} onChange={e => setOrgao(e.target.value)} />
             </div>
           </div>
 
@@ -261,6 +298,8 @@ export default function ReequilibrioIA() {
             <Textarea
               placeholder="Ex: Cimento CP-II: de R$ 32,00 para R$ 40,00/saco (+25%)..."
               className="mt-1 min-h-[80px]"
+              value={itensAfetados}
+              onChange={e => setItensAfetados(e.target.value)}
             />
           </div>
 
@@ -269,6 +308,8 @@ export default function ReequilibrioIA() {
             <Textarea
               placeholder="Informações complementares sobre o impacto no contrato..."
               className="mt-1 min-h-[60px]"
+              value={observacoes}
+              onChange={e => setObservacoes(e.target.value)}
             />
           </div>
 
@@ -280,9 +321,21 @@ export default function ReequilibrioIA() {
             </p>
           </div>
 
-          <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-            <Sparkles className="w-4 h-4 mr-1" /> Gerar Pedido Completo com IA
+          <Button
+            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+            onClick={handleGerarPedido}
+            disabled={generatingPedido}
+          >
+            {generatingPedido ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1" />}
+            {generatingPedido ? 'Gerando...' : 'Gerar Pedido Completo com IA'}
           </Button>
+
+          {pedidoGerado && (
+            <div className="bg-muted/30 rounded-lg p-4 border border-border/50">
+              <h4 className="text-xs font-semibold text-muted-foreground mb-2">Pedido Gerado pela IA:</h4>
+              <div className="text-sm whitespace-pre-wrap max-h-[400px] overflow-y-auto">{pedidoGerado}</div>
+            </div>
+          )}
         </div>
       )}
     </div>

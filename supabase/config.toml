@@ -1,1 +1,10 @@
 project_id = "sbnlovigyifvrkgsoalj"
+
+[functions.ai-chat]
+verify_jwt = false
+
+[functions.consulta-cnpj]
+verify_jwt = false
+
+[functions.busca-licitacoes]
+verify_jwt = false
