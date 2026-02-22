@@ -196,6 +196,54 @@ export type Database = {
         }
         Relationships: []
       }
+      credenciais_portais: {
+        Row: {
+          certificado_nome: string | null
+          certificado_path: string | null
+          certificado_tipo: string | null
+          created_at: string
+          id: string
+          login: string | null
+          portal_id: string
+          portal_nome: string
+          senha_hash: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+          validade_certificado: string | null
+        }
+        Insert: {
+          certificado_nome?: string | null
+          certificado_path?: string | null
+          certificado_tipo?: string | null
+          created_at?: string
+          id?: string
+          login?: string | null
+          portal_id: string
+          portal_nome: string
+          senha_hash?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+          validade_certificado?: string | null
+        }
+        Update: {
+          certificado_nome?: string | null
+          certificado_path?: string | null
+          certificado_tipo?: string | null
+          created_at?: string
+          id?: string
+          login?: string | null
+          portal_id?: string
+          portal_nome?: string
+          senha_hash?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+          validade_certificado?: string | null
+        }
+        Relationships: []
+      }
       documentos: {
         Row: {
           arquivo_path: string | null
