@@ -1,10 +1,13 @@
 import AppLayout from '@/components/layout/AppLayout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { modalidadeDistribuicao, chartDataMensal } from '@/data/mockData';
+import { modalidadeDistribuicao } from '@/data/mockData';
 import LicitacoesChart from '@/components/dashboard/LicitacoesChart';
 import ValorChart from '@/components/dashboard/ValorChart';
+import { useDashboardData } from '@/hooks/useDashboardData';
 
 export default function Analytics() {
+  const { chartMensal, chartValor } = useDashboardData();
+
   return (
     <AppLayout>
       <div className="mb-6">
@@ -13,7 +16,7 @@ export default function Analytics() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <LicitacoesChart />
+        <LicitacoesChart data={chartMensal} />
         <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
           <h3 className="text-sm font-semibold mb-4">Distribuição por Modalidade</h3>
           <ResponsiveContainer width="100%" height={260}>
@@ -46,7 +49,7 @@ export default function Analytics() {
         </div>
       </div>
 
-      <ValorChart />
+      <ValorChart data={chartValor} />
 
       {/* Heatmap placeholder */}
       <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm mt-4">

@@ -1,12 +1,15 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { chartDataMensal } from '@/data/mockData';
 
-export default function LicitacoesChart() {
+type Props = {
+  data: { mes: string; vitorias: number; derrotas: number; propostas: number }[];
+};
+
+export default function LicitacoesChart({ data }: Props) {
   return (
     <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
       <h3 className="text-sm font-semibold mb-4">Desempenho Mensal</h3>
       <ResponsiveContainer width="100%" height={260}>
-        <BarChart data={chartDataMensal} barGap={4}>
+        <BarChart data={data} barGap={4}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis dataKey="mes" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
           <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
