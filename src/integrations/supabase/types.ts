@@ -61,6 +61,72 @@ export type Database = {
           },
         ]
       }
+      assinaturas: {
+        Row: {
+          created_at: string
+          data_fim: string | null
+          data_inicio: string | null
+          empresa_id: string
+          forma_pagamento: string | null
+          id: string
+          liberado_por: string | null
+          observacoes: string | null
+          plano_id: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+          valor_pago: number | null
+        }
+        Insert: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          empresa_id: string
+          forma_pagamento?: string | null
+          id?: string
+          liberado_por?: string | null
+          observacoes?: string | null
+          plano_id: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          valor_pago?: number | null
+        }
+        Update: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          empresa_id?: string
+          forma_pagamento?: string | null
+          id?: string
+          liberado_por?: string | null
+          observacoes?: string | null
+          plano_id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          valor_pago?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assinaturas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assinaturas_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "planos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           content: string
@@ -422,6 +488,39 @@ export type Database = {
         }
         Relationships: []
       }
+      faq: {
+        Row: {
+          ativo: boolean | null
+          categoria: string | null
+          created_at: string
+          id: string
+          ordem: number | null
+          pergunta: string
+          resposta: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          categoria?: string | null
+          created_at?: string
+          id?: string
+          ordem?: number | null
+          pergunta: string
+          resposta: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean | null
+          categoria?: string | null
+          created_at?: string
+          id?: string
+          ordem?: number | null
+          pergunta?: string
+          resposta?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       kanban_tasks: {
         Row: {
           created_at: string
@@ -684,6 +783,54 @@ export type Database = {
         }
         Relationships: []
       }
+      planos: {
+        Row: {
+          ativo: boolean | null
+          created_at: string
+          descricao: string | null
+          destaque: boolean | null
+          id: string
+          limite_licitacoes: number | null
+          limite_usuarios: number | null
+          nome: string
+          preco_anual: number | null
+          preco_mensal: number
+          recursos: Json | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string
+          descricao?: string | null
+          destaque?: boolean | null
+          id?: string
+          limite_licitacoes?: number | null
+          limite_usuarios?: number | null
+          nome: string
+          preco_anual?: number | null
+          preco_mensal?: number
+          recursos?: Json | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string
+          descricao?: string | null
+          destaque?: boolean | null
+          id?: string
+          limite_licitacoes?: number | null
+          limite_usuarios?: number | null
+          nome?: string
+          preco_anual?: number | null
+          preco_mensal?: number
+          recursos?: Json | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       precificacao: {
         Row: {
           bdi_percentual: number | null
@@ -795,6 +942,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tickets_suporte: {
+        Row: {
+          assunto: string
+          categoria: string | null
+          created_at: string
+          descricao: string
+          id: string
+          prioridade: string | null
+          respondido_em: string | null
+          respondido_por: string | null
+          resposta: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assunto: string
+          categoria?: string | null
+          created_at?: string
+          descricao: string
+          id?: string
+          prioridade?: string | null
+          respondido_em?: string | null
+          respondido_por?: string | null
+          resposta?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assunto?: string
+          categoria?: string | null
+          created_at?: string
+          descricao?: string
+          id?: string
+          prioridade?: string | null
+          respondido_em?: string | null
+          respondido_por?: string | null
+          resposta?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
