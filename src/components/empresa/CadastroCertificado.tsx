@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
-import { Upload, ShieldCheck, Loader2, Building2 } from 'lucide-react';
+import { Upload, ShieldCheck, Loader2, Building2, Search } from 'lucide-react';
 
 type Props = {
   onSuccess?: () => void;
@@ -22,8 +22,13 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
   const [cnpj, setCnpj] = useState('');
   const [razaoSocial, setRazaoSocial] = useState('');
   const [nomeFantasia, setNomeFantasia] = useState('');
+  const [cnaePrincipal, setCnaePrincipal] = useState('');
+  const [uf, setUf] = useState('');
+  const [municipio, setMunicipio] = useState('');
+  const [endereco, setEndereco] = useState('');
   const [validade, setValidade] = useState('');
   const [loading, setLoading] = useState(false);
+  const [buscando, setBuscando] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -41,6 +46,40 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
     }
   };
 
+  const handleBuscarCNPJ = async () => {
+    const cnpjLimpo = cnpj.replace(/\D/g, '');
+    if (cnpjLimpo.length !== 14) {
+      toast.error('Informe um CNPJ válido com 14 dígitos');
+      return;
+    }
+
+    setBuscando(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('consulta-cnpj', {
+        body: { cnpj: cnpjLimpo },
+      });
+
+      if (error) throw error;
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      setRazaoSocial(data.razaoSocial || '');
+      setNomeFantasia(data.nomeFantasia || '');
+      setCnaePrincipal(data.cnaePrincipal || '');
+      setUf(data.uf || '');
+      setMunicipio(data.municipio || '');
+      setEndereco(data.endereco || '');
+      setCnpj(data.cnpj || cnpj);
+      toast.success('Dados preenchidos automaticamente!');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao consultar CNPJ');
+    } finally {
+      setBuscando(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !file || !cnpj.trim() || !razaoSocial.trim()) {
@@ -50,7 +89,6 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
 
     setLoading(true);
     try {
-      // Upload certificate
       const filePath = `${user.id}/${Date.now()}_${file.name}`;
       const { error: uploadError } = await supabase.storage
         .from('certificados')
@@ -58,11 +96,13 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
 
       if (uploadError) throw uploadError;
 
-      // Create empresa
       const empresa = await addEmpresa({
         cnpj: cnpj.trim(),
         razao_social: razaoSocial.trim(),
         nome_fantasia: nomeFantasia.trim() || undefined,
+        cnae_principal: cnaePrincipal.trim() || undefined,
+        uf: uf.trim() || undefined,
+        municipio: municipio.trim() || undefined,
         certificado_path: filePath,
         certificado_nome: file.name,
         certificado_tipo: tipo,
@@ -72,7 +112,9 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
       if (!empresa) throw new Error('Erro ao cadastrar empresa');
 
       toast.success(`Empresa ${razaoSocial} cadastrada com sucesso!`);
-      setCnpj(''); setRazaoSocial(''); setNomeFantasia(''); setValidade(''); setFile(null);
+      setCnpj(''); setRazaoSocial(''); setNomeFantasia(''); setValidade('');
+      setCnaePrincipal(''); setUf(''); setMunicipio(''); setEndereco('');
+      setFile(null);
       onSuccess?.();
     } catch (err: any) {
       toast.error(err.message || 'Erro ao cadastrar empresa');
@@ -119,7 +161,25 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label className="text-xs">CNPJ / CPF *</Label>
-          <Input value={cnpj} onChange={e => setCnpj(e.target.value)} placeholder="00.000.000/0001-00" className="mt-1" required />
+          <div className="flex gap-2 mt-1">
+            <Input
+              value={cnpj}
+              onChange={e => setCnpj(e.target.value)}
+              placeholder="00.000.000/0001-00"
+              required
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={handleBuscarCNPJ}
+              disabled={buscando || cnpj.replace(/\D/g, '').length < 14}
+              title="Buscar dados do CNPJ"
+              className="shrink-0"
+            >
+              {buscando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            </Button>
+          </div>
         </div>
         <div>
           <Label className="text-xs">Validade do Certificado</Label>
@@ -135,6 +195,26 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
       <div>
         <Label className="text-xs">Nome Fantasia</Label>
         <Input value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)} placeholder="Nome fantasia (opcional)" className="mt-1" />
+      </div>
+
+      <div>
+        <Label className="text-xs">CNAE Principal</Label>
+        <Input value={cnaePrincipal} onChange={e => setCnaePrincipal(e.target.value)} placeholder="Ex: 6201500 - Desenvolvimento de software" className="mt-1" />
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <Label className="text-xs">UF</Label>
+          <Input value={uf} onChange={e => setUf(e.target.value)} placeholder="SP" className="mt-1" maxLength={2} />
+        </div>
+        <div>
+          <Label className="text-xs">Município</Label>
+          <Input value={municipio} onChange={e => setMunicipio(e.target.value)} placeholder="São Paulo" className="mt-1" />
+        </div>
+        <div>
+          <Label className="text-xs">Endereço</Label>
+          <Input value={endereco} onChange={e => setEndereco(e.target.value)} placeholder="Rua, nº - Bairro" className="mt-1" />
+        </div>
       </div>
 
       <Button type="submit" disabled={loading || !file} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
