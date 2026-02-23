@@ -62,27 +62,41 @@ const adminItems = [
   { icon: DollarSign, label: 'Financeiro', path: '/admin/financeiro' },
 ];
 
-export default function AppSidebar() {
+interface AppSidebarProps {
+  onNavigate?: () => void;
+}
+
+export default function AppSidebar({ onNavigate }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
   const { isAdmin } = useUserRole();
 
+  const handleNav = (path: string) => {
+    navigate(path);
+    onNavigate?.();
+  };
+
+  // When inside a Sheet (mobile), always show expanded
+  const isInSheet = !!onNavigate;
+  const isCollapsed = isInSheet ? false : collapsed;
+
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen flex flex-col border-r transition-all duration-300',
-        collapsed ? 'w-[72px]' : 'w-[240px]'
+        'flex flex-col h-full',
+        isInSheet ? 'w-full' : 'fixed left-0 top-0 z-40 h-screen border-r transition-all duration-300',
+        !isInSheet && (isCollapsed ? 'w-[72px]' : 'w-[240px]')
       )}
-      style={{ background: `hsl(var(--sidebar-bg))`, borderColor: `hsl(var(--sidebar-border))` }}
+      style={{ background: isInSheet ? `hsl(var(--sidebar-bg))` : `hsl(var(--sidebar-bg))`, borderColor: `hsl(var(--sidebar-border))` }}
     >
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 h-16 border-b" style={{ borderColor: `hsl(var(--sidebar-border))` }}>
         <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
           <Zap className="w-4.5 h-4.5 text-accent-foreground" />
         </div>
-        {!collapsed && (
+        {!isCollapsed && (
           <span className="text-lg font-bold tracking-tight text-primary-foreground whitespace-nowrap">
             Licit<span className="text-accent">IA</span>
           </span>
@@ -96,15 +110,15 @@ export default function AppSidebar() {
           return (
             <button
               key={item.path}
-              onClick={() => navigate(item.path)}
+              onClick={() => handleNav(item.path)}
               className={cn(
                 'sidebar-item w-full',
                 isActive ? 'sidebar-item-active' : 'sidebar-item-idle'
               )}
-              title={collapsed ? item.label : undefined}
+              title={isCollapsed ? item.label : undefined}
             >
               <item.icon className="w-5 h-5 flex-shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              {!isCollapsed && <span>{item.label}</span>}
             </button>
           );
         })}
@@ -112,22 +126,22 @@ export default function AppSidebar() {
         {isAdmin && (
           <>
             <div className="pt-3 pb-1 px-2">
-              {!collapsed && <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Admin</span>}
+              {!isCollapsed && <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Admin</span>}
             </div>
             {adminItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
                 <button
                   key={item.path}
-                  onClick={() => navigate(item.path)}
+                  onClick={() => handleNav(item.path)}
                   className={cn(
                     'sidebar-item w-full',
                     isActive ? 'sidebar-item-active' : 'sidebar-item-idle'
                   )}
-                  title={collapsed ? item.label : undefined}
+                  title={isCollapsed ? item.label : undefined}
                 >
                   <item.icon className="w-5 h-5 flex-shrink-0" />
-                  {!collapsed && <span>{item.label}</span>}
+                  {!isCollapsed && <span>{item.label}</span>}
                 </button>
               );
             })}
@@ -138,19 +152,21 @@ export default function AppSidebar() {
       {/* Bottom section */}
       <div className="p-3 border-t space-y-1" style={{ borderColor: `hsl(var(--sidebar-border))` }}>
         <button
-          onClick={async () => { await signOut(); navigate('/auth'); }}
+          onClick={async () => { await signOut(); handleNav('/auth'); }}
           className="sidebar-item sidebar-item-idle w-full text-destructive/80 hover:text-destructive"
         >
           <LogOut className="w-5 h-5 flex-shrink-0" />
-          {!collapsed && <span>Sair</span>}
+          {!isCollapsed && <span>Sair</span>}
         </button>
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="sidebar-item sidebar-item-idle w-full justify-center"
-        >
-          {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-          {!collapsed && <span>Recolher</span>}
-        </button>
+        {!isInSheet && (
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="sidebar-item sidebar-item-idle w-full justify-center"
+          >
+            {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+            {!collapsed && <span>Recolher</span>}
+          </button>
+        )}
       </div>
     </aside>
   );
