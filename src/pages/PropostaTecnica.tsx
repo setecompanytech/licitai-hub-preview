@@ -4,17 +4,25 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { FileText, Sparkles, Loader2, Download, Copy, CheckCircle } from 'lucide-react';
+import { FileText, Sparkles, Loader2, Copy, CheckCircle, Upload, ImageIcon, X } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 export default function PropostaTecnica() {
   const { empresaAtiva } = useEmpresa();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [proposal, setProposal] = useState('');
   const [copied, setCopied] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Timbrado
+  const [timbradoUrl, setTimbradoUrl] = useState<string | null>(null);
+  const [uploadingTimbrado, setUploadingTimbrado] = useState(false);
 
   // Form fields
   const [numeroLicitacao, setNumeroLicitacao] = useState('');
@@ -26,11 +34,82 @@ export default function PropostaTecnica() {
   const [diferenciais, setDiferenciais] = useState('');
   const [observacoes, setObservacoes] = useState('');
 
+  // Load existing timbrado
+  useEffect(() => {
+    if (!empresaAtiva) return;
+    // Check if empresa has timbrado
+    supabase
+      .from('empresas')
+      .select('timbrado_url')
+      .eq('id', empresaAtiva.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.timbrado_url) setTimbradoUrl(data.timbrado_url);
+        else setTimbradoUrl(null);
+      });
+  }, [empresaAtiva]);
+
   useEffect(() => {
     if (proposal && resultRef.current) {
       resultRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [proposal]);
+
+  const handleUploadTimbrado = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !empresaAtiva || !user) return;
+
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Formato inválido. Use PNG, JPG, WEBP ou SVG.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo 5MB.');
+      return;
+    }
+
+    setUploadingTimbrado(true);
+    const ext = file.name.split('.').pop();
+    const filePath = `${empresaAtiva.id}/timbrado.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('timbrados')
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) {
+      toast.error('Erro ao enviar timbrado: ' + uploadError.message);
+      setUploadingTimbrado(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('timbrados')
+      .getPublicUrl(filePath);
+
+    const publicUrl = urlData.publicUrl;
+
+    await supabase
+      .from('empresas')
+      .update({ timbrado_path: filePath, timbrado_url: publicUrl })
+      .eq('id', empresaAtiva.id);
+
+    setTimbradoUrl(publicUrl);
+    setUploadingTimbrado(false);
+    toast.success('Timbrado enviado com sucesso!');
+  };
+
+  const handleRemoveTimbrado = async () => {
+    if (!empresaAtiva) return;
+
+    await supabase
+      .from('empresas')
+      .update({ timbrado_path: null, timbrado_url: null })
+      .eq('id', empresaAtiva.id);
+
+    setTimbradoUrl(null);
+    toast.success('Timbrado removido.');
+  };
 
   const buildContext = () => {
     const parts: string[] = [];
@@ -43,6 +122,7 @@ export default function PropostaTecnica() {
       if (empresaAtiva.cnae_principal) parts.push(`- CNAE Principal: ${empresaAtiva.cnae_principal}`);
       if (empresaAtiva.uf) parts.push(`- UF: ${empresaAtiva.uf}`);
       if (empresaAtiva.municipio) parts.push(`- Município: ${empresaAtiva.municipio}`);
+      if (timbradoUrl) parts.push(`- Timbrado da empresa disponível (será aplicado na impressão)`);
     }
 
     parts.push(`\n## Dados da Licitação`);
@@ -139,6 +219,67 @@ export default function PropostaTecnica() {
               </p>
             </div>
           )}
+
+          {/* Timbrado Upload */}
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2">
+              <ImageIcon className="w-4 h-4" />
+              Timbrado da Empresa
+            </Label>
+
+            {timbradoUrl ? (
+              <div className="flex items-center gap-4 bg-muted/30 rounded-lg p-4 border border-border/50">
+                <img
+                  src={timbradoUrl}
+                  alt="Timbrado"
+                  className="h-16 max-w-[200px] object-contain rounded border border-border/50 bg-white p-1"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">Timbrado carregado</p>
+                  <p className="text-xs text-muted-foreground">Será aplicado no cabeçalho da proposta</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="w-4 h-4 mr-1" />
+                    Trocar
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleRemoveTimbrado} className="text-destructive hover:text-destructive">
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingTimbrado || !empresaAtiva}
+                className="w-full border-2 border-dashed border-border rounded-lg p-6 flex flex-col items-center gap-2 hover:border-accent/50 hover:bg-muted/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {uploadingTimbrado ? (
+                  <Loader2 className="w-8 h-8 animate-spin text-accent" />
+                ) : (
+                  <Upload className="w-8 h-8 text-muted-foreground" />
+                )}
+                <span className="text-sm font-medium text-foreground">
+                  {uploadingTimbrado ? 'Enviando...' : 'Clique para enviar o timbrado'}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  PNG, JPG, WEBP ou SVG — Máx. 5MB
+                </span>
+                {!empresaAtiva && (
+                  <span className="text-xs text-destructive mt-1">Selecione uma empresa primeiro</span>
+                )}
+              </button>
+            )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              className="hidden"
+              onChange={handleUploadTimbrado}
+            />
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -238,6 +379,12 @@ export default function PropostaTecnica() {
                 </Button>
               </div>
             </div>
+
+            {timbradoUrl && (
+              <div className="border-b border-border/50 pb-4 mb-4">
+                <img src={timbradoUrl} alt="Timbrado" className="h-20 max-w-[300px] object-contain" />
+              </div>
+            )}
 
             <div className="prose prose-sm max-w-none dark:prose-invert bg-muted/30 rounded-lg p-6 whitespace-pre-wrap text-sm leading-relaxed">
               {proposal}
