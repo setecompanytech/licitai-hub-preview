@@ -518,6 +518,8 @@ export type Database = {
           municipio: string | null
           nome_fantasia: string | null
           razao_social: string
+          timbrado_path: string | null
+          timbrado_url: string | null
           uf: string | null
           updated_at: string
         }
@@ -535,6 +537,8 @@ export type Database = {
           municipio?: string | null
           nome_fantasia?: string | null
           razao_social: string
+          timbrado_path?: string | null
+          timbrado_url?: string | null
           uf?: string | null
           updated_at?: string
         }
@@ -552,6 +556,8 @@ export type Database = {
           municipio?: string | null
           nome_fantasia?: string | null
           razao_social?: string
+          timbrado_path?: string | null
+          timbrado_url?: string | null
           uf?: string | null
           updated_at?: string
         }
