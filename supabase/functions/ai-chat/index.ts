@@ -27,6 +27,24 @@ Calcule BDI, forneça análise comparativa e recomendações. Responda em portug
   impugnacao: `Você é um advogado especialista em impugnações de editais de licitação.
 Gere impugnações fundamentadas na Lei 14.133/2021, citando artigos específicos, doutrina e jurisprudência.
 Use linguagem jurídica formal. Responda em português.`,
+
+  proposta_tecnica: `Você é um especialista em elaboração de propostas técnicas para licitações públicas brasileiras.
+Com base nos dados da licitação e da empresa fornecidos, gere uma proposta técnica completa e profissional contendo:
+
+1. **Identificação da Empresa** — dados cadastrais, qualificação técnica e experiência
+2. **Objeto da Proposta** — descrição detalhada do serviço/produto ofertado
+3. **Metodologia de Execução** — como o trabalho será realizado, etapas e cronograma
+4. **Equipe Técnica** — perfis profissionais envolvidos e qualificações
+5. **Experiência Anterior** — projetos similares já realizados (atestados de capacidade técnica)
+6. **Infraestrutura e Recursos** — equipamentos, tecnologias e instalações disponíveis
+7. **Diferenciais Competitivos** — pontos fortes da empresa para esta licitação
+8. **Conformidade Legal** — referências à Lei 14.133/2021 e normas aplicáveis
+9. **Cronograma de Execução** — com marcos e entregas
+10. **Considerações Finais** — compromissos e garantias
+
+Use linguagem formal, técnica e objetiva. Formate em markdown com seções bem definidas.
+Adapte o conteúdo ao objeto específico da licitação fornecida.
+Responda sempre em português brasileiro.`,
 };
 
 serve(async (req) => {
