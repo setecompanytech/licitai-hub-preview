@@ -38,7 +38,7 @@ export default function PropostaTecnica() {
 
   // Planilha de preços
   const [itens, setItens] = useState<EditalItem[]>([
-    { item: '1', descricao: '', quantidade: '', unidade: 'UN', valorUnitario: '', valorTotal: '' },
+    { item: '1', descricao: '', quantidade: '', unidade: 'UN', valorUnitario: '', valorUnitarioExtenso: '', valorTotal: '', valorTotalExtenso: '' },
   ]);
 
   // Representante Legal
@@ -119,10 +119,10 @@ export default function PropostaTecnica() {
 
     if (itens.length > 0 && itens.some(i => i.descricao.trim())) {
       parts.push(`\n## Planilha de Preços`);
-      parts.push('| Item | Descrição | Qtd | Und | Vlr Unit (R$) | Vlr Total (R$) |');
-      parts.push('|------|-----------|-----|-----|---------------|----------------|');
+      parts.push('| Item | Descrição | Qtd | Und | Vlr Unit (R$) | Vlr Unit Extenso | Vlr Total (R$) | Vlr Total Extenso |');
+      parts.push('|------|-----------|-----|-----|---------------|------------------|----------------|-------------------|');
       itens.forEach(i => {
-        parts.push(`| ${i.item} | ${i.descricao} | ${i.quantidade} | ${i.unidade} | ${i.valorUnitario} | ${i.valorTotal} |`);
+        parts.push(`| ${i.item} | ${i.descricao} | ${i.quantidade} | ${i.unidade} | ${i.valorUnitario} | ${i.valorUnitarioExtenso} | ${i.valorTotal} | ${i.valorTotalExtenso} |`);
       });
       const total = itens.reduce((s, i) => s + (parseFloat(i.valorTotal.replace(',', '.')) || 0), 0);
       parts.push(`\nValor Global: R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);

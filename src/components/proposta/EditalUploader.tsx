@@ -29,7 +29,9 @@ export interface EditalItem {
   quantidade: string;
   unidade: string;
   valorUnitario: string;
+  valorUnitarioExtenso: string;
   valorTotal: string;
+  valorTotalExtenso: string;
 }
 
 export default function EditalUploader({ onExtracted, isExtracting, setIsExtracting }: EditalUploaderProps) {
