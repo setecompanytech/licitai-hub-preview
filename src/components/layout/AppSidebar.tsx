@@ -45,6 +45,7 @@ const navItems = [
   { icon: ClipboardCheck, label: 'Assessoria Cadastral', path: '/assessoria-cadastral' },
   { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
   { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
+  { icon: Search, label: 'Proposta Técnica', path: '/proposta-tecnica' },
   { icon: BookOpen, label: 'Blog', path: '/blog' },
   { icon: Download, label: 'E-book', path: '/ebook' },
   { icon: Bot, label: 'Assistente IA', path: '/assistente' },
