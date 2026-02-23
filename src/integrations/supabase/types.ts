@@ -701,9 +701,11 @@ export type Database = {
       }
       licitacoes: {
         Row: {
+          arquivado_em: string | null
           created_at: string
           data_abertura: string | null
           data_encerramento: string | null
+          data_homologacao: string | null
           id: string
           modalidade: string
           municipio: string | null
@@ -712,17 +714,22 @@ export type Database = {
           observacoes: string | null
           orgao: string
           portal: string | null
+          resultado: string | null
           status: string
           uf: string | null
           updated_at: string
           url_edital: string | null
           user_id: string
+          valor_adjudicado: number | null
           valor_estimado: number | null
+          vencedor: boolean | null
         }
         Insert: {
+          arquivado_em?: string | null
           created_at?: string
           data_abertura?: string | null
           data_encerramento?: string | null
+          data_homologacao?: string | null
           id?: string
           modalidade?: string
           municipio?: string | null
@@ -731,17 +738,22 @@ export type Database = {
           observacoes?: string | null
           orgao: string
           portal?: string | null
+          resultado?: string | null
           status?: string
           uf?: string | null
           updated_at?: string
           url_edital?: string | null
           user_id: string
+          valor_adjudicado?: number | null
           valor_estimado?: number | null
+          vencedor?: boolean | null
         }
         Update: {
+          arquivado_em?: string | null
           created_at?: string
           data_abertura?: string | null
           data_encerramento?: string | null
+          data_homologacao?: string | null
           id?: string
           modalidade?: string
           municipio?: string | null
@@ -750,12 +762,15 @@ export type Database = {
           observacoes?: string | null
           orgao?: string
           portal?: string | null
+          resultado?: string | null
           status?: string
           uf?: string | null
           updated_at?: string
           url_edital?: string | null
           user_id?: string
+          valor_adjudicado?: number | null
           valor_estimado?: number | null
+          vencedor?: boolean | null
         }
         Relationships: []
       }
