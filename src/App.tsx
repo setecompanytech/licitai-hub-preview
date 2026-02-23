@@ -34,6 +34,7 @@ import Blog from "./pages/Blog";
 import Boletins from "./pages/Boletins";
 import Ebook from "./pages/Ebook";
 import PropostaTecnica from "./pages/PropostaTecnica";
+import HistoricoLicitacoes from "./pages/HistoricoLicitacoes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -79,6 +80,7 @@ const App = () => (
               <Route path="/boletins" element={<ProtectedPages><Boletins /></ProtectedPages>} />
               <Route path="/ebook" element={<ProtectedPages><Ebook /></ProtectedPages>} />
               <Route path="/proposta-tecnica" element={<ProtectedPages><PropostaTecnica /></ProtectedPages>} />
+              <Route path="/historico-licitacoes" element={<ProtectedPages><HistoricoLicitacoes /></ProtectedPages>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </EmpresaProvider>
