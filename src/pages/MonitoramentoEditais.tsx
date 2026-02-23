@@ -8,9 +8,10 @@ import { Progress } from '@/components/ui/progress';
 import {
   Download, Search, FileText, AlertTriangle, XCircle, Clock,
   CheckCircle2, RefreshCw, Globe, Building2, Filter, CalendarDays,
-  PauseCircle, FileCheck, Award, Ban, ArrowUpDown, List, FileDown, FileSpreadsheet
+  PauseCircle, FileCheck, Award, Ban, ArrowUpDown, List, FileDown, FileSpreadsheet, Newspaper
 } from 'lucide-react';
 import LicitacoesTab from '@/components/monitoramento/LicitacoesTab';
+import DiariosOficiaisTab from '@/components/monitoramento/DiariosOficiaisTab';
 import { downloadCSV, downloadTextReport, downloadPDF } from '@/lib/download-utils';
 import { toast } from 'sonner';
 import {
@@ -181,6 +182,7 @@ export default function MonitoramentoEditais() {
           <TabsList>
             <TabsTrigger value="licitacoes"><List className="w-4 h-4 mr-1" />Licitações</TabsTrigger>
             <TabsTrigger value="resultados">Resultados ({documentosFiltrados.length})</TabsTrigger>
+            <TabsTrigger value="diarios"><Newspaper className="w-4 h-4 mr-1" />Diários Oficiais</TabsTrigger>
             <TabsTrigger value="portais">Portais Monitorados</TabsTrigger>
             <TabsTrigger value="config">Configuração de Pesquisa</TabsTrigger>
           </TabsList>
@@ -188,6 +190,11 @@ export default function MonitoramentoEditais() {
           {/* Licitações */}
           <TabsContent value="licitacoes">
             <LicitacoesTab />
+          </TabsContent>
+
+          {/* Diários Oficiais */}
+          <TabsContent value="diarios">
+            <DiariosOficiaisTab />
           </TabsContent>
 
           {/* Resultados */}

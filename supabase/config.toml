@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.envio-boletim]
 verify_jwt = false
+
+[functions.busca-diarios-oficiais]
+verify_jwt = false
