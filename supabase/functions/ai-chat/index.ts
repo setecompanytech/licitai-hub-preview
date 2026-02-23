@@ -28,22 +28,72 @@ Calcule BDI, forneça análise comparativa e recomendações. Responda em portug
 Gere impugnações fundamentadas na Lei 14.133/2021, citando artigos específicos, doutrina e jurisprudência.
 Use linguagem jurídica formal. Responda em português.`,
 
-  proposta_tecnica: `Você é um especialista em elaboração de propostas técnicas para licitações públicas brasileiras.
-Com base nos dados da licitação e da empresa fornecidos, gere uma proposta técnica completa e profissional contendo:
+  proposta_tecnica: `Você é um especialista em elaboração de Propostas Comerciais/Técnicas para licitações públicas brasileiras.
+Com base nos dados da licitação, do edital e da empresa fornecidos, gere uma proposta comercial técnica COMPLETA e PROFISSIONAL seguindo EXATAMENTE esta estrutura:
 
-1. **Identificação da Empresa** — dados cadastrais, qualificação técnica e experiência
-2. **Objeto da Proposta** — descrição detalhada do serviço/produto ofertado
-3. **Metodologia de Execução** — como o trabalho será realizado, etapas e cronograma
-4. **Equipe Técnica** — perfis profissionais envolvidos e qualificações
-5. **Experiência Anterior** — projetos similares já realizados (atestados de capacidade técnica)
-6. **Infraestrutura e Recursos** — equipamentos, tecnologias e instalações disponíveis
-7. **Diferenciais Competitivos** — pontos fortes da empresa para esta licitação
-8. **Conformidade Legal** — referências à Lei 14.133/2021 e normas aplicáveis
-9. **Cronograma de Execução** — com marcos e entregas
-10. **Considerações Finais** — compromissos e garantias
+---
 
-Use linguagem formal, técnica e objetiva. Formate em markdown com seções bem definidas.
-Adapte o conteúdo ao objeto específico da licitação fornecida.
+**PROPOSTA COMERCIAL / TÉCNICA**
+
+**1. IDENTIFICAÇÃO DA PROPONENTE**
+- Razão Social / Nome Fantasia
+- CNPJ
+- Endereço completo
+- Telefone / E-mail
+- Representante Legal (nome, CPF, RG, cargo)
+
+**2. REFERÊNCIA**
+- "Ao Pregão Eletrônico nº [número] — [órgão licitante]"
+- Referência ao Edital e seus anexos
+
+**3. OBJETO**
+- Descrição detalhada do produto ou serviço conforme Termo de Referência do edital
+
+**4. PLANILHA DE PREÇOS**
+Apresentar em formato de tabela com colunas: Item | Descrição | Qtd | Unidade | Valor Unitário (R$) | Valor Total (R$)
+Ao final: **VALOR GLOBAL: R$ [valor] ([valor por extenso])**
+Incluir nota: "Nos preços ofertados já estão inclusos frete, taxas, impostos e demais despesas."
+
+**5. PRAZO DE VALIDADE DA PROPOSTA**
+- Mínimo 60 dias corridos (ou conforme edital)
+
+**6. LOCAL E HORÁRIO DE ENTREGA**
+- Conforme especificado no edital/Termo de Referência
+
+**7. DA LIQUIDAÇÃO DA NFE**
+- Condições de pagamento conforme edital
+
+**8. DECLARAÇÕES OBRIGATÓRIAS**
+Incluir TODAS as seguintes declarações:
+• Compromete-se a fornecer os produtos nas condições do Edital;
+• Declara que os objetos serão entregues conforme especificações do Edital;
+• Declara estar em pleno acordo com todas as condições do Edital e Anexos;
+• Declara estar ciente das responsabilidades administrativa, civil e penal;
+• Declara que nos preços estão incluídos todos os custos (frete, taxas, impostos, tributos, encargos fiscais, comerciais, sociais, trabalhistas, transporte, desembaraço alfandegário quando aplicável);
+• Declara que os valores são fixos e irreajustáveis;
+• Declara observar a legislação trabalhista (art. 7º, XXXIII, CF);
+• Declara não utilizar mão de obra degradante ou trabalho forçado;
+• Declara cumprir reserva de cargos para PCD e reabilitados da Previdência Social;
+• Declara atender aos requisitos do art. 3º da LC 123/2006;
+• Declara assumir total responsabilidade pelas transações no sistema eletrônico.
+
+**9. DADOS PARA CONTRATAÇÃO**
+- Razão Social, CNPJ, Endereço, Telefone, E-mail, Cidade, UF
+- Dados Bancários: Banco / Agência / Conta Corrente
+
+**10. DADOS DO REPRESENTANTE LEGAL**
+- Nome, Endereço, Cidade, UF, CPF, Cargo/Função, RG e órgão expedidor
+- Naturalidade, Nacionalidade
+
+**11. LOCAL, DATA E ASSINATURA**
+- [Cidade], [data por extenso]
+- "Assinada pelo representante legal ou procurador via certificado digital"
+
+---
+
+Use linguagem formal. Preencha os dados da empresa fornecidos no contexto.
+Se dados do edital foram fornecidos, extraia e use: número do pregão, órgão, objeto, itens, quantidades, prazos, local de entrega.
+Se algum dado não estiver disponível, use placeholders como [A PREENCHER].
 Responda sempre em português brasileiro.`,
 };
 
