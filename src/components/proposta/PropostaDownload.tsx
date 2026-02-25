@@ -28,47 +28,53 @@ function getFilename(numero: string) {
 
 export default function PropostaDownload({ proposal, numeroLicitacao, timbradoUrl }: PropostaDownloadProps) {
 
-  const handlePDF = () => {
+  const handlePDF = (orientation: 'portrait' | 'landscape' = 'portrait') => {
     try {
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const doc = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 20;
-      const maxWidth = pageWidth - margin * 2;
-      let y = 20;
+      const pageHeight = doc.internal.pageSize.getHeight();
+      // ABNT margins: 3cm top/left, 2cm bottom/right
+      const marginLeft = 30;
+      const marginRight = 20;
+      const marginTop = 30;
+      const marginBottom = 20;
+      const maxWidth = pageWidth - marginLeft - marginRight;
+      const lineHeight = 6.35; // ~1.5 spacing at 12pt ≈ 18pt ≈ 6.35mm
+      let y = marginTop;
 
-      // Header
+      // Header centered
+      doc.setFont('times', 'bold');
       doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
       doc.text('PROPOSTA COMERCIAL / TÉCNICA', pageWidth / 2, y, { align: 'center' });
-      y += 10;
+      y += lineHeight * 2;
 
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setFont('times', 'normal');
       doc.setTextColor(120);
-      doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, margin, y);
+      doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, marginLeft, y);
       doc.setTextColor(0);
-      y += 8;
+      y += lineHeight * 1.5;
 
-      // Content
-      doc.setFontSize(10);
+      // Content – Times New Roman 12pt, 1.5 spacing
+      doc.setFontSize(12);
       const lines = doc.splitTextToSize(proposal, maxWidth);
 
       for (const line of lines) {
-        if (y > doc.internal.pageSize.getHeight() - 20) {
+        if (y > pageHeight - marginBottom) {
           doc.addPage();
-          y = 20;
+          y = marginTop;
         }
-        // Bold for lines that look like headers (all caps or starting with ## or numbered sections)
-        const isHeader = /^(#{1,3}\s|[A-ZÁÀÂÃÉÈÊÍÏÓÔÕÚÇ\s]{10,}$|\d+[\.\)]\s)/.test(line.trim());
+        const trimmed = (line as string).trim();
+        const isHeader = /^(#{1,3}\s|[A-ZÁÀÂÃÉÈÊÍÏÓÔÕÚÇ\s]{10,}$|\d+[\.\)]\s)/.test(trimmed);
         if (isHeader) {
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(11);
+          doc.setFont('times', 'bold');
+          doc.setFontSize(12);
         } else {
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(10);
+          doc.setFont('times', 'normal');
+          doc.setFontSize(12);
         }
-        doc.text(line, margin, y);
-        y += isHeader ? 6 : 5;
+        doc.text(trimmed, marginLeft, y);
+        y += lineHeight;
       }
 
       doc.save(`${getFilename(numeroLicitacao)}.pdf`);
@@ -78,20 +84,25 @@ export default function PropostaDownload({ proposal, numeroLicitacao, timbradoUr
     }
   };
 
-  const handleWord = () => {
+  const handleWord = (landscape = false) => {
     try {
-      // Generate .doc HTML format (compatible with Word)
+      const pageSize = landscape
+        ? 'width:297mm;height:210mm;'
+        : 'width:210mm;height:297mm;';
       const htmlContent = `
         <html xmlns:o="urn:schemas-microsoft-com:office:office" 
               xmlns:w="urn:schemas-microsoft-com:office:word" 
               xmlns="http://www.w3.org/TR/REC-html40">
         <head>
           <meta charset="utf-8">
+          <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]-->
           <style>
-            body { font-family: 'Calibri', sans-serif; font-size: 12pt; line-height: 1.6; margin: 2cm; }
-            h1 { font-size: 16pt; text-align: center; margin-bottom: 20pt; }
-            p { margin: 4pt 0; text-align: justify; }
-            .header-info { font-size: 9pt; color: #666; text-align: right; margin-bottom: 10pt; }
+            @page { size: ${landscape ? 'landscape' : 'portrait'}; margin: 30mm 20mm 20mm 30mm; }
+            body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; ${pageSize} margin: 30mm 20mm 20mm 30mm; }
+            h1 { font-family: 'Times New Roman', Times, serif; font-size: 14pt; text-align: center; margin-bottom: 18pt; font-weight: bold; }
+            h2 { font-family: 'Times New Roman', Times, serif; font-size: 12pt; margin-top: 12pt; font-weight: bold; }
+            p { margin: 0 0 0 0; text-align: justify; text-indent: 0; }
+            .header-info { font-size: 9pt; color: #666; text-align: right; margin-bottom: 12pt; }
           </style>
         </head>
         <body>
@@ -103,7 +114,7 @@ export default function PropostaDownload({ proposal, numeroLicitacao, timbradoUr
               const trimmed = line.trim();
               if (!trimmed) return '<br/>';
               if (/^#{1,3}\s/.test(trimmed)) {
-                return `<h2 style="font-size:13pt;margin-top:12pt;">${trimmed.replace(/^#+\s*/, '')}</h2>`;
+                return `<h2>${trimmed.replace(/^#+\s*/, '')}</h2>`;
               }
               if (/^[A-ZÁÀÂÃÉÈÊÍÏÓÔÕÚÇ\s]{10,}$/.test(trimmed)) {
                 return `<p><strong>${trimmed}</strong></p>`;
@@ -147,13 +158,21 @@ export default function PropostaDownload({ proposal, numeroLicitacao, timbradoUr
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <Button variant="outline" size="sm" onClick={handlePDF}>
+      <Button variant="outline" size="sm" onClick={() => handlePDF('portrait')}>
         <FileText className="w-4 h-4 mr-1 text-destructive" />
-        PDF
+        PDF Retrato
       </Button>
-      <Button variant="outline" size="sm" onClick={handleWord}>
+      <Button variant="outline" size="sm" onClick={() => handlePDF('landscape')}>
+        <FileText className="w-4 h-4 mr-1 text-destructive" />
+        PDF Paisagem
+      </Button>
+      <Button variant="outline" size="sm" onClick={() => handleWord(false)}>
         <File className="w-4 h-4 mr-1 text-blue-500" />
-        Word
+        Word Retrato
+      </Button>
+      <Button variant="outline" size="sm" onClick={() => handleWord(true)}>
+        <File className="w-4 h-4 mr-1 text-blue-500" />
+        Word Paisagem
       </Button>
       <Button variant="outline" size="sm" onClick={handleExcel}>
         <Sheet className="w-4 h-4 mr-1 text-green-500" />
