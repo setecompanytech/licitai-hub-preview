@@ -332,22 +332,20 @@ export default function PropostaTecnica() {
           </div>
         </div>
 
-        {/* Planilha de preços */}
-        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6 space-y-4">
-          <h2 className="font-semibold text-lg">4. Planilha de Preços</h2>
+        {/* Planilha de preços e Envio */}
+        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6 space-y-6">
+          <h2 className="font-semibold text-lg">4. Planilha de Preços e Envio da Proposta</h2>
           <PlanilhaPrecos itens={itens} setItens={setItens} />
-        </div>
-
-        {/* Envio da Proposta */}
-        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6 space-y-4">
-          <h2 className="font-semibold text-lg flex items-center gap-2">
-            <Send className="w-5 h-5 text-accent" />
-            5. Envio da Proposta
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Prepare e envie sua proposta para portais de compras públicas
-          </p>
-          <EnvioProposta />
+          <div className="border-t border-border/50 pt-4 space-y-2">
+            <p className="text-sm font-medium text-foreground flex items-center gap-2">
+              <Send className="w-4 h-4 text-accent" />
+              Envio da Proposta
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Prepare e envie sua proposta para portais de compras públicas
+            </p>
+            <EnvioProposta />
+          </div>
         </div>
 
         {/* Generate Button */}
