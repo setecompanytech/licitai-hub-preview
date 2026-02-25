@@ -13,6 +13,7 @@ import EditalUploader, { type ExtractedEditalData, type EditalItem } from '@/com
 import PlanilhaPrecos from '@/components/proposta/PlanilhaPrecos';
 import TimbradoUploader from '@/components/proposta/TimbradoUploader';
 import EnvioProposta from '@/components/proposta/EnvioProposta';
+import PropostaDownload from '@/components/proposta/PropostaDownload';
 import { Send } from 'lucide-react';
 
 export default function PropostaTecnica() {
@@ -347,15 +348,18 @@ export default function PropostaTecnica() {
         {/* Result */}
         {proposal && (
           <div ref={resultRef} className="bg-card rounded-xl border border-border/50 shadow-sm p-6 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <h2 className="font-semibold text-lg flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-accent" />
                 Proposta Comercial / Técnica Gerada
               </h2>
-              <Button variant="outline" size="sm" onClick={handleCopy}>
-                {copied ? <CheckCircle className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
-                {copied ? 'Copiado' : 'Copiar'}
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <PropostaDownload proposal={proposal} numeroLicitacao={numeroLicitacao} timbradoUrl={timbradoUrl} />
+                <Button variant="outline" size="sm" onClick={handleCopy}>
+                  {copied ? <CheckCircle className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
+                  {copied ? 'Copiado' : 'Copiar'}
+                </Button>
+              </div>
             </div>
 
             {timbradoUrl && (
