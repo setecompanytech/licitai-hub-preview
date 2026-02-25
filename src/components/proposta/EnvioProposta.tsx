@@ -12,24 +12,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type ItemProposta = {
-  id: string;
-  item: string;
-  descricao: string;
-  quantidade: number;
-  unidade: string;
-  valorUnitario: number;
-  marca: string;
-  modelo: string;
-};
-
 export default function EnvioProposta() {
-  const [tab, setTab] = useState('preparar');
+  const [tab, setTab] = useState('declaracoes');
   const [numeroPregao, setNumeroPregao] = useState('');
   const [portal, setPortal] = useState('comprasgov');
-  const [itens, setItens] = useState<ItemProposta[]>([
-    { id: '1', item: '1', descricao: '', quantidade: 1, unidade: 'UN', valorUnitario: 0, marca: '', modelo: '' }
-  ]);
   const [declaracoes, setDeclaracoes] = useState({
     meEpp: false,
     inexistenciaFato: false,
@@ -39,36 +25,9 @@ export default function EnvioProposta() {
   });
   const [enviando, setEnviando] = useState(false);
 
-  const addItem = () => {
-    setItens(prev => [...prev, {
-      id: crypto.randomUUID(),
-      item: String(prev.length + 1),
-      descricao: '',
-      quantidade: 1,
-      unidade: 'UN',
-      valorUnitario: 0,
-      marca: '',
-      modelo: '',
-    }]);
-  };
-
-  const removeItem = (id: string) => {
-    setItens(prev => prev.filter(i => i.id !== id));
-  };
-
-  const updateItem = (id: string, field: keyof ItemProposta, value: any) => {
-    setItens(prev => prev.map(i => i.id === id ? { ...i, [field]: value } : i));
-  };
-
-  const totalProposta = itens.reduce((acc, i) => acc + (i.quantidade * i.valorUnitario), 0);
-
   const handleEnviar = async () => {
     if (!numeroPregao.trim()) {
       toast.error('Informe o número do pregão');
-      return;
-    }
-    if (itens.some(i => !i.descricao || i.valorUnitario <= 0)) {
-      toast.error('Preencha todos os itens da proposta corretamente');
       return;
     }
 
@@ -106,9 +65,6 @@ export default function EnvioProposta() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="preparar" className="flex items-center gap-1">
-            <Package className="w-4 h-4" /> Itens da Proposta
-          </TabsTrigger>
           <TabsTrigger value="declaracoes" className="flex items-center gap-1">
             <Shield className="w-4 h-4" /> Declarações
           </TabsTrigger>
@@ -119,76 +75,6 @@ export default function EnvioProposta() {
             <Eye className="w-4 h-4" /> Revisão & Envio
           </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="preparar" className="space-y-4">
-          <Card className="overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-muted/30 border-b border-border/50">
-                    <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-2 w-12">Item</th>
-                    <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-2">Descrição</th>
-                    <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-2 w-20">Qtd</th>
-                    <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-2 w-20">Un</th>
-                    <th className="text-right text-xs font-semibold text-muted-foreground px-3 py-2 w-32">Vl. Unit.</th>
-                    <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-2 w-28">Marca</th>
-                    <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-2 w-28">Modelo</th>
-                    <th className="w-10"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {itens.map((item, idx) => (
-                    <tr key={item.id} className="border-b border-border/30">
-                      <td className="px-3 py-2 text-sm font-mono text-muted-foreground">{idx + 1}</td>
-                      <td className="px-3 py-2">
-                        <Input value={item.descricao} onChange={e => updateItem(item.id, 'descricao', e.target.value)} placeholder="Descrição do item" className="h-8 text-sm" />
-                      </td>
-                      <td className="px-3 py-2">
-                        <Input type="number" value={item.quantidade} onChange={e => updateItem(item.id, 'quantidade', Number(e.target.value))} className="h-8 text-sm text-center" min={1} />
-                      </td>
-                      <td className="px-3 py-2">
-                        <Select value={item.unidade} onValueChange={v => updateItem(item.id, 'unidade', v)}>
-                          <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {['UN', 'KG', 'M', 'M²', 'M³', 'L', 'CX', 'PCT', 'HR', 'SV', 'MÊS'].map(u => (
-                              <SelectItem key={u} value={u}>{u}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </td>
-                      <td className="px-3 py-2">
-                        <Input type="number" value={item.valorUnitario} onChange={e => updateItem(item.id, 'valorUnitario', Number(e.target.value))} className="h-8 text-sm text-right" min={0} step={0.01} />
-                      </td>
-                      <td className="px-3 py-2">
-                        <Input value={item.marca} onChange={e => updateItem(item.id, 'marca', e.target.value)} placeholder="Marca" className="h-8 text-sm" />
-                      </td>
-                      <td className="px-3 py-2">
-                        <Input value={item.modelo} onChange={e => updateItem(item.id, 'modelo', e.target.value)} placeholder="Modelo" className="h-8 text-sm" />
-                      </td>
-                      <td className="px-3 py-2">
-                        {itens.length > 1 && (
-                          <Button size="sm" variant="ghost" onClick={() => removeItem(item.id)} className="text-destructive hover:text-destructive h-8 w-8 p-0">
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="p-3 border-t border-border/50 flex items-center justify-between">
-              <Button size="sm" variant="outline" onClick={addItem}>
-                <Plus className="w-3 h-3 mr-1" /> Adicionar Item
-              </Button>
-              <div className="text-sm">
-                Total: <span className="font-bold text-accent">
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalProposta)}
-                </span>
-              </div>
-            </div>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="declaracoes" className="space-y-3">
           <Card className="p-5 space-y-4">
@@ -231,35 +117,23 @@ export default function EnvioProposta() {
         <TabsContent value="revisao" className="space-y-4">
           <Card className="p-5 space-y-4">
             <h3 className="font-semibold text-sm">Resumo da Proposta</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="text-center p-3 bg-muted/30 rounded-lg">
                 <Globe className="w-5 h-5 mx-auto mb-1 text-accent" />
                 <p className="text-xs text-muted-foreground">Portal</p>
                 <p className="text-sm font-semibold capitalize">{portal === 'comprasgov' ? 'Compras.gov.br' : portal.toUpperCase()}</p>
               </div>
               <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <Package className="w-5 h-5 mx-auto mb-1 text-accent" />
-                <p className="text-xs text-muted-foreground">Itens</p>
-                <p className="text-sm font-semibold">{itens.length}</p>
-              </div>
-              <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <DollarSign className="w-5 h-5 mx-auto mb-1 text-accent" />
-                <p className="text-xs text-muted-foreground">Valor Total</p>
-                <p className="text-sm font-semibold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalProposta)}</p>
-              </div>
-              <div className="text-center p-3 bg-muted/30 rounded-lg">
                 <Shield className="w-5 h-5 mx-auto mb-1 text-accent" />
                 <p className="text-xs text-muted-foreground">Declarações</p>
                 <p className="text-sm font-semibold">{Object.values(declaracoes).filter(Boolean).length}/5</p>
               </div>
-            </div>
-
-            {itens.some(i => !i.descricao || i.valorUnitario <= 0) && (
-              <div className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/30 rounded-lg text-sm text-warning">
-                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                Há itens incompletos na proposta. Revise antes de enviar.
+              <div className="text-center p-3 bg-muted/30 rounded-lg">
+                <FileText className="w-5 h-5 mx-auto mb-1 text-accent" />
+                <p className="text-xs text-muted-foreground">Pregão</p>
+                <p className="text-sm font-semibold">{numeroPregao || '—'}</p>
               </div>
-            )}
+            </div>
 
             <div className="flex items-center gap-2 p-3 bg-accent/10 border border-accent/30 rounded-lg text-sm text-muted-foreground">
               <Clock className="w-4 h-4 flex-shrink-0" />
