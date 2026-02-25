@@ -43,7 +43,7 @@ export default function PropostaTecnica() {
 
   // Planilha de preços
   const [itens, setItens] = useState<EditalItem[]>([
-    { item: '1', descricao: '', quantidade: '', unidade: 'UN', valorUnitario: '', valorUnitarioExtenso: '', valorTotal: '', valorTotalExtenso: '' },
+    { item: '1', descricao: '', quantidade: '', unidade: 'UN', marca: '', fabricante: '', modelo: '', valorUnitario: '', valorUnitarioExtenso: '', valorTotal: '', valorTotalExtenso: '' },
   ]);
 
   // Representante Legal

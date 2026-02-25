@@ -28,6 +28,9 @@ export interface EditalItem {
   descricao: string;
   quantidade: string;
   unidade: string;
+  marca: string;
+  fabricante: string;
+  modelo: string;
   valorUnitario: string;
   valorUnitarioExtenso: string;
   valorTotal: string;
