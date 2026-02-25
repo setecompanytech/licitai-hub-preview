@@ -155,11 +155,11 @@ export default function PropostaTecnica() {
     if (liquidacaoNfe) parts.push(`- Liquidação NFe: ${liquidacaoNfe}`);
 
     if (itens.length > 0 && itens.some(i => i.descricao.trim())) {
-      parts.push(`\n## Planilha de Preços (REPRODUZA FIELMENTE ESTA TABELA COM TODAS AS 11 COLUNAS)`);
-      parts.push('| Item | Descrição | Qtd | Und | Marca | Fabricante | Modelo | Vlr Unit (R$) | Vlr Unit Extenso | Vlr Total (R$) | Vlr Total Extenso |');
-      parts.push('|------|-----------|-----|-----|-------|------------|--------|---------------|------------------|----------------|-------------------|');
+      parts.push(`\n## Planilha de Preços (REPRODUZA FIELMENTE ESTA TABELA COM TODAS AS COLUNAS NA MESMA ORDEM)`);
+      parts.push('| ITEM | QTDE | UNID | DESCRIÇÃO | MARCA | MODELO | VL. UNIT. | VL. EXTENSO | VL. TOTAL | VL. EXTENSO |');
+      parts.push('|------|------|------|-----------|-------|--------|-----------|-------------|-----------|-------------|');
       itens.forEach(i => {
-        parts.push(`| ${i.item} | ${i.descricao} | ${i.quantidade} | ${i.unidade} | ${i.marca || '-'} | ${i.fabricante || '-'} | ${i.modelo || '-'} | ${i.valorUnitario} | ${i.valorUnitarioExtenso} | ${i.valorTotal} | ${i.valorTotalExtenso} |`);
+        parts.push(`| ${i.item} | ${i.quantidade} | ${i.unidade} | ${i.descricao} | ${i.marca || '-'} | ${i.modelo || '-'} | R$ ${i.valorUnitario} | ${i.valorUnitarioExtenso} | R$ ${i.valorTotal} | ${i.valorTotalExtenso} |`);
       });
       const total = itens.reduce((s, i) => s + (parseFloat(i.valorTotal.replace(',', '.')) || 0), 0);
       parts.push(`\nValor Global: R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
