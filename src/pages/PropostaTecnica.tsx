@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { FileText, Sparkles, Loader2, Copy, CheckCircle } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
+import ReactMarkdown from 'react-markdown';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
@@ -385,8 +386,8 @@ export default function PropostaTecnica() {
               </div>
             )}
 
-            <div className="prose prose-sm max-w-none dark:prose-invert bg-muted/30 rounded-lg p-6 whitespace-pre-wrap text-sm leading-relaxed">
-              {proposal}
+            <div className="prose prose-sm max-w-none dark:prose-invert bg-muted/30 rounded-lg p-6 text-sm leading-relaxed">
+              <ReactMarkdown>{proposal}</ReactMarkdown>
             </div>
           </div>
         )}
