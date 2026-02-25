@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { FileText, Sparkles, Loader2, Copy, CheckCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { FileText, Sparkles, Loader2, Copy, CheckCircle, Settings2 } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -65,6 +67,12 @@ export default function PropostaTecnica() {
   const [telefone, setTelefone] = useState('');
   const [email, setEmail] = useState('');
 
+  // Formatting options
+  const [fontFamily, setFontFamily] = useState('Arial');
+  const [fontSize, setFontSize] = useState(12);
+  const [lineSpacing, setLineSpacing] = useState('1.5');
+  const [marginStyle, setMarginStyle] = useState('ABNT (3/2 cm)');
+
   useEffect(() => {
     if (proposal && resultRef.current) {
       resultRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -103,6 +111,12 @@ export default function PropostaTecnica() {
 
   const buildContext = () => {
     const parts: string[] = [];
+
+    parts.push(`## Preferências de Formatação`);
+    parts.push(`- Fonte: ${fontFamily}`);
+    parts.push(`- Tamanho da Fonte: ${fontSize}pt`);
+    parts.push(`- Espaçamento entre linhas: ${lineSpacing}`);
+    parts.push(`- Margens: ${marginStyle}`);
 
     if (empresaAtiva) {
       parts.push(`## Dados da Empresa`);
@@ -346,6 +360,73 @@ export default function PropostaTecnica() {
               Prepare e envie sua proposta para portais de compras públicas
             </p>
             <EnvioProposta />
+          </div>
+        </div>
+
+        {/* Formatting Options */}
+        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6 space-y-6">
+          <h2 className="font-semibold text-lg flex items-center gap-2">
+            <Settings2 className="w-5 h-5 text-accent" />
+            5. Configurações de Formatação
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Defina a fonte, tamanho e espaçamento que a IA usará para gerar a proposta.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label>Fonte</Label>
+              <Select value={fontFamily} onValueChange={setFontFamily}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Arial">Arial</SelectItem>
+                  <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                  <SelectItem value="Calibri">Calibri</SelectItem>
+                  <SelectItem value="Verdana">Verdana</SelectItem>
+                  <SelectItem value="Courier New">Courier New</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Tamanho da Fonte: {fontSize}pt</Label>
+              <Slider
+                value={[fontSize]}
+                onValueChange={([v]) => setFontSize(v)}
+                min={10}
+                max={14}
+                step={1}
+                className="mt-3"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>10pt</span><span>14pt</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Espaçamento entre Linhas</Label>
+              <Select value={lineSpacing} onValueChange={setLineSpacing}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1.0">Simples (1.0)</SelectItem>
+                  <SelectItem value="1.15">1.15</SelectItem>
+                  <SelectItem value="1.5">1.5 (ABNT)</SelectItem>
+                  <SelectItem value="2.0">Duplo (2.0)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Margens</Label>
+              <Select value={marginStyle} onValueChange={setMarginStyle}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ABNT (3/2 cm)">ABNT (3/2 cm)</SelectItem>
+                  <SelectItem value="Normal (2.5 cm)">Normal (2.5 cm)</SelectItem>
+                  <SelectItem value="Estreita (1.27 cm)">Estreita (1.27 cm)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
