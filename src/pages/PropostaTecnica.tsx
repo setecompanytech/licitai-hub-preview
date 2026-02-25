@@ -12,6 +12,8 @@ import { toast } from 'sonner';
 import EditalUploader, { type ExtractedEditalData, type EditalItem } from '@/components/proposta/EditalUploader';
 import PlanilhaPrecos from '@/components/proposta/PlanilhaPrecos';
 import TimbradoUploader from '@/components/proposta/TimbradoUploader';
+import EnvioProposta from '@/components/proposta/EnvioProposta';
+import { Send } from 'lucide-react';
 
 export default function PropostaTecnica() {
   const { empresaAtiva } = useEmpresa();
@@ -314,6 +316,18 @@ export default function PropostaTecnica() {
         <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6 space-y-4">
           <h2 className="font-semibold text-lg">4. Planilha de Preços</h2>
           <PlanilhaPrecos itens={itens} setItens={setItens} />
+        </div>
+
+        {/* Envio da Proposta */}
+        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6 space-y-4">
+          <h2 className="font-semibold text-lg flex items-center gap-2">
+            <Send className="w-5 h-5 text-accent" />
+            5. Envio da Proposta
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Prepare e envie sua proposta para portais de compras públicas
+          </p>
+          <EnvioProposta />
         </div>
 
         {/* Generate Button */}

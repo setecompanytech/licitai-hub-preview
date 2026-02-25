@@ -29,7 +29,6 @@ import {
   BookOpen,
   Bell,
   Archive,
-  Send,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -49,7 +48,6 @@ const navItems = [
   { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
   { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
   { icon: Search, label: 'Proposta Técnica', path: '/proposta-tecnica' },
-  { icon: Send, label: 'Envio ComprasGov', path: '/comprasgov-envio' },
   { icon: Archive, label: 'Histórico / Desempenho', path: '/historico-licitacoes' },
   { icon: BookOpen, label: 'Blog', path: '/blog' },
   { icon: Download, label: 'E-book', path: '/ebook' },
