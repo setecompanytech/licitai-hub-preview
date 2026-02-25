@@ -18,6 +18,8 @@ import PlanilhaPrecos from '@/components/proposta/PlanilhaPrecos';
 import TimbradoUploader from '@/components/proposta/TimbradoUploader';
 import EnvioProposta from '@/components/proposta/EnvioProposta';
 import PropostaDownload from '@/components/proposta/PropostaDownload';
+import DadosEmpresaUploader, { type ExtractedEmpresaData } from '@/components/proposta/DadosEmpresaUploader';
+import BancoSelector from '@/components/proposta/BancoSelector';
 import { Send } from 'lucide-react';
 
 export default function PropostaTecnica() {
@@ -107,6 +109,21 @@ export default function PropostaTecnica() {
     if (data.liquidacaoNfe) setLiquidacaoNfe(data.liquidacaoNfe);
     if (data.itens && data.itens.length > 0) setItens(data.itens);
     if (data.rawText) setEditalRawText(data.rawText);
+  };
+
+  const handleEmpresaExtracted = (data: ExtractedEmpresaData) => {
+    if (data.telefone) setTelefone(data.telefone);
+    if (data.email) setEmail(data.email);
+    if (data.repNome) setRepNome(data.repNome);
+    if (data.repCpf) setRepCpf(data.repCpf);
+    if (data.repRg) setRepRg(data.repRg);
+    if (data.repOrgaoExp) setRepOrgaoExp(data.repOrgaoExp);
+    if (data.repCargo) setRepCargo(data.repCargo);
+    if (data.repNaturalidade) setRepNaturalidade(data.repNaturalidade);
+    if (data.repNacionalidade) setRepNacionalidade(data.repNacionalidade);
+    if (data.banco) setBanco(data.banco);
+    if (data.agencia) setAgencia(data.agencia);
+    if (data.conta) setConta(data.conta);
   };
 
   const buildContext = () => {
@@ -237,6 +254,8 @@ export default function PropostaTecnica() {
             </div>
           )}
 
+          <DadosEmpresaUploader onExtracted={handleEmpresaExtracted} />
+
           <TimbradoUploader empresaId={empresaAtiva?.id} timbradoUrl={timbradoUrl} setTimbradoUrl={setTimbradoUrl} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -289,7 +308,7 @@ export default function PropostaTecnica() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Banco</Label>
-                <Input value={banco} onChange={e => setBanco(e.target.value)} />
+                <BancoSelector value={banco} onChange={setBanco} />
               </div>
               <div className="space-y-2">
                 <Label>Agência</Label>
