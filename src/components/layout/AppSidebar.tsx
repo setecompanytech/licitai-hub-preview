@@ -38,6 +38,7 @@ const navItems = [
   { icon: Download, label: 'Monitoramento de Editais', path: '/monitoramento-editais' },
   { icon: MessageSquare, label: 'Chat e Mural', path: '/monitoramento-chat' },
   { icon: Bell, label: 'Boletins Diários', path: '/boletins' },
+  { icon: MessageSquare, label: 'WhatsApp Setores', path: '/whatsapp-setores' },
   { icon: Target, label: 'Licitações Estratégicas', path: '/licitacoes-estrategicas' },
   { icon: TrendingUp, label: 'Análise de Mercado', path: '/analise-mercado' },
   { icon: Kanban, label: 'Kanban', path: '/kanban' },

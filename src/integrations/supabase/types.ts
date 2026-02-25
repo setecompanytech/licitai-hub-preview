@@ -1096,6 +1096,78 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_envios: {
+        Row: {
+          created_at: string
+          erro: string | null
+          id: string
+          mensagem: string
+          setor: string
+          status: string
+          telefone: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          erro?: string | null
+          id?: string
+          mensagem: string
+          setor: string
+          status?: string
+          telefone: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          erro?: string | null
+          id?: string
+          mensagem?: string
+          setor?: string
+          status?: string
+          telefone?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_preferencias: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          setor_documentos: boolean
+          setor_financeiro: boolean
+          setor_juridico: boolean
+          setor_licitacoes: boolean
+          telefone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          setor_documentos?: boolean
+          setor_financeiro?: boolean
+          setor_juridico?: boolean
+          setor_licitacoes?: boolean
+          telefone: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          setor_documentos?: boolean
+          setor_financeiro?: boolean
+          setor_juridico?: boolean
+          setor_licitacoes?: boolean
+          telefone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
