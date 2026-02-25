@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { EmpresaProvider } from "@/contexts/EmpresaContext";
+import { PropostaCartProvider } from "@/contexts/PropostaCartContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -53,6 +54,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <EmpresaProvider>
+          <PropostaCartProvider>
             <Routes>
               <Route path="/landing" element={<LandingPage />} />
               <Route path="/faq" element={<FaqPage />} />
@@ -87,6 +89,7 @@ const App = () => (
               <Route path="/whatsapp-setores" element={<ProtectedPages><WhatsAppSetores /></ProtectedPages>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+          </PropostaCartProvider>
           </EmpresaProvider>
         </AuthProvider>
       </BrowserRouter>
