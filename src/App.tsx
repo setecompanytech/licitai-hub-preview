@@ -36,6 +36,7 @@ import Ebook from "./pages/Ebook";
 import PropostaTecnica from "./pages/PropostaTecnica";
 import HistoricoLicitacoes from "./pages/HistoricoLicitacoes";
 import ComprasGovEnvio from "./pages/ComprasGovEnvio";
+import WhatsAppSetores from "./pages/WhatsAppSetores";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -83,6 +84,7 @@ const App = () => (
               <Route path="/proposta-tecnica" element={<ProtectedPages><PropostaTecnica /></ProtectedPages>} />
               <Route path="/historico-licitacoes" element={<ProtectedPages><HistoricoLicitacoes /></ProtectedPages>} />
               <Route path="/comprasgov-envio" element={<ProtectedPages><ComprasGovEnvio /></ProtectedPages>} />
+              <Route path="/whatsapp-setores" element={<ProtectedPages><WhatsAppSetores /></ProtectedPages>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </EmpresaProvider>
