@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { Search, Filter, MapPin, Calendar, Building2, ArrowUpDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import CountdownTimer from '@/components/licitacoes/CountdownTimer';
 import { useAuth } from '@/contexts/AuthContext';
 
 type Licitacao = {
@@ -146,12 +147,13 @@ export default function Licitacoes() {
                 <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Órgão</th>
                 <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>
                 <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Encerramento</th>
+                <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Contagem</th>
                 <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && !loading && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma licitação encontrada.</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma licitação encontrada.</td></tr>
               )}
               {filtered.map((lic, i) => {
                 const st = statusConfig[lic.status] || { label: lic.status, className: 'bg-muted text-muted-foreground' };
@@ -179,6 +181,11 @@ export default function Licitacoes() {
                           <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
                           {new Date(lic.data_encerramento).toLocaleDateString('pt-BR')}
                         </span>
+                      ) : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {lic.data_encerramento ? (
+                        <CountdownTimer targetDate={lic.data_encerramento} compact />
                       ) : '-'}
                     </td>
                     <td className="px-4 py-3 text-center">

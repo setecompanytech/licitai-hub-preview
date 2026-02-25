@@ -7,7 +7,8 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   MessageSquare, Bell, AlertTriangle, CheckCircle2, Clock,
-  Search, RefreshCw, Eye, Volume2, VolumeX, Filter, Play, Pause
+  Search, RefreshCw, Eye, Volume2, VolumeX, Filter, Play, Pause,
+  Megaphone, FileWarning, HelpCircle, FileEdit
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 
@@ -35,6 +36,22 @@ type PregaoMonitorado = {
   ultimaAtualizacao: string;
 };
 
+type MuralItem = {
+  id: string;
+  pregaoNumero: string;
+  tipo: 'aviso' | 'esclarecimento' | 'impugnacao' | 'retificacao';
+  titulo: string;
+  conteudo: string;
+  dataPublicacao: string;
+  autor: string;
+};
+
+const mockMural: MuralItem[] = [
+  { id: 'm1', pregaoNumero: 'PE-001/2026', tipo: 'esclarecimento', titulo: 'Esclarecimento nº 01', conteudo: 'Em resposta ao pedido de esclarecimento da empresa XYZ, informamos que o prazo de entrega é de 30 dias corridos após a emissão da Ordem de Serviço.', dataPublicacao: '2026-02-24 10:30', autor: 'Pregoeiro(a)' },
+  { id: 'm2', pregaoNumero: 'PE-001/2026', tipo: 'aviso', titulo: 'Aviso de Adiamento', conteudo: 'A sessão pública marcada para 25/02/2026 foi adiada para 28/02/2026 às 09:00, em razão de pedido de impugnação em análise.', dataPublicacao: '2026-02-23 16:45', autor: 'Sistema' },
+  { id: 'm3', pregaoNumero: 'PE-045/2026', tipo: 'impugnacao', titulo: 'Impugnação ao Edital', conteudo: 'Foi registrada impugnação ao edital questionando o critério de qualificação técnica exigido no item 8.2.3.', dataPublicacao: '2026-02-22 14:20', autor: 'Fornecedor B' },
+  { id: 'm4', pregaoNumero: 'PE-001/2026', tipo: 'retificacao', titulo: 'Errata nº 01', conteudo: 'Onde se lê "prazo de 15 dias", leia-se "prazo de 30 dias corridos". Demais condições permanecem inalteradas.', dataPublicacao: '2026-02-21 09:00', autor: 'Pregoeiro(a)' },
+];
 const mockPregoes: PregaoMonitorado[] = [
   { id: '1', numero: 'PE-001/2026', orgao: 'Prefeitura de Belém', portal: 'Compras.gov.br', objeto: 'Construção de ponte sobre o Rio Guamá', status: 'ao_vivo', totalMensagens: 47, alertas: 3, ultimaAtualizacao: '14:32' },
   { id: '2', numero: 'PE-045/2026', orgao: 'SEDOP/PA', portal: 'PNCP', objeto: 'Pavimentação asfáltica BR-316', status: 'ao_vivo', totalMensagens: 23, alertas: 1, ultimaAtualizacao: '14:28' },
@@ -71,6 +88,14 @@ export default function MonitoramentoChat() {
   const [pregaoSelecionado, setPregaoSelecionado] = useState<string | null>('1');
   const [alertaSonoro, setAlertaSonoro] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [mainTab, setMainTab] = useState('chat');
+
+  const muralTipoConfig = {
+    aviso: { icon: Megaphone, color: 'text-warning bg-warning/10 border-warning/30' },
+    esclarecimento: { icon: HelpCircle, color: 'text-info bg-info/10 border-info/30' },
+    impugnacao: { icon: FileWarning, color: 'text-destructive bg-destructive/10 border-destructive/30' },
+    retificacao: { icon: FileEdit, color: 'text-accent bg-accent/10 border-accent/30' },
+  };
 
   const pregoesFiltrados = mockPregoes.filter(p =>
     !busca || p.numero.toLowerCase().includes(busca.toLowerCase()) ||
@@ -91,10 +116,10 @@ export default function MonitoramentoChat() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
               <MessageSquare className="w-6 h-6 text-accent" />
-              Monitoramento de Chat do Pregão
+              Monitoramento de Chat e Mural
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Acompanhe em tempo real o chat dos pregões eletrônicos
+              Acompanhe em tempo real o chat e mural dos pregões eletrônicos
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -136,97 +161,142 @@ export default function MonitoramentoChat() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Left: Lista de pregões */}
-          <div className="space-y-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Buscar pregão..." value={busca} onChange={e => setBusca(e.target.value)} className="pl-10" />
-            </div>
-            <div className="space-y-2 max-h-[calc(100vh-380px)] overflow-y-auto pr-1">
-              {pregoesFiltrados.map(pregao => {
-                const cfg = statusConfig[pregao.status];
-                const Icon = cfg.icon;
-                return (
-                  <button
-                    key={pregao.id}
-                    onClick={() => setPregaoSelecionado(pregao.id)}
-                    className={`w-full text-left bg-card rounded-xl border p-3 shadow-sm hover:shadow-md transition-shadow ${pregaoSelecionado === pregao.id ? 'ring-2 ring-accent border-accent/50' : 'border-border/50'}`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-semibold text-sm">{pregao.numero}</span>
-                      <Badge variant="outline" className={cfg.color + ' text-[10px]'}>
-                        <Icon className="w-3 h-3 mr-1" /> {cfg.label}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate">{pregao.objeto}</p>
-                    <div className="flex items-center justify-between mt-2 text-[10px] text-muted-foreground">
-                      <span>{pregao.orgao}</span>
+        <Tabs value={mainTab} onValueChange={setMainTab}>
+          <TabsList>
+            <TabsTrigger value="chat" className="flex items-center gap-1">
+              <MessageSquare className="w-4 h-4" /> Chat ao Vivo
+            </TabsTrigger>
+            <TabsTrigger value="mural" className="flex items-center gap-1">
+              <Megaphone className="w-4 h-4" /> Mural
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="chat">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Left: Lista de pregões */}
+              <div className="space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input placeholder="Buscar pregão..." value={busca} onChange={e => setBusca(e.target.value)} className="pl-10" />
+                </div>
+                <div className="space-y-2 max-h-[calc(100vh-440px)] overflow-y-auto pr-1">
+                  {pregoesFiltrados.map(pregao => {
+                    const cfg = statusConfig[pregao.status];
+                    const Icon = cfg.icon;
+                    return (
+                      <button
+                        key={pregao.id}
+                        onClick={() => setPregaoSelecionado(pregao.id)}
+                        className={`w-full text-left bg-card rounded-xl border p-3 shadow-sm hover:shadow-md transition-shadow ${pregaoSelecionado === pregao.id ? 'ring-2 ring-accent border-accent/50' : 'border-border/50'}`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold text-sm">{pregao.numero}</span>
+                          <Badge variant="outline" className={cfg.color + ' text-[10px]'}>
+                            <Icon className="w-3 h-3 mr-1" /> {cfg.label}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">{pregao.objeto}</p>
+                        <div className="flex items-center justify-between mt-2 text-[10px] text-muted-foreground">
+                          <span>{pregao.orgao}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="flex items-center gap-0.5"><MessageSquare className="w-3 h-3" /> {pregao.totalMensagens}</span>
+                            {pregao.alertas > 0 && (
+                              <span className="flex items-center gap-0.5 text-warning"><Bell className="w-3 h-3" /> {pregao.alertas}</span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right: Chat */}
+              <div className="lg:col-span-2">
+                {pregaoAtivo ? (
+                  <Card className="p-0 overflow-hidden">
+                    <div className="bg-card border-b border-border/50 p-4 flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-sm">{pregaoAtivo.numero}</h3>
+                          <Badge variant="outline" className={statusConfig[pregaoAtivo.status].color + ' text-[10px]'}>
+                            {statusConfig[pregaoAtivo.status].label}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">• {pregaoAtivo.portal}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{pregaoAtivo.orgao} — {pregaoAtivo.objeto}</p>
+                      </div>
                       <div className="flex items-center gap-2">
-                        <span className="flex items-center gap-0.5"><MessageSquare className="w-3 h-3" /> {pregao.totalMensagens}</span>
-                        {pregao.alertas > 0 && (
-                          <span className="flex items-center gap-0.5 text-warning"><Bell className="w-3 h-3" /> {pregao.alertas}</span>
-                        )}
+                        <Button size="sm" variant="outline"><Eye className="w-3 h-3 mr-1" /> Ver no Portal</Button>
                       </div>
                     </div>
-                  </button>
+
+                    <div className="p-4 space-y-3 max-h-[calc(100vh-500px)] overflow-y-auto bg-muted/30">
+                      {mensagensFiltradas.length > 0 ? mensagensFiltradas.map(msg => (
+                        <div key={msg.id} className={`rounded-lg p-3 text-sm ${tipoMsgConfig[msg.tipo]}`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-xs">{msg.remetente}</span>
+                            <span className="text-[10px] text-muted-foreground">{msg.horario}</span>
+                          </div>
+                          <p className="text-sm">{msg.mensagem}</p>
+                        </div>
+                      )) : (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                          <p className="text-sm">Nenhuma mensagem ainda neste pregão.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="border-t border-border/50 p-3 bg-card text-xs text-muted-foreground flex items-center justify-between">
+                      <span>Última atualização: {pregaoAtivo.ultimaAtualizacao}</span>
+                      <span>{pregaoAtivo.totalMensagens} mensagens • {pregaoAtivo.alertas} alertas</span>
+                    </div>
+                  </Card>
+                ) : (
+                  <div className="flex items-center justify-center h-64 text-muted-foreground">
+                    <div className="text-center">
+                      <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                      <p className="text-sm">Selecione um pregão para visualizar o chat</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="mural">
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Avisos, esclarecimentos, impugnações e retificações publicados nos portais de compras.
+              </p>
+              {mockMural.map(item => {
+                const cfg = muralTipoConfig[item.tipo];
+                const Icon = cfg.icon;
+                return (
+                  <Card key={item.id} className={`p-4 border-l-4 ${cfg.color}`}>
+                    <div className="flex items-start gap-3">
+                      <Icon className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm">{item.titulo}</span>
+                            <Badge variant="outline" className="text-[10px]">{item.pregaoNumero}</Badge>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(item.dataPublicacao).toLocaleString('pt-BR')}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{item.conteudo}</p>
+                        <p className="text-xs text-muted-foreground mt-2">Por: {item.autor}</p>
+                      </div>
+                    </div>
+                  </Card>
                 );
               })}
             </div>
-          </div>
-
-          {/* Right: Chat */}
-          <div className="lg:col-span-2">
-            {pregaoAtivo ? (
-              <Card className="p-0 overflow-hidden">
-                <div className="bg-card border-b border-border/50 p-4 flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-sm">{pregaoAtivo.numero}</h3>
-                      <Badge variant="outline" className={statusConfig[pregaoAtivo.status].color + ' text-[10px]'}>
-                        {statusConfig[pregaoAtivo.status].label}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">• {pregaoAtivo.portal}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{pregaoAtivo.orgao} — {pregaoAtivo.objeto}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline"><Eye className="w-3 h-3 mr-1" /> Ver no Portal</Button>
-                  </div>
-                </div>
-
-                <div className="p-4 space-y-3 max-h-[calc(100vh-440px)] overflow-y-auto bg-muted/30">
-                  {mensagensFiltradas.length > 0 ? mensagensFiltradas.map(msg => (
-                    <div key={msg.id} className={`rounded-lg p-3 text-sm ${tipoMsgConfig[msg.tipo]}`}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium text-xs">{msg.remetente}</span>
-                        <span className="text-[10px] text-muted-foreground">{msg.horario}</span>
-                      </div>
-                      <p className="text-sm">{msg.mensagem}</p>
-                    </div>
-                  )) : (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                      <p className="text-sm">Nenhuma mensagem ainda neste pregão.</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="border-t border-border/50 p-3 bg-card text-xs text-muted-foreground flex items-center justify-between">
-                  <span>Última atualização: {pregaoAtivo.ultimaAtualizacao}</span>
-                  <span>{pregaoAtivo.totalMensagens} mensagens • {pregaoAtivo.alertas} alertas</span>
-                </div>
-              </Card>
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                <div className="text-center">
-                  <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">Selecione um pregão para visualizar o chat</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );

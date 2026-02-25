@@ -202,10 +202,13 @@ export default function Auth() {
           {step === 'signup' && (
             <>
               {backButton()}
-              <div className="flex items-center gap-2 mb-5">
+              <div className="flex items-center gap-2 mb-2">
                 <User className="w-5 h-5 text-accent" />
                 <h2 className="text-lg font-bold">Criar sua conta</h2>
               </div>
+              <p className="text-sm text-muted-foreground mb-5">
+                🎁 Teste grátis por 3 dias — sem cartão de crédito
+              </p>
 
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="relative">
@@ -229,6 +232,9 @@ export default function Auth() {
               <p className="mt-4 text-center text-sm text-muted-foreground">
                 Já tem conta?{' '}
                 <button onClick={() => setStep('manual')} className="text-accent hover:underline font-medium">Fazer login</button>
+              </p>
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                Sem cartão • Cancela quando quiser • Suporte online
               </p>
             </>
           )}
