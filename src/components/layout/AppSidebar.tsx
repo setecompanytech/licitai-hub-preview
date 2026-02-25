@@ -29,13 +29,14 @@ import {
   BookOpen,
   Bell,
   Archive,
+  Send,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: Download, label: 'Monitoramento de Editais', path: '/monitoramento-editais' },
-  { icon: MessageSquare, label: 'Chat do Pregão', path: '/monitoramento-chat' },
+  { icon: MessageSquare, label: 'Chat e Mural', path: '/monitoramento-chat' },
   { icon: Bell, label: 'Boletins Diários', path: '/boletins' },
   { icon: Target, label: 'Licitações Estratégicas', path: '/licitacoes-estrategicas' },
   { icon: TrendingUp, label: 'Análise de Mercado', path: '/analise-mercado' },
@@ -47,6 +48,7 @@ const navItems = [
   { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
   { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
   { icon: Search, label: 'Proposta Técnica', path: '/proposta-tecnica' },
+  { icon: Send, label: 'Envio ComprasGov', path: '/comprasgov-envio' },
   { icon: Archive, label: 'Histórico / Desempenho', path: '/historico-licitacoes' },
   { icon: BookOpen, label: 'Blog', path: '/blog' },
   { icon: Download, label: 'E-book', path: '/ebook' },
