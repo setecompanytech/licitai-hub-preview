@@ -1,12 +1,16 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   DollarSign, Search, ShoppingCart, TrendingUp, TrendingDown,
-  ExternalLink, RefreshCw, BarChart3, Package
+  ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText
 } from 'lucide-react';
+import { usePropostaCart } from '@/contexts/PropostaCartContext';
+import { valorPorExtenso } from '@/lib/numero-extenso';
+import { toast } from 'sonner';
 
 type FontePreco = {
   fonte: string;
@@ -85,6 +89,23 @@ const fonteColors: Record<string, string> = {
 
 export default function Precificacao() {
   const [search, setSearch] = useState('');
+  const navigate = useNavigate();
+  const { addItem, hasPending, pendingItems } = usePropostaCart();
+
+  const handleAddToProposta = (item: ItemPesquisa, preco: number) => {
+    const valorTotal = preco * item.quantidade;
+    addItem({
+      item: String(pendingItems.length + 1),
+      descricao: item.descricao,
+      quantidade: String(item.quantidade),
+      unidade: item.unidade,
+      valorUnitario: preco.toFixed(2).replace('.', ','),
+      valorUnitarioExtenso: valorPorExtenso(preco),
+      valorTotal: valorTotal.toFixed(2).replace('.', ','),
+      valorTotalExtenso: valorPorExtenso(valorTotal),
+    });
+    toast.success(`"${item.descricao}" adicionado à proposta!`);
+  };
 
   const filtered = itensMock.filter((item) =>
     item.descricao.toLowerCase().includes(search.toLowerCase())
@@ -142,6 +163,18 @@ export default function Precificacao() {
           />
         </div>
 
+        {/* Pending items banner */}
+        {hasPending && (
+          <div className="flex items-center justify-between p-3 bg-accent/10 border border-accent/30 rounded-lg">
+            <div className="flex items-center gap-2 text-sm">
+              <FileText className="w-4 h-4 text-accent" />
+              <span><strong>{pendingItems.length}</strong> {pendingItems.length === 1 ? 'item adicionado' : 'itens adicionados'} à proposta</span>
+            </div>
+            <Button size="sm" onClick={() => navigate('/proposta-tecnica')} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              <FileText className="w-4 h-4 mr-1" /> Ir para Proposta Técnica
+            </Button>
+          </div>
+        )}
         {/* Items */}
         <div className="space-y-4">
           {filtered.map((item) => (
@@ -197,6 +230,9 @@ export default function Precificacao() {
                       )}
                       <Button size="sm" variant="ghost">
                         <ExternalLink className="w-3 h-3" />
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleAddToProposta(item, f.preco)} title="Adicionar à Proposta Técnica">
+                        <Plus className="w-3 h-3 mr-1" /> Proposta
                       </Button>
                     </div>
                   </div>

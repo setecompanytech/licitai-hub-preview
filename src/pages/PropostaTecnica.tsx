@@ -8,6 +8,7 @@ import { FileText, Sparkles, Loader2, Copy, CheckCircle } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { toast } from 'sonner';
 import EditalUploader, { type ExtractedEditalData, type EditalItem } from '@/components/proposta/EditalUploader';
 import PlanilhaPrecos from '@/components/proposta/PlanilhaPrecos';
@@ -19,6 +20,7 @@ import { Send } from 'lucide-react';
 export default function PropostaTecnica() {
   const { empresaAtiva } = useEmpresa();
   const { user } = useAuth();
+  const { pendingItems, clearPending, hasPending } = usePropostaCart();
   const [isLoading, setIsLoading] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [proposal, setProposal] = useState('');
@@ -67,6 +69,23 @@ export default function PropostaTecnica() {
       resultRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [proposal]);
+
+  // Import pending items from Precificação
+  useEffect(() => {
+    if (hasPending) {
+      setItens(prev => {
+        const hasEmpty = prev.length === 1 && !prev[0].descricao.trim();
+        const base = hasEmpty ? [] : prev;
+        const newItens = pendingItems.map((p, idx) => ({
+          ...p,
+          item: String(base.length + idx + 1),
+        }));
+        return [...base, ...newItens];
+      });
+      toast.success(`${pendingItems.length} ${pendingItems.length === 1 ? 'item importado' : 'itens importados'} da Precificação!`);
+      clearPending();
+    }
+  }, []);
 
   const handleEditalExtracted = (data: ExtractedEditalData) => {
     if (data.numeroLicitacao) setNumeroLicitacao(data.numeroLicitacao);
