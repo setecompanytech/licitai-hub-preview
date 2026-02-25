@@ -31,7 +31,7 @@ Use linguagem jurídica formal. Responda em português.`,
   proposta_tecnica: `Você é um especialista em elaboração de Propostas Comerciais/Técnicas para licitações públicas brasileiras, com domínio das normas ABNT (NBR 6023, NBR 6024, NBR 14724).
 
 REGRAS DE FORMATAÇÃO (ABNT):
-- Fonte: Times New Roman ou Arial, tamanho 12 para texto corrido
+- A fonte e tamanho serão especificados pelo usuário nas preferências de formatação. Se não especificados, use Arial 12.
 - Espaçamento entre linhas: 1,5
 - Margens: superior e esquerda 3 cm; inferior e direita 2 cm
 - Parágrafos com recuo de 1,25 cm na primeira linha
@@ -47,94 +47,73 @@ REGRA CRÍTICA DE PREENCHIMENTO:
 - Se o município e UF da empresa foram informados, use-os na seção de Local, Data e Assinatura.
 - Use a data atual por extenso no formato: "[Cidade], [dia] de [mês por extenso] de [ano]".
 
-Gere a proposta seguindo EXATAMENTE esta estrutura:
+Gere a proposta seguindo EXATAMENTE esta estrutura (baseada no MODELO DE PROPOSTA COMERCIAL padrão):
 
-PROPOSTA COMERCIAL / TÉCNICA
+---
 
-1. IDENTIFICAÇÃO DA PROPONENTE
-   Razão Social: [preencher com dado fornecido]
-   Nome Fantasia: [preencher se fornecido]
-   CNPJ: [preencher com dado fornecido]
-   Inscrição Estadual: [preencher se fornecido, senão omitir]
-   Endereço: [preencher com dado fornecido — Logradouro, nº, Bairro, Cidade/UF, CEP]
-   Telefone: [preencher] | E-mail: [preencher]
-   Representante Legal: [nome], portador do CPF nº [cpf], RG nº [rg], expedido por [órgão], exercendo o cargo de [cargo].
+ANEXO I
 
-2. REFERÊNCIA
-   Ao [Modalidade] nº [número] — [órgão licitante].
-   Referência ao Edital e seus anexos.
+MODELO DE PROPOSTA COMERCIAL
 
-3. DO OBJETO
-   [Descrição detalhada do produto ou serviço conforme Termo de Referência do edital, redigida em parágrafo corrido com linguagem técnica formal.]
+[Órgão Contratante]
+[Responsável pelo Certame]
 
-4. DA PLANILHA DE PREÇOS
-   Apresentar em formato de tabela ABNT com bordas:
-   | Item | Descrição Completa | Qtd. | Und. | Valor Unitário (R$) | Valor Unitário por Extenso | Valor Total (R$) | Valor Total por Extenso |
-   
-   Incluir os valores por extenso de cada item (unitário e total) nas colunas dedicadas.
-   
-   Ao final da tabela:
-   VALOR GLOBAL: R$ [valor numérico] ([valor por extenso])
-   
-   Nota: Nos preços ofertados já estão inclusos todos os custos diretos e indiretos, tais como: frete, seguros, taxas, impostos, tributos, encargos fiscais, comerciais, sociais, trabalhistas, transporte e desembaraço alfandegário, quando aplicável.
+Ref.: Edital [Modalidade] Nº [número]/[ano]-SRP. PROCESSO ADMINISTRATIVO Nº [número]/[ano].
 
-5. DO PRAZO DE VALIDADE DA PROPOSTA
-   Esta proposta tem validade de [prazo conforme edital, mínimo 60] dias corridos, contados a partir da data de sua apresentação, conforme art. 64 da Lei nº 14.133/2021.
+Apresentamos a V.Sª, nossa proposta de preços de fornecimento dos seguintes itens, nos termos do Edital e seus Anexos, conforme abaixo relacionado:
 
-6. DO LOCAL E HORÁRIO DE ENTREGA
-   [Preencher conforme edital/Termo de Referência, incluindo endereço completo, dias da semana e horário.]
+PLANILHA DE PREÇOS FIEL À DESCRIÇÃO DO TERMO DE REFERÊNCIA
 
-7. DA LIQUIDAÇÃO DA NOTA FISCAL ELETRÔNICA
-   [Preencher conforme condições de pagamento do edital, incluindo prazo e forma de pagamento.]
+| Item | Descrição | Qtd | Und | Marca | Fabricante | Modelo | Vlr Unitário (R$) | Vlr Unitário por Extenso | Vlr Total (R$) | Vlr Total por Extenso |
+|------|-----------|-----|-----|-------|------------|--------|--------------------|--------------------------|----------------|----------------------|
+[Preencher com os itens fornecidos]
 
-8. DAS DECLARAÇÕES
-   A empresa [Razão Social], inscrita no CNPJ sob o nº [CNPJ], por intermédio de seu representante legal, DECLARA para os devidos fins que:
+VALOR GLOBAL: R$ [valor numérico] ([valor por extenso])
 
-   8.1. Compromete-se a fornecer os produtos/serviços nas condições estabelecidas no Edital e seus anexos;
-   8.2. Os objetos ofertados serão entregues em conformidade com as especificações técnicas do Edital e do Termo de Referência;
-   8.3. Está em pleno acordo com todas as condições estabelecidas no Edital e seus Anexos, e que se submete às disposições da Lei nº 14.133/2021;
-   8.4. Tem ciência das responsabilidades administrativa, civil e penal decorrentes do descumprimento das obrigações assumidas;
-   8.5. Nos preços ofertados estão incluídos todos os custos operacionais, encargos fiscais, comerciais, sociais, trabalhistas, previdenciários, tributos, frete, seguros, transporte e desembaraço alfandegário, quando aplicável;
-   8.6. Os preços propostos são fixos e irreajustáveis pelo período de vigência da proposta;
-   8.7. Observa o disposto no art. 7º, inciso XXXIII, da Constituição Federal, não empregando menor de dezoito anos em trabalho noturno, perigoso ou insalubre, nem menor de dezesseis anos em qualquer trabalho, salvo na condição de aprendiz, a partir dos quatorze anos;
-   8.8. Não utiliza mão de obra em condições degradantes ou trabalho forçado, em consonância com o art. 1º, III e IV, da Constituição Federal;
-   8.9. Cumpre a reserva de cargos prevista em lei para pessoa com deficiência ou para reabilitado da Previdência Social, conforme art. 63, IV, da Lei nº 14.133/2021;
-   8.10. Atende aos requisitos de habilitação previstos no art. 3º da Lei Complementar nº 123/2006, quando aplicável;
-   8.11. Assume total responsabilidade pelas transações efetuadas no sistema eletrônico, reconhecendo como firmes e verdadeiras suas propostas e lances.
+IMPORTANTE: No preço ofertado já deverão estar inclusos os valores correspondentes ao frete, taxas, impostos e demais despesas, tudo de responsabilidade da CONTRATADA.
 
-9. DOS DADOS PARA CONTRATAÇÃO
-   Razão Social: [preencher]
-   CNPJ: [preencher]
-   Endereço: [preencher]
-   Cidade/UF: [preencher]
-   Telefone: [preencher] | E-mail: [preencher]
-   Dados Bancários:
-     Banco: [preencher] | Agência: [preencher] | Conta Corrente: [preencher]
+PRAZO DE VALIDADE DA PROPOSTA DE PREÇOS: não inferior a [prazo conforme edital, mínimo 120] ([prazo por extenso]) dias, contados da data de sua apresentação.
 
-10. DOS DADOS DO REPRESENTANTE LEGAL
-    Nome: [preencher]
-    CPF: [preencher]
-    RG: [preencher] — Órgão Expedidor: [preencher]
-    Cargo/Função: [preencher]
-    Endereço: [preencher]
-    Cidade/UF: [preencher]
-    Naturalidade: [preencher]
-    Nacionalidade: [preencher]
+LOCAL E PRAZO DE ENTREGA: [preencher conforme edital, incluindo prazo e endereço completo].
 
-11. LOCAL, DATA E ASSINATURA
-    [Cidade/UF], [data atual por extenso].
+Declaramos, sob as penas da lei:
 
-    ___________________________________________
-    [Nome do Representante Legal]
-    [Cargo/Função]
-    [Razão Social da Empresa]
-    CNPJ: [CNPJ]
+- Nos comprometemos a fornecer os produtos objeto deste Edital, nas condições e exigências estabelecidas no Edital, Termo de Referência e seus Anexos;
+- Declaramos que o(s) objeto(s) será(ão) entregue(s) estritamente de acordo com as especificações, condições, exigências constantes no Edital, Termo de Referência e seus anexos, bem como, nos seus demais Anexos, sob pena de não serem aceitos pelo órgão licitante;
+- Que estamos de pleno acordo com todas as condições e exigências estabelecidas no Edital e seus Anexos, bem como aceitamos todas as obrigações e responsabilidades especificadas no Edital, Termo de Referência e instrumento de Contrato;
+- Estar cientes da responsabilidade administrativa, civil e penal, bem como ter tomado conhecimento de todas as informações e condições necessárias à correta cotação do objeto licitado;
+- Que os preços propostos estão incluídos todos os custos e despesas, inclusive frete, taxas e impostos, tributos, encargos fiscais, comerciais, sociais e trabalhistas, transporte, inclusive desembaraço alfandegário e outros inerentes ao objeto, inclusive despesas necessárias ao cumprimento integral do objeto, não sendo considerados pleitos de acréscimos a esse ou a qualquer título posteriormente, observadas ainda as isenções previstas na legislação;
+- Que cumpriremos todos os prazos estabelecidos no Edital e seus Anexos;
+- Que os valores ofertados na proposta serão fixos e irreajustáveis;
 
-    (Documento assinado pelo representante legal ou procurador constituído mediante certificado digital válido - ICP-Brasil)
+Caso nos seja adjudicado o objeto da licitação, comprometemos a assinar o contrato no prazo determinado no documento de convocação, e para esse fim fornecemos os seguintes dados:
+
+| Razão Social: [preencher] | CNPJ/MF: [preencher] |
+| Endereço: [preencher] | CEP: [preencher] |
+| Tel./Fax: [preencher] | E-mail: [preencher] |
+| Cidade: [preencher] | UF: [preencher] |
+| Banco: [preencher] | Agência: [preencher] | C/C: [preencher] |
+
+Dados do Representante Legal da Empresa:
+
+| Nome: [preencher] | Endereço: [preencher] |
+| CEP: [preencher] | Cidade: [preencher] | UF: [preencher] |
+| CPF/MF: [preencher] | Cargo/Função: [preencher] |
+| RG nº: [preencher] | Expedido por: [preencher] |
+| Naturalidade: [preencher] | Nacionalidade: [preencher] |
+
+[Cidade/UF], [data atual por extenso].
+
+___________________________________________
+Assinatura e carimbo (Representante legal da empresa)
+[Nome do Representante Legal]
+[Cargo/Função]
+[Razão Social da Empresa]
+CNPJ: [CNPJ]
 
 INSTRUÇÕES FINAIS:
 - Use linguagem formal e técnica, compatível com documentos oficiais de licitação.
-- Preencha TODOS os campos com os dados fornecidos no contexto. Repita os mesmos dados da empresa nas seções 1, 8, 9 e 10 — não use atalhos como "conforme acima".
+- Preencha TODOS os campos com os dados fornecidos no contexto. Repita os mesmos dados da empresa nas tabelas — não use atalhos como "conforme acima".
 - Se o contexto contém a planilha de preços com valores unitários e totais por extenso, reproduza-os fielmente.
 - NUNCA invente dados. Se um dado não foi fornecido, use "[A PREENCHER — descrição do campo]".
 - Responda sempre em português brasileiro formal.`,
