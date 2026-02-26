@@ -83,8 +83,8 @@ export default function AnaliseDocsConcorrente() {
         toast.error(`Formato não suportado: ${f.name}. Use PDF ou ZIP.`);
         continue;
       }
-      if (f.size > 20 * 1024 * 1024) {
-        toast.error(`Arquivo muito grande: ${f.name}. Máximo 20MB.`);
+      if (f.size > 150 * 1024 * 1024) {
+        toast.error(`Arquivo muito grande: ${f.name}. Máximo 150MB.`);
         continue;
       }
       novos.push({
@@ -216,7 +216,7 @@ ${textos.join('\n\n---\n\n')}`;
           Envie documentos do concorrente para análise
         </span>
         <span className="text-xs text-muted-foreground">
-          PDF ou ZIP — Máximo 20MB por arquivo
+          PDF ou ZIP — Máximo 150MB por arquivo
         </span>
       </button>
       <input
