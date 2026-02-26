@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,6 +9,8 @@ import {
 import { toast } from 'sonner';
 import { streamAIChat, type ChatMessage } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
+import { supabase } from '@/integrations/supabase/client';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type ArquivoUpload = {
   id: string;
@@ -59,12 +61,33 @@ Para cada inconsistência, informar:
 Seja EXTREMAMENTE DETALHISTA e TÉCNICO. Cite SEMPRE os artigos da Lei 14.133/2021.
 Se algum documento não foi apresentado, indique como AUSÊNCIA com a devida fundamentação.`;
 
+type Licitacao = {
+  id: string;
+  numero: string;
+  objeto: string;
+  orgao: string;
+  modalidade: string;
+};
+
 export default function AnaliseDocsConcorrente() {
   const [arquivos, setArquivos] = useState<ArquivoUpload[]>([]);
   const [observacoes, setObservacoes] = useState('');
   const [analisando, setAnalisando] = useState(false);
   const [resultado, setResultado] = useState('');
+  const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
+  const [licitacaoSelecionada, setLicitacaoSelecionada] = useState<string>('');
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const fetchLicitacoes = async () => {
+      const { data } = await supabase
+        .from('licitacoes')
+        .select('id, numero, objeto, orgao, modalidade')
+        .order('created_at', { ascending: false });
+      if (data) setLicitacoes(data);
+    };
+    fetchLicitacoes();
+  }, []);
 
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
@@ -145,9 +168,14 @@ export default function AnaliseDocsConcorrente() {
 
     const listaArquivos = arquivos.map(a => `- ${a.nome} (${formatSize(a.tamanho)})`).join('\n');
 
+    const licInfo = licitacaoSelecionada && licitacaoSelecionada !== 'none'
+      ? licitacoes.find(l => l.id === licitacaoSelecionada)
+      : null;
+
     const context = `DOCUMENTOS DO CONCORRENTE PARA ANÁLISE:
 ${listaArquivos}
 
+${licInfo ? `PROCESSO LICITATÓRIO VINCULADO:\n- Número: ${licInfo.numero}\n- Modalidade: ${licInfo.modalidade}\n- Órgão: ${licInfo.orgao}\n- Objeto: ${licInfo.objeto}\n` : ''}
 ${observacoes ? `OBSERVAÇÕES ADICIONAIS DO USUÁRIO:\n${observacoes}\n` : ''}
 CONTEÚDO EXTRAÍDO DOS DOCUMENTOS:
 ${textos.join('\n\n---\n\n')}`;
@@ -204,6 +232,31 @@ ${textos.join('\n\n---\n\n')}`;
         Envie os documentos de habilitação do concorrente (PDF ou ZIP) para que a IA analise cada item conforme
         a Lei 14.133/2021, identificando inconsistências para fundamentar recursos e contrarrazões.
       </p>
+
+      {/* Seletor de Licitação */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-muted-foreground">
+          Processo licitatório vinculado (opcional)
+        </label>
+        <Select value={licitacaoSelecionada} onValueChange={setLicitacaoSelecionada}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione a licitação relacionada..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Nenhuma — análise avulsa</SelectItem>
+            {licitacoes.map((lic) => (
+              <SelectItem key={lic.id} value={lic.id}>
+                {lic.numero} — {lic.modalidade} — {lic.orgao}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {licitacaoSelecionada && licitacaoSelecionada !== 'none' && (
+          <p className="text-[11px] text-muted-foreground">
+            {licitacoes.find(l => l.id === licitacaoSelecionada)?.objeto}
+          </p>
+        )}
+      </div>
 
       {/* Upload area */}
       <button
