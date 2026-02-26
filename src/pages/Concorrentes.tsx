@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ConsultaCNPJ from '@/components/concorrentes/ConsultaCNPJ';
 import ConsultaSintegra from '@/components/concorrentes/ConsultaSintegra';
 import CertidoesNegativas from '@/components/concorrentes/CertidoesNegativas';
+import AnaliseDocsConcorrente from '@/components/documentos/AnaliseDocsConcorrente';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -56,6 +57,7 @@ export default function Concorrentes() {
           <TabsTrigger value="consulta-cnpj">Consulta CNPJ</TabsTrigger>
           <TabsTrigger value="sintegra">SINTEGRA</TabsTrigger>
           <TabsTrigger value="certidoes">Certidões Negativas</TabsTrigger>
+          <TabsTrigger value="analise-docs">Análise de Documentos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="lista">
@@ -120,6 +122,10 @@ export default function Concorrentes() {
 
         <TabsContent value="certidoes">
           <CertidoesNegativas />
+        </TabsContent>
+
+        <TabsContent value="analise-docs">
+          <AnaliseDocsConcorrente />
         </TabsContent>
       </Tabs>
     </AppLayout>
