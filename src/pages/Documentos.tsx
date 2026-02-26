@@ -6,10 +6,9 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   FileText, Upload, CheckCircle2, AlertTriangle, Clock,
-  Shield, FolderOpen, Download, Eye, FileArchive, ClipboardList, Scale
+  Shield, FolderOpen, Download, Eye, FileArchive, ClipboardList
 } from 'lucide-react';
 import MergeDocumentos from '@/components/documentos/MergeDocumentos';
-import AnaliseDocsConcorrente from '@/components/documentos/AnaliseDocsConcorrente';
 import ChecklistModalidade from '@/components/licitacoes/ChecklistModalidade';
 
 type DocStatus = 'ok' | 'pendente' | 'vencido' | 'ausente';
@@ -83,9 +82,6 @@ export default function Documentos() {
             </TabsTrigger>
             <TabsTrigger value="merge" className="flex items-center gap-1">
               <FileArchive className="w-4 h-4" /> Juntar PDF/ZIP
-            </TabsTrigger>
-            <TabsTrigger value="analise-concorrente" className="flex items-center gap-1">
-              <Scale className="w-4 h-4" /> Análise Concorrente
             </TabsTrigger>
             <TabsTrigger value="checklist" className="flex items-center gap-1">
               <ClipboardList className="w-4 h-4" /> Checklist
@@ -178,9 +174,6 @@ export default function Documentos() {
             <MergeDocumentos />
           </TabsContent>
 
-          <TabsContent value="analise-concorrente">
-            <AnaliseDocsConcorrente />
-          </TabsContent>
 
           <TabsContent value="checklist">
             <ChecklistModalidade />
