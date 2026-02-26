@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Upload, FileText, Loader2, X, Search, AlertTriangle,
-  CheckCircle2, FileArchive, Scale, Download
+  FileArchive, Scale, Download, BookOpen
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { streamAIChat, type ChatMessage } from '@/lib/ai-stream';
@@ -19,47 +19,64 @@ type ArquivoUpload = {
   file: File;
 };
 
-const SYSTEM_CONTEXT = `Você é um especialista em análise documental de licitações públicas brasileiras, com profundo conhecimento da Lei 14.133/2021.
+const SYSTEM_CONTEXT = `Você é um especialista em análise jurídico-contábil de licitações públicas brasileiras, com profundo conhecimento da Lei 14.133/2021 (Nova Lei de Licitações e Contratos Administrativos).
 
-Analise MINUCIOSAMENTE cada documento enviado pelo concorrente e produza um RELATÓRIO TÉCNICO DETALHADO com a seguinte estrutura:
+Ao receber documentos do concorrente, produza um RELATÓRIO TÉCNICO DETALHADO com a seguinte estrutura obrigatória:
 
-## 📋 RELATÓRIO DE ANÁLISE DOCUMENTAL DO CONCORRENTE
+## 📋 RELATÓRIO DE ANÁLISE JURÍDICO-CONTÁBIL
 
-### 1. HABILITAÇÃO JURÍDICA (Art. 66)
-- Ato Constitutivo / Contrato Social: verificar se está registrado, atualizado, se o objeto social é compatível com o objeto licitado, se os sócios estão devidamente qualificados.
-- Procuração (se houver): verificar poderes específicos para representar em licitações.
+### 1. 📂 INVENTÁRIO DE DOCUMENTOS IDENTIFICADOS
+Liste TODOS os documentos encontrados dentro do(s) arquivo(s) enviados, com:
+- **Nº** | **Nome do Documento** | **Tipo** (Certidão, Atestado, Balanço, Declaração, etc.) | **Status** (✅ Conforme / ⚠️ Ressalva / ❌ Irregular / ❓ Não verificável)
+- Apresentar em formato de tabela para fácil visualização.
 
-### 2. REGULARIDADE FISCAL E TRABALHISTA (Art. 68)
-- CND Federal, CRF/FGTS, CNDT, Certidões Estaduais e Municipais: verificar validade, autenticidade, se o CNPJ confere com a empresa licitante.
+### 2. HABILITAÇÃO JURÍDICA (Art. 66)
+- Ato Constitutivo / Contrato Social: registrado, atualizado, objeto social compatível, sócios qualificados.
+- Procuração (se houver): poderes específicos para licitações.
+
+### 3. REGULARIDADE FISCAL E TRABALHISTA (Art. 68)
+- CND Federal, CRF/FGTS, CNDT, Certidões Estaduais/Municipais: validade, autenticidade, CNPJ correto.
 - Apontar certidões vencidas ou com prazo expirado na data de abertura.
 
-### 3. QUALIFICAÇÃO TÉCNICA (Art. 67)
-- Atestados de Capacidade Técnica: verificar se os quantitativos atendem ao mínimo exigido no edital, se o emissor é idôneo, se há registro no CREA/CAU quando exigível.
-- CAT – Certidão de Acervo Técnico: verificar compatibilidade com o objeto.
-- Verificar se os responsáveis técnicos possuem vínculo com a empresa.
+### 4. QUALIFICAÇÃO TÉCNICA (Art. 67)
+- Atestados de Capacidade Técnica: quantitativos mínimos, emissor idôneo, registro CREA/CAU.
+- CAT – Certidão de Acervo Técnico: compatibilidade com o objeto.
+- Vínculo dos responsáveis técnicos com a empresa.
 
-### 4. QUALIFICAÇÃO ECONÔMICO-FINANCEIRA (Art. 69)
-- Balanço Patrimonial: verificar se é do último exercício social exigível, se está registrado, se os índices (Liquidez Geral, Liquidez Corrente, Solvência Geral) atendem aos mínimos do edital.
-- Certidão Negativa de Falência/Recuperação Judicial: verificar validade e comarca.
+### 5. QUALIFICAÇÃO ECONÔMICO-FINANCEIRA (Art. 69)
+- Balanço Patrimonial: último exercício, registrado, índices (LG, LC, SG) conforme edital.
+- Certidão Negativa de Falência/Recuperação Judicial: validade e comarca.
 
-### 5. DECLARAÇÕES OBRIGATÓRIAS (Art. 63, §1º)
-- Verificar se todas as declarações exigidas foram apresentadas e estão assinadas.
+### 6. ANÁLISE CONTÁBIL DETALHADA
+- Verificar índices financeiros apresentados vs. exigidos no edital.
+- Calcular Liquidez Geral, Liquidez Corrente e Solvência Geral com base nos dados do balanço.
+- Patrimônio Líquido mínimo exigido vs. apresentado.
+- Apontar divergências contábeis ou ausência de notas explicativas quando exigíveis.
 
-### 6. ⚠️ INCONSISTÊNCIAS E IRREGULARIDADES ENCONTRADAS
-Para cada inconsistência, informar:
-- **Documento:** nome do documento
+### 7. DECLARAÇÕES OBRIGATÓRIAS (Art. 63, §1º)
+- Verificar se todas foram apresentadas e assinadas.
+
+### 8. ⚠️ INCONSISTÊNCIAS E IRREGULARIDADES
+Para cada inconsistência:
+- **Documento:** nome
 - **Irregularidade:** descrição detalhada
-- **Fundamentação Legal:** artigo da Lei 14.133/2021 ou legislação aplicável
+- **Fundamentação Legal:** artigo da Lei 14.133/2021
 - **Consequência:** inabilitação, diligência, saneamento ou esclarecimento
-- **Recomendação:** se cabe recurso administrativo, contrarrazão ou impugnação
+- **Recomendação:** recurso administrativo, contrarrazão ou impugnação
 
-### 7. 📝 CONCLUSÃO E RECOMENDAÇÕES PARA RECURSO
-- Resumo das irregularidades que fundamentam recurso administrativo
-- Sugestão de tese recursal com citação dos artigos aplicáveis
-- Indicar se as falhas são sanáveis ou insanáveis (Art. 64, §1º)
+### 9. 📊 QUADRO RESUMO DE CONFORMIDADE
+Tabela resumo: Documento | Exigência do Edital | Situação | Observação
 
-Seja EXTREMAMENTE DETALHISTA e TÉCNICO. Cite SEMPRE os artigos da Lei 14.133/2021.
-Se algum documento não foi apresentado, indique como AUSÊNCIA com a devida fundamentação.`;
+### 10. 📝 CONCLUSÃO E RECOMENDAÇÕES PARA RECURSO
+- Resumo das irregularidades
+- Tese recursal com artigos aplicáveis
+- Falhas sanáveis vs. insanáveis (Art. 64, §1º)
+
+IMPORTANTE:
+- Se o EDITAL foi fornecido, CRUZE cada exigência do edital com os documentos apresentados.
+- Cite SEMPRE os artigos da Lei 14.133/2021.
+- Se algum documento não foi apresentado, indique como AUSÊNCIA DOCUMENTAL com fundamentação.
+- Se algum documento não pode ser verificado (PDF binário), indique como "❓ Não verificável — recomenda-se análise manual".`;
 
 type Licitacao = {
   id: string;
@@ -71,12 +88,14 @@ type Licitacao = {
 
 export default function AnaliseDocsConcorrente() {
   const [arquivos, setArquivos] = useState<ArquivoUpload[]>([]);
+  const [editalFile, setEditalFile] = useState<ArquivoUpload | null>(null);
   const [observacoes, setObservacoes] = useState('');
   const [analisando, setAnalisando] = useState(false);
   const [resultado, setResultado] = useState('');
   const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
   const [licitacaoSelecionada, setLicitacaoSelecionada] = useState<string>('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const editalRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchLicitacoes = async () => {
@@ -121,8 +140,63 @@ export default function AnaliseDocsConcorrente() {
     e.target.value = '';
   };
 
+  const handleAddEdital = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (ext !== '.pdf') {
+      toast.error('O edital deve ser um arquivo PDF.');
+      return;
+    }
+    if (file.size > 150 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo 150MB.');
+      return;
+    }
+
+    setEditalFile({
+      id: crypto.randomUUID(),
+      nome: file.name,
+      tamanho: file.size,
+      file,
+    });
+    e.target.value = '';
+    toast.success('Edital anexado com sucesso!');
+  };
+
   const handleRemove = (id: string) => {
     setArquivos(prev => prev.filter(a => a.id !== id));
+  };
+
+  const extractFileText = async (file: File, nome: string): Promise<string[]> => {
+    const textos: string[] = [];
+    try {
+      if (nome.toLowerCase().endsWith('.zip')) {
+        const { default: JSZip } = await import('jszip');
+        const zip = await JSZip.loadAsync(file);
+        const entries = Object.entries(zip.files);
+        for (const [name, entry] of entries) {
+          if (!entry.dir && name.toLowerCase().endsWith('.pdf')) {
+            textos.push(`[Arquivo ZIP > ${name}]: Documento PDF encontrado no arquivo compactado.`);
+          } else if (!entry.dir) {
+            try {
+              const text = await entry.async('text');
+              if (text && text.length > 50) {
+                textos.push(`[Arquivo ZIP > ${name}]:\n${text.slice(0, 8000)}`);
+              }
+            } catch {
+              textos.push(`[Arquivo ZIP > ${name}]: Arquivo binário (não textual).`);
+            }
+          }
+        }
+      } else {
+        const text = await file.text();
+        textos.push(`[${nome}]:\n${text.slice(0, 12000)}`);
+      }
+    } catch {
+      textos.push(`[${nome}]: Não foi possível ler o conteúdo.`);
+    }
+    return textos;
   };
 
   const handleAnalisar = async () => {
@@ -134,36 +208,18 @@ export default function AnaliseDocsConcorrente() {
     setAnalisando(true);
     setResultado('');
 
-    // Extract text content from files
+    // Extract text from competitor documents
     const textos: string[] = [];
     for (const arq of arquivos) {
-      try {
-        if (arq.nome.toLowerCase().endsWith('.zip')) {
-          const { default: JSZip } = await import('jszip');
-          const zip = await JSZip.loadAsync(arq.file);
-          const entries = Object.entries(zip.files);
-          for (const [name, entry] of entries) {
-            if (!entry.dir && name.toLowerCase().endsWith('.pdf')) {
-              textos.push(`[Arquivo ZIP > ${name}]: Documento PDF encontrado no arquivo compactado.`);
-            } else if (!entry.dir) {
-              try {
-                const text = await entry.async('text');
-                if (text && text.length > 50) {
-                  textos.push(`[Arquivo ZIP > ${name}]:\n${text.slice(0, 8000)}`);
-                }
-              } catch {
-                textos.push(`[Arquivo ZIP > ${name}]: Arquivo binário (não textual).`);
-              }
-            }
-          }
-        } else {
-          const text = await arq.file.text();
-          const clean = text.slice(0, 12000);
-          textos.push(`[${arq.nome}]:\n${clean}`);
-        }
-      } catch {
-        textos.push(`[${arq.nome}]: Não foi possível ler o conteúdo.`);
-      }
+      const extracted = await extractFileText(arq.file, arq.nome);
+      textos.push(...extracted);
+    }
+
+    // Extract edital text if provided
+    let editalTexto = '';
+    if (editalFile) {
+      const editalExtracted = await extractFileText(editalFile.file, editalFile.nome);
+      editalTexto = editalExtracted.join('\n\n');
     }
 
     const listaArquivos = arquivos.map(a => `- ${a.nome} (${formatSize(a.tamanho)})`).join('\n');
@@ -176,14 +232,25 @@ export default function AnaliseDocsConcorrente() {
 ${listaArquivos}
 
 ${licInfo ? `PROCESSO LICITATÓRIO VINCULADO:\n- Número: ${licInfo.numero}\n- Modalidade: ${licInfo.modalidade}\n- Órgão: ${licInfo.orgao}\n- Objeto: ${licInfo.objeto}\n` : ''}
+${editalTexto ? `EDITAL DA LICITAÇÃO (para cruzamento de exigências):\n${editalTexto}\n` : ''}
 ${observacoes ? `OBSERVAÇÕES ADICIONAIS DO USUÁRIO:\n${observacoes}\n` : ''}
-CONTEÚDO EXTRAÍDO DOS DOCUMENTOS:
+CONTEÚDO EXTRAÍDO DOS DOCUMENTOS DO CONCORRENTE:
 ${textos.join('\n\n---\n\n')}`;
 
     const messages: ChatMessage[] = [
       {
         role: 'user',
-        content: `Analise detalhadamente todos os documentos do concorrente enviados abaixo conforme a Lei 14.133/2021. Identifique TODAS as inconsistências, irregularidades, documentos vencidos, ausentes ou em desconformidade. Gere um relatório técnico completo para fundamentar recursos administrativos e contrarrazões.\n\n${context}`,
+        content: `Realize uma ANÁLISE JURÍDICO-CONTÁBIL completa dos documentos do concorrente abaixo conforme a Lei 14.133/2021.
+
+INSTRUÇÕES OBRIGATÓRIAS:
+1. Liste TODOS os documentos identificados dentro dos arquivos enviados em formato de tabela com status de conformidade.
+2. Para cada documento, verifique se está de acordo com as exigências legais e do edital (se fornecido).
+3. Identifique TODAS as inconsistências, irregularidades, documentos vencidos, ausentes ou em desconformidade.
+4. Faça a análise contábil dos índices financeiros quando houver balanço patrimonial.
+5. Gere um relatório técnico completo para fundamentar recursos administrativos e contrarrazões.
+${editalTexto ? '\n6. CRUZE cada exigência do edital com os documentos apresentados, indicando se foi atendida ou não.' : ''}
+
+${context}`,
       },
     ];
 
@@ -222,15 +289,15 @@ ${textos.join('\n\n---\n\n')}`;
       {/* Header */}
       <div className="flex items-center gap-2">
         <Scale className="w-5 h-5 text-accent" />
-        <h3 className="font-semibold text-sm">Análise Documental de Concorrente</h3>
+        <h3 className="font-semibold text-sm">Análise Jurídico-Contábil de Concorrente</h3>
         <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent border-accent/20">
           Lei 14.133/2021
         </Badge>
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Envie os documentos de habilitação do concorrente (PDF ou ZIP) para que a IA analise cada item conforme
-        a Lei 14.133/2021, identificando inconsistências para fundamentar recursos e contrarrazões.
+        Envie os documentos de habilitação do concorrente e o edital da licitação. A IA fará o cruzamento das exigências,
+        listando cada documento identificado e seu status de conformidade com a Lei 14.133/2021.
       </p>
 
       {/* Seletor de Licitação */}
@@ -258,28 +325,79 @@ ${textos.join('\n\n---\n\n')}`;
         )}
       </div>
 
-      {/* Upload area */}
-      <button
-        type="button"
-        onClick={() => fileRef.current?.click()}
-        className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 hover:border-accent/50 hover:bg-accent/5 transition-colors"
-      >
-        <Upload className="w-8 h-8 text-muted-foreground" />
-        <span className="text-sm font-medium text-foreground">
-          Envie documentos do concorrente para análise
-        </span>
-        <span className="text-xs text-muted-foreground">
-          PDF ou ZIP — Máximo 150MB por arquivo
-        </span>
-      </button>
-      <input
-        ref={fileRef}
-        type="file"
-        multiple
-        accept=".pdf,.zip"
-        className="hidden"
-        onChange={handleAddFiles}
-      />
+      {/* Edital Upload */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+          <BookOpen className="w-3.5 h-3.5" />
+          Edital da Licitação (opcional — permite cruzamento de exigências)
+        </label>
+        {editalFile ? (
+          <div className="bg-card rounded-xl border border-accent/30 flex items-center gap-3 px-4 py-3">
+            <BookOpen className="w-4 h-4 text-accent shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{editalFile.nome}</p>
+              <p className="text-xs text-muted-foreground">{formatSize(editalFile.tamanho)}</p>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setEditalFile(null)}
+              className="text-destructive hover:text-destructive"
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => editalRef.current?.click()}
+            className="w-full border border-dashed border-accent/40 rounded-xl p-4 flex items-center gap-3 hover:border-accent hover:bg-accent/5 transition-colors"
+          >
+            <Upload className="w-5 h-5 text-accent" />
+            <div className="text-left">
+              <span className="text-sm font-medium text-foreground block">Anexar Edital (PDF)</span>
+              <span className="text-[11px] text-muted-foreground">
+                A IA cruzará as exigências do edital com os documentos do concorrente
+              </span>
+            </div>
+          </button>
+        )}
+        <input
+          ref={editalRef}
+          type="file"
+          accept=".pdf"
+          className="hidden"
+          onChange={handleAddEdital}
+        />
+      </div>
+
+      {/* Upload area - Documentos do concorrente */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-muted-foreground">
+          Documentos do Concorrente
+        </label>
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 hover:border-accent/50 hover:bg-accent/5 transition-colors"
+        >
+          <Upload className="w-8 h-8 text-muted-foreground" />
+          <span className="text-sm font-medium text-foreground">
+            Envie documentos do concorrente para análise
+          </span>
+          <span className="text-xs text-muted-foreground">
+            PDF ou ZIP — Máximo 150MB por arquivo
+          </span>
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          multiple
+          accept=".pdf,.zip"
+          className="hidden"
+          onChange={handleAddFiles}
+        />
+      </div>
 
       {/* File list */}
       {arquivos.length > 0 && (
@@ -333,7 +451,7 @@ ${textos.join('\n\n---\n\n')}`;
           {analisando ? (
             <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Analisando documentos com IA...</>
           ) : (
-            <><Search className="w-4 h-4 mr-2" /> Analisar Documentos ({arquivos.length} arquivo{arquivos.length > 1 ? 's' : ''})</>
+            <><Search className="w-4 h-4 mr-2" /> Analisar Documentos ({arquivos.length} arquivo{arquivos.length > 1 ? 's' : ''}{editalFile ? ' + Edital' : ''})</>
           )}
         </Button>
       )}
@@ -344,7 +462,7 @@ ${textos.join('\n\n---\n\n')}`;
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-warning" />
-              <h4 className="text-sm font-semibold">Relatório de Análise</h4>
+              <h4 className="text-sm font-semibold">Relatório de Análise Jurídico-Contábil</h4>
             </div>
             <Button size="sm" variant="outline" onClick={handleDownloadRelatorio}>
               <Download className="w-3 h-3 mr-1" /> Baixar .md
@@ -362,7 +480,8 @@ ${textos.join('\n\n---\n\n')}`;
           <Loader2 className="w-8 h-8 animate-spin text-accent" />
           <p className="text-sm font-medium">Analisando documentos...</p>
           <p className="text-xs text-muted-foreground">
-            A IA está verificando conformidade com a Lei 14.133/2021, certidões, atestados, balanço patrimonial e declarações.
+            A IA está realizando análise jurídico-contábil, verificando conformidade com a Lei 14.133/2021,
+            listando documentos identificados e cruzando com as exigências{editalFile ? ' do edital' : ' legais'}.
           </p>
         </div>
       )}
