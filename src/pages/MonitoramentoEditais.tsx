@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import AppLayout from "@/components/layout/AppLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,7 @@ export default function MonitoramentoEditais() {
   const [progresso, setProgresso] = useState(0);
   const [tipoFiltro, setTipoFiltro] = useState<TipoDocumento | "todos">("todos");
   const navigate = useNavigate();
+  const { empresaAtiva } = useEmpresa();
 
   const handlePesquisar = () => {
     setPesquisando(true);
@@ -113,10 +115,14 @@ export default function MonitoramentoEditais() {
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 bg-card rounded-lg border border-border/50 px-3 py-2">
               <Building2 className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Minha Construtora Ltda.</span>
-              <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-[10px]">
-                CNAE 42.11-1
-              </Badge>
+              <span className="text-sm font-medium">
+                {empresaAtiva?.nome_fantasia || empresaAtiva?.razao_social || 'Nenhuma empresa selecionada'}
+              </span>
+              {empresaAtiva?.cnae_principal && (
+                <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-[10px]">
+                  CNAE {empresaAtiva.cnae_principal}
+                </Badge>
+              )}
             </div>
             <Button
               onClick={handlePesquisar}
