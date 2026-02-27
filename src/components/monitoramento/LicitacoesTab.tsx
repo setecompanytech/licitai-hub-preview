@@ -76,6 +76,27 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
+const GENERIC_PORTAL_URLS = [
+  'https://www.gov.br/compras/pt-br',
+  'https://www.gov.br/compras',
+  'https://www.gov.br',
+  'https://bnc.org.br',
+  'https://www.bec.sp.gov.br',
+  'https://www.compras.rj.gov.br',
+  'https://licitacoes-e2.bb.com.br/aop-inter-estatico/',
+  'https://cotacao.banpara.b.br/portal/Mural.aspx',
+  'https://www.licitanet.com.br',
+  'https://bllcompras.com',
+  'https://www.portaldecompraspublicas.com.br',
+  'https://pncp.gov.br',
+];
+
+function isGenericPortalUrl(url: string): boolean {
+  if (!url) return true;
+  const clean = url.replace(/\/+$/, '').split('?')[0].split('#')[0];
+  return GENERIC_PORTAL_URLS.some(b => clean === b || clean === b.replace(/\/+$/, ''));
+}
+
 const SUGESTOES_RAPIDAS = [
   'Pavimentação asfáltica',
   'Material hospitalar',
@@ -346,6 +367,17 @@ export default function LicitacoesTab() {
         toast.success('ZIP baixado');
       });
     }
+  };
+
+  const hasEditalDownload = (lic: ResultadoBusca): boolean => {
+    if (lic.isMock) return false;
+    // Has PNCP data for direct API download
+    if (lic.pncpNumero || (lic.cnpjOrgao && lic.anoCompra && lic.sequencialCompra)) return true;
+    // Has a specific (non-generic) URL
+    if (lic.url && !isGenericPortalUrl(lic.url)) return true;
+    // Has enough data for PNCP search fallback
+    if (lic.orgao && lic.objeto && lic.orgao !== '-') return true;
+    return false;
   };
 
   const handleDownloadEditalPortal = async (lic: ResultadoBusca) => {
@@ -742,14 +774,16 @@ export default function LicitacoesTab() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleDownloadEditalPortal(lic)}
-                            className="gap-2 text-xs font-semibold text-accent"
-                            disabled={downloadingEdital === lic.id}
-                          >
-                            {downloadingEdital === lic.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
-                            Edital Completo (Portal)
-                          </DropdownMenuItem>
+                          {hasEditalDownload(lic) && (
+                            <DropdownMenuItem
+                              onClick={() => handleDownloadEditalPortal(lic)}
+                              className="gap-2 text-xs font-semibold text-accent"
+                              disabled={downloadingEdital === lic.id}
+                            >
+                              {downloadingEdital === lic.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
+                              Edital Completo (Portal)
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'csv')} className="gap-2 text-xs"><FileSpreadsheet className="w-3.5 h-3.5" /> CSV</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'pdf')} className="gap-2 text-xs"><FileText className="w-3.5 h-3.5" /> PDF</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'json')} className="gap-2 text-xs"><FileJson className="w-3.5 h-3.5" /> JSON</DropdownMenuItem>

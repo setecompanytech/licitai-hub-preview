@@ -438,6 +438,25 @@ Deno.serve(async (req) => {
 
     console.log(`Download edital: num=${numero} portal=${portal} pncp=${pncpNumero} cnpj=${cnpjOrgao} ano=${anoCompra} seq=${sequencialCompra} url=${url}`);
 
+    // Block generic portal homepages from being used as download sources
+    const BLOCKED_URLS = [
+      "https://www.gov.br/compras/pt-br",
+      "https://www.gov.br/compras",
+      "https://www.gov.br",
+      "https://bnc.org.br",
+      "https://www.bec.sp.gov.br",
+      "https://www.compras.rj.gov.br",
+      "https://licitacoes-e2.bb.com.br/aop-inter-estatico/",
+      "https://cotacao.banpara.b.br/portal/Mural.aspx",
+      "https://www.licitanet.com.br",
+      "https://bllcompras.com",
+      "https://www.portaldecompraspublicas.com.br",
+      "https://pncp.gov.br",
+    ];
+    const cleanUrl = (url || "").replace(/\/+$/, "").split("?")[0].split("#")[0];
+    const isBlockedUrl = BLOCKED_URLS.some(b => cleanUrl === b || cleanUrl === b + "/");
+    const effectiveUrl = isBlockedUrl ? null : url;
+
     // Strategy 0a: Parse CNPJ/ano/seq from PNCP URL pattern: /editais/CNPJ/ANO/SEQ
     let effectiveCnpj = cnpjOrgao;
     let effectiveAno = anoCompra;
@@ -477,9 +496,9 @@ Deno.serve(async (req) => {
       if (result) return result;
     }
 
-    // Strategy 2: Try direct URL download (linkSistemaOrigem)
-    if (url && url !== "https://pncp.gov.br" && !url.endsWith("/app/editais/")) {
-      const result = await tryDirectUrlDownload(url);
+    // Strategy 2: Try direct URL download (linkSistemaOrigem) - skip blocked URLs
+    if (effectiveUrl && effectiveUrl !== "https://pncp.gov.br" && !effectiveUrl.endsWith("/app/editais/")) {
+      const result = await tryDirectUrlDownload(effectiveUrl);
       if (result) return result;
     }
 
@@ -491,7 +510,7 @@ Deno.serve(async (req) => {
 
     // Strategy 4: Try Firecrawl to scrape the portal page for download links
     const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
-    if (FIRECRAWL_API_KEY && url) {
+    if (FIRECRAWL_API_KEY && effectiveUrl) {
       console.log(`Trying Firecrawl scrape: ${url}`);
       try {
         const fcResp = await fetch("https://api.firecrawl.dev/v1/scrape", {
