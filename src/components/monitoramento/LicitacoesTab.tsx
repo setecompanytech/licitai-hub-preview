@@ -46,6 +46,9 @@ type ResultadoBusca = {
   url?: string;
   pncpNumero?: string;
   cnpjOrgao?: string;
+  anoCompra?: number;
+  sequencialCompra?: number;
+  isMock?: boolean;
 };
 
 const PORTAIS = [
@@ -309,6 +312,14 @@ export default function LicitacoesTab() {
   };
 
   const handleDownloadEditalPortal = async (lic: Licitacao | ResultadoBusca) => {
+    const buscaLic = lic as ResultadoBusca;
+    
+    // Warn if mock data - no real identifiers to download
+    if (buscaLic.isMock) {
+      toast.warning('Esta licitação é de dados simulados. O download do edital só funciona com licitações reais do PNCP.');
+      return;
+    }
+    
     setDownloadingEdital(lic.id);
     toast.info('Buscando edital nos portais... Aguarde.');
     try {
@@ -330,6 +341,8 @@ export default function LicitacoesTab() {
             objeto: lic.objeto,
             pncpNumero: buscaLic.pncpNumero || null,
             cnpjOrgao: buscaLic.cnpjOrgao || null,
+            anoCompra: buscaLic.anoCompra || null,
+            sequencialCompra: buscaLic.sequencialCompra || null,
           }),
         }
       );

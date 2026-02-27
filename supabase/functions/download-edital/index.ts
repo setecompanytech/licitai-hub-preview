@@ -305,6 +305,14 @@ async function tryDirectUrlDownload(url: string): Promise<Response | null> {
   }
 }
 
+// Format date to yyyyMMdd for PNCP API
+function formatDatePNCP(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}${m}${d}`;
+}
+
 // Try PNCP search + download for non-PNCP portals
 async function tryPncpSearch(
   numero: string,
@@ -312,19 +320,23 @@ async function tryPncpSearch(
   objeto: string
 ): Promise<Response | null> {
   try {
-    // Search PNCP by term
-    const termo = numero !== "-" ? numero.replace(/[^\w\s]/g, " ").trim() : objeto.substring(0, 50);
+    const now = new Date();
+    const dataInicial = formatDatePNCP(new Date(now.getTime() - 180 * 86400000));
+    const dataFinal = formatDatePNCP(new Date(now.getTime() + 180 * 86400000));
+    
     const params = new URLSearchParams({
-      termoPesquisa: termo,
+      dataInicial,
+      dataFinal,
+      codigoModalidadeContratacao: "6", // Pregão Eletrônico
       pagina: "1",
-      tamanhoPagina: "5",
+      tamanhoPagina: "10",
     });
 
     const searchUrl = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params}`;
     console.log(`PNCP search fallback: ${searchUrl}`);
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), 10000);
 
     const resp = await fetch(searchUrl, {
       headers: { ...FETCH_HEADERS, Accept: "application/json" },
@@ -333,31 +345,40 @@ async function tryPncpSearch(
     clearTimeout(timeout);
 
     if (!resp.ok) {
-      await resp.text();
+      const errText = await resp.text();
+      console.log(`PNCP search error ${resp.status}: ${errText.substring(0, 200)}`);
       return null;
     }
 
     const data = await resp.json();
-    const items = data.data || data.resultado || [];
+    const items = data.data || [];
     
     if (items.length === 0) return null;
 
-    // Use first result to download documents
-    const item = items[0];
-    const cnpj = item.orgaoEntidade?.cnpj || item.cnpjCompra;
-    const parsed = parsePncpNumero(item.numeroControlePNCP || "");
-    
+    // Try to find a match by objeto or orgao
+    const searchTerms = [objeto, orgao, numero].filter(Boolean).map(s => s.toLowerCase());
+    let bestMatch = items[0];
+    for (const item of items) {
+      const text = `${item.objetoCompra || ""} ${item.orgaoEntidade?.razaoSocial || ""}`.toLowerCase();
+      if (searchTerms.some(t => text.includes(t))) {
+        bestMatch = item;
+        break;
+      }
+    }
+
+    // Use anoCompra + sequencialCompra directly if available
+    if (bestMatch.orgaoEntidade?.cnpj && bestMatch.anoCompra && bestMatch.sequencialCompra) {
+      return tryPncpDownload(
+        bestMatch.orgaoEntidade.cnpj,
+        String(bestMatch.anoCompra),
+        String(bestMatch.sequencialCompra)
+      );
+    }
+
+    // Fallback: parse numeroControlePNCP
+    const parsed = parsePncpNumero(bestMatch.numeroControlePNCP || "");
     if (parsed) {
       return tryPncpDownload(parsed.cnpj, parsed.ano, parsed.sequencial);
-    } else if (cnpj) {
-      // Try to extract year and sequencial from the control number
-      const ctrl = item.numeroControlePNCP || "";
-      const parts = ctrl.split("-");
-      if (parts.length >= 3) {
-        const seq = parts[2].split("/")[0];
-        const ano = parts[2].split("/")[1] || new Date().getFullYear().toString();
-        return tryPncpDownload(parts[0], ano, seq);
-      }
     }
 
     return null;
@@ -374,47 +395,44 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { numero, portal, url, orgao, objeto, cnpjOrgao, pncpNumero } = body;
+    const { numero, portal, url, orgao, objeto, cnpjOrgao, pncpNumero, anoCompra, sequencialCompra } = body;
 
-    if (!numero && !url) {
+    if (!numero && !url && !pncpNumero) {
       return new Response(
         JSON.stringify({ success: false, error: "Número ou URL do edital é obrigatório" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Download edital: num=${numero} portal=${portal} url=${url} pncp=${pncpNumero}`);
+    console.log(`Download edital: num=${numero} portal=${portal} pncp=${pncpNumero} cnpj=${cnpjOrgao} ano=${anoCompra} seq=${sequencialCompra}`);
 
-    // Strategy 1: If we have a PNCP control number, use it directly
-    const pncpParsed = parsePncpNumero(pncpNumero || numero || "");
+    // Strategy 0: If we have cnpjOrgao + anoCompra + sequencialCompra directly from PNCP API
+    if (cnpjOrgao && anoCompra && sequencialCompra) {
+      const cnpjClean = cnpjOrgao.replace(/[^\d]/g, "");
+      console.log(`Direct PNCP: cnpj=${cnpjClean} ano=${anoCompra} seq=${sequencialCompra}`);
+      const result = await tryPncpDownload(cnpjClean, String(anoCompra), String(sequencialCompra));
+      if (result) return result;
+    }
+
+    // Strategy 1: If we have a PNCP control number, parse and use it
+    const pncpParsed = parsePncpNumero(pncpNumero || "");
     if (pncpParsed) {
       console.log(`Parsed PNCP: cnpj=${pncpParsed.cnpj} ano=${pncpParsed.ano} seq=${pncpParsed.sequencial}`);
       const result = await tryPncpDownload(pncpParsed.cnpj, pncpParsed.ano, pncpParsed.sequencial);
       if (result) return result;
     }
 
-    // Strategy 2: If we have cnpjOrgao + numero, try PNCP directly
-    if (cnpjOrgao && numero) {
-      const numMatch = numero.match(/(\d+)\/(\d{4})/);
-      if (numMatch) {
-        const result = await tryPncpDownload(
-          cnpjOrgao.replace(/[^\d]/g, ""),
-          numMatch[2],
-          numMatch[1].padStart(6, "0")
-        );
-        if (result) return result;
-      }
-    }
-
-    // Strategy 3: Try direct URL download (linkSistemaOrigem)
-    if (url) {
+    // Strategy 2: Try direct URL download (linkSistemaOrigem)
+    if (url && url !== "https://pncp.gov.br" && !url.endsWith("/app/editais/")) {
       const result = await tryDirectUrlDownload(url);
       if (result) return result;
     }
 
-    // Strategy 4: Search PNCP by keywords and download
-    const searchResult = await tryPncpSearch(numero || "", orgao || "", objeto || "");
-    if (searchResult) return searchResult;
+    // Strategy 3: Search PNCP by keywords and download
+    if (objeto || orgao) {
+      const searchResult = await tryPncpSearch(numero || "", orgao || "", objeto || "");
+      if (searchResult) return searchResult;
+    }
 
     // No document found
     return new Response(
