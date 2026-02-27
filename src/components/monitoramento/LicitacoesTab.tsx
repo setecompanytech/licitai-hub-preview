@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import BuscaInteligenteTab from '@/components/monitoramento/BuscaInteligenteTab';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -457,13 +458,6 @@ export default function LicitacoesTab() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            {PORTAIS.map(p => (
-              <Button key={p.id} size="sm" variant="outline" className="text-[10px] h-7 px-2" asChild>
-                <a href={p.url} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="w-3 h-3 mr-1" /> {p.nome}
-                </a>
-              </Button>
-            ))}
           </div>
         </div>
 
@@ -721,6 +715,15 @@ export default function LicitacoesTab() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Busca Inteligente IA */}
+      <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm space-y-3">
+        <h3 className="font-semibold text-sm flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-accent" />
+          Busca Inteligente IA
+        </h3>
+        <BuscaInteligenteTab />
       </div>
     </div>
   );
