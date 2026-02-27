@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageCircle, Send, Plus, Clock, CheckCircle, AlertCircle, Bot, User } from 'lucide-react';
+import { MessageCircle, Send, Plus, Clock, CheckCircle, AlertCircle, Bot, User, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 
 type Ticket = {
@@ -40,6 +40,7 @@ export default function Suporte() {
   const [categoria, setCategoria] = useState('geral');
   const [prioridade, setPrioridade] = useState('normal');
   const [loading, setLoading] = useState(false);
+  const [filtroStatus, setFiltroStatus] = useState<string>('todos');
 
   // Chat IA
   const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([{ role: 'assistant', content: 'Olá! Sou o assistente do LicitIA. Como posso ajudar você hoje? Posso tirar dúvidas sobre funcionalidades, planos, cobrança ou problemas técnicos.' }]);
@@ -101,7 +102,7 @@ export default function Suporte() {
         <Tabs defaultValue="chat" className="space-y-6">
           <TabsList>
             <TabsTrigger value="chat"><Bot className="w-4 h-4 mr-1.5" /> Chat IA</TabsTrigger>
-            <TabsTrigger value="tickets"><MessageCircle className="w-4 h-4 mr-1.5" /> Meus Tickets</TabsTrigger>
+            <TabsTrigger value="tickets"><MessageCircle className="w-4 h-4 mr-1.5" /> Meus Chamados</TabsTrigger>
           </TabsList>
 
           <TabsContent value="chat">
@@ -149,13 +150,47 @@ export default function Suporte() {
 
           <TabsContent value="tickets">
             <div className="space-y-4">
-              {!showForm ? (
-                <Button onClick={() => setShowForm(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                  <Plus className="w-4 h-4 mr-1.5" /> Novo Ticket
-                </Button>
-              ) : (
+              {/* Stats summary */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: 'Abertos', count: tickets.filter(t => t.status === 'aberto').length, color: 'text-warning' },
+                  { label: 'Em Andamento', count: tickets.filter(t => t.status === 'em_andamento').length, color: 'text-info' },
+                  { label: 'Resolvidos', count: tickets.filter(t => t.status === 'resolvido').length, color: 'text-success' },
+                ].map(s => (
+                  <div key={s.label} className="bg-card rounded-xl border border-border/50 p-4 text-center">
+                    <p className={`text-2xl font-bold ${s.color}`}>{s.count}</p>
+                    <p className="text-xs text-muted-foreground">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Actions row */}
+              <div className="flex items-center justify-between gap-3">
+                {!showForm && (
+                  <Button onClick={() => setShowForm(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                    <Plus className="w-4 h-4 mr-1.5" /> Novo Chamado
+                  </Button>
+                )}
+                <div className="flex items-center gap-2 ml-auto">
+                  <Filter className="w-4 h-4 text-muted-foreground" />
+                  <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                    <SelectTrigger className="w-[160px] h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value="aberto">Abertos</SelectItem>
+                      <SelectItem value="em_andamento">Em Andamento</SelectItem>
+                      <SelectItem value="resolvido">Resolvidos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* New ticket form */}
+              {showForm && (
                 <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-                  <h3 className="font-semibold">Novo Ticket</h3>
+                  <h3 className="font-semibold">Novo Chamado</h3>
                   <Input placeholder="Assunto" value={assunto} onChange={e => setAssunto(e.target.value)} />
                   <div className="grid grid-cols-2 gap-4">
                     <Select value={categoria} onValueChange={setCategoria}>
@@ -179,43 +214,48 @@ export default function Suporte() {
                   </div>
                   <Textarea placeholder="Descreva seu problema em detalhes..." value={descricao} onChange={e => setDescricao(e.target.value)} rows={4} />
                   <div className="flex gap-2">
-                    <Button onClick={handleCreateTicket} disabled={loading} className="bg-accent hover:bg-accent/90 text-accent-foreground">Enviar Ticket</Button>
+                    <Button onClick={handleCreateTicket} disabled={loading} className="bg-accent hover:bg-accent/90 text-accent-foreground">Enviar Chamado</Button>
                     <Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
                   </div>
                 </div>
               )}
 
-              {tickets.length === 0 && !showForm && (
-                <div className="text-center py-12 text-muted-foreground">
-                  <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p>Nenhum ticket aberto. Use o chat IA ou crie um ticket.</p>
-                </div>
-              )}
-
-              {tickets.map(t => {
-                const sc = statusConfig[t.status] || statusConfig.aberto;
-                const Icon = sc.icon;
-                return (
-                  <div key={t.id} className="bg-card rounded-xl border border-border/50 p-5">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold">{t.assunto}</h3>
-                      <Badge className={sc.color}><Icon className="w-3 h-3 mr-1" />{sc.label}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-3">{t.descricao}</p>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="capitalize">{t.categoria}</span>
-                      <span>•</span>
-                      <span>{new Date(t.created_at).toLocaleDateString('pt-BR')}</span>
-                    </div>
-                    {t.resposta && (
-                      <div className="mt-4 p-3 rounded-lg bg-accent/5 border border-accent/10">
-                        <p className="text-xs font-semibold text-accent mb-1">Resposta da Equipe</p>
-                        <p className="text-sm">{t.resposta}</p>
-                      </div>
-                    )}
+              {/* Tickets list */}
+              {(() => {
+                const filtered = filtroStatus === 'todos' ? tickets : tickets.filter(t => t.status === filtroStatus);
+                if (filtered.length === 0) return (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p>{tickets.length === 0 ? 'Nenhum chamado aberto. Use o chat IA ou crie um chamado.' : 'Nenhum chamado com esse filtro.'}</p>
                   </div>
                 );
-              })}
+                return filtered.map(t => {
+                  const sc = statusConfig[t.status] || statusConfig.aberto;
+                  const Icon = sc.icon;
+                  return (
+                    <div key={t.id} className="bg-card rounded-xl border border-border/50 p-5">
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-semibold">{t.assunto}</h3>
+                        <Badge className={sc.color}><Icon className="w-3 h-3 mr-1" />{sc.label}</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-3">{t.descricao}</p>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span className="capitalize">{t.categoria}</span>
+                        <span>•</span>
+                        <span className="capitalize">{t.prioridade}</span>
+                        <span>•</span>
+                        <span>{new Date(t.created_at).toLocaleDateString('pt-BR')}</span>
+                      </div>
+                      {t.resposta && (
+                        <div className="mt-4 p-3 rounded-lg bg-accent/5 border border-accent/10">
+                          <p className="text-xs font-semibold text-accent mb-1">Resposta da Equipe</p>
+                          <p className="text-sm">{t.resposta}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </TabsContent>
         </Tabs>
