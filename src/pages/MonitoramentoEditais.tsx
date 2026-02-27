@@ -1,26 +1,53 @@
-import { useState } from 'react';
-import AppLayout from '@/components/layout/AppLayout';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
+import { useState } from "react";
+import AppLayout from "@/components/layout/AppLayout";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import {
-  Download, Search, FileText, AlertTriangle, XCircle, Clock,
-  CheckCircle2, RefreshCw, Globe, Building2, Filter, CalendarDays,
-  PauseCircle, FileCheck, Award, Ban, ArrowUpDown, List, FileDown, FileSpreadsheet, Newspaper
-} from 'lucide-react';
-import LicitacoesTab from '@/components/monitoramento/LicitacoesTab';
-import DiariosOficiaisTab from '@/components/monitoramento/DiariosOficiaisTab';
-import { downloadCSV, downloadTextReport, downloadPDF } from '@/lib/download-utils';
-import { toast } from 'sonner';
+  Download,
+  Search,
+  FileText,
+  AlertTriangle,
+  XCircle,
+  Clock,
+  CheckCircle2,
+  RefreshCw,
+  Globe,
+  Building2,
+  Filter,
+  CalendarDays,
+  PauseCircle,
+  FileCheck,
+  Award,
+  Ban,
+  ArrowUpDown,
+  List,
+  FileDown,
+  FileSpreadsheet,
+  Newspaper,
+} from "lucide-react";
+import LicitacoesTab from "@/components/monitoramento/LicitacoesTab";
+import DiariosOficiaisTab from "@/components/monitoramento/DiariosOficiaisTab";
+import { downloadCSV, downloadTextReport, downloadPDF } from "@/lib/download-utils";
+import { toast } from "sonner";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type TipoDocumento =
-  | 'edital' | 'aviso' | 'cancelamento' | 'suspenso'
-  | 'adiado' | 'aditivado' | 'adjudicado' | 'homologado';
+  | "edital"
+  | "aviso"
+  | "cancelamento"
+  | "suspenso"
+  | "adiado"
+  | "aditivado"
+  | "adjudicado"
+  | "homologado";
 
 type Documento = {
   id: string;
@@ -36,47 +63,160 @@ type Documento = {
 };
 
 const tipoConfig: Record<TipoDocumento, { label: string; icon: typeof FileText; color: string }> = {
-  edital: { label: 'Edital', icon: FileText, color: 'bg-info/15 text-info border-info/30' },
-  aviso: { label: 'Aviso de Licitação', icon: CalendarDays, color: 'bg-accent/15 text-accent border-accent/30' },
-  cancelamento: { label: 'Cancelado', icon: XCircle, color: 'bg-destructive/15 text-destructive border-destructive/30' },
-  suspenso: { label: 'Suspenso', icon: PauseCircle, color: 'bg-warning/15 text-warning border-warning/30' },
-  adiado: { label: 'Adiado', icon: Clock, color: 'bg-warning/15 text-warning border-warning/30' },
-  aditivado: { label: 'Aditivado', icon: ArrowUpDown, color: 'bg-primary/15 text-primary border-primary/30' },
-  adjudicado: { label: 'Adjudicado', icon: Award, color: 'bg-success/15 text-success border-success/30' },
-  homologado: { label: 'Homologado', icon: FileCheck, color: 'bg-success/15 text-success border-success/30' },
+  edital: { label: "Edital", icon: FileText, color: "bg-info/15 text-info border-info/30" },
+  aviso: { label: "Aviso de Licitação", icon: CalendarDays, color: "bg-accent/15 text-accent border-accent/30" },
+  cancelamento: {
+    label: "Cancelado",
+    icon: XCircle,
+    color: "bg-destructive/15 text-destructive border-destructive/30",
+  },
+  suspenso: { label: "Suspenso", icon: PauseCircle, color: "bg-warning/15 text-warning border-warning/30" },
+  adiado: { label: "Adiado", icon: Clock, color: "bg-warning/15 text-warning border-warning/30" },
+  aditivado: { label: "Aditivado", icon: ArrowUpDown, color: "bg-primary/15 text-primary border-primary/30" },
+  adjudicado: { label: "Adjudicado", icon: Award, color: "bg-success/15 text-success border-success/30" },
+  homologado: { label: "Homologado", icon: FileCheck, color: "bg-success/15 text-success border-success/30" },
 };
 
 const portaisMonitorados = [
-  { id: 'pncp', nome: 'PNCP', url: 'pncp.gov.br', ativo: true },
-  { id: 'compras-gov', nome: 'Compras.gov.br', url: 'comprasnet.gov.br', ativo: true },
-  { id: 'bll', nome: 'BLL Compras', url: 'bllcompras.com', ativo: true },
-  { id: 'blc', nome: 'BLC Licitações', url: 'blc.com.br', ativo: false },
-  { id: 'licitanet', nome: 'Licitanet', url: 'licitanet.com.br', ativo: true },
-  { id: 'licitacoes-e', nome: 'Licitações-e (BB)', url: 'licitacoes-e.com.br', ativo: true },
-  { id: 'portal-compras', nome: 'Portal de Compras Públicas', url: 'portaldecompraspublicas.com.br', ativo: true },
-  { id: 'tcmpa', nome: 'TCM-PA', url: 'tcm.pa.gov.br', ativo: true },
-  { id: 'compras-gov-br', nome: 'Compras Governamentais', url: 'comprasgovernamentais.gov.br', ativo: false },
+  { id: "pncp", nome: "PNCP", url: "https://www.gov.br/pncp/pt-br", ativo: true },
+  { id: "compras-gov", nome: "Compras.gov.br", url: "comprasnet.gov.br", ativo: true },
+  { id: "bll", nome: "BLL Compras", url: "bllcompras.com", ativo: true },
+  { id: "blc", nome: "BLC Licitações", url: "blc.com.br", ativo: false },
+  { id: "licitanet", nome: "Licitanet", url: "licitanet.com.br", ativo: true },
+  { id: "licitacoes-e", nome: "Licitações-e (BB)", url: "licitacoes-e.com.br", ativo: true },
+  { id: "portal-compras", nome: "Portal de Compras Públicas", url: "portaldecompraspublicas.com.br", ativo: true },
+  { id: "tcmpa", nome: "TCM-PA", url: "tcm.pa.gov.br", ativo: true },
+  { id: "compras-gov-br", nome: "Compras Governamentais", url: "comprasgovernamentais.gov.br", ativo: false },
 ];
 
 const mockDocumentos: Documento[] = [
-  { id: '1', tipo: 'edital', numero: 'PE-001/2026', orgao: 'Prefeitura de Belém', portal: 'PNCP', objeto: 'Construção de ponte sobre o Rio Guamá – Lote 3', dataPublicacao: '2026-02-18', valor: 12500000, baixado: true, url: '#' },
-  { id: '2', tipo: 'aviso', numero: 'AV-045/2026', orgao: 'SEDOP/PA', portal: 'Compras.gov.br', objeto: 'Aviso de licitação para pavimentação asfáltica BR-316', dataPublicacao: '2026-02-19', valor: 8900000, baixado: false, url: '#' },
-  { id: '3', tipo: 'cancelamento', numero: 'PE-012/2026', orgao: 'SEMAS/PA', portal: 'BLL Compras', objeto: 'Cancelamento – Reforma do prédio sede', dataPublicacao: '2026-02-17', valor: 3200000, baixado: false, url: '#' },
-  { id: '4', tipo: 'suspenso', numero: 'CC-003/2026', orgao: 'DNIT', portal: 'Licitações-e (BB)', objeto: 'Suspensão – Obra de contenção na PA-150', dataPublicacao: '2026-02-16', valor: 5600000, baixado: false, url: '#' },
-  { id: '5', tipo: 'adiado', numero: 'PE-078/2026', orgao: 'SETRAN/PA', portal: 'PNCP', objeto: 'Adiamento – Sinalização viária em Ananindeua', dataPublicacao: '2026-02-15', valor: 1800000, baixado: true, url: '#' },
-  { id: '6', tipo: 'aditivado', numero: 'CT-022/2025', orgao: 'Prefeitura de Marituba', portal: 'Portal de Compras Públicas', objeto: 'Aditivo – Ampliação de escola municipal', dataPublicacao: '2026-02-20', valor: 2100000, baixado: false, url: '#' },
-  { id: '7', tipo: 'adjudicado', numero: 'PE-099/2025', orgao: 'COSANPA', portal: 'Compras.gov.br', objeto: 'Adjudicação – Sistema de abastecimento de água', dataPublicacao: '2026-02-14', valor: 7400000, baixado: true, url: '#' },
-  { id: '8', tipo: 'homologado', numero: 'CC-001/2026', orgao: 'Governo do Pará', portal: 'PNCP', objeto: 'Homologação – Construção do novo terminal rodoviário', dataPublicacao: '2026-02-13', valor: 45000000, baixado: true, url: '#' },
-  { id: '9', tipo: 'edital', numero: 'PE-155/2026', orgao: 'TCM-PA', portal: 'TCM-PA', objeto: 'Reforma e adequação do prédio do tribunal', dataPublicacao: '2026-02-21', valor: 6300000, baixado: false, url: '#' },
-  { id: '10', tipo: 'aviso', numero: 'AV-088/2026', orgao: 'UFPA', portal: 'Compras.gov.br', objeto: 'Aviso de licitação para construção de laboratório', dataPublicacao: '2026-02-20', valor: 4200000, baixado: false, url: '#' },
+  {
+    id: "1",
+    tipo: "edital",
+    numero: "PE-001/2026",
+    orgao: "Prefeitura de Belém",
+    portal: "PNCP",
+    objeto: "Construção de ponte sobre o Rio Guamá – Lote 3",
+    dataPublicacao: "2026-02-18",
+    valor: 12500000,
+    baixado: true,
+    url: "#",
+  },
+  {
+    id: "2",
+    tipo: "aviso",
+    numero: "AV-045/2026",
+    orgao: "SEDOP/PA",
+    portal: "Compras.gov.br",
+    objeto: "Aviso de licitação para pavimentação asfáltica BR-316",
+    dataPublicacao: "2026-02-19",
+    valor: 8900000,
+    baixado: false,
+    url: "#",
+  },
+  {
+    id: "3",
+    tipo: "cancelamento",
+    numero: "PE-012/2026",
+    orgao: "SEMAS/PA",
+    portal: "BLL Compras",
+    objeto: "Cancelamento – Reforma do prédio sede",
+    dataPublicacao: "2026-02-17",
+    valor: 3200000,
+    baixado: false,
+    url: "#",
+  },
+  {
+    id: "4",
+    tipo: "suspenso",
+    numero: "CC-003/2026",
+    orgao: "DNIT",
+    portal: "Licitações-e (BB)",
+    objeto: "Suspensão – Obra de contenção na PA-150",
+    dataPublicacao: "2026-02-16",
+    valor: 5600000,
+    baixado: false,
+    url: "#",
+  },
+  {
+    id: "5",
+    tipo: "adiado",
+    numero: "PE-078/2026",
+    orgao: "SETRAN/PA",
+    portal: "PNCP",
+    objeto: "Adiamento – Sinalização viária em Ananindeua",
+    dataPublicacao: "2026-02-15",
+    valor: 1800000,
+    baixado: true,
+    url: "#",
+  },
+  {
+    id: "6",
+    tipo: "aditivado",
+    numero: "CT-022/2025",
+    orgao: "Prefeitura de Marituba",
+    portal: "Portal de Compras Públicas",
+    objeto: "Aditivo – Ampliação de escola municipal",
+    dataPublicacao: "2026-02-20",
+    valor: 2100000,
+    baixado: false,
+    url: "#",
+  },
+  {
+    id: "7",
+    tipo: "adjudicado",
+    numero: "PE-099/2025",
+    orgao: "COSANPA",
+    portal: "Compras.gov.br",
+    objeto: "Adjudicação – Sistema de abastecimento de água",
+    dataPublicacao: "2026-02-14",
+    valor: 7400000,
+    baixado: true,
+    url: "#",
+  },
+  {
+    id: "8",
+    tipo: "homologado",
+    numero: "CC-001/2026",
+    orgao: "Governo do Pará",
+    portal: "PNCP",
+    objeto: "Homologação – Construção do novo terminal rodoviário",
+    dataPublicacao: "2026-02-13",
+    valor: 45000000,
+    baixado: true,
+    url: "#",
+  },
+  {
+    id: "9",
+    tipo: "edital",
+    numero: "PE-155/2026",
+    orgao: "TCM-PA",
+    portal: "TCM-PA",
+    objeto: "Reforma e adequação do prédio do tribunal",
+    dataPublicacao: "2026-02-21",
+    valor: 6300000,
+    baixado: false,
+    url: "#",
+  },
+  {
+    id: "10",
+    tipo: "aviso",
+    numero: "AV-088/2026",
+    orgao: "UFPA",
+    portal: "Compras.gov.br",
+    objeto: "Aviso de licitação para construção de laboratório",
+    dataPublicacao: "2026-02-20",
+    valor: 4200000,
+    baixado: false,
+    url: "#",
+  },
 ];
 
-const formatCurrency = (v: number) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const formatCurrency = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function MonitoramentoEditais() {
-  const [busca, setBusca] = useState('');
-  const [tipoFiltro, setTipoFiltro] = useState<TipoDocumento | 'todos'>('todos');
+  const [busca, setBusca] = useState("");
+  const [tipoFiltro, setTipoFiltro] = useState<TipoDocumento | "todos">("todos");
   const [pesquisando, setPesquisando] = useState(false);
   const [progresso, setProgresso] = useState(0);
 
@@ -86,7 +226,7 @@ export default function MonitoramentoEditais() {
       doc.objeto.toLowerCase().includes(busca.toLowerCase()) ||
       doc.numero.toLowerCase().includes(busca.toLowerCase()) ||
       doc.orgao.toLowerCase().includes(busca.toLowerCase());
-    const matchTipo = tipoFiltro === 'todos' || doc.tipo === tipoFiltro;
+    const matchTipo = tipoFiltro === "todos" || doc.tipo === tipoFiltro;
     return matchBusca && matchTipo;
   });
 
@@ -105,8 +245,7 @@ export default function MonitoramentoEditais() {
     }, 400);
   };
 
-  const totalPorTipo = (tipo: TipoDocumento) =>
-    mockDocumentos.filter((d) => d.tipo === tipo).length;
+  const totalPorTipo = (tipo: TipoDocumento) => mockDocumentos.filter((d) => d.tipo === tipo).length;
 
   return (
     <AppLayout>
@@ -136,9 +275,13 @@ export default function MonitoramentoEditais() {
               className="bg-accent hover:bg-accent/90 text-accent-foreground"
             >
               {pesquisando ? (
-                <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Pesquisando...</>
+                <>
+                  <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Pesquisando...
+                </>
               ) : (
-                <><Search className="w-4 h-4 mr-1" /> Pesquisar Portais</>
+                <>
+                  <Search className="w-4 h-4 mr-1" /> Pesquisar Portais
+                </>
               )}
             </Button>
           </div>
@@ -148,7 +291,9 @@ export default function MonitoramentoEditais() {
         {pesquisando && (
           <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Pesquisando em {portaisMonitorados.filter(p => p.ativo).length} portais...</span>
+              <span className="text-muted-foreground">
+                Pesquisando em {portaisMonitorados.filter((p) => p.ativo).length} portais...
+              </span>
               <span className="font-medium">{Math.min(100, Math.round(progresso))}%</span>
             </div>
             <Progress value={Math.min(100, progresso)} className="h-2" />
@@ -167,10 +312,10 @@ export default function MonitoramentoEditais() {
             return (
               <button
                 key={tipo}
-                onClick={() => setTipoFiltro(tipoFiltro === tipo ? 'todos' : tipo)}
-                className={`stat-card text-center cursor-pointer ${tipoFiltro === tipo ? 'ring-2 ring-accent' : ''}`}
+                onClick={() => setTipoFiltro(tipoFiltro === tipo ? "todos" : tipo)}
+                className={`stat-card text-center cursor-pointer ${tipoFiltro === tipo ? "ring-2 ring-accent" : ""}`}
               >
-                <Icon className={`w-5 h-5 mx-auto mb-1 ${cfg.color.split(' ')[1]}`} />
+                <Icon className={`w-5 h-5 mx-auto mb-1 ${cfg.color.split(" ")[1]}`} />
                 <p className="text-lg font-bold">{count}</p>
                 <p className="text-[10px] text-muted-foreground leading-tight">{cfg.label}</p>
               </button>
@@ -180,9 +325,15 @@ export default function MonitoramentoEditais() {
 
         <Tabs defaultValue="licitacoes" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="licitacoes"><List className="w-4 h-4 mr-1" />Licitações</TabsTrigger>
+            <TabsTrigger value="licitacoes">
+              <List className="w-4 h-4 mr-1" />
+              Licitações
+            </TabsTrigger>
             <TabsTrigger value="resultados">Resultados ({documentosFiltrados.length})</TabsTrigger>
-            <TabsTrigger value="diarios"><Newspaper className="w-4 h-4 mr-1" />Diários Oficiais</TabsTrigger>
+            <TabsTrigger value="diarios">
+              <Newspaper className="w-4 h-4 mr-1" />
+              Diários Oficiais
+            </TabsTrigger>
             <TabsTrigger value="portais">Portais Monitorados</TabsTrigger>
             <TabsTrigger value="config">Configuração de Pesquisa</TabsTrigger>
           </TabsList>
@@ -210,7 +361,14 @@ export default function MonitoramentoEditais() {
                   className="pl-10"
                 />
               </div>
-              <Button variant="outline" size="sm" onClick={() => { setBusca(''); setTipoFiltro('todos'); }}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setBusca("");
+                  setTipoFiltro("todos");
+                }}
+              >
                 <Filter className="w-4 h-4 mr-1" /> Limpar Filtros
               </Button>
               <DropdownMenu>
@@ -220,42 +378,61 @@ export default function MonitoramentoEditais() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => {
-                    downloadCSV(
-                      'editais-monitoramento',
-                      ['Número', 'Tipo', 'Órgão', 'Portal', 'Objeto', 'Data Publicação', 'Valor', 'Status'],
-                      documentosFiltrados.map(d => [
-                        d.numero, tipoConfig[d.tipo].label, d.orgao, d.portal, d.objeto,
-                        new Date(d.dataPublicacao).toLocaleDateString('pt-BR'),
-                        formatCurrency(d.valor), d.baixado ? 'Baixado' : 'Pendente',
-                      ])
-                    );
-                    toast.success('CSV exportado com sucesso!');
-                  }}>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      downloadCSV(
+                        "editais-monitoramento",
+                        ["Número", "Tipo", "Órgão", "Portal", "Objeto", "Data Publicação", "Valor", "Status"],
+                        documentosFiltrados.map((d) => [
+                          d.numero,
+                          tipoConfig[d.tipo].label,
+                          d.orgao,
+                          d.portal,
+                          d.objeto,
+                          new Date(d.dataPublicacao).toLocaleDateString("pt-BR"),
+                          formatCurrency(d.valor),
+                          d.baixado ? "Baixado" : "Pendente",
+                        ]),
+                      );
+                      toast.success("CSV exportado com sucesso!");
+                    }}
+                  >
                     <FileSpreadsheet className="w-4 h-4 mr-2" /> Exportar CSV
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    const lines = documentosFiltrados.map(d =>
-                      `${d.numero} | ${tipoConfig[d.tipo].label} | ${d.orgao}\n  Objeto: ${d.objeto}\n  Portal: ${d.portal} | Data: ${new Date(d.dataPublicacao).toLocaleDateString('pt-BR')} | Valor: ${formatCurrency(d.valor)}\n`
-                    );
-                    downloadTextReport('editais-relatorio', `RELATÓRIO DE EDITAIS MONITORADOS\nGerado em: ${new Date().toLocaleString('pt-BR')}\nTotal: ${documentosFiltrados.length} documentos\n${'='.repeat(60)}\n\n${lines.join('\n')}`);
-                    toast.success('Relatório exportado com sucesso!');
-                  }}>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      const lines = documentosFiltrados.map(
+                        (d) =>
+                          `${d.numero} | ${tipoConfig[d.tipo].label} | ${d.orgao}\n  Objeto: ${d.objeto}\n  Portal: ${d.portal} | Data: ${new Date(d.dataPublicacao).toLocaleDateString("pt-BR")} | Valor: ${formatCurrency(d.valor)}\n`,
+                      );
+                      downloadTextReport(
+                        "editais-relatorio",
+                        `RELATÓRIO DE EDITAIS MONITORADOS\nGerado em: ${new Date().toLocaleString("pt-BR")}\nTotal: ${documentosFiltrados.length} documentos\n${"=".repeat(60)}\n\n${lines.join("\n")}`,
+                      );
+                      toast.success("Relatório exportado com sucesso!");
+                    }}
+                  >
                     <FileDown className="w-4 h-4 mr-2" /> Exportar Relatório TXT
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    downloadPDF(
-                      'editais-monitoramento',
-                      'Relatório de Editais Monitorados',
-                      ['Número', 'Tipo', 'Órgão', 'Portal', 'Objeto', 'Data', 'Valor'],
-                      documentosFiltrados.map(d => [
-                        d.numero, tipoConfig[d.tipo].label, d.orgao, d.portal, d.objeto,
-                        new Date(d.dataPublicacao).toLocaleDateString('pt-BR'),
-                        formatCurrency(d.valor),
-                      ])
-                    );
-                    toast.success('PDF exportado com sucesso!');
-                  }}>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      downloadPDF(
+                        "editais-monitoramento",
+                        "Relatório de Editais Monitorados",
+                        ["Número", "Tipo", "Órgão", "Portal", "Objeto", "Data", "Valor"],
+                        documentosFiltrados.map((d) => [
+                          d.numero,
+                          tipoConfig[d.tipo].label,
+                          d.orgao,
+                          d.portal,
+                          d.objeto,
+                          new Date(d.dataPublicacao).toLocaleDateString("pt-BR"),
+                          formatCurrency(d.valor),
+                        ]),
+                      );
+                      toast.success("PDF exportado com sucesso!");
+                    }}
+                  >
                     <FileText className="w-4 h-4 mr-2" /> Exportar PDF
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -279,7 +456,7 @@ export default function MonitoramentoEditais() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="font-semibold text-sm">{doc.numero}</span>
-                          <Badge variant="outline" className={cfg.color + ' text-[10px]'}>
+                          <Badge variant="outline" className={cfg.color + " text-[10px]"}>
                             {cfg.label}
                           </Badge>
                           <span className="text-xs text-muted-foreground">• {doc.portal}</span>
@@ -288,7 +465,7 @@ export default function MonitoramentoEditais() {
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                           <span>{doc.orgao}</span>
                           <span>•</span>
-                          <span>{new Date(doc.dataPublicacao).toLocaleDateString('pt-BR')}</span>
+                          <span>{new Date(doc.dataPublicacao).toLocaleDateString("pt-BR")}</span>
                           <span>•</span>
                           <span className="font-medium text-foreground">{formatCurrency(doc.valor)}</span>
                         </div>
@@ -334,16 +511,16 @@ export default function MonitoramentoEditais() {
                       variant="outline"
                       className={
                         portal.ativo
-                          ? 'bg-success/15 text-success border-success/30'
-                          : 'bg-muted text-muted-foreground border-border'
+                          ? "bg-success/15 text-success border-success/30"
+                          : "bg-muted text-muted-foreground border-border"
                       }
                     >
-                      {portal.ativo ? 'Ativo' : 'Inativo'}
+                      {portal.ativo ? "Ativo" : "Inativo"}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mb-3">{portal.url}</p>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Busca automática: {portal.ativo ? 'Sim' : 'Não'}</span>
+                    <span>Busca automática: {portal.ativo ? "Sim" : "Não"}</span>
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline">
                         <FileText className="w-3 h-3 mr-1" /> Cadastrar
@@ -370,7 +547,9 @@ export default function MonitoramentoEditais() {
                 <div>
                   <label className="text-xs text-muted-foreground">CNAEs Secundários (cadastrados)</label>
                   <Input defaultValue="42.13-8, 41.20-4" className="mt-1" readOnly />
-                  <p className="text-[10px] text-muted-foreground mt-1">Gerencie em Configurações → CNAEs Secundários</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Gerencie em Configurações → CNAEs Secundários
+                  </p>
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">Palavras-chave</label>
@@ -397,15 +576,13 @@ export default function MonitoramentoEditais() {
                 <h4 className="text-xs font-semibold mb-2 text-muted-foreground">Tipos de documento para buscar</h4>
                 <div className="flex flex-wrap gap-2">
                   {(Object.keys(tipoConfig) as TipoDocumento[]).map((tipo) => (
-                    <Badge key={tipo} variant="outline" className={tipoConfig[tipo].color + ' cursor-pointer'}>
+                    <Badge key={tipo} variant="outline" className={tipoConfig[tipo].color + " cursor-pointer"}>
                       <CheckCircle2 className="w-3 h-3 mr-1" /> {tipoConfig[tipo].label}
                     </Badge>
                   ))}
                 </div>
               </div>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                Salvar Configuração
-              </Button>
+              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">Salvar Configuração</Button>
             </div>
           </TabsContent>
         </Tabs>
