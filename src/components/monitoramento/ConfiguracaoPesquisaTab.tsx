@@ -219,27 +219,23 @@ export default function ConfiguracaoPesquisaTab() {
 
       if (error) throw error;
 
-      const cnaePrincipal = data?.cnaePrincipal || data?.cnae_fiscal
-        ? `${data.cnae_fiscal || data.cnaePrincipal}${data.cnae_fiscal_descricao ? ' - ' + data.cnae_fiscal_descricao : ''}`
-        : empresaAtiva.cnae_principal;
+      // Sync CNAE Principal
+      const cnaePrincipal = data?.cnaePrincipal || (data?.cnae_fiscal
+        ? `${data.cnae_fiscal} - ${data.cnae_fiscal_descricao || ''}`
+        : null);
 
       if (cnaePrincipal && cnaePrincipal !== empresaAtiva.cnae_principal) {
         await supabase.from('empresas').update({ cnae_principal: cnaePrincipal }).eq('id', empresaAtiva.id);
+        toast.success(`CNAE Principal atualizado: ${cnaePrincipal.length > 50 ? cnaePrincipal.slice(0, 50) + '…' : cnaePrincipal}`);
+      } else if (empresaAtiva.cnae_principal) {
+        toast.info('CNAE Principal já está atualizado');
       }
 
+      // Sync CNAEs Secundários
       const secundarios: string[] = [];
-      if (data?.cnaesSecundarios && Array.isArray(data.cnaesSecundarios)) {
-        data.cnaesSecundarios.forEach((c: any) => {
-          if (typeof c === 'string') {
-            secundarios.push(c);
-          } else {
-            const code = c.codigo?.toString() || '';
-            const desc = c.descricao || '';
-            if (code) secundarios.push(`${code} - ${desc}`.trim());
-          }
-        });
-      } else if (data?.cnaes_secundarios && Array.isArray(data.cnaes_secundarios)) {
-        data.cnaes_secundarios.forEach((c: any) => {
+      const rawSecundarios = data?.cnaesSecundarios || data?.cnaes_secundarios || [];
+      if (Array.isArray(rawSecundarios)) {
+        rawSecundarios.forEach((c: any) => {
           if (typeof c === 'string') {
             secundarios.push(c);
           } else {
