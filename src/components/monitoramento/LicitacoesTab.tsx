@@ -371,12 +371,12 @@ export default function LicitacoesTab() {
 
   const hasEditalDownload = (lic: ResultadoBusca): boolean => {
     if (lic.isMock) return false;
+    // Explicitly marked as no download by the backend
+    if ((lic as any).tem_download === false) return false;
     // Has PNCP data for direct API download
     if (lic.pncpNumero || (lic.cnpjOrgao && lic.anoCompra && lic.sequencialCompra)) return true;
     // Has a specific (non-generic) URL
     if (lic.url && !isGenericPortalUrl(lic.url)) return true;
-    // Has enough data for PNCP search fallback
-    if (lic.orgao && lic.objeto && lic.orgao !== '-') return true;
     return false;
   };
 
