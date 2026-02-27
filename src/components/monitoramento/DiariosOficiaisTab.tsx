@@ -158,7 +158,8 @@ export default function DiariosOficiaisTab() {
 
       const data = await response.json();
       if (data.success) {
-        toast.success(`${data.total} atos encontrados em ${data.diarios_pesquisados?.length || 0} diários oficiais`);
+        const fontes = data.diarios_pesquisados?.join(', ') || 'portais oficiais';
+        toast.success(`${data.total} atos reais encontrados: ${fontes}`);
         await carregarAtos();
       } else {
         toast.error(data.error || 'Erro na busca');
