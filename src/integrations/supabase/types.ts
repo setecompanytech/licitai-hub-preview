@@ -845,6 +845,7 @@ export type Database = {
           portal: string | null
           relevancia_score: number | null
           status: string | null
+          texto_integral: string | null
           tipo: string | null
           titulo: string
           uf: string | null
@@ -866,6 +867,7 @@ export type Database = {
           portal?: string | null
           relevancia_score?: number | null
           status?: string | null
+          texto_integral?: string | null
           tipo?: string | null
           titulo: string
           uf?: string | null
@@ -887,6 +889,7 @@ export type Database = {
           portal?: string | null
           relevancia_score?: number | null
           status?: string | null
+          texto_integral?: string | null
           tipo?: string | null
           titulo?: string
           uf?: string | null

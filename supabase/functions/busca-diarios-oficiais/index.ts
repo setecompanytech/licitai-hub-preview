@@ -481,6 +481,77 @@ Deno.serve(async (req) => {
     // Limit to top 100 results
     todosResultados = todosResultados.slice(0, 100);
 
+    // Build texto_integral in gazette format for each result
+    function montarTextoIntegral(r: any): string {
+      const partes: string[] = [];
+
+      // Tipo do ato
+      const tipoLabel: Record<string, string> = {
+        aviso_licitacao: "AVISO DE LICITAÇÃO",
+        edital: "EDITAL",
+        suspensao: "AVISO DE SUSPENSÃO",
+        cancelamento: "AVISO DE CANCELAMENTO",
+        adiamento: "AVISO DE ADIAMENTO",
+        revogacao: "AVISO DE REVOGAÇÃO",
+        homologacao: "TERMO DE HOMOLOGAÇÃO",
+        adjudicacao: "TERMO DE ADJUDICAÇÃO",
+        aditivamento: "EXTRATO DE TERMO ADITIVO",
+        errata: "ERRATA",
+        resultado: "RESULTADO DE JULGAMENTO",
+        contrato: "EXTRATO DE CONTRATO",
+        ata_registro_precos: "ATA DE REGISTRO DE PREÇOS",
+      };
+
+      partes.push(tipoLabel[r.tipo] || "PUBLICAÇÃO");
+
+      // Modalidade e número
+      if (r.modalidade) {
+        partes[0] += `. ${r.modalidade.toUpperCase()}`;
+      }
+
+      // Objeto
+      if (r.titulo) {
+        partes.push(`OBJETO: ${r.titulo.toUpperCase()}`);
+      }
+
+      // Órgão
+      if (r.orgao) {
+        partes.push(`ÓRGÃO: ${r.orgao.toUpperCase()}`);
+      }
+
+      // Valor estimado
+      if (r.valor_estimado) {
+        const valorFmt = Number(r.valor_estimado).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+        partes.push(`VALOR ESTIMADO: ${valorFmt}`);
+      }
+
+      // Data
+      if (r.data_publicacao) {
+        const d = new Date(r.data_publicacao + "T12:00:00");
+        const dataFmt = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+        partes.push(`DATA DE PUBLICAÇÃO: ${dataFmt}`);
+      }
+
+      // Local/município
+      if (r.municipio && r.uf) {
+        partes.push(`LOCAL: ${r.municipio.toUpperCase()}/${r.uf}`);
+      } else if (r.uf) {
+        partes.push(`UF: ${r.uf}`);
+      }
+
+      // Portal de origem
+      if (r.portal) {
+        partes.push(`FONTE: ${r.portal.toUpperCase()}`);
+      }
+
+      // URL do edital
+      if (r.url) {
+        partes.push(`EDITAL DISPONÍVEL EM: ${r.url}`);
+      }
+
+      return partes.join(". ") + ".";
+    }
+
     // Prepare records for database
     const registros = todosResultados.map((r) => ({
       user_id: user.id,
@@ -498,6 +569,7 @@ Deno.serve(async (req) => {
       cnae_compativel: true,
       lido: false,
       status: r.tipo || "novo",
+      texto_integral: montarTextoIntegral(r),
     }));
 
     // Save to database
