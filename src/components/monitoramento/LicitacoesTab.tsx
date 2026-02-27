@@ -123,6 +123,16 @@ export default function LicitacoesTab() {
     try {
       const queryText = queryOverride || search || 'licitação';
 
+      const portalMap: Record<string, string> = {
+        'PNCP': 'pncp',
+        'Compras Governamentais': 'comprasnet',
+        'Licitações-e (BB)': 'licitacoes-e',
+        'BNC': 'bnc',
+        'Banparanet PA': 'banparanet',
+        'BEC/SP': 'becsp',
+        'Compras Públicas RJ': 'comprasrj',
+      };
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/busca-licitacoes`,
         {
@@ -135,6 +145,9 @@ export default function LicitacoesTab() {
             query: queryText,
             uf: ufFilter !== 'all' ? ufFilter : undefined,
             modalidade: modalidadeFilter !== 'all' ? modalidadeFilter : undefined,
+            portal: portalFilter !== 'all' ? (portalMap[portalFilter] || portalFilter) : 'all',
+            dataInicio: dataInicio ? dataInicio.toISOString().split('T')[0] : undefined,
+            dataFim: dataFim ? dataFim.toISOString().split('T')[0] : undefined,
             pagina: 1,
           }),
         }
@@ -156,14 +169,18 @@ export default function LicitacoesTab() {
         valor_estimado: item.valor_estimado || item.valorTotalEstimado || null,
         uf: item.uf || item.unidadeOrgao?.ufSigla || null,
         municipio: item.municipio || item.unidadeOrgao?.municipioNome || null,
-        data_encerramento: item.data_encerramento || item.dataEncerramentoProposta || null,
-        portal: data.fonte || 'PNCP',
+        data_encerramento: item.data_encerramento || item.data_abertura || item.dataEncerramentoProposta || null,
+        portal: item.portal || data.fonte || 'PNCP',
         url: item.url || item.linkSistemaOrigem || null,
       }));
 
       setResultadosBusca(items);
       setModoResultados('busca');
-      toast.success(`${items.length} licitações encontradas via ${data.fonte || 'PNCP'}`);
+
+      const portaisMsg = data.portais_consultados
+        ? data.portais_consultados.join(', ')
+        : data.fonte || 'portais';
+      toast.success(`${items.length} licitações encontradas em ${portaisMsg}`);
     } catch (err) {
       toast.error('Erro ao conectar com o serviço de busca');
       console.error(err);
@@ -373,6 +390,17 @@ export default function LicitacoesTab() {
             {ufsDisponiveis.sort().map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Button
+          onClick={() => handleBuscarLicitacoes()}
+          disabled={buscando}
+          className="bg-accent hover:bg-accent/90 text-accent-foreground h-10 px-4"
+        >
+          {buscando ? (
+            <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Buscando...</>
+          ) : (
+            <><Search className="w-4 h-4 mr-2" /> Buscar nos Portais</>
+          )}
+        </Button>
       </div>
 
       <p className="text-sm text-muted-foreground">

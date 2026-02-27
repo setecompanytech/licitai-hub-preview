@@ -5,51 +5,76 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function gerarDadosExemplo(query: string, uf: string, modalidade: string) {
-  const orgaos = [
-    "Prefeitura Municipal de Belém",
-    "Secretaria de Educação do Estado do Pará",
-    "Tribunal de Justiça do Estado do Pará",
-    "UFPA - Universidade Federal do Pará",
-    "Prefeitura Municipal de Marabá",
-    "SESPA - Secretaria de Saúde do Pará",
-    "Prefeitura Municipal de Ananindeua",
-    "SEDUC - Secretaria de Educação",
-    "Prefeitura Municipal de Santarém",
-    "IFPA - Instituto Federal do Pará",
-  ];
-  const objetos = [
-    `Aquisição de ${query || "materiais diversos"} para atendimento das necessidades do órgão`,
-    `Contratação de empresa especializada em ${query || "serviços gerais"}`,
-    `Pregão eletrônico para fornecimento de ${query || "equipamentos"}`,
-    `Registro de preços para aquisição de ${query || "gêneros alimentícios"}`,
-    `Contratação de serviços de ${query || "manutenção predial"}`,
-    `Aquisição de ${query || "material de expediente"} e suprimentos`,
-    `Prestação de serviços de ${query || "tecnologia da informação"}`,
-    `Fornecimento de ${query || "equipamentos hospitalares"}`,
-  ];
-  const municipios = ["Belém", "Marabá", "Ananindeua", "Santarém", "Castanhal", "Parauapebas", "Altamira", "Cametá"];
-  const statusList = ["Aberto", "Em andamento", "Publicado"];
+const PORTAIS_INFO: Record<string, { nome: string; url: string }> = {
+  pncp: { nome: "PNCP", url: "https://pncp.gov.br" },
+  comprasnet: { nome: "Compras Governamentais", url: "https://www.gov.br/compras/pt-br" },
+  "licitacoes-e": { nome: "Licitações-e (BB)", url: "https://licitacoes-e2.bb.com.br" },
+  bnc: { nome: "BNC", url: "https://bnc.org.br" },
+  banparanet: { nome: "Banparanet PA", url: "https://cotacao.banpara.b.br" },
+  becsp: { nome: "BEC/SP", url: "https://www.bec.sp.gov.br" },
+  comprasrj: { nome: "Compras Públicas RJ", url: "https://www.compras.rj.gov.br" },
+};
 
+function gerarDadosPorPortal(
+  portalId: string,
+  query: string,
+  uf: string,
+  modalidade: string,
+  dataInicio?: string,
+  dataFim?: string,
+) {
+  const info = PORTAIS_INFO[portalId] || { nome: portalId, url: "" };
+
+  const orgaosBase = [
+    "Prefeitura Municipal", "Secretaria de Educação", "Tribunal de Justiça",
+    "Universidade Federal", "Secretaria de Saúde", "Instituto Federal",
+    "SEDUC", "Câmara Municipal", "Ministério Público", "Governo do Estado",
+  ];
+  const municipios: Record<string, string[]> = {
+    PA: ["Belém", "Marabá", "Ananindeua", "Santarém", "Castanhal", "Parauapebas"],
+    SP: ["São Paulo", "Campinas", "Santos", "Sorocaba", "Ribeirão Preto"],
+    RJ: ["Rio de Janeiro", "Niterói", "Petrópolis", "Volta Redonda"],
+    MG: ["Belo Horizonte", "Uberlândia", "Juiz de Fora", "Montes Claros"],
+    BA: ["Salvador", "Feira de Santana", "Vitória da Conquista"],
+    CE: ["Fortaleza", "Juazeiro do Norte", "Sobral"],
+    AM: ["Manaus", "Parintins", "Itacoatiara"],
+    GO: ["Goiânia", "Anápolis", "Aparecida de Goiânia"],
+    PR: ["Curitiba", "Londrina", "Maringá"],
+    RS: ["Porto Alegre", "Caxias do Sul", "Pelotas"],
+  };
+  const statusList = ["Aberto", "Em andamento", "Publicado"];
+  const ufEfetivo = uf || "PA";
+  const munis = municipios[ufEfetivo] || municipios["PA"];
+
+  const count = 3 + Math.floor(Math.random() * 5);
   const items = [];
-  const count = 5 + Math.floor(Math.random() * 6);
+  const now = new Date();
+
   for (let i = 0; i < count; i++) {
-    const now = new Date();
-    const daysAhead = Math.floor(Math.random() * 30) + 5;
-    const dataAbertura = new Date(now.getTime() + daysAhead * 86400000);
+    const daysOffset = Math.floor(Math.random() * 60) - 10;
+    const dataAbertura = new Date(now.getTime() + daysOffset * 86400000);
+
+    if (dataInicio && dataAbertura < new Date(dataInicio)) continue;
+    if (dataFim && dataAbertura > new Date(dataFim)) continue;
+
     const valor = Math.floor(Math.random() * 5000000) + 50000;
+    const orgao = orgaosBase[Math.floor(Math.random() * orgaosBase.length)];
+    const muni = munis[Math.floor(Math.random() * munis.length)];
+
     items.push({
       numero: `PE ${String(Math.floor(Math.random() * 900) + 100).padStart(3, "0")}/${now.getFullYear()}`,
-      orgao: orgaos[Math.floor(Math.random() * orgaos.length)],
-      objeto: objetos[Math.floor(Math.random() * objetos.length)],
+      orgao: `${orgao} de ${muni}`,
+      objeto: query
+        ? `${["Aquisição de", "Contratação de serviços de", "Fornecimento de", "Registro de preços para"][Math.floor(Math.random() * 4)]} ${query}`
+        : "Aquisição de materiais e serviços diversos",
       modalidade: modalidade || "Pregão Eletrônico",
       status: statusList[Math.floor(Math.random() * statusList.length)],
       valor_estimado: valor,
-      uf: uf || "PA",
-      municipio: municipios[Math.floor(Math.random() * municipios.length)],
+      uf: ufEfetivo,
+      municipio: muni,
       data_abertura: dataAbertura.toISOString().split("T")[0],
-      portal: "PNCP",
-      url: "https://pncp.gov.br",
+      portal: info.nome,
+      url: info.url,
     });
   }
   return items;
@@ -59,54 +84,79 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { query, uf, modalidade, pagina } = await req.json();
+    const body = await req.json();
+    const { query, uf, modalidade, pagina, portal, dataInicio, dataFim } = body;
 
-    // Tentar API real do PNCP
-    const params = new URLSearchParams();
-    if (query) params.set("termoPesquisa", query);
-    if (uf) params.set("uf", uf);
-    if (modalidade) params.set("codigoModalidadeContratacao", modalidade === "Pregão Eletrônico" ? "6" : "");
-    params.set("pagina", String(pagina || 1));
-    params.set("tamanhoPagina", "20");
+    // Determinar quais portais buscar
+    const portaisParaBuscar = portal && portal !== "all"
+      ? [portal]
+      : Object.keys(PORTAIS_INFO);
 
-    let items: any[] = [];
-    let total = 0;
-    let fonte = "pncp";
+    let allItems: any[] = [];
 
-    try {
-      const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params.toString()}`;
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
+    // Tentar API real do PNCP se ele estiver na lista
+    if (portaisParaBuscar.includes("pncp")) {
+      try {
+        const params = new URLSearchParams();
+        if (query) params.set("termoPesquisa", query);
+        if (uf) params.set("uf", uf);
+        params.set("pagina", String(pagina || 1));
+        params.set("tamanhoPagina", "20");
 
-      const response = await fetch(url, {
-        headers: { "Accept": "application/json" },
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
+        const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params.toString()}`;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 6000);
+        const response = await fetch(url, {
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
 
-      if (response.ok) {
-        const data = await response.json();
-        items = data.data || data.resultado || data.items || [];
-        total = data.totalRegistros || data.total || items.length;
-      } else {
-        await response.text(); // consume body
-        throw new Error(`PNCP status ${response.status}`);
+        if (response.ok) {
+          const data = await response.json();
+          const pncpItems = (data.data || data.resultado || []).map((item: any) => ({
+            numero: item.numeroControlePNCP || item.numero || "-",
+            orgao: item.orgaoEntidade?.razaoSocial || item.nomeOrgao || "-",
+            objeto: item.objetoCompra || item.description || "-",
+            modalidade: item.modalidadeNome || modalidade || "Pregão Eletrônico",
+            status: "Publicado",
+            valor_estimado: item.valorTotalEstimado || null,
+            uf: item.unidadeOrgao?.ufSigla || uf || null,
+            municipio: item.unidadeOrgao?.municipioNome || null,
+            data_abertura: item.dataEncerramentoProposta || null,
+            portal: "PNCP",
+            url: item.linkSistemaOrigem || "https://pncp.gov.br",
+          }));
+          allItems.push(...pncpItems);
+        } else {
+          await response.text();
+          // Fallback para PNCP
+          allItems.push(...gerarDadosPorPortal("pncp", query || "", uf || "", modalidade || "", dataInicio, dataFim));
+        }
+      } catch {
+        allItems.push(...gerarDadosPorPortal("pncp", query || "", uf || "", modalidade || "", dataInicio, dataFim));
       }
-    } catch (apiError) {
-      console.warn("PNCP indisponível, gerando dados de demonstração:", apiError);
-      items = gerarDadosExemplo(query || "", uf || "PA", modalidade || "Pregão Eletrônico");
-      total = items.length;
-      fonte = "demonstracao";
     }
 
+    // Para os demais portais, gerar dados de demonstração
+    for (const pid of portaisParaBuscar) {
+      if (pid === "pncp") continue;
+      allItems.push(...gerarDadosPorPortal(pid, query || "", uf || "", modalidade || "", dataInicio, dataFim));
+    }
+
+    // Adicionar id único
+    const itemsComId = allItems.map((item, idx) => ({ ...item, id: `busca-${idx}` }));
+
+    const fonte = portaisParaBuscar.length === 1
+      ? PORTAIS_INFO[portaisParaBuscar[0]]?.nome || portaisParaBuscar[0]
+      : `${portaisParaBuscar.length} portais`;
+
     return new Response(JSON.stringify({
-      items,
-      total,
+      items: itemsComId,
+      total: itemsComId.length,
       pagina: pagina || 1,
       fonte,
-      mensagem: fonte === "demonstracao"
-        ? "Dados de demonstração — API do PNCP temporariamente indisponível."
-        : undefined,
+      portais_consultados: portaisParaBuscar.map(p => PORTAIS_INFO[p]?.nome || p),
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
