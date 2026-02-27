@@ -136,6 +136,7 @@ export default function LicitacoesTab() {
   const [portaisSelecionados, setPortaisSelecionados] = useState<string[]>(['pncp']);
   const [downloadingEdital, setDownloadingEdital] = useState<string | null>(null);
   const [comAnaliseIA, setComAnaliseIA] = useState(true);
+  const [portalFilter, setPortalFilter] = useState<string>('all');
   const resultadosRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -449,12 +450,13 @@ export default function LicitacoesTab() {
       l.numero.toLowerCase().includes(s);
     const matchStatus = statusFilter === 'all' || l.status === statusFilter;
     const matchModalidade = modalidadeFilter === 'all' || l.modalidade === modalidadeFilter;
+    const matchPortal = portalFilter === 'all' || (l.portal || '').toLowerCase().includes(portalFilter.toLowerCase());
     const matchDataInicio = !dataInicio || (l.data_encerramento && new Date(l.data_encerramento) >= dataInicio);
     const matchDataFim = !dataFim || (l.data_encerramento && new Date(l.data_encerramento) <= new Date(dataFim.getTime() + 86400000));
     const matchUf = ufFilter === 'all'
       ? (regiaoFilter === 'all' || ufsDisponiveis.includes(l.uf || ''))
       : l.uf === ufFilter;
-    return matchSearch && matchStatus && matchModalidade && matchUf && matchDataInicio && matchDataFim;
+    return matchSearch && matchStatus && matchModalidade && matchPortal && matchUf && matchDataInicio && matchDataFim;
   });
 
   return (
@@ -648,6 +650,15 @@ export default function LicitacoesTab() {
                   <SelectItem value="Concorrência">Concorrência</SelectItem>
                   <SelectItem value="Tomada de Preços">Tomada de Preços</SelectItem>
                   <SelectItem value="Dispensa">Dispensa</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={portalFilter} onValueChange={setPortalFilter}>
+                <SelectTrigger className="w-[150px] h-8 text-xs bg-background border-border/50">
+                  <Globe className="w-3 h-3 mr-1 text-muted-foreground" /><SelectValue placeholder="Portal" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos portais</SelectItem>
+                  {PORTAIS.map(p => <SelectItem key={p.id} value={p.shortName}>{p.shortName}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
