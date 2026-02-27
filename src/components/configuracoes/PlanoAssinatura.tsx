@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,23 @@ export default function PlanoAssinatura() {
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [cycle, setCycle] = useState<BillingCycle>('mensal');
   const [loading, setLoading] = useState(true);
+  const [highlight, setHighlight] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Auto-scroll when coming from banner
+  useEffect(() => {
+    if (searchParams.get('scroll') === 'planos' && !loading) {
+      sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setHighlight(true);
+      const timer = setTimeout(() => {
+        setHighlight(false);
+        searchParams.delete('scroll');
+        setSearchParams(searchParams, { replace: true });
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, searchParams]);
 
   useEffect(() => {
     (async () => {
@@ -86,7 +104,14 @@ export default function PlanoAssinatura() {
   }
 
   return (
-    <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+    <section
+      ref={sectionRef}
+      id="planos"
+      className={cn(
+        'bg-card rounded-xl border p-5 shadow-sm transition-all duration-700',
+        highlight ? 'border-accent ring-2 ring-accent/40 shadow-lg' : 'border-border/50'
+      )}
+    >
       <div className="flex items-center gap-2 mb-5">
         <CreditCard className="w-5 h-5 text-accent" />
         <h2 className="text-sm font-semibold">Plano & Assinatura</h2>
