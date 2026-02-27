@@ -94,7 +94,12 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
         .from('certificados')
         .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        toast.error(`Erro ao enviar certificado: ${uploadError.message}`);
+        setLoading(false);
+        return;
+      }
 
       const empresa = await addEmpresa({
         cnpj: cnpj.trim(),
@@ -103,13 +108,18 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
         cnae_principal: cnaePrincipal.trim() || undefined,
         uf: uf.trim() || undefined,
         municipio: municipio.trim() || undefined,
+        endereco: endereco.trim() || undefined,
         certificado_path: filePath,
         certificado_nome: file.name,
         certificado_tipo: tipo,
         certificado_validade: validade || undefined,
       });
 
-      if (!empresa) throw new Error('Erro ao cadastrar empresa');
+      if (!empresa) {
+        toast.error('Erro ao cadastrar empresa. Verifique os dados e tente novamente.');
+        setLoading(false);
+        return;
+      }
 
       toast.success(`Empresa ${razaoSocial} cadastrada com sucesso!`);
       setCnpj(''); setRazaoSocial(''); setNomeFantasia(''); setValidade('');
@@ -117,6 +127,7 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
       setFile(null);
       onSuccess?.();
     } catch (err: any) {
+      console.error('Cadastro error:', err);
       toast.error(err.message || 'Erro ao cadastrar empresa');
     } finally {
       setLoading(false);
