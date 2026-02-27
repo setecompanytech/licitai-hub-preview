@@ -218,8 +218,10 @@ export default function DiariosOficiaisTab() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Erro ao baixar documento');
+        // Edge function couldn't find a downloadable file — open the URL directly
+        window.open(ato.url, '_blank');
+        toast.info('Publicação aberta no portal. O documento será exibido na página do diário oficial.');
+        return;
       }
 
       const data = await response.json();
@@ -248,11 +250,19 @@ export default function DiariosOficiaisTab() {
           toast.success(`Abrindo: ${doc.nome || 'documento'}`);
         }
       } else {
-        toast.error('Documento não disponível para download direto. Os dados dos diários oficiais podem não ter arquivos públicos acessíveis.');
+        // No downloadable file found — open the original URL
+        window.open(ato.url, '_blank');
+        toast.info('Publicação aberta no portal do diário oficial.');
       }
     } catch (err: any) {
       console.error('Erro download:', err);
-      toast.error(err.message || 'Erro ao baixar publicação');
+      // On any error, fallback to opening the URL directly
+      if (ato.url) {
+        window.open(ato.url, '_blank');
+        toast.info('Publicação aberta no portal do diário oficial.');
+      } else {
+        toast.error('Erro ao acessar a publicação');
+      }
     } finally {
       setDownloadingId(null);
     }
