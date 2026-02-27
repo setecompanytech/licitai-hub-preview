@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Building2, RefreshCw } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { CheckCircle2, Building2, RefreshCw, Sparkles } from 'lucide-react';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,13 +31,75 @@ const tipoColors: Record<string, string> = {
   homologado: 'bg-success/15 text-success border-success/30',
 };
 
-type ConfigData = {
-  palavras_chave: string;
-  ufs_interesse: string;
-  valor_minimo: string;
-  valor_maximo: string;
-  frequencia: string;
-};
+const ALL_UFS = [
+  { sigla: 'AC', nome: 'Acre' },
+  { sigla: 'AL', nome: 'Alagoas' },
+  { sigla: 'AP', nome: 'Amapá' },
+  { sigla: 'AM', nome: 'Amazonas' },
+  { sigla: 'BA', nome: 'Bahia' },
+  { sigla: 'CE', nome: 'Ceará' },
+  { sigla: 'DF', nome: 'Distrito Federal' },
+  { sigla: 'ES', nome: 'Espírito Santo' },
+  { sigla: 'GO', nome: 'Goiás' },
+  { sigla: 'MA', nome: 'Maranhão' },
+  { sigla: 'MT', nome: 'Mato Grosso' },
+  { sigla: 'MS', nome: 'Mato Grosso do Sul' },
+  { sigla: 'MG', nome: 'Minas Gerais' },
+  { sigla: 'PA', nome: 'Pará' },
+  { sigla: 'PB', nome: 'Paraíba' },
+  { sigla: 'PR', nome: 'Paraná' },
+  { sigla: 'PE', nome: 'Pernambuco' },
+  { sigla: 'PI', nome: 'Piauí' },
+  { sigla: 'RJ', nome: 'Rio de Janeiro' },
+  { sigla: 'RN', nome: 'Rio Grande do Norte' },
+  { sigla: 'RS', nome: 'Rio Grande do Sul' },
+  { sigla: 'RO', nome: 'Rondônia' },
+  { sigla: 'RR', nome: 'Roraima' },
+  { sigla: 'SC', nome: 'Santa Catarina' },
+  { sigla: 'SP', nome: 'São Paulo' },
+  { sigla: 'SE', nome: 'Sergipe' },
+  { sigla: 'TO', nome: 'Tocantins' },
+];
+
+// Stop-words to filter out from CNAE descriptions
+const STOP_WORDS = new Set([
+  'de', 'do', 'da', 'dos', 'das', 'e', 'em', 'para', 'por', 'com', 'sem', 'não',
+  'ou', 'a', 'o', 'as', 'os', 'um', 'uma', 'uns', 'umas', 'que', 'se', 'na', 'no',
+  'nas', 'nos', 'ao', 'aos', 'à', 'às', 'etc', 'n.e.', 'n.e', 'ne', 'outros',
+  'outras', 'outro', 'outra', 'inclusive', 'exceto', 'quando', 'sob', 'sobre',
+]);
+
+function extractKeywordsFromCnaes(cnaePrincipal: string | null, cnaesSecundarios: string[]): string[] {
+  const allDescriptions: string[] = [];
+
+  // Extract description part after the code (e.g. "42.11-1 - Construção de rodovias" -> "Construção de rodovias")
+  const extractDesc = (cnae: string) => {
+    const parts = cnae.split(/[-–]\s*/);
+    // Take everything after the first code-like segment
+    if (parts.length >= 2) {
+      // Skip the first part if it looks like a code
+      const codePattern = /^\d/;
+      const descParts = parts.filter((p, i) => i > 0 || !codePattern.test(p.trim()));
+      return descParts.join(' ').trim();
+    }
+    return cnae;
+  };
+
+  if (cnaePrincipal) allDescriptions.push(extractDesc(cnaePrincipal));
+  cnaesSecundarios.forEach(c => allDescriptions.push(extractDesc(c)));
+
+  const keywords = new Set<string>();
+  allDescriptions.forEach(desc => {
+    desc
+      .toLowerCase()
+      .replace(/[^a-záàâãéèêíïóôõúüç\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 2 && !STOP_WORDS.has(w))
+      .forEach(w => keywords.add(w));
+  });
+
+  return Array.from(keywords).sort();
+}
 
 export default function ConfiguracaoPesquisaTab() {
   const { empresaAtiva } = useEmpresa();
@@ -44,15 +107,13 @@ export default function ConfiguracaoPesquisaTab() {
   const [cnaesSecundarios, setCnaesSecundarios] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [config, setConfig] = useState<ConfigData>({
-    palavras_chave: '',
-    ufs_interesse: 'AC, AL, AP, AM, BA, CE, DF, ES, GO, MA, MT, MS, MG, PA, PB, PR, PE, PI, RJ, RN, RS, RO, RR, SC, SP, SE, TO',
-    valor_minimo: '',
-    valor_maximo: '',
-    frequencia: 'A cada 30 minutos',
-  });
+  const [selectedUfs, setSelectedUfs] = useState<Set<string>>(new Set(ALL_UFS.map(u => u.sigla)));
+  const [palavrasChave, setPalavrasChave] = useState<string[]>([]);
+  const [palavraManual, setPalavraManual] = useState('');
+  const [valorMinimo, setValorMinimo] = useState('');
+  const [valorMaximo, setValorMaximo] = useState('');
 
-  // Load config + CNAEs from DB
+  // Load config from DB
   useEffect(() => {
     if (!user) return;
     const load = async () => {
@@ -64,13 +125,12 @@ export default function ConfiguracaoPesquisaTab() {
         .maybeSingle();
 
       if (data) {
-        setConfig({
-          palavras_chave: (data.palavras_chave || []).join(', '),
-          ufs_interesse: (data.ufs_interesse || []).join(', '),
-          valor_minimo: data.valor_minimo?.toString() || '',
-          valor_maximo: data.valor_maximo?.toString() || '',
-          frequencia: 'A cada 30 minutos',
-        });
+        if (data.ufs_interesse && data.ufs_interesse.length > 0) {
+          setSelectedUfs(new Set(data.ufs_interesse));
+        }
+        if (data.palavras_chave) setPalavrasChave(data.palavras_chave);
+        setValorMinimo(data.valor_minimo?.toString() || '');
+        setValorMaximo(data.valor_maximo?.toString() || '');
         setCnaesSecundarios(data.cnaes_monitorados || []);
       }
       setLoading(false);
@@ -78,21 +138,55 @@ export default function ConfiguracaoPesquisaTab() {
     load();
   }, [user]);
 
+  const toggleUf = (sigla: string) => {
+    setSelectedUfs(prev => {
+      const next = new Set(prev);
+      if (next.has(sigla)) next.delete(sigla); else next.add(sigla);
+      return next;
+    });
+  };
+
+  const selectAllUfs = () => setSelectedUfs(new Set(ALL_UFS.map(u => u.sigla)));
+  const deselectAllUfs = () => setSelectedUfs(new Set());
+
+  // Extract keywords from CNAEs
+  const handleExtractKeywords = () => {
+    const extracted = extractKeywordsFromCnaes(empresaAtiva?.cnae_principal || null, cnaesSecundarios);
+    if (extracted.length === 0) {
+      toast.info('Nenhuma palavra-chave extraída. Sincronize os CNAEs primeiro.');
+      return;
+    }
+    // Merge with existing, avoiding duplicates
+    const merged = new Set([...palavrasChave, ...extracted]);
+    setPalavrasChave(Array.from(merged));
+    toast.success(`${extracted.length} palavras-chave extraídas dos CNAEs`);
+  };
+
+  const addPalavraManual = () => {
+    const words = palavraManual.split(',').map(w => w.trim().toLowerCase()).filter(w => w.length > 1);
+    if (words.length === 0) return;
+    setPalavrasChave(prev => Array.from(new Set([...prev, ...words])));
+    setPalavraManual('');
+  };
+
+  const removePalavra = (word: string) => {
+    setPalavrasChave(prev => prev.filter(w => w !== word));
+  };
+
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
 
     const payload = {
       user_id: user.id,
-      palavras_chave: config.palavras_chave.split(',').map(s => s.trim()).filter(Boolean),
-      ufs_interesse: config.ufs_interesse.split(',').map(s => s.trim()).filter(Boolean),
-      valor_minimo: config.valor_minimo ? parseFloat(config.valor_minimo.replace(/\./g, '').replace(',', '.')) : null,
-      valor_maximo: config.valor_maximo ? parseFloat(config.valor_maximo.replace(/\./g, '').replace(',', '.')) : null,
+      palavras_chave: palavrasChave,
+      ufs_interesse: Array.from(selectedUfs),
+      valor_minimo: valorMinimo ? parseFloat(valorMinimo.replace(/\./g, '').replace(',', '.')) : null,
+      valor_maximo: valorMaximo ? parseFloat(valorMaximo.replace(/\./g, '').replace(',', '.')) : null,
       cnaes_monitorados: cnaesSecundarios,
       updated_at: new Date().toISOString(),
     };
 
-    // Upsert
     const { data: existing } = await supabase
       .from('configuracoes')
       .select('id')
@@ -116,8 +210,6 @@ export default function ConfiguracaoPesquisaTab() {
       return;
     }
 
-    // The CNAE principal comes from empresa. For secondary CNAEs,
-    // we can also check the consulta-cnpj endpoint for full data.
     toast.info('Buscando CNAEs do CNPJ...');
 
     try {
@@ -131,12 +223,10 @@ export default function ConfiguracaoPesquisaTab() {
         ? `${data.cnae_fiscal} - ${data.cnae_fiscal_descricao || ''}`
         : empresaAtiva.cnae_principal;
 
-      // Update empresa cnae_principal if different
       if (cnaePrincipal && cnaePrincipal !== empresaAtiva.cnae_principal) {
         await supabase.from('empresas').update({ cnae_principal: cnaePrincipal }).eq('id', empresaAtiva.id);
       }
 
-      // Extract secondary CNAEs
       const secundarios: string[] = [];
       if (data?.cnaes_secundarios && Array.isArray(data.cnaes_secundarios)) {
         data.cnaes_secundarios.forEach((c: any) => {
@@ -163,11 +253,11 @@ export default function ConfiguracaoPesquisaTab() {
   };
 
   return (
-    <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4">
+    <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-5">
       <h3 className="text-sm font-semibold">Configuração de Pesquisa Automática</h3>
 
       <div className="grid grid-cols-2 gap-4">
-        {/* CNAE Principal - from empresa */}
+        {/* CNAE Principal */}
         <div>
           <label className="text-xs text-muted-foreground">CNAE Principal</label>
           <div className="flex gap-2 mt-1">
@@ -220,38 +310,107 @@ export default function ConfiguracaoPesquisaTab() {
               </p>
             )}
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1">
-            Clique em "Sincronizar CNPJ" para buscar automaticamente ou gerencie em Configurações → CNAEs Secundários
-          </p>
         </div>
+      </div>
 
-        <div>
-          <label className="text-xs text-muted-foreground">Palavras-chave</label>
-          <Input
-            value={config.palavras_chave}
-            onChange={(e) => setConfig({ ...config, palavras_chave: e.target.value })}
-            placeholder="construção, pavimentação, obra, reforma"
-            className="mt-1"
-          />
+      {/* Palavras-chave */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs text-muted-foreground">
+            Palavras-chave ({palavrasChave.length})
+          </label>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleExtractKeywords}
+            disabled={!empresaAtiva && cnaesSecundarios.length === 0}
+            className="h-7 text-xs"
+          >
+            <Sparkles className="w-3 h-3 mr-1" />
+            Extrair dos CNAEs
+          </Button>
         </div>
-        <div>
-          <label className="text-xs text-muted-foreground">UFs monitoradas</label>
-          <Input
-            value={config.ufs_interesse}
-            onChange={(e) => setConfig({ ...config, ufs_interesse: e.target.value })}
-            placeholder="PA, MA, AP, TO"
-            className="mt-1"
-          />
+        <div className="p-2 rounded-lg border border-border/50 min-h-[38px] max-h-28 overflow-y-auto flex flex-wrap gap-1.5 mb-2">
+          {palavrasChave.length > 0 ? (
+            palavrasChave.map((word) => (
+              <Badge
+                key={word}
+                variant="outline"
+                className="bg-accent/10 text-accent border-accent/20 text-[10px] pr-1 cursor-pointer hover:bg-destructive/10"
+                onClick={() => removePalavra(word)}
+                title="Clique para remover"
+              >
+                {word}
+                <span className="ml-1 text-destructive">×</span>
+              </Badge>
+            ))
+          ) : (
+            <p className="text-[10px] text-muted-foreground italic">
+              Extraia dos CNAEs ou adicione manualmente
+            </p>
+          )}
         </div>
+        <div className="flex gap-2">
+          <Input
+            value={palavraManual}
+            onChange={(e) => setPalavraManual(e.target.value)}
+            placeholder="Adicionar palavra-chave (separe por vírgula)"
+            className="flex-1 h-8 text-xs"
+            onKeyDown={(e) => e.key === 'Enter' && addPalavraManual()}
+          />
+          <Button size="sm" variant="outline" onClick={addPalavraManual} className="h-8 text-xs">
+            Adicionar
+          </Button>
+        </div>
+      </div>
+
+      {/* UFs Monitoradas */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs text-muted-foreground">
+            UFs monitoradas ({selectedUfs.size} de {ALL_UFS.length})
+          </label>
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={selectAllUfs} className="h-6 text-[10px] px-2">
+              Selecionar todas
+            </Button>
+            <Button size="sm" variant="ghost" onClick={deselectAllUfs} className="h-6 text-[10px] px-2">
+              Limpar
+            </Button>
+          </div>
+        </div>
+        <div className="grid grid-cols-9 gap-1.5 p-3 rounded-lg border border-border/50 bg-muted/20">
+          {ALL_UFS.map((uf) => (
+            <label
+              key={uf.sigla}
+              className={`flex items-center gap-1.5 p-1.5 rounded-md cursor-pointer transition-colors text-xs
+                ${selectedUfs.has(uf.sigla)
+                  ? 'bg-accent/15 text-accent border border-accent/30'
+                  : 'bg-card border border-border/30 text-muted-foreground hover:border-accent/50'
+                }`}
+              title={uf.nome}
+            >
+              <Checkbox
+                checked={selectedUfs.has(uf.sigla)}
+                onCheckedChange={() => toggleUf(uf.sigla)}
+                className="h-3 w-3"
+              />
+              <span className="font-medium">{uf.sigla}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
         <div>
           <label className="text-xs text-muted-foreground">Frequência de busca</label>
-          <Input value={config.frequencia} className="mt-1" readOnly />
+          <Input value="A cada 30 minutos" className="mt-1" readOnly />
         </div>
         <div>
           <label className="text-xs text-muted-foreground">Valor mínimo (R$)</label>
           <Input
-            value={config.valor_minimo}
-            onChange={(e) => setConfig({ ...config, valor_minimo: e.target.value })}
+            value={valorMinimo}
+            onChange={(e) => setValorMinimo(e.target.value)}
             placeholder="500.000"
             className="mt-1"
           />
@@ -259,8 +418,8 @@ export default function ConfiguracaoPesquisaTab() {
         <div>
           <label className="text-xs text-muted-foreground">Valor máximo (R$)</label>
           <Input
-            value={config.valor_maximo}
-            onChange={(e) => setConfig({ ...config, valor_maximo: e.target.value })}
+            value={valorMaximo}
+            onChange={(e) => setValorMaximo(e.target.value)}
             placeholder="100.000.000"
             className="mt-1"
           />
