@@ -12,6 +12,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Zap,
   Crosshair,
   Shield,
@@ -32,33 +33,79 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-  { icon: Download, label: 'Monitoramento de Editais', path: '/monitoramento-editais' },
-  { icon: MessageSquare, label: 'Chat e Mural', path: '/monitoramento-chat' },
-  { icon: Bell, label: 'Boletins Diários', path: '/boletins' },
-  { icon: MessageSquare, label: 'WhatsApp Setores', path: '/whatsapp-setores' },
-  { icon: Target, label: 'Licitações Estratégicas', path: '/licitacoes-estrategicas' },
-  { icon: TrendingUp, label: 'Análise de Mercado', path: '/analise-mercado' },
-  { icon: Kanban, label: 'Kanban', path: '/kanban' },
-  { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
-  { icon: Users, label: 'Concorrentes', path: '/concorrentes' },
-  { icon: Shield, label: 'Documentos', path: '/documentos' },
-  { icon: ClipboardCheck, label: 'Assessoria Cadastral', path: '/assessoria-cadastral' },
-  { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
-  { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
-  { icon: Search, label: 'Proposta Técnica', path: '/proposta-tecnica' },
-  { icon: Archive, label: 'Histórico / Desempenho', path: '/historico-licitacoes' },
-  { icon: BookOpen, label: 'Blog', path: '/blog' },
-  { icon: Download, label: 'E-book', path: '/ebook' },
-  { icon: Bot, label: 'Assistente IA', path: '/assistente' },
-  { icon: BarChart3, label: 'Analytics', path: '/analytics' },
-  { icon: Building2, label: 'Empresas', path: '/empresas' },
-  { icon: HeadphonesIcon, label: 'Suporte', path: '/suporte' },
-  { icon: Settings, label: 'Configurações', path: '/configuracoes' },
+interface NavItem {
+  icon: React.ElementType;
+  label: string;
+  path: string;
+}
+
+interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
+
+const navGroups: NavGroup[] = [
+  {
+    title: 'Painel',
+    items: [
+      { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+      { icon: BarChart3, label: 'Analytics', path: '/analytics' },
+    ],
+  },
+  {
+    title: 'Monitoramento',
+    items: [
+      { icon: Download, label: 'Editais', path: '/monitoramento-editais' },
+      { icon: Bell, label: 'Boletins Diários', path: '/boletins' },
+      { icon: MessageSquare, label: 'Chat e Mural', path: '/monitoramento-chat' },
+      { icon: MessageSquare, label: 'WhatsApp Setores', path: '/whatsapp-setores' },
+    ],
+  },
+  {
+    title: 'Gestão de Licitações',
+    items: [
+      { icon: Target, label: 'Estratégicas', path: '/licitacoes-estrategicas' },
+      { icon: Kanban, label: 'Kanban', path: '/kanban' },
+      { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
+      { icon: Archive, label: 'Histórico', path: '/historico-licitacoes' },
+    ],
+  },
+  {
+    title: 'Inteligência',
+    items: [
+      { icon: TrendingUp, label: 'Análise de Mercado', path: '/analise-mercado' },
+      { icon: Users, label: 'Concorrentes', path: '/concorrentes' },
+      { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
+      { icon: Search, label: 'Proposta Técnica', path: '/proposta-tecnica' },
+    ],
+  },
+  {
+    title: 'Jurídico & Docs',
+    items: [
+      { icon: Shield, label: 'Documentos', path: '/documentos' },
+      { icon: ClipboardCheck, label: 'Assessoria Cadastral', path: '/assessoria-cadastral' },
+      { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
+    ],
+  },
+  {
+    title: 'Ferramentas',
+    items: [
+      { icon: Bot, label: 'Assistente IA', path: '/assistente' },
+      { icon: BookOpen, label: 'Blog', path: '/blog' },
+      { icon: Download, label: 'E-book', path: '/ebook' },
+    ],
+  },
+  {
+    title: 'Configuração',
+    items: [
+      { icon: Building2, label: 'Empresas', path: '/empresas' },
+      { icon: Settings, label: 'Configurações', path: '/configuracoes' },
+      { icon: HeadphonesIcon, label: 'Suporte', path: '/suporte' },
+    ],
+  },
 ];
 
-const adminItems = [
+const adminItems: NavItem[] = [
   { icon: ShieldCheck, label: 'Templates IA', path: '/admin/templates' },
   { icon: DollarSign, label: 'Financeiro', path: '/admin/financeiro' },
 ];
@@ -69,9 +116,14 @@ interface AppSidebarProps {
 
 export default function AppSidebar({ onNavigate }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    navGroups.forEach((g) => (init[g.title] = true));
+    return init;
+  });
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, user } = useAuth();
+  const { signOut } = useAuth();
   const { isAdmin } = useUserRole();
 
   const handleNav = (path: string) => {
@@ -79,7 +131,10 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
     onNavigate?.();
   };
 
-  // When inside a Sheet (mobile), always show expanded
+  const toggleGroup = (title: string) => {
+    setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
+  };
+
   const isInSheet = !!onNavigate;
   const isCollapsed = isInSheet ? false : collapsed;
 
@@ -88,14 +143,14 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
       className={cn(
         'flex flex-col h-full',
         isInSheet ? 'w-full' : 'fixed left-0 top-0 z-40 h-screen border-r transition-all duration-300',
-        !isInSheet && (isCollapsed ? 'w-[72px]' : 'w-[240px]')
+        !isInSheet && (isCollapsed ? 'w-[72px]' : 'w-[250px]')
       )}
-      style={{ background: isInSheet ? `hsl(var(--sidebar-bg))` : `hsl(var(--sidebar-bg))`, borderColor: `hsl(var(--sidebar-border))` }}
+      style={{ background: `hsl(var(--sidebar-bg))`, borderColor: `hsl(var(--sidebar-border))` }}
     >
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 h-16 border-b" style={{ borderColor: `hsl(var(--sidebar-border))` }}>
+      <div className="flex items-center gap-2.5 px-4 h-14 border-b flex-shrink-0" style={{ borderColor: `hsl(var(--sidebar-border))` }}>
         <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
-          <Zap className="w-4.5 h-4.5 text-accent-foreground" />
+          <Zap className="w-4 h-4 text-accent-foreground" />
         </div>
         {!isCollapsed && (
           <span className="text-lg font-bold tracking-tight text-primary-foreground whitespace-nowrap">
@@ -105,58 +160,94 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
+      <nav className="flex-1 py-2 px-2 overflow-y-auto space-y-1">
+        {navGroups.map((group) => {
+          const isOpen = openGroups[group.title] ?? true;
+          const groupHasActive = group.items.some((i) => location.pathname === i.path);
+
           return (
-            <button
-              key={item.path}
-              onClick={() => handleNav(item.path)}
-              className={cn(
-                'sidebar-item w-full',
-                isActive ? 'sidebar-item-active' : 'sidebar-item-idle'
+            <div key={group.title}>
+              {!isCollapsed ? (
+                <button
+                  onClick={() => toggleGroup(group.title)}
+                  className="w-full flex items-center justify-between px-3 py-1.5 mb-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground/60 transition-colors"
+                >
+                  <span>{group.title}</span>
+                  <ChevronDown
+                    className={cn(
+                      'w-3.5 h-3.5 transition-transform duration-200',
+                      !isOpen && '-rotate-90'
+                    )}
+                  />
+                </button>
+              ) : (
+                <div className="my-2 mx-3 border-t" style={{ borderColor: `hsl(var(--sidebar-border))` }} />
               )}
-              title={isCollapsed ? item.label : undefined}
-            >
-              <item.icon className="w-5 h-5 flex-shrink-0" />
-              {!isCollapsed && <span>{item.label}</span>}
-            </button>
+
+              {(isCollapsed || isOpen) && (
+                <div className="space-y-0.5">
+                  {group.items.map((item) => {
+                    const isActive = location.pathname === item.path;
+                    return (
+                      <button
+                        key={item.path}
+                        onClick={() => handleNav(item.path)}
+                        className={cn(
+                          'sidebar-item w-full',
+                          isActive ? 'sidebar-item-active' : 'sidebar-item-idle'
+                        )}
+                        title={isCollapsed ? item.label : undefined}
+                      >
+                        <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
+                        {!isCollapsed && <span className="truncate">{item.label}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
 
         {isAdmin && (
-          <>
-            <div className="pt-3 pb-1 px-2">
-              {!isCollapsed && <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Admin</span>}
+          <div>
+            {!isCollapsed ? (
+              <div className="px-3 py-1.5 mb-0.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-accent">Admin</span>
+              </div>
+            ) : (
+              <div className="my-2 mx-3 border-t" style={{ borderColor: `hsl(var(--sidebar-border))` }} />
+            )}
+            <div className="space-y-0.5">
+              {adminItems.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <button
+                    key={item.path}
+                    onClick={() => handleNav(item.path)}
+                    className={cn(
+                      'sidebar-item w-full',
+                      isActive ? 'sidebar-item-active' : 'sidebar-item-idle'
+                    )}
+                    title={isCollapsed ? item.label : undefined}
+                  >
+                    <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
+                    {!isCollapsed && <span className="truncate">{item.label}</span>}
+                  </button>
+                );
+              })}
             </div>
-            {adminItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => handleNav(item.path)}
-                  className={cn(
-                    'sidebar-item w-full',
-                    isActive ? 'sidebar-item-active' : 'sidebar-item-idle'
-                  )}
-                  title={isCollapsed ? item.label : undefined}
-                >
-                  <item.icon className="w-5 h-5 flex-shrink-0" />
-                  {!isCollapsed && <span>{item.label}</span>}
-                </button>
-              );
-            })}
-          </>
+          </div>
         )}
       </nav>
 
-      {/* Bottom section */}
-      <div className="p-3 border-t space-y-1" style={{ borderColor: `hsl(var(--sidebar-border))` }}>
+      {/* Bottom */}
+      <div className="p-2 border-t space-y-0.5 flex-shrink-0" style={{ borderColor: `hsl(var(--sidebar-border))` }}>
         <button
           onClick={async () => { await signOut(); handleNav('/auth'); }}
           className="sidebar-item sidebar-item-idle w-full text-destructive/80 hover:text-destructive"
         >
-          <LogOut className="w-5 h-5 flex-shrink-0" />
+          <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
           {!isCollapsed && <span>Sair</span>}
         </button>
         {!isInSheet && (
