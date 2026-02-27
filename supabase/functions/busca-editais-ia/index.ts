@@ -12,6 +12,41 @@ const FETCH_HEADERS = {
 };
 
 // ── Portal definitions ────────────────────────────────────────────────────
+const PORTAL_HOMEPAGES = new Set([
+  "https://www.gov.br/compras/pt-br",
+  "https://www.gov.br/compras",
+  "https://www.gov.br",
+  "https://bnc.org.br",
+  "https://bnc.org.br/",
+  "https://www.bec.sp.gov.br",
+  "https://www.bec.sp.gov.br/",
+  "https://www.compras.rj.gov.br",
+  "https://www.compras.rj.gov.br/",
+  "https://licitacoes-e2.bb.com.br/aop-inter-estatico/",
+  "https://cotacao.banpara.b.br/portal/Mural.aspx",
+  "https://www.licitanet.com.br",
+  "https://www.licitanet.com.br/",
+  "https://bllcompras.com",
+  "https://bllcompras.com/",
+  "https://www.portaldecompraspublicas.com.br",
+  "https://www.portaldecompraspublicas.com.br/",
+  "https://pncp.gov.br",
+  "https://pncp.gov.br/",
+]);
+
+function isGenericPortalUrl(url: string): boolean {
+  if (!url) return true;
+  const normalized = url.replace(/\/+$/, "").split("?")[0].split("#")[0];
+  if (PORTAL_HOMEPAGES.has(normalized) || PORTAL_HOMEPAGES.has(normalized + "/")) return true;
+  // Check if it's just a domain root or generic path
+  try {
+    const parsed = new URL(url);
+    const pathParts = parsed.pathname.replace(/\/+$/, "").split("/").filter(Boolean);
+    if (pathParts.length <= 1) return true; // Too generic (e.g., /compras or /)
+  } catch { return true; }
+  return false;
+}
+
 const PORTAIS_SCRAPE: Record<string, { nome: string; searchUrl: (q: string) => string }> = {
   bnc: {
     nome: "BNC - Bolsa Nacional de Compras",
@@ -214,6 +249,9 @@ async function buscarComFirecrawl(
       const numMatch = title.match(/(?:PE|PP|TP|CC|DL|IN)\s*[nN]?[°ºo.]?\s*(\d+[\/.]\d+)/);
       if (numMatch) numero = numMatch[0];
 
+      // Skip results with generic portal URLs
+      const isGeneric = isGenericPortalUrl(url);
+
       resultados.push({
         titulo: (title || description).substring(0, 500),
         orgao: portal.nome,
@@ -225,10 +263,11 @@ async function buscarComFirecrawl(
         data_abertura: null,
         data_publicacao: null,
         portal: portal.nome,
-        url,
+        url: isGeneric ? "" : url,
         numero,
-        fonte_real: true,
-        tem_download: false,
+        fonte_real: !isGeneric,
+        tem_download: !isGeneric,
+        url_portal_generico: isGeneric,
         scrape_content: markdown.substring(0, 1000),
       });
     }
