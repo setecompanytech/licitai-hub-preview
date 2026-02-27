@@ -283,14 +283,24 @@ export default function BuscaInteligenteTab() {
                   </label>
                 ))}
               </div>
-              <Button
-                variant="link"
-                size="sm"
-                className="text-[10px] mt-1 h-auto p-0"
-                onClick={() => setPortaisSelecionados(PORTAIS_OPCOES.map(p => p.id))}
-              >
-                Selecionar todos
-              </Button>
+              <div className="flex gap-3 mt-1">
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="text-[10px] h-auto p-0"
+                  onClick={() => setPortaisSelecionados(PORTAIS_OPCOES.map(p => p.id))}
+                >
+                  Marcar todos
+                </Button>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="text-[10px] h-auto p-0 text-muted-foreground"
+                  onClick={() => setPortaisSelecionados([])}
+                >
+                  Desmarcar todos
+                </Button>
+              </div>
             </div>
           </div>
         )}
