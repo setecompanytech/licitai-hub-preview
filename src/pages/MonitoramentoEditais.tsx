@@ -79,12 +79,16 @@ const tipoConfig: Record<TipoDocumento, { label: string; icon: typeof FileText; 
 
 const portaisMonitorados = [
   { id: "pncp", nome: "PNCP", url: "https://www.gov.br/pncp/pt-br", ativo: true },
-  { id: "compras-gov", nome: "Compras Governamentais", url: "https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/landing", ativo: true },
+  { id: "compras-gov", nome: "Compras Governamentais", url: "https://www.gov.br/compras/pt-br", ativo: true },
   { id: "bll", nome: "BLL Compras", url: "https://bllcompras.com", ativo: true },
   { id: "licitanet", nome: "Licitanet", url: "https://www.licitanet.com.br", ativo: true },
   { id: "licitacoes-e", nome: "Licitações-e (BB)", url: "https://licitacoes-e2.bb.com.br/aop-inter-estatico/", ativo: true },
   { id: "portal-compras", nome: "Portal de Compras Públicas", url: "https://www.portaldecompraspublicas.com.br", ativo: true },
   { id: "tcmpa", nome: "TCM-PA", url: "https://www.tcm.pa.gov.br", ativo: true },
+  { id: "bnc", nome: "Bolsa Nacional de Compras", url: "https://bnc.org.br/", ativo: true },
+  { id: "banparanet", nome: "Banparanet (PA)", url: "https://cotacao.banpara.b.br/portal/Mural.aspx", ativo: true },
+  { id: "bec-sp", nome: "BEC/SP", url: "https://www.bec.sp.gov.br/BECSP/Home/Home.aspx", ativo: true },
+  { id: "compras-rj", nome: "Compras Públicas RJ", url: "https://www.compras.rj.gov.br/", ativo: true },
 ];
 
 const mockDocumentos: Documento[] = [

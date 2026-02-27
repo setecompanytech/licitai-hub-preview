@@ -24,6 +24,10 @@ const PORTAIS = [
   { id: 'licitanet', nome: 'Licitanet' },
   { id: 'licitacoes-e', nome: 'Licitações-e (BB)' },
   { id: 'portal-compras', nome: 'Portal de Compras Públicas' },
+  { id: 'bnc', nome: 'Bolsa Nacional de Compras' },
+  { id: 'banparanet', nome: 'Banparanet (PA)' },
+  { id: 'bec-sp', nome: 'BEC/SP' },
+  { id: 'compras-rj', nome: 'Compras Públicas RJ' },
   { id: 'tcmpa', nome: 'TCM-PA' },
 ];
 
