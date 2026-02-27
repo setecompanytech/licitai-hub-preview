@@ -8,8 +8,12 @@ import {
   Search, RefreshCw, FileText, AlertTriangle, XCircle, Clock,
   CheckCircle2, Globe, Building2, MapPin, Award, PauseCircle,
   ArrowUpDown, FileCheck, Newspaper, ExternalLink, Eye,
-  CalendarDays, Bookmark, Sparkles, ChevronDown, ChevronUp
+  CalendarDays, Bookmark, Sparkles, ChevronDown, ChevronUp, CalendarIcon
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -86,6 +90,8 @@ export default function DiariosOficiaisTab() {
   const [mostrarPortais, setMostrarPortais] = useState(false);
   const [buscaIA, setBuscaIA] = useState('');
   const [buscandoIA, setBuscandoIA] = useState(false);
+  const [dataInicio, setDataInicio] = useState<Date | undefined>();
+  const [dataFim, setDataFim] = useState<Date | undefined>();
 
   const carregarAtos = async () => {
     if (!user) return;
@@ -186,9 +192,13 @@ export default function DiariosOficiaisTab() {
   const atosFiltrados = atos.filter(a => {
     const matchBusca = !busca ||
       a.titulo.toLowerCase().includes(busca.toLowerCase()) ||
-      a.orgao.toLowerCase().includes(busca.toLowerCase());
+      a.orgao.toLowerCase().includes(busca.toLowerCase()) ||
+      (a.palavras_chave || []).some(kw => kw.toLowerCase().includes(busca.toLowerCase())) ||
+      (a.url || '').toLowerCase().includes(busca.toLowerCase());
     const matchTipo = tipoFiltro === 'todos' || a.tipo === tipoFiltro;
     const matchUf = ufFiltro === 'todos' || a.uf === ufFiltro;
+    const matchDataInicio = !dataInicio || (a.data_publicacao && new Date(a.data_publicacao) >= dataInicio);
+    const matchDataFim = !dataFim || (a.data_publicacao && new Date(a.data_publicacao) <= new Date(dataFim.getTime() + 86400000));
     const portalLower = a.portal?.toLowerCase() || '';
     const matchFonte = fonteFiltro === 'todos' ||
       (fonteFiltro === 'tcmpa' && portalLower.includes('tcm')) ||
@@ -200,7 +210,7 @@ export default function DiariosOficiaisTab() {
       (fonteFiltro === 'dobelem' && (portalLower.includes('belém') || portalLower.includes('belem'))) ||
       (fonteFiltro === 'doananindeua' && portalLower.includes('ananindeua')) ||
       (fonteFiltro === 'pncp' && portalLower.includes('pncp'));
-    return matchBusca && matchTipo && matchUf && matchFonte;
+    return matchBusca && matchTipo && matchUf && matchFonte && matchDataInicio && matchDataFim;
   });
 
   const naoLidos = atos.filter(a => !a.lido).length;
@@ -324,12 +334,39 @@ export default function DiariosOficiaisTab() {
         <div className="relative flex-1 min-w-[250px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Filtrar por título ou órgão..."
+            placeholder="Filtrar por CNPJ, objeto, órgão, palavras-chave..."
             value={busca}
             onChange={e => setBusca(e.target.value)}
             className="pl-9"
           />
         </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className={cn("h-10 text-xs gap-1.5", dataInicio && "text-foreground")}>
+              <CalendarIcon className="w-3.5 h-3.5" />
+              {dataInicio ? format(dataInicio, "dd/MM/yyyy") : "Data início"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="single" selected={dataInicio} onSelect={setDataInicio} locale={ptBR} className="p-3 pointer-events-auto" />
+          </PopoverContent>
+        </Popover>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className={cn("h-10 text-xs gap-1.5", dataFim && "text-foreground")}>
+              <CalendarIcon className="w-3.5 h-3.5" />
+              {dataFim ? format(dataFim, "dd/MM/yyyy") : "Data fim"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="single" selected={dataFim} onSelect={setDataFim} locale={ptBR} className="p-3 pointer-events-auto" />
+          </PopoverContent>
+        </Popover>
+        {(dataInicio || dataFim) && (
+          <Button variant="ghost" size="sm" className="h-10 text-xs" onClick={() => { setDataInicio(undefined); setDataFim(undefined); }}>
+            Limpar datas
+          </Button>
+        )}
         <Select value={tipoFiltro} onValueChange={setTipoFiltro}>
           <SelectTrigger className="w-[180px]"><SelectValue placeholder="Tipo de ato" /></SelectTrigger>
           <SelectContent>
