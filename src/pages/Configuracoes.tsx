@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Building2, Bell, Globe, Shield } from 'lucide-react';
 import CnaesSecundarios from '@/components/configuracoes/CnaesSecundarios';
+import PlanoAssinatura from '@/components/configuracoes/PlanoAssinatura';
 
 export default function Configuracoes() {
   return (
@@ -89,6 +90,9 @@ export default function Configuracoes() {
               ))}
             </div>
           </section>
+
+          {/* Plano & Assinatura */}
+          <PlanoAssinatura />
 
           {/* CNAEs Secundários */}
           <CnaesSecundarios />
