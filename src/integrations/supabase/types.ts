@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      agente_externo_config: {
+        Row: {
+          api_key_hash: string | null
+          capacidades: Json | null
+          created_at: string
+          id: string
+          nome: string
+          status: string
+          ultimo_heartbeat: string | null
+          updated_at: string
+          url_base: string
+          user_id: string
+          versao_agente: string | null
+        }
+        Insert: {
+          api_key_hash?: string | null
+          capacidades?: Json | null
+          created_at?: string
+          id?: string
+          nome?: string
+          status?: string
+          ultimo_heartbeat?: string | null
+          updated_at?: string
+          url_base: string
+          user_id: string
+          versao_agente?: string | null
+        }
+        Update: {
+          api_key_hash?: string | null
+          capacidades?: Json | null
+          created_at?: string
+          id?: string
+          nome?: string
+          status?: string
+          ultimo_heartbeat?: string | null
+          updated_at?: string
+          url_base?: string
+          user_id?: string
+          versao_agente?: string | null
+        }
+        Relationships: []
+      }
       apoio_juridico: {
         Row: {
           conteudo: string | null
@@ -756,6 +798,53 @@ export type Database = {
           },
         ]
       }
+      lances_historico: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json | null
+          origem: string
+          rodada: number
+          sessao_id: string
+          timestamp_lance: string
+          tipo: string
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          origem?: string
+          rodada: number
+          sessao_id: string
+          timestamp_lance?: string
+          tipo?: string
+          user_id: string
+          valor: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          origem?: string
+          rodada?: number
+          sessao_id?: string
+          timestamp_lance?: string
+          tipo?: string
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lances_historico_sessao_id_fkey"
+            columns: ["sessao_id"]
+            isOneToOne: false
+            referencedRelation: "sessoes_lance_real"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       licitacoes: {
         Row: {
           arquivado_em: string | null
@@ -1093,6 +1182,89 @@ export type Database = {
           },
         ]
       }
+      sessoes_lance_real: {
+        Row: {
+          agente_id: string | null
+          created_at: string
+          decremento_min: number | null
+          decremento_percentual: number | null
+          edital: string
+          erro: string | null
+          id: string
+          intervalo_segundos: number | null
+          lance_config_id: string
+          max_lances: number | null
+          modo: string
+          portal_id: string
+          portal_nome: string
+          resultado: string | null
+          rodada_atual: number | null
+          status: string
+          updated_at: string
+          user_id: string
+          valor_atual: number | null
+          valor_inicial: number
+          valor_minimo: number
+          valor_referencia: number
+        }
+        Insert: {
+          agente_id?: string | null
+          created_at?: string
+          decremento_min?: number | null
+          decremento_percentual?: number | null
+          edital: string
+          erro?: string | null
+          id?: string
+          intervalo_segundos?: number | null
+          lance_config_id: string
+          max_lances?: number | null
+          modo?: string
+          portal_id: string
+          portal_nome: string
+          resultado?: string | null
+          rodada_atual?: number | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          valor_atual?: number | null
+          valor_inicial: number
+          valor_minimo: number
+          valor_referencia: number
+        }
+        Update: {
+          agente_id?: string | null
+          created_at?: string
+          decremento_min?: number | null
+          decremento_percentual?: number | null
+          edital?: string
+          erro?: string | null
+          id?: string
+          intervalo_segundos?: number | null
+          lance_config_id?: string
+          max_lances?: number | null
+          modo?: string
+          portal_id?: string
+          portal_nome?: string
+          resultado?: string | null
+          rodada_atual?: number | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          valor_atual?: number | null
+          valor_inicial?: number
+          valor_minimo?: number
+          valor_referencia?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessoes_lance_real_agente_id_fkey"
+            columns: ["agente_id"]
+            isOneToOne: false
+            referencedRelation: "agente_externo_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tickets_suporte: {
         Row: {
           assunto: string
@@ -1197,6 +1369,42 @@ export type Database = {
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      webhook_log: {
+        Row: {
+          created_at: string
+          direcao: string
+          erro: string | null
+          id: string
+          payload: Json
+          resposta: Json | null
+          status_code: number | null
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          direcao?: string
+          erro?: string | null
+          id?: string
+          payload?: Json
+          resposta?: Json | null
+          status_code?: number | null
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          direcao?: string
+          erro?: string | null
+          id?: string
+          payload?: Json
+          resposta?: Json | null
+          status_code?: number | null
+          tipo?: string
           user_id?: string
         }
         Relationships: []

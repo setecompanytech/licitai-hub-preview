@@ -14,6 +14,7 @@ import ConfigurarLanceDialog, { type LanceConfig } from '@/components/robo-lance
 import GuiaPassoAPasso from '@/components/robo-lances/GuiaPassoAPasso';
 import DeteccaoPortais from '@/components/robo-lances/DeteccaoPortais';
 import SimulacaoDisputa from '@/components/robo-lances/SimulacaoDisputa';
+import AgenteExternoConfig from '@/components/robo-lances/AgenteExternoConfig';
 import { toast } from 'sonner';
 
 const portais = [
@@ -113,6 +114,7 @@ export default function RoboLances() {
           <TabsList>
             <TabsTrigger value="lances">Lances Ativos</TabsTrigger>
             <TabsTrigger value="portais">Portais Conectados</TabsTrigger>
+            <TabsTrigger value="agente">Agente Externo</TabsTrigger>
             <TabsTrigger value="historico">Histórico</TabsTrigger>
             <TabsTrigger value="regras">Regras de Lance</TabsTrigger>
           </TabsList>
@@ -323,6 +325,33 @@ export default function RoboLances() {
                   </div>
                 </div>
               ))}
+            </div>
+          </TabsContent>
+
+          {/* Agente Externo */}
+          <TabsContent value="agente" className="space-y-4">
+            <AgenteExternoConfig />
+            <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+              <h3 className="text-sm font-semibold mb-3">Arquitetura de Integração</h3>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="border border-border/50 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-accent">Sistema (Cloud)</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Gerencia sessões, credenciais e histórico. Envia comandos via webhook.
+                  </p>
+                </div>
+                <div className="flex flex-col items-center justify-center">
+                  <div className="text-[10px] text-muted-foreground">←→ Webhook API</div>
+                  <div className="w-full border-t border-dashed border-accent/50 my-1" />
+                  <div className="text-[10px] text-muted-foreground">REST + Callbacks</div>
+                </div>
+                <div className="border border-accent/30 rounded-lg p-3 bg-accent/5">
+                  <p className="text-xs font-semibold text-accent">Agente Dedicado</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Servidor com Puppeteer + certificado digital. Executa lances reais nos portais.
+                  </p>
+                </div>
+              </div>
             </div>
           </TabsContent>
 

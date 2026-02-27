@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.busca-editais-ia]
 verify_jwt = false
+
+[functions.robo-lances-webhook]
+verify_jwt = false
