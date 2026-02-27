@@ -6,14 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { Search, Filter, MapPin, Calendar as CalendarIcon2, Building2, ArrowUpDown, CalendarDays, List } from 'lucide-react';
+import { Search, MapPin, Calendar as CalendarIcon2, Building2, CalendarDays } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import CountdownTimer from '@/components/licitacoes/CountdownTimer';
-import BuscaInteligenteTab from '@/components/monitoramento/BuscaInteligenteTab';
 import { useAuth } from '@/contexts/AuthContext';
 
 type Licitacao = {
@@ -107,154 +105,137 @@ export default function Licitacoes() {
         </p>
       </div>
 
-      <Tabs defaultValue="lista" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="lista">
-            <List className="w-4 h-4 mr-1" />
-            Lista de Licitações
-          </TabsTrigger>
-          <TabsTrigger value="busca-ia">
-            <Search className="w-4 h-4 mr-1" />
-            Busca Inteligente IA
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="lista" className="space-y-3">
-          {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3 mb-3">
-            <div className="relative flex-1 min-w-[250px] max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Buscar por CNPJ, objeto, órgão, número, município..." className="pl-9 bg-card border-border/50" value={search} onChange={(e) => setSearch(e.target.value)} />
-            </div>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn("h-10 text-xs gap-1.5", dataInicio && "text-foreground")}>
-                  <CalendarDays className="w-3.5 h-3.5" />
-                  {dataInicio ? format(dataInicio, "dd/MM/yyyy") : "Data início"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dataInicio} onSelect={setDataInicio} locale={ptBR} className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn("h-10 text-xs gap-1.5", dataFim && "text-foreground")}>
-                  <CalendarDays className="w-3.5 h-3.5" />
-                  {dataFim ? format(dataFim, "dd/MM/yyyy") : "Data fim"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dataFim} onSelect={setDataFim} locale={ptBR} className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
-            {(dataInicio || dataFim) && (
-              <Button variant="ghost" size="sm" className="h-10 text-xs" onClick={() => { setDataInicio(undefined); setDataFim(undefined); }}>
-                Limpar datas
+      <div className="space-y-3">
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-3 mb-3">
+          <div className="relative flex-1 min-w-[250px] max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Buscar por CNPJ, objeto, órgão, número, município..." className="pl-9 bg-card border-border/50" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className={cn("h-10 text-xs gap-1.5", dataInicio && "text-foreground")}>
+                <CalendarDays className="w-3.5 h-3.5" />
+                {dataInicio ? format(dataInicio, "dd/MM/yyyy") : "Data início"}
               </Button>
-            )}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[160px] bg-card border-border/50"><SelectValue placeholder="Status" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os status</SelectItem>
-                {Object.entries(statusConfig).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={modalidadeFilter} onValueChange={setModalidadeFilter}>
-              <SelectTrigger className="w-[180px] bg-card border-border/50"><SelectValue placeholder="Modalidade" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas modalidades</SelectItem>
-                <SelectItem value="Pregão Eletrônico">Pregão Eletrônico</SelectItem>
-                <SelectItem value="Concorrência">Concorrência</SelectItem>
-                <SelectItem value="Tomada de Preços">Tomada de Preços</SelectItem>
-                <SelectItem value="Dispensa">Dispensa</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={regiaoFilter} onValueChange={handleRegiaoChange}>
-              <SelectTrigger className="w-[160px] bg-card border-border/50">
-                <MapPin className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" /><SelectValue placeholder="Região" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas regiões</SelectItem>
-                {Object.keys(regioes).map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={ufFilter} onValueChange={setUfFilter}>
-              <SelectTrigger className="w-[120px] bg-card border-border/50"><SelectValue placeholder="UF" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos UFs</SelectItem>
-                {ufsDisponiveis.sort().map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={dataInicio} onSelect={setDataInicio} locale={ptBR} className="p-3 pointer-events-auto" />
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className={cn("h-10 text-xs gap-1.5", dataFim && "text-foreground")}>
+                <CalendarDays className="w-3.5 h-3.5" />
+                {dataFim ? format(dataFim, "dd/MM/yyyy") : "Data fim"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={dataFim} onSelect={setDataFim} locale={ptBR} className="p-3 pointer-events-auto" />
+            </PopoverContent>
+          </Popover>
+          {(dataInicio || dataFim) && (
+            <Button variant="ghost" size="sm" className="h-10 text-xs" onClick={() => { setDataInicio(undefined); setDataFim(undefined); }}>
+              Limpar datas
+            </Button>
+          )}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[160px] bg-card border-border/50"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os status</SelectItem>
+              {Object.entries(statusConfig).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={modalidadeFilter} onValueChange={setModalidadeFilter}>
+            <SelectTrigger className="w-[180px] bg-card border-border/50"><SelectValue placeholder="Modalidade" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas modalidades</SelectItem>
+              <SelectItem value="Pregão Eletrônico">Pregão Eletrônico</SelectItem>
+              <SelectItem value="Concorrência">Concorrência</SelectItem>
+              <SelectItem value="Tomada de Preços">Tomada de Preços</SelectItem>
+              <SelectItem value="Dispensa">Dispensa</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={regiaoFilter} onValueChange={handleRegiaoChange}>
+            <SelectTrigger className="w-[160px] bg-card border-border/50">
+              <MapPin className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" /><SelectValue placeholder="Região" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas regiões</SelectItem>
+              {Object.keys(regioes).map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={ufFilter} onValueChange={setUfFilter}>
+            <SelectTrigger className="w-[120px] bg-card border-border/50"><SelectValue placeholder="UF" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos UFs</SelectItem>
+              {ufsDisponiveis.sort().map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
 
-          {/* Table */}
-          <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border/50 bg-muted/30">
-                    <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Nº / Objeto</th>
-                    <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Órgão</th>
-                    <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>
-                    <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Encerramento</th>
-                    <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Contagem</th>
-                    <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 && !loading && (
-                    <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma licitação encontrada.</td></tr>
-                  )}
-                  {filtered.map((lic, i) => {
-                    const st = statusConfig[lic.status] || { label: lic.status, className: 'bg-muted text-muted-foreground' };
-                    return (
-                      <tr key={lic.id} className="border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer animate-fade-in" style={{ animationDelay: `${i * 40}ms` }}>
-                        <td className="px-4 py-3">
-                          <span className="text-xs font-mono text-muted-foreground block">{lic.numero}</span>
-                          <span className="text-sm font-medium line-clamp-1">{lic.objeto}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1.5 text-sm">
-                            <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                            <span className="line-clamp-1">{lic.orgao}</span>
-                          </div>
-                          {lic.municipio && lic.uf && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <MapPin className="w-3 h-3" />{lic.municipio}/{lic.uf}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right font-semibold">{lic.valor_estimado ? formatCurrency(lic.valor_estimado) : '-'}</td>
-                        <td className="px-4 py-3 text-center">
-                          {lic.data_encerramento ? (
-                            <span className="text-sm flex items-center justify-center gap-1">
-                              <CalendarIcon2 className="w-3.5 h-3.5 text-muted-foreground" />
-                              {new Date(lic.data_encerramento).toLocaleDateString('pt-BR')}
-                            </span>
-                          ) : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {lic.data_encerramento ? (
-                            <CountdownTimer targetDate={lic.data_encerramento} compact />
-                          ) : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', st.className)}>{st.label}</Badge>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+        {/* Table */}
+        <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border/50 bg-muted/30">
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Nº / Objeto</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Órgão</th>
+                  <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Encerramento</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Contagem</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && !loading && (
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma licitação encontrada.</td></tr>
+                )}
+                {filtered.map((lic, i) => {
+                  const st = statusConfig[lic.status] || { label: lic.status, className: 'bg-muted text-muted-foreground' };
+                  return (
+                    <tr key={lic.id} className="border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer animate-fade-in" style={{ animationDelay: `${i * 40}ms` }}>
+                      <td className="px-4 py-3">
+                        <span className="text-xs font-mono text-muted-foreground block">{lic.numero}</span>
+                        <span className="text-sm font-medium line-clamp-1">{lic.objeto}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5 text-sm">
+                          <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                          <span className="line-clamp-1">{lic.orgao}</span>
+                        </div>
+                        {lic.municipio && lic.uf && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <MapPin className="w-3 h-3" />{lic.municipio}/{lic.uf}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right font-semibold">{lic.valor_estimado ? formatCurrency(lic.valor_estimado) : '-'}</td>
+                      <td className="px-4 py-3 text-center">
+                        {lic.data_encerramento ? (
+                          <span className="text-sm flex items-center justify-center gap-1">
+                            <CalendarIcon2 className="w-3.5 h-3.5 text-muted-foreground" />
+                            {new Date(lic.data_encerramento).toLocaleDateString('pt-BR')}
+                          </span>
+                        ) : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {lic.data_encerramento ? (
+                          <CountdownTimer targetDate={lic.data_encerramento} compact />
+                        ) : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', st.className)}>{st.label}</Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </TabsContent>
-
-        <TabsContent value="busca-ia">
-          <BuscaInteligenteTab />
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
     </AppLayout>
   );
 }
