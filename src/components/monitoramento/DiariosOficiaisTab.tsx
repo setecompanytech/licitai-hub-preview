@@ -61,9 +61,12 @@ const UFS_DISPONIVEIS = [
 
 const FONTES_DIARIOS = [
   { id: 'todos', label: 'Todas as fontes' },
-  { id: 'dou', label: 'DOU (Federal)' },
-  { id: 'doe', label: 'DOE (Estadual)' },
-  { id: 'tcmpa', label: 'TCM-PA' },
+  { id: 'dou', label: 'DOU (Federal)', url: 'https://www.in.gov.br/servicos/diario-oficial-da-uniao' },
+  { id: 'ioepa', label: 'IOEPA (Estadual)', url: 'https://www.ioepa.com.br/portal/' },
+  { id: 'tcmpa', label: 'TCMPA (Municípios)', url: 'https://www.tcmpa.tc.br/portalsc/LISTAGEM_GRID/' },
+  { id: 'doesp', label: 'DOE/SP', url: 'https://doe.sp.gov.br/' },
+  { id: 'ioerj', label: 'IOERJ', url: 'https://portal.ioerj.com.br/' },
+  { id: 'dodf', label: 'DODF.e (Distrito Federal)', url: 'https://www.sinj.df.gov.br/SINJ/DODFe.html' },
 ];
 
 export default function DiariosOficiaisTab() {
@@ -157,10 +160,14 @@ export default function DiariosOficiaisTab() {
       a.orgao.toLowerCase().includes(busca.toLowerCase());
     const matchTipo = tipoFiltro === 'todos' || a.tipo === tipoFiltro;
     const matchUf = ufFiltro === 'todos' || a.uf === ufFiltro;
+    const portalLower = a.portal?.toLowerCase() || '';
     const matchFonte = fonteFiltro === 'todos' ||
-      (fonteFiltro === 'tcmpa' && a.portal?.toLowerCase().includes('tcm')) ||
-      (fonteFiltro === 'dou' && a.portal?.toLowerCase().includes('dou')) ||
-      (fonteFiltro === 'doe' && a.portal?.toLowerCase().includes('doe'));
+      (fonteFiltro === 'tcmpa' && portalLower.includes('tcm')) ||
+      (fonteFiltro === 'dou' && portalLower.includes('dou')) ||
+      (fonteFiltro === 'ioepa' && (portalLower.includes('ioepa') || portalLower.includes('doe-pa'))) ||
+      (fonteFiltro === 'doesp' && (portalLower.includes('doe-sp') || portalLower.includes('doesp'))) ||
+      (fonteFiltro === 'ioerj' && (portalLower.includes('ioerj') || portalLower.includes('doe-rj'))) ||
+      (fonteFiltro === 'dodf' && (portalLower.includes('dodf') || portalLower.includes('doe-df')));
     return matchBusca && matchTipo && matchUf && matchFonte;
   });
 
@@ -200,7 +207,7 @@ export default function DiariosOficiaisTab() {
               {buscando ? (
                 <><RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin" /> Buscando...</>
               ) : (
-                <><Search className="w-3.5 h-3.5 mr-1" /> Buscar DOU + DOE</>
+                <><Search className="w-3.5 h-3.5 mr-1" /> Buscar Diários Oficiais</>
               )}
             </Button>
           </div>
@@ -209,7 +216,7 @@ export default function DiariosOficiaisTab() {
         {buscando && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Pesquisando DOU federal + DOE-{ufsBusca[0]}...</span>
+              <span>Pesquisando diários oficiais ({ufsBusca[0]})...</span>
               <span>{Math.round(progresso)}%</span>
             </div>
             <Progress value={progresso} className="h-1.5" />
