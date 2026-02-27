@@ -66,7 +66,10 @@ const FONTES_DIARIOS = [
   { id: 'tcmpa', label: 'TCMPA (Municípios)', url: 'https://www.tcmpa.tc.br/portalsc/LISTAGEM_GRID/' },
   { id: 'doesp', label: 'DOE/SP', url: 'https://doe.sp.gov.br/' },
   { id: 'ioerj', label: 'IOERJ', url: 'https://portal.ioerj.com.br/' },
-  { id: 'dodf', label: 'DODF.e (Distrito Federal)', url: 'https://www.sinj.df.gov.br/SINJ/DODFe.html' },
+  { id: 'dodf', label: 'DODF.e (Distrito Federal)', url: 'https://dodf.df.gov.br/' },
+  { id: 'dobelem', label: 'DO Belém', url: 'https://sistemas.belem.pa.gov.br/diario/painel' },
+  { id: 'doananindeua', label: 'DO Ananindeua', url: 'https://ananindeua.pa.gov.br/diario_oficial' },
+  { id: 'pncp', label: 'PNCP', url: 'https://pncp.gov.br/app/editais?pagina=1' },
 ];
 
 export default function DiariosOficiaisTab() {
@@ -193,7 +196,10 @@ export default function DiariosOficiaisTab() {
       (fonteFiltro === 'ioepa' && (portalLower.includes('ioepa') || portalLower.includes('doe-pa') || portalLower.includes('pará'))) ||
       (fonteFiltro === 'doesp' && (portalLower.includes('doe-sp') || portalLower.includes('doesp') || portalLower.includes('são paulo'))) ||
       (fonteFiltro === 'ioerj' && (portalLower.includes('ioerj') || portalLower.includes('doe-rj') || portalLower.includes('rio de janeiro'))) ||
-      (fonteFiltro === 'dodf' && (portalLower.includes('dodf') || portalLower.includes('doe-df') || portalLower.includes('distrito federal')));
+      (fonteFiltro === 'dodf' && (portalLower.includes('dodf') || portalLower.includes('doe-df') || portalLower.includes('distrito federal'))) ||
+      (fonteFiltro === 'dobelem' && (portalLower.includes('belém') || portalLower.includes('belem'))) ||
+      (fonteFiltro === 'doananindeua' && portalLower.includes('ananindeua')) ||
+      (fonteFiltro === 'pncp' && portalLower.includes('pncp'));
     return matchBusca && matchTipo && matchUf && matchFonte;
   });
 
