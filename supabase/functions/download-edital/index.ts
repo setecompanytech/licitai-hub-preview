@@ -436,13 +436,36 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Download edital: num=${numero} portal=${portal} pncp=${pncpNumero} cnpj=${cnpjOrgao} ano=${anoCompra} seq=${sequencialCompra}`);
+    console.log(`Download edital: num=${numero} portal=${portal} pncp=${pncpNumero} cnpj=${cnpjOrgao} ano=${anoCompra} seq=${sequencialCompra} url=${url}`);
 
-    // Strategy 0: If we have cnpjOrgao + anoCompra + sequencialCompra directly from PNCP API
-    if (cnpjOrgao && anoCompra && sequencialCompra) {
-      const cnpjClean = cnpjOrgao.replace(/[^\d]/g, "");
-      console.log(`Direct PNCP: cnpj=${cnpjClean} ano=${anoCompra} seq=${sequencialCompra}`);
-      const result = await tryPncpDownload(cnpjClean, String(anoCompra), String(sequencialCompra));
+    // Strategy 0a: Parse CNPJ/ano/seq from PNCP URL pattern: /editais/CNPJ/ANO/SEQ
+    let effectiveCnpj = cnpjOrgao;
+    let effectiveAno = anoCompra;
+    let effectiveSeq = sequencialCompra;
+    if (url && (!effectiveCnpj || !effectiveAno || !effectiveSeq)) {
+      const urlMatch = url.match(/pncp\.gov\.br\/app\/editais\/(\d{14})(?:-\d+)?-(\d+)-(\d+)\/(\d{4})/);
+      if (urlMatch) {
+        effectiveCnpj = effectiveCnpj || urlMatch[1];
+        effectiveAno = effectiveAno || urlMatch[4];
+        effectiveSeq = effectiveSeq || urlMatch[3];
+        console.log(`Parsed from URL (format1): cnpj=${effectiveCnpj} ano=${effectiveAno} seq=${effectiveSeq}`);
+      } else {
+        // Try alternate URL format: /editais/CNPJ/ANO/SEQ
+        const urlMatch2 = url.match(/pncp\.gov\.br\/app\/editais\/(\d{14})\/(\d{4})\/(\d+)/);
+        if (urlMatch2) {
+          effectiveCnpj = effectiveCnpj || urlMatch2[1];
+          effectiveAno = effectiveAno || urlMatch2[2];
+          effectiveSeq = effectiveSeq || urlMatch2[3];
+          console.log(`Parsed from URL (format2): cnpj=${effectiveCnpj} ano=${effectiveAno} seq=${effectiveSeq}`);
+        }
+      }
+    }
+
+    // Strategy 0b: If we have cnpjOrgao + anoCompra + sequencialCompra
+    if (effectiveCnpj && effectiveAno && effectiveSeq) {
+      const cnpjClean = String(effectiveCnpj).replace(/[^\d]/g, "");
+      console.log(`Direct PNCP: cnpj=${cnpjClean} ano=${effectiveAno} seq=${effectiveSeq}`);
+      const result = await tryPncpDownload(cnpjClean, String(effectiveAno), String(effectiveSeq));
       if (result) return result;
     }
 
