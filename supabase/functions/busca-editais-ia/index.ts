@@ -49,42 +49,51 @@ function isGenericPortalUrl(url: string): boolean {
   return false;
 }
 
-const PORTAIS_SCRAPE: Record<string, { nome: string; searchUrl: (q: string) => string }> = {
+const PORTAIS_SCRAPE: Record<string, { nome: string; searchUrl: (q: string) => string; searchHost: string }> = {
   bnc: {
     nome: "BNC - Bolsa Nacional de Compras",
     searchUrl: (q) => `https://bnc.org.br/sistema/licitacoes?q=${encodeURIComponent(q)}`,
+    searchHost: "bnc.org.br",
   },
   becsp: {
     nome: "BEC/SP",
     searchUrl: (q) => `https://www.bec.sp.gov.br/BECSP/Aspx/PregaoEletronicoConsulta.aspx`,
+    searchHost: "bec.sp.gov.br",
   },
   comprasrj: {
     nome: "Compras Públicas RJ",
     searchUrl: (q) => `https://www.compras.rj.gov.br/Portal-Licitacao/Busca`,
+    searchHost: "compras.rj.gov.br",
   },
   licitacoese: {
     nome: "Licitações-e (BB)",
     searchUrl: (q) => `https://licitacoes-e2.bb.com.br/aop-inter-estatico/`,
+    searchHost: "licitacoes-e2.bb.com.br",
   },
   banparanet: {
     nome: "Banparanet PA",
     searchUrl: (q) => `https://cotacao.banpara.b.br/portal/Mural.aspx`,
+    searchHost: "cotacao.banpara.b.br",
   },
   comprasnet: {
     nome: "Compras Governamentais",
-    searchUrl: (q) => `https://www.gov.br/compras/pt-br`,
+    searchUrl: (q) => `https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras`,
+    searchHost: "cnetmobile.estaleiro.serpro.gov.br",
   },
   licitanet: {
     nome: "Licitanet",
     searchUrl: (q) => `https://www.licitanet.com.br/licitacoes?q=${encodeURIComponent(q)}`,
+    searchHost: "licitanet.com.br",
   },
   bll: {
     nome: "BLL Compras",
     searchUrl: (q) => `https://bllcompras.com/ProcessosList?q=${encodeURIComponent(q)}`,
+    searchHost: "bllcompras.com",
   },
   portalcompras: {
     nome: "Portal de Compras Públicas",
     searchUrl: (q) => `https://www.portaldecompraspublicas.com.br/processos?q=${encodeURIComponent(q)}`,
+    searchHost: "portaldecompraspublicas.com.br",
   },
 };
 
@@ -196,7 +205,7 @@ async function buscarComFirecrawl(
   const resultados: any[] = [];
   try {
     // Use Firecrawl search to find bidding documents
-    const searchQuery = `${query} licitação edital site:${new URL(portal.searchUrl(query)).hostname}`;
+    const searchQuery = `${query} licitação edital site:${portal.searchHost}`;
     console.log(`Firecrawl search for ${portal.nome}: ${searchQuery}`);
 
     const response = await fetch("https://api.firecrawl.dev/v1/search", {
