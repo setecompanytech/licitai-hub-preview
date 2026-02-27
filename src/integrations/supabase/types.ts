@@ -515,6 +515,8 @@ export type Database = {
           created_by: string
           endereco: string | null
           id: string
+          inscricao_estadual: string | null
+          inscricao_municipal: string | null
           municipio: string | null
           nome_fantasia: string | null
           razao_social: string
@@ -534,6 +536,8 @@ export type Database = {
           created_by: string
           endereco?: string | null
           id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
           municipio?: string | null
           nome_fantasia?: string | null
           razao_social: string
@@ -553,6 +557,8 @@ export type Database = {
           created_by?: string
           endereco?: string | null
           id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
           municipio?: string | null
           nome_fantasia?: string | null
           razao_social?: string
