@@ -7,8 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Search, RefreshCw, FileText, AlertTriangle, XCircle, Clock,
   CheckCircle2, Globe, Building2, MapPin, Award, PauseCircle,
-  ArrowUpDown, FileCheck, Newspaper, ExternalLink, Eye, EyeOff,
-  CalendarDays, Bookmark
+  ArrowUpDown, FileCheck, Newspaper, ExternalLink, Eye,
+  CalendarDays, Bookmark, Sparkles, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -60,7 +60,7 @@ const UFS_DISPONIVEIS = [
 ];
 
 const FONTES_DIARIOS = [
-  { id: 'todos', label: 'Todas as fontes' },
+  { id: 'todos', label: 'Todas as fontes', url: '' },
   { id: 'dou', label: 'DOU (Federal)', url: 'https://www.in.gov.br/servicos/diario-oficial-da-uniao' },
   { id: 'ioepa', label: 'IOEPA (Estadual)', url: 'https://www.ioepa.com.br/portal/' },
   { id: 'tcmpa', label: 'TCMPA (Municípios)', url: 'https://www.tcmpa.tc.br/portalsc/LISTAGEM_GRID/' },
@@ -80,6 +80,9 @@ export default function DiariosOficiaisTab() {
   const [ufFiltro, setUfFiltro] = useState('todos');
   const [fonteFiltro, setFonteFiltro] = useState('todos');
   const [ufsBusca, setUfsBusca] = useState<string[]>(['PA']);
+  const [mostrarPortais, setMostrarPortais] = useState(false);
+  const [buscaIA, setBuscaIA] = useState('');
+  const [buscandoIA, setBuscandoIA] = useState(false);
 
   const carregarAtos = async () => {
     if (!user) return;
@@ -123,11 +126,24 @@ export default function DiariosOficiaisTab() {
           },
           body: JSON.stringify({
             ufs: ufsBusca,
-            palavras_chave: ['licitação', 'pregão', 'concorrência', 'obra', 'construção', 'pavimentação', 'reforma', 'infraestrutura'],
+            palavras_chave: buscaIA
+              ? buscaIA.split(',').map(s => s.trim()).filter(Boolean)
+              : ['licitação', 'pregão', 'concorrência', 'obra', 'construção', 'pavimentação', 'reforma', 'infraestrutura'],
             dias_retroativos: 7,
           }),
         }
       );
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          toast.error('Limite de requisições atingido. Aguarde e tente novamente.');
+        } else if (response.status === 402) {
+          toast.error('Créditos insuficientes. Adicione créditos ao workspace.');
+        } else {
+          toast.error('Erro na busca. Tente novamente.');
+        }
+        return;
+      }
 
       const data = await response.json();
       if (data.success) {
@@ -149,6 +165,16 @@ export default function DiariosOficiaisTab() {
     }
   };
 
+  const handleBuscaIA = async () => {
+    if (!buscaIA.trim()) {
+      toast.error('Digite termos para a pesquisa avançada com IA');
+      return;
+    }
+    setBuscandoIA(true);
+    await handleBuscar();
+    setBuscandoIA(false);
+  };
+
   const marcarComoLido = async (id: string) => {
     await supabase.from('monitoramento_editais').update({ lido: true }).eq('id', id);
     setAtos(prev => prev.map(a => a.id === id ? { ...a, lido: true } : a));
@@ -164,28 +190,27 @@ export default function DiariosOficiaisTab() {
     const matchFonte = fonteFiltro === 'todos' ||
       (fonteFiltro === 'tcmpa' && portalLower.includes('tcm')) ||
       (fonteFiltro === 'dou' && portalLower.includes('dou')) ||
-      (fonteFiltro === 'ioepa' && (portalLower.includes('ioepa') || portalLower.includes('doe-pa'))) ||
-      (fonteFiltro === 'doesp' && (portalLower.includes('doe-sp') || portalLower.includes('doesp'))) ||
-      (fonteFiltro === 'ioerj' && (portalLower.includes('ioerj') || portalLower.includes('doe-rj'))) ||
-      (fonteFiltro === 'dodf' && (portalLower.includes('dodf') || portalLower.includes('doe-df')));
+      (fonteFiltro === 'ioepa' && (portalLower.includes('ioepa') || portalLower.includes('doe-pa') || portalLower.includes('pará'))) ||
+      (fonteFiltro === 'doesp' && (portalLower.includes('doe-sp') || portalLower.includes('doesp') || portalLower.includes('são paulo'))) ||
+      (fonteFiltro === 'ioerj' && (portalLower.includes('ioerj') || portalLower.includes('doe-rj') || portalLower.includes('rio de janeiro'))) ||
+      (fonteFiltro === 'dodf' && (portalLower.includes('dodf') || portalLower.includes('doe-df') || portalLower.includes('distrito federal')));
     return matchBusca && matchTipo && matchUf && matchFonte;
   });
 
   const naoLidos = atos.filter(a => !a.lido).length;
+  const fonteAtual = FONTES_DIARIOS.find(f => f.id === fonteFiltro);
 
   return (
     <div className="space-y-4">
       {/* Header da busca */}
       <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Newspaper className="w-5 h-5 text-accent" />
             <h3 className="font-semibold text-sm">Busca nos Diários Oficiais</h3>
-            {naoLidos > 0 && (
-              <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-[10px]">
-                {naoLidos} novos
-              </Badge>
-            )}
+            <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-[10px]">
+              {naoLidos > 0 ? `${naoLidos} novos` : `${atos.length} registros`}
+            </Badge>
           </div>
           <div className="flex items-center gap-2">
             <Select value={ufsBusca[0] || 'PA'} onValueChange={v => setUfsBusca([v])}>
@@ -222,6 +247,70 @@ export default function DiariosOficiaisTab() {
             <Progress value={progresso} className="h-1.5" />
           </div>
         )}
+
+        {/* Pesquisa avançada com IA */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent" />
+            <Input
+              placeholder="Pesquisa avançada com IA (ex: pavimentação, saneamento, energia solar...)"
+              value={buscaIA}
+              onChange={e => setBuscaIA(e.target.value)}
+              className="pl-9 text-xs"
+              onKeyDown={e => e.key === 'Enter' && handleBuscaIA()}
+            />
+          </div>
+          <Button
+            onClick={handleBuscaIA}
+            disabled={buscandoIA || buscando}
+            size="sm"
+            variant="outline"
+            className="shrink-0"
+          >
+            {buscandoIA ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <><Sparkles className="w-3.5 h-3.5 mr-1" /> Pesquisar com IA</>
+            )}
+          </Button>
+        </div>
+
+        {/* Toggle para mostrar portais */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-between text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => setMostrarPortais(!mostrarPortais)}
+        >
+          <span className="flex items-center gap-1.5">
+            <Globe className="w-3.5 h-3.5" />
+            Acessar portais dos Diários Oficiais
+          </span>
+          {mostrarPortais ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </Button>
+
+        {mostrarPortais && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {FONTES_DIARIOS.filter(f => f.id !== 'todos').map(fonte => (
+              <a
+                key={fonte.id}
+                href={fonte.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/40 hover:bg-muted/80 border border-border/30 hover:border-accent/40 transition-all group"
+              >
+                <div className="w-7 h-7 rounded-md bg-accent/10 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
+                  <Newspaper className="w-3.5 h-3.5 text-accent" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium truncate">{fonte.label}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{fonte.url}</p>
+                </div>
+                <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-accent shrink-0" />
+              </a>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Filtros */}
@@ -229,7 +318,7 @@ export default function DiariosOficiaisTab() {
         <div className="relative flex-1 min-w-[250px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por título ou órgão..."
+            placeholder="Filtrar por título ou órgão..."
             value={busca}
             onChange={e => setBusca(e.target.value)}
             className="pl-9"
@@ -254,7 +343,7 @@ export default function DiariosOficiaisTab() {
           </SelectContent>
         </Select>
         <Select value={fonteFiltro} onValueChange={setFonteFiltro}>
-          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Fonte" /></SelectTrigger>
+          <SelectTrigger className="w-[200px]"><SelectValue placeholder="Fonte" /></SelectTrigger>
           <SelectContent>
             {FONTES_DIARIOS.map(f => (
               <SelectItem key={f.id} value={f.id}>{f.label}</SelectItem>
@@ -262,6 +351,24 @@ export default function DiariosOficiaisTab() {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Link direto ao portal selecionado */}
+      {fonteFiltro !== 'todos' && fonteAtual?.url && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-accent/5 border border-accent/20 text-xs">
+          <Globe className="w-3.5 h-3.5 text-accent shrink-0" />
+          <span className="text-muted-foreground">Filtrando por:</span>
+          <span className="font-medium">{fonteAtual.label}</span>
+          <span className="text-muted-foreground">—</span>
+          <a
+            href={fonteAtual.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent hover:underline flex items-center gap-1"
+          >
+            Acessar portal <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+      )}
 
       <p className="text-xs text-muted-foreground">
         {loading ? 'Carregando...' : `${atosFiltrados.length} atos encontrados`}
@@ -354,8 +461,16 @@ export default function DiariosOficiaisTab() {
         {!loading && atosFiltrados.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <Newspaper className="w-10 h-10 mx-auto mb-3 opacity-40" />
-            <p className="text-sm">Nenhum ato encontrado.</p>
-            <p className="text-xs mt-1">Clique em "Buscar DOU + DOE" para iniciar a pesquisa.</p>
+            <p className="text-sm">Nenhum ato encontrado nos diários oficiais.</p>
+            <p className="text-xs mt-1">Clique em "Buscar Diários Oficiais" ou use a pesquisa avançada com IA para iniciar.</p>
+            <div className="flex justify-center gap-2 mt-4">
+              <Button size="sm" variant="outline" onClick={() => setMostrarPortais(true)}>
+                <Globe className="w-3.5 h-3.5 mr-1" /> Ver portais disponíveis
+              </Button>
+              <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleBuscar} disabled={buscando}>
+                <Search className="w-3.5 h-3.5 mr-1" /> Buscar agora
+              </Button>
+            </div>
           </div>
         )}
       </div>
