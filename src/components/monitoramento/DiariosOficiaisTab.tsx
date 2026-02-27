@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
 
 type AtoLicitatorio = {
   id: string;
@@ -92,6 +93,7 @@ export default function DiariosOficiaisTab() {
   const [buscandoIA, setBuscandoIA] = useState(false);
   const [dataInicio, setDataInicio] = useState<Date | undefined>();
   const [dataFim, setDataFim] = useState<Date | undefined>();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const carregarAtos = async () => {
     if (!user) return;
@@ -187,6 +189,74 @@ export default function DiariosOficiaisTab() {
   const marcarComoLido = async (id: string) => {
     await supabase.from('monitoramento_editais').update({ lido: true }).eq('id', id);
     setAtos(prev => prev.map(a => a.id === id ? { ...a, lido: true } : a));
+  };
+
+  const handleDownloadPublicacao = async (ato: AtoLicitatorio) => {
+    if (!ato.url) {
+      toast.error('Sem link disponível para download');
+      return;
+    }
+    setDownloadingId(ato.id);
+    try {
+      const session = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-edital`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.data.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            url: ato.url,
+            numero: ato.titulo,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erro ao baixar documento');
+      }
+
+      const data = await response.json();
+
+      if (data.tipo === 'base64' && data.arquivo) {
+        const byteChars = atob(data.arquivo);
+        const byteNumbers = new Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) {
+          byteNumbers[i] = byteChars.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: data.contentType || 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = data.nomeArquivo || 'edital.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success('Download concluído!');
+      } else if (data.tipo === 'lista' && data.documentos?.length > 0) {
+        // Download the first document
+        const doc = data.documentos[0];
+        if (doc.url) {
+          window.open(doc.url, '_blank');
+          toast.success(`Abrindo: ${doc.titulo || 'documento'}`);
+        }
+      } else if (data.tipo === 'redirect' && data.url) {
+        window.open(data.url, '_blank');
+        toast.info('Abrindo página do portal para download');
+      } else {
+        toast.error('Documento não disponível para download direto');
+      }
+    } catch (err: any) {
+      console.error('Erro download:', err);
+      toast.error(err.message || 'Erro ao baixar publicação');
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   const atosFiltrados = atos.filter(a => {
@@ -497,11 +567,20 @@ export default function DiariosOficiaisTab() {
                     </Button>
                   )}
                   {ato.url && (
-                    <Button size="sm" variant="outline" className="h-7 px-2 gap-1" asChild>
-                      <a href={ato.url} target="_blank" rel="noopener noreferrer" title="Baixar edital" download>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 gap-1"
+                      disabled={downloadingId === ato.id}
+                      onClick={() => handleDownloadPublicacao(ato)}
+                      title="Baixar publicação"
+                    >
+                      {downloadingId === ato.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
                         <Download className="w-3.5 h-3.5" />
-                        <span className="text-[10px] hidden sm:inline">Baixar</span>
-                      </a>
+                      )}
+                      <span className="text-[10px] hidden sm:inline">Baixar</span>
                     </Button>
                   )}
                   {!ato.url && (
