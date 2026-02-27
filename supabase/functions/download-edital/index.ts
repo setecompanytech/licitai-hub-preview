@@ -319,73 +319,105 @@ async function tryPncpSearch(
   orgao: string,
   objeto: string
 ): Promise<Response | null> {
-  try {
-    const now = new Date();
-    const dataInicial = formatDatePNCP(new Date(now.getTime() - 180 * 86400000));
-    const dataFinal = formatDatePNCP(new Date(now.getTime() + 180 * 86400000));
-    
-    const params = new URLSearchParams({
-      dataInicial,
-      dataFinal,
-      codigoModalidadeContratacao: "6", // Pregão Eletrônico
-      pagina: "1",
-      tamanhoPagina: "10",
-    });
+  // Try multiple modalidades
+  const modalidades = ["6", "8", "5", "1", "4"]; // Pregão, Concorrência, Dispensa, etc.
+  
+  for (const modalidade of modalidades) {
+    try {
+      const now = new Date();
+      const dataInicial = formatDatePNCP(new Date(now.getTime() - 365 * 86400000));
+      const dataFinal = formatDatePNCP(new Date(now.getTime() + 180 * 86400000));
+      
+      const params = new URLSearchParams({
+        dataInicial,
+        dataFinal,
+        codigoModalidadeContratacao: modalidade,
+        pagina: "1",
+        tamanhoPagina: "20",
+      });
 
-    const searchUrl = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params}`;
-    console.log(`PNCP search fallback: ${searchUrl}`);
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-
-    const resp = await fetch(searchUrl, {
-      headers: { ...FETCH_HEADERS, Accept: "application/json" },
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-
-    if (!resp.ok) {
-      const errText = await resp.text();
-      console.log(`PNCP search error ${resp.status}: ${errText.substring(0, 200)}`);
-      return null;
-    }
-
-    const data = await resp.json();
-    const items = data.data || [];
-    
-    if (items.length === 0) return null;
-
-    // Try to find a match by objeto or orgao
-    const searchTerms = [objeto, orgao, numero].filter(Boolean).map(s => s.toLowerCase());
-    let bestMatch = items[0];
-    for (const item of items) {
-      const text = `${item.objetoCompra || ""} ${item.orgaoEntidade?.razaoSocial || ""}`.toLowerCase();
-      if (searchTerms.some(t => text.includes(t))) {
-        bestMatch = item;
-        break;
+      // Add keyword search if available
+      if (objeto) {
+        // Extract key terms from the title/objeto
+        const keywords = objeto
+          .replace(/(?:aviso de licitação|edital|homologação|adjudicação|aditivamento|contrato|ata de registro)[- ]*/gi, "")
+          .trim();
+        if (keywords.length > 3) {
+          params.set("q", keywords.substring(0, 100));
+        }
       }
-    }
 
-    // Use anoCompra + sequencialCompra directly if available
-    if (bestMatch.orgaoEntidade?.cnpj && bestMatch.anoCompra && bestMatch.sequencialCompra) {
-      return tryPncpDownload(
-        bestMatch.orgaoEntidade.cnpj,
-        String(bestMatch.anoCompra),
-        String(bestMatch.sequencialCompra)
-      );
-    }
+      const searchUrl = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params}`;
+      console.log(`PNCP search (mod=${modalidade}): ${searchUrl}`);
 
-    // Fallback: parse numeroControlePNCP
-    const parsed = parsePncpNumero(bestMatch.numeroControlePNCP || "");
-    if (parsed) {
-      return tryPncpDownload(parsed.cnpj, parsed.ano, parsed.sequencial);
-    }
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
 
-    return null;
-  } catch (e) {
-    console.log("PNCP search fallback error:", e);
-    return null;
+      const resp = await fetch(searchUrl, {
+        headers: { ...FETCH_HEADERS, Accept: "application/json" },
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!resp.ok) {
+        await resp.text();
+        continue;
+      }
+
+      const data = await resp.json();
+      const items = data.data || [];
+      
+      if (items.length === 0) continue;
+
+      // Try to find a match by orgao name
+      const orgaoLower = (orgao || "").toLowerCase();
+      const objetoLower = (objeto || "").toLowerCase();
+      
+      let bestMatch = null;
+      for (const item of items) {
+        const razao = (item.orgaoEntidade?.razaoSocial || "").toLowerCase();
+        const obj = (item.objetoCompra || "").toLowerCase();
+        
+        // Match by orgao name similarity
+        if (orgaoLower && razao && (razao.includes(orgaoLower.substring(0, 15)) || orgaoLower.includes(razao.substring(0, 15)))) {
+          bestMatch = item;
+          break;
+        }
+        // Match by objeto keywords
+        if (objetoLower) {
+          const words = objetoLower.split(/\s+/).filter(w => w.length > 4);
+          const matchCount = words.filter(w => obj.includes(w)).length;
+          if (matchCount >= 2) {
+            bestMatch = item;
+            break;
+          }
+        }
+      }
+
+      if (!bestMatch) continue;
+
+      // Use anoCompra + sequencialCompra directly if available
+      if (bestMatch.orgaoEntidade?.cnpj && bestMatch.anoCompra && bestMatch.sequencialCompra) {
+        const result = await tryPncpDownload(
+          bestMatch.orgaoEntidade.cnpj,
+          String(bestMatch.anoCompra),
+          String(bestMatch.sequencialCompra)
+        );
+        if (result) return result;
+      }
+
+      // Fallback: parse numeroControlePNCP
+      const parsed = parsePncpNumero(bestMatch.numeroControlePNCP || "");
+      if (parsed) {
+        const result = await tryPncpDownload(parsed.cnpj, parsed.ano, parsed.sequencial);
+        if (result) return result;
+      }
+    } catch (e) {
+      console.log(`PNCP search error (mod=${modalidade}):`, e);
+    }
   }
+
+  return null;
 }
 
 Deno.serve(async (req) => {

@@ -210,6 +210,9 @@ export default function DiariosOficiaisTab() {
           body: JSON.stringify({
             url: ato.url,
             numero: ato.titulo,
+            orgao: ato.orgao,
+            objeto: ato.titulo,
+            portal: ato.portal,
           }),
         }
       );
@@ -221,35 +224,31 @@ export default function DiariosOficiaisTab() {
 
       const data = await response.json();
 
-      if (data.tipo === 'base64' && data.arquivo) {
-        const byteChars = atob(data.arquivo);
+      if (data.tipo === 'arquivo_direto' && data.arquivo?.conteudo_base64) {
+        const byteChars = atob(data.arquivo.conteudo_base64);
         const byteNumbers = new Array(byteChars.length);
         for (let i = 0; i < byteChars.length; i++) {
           byteNumbers[i] = byteChars.charCodeAt(i);
         }
         const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: data.contentType || 'application/pdf' });
-        const url = URL.createObjectURL(blob);
+        const blob = new Blob([byteArray], { type: data.arquivo.content_type || 'application/pdf' });
+        const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = data.nomeArquivo || 'edital.pdf';
+        a.href = blobUrl;
+        a.download = data.arquivo.nome || 'edital.pdf';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(blobUrl);
         toast.success('Download concluído!');
-      } else if (data.tipo === 'lista' && data.documentos?.length > 0) {
-        // Download the first document
+      } else if (data.tipo === 'download_urls' && data.documentos?.length > 0) {
         const doc = data.documentos[0];
         if (doc.url) {
           window.open(doc.url, '_blank');
-          toast.success(`Abrindo: ${doc.titulo || 'documento'}`);
+          toast.success(`Abrindo: ${doc.nome || 'documento'}`);
         }
-      } else if (data.tipo === 'redirect' && data.url) {
-        window.open(data.url, '_blank');
-        toast.info('Abrindo página do portal para download');
       } else {
-        toast.error('Documento não disponível para download direto');
+        toast.error('Documento não disponível para download direto. Os dados dos diários oficiais podem não ter arquivos públicos acessíveis.');
       }
     } catch (err: any) {
       console.error('Erro download:', err);
