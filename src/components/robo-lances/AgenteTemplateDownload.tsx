@@ -37,14 +37,20 @@ export default function AgenteTemplateDownload() {
   };
 
   const fileTree = [
-    { name: 'package.json', desc: 'Dependências (Express, Puppeteer)' },
-    { name: 'Dockerfile', desc: 'Deploy com Docker' },
-    { name: '.env.example', desc: 'Variáveis de ambiente' },
-    { name: 'src/index.js', desc: 'Servidor Express com endpoints' },
-    { name: 'src/session-manager.js', desc: 'Gerenciador de sessões de lance' },
+    { name: 'setup.sh', desc: 'Instalação automática (Ubuntu/Debian)' },
+    { name: 'ecosystem.config.js', desc: 'PM2 — processo persistente 24/7' },
+    { name: 'docker-compose.yml', desc: 'Deploy com Docker Compose' },
+    { name: 'setup-nginx.sh', desc: 'HTTPS com Nginx + Let\'s Encrypt' },
+    { name: 'src/index.js', desc: 'Servidor Express v2 com validação' },
+    { name: 'src/session-manager.js', desc: 'Gerenciador com portais reais' },
     { name: 'src/browser.js', desc: 'Puppeteer + certificado A1' },
-    { name: 'src/callback.js', desc: 'Envio de callbacks ao sistema' },
-    { name: 'src/portals/comprasgov.js', desc: 'Módulo Compras.gov (esqueleto)' },
+    { name: 'src/portals/index.js', desc: 'Registry de 8 portais suportados' },
+    { name: 'src/portals/comprasgov.js', desc: 'Compras.gov.br (certificado)' },
+    { name: 'src/portals/bll.js', desc: 'Bolsa de Licitações e Leilões' },
+    { name: 'src/portals/licitacoes-e.js', desc: 'Licitações-e (Banco do Brasil)' },
+    { name: 'src/portals/pncp.js', desc: 'PNCP (Portal Nacional)' },
+    { name: 'src/portals/bec-sp.js', desc: 'BEC-SP (Bolsa Eletrônica SP)' },
+    { name: 'src/portals/licitanet.js', desc: 'Licitanet' },
   ];
 
   const steps = [
@@ -81,9 +87,8 @@ export default function AgenteTemplateDownload() {
               Template do Agente Externo
             </h3>
             <p className="text-sm text-muted-foreground max-w-xl">
-              Projeto Node.js pronto para deploy com Express, Puppeteer e suporte a
-              certificado digital A1. Implemente os módulos de portal específicos e
-              rode em seu servidor dedicado.
+              Projeto Node.js v2.0 com <strong>8 portais implementados</strong>, setup automático,
+              PM2, Docker Compose e HTTPS. Pronto para deploy em VPS.
             </p>
           </div>
           <Button
@@ -156,8 +161,9 @@ export default function AgenteTemplateDownload() {
         </h4>
         <div className="space-y-2">
           {[
-            { label: 'Instalar e rodar', cmd: 'cd agente-lances-externo && npm install && cp .env.example .env && npm start' },
-            { label: 'Docker', cmd: 'docker build -t agente-lances . && docker run -d -p 3500:3500 --env-file .env -v ./certs:/app/certs agente-lances' },
+            { label: 'Setup automático', cmd: 'cd agente-lances-externo && chmod +x setup.sh && bash setup.sh' },
+            { label: 'Docker Compose', cmd: 'cd agente-lances-externo && docker compose up -d' },
+            { label: 'HTTPS (Nginx)', cmd: 'sudo bash setup-nginx.sh agente.seudominio.com.br' },
             { label: 'Testar health', cmd: 'curl http://localhost:3500/health' },
           ].map((c) => (
             <div key={c.label} className="flex items-center gap-2">
