@@ -28,7 +28,6 @@ const PORTAIS = [
   { id: 'banparanet', nome: 'Banparanet (PA)' },
   { id: 'bec-sp', nome: 'BEC/SP' },
   { id: 'compras-rj', nome: 'Compras Públicas RJ' },
-  { id: 'tcmpa', nome: 'TCM-PA' },
 ];
 
 export default function CredenciaisPortalForm() {

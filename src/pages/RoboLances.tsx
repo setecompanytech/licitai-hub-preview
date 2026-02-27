@@ -18,7 +18,6 @@ const portais = [
   { id: 'licitanet', nome: 'Licitanet', url: 'https://www.licitanet.com.br', status: 'conectado', sessoes: 2 },
   { id: 'licitacoes-e', nome: 'Licitações-e (BB)', url: 'https://licitacoes-e2.bb.com.br/aop-inter-estatico/', status: 'conectado', sessoes: 4 },
   { id: 'portal-compras', nome: 'Portal de Compras Públicas', url: 'https://www.portaldecompraspublicas.com.br', status: 'conectado', sessoes: 1 },
-  { id: 'tcmpa', nome: 'TCM-PA', url: 'https://www.tcm.pa.gov.br', status: 'conectado', sessoes: 1 },
   { id: 'bnc', nome: 'Bolsa Nacional de Compras', url: 'https://bnc.org.br/', status: 'conectado', sessoes: 1 },
   { id: 'banparanet', nome: 'Banparanet (PA)', url: 'https://cotacao.banpara.b.br/portal/Mural.aspx', status: 'conectado', sessoes: 1 },
   { id: 'bec-sp', nome: 'BEC/SP', url: 'https://www.bec.sp.gov.br/BECSP/Home/Home.aspx', status: 'conectado', sessoes: 1 },

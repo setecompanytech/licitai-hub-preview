@@ -59,6 +59,13 @@ const UFS_DISPONIVEIS = [
   'SE', 'SP', 'TO'
 ];
 
+const FONTES_DIARIOS = [
+  { id: 'todos', label: 'Todas as fontes' },
+  { id: 'dou', label: 'DOU (Federal)' },
+  { id: 'doe', label: 'DOE (Estadual)' },
+  { id: 'tcmpa', label: 'TCM-PA' },
+];
+
 export default function DiariosOficiaisTab() {
   const { user } = useAuth();
   const [atos, setAtos] = useState<AtoLicitatorio[]>([]);
@@ -68,6 +75,7 @@ export default function DiariosOficiaisTab() {
   const [busca, setBusca] = useState('');
   const [tipoFiltro, setTipoFiltro] = useState('todos');
   const [ufFiltro, setUfFiltro] = useState('todos');
+  const [fonteFiltro, setFonteFiltro] = useState('todos');
   const [ufsBusca, setUfsBusca] = useState<string[]>(['PA']);
 
   const carregarAtos = async () => {
@@ -149,7 +157,11 @@ export default function DiariosOficiaisTab() {
       a.orgao.toLowerCase().includes(busca.toLowerCase());
     const matchTipo = tipoFiltro === 'todos' || a.tipo === tipoFiltro;
     const matchUf = ufFiltro === 'todos' || a.uf === ufFiltro;
-    return matchBusca && matchTipo && matchUf;
+    const matchFonte = fonteFiltro === 'todos' ||
+      (fonteFiltro === 'tcmpa' && a.portal?.toLowerCase().includes('tcm')) ||
+      (fonteFiltro === 'dou' && a.portal?.toLowerCase().includes('dou')) ||
+      (fonteFiltro === 'doe' && a.portal?.toLowerCase().includes('doe'));
+    return matchBusca && matchTipo && matchUf && matchFonte;
   });
 
   const naoLidos = atos.filter(a => !a.lido).length;
@@ -231,6 +243,14 @@ export default function DiariosOficiaisTab() {
             <SelectItem value="todos">Todas</SelectItem>
             {UFS_DISPONIVEIS.map(uf => (
               <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={fonteFiltro} onValueChange={setFonteFiltro}>
+          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Fonte" /></SelectTrigger>
+          <SelectContent>
+            {FONTES_DIARIOS.map(f => (
+              <SelectItem key={f.id} value={f.id}>{f.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
