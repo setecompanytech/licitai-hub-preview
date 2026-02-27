@@ -421,6 +421,16 @@ export default function LicitacoesTab() {
 
   return (
     <div className="space-y-4">
+      {/* Busca Inteligente IA — destaque principal */}
+      <div className="bg-accent/5 rounded-xl border-2 border-accent/30 p-4 shadow-sm space-y-3">
+        <h3 className="font-semibold text-sm flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-accent" />
+          Busca Inteligente IA
+          <Badge className="bg-accent text-accent-foreground text-[10px]">Recomendado</Badge>
+        </h3>
+        <BuscaInteligenteTab />
+      </div>
+
       {/* Header de busca */}
       <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
@@ -717,14 +727,6 @@ export default function LicitacoesTab() {
         </div>
       </div>
 
-      {/* Busca Inteligente IA */}
-      <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm space-y-3">
-        <h3 className="font-semibold text-sm flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-accent" />
-          Busca Inteligente IA
-        </h3>
-        <BuscaInteligenteTab />
-      </div>
     </div>
   );
 }
