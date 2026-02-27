@@ -37,6 +37,7 @@ type AtoLicitatorio = {
   lido: boolean | null;
   status: string | null;
   created_at: string;
+  texto_integral: string | null;
 };
 
 const tipoConfig: Record<string, { label: string; icon: typeof FileText; color: string }> = {
@@ -80,6 +81,7 @@ const FONTES_DIARIOS = [
 export default function DiariosOficiaisTab() {
   const { user } = useAuth();
   const [atos, setAtos] = useState<AtoLicitatorio[]>([]);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [buscando, setBuscando] = useState(false);
   const [progresso, setProgresso] = useState(0);
@@ -537,6 +539,32 @@ export default function DiariosOficiaisTab() {
                       )}
                     </div>
                     <p className="text-sm font-medium leading-snug">{ato.titulo}</p>
+                    
+                    {/* Texto Integral - formato diário oficial */}
+                    {ato.texto_integral && (
+                      <div className="mt-2">
+                        <button
+                          onClick={() => setExpandedIds(prev => {
+                            const next = new Set(prev);
+                            if (next.has(ato.id)) next.delete(ato.id); else next.add(ato.id);
+                            return next;
+                          })}
+                          className="text-[10px] text-accent hover:underline flex items-center gap-1"
+                        >
+                          <FileText className="w-3 h-3" />
+                          {expandedIds.has(ato.id) ? 'Ocultar texto integral' : 'Ver texto integral (formato DO)'}
+                          {expandedIds.has(ato.id) ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        </button>
+                        {expandedIds.has(ato.id) && (
+                          <div className="mt-1.5 p-3 rounded-lg bg-muted/50 border border-border/40">
+                            <p className="text-xs font-mono leading-relaxed whitespace-pre-wrap text-foreground/90">
+                              {ato.texto_integral}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                       <span className="flex items-center gap-1">
                         <Building2 className="w-3 h-3" /> {ato.orgao}
