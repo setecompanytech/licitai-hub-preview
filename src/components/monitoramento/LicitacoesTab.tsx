@@ -77,6 +77,33 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
+const normalizeStatus = (value?: string | null): string => {
+  const s = (value || '').toLowerCase();
+  if (!s) return 'Publicado';
+  if (s.includes('homolog')) return 'Homologada';
+  if (s.includes('adjudic') || s.includes('ata_registro')) return 'Vencida';
+  if (s.includes('cancel') || s.includes('revog') || s.includes('perd')) return 'Perdida';
+  if (s.includes('anal')) return 'Em Análise';
+  if (s.includes('proposta')) return 'Proposta Enviada';
+  return 'Publicado';
+};
+
+const toTitleCase = (value?: string | null): string => {
+  if (!value) return 'Não informada';
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+const extractNumero = (item: { numero?: string | null; titulo?: string | null; url?: string | null }, idx: number): string => {
+  if (item.numero) return item.numero;
+  const matchFromUrl = item.url?.match(/compra=(\d+)/i)?.[1];
+  if (matchFromUrl) return matchFromUrl;
+  const matchFromTitle = item.titulo?.match(/\b([A-Z]{1,4}-?\d+\/\d{4})\b/i)?.[1];
+  if (matchFromTitle) return matchFromTitle;
+  return `MON-${idx + 1}`;
+};
+
 const GENERIC_PORTAL_URLS = [
   'https://www.gov.br/compras/pt-br',
   'https://www.gov.br/compras',
@@ -141,15 +168,50 @@ export default function LicitacoesTab() {
 
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from('licitacoes')
-      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, uf, municipio, data_encerramento, portal')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setLicitacoes((data || []).map(d => ({ ...d, portal: d.portal || '-' })) as ResultadoBusca[]);
-        setLoading(false);
-      });
+
+    const carregarDados = async () => {
+      setLoading(true);
+
+      const [licitacoesResp, monitoramentoResp] = await Promise.all([
+        supabase
+          .from('licitacoes')
+          .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, uf, municipio, data_encerramento, portal, url_edital')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('monitoramento_editais')
+          .select('id, titulo, orgao, tipo, status, valor_estimado, uf, municipio, data_abertura, data_publicacao, portal, url')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(500),
+      ]);
+
+      const licitacoesDiretas = (licitacoesResp.data || []).map((d) => ({
+        ...d,
+        portal: d.portal || '-',
+        url: d.url_edital || undefined,
+      })) as ResultadoBusca[];
+
+      const monitoramentoMapeado: ResultadoBusca[] = (monitoramentoResp.data || []).map((d, idx) => ({
+        id: d.id,
+        numero: extractNumero({ titulo: d.titulo, url: d.url }, idx),
+        orgao: d.orgao,
+        objeto: d.titulo,
+        modalidade: toTitleCase(d.tipo),
+        status: normalizeStatus(d.status || d.tipo),
+        valor_estimado: d.valor_estimado,
+        uf: d.uf,
+        municipio: d.municipio,
+        data_encerramento: d.data_abertura || d.data_publicacao,
+        portal: d.portal || 'PNCP',
+        url: d.url || undefined,
+      }));
+
+      setLicitacoes(licitacoesDiretas.length > 0 ? licitacoesDiretas : monitoramentoMapeado);
+      setLoading(false);
+    };
+
+    carregarDados();
   }, [user]);
 
   const togglePortal = (id: string) => {
