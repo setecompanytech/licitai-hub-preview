@@ -549,10 +549,16 @@ Deno.serve(async (req) => {
     }
 
     // Firecrawl scraping for other portals
+    // Map frontend portal IDs to backend keys (handle aliases)
+    const PORTAL_ALIASES: Record<string, string> = {
+      "licitacoes-e": "licitacoese",
+    };
     if (FIRECRAWL_API_KEY) {
       const scrapePortals = portais.includes("todos")
         ? Object.keys(PORTAIS_SCRAPE)
-        : portais.filter((p: string) => p !== "pncp" && PORTAIS_SCRAPE[p]);
+        : portais
+            .map((p: string) => PORTAL_ALIASES[p] || p)
+            .filter((p: string) => p !== "pncp" && PORTAIS_SCRAPE[p]);
 
       for (const pid of scrapePortals) {
         promises.push(buscarComFirecrawl(pid, query, FIRECRAWL_API_KEY));
