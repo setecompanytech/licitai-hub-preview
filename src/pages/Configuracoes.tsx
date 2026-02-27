@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,18 +10,62 @@ import CnaesSecundarios from '@/components/configuracoes/CnaesSecundarios';
 import PlanoAssinatura from '@/components/configuracoes/PlanoAssinatura';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 
 export default function Configuracoes() {
-  const [cnpjInput, setCnpjInput] = useState('12.345.678/0001-99');
-  const [razaoSocial, setRazaoSocial] = useState('Minha Construtora Ltda.');
-  const [cnaePrincipal, setCnaePrincipal] = useState('42.11-1');
-  const [cidade, setCidade] = useState('Belém');
-  const [uf, setUf] = useState('PA');
+  const { empresaAtiva, reloadEmpresas } = useEmpresa();
+  const [cnpjInput, setCnpjInput] = useState('');
+  const [razaoSocial, setRazaoSocial] = useState('');
+  const [cnaePrincipal, setCnaePrincipal] = useState('');
+  const [cidade, setCidade] = useState('');
+  const [uf, setUf] = useState('');
   const [inscricaoMunicipal, setInscricaoMunicipal] = useState('');
   const [inscricaoEstadual, setInscricaoEstadual] = useState('');
   const [loadingCnpj, setLoadingCnpj] = useState(false);
   const [loadingSintegra, setLoadingSintegra] = useState(false);
+  const [loadingSalvar, setLoadingSalvar] = useState(false);
   const [erroCnpj, setErroCnpj] = useState('');
+
+  useEffect(() => {
+    if (empresaAtiva) {
+      setCnpjInput(empresaAtiva.cnpj || '');
+      setRazaoSocial(empresaAtiva.razao_social || '');
+      setCnaePrincipal(empresaAtiva.cnae_principal || '');
+      setCidade(empresaAtiva.municipio || '');
+      setUf(empresaAtiva.uf || '');
+      setInscricaoMunicipal((empresaAtiva as any).inscricao_municipal || '');
+      setInscricaoEstadual((empresaAtiva as any).inscricao_estadual || '');
+    }
+  }, [empresaAtiva]);
+
+  const handleSalvar = async () => {
+    if (!empresaAtiva) {
+      toast.error('Nenhuma empresa ativa selecionada');
+      return;
+    }
+    setLoadingSalvar(true);
+    try {
+      const { error } = await supabase
+        .from('empresas')
+        .update({
+          cnpj: cnpjInput,
+          razao_social: razaoSocial,
+          cnae_principal: cnaePrincipal,
+          municipio: cidade,
+          uf: uf,
+          inscricao_municipal: inscricaoMunicipal || null,
+          inscricao_estadual: inscricaoEstadual || null,
+        })
+        .eq('id', empresaAtiva.id);
+      if (error) throw error;
+      await reloadEmpresas();
+      toast.success('Configurações salvas com sucesso!');
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao salvar configurações');
+    } finally {
+      setLoadingSalvar(false);
+    }
+  };
 
   const handleConsultaCNPJ = async () => {
     const cnpjLimpo = cnpjInput.replace(/\D/g, '');
@@ -268,7 +312,12 @@ export default function Configuracoes() {
           {/* CNAEs Secundários */}
           <CnaesSecundarios />
 
-          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Button
+            className="bg-accent hover:bg-accent/90 text-accent-foreground"
+            onClick={handleSalvar}
+            disabled={loadingSalvar || !empresaAtiva}
+          >
+            {loadingSalvar ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
             Salvar Configurações
           </Button>
         </div>
