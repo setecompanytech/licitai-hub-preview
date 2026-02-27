@@ -7,9 +7,11 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Bot, Play, Pause, Settings, Globe, Clock, TrendingDown,
-  AlertTriangle, CheckCircle2, ExternalLink, RefreshCw
+  AlertTriangle, CheckCircle2, ExternalLink, RefreshCw, Trash2, Edit2, Eye
 } from 'lucide-react';
 import CredenciaisPortalForm from '@/components/robo-lances/CredenciaisPortalForm';
+import ConfigurarLanceDialog, { type LanceConfig } from '@/components/robo-lances/ConfigurarLanceDialog';
+import { toast } from 'sonner';
 
 const portais = [
   { id: 'pncp', nome: 'PNCP', url: 'https://www.gov.br/pncp/pt-br', status: 'conectado', sessoes: 3 },
@@ -22,25 +24,6 @@ const portais = [
   { id: 'banparanet', nome: 'Banparanet (PA)', url: 'https://cotacao.banpara.b.br/portal/Mural.aspx', status: 'conectado', sessoes: 1 },
   { id: 'bec-sp', nome: 'BEC/SP', url: 'https://www.bec.sp.gov.br/BECSP/Home/Home.aspx', status: 'conectado', sessoes: 1 },
   { id: 'compras-rj', nome: 'Compras Públicas RJ', url: 'https://www.compras.rj.gov.br/', status: 'conectado', sessoes: 1 },
-];
-
-type Lance = {
-  id: string;
-  edital: string;
-  portal: string;
-  valorAtual: number;
-  meuLance: number;
-  status: 'aguardando' | 'ativo' | 'vencendo' | 'perdendo' | 'encerrado';
-  horario: string;
-  decrementoMin: number;
-};
-
-const lancesAtivos: Lance[] = [
-  { id: '1', edital: 'PE-001/2026', portal: 'PNCP', valorAtual: 4500000, meuLance: 4200000, status: 'vencendo', horario: '14:30', decrementoMin: 50000 },
-  { id: '2', edital: 'PE-012/2026', portal: 'Compras.gov.br', valorAtual: 890000, meuLance: 870000, status: 'ativo', horario: '15:00', decrementoMin: 10000 },
-  { id: '3', edital: 'CC-003/2026', portal: 'BLL Compras', valorAtual: 2300000, meuLance: 2250000, status: 'perdendo', horario: '15:30', decrementoMin: 25000 },
-  { id: '4', edital: 'PE-045/2026', portal: 'Licitações-e (BB)', valorAtual: 1200000, meuLance: 0, status: 'aguardando', horario: '16:00', decrementoMin: 15000 },
-  { id: '5', edital: 'PE-078/2026', portal: 'PNCP', valorAtual: 560000, meuLance: 540000, status: 'encerrado', horario: '13:00', decrementoMin: 5000 },
 ];
 
 const statusColors: Record<string, string> = {
@@ -56,6 +39,43 @@ const formatCurrency = (v: number) =>
 
 export default function RoboLances() {
   const [autoMode, setAutoMode] = useState(true);
+  const [lances, setLances] = useState<LanceConfig[]>([]);
+  const [selectedLance, setSelectedLance] = useState<LanceConfig | null>(null);
+  const [detailLance, setDetailLance] = useState<LanceConfig | null>(null);
+
+  const handleSaveLance = (lance: LanceConfig) => {
+    setLances((prev) => {
+      const exists = prev.find((l) => l.id === lance.id);
+      if (exists) {
+        toast.success('Sessão de lance atualizada!');
+        return prev.map((l) => (l.id === lance.id ? lance : l));
+      }
+      toast.success('Nova sessão de lance cadastrada!');
+      return [...prev, lance];
+    });
+    setSelectedLance(null);
+  };
+
+  const handleDelete = (id: string) => {
+    setLances((prev) => prev.filter((l) => l.id !== id));
+    toast.info('Sessão removida.');
+  };
+
+  const handleToggleStatus = (id: string) => {
+    setLances((prev) =>
+      prev.map((l) => {
+        if (l.id !== id) return l;
+        if (l.status === 'aguardando') return { ...l, status: 'ativo' as const };
+        if (l.status === 'ativo' || l.status === 'vencendo' || l.status === 'perdendo')
+          return { ...l, status: 'aguardando' as const };
+        return l;
+      })
+    );
+  };
+
+  const activeLances = lances.filter((l) => l.status !== 'encerrado');
+  const winning = lances.filter((l) => l.status === 'vencendo').length;
+  const losing = lances.filter((l) => l.status === 'perdendo').length;
 
   return (
     <AppLayout>
@@ -76,9 +96,7 @@ export default function RoboLances() {
               <span className="text-sm font-medium">Modo Automático</span>
               <Switch checked={autoMode} onCheckedChange={setAutoMode} />
             </div>
-            <Button variant="outline" size="sm">
-              <Settings className="w-4 h-4 mr-1" /> Configurar Regras
-            </Button>
+            <ConfigurarLanceDialog onSave={handleSaveLance} />
           </div>
         </div>
 
@@ -95,10 +113,10 @@ export default function RoboLances() {
             {/* Stats */}
             <div className="grid grid-cols-4 gap-4">
               {[
-                { label: 'Sessões Ativas', value: '5', icon: Play, color: 'text-success' },
-                { label: 'Vencendo', value: '1', icon: CheckCircle2, color: 'text-success' },
-                { label: 'Perdendo', value: '1', icon: AlertTriangle, color: 'text-warning' },
-                { label: 'Economia Média', value: '-6.7%', icon: TrendingDown, color: 'text-accent' },
+                { label: 'Sessões Cadastradas', value: String(lances.length), icon: Play, color: 'text-success' },
+                { label: 'Vencendo', value: String(winning), icon: CheckCircle2, color: 'text-success' },
+                { label: 'Perdendo', value: String(losing), icon: AlertTriangle, color: 'text-warning' },
+                { label: 'Modo', value: autoMode ? 'Automático' : 'Manual', icon: Bot, color: 'text-accent' },
               ].map((s) => (
                 <div key={s.label} className="stat-card">
                   <div className="flex items-center justify-between mb-2">
@@ -110,54 +128,133 @@ export default function RoboLances() {
               ))}
             </div>
 
+            {/* Empty state */}
+            {lances.length === 0 && (
+              <div className="bg-card rounded-xl border border-border/50 p-10 shadow-sm text-center space-y-3">
+                <Bot className="w-10 h-10 text-muted-foreground mx-auto" />
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma sessão de lance cadastrada ainda.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Clique em <strong>"Nova Sessão de Lance"</strong> para configurar os parâmetros automáticos como no EFFECTI.
+                </p>
+              </div>
+            )}
+
             {/* Lance cards */}
             <div className="space-y-3">
-              {lancesAtivos.map((lance) => (
+              {lances.map((lance) => (
                 <div
                   key={lance.id}
-                  className="bg-card rounded-xl border border-border/50 p-4 shadow-sm flex items-center justify-between"
+                  className="bg-card rounded-xl border border-border/50 p-4 shadow-sm"
                 >
-                  <div className="flex items-center gap-4">
-                    <Badge variant="outline" className={statusColors[lance.status]}>
-                      {lance.status.charAt(0).toUpperCase() + lance.status.slice(1)}
-                    </Badge>
-                    <div>
-                      <p className="font-semibold text-sm">{lance.edital}</p>
-                      <p className="text-xs text-muted-foreground">{lance.portal}</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <Badge variant="outline" className={statusColors[lance.status]}>
+                        {lance.status.charAt(0).toUpperCase() + lance.status.slice(1)}
+                      </Badge>
+                      <div>
+                        <p className="font-semibold text-sm">{lance.edital}</p>
+                        <p className="text-xs text-muted-foreground">{lance.portal}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-6">
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Valor Atual</p>
-                      <p className="text-sm font-semibold">{formatCurrency(lance.valorAtual)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Meu Lance</p>
-                      <p className="text-sm font-semibold text-accent">
-                        {lance.meuLance > 0 ? formatCurrency(lance.meuLance) : '—'}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Decremento Mín.</p>
-                      <p className="text-sm">{formatCurrency(lance.decrementoMin)}</p>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Clock className="w-3 h-3" />
-                      {lance.horario}
-                    </div>
-                    <div className="flex gap-2">
-                      {lance.status !== 'encerrado' && (
-                        <>
-                          <Button size="sm" variant="outline">
-                            <TrendingDown className="w-3 h-3 mr-1" /> Dar Lance
-                          </Button>
-                          <Button size="sm" variant="ghost">
-                            <Pause className="w-3 h-3" />
-                          </Button>
-                        </>
+                    <div className="flex items-center gap-6">
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Ref. / Atual</p>
+                        <p className="text-sm font-semibold">{formatCurrency(lance.valorReferencia)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">1º Lance</p>
+                        <p className="text-sm font-semibold text-accent">
+                          {formatCurrency(lance.valorInicial)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Valor Mín.</p>
+                        <p className="text-sm font-semibold text-destructive">
+                          {formatCurrency(lance.valorMinimo)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Decremento</p>
+                        <p className="text-sm">{formatCurrency(lance.decrementoMin)}</p>
+                      </div>
+                      {lance.horario && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          {lance.horario}
+                        </div>
                       )}
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setDetailLance(lance)}
+                          title="Detalhes"
+                        >
+                          <Eye className="w-3 h-3" />
+                        </Button>
+                        <ConfigurarLanceDialog
+                          onSave={handleSaveLance}
+                          editingLance={lance}
+                          trigger={
+                            <Button size="sm" variant="ghost" title="Editar">
+                              <Edit2 className="w-3 h-3" />
+                            </Button>
+                          }
+                        />
+                        {lance.status !== 'encerrado' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleToggleStatus(lance.id)}
+                          >
+                            {lance.status === 'aguardando' ? (
+                              <><Play className="w-3 h-3 mr-1" /> Iniciar</>
+                            ) : (
+                              <><Pause className="w-3 h-3 mr-1" /> Pausar</>
+                            )}
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(lance.id)}
+                          title="Remover"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Detail panel */}
+                  {detailLance?.id === lance.id && (
+                    <div className="mt-3 pt-3 border-t border-border/50 grid grid-cols-5 gap-3">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground">Decremento %</p>
+                        <p className="text-xs font-medium">{lance.decrementoPercentual}%</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground">Intervalo</p>
+                        <p className="text-xs font-medium">{lance.intervaloSegundos}s</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground">Máx. Lances</p>
+                        <p className="text-xs font-medium">{lance.maxLances}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground">Modo</p>
+                        <p className="text-xs font-medium">{lance.modoAutomatico ? 'Automático' : 'Manual'}</p>
+                      </div>
+                      <div className="flex items-end">
+                        <Button size="sm" variant="ghost" onClick={() => setDetailLance(null)}>
+                          Fechar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -166,7 +263,6 @@ export default function RoboLances() {
           {/* Portais */}
           <TabsContent value="portais" className="space-y-6">
             <CredenciaisPortalForm />
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {portais.map((portal) => (
                 <div key={portal.id} className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
@@ -223,7 +319,7 @@ export default function RoboLances() {
           {/* Regras */}
           <TabsContent value="regras" className="space-y-4">
             <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4">
-              <h3 className="text-sm font-semibold">Regras de Lance Automático</h3>
+              <h3 className="text-sm font-semibold">Regras de Lance Automático (Padrão Global)</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-muted-foreground">Decremento padrão (%)</label>
