@@ -15,6 +15,7 @@ import GuiaPassoAPasso from '@/components/robo-lances/GuiaPassoAPasso';
 import DeteccaoPortais from '@/components/robo-lances/DeteccaoPortais';
 import SimulacaoDisputa from '@/components/robo-lances/SimulacaoDisputa';
 import AgenteExternoConfig from '@/components/robo-lances/AgenteExternoConfig';
+import AgenteTemplateDownload from '@/components/robo-lances/AgenteTemplateDownload';
 import { toast } from 'sonner';
 
 const portais = [
@@ -115,6 +116,7 @@ export default function RoboLances() {
             <TabsTrigger value="lances">Lances Ativos</TabsTrigger>
             <TabsTrigger value="portais">Portais Conectados</TabsTrigger>
             <TabsTrigger value="agente">Agente Externo</TabsTrigger>
+            <TabsTrigger value="template">Template Agente</TabsTrigger>
             <TabsTrigger value="historico">Histórico</TabsTrigger>
             <TabsTrigger value="regras">Regras de Lance</TabsTrigger>
           </TabsList>
@@ -353,6 +355,11 @@ export default function RoboLances() {
                 </div>
               </div>
             </div>
+          </TabsContent>
+
+          {/* Template do Agente */}
+          <TabsContent value="template" className="space-y-4">
+            <AgenteTemplateDownload />
           </TabsContent>
 
           {/* Histórico */}
