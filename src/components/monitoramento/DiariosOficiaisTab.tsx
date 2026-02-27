@@ -8,7 +8,7 @@ import {
   Search, RefreshCw, FileText, AlertTriangle, XCircle, Clock,
   CheckCircle2, Globe, Building2, MapPin, Award, PauseCircle,
   ArrowUpDown, FileCheck, Newspaper, ExternalLink, Eye,
-  CalendarDays, Bookmark, Sparkles, ChevronDown, ChevronUp, CalendarIcon
+  CalendarDays, Bookmark, Sparkles, ChevronDown, ChevronUp, CalendarIcon, Download
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -484,16 +484,28 @@ export default function DiariosOficiaisTab() {
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {!ato.lido && (
-                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => marcarComoLido(ato.id)}>
+                    <Button size="sm" variant="ghost" className="h-7 px-2" title="Marcar como lido" onClick={() => marcarComoLido(ato.id)}>
                       <Eye className="w-3.5 h-3.5" />
                     </Button>
                   )}
                   {ato.url && (
-                    <Button size="sm" variant="outline" className="h-7 px-2" asChild>
-                      <a href={ato.url} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="w-3.5 h-3.5" />
+                    <Button size="sm" variant="outline" className="h-7 px-2 gap-1" asChild>
+                      <a href={ato.url} target="_blank" rel="noopener noreferrer" title="Ver no portal">
+                        <Globe className="w-3.5 h-3.5" />
+                        <span className="text-[10px] hidden sm:inline">Portal</span>
                       </a>
                     </Button>
+                  )}
+                  {ato.url && (
+                    <Button size="sm" variant="outline" className="h-7 px-2 gap-1" asChild>
+                      <a href={ato.url} target="_blank" rel="noopener noreferrer" title="Baixar edital" download>
+                        <Download className="w-3.5 h-3.5" />
+                        <span className="text-[10px] hidden sm:inline">Baixar</span>
+                      </a>
+                    </Button>
+                  )}
+                  {!ato.url && (
+                    <span className="text-[10px] text-muted-foreground italic">Sem link</span>
                   )}
                 </div>
               </div>
