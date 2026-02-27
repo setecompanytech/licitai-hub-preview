@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,9 @@ import {
   ArrowUpDown,
   List,
   Newspaper,
+  ExternalLink,
+  KeyRound,
+  ShieldCheck,
 } from "lucide-react";
 import LicitacoesTab from "@/components/monitoramento/LicitacoesTab";
 import DiariosOficiaisTab from "@/components/monitoramento/DiariosOficiaisTab";
@@ -75,6 +79,7 @@ export default function MonitoramentoEditais() {
   const [pesquisando, setPesquisando] = useState(false);
   const [progresso, setProgresso] = useState(0);
   const [tipoFiltro, setTipoFiltro] = useState<TipoDocumento | "todos">("todos");
+  const navigate = useNavigate();
 
   const handlePesquisar = () => {
     setPesquisando(true);
@@ -195,7 +200,7 @@ export default function MonitoramentoEditais() {
           <TabsContent value="portais" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {portaisMonitorados.map((portal) => (
-                <div key={portal.id} className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+                <div key={portal.id} className="bg-card rounded-xl border border-border/50 p-5 shadow-sm flex flex-col">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <Globe className="w-5 h-5 text-accent" />
@@ -212,19 +217,31 @@ export default function MonitoramentoEditais() {
                       {portal.ativo ? "Ativo" : "Inativo"}
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground mb-3">{portal.url}</p>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Busca automática: {portal.ativo ? "Sim" : "Não"}</span>
+                  <p className="text-xs text-muted-foreground mb-4 truncate">{portal.url}</p>
+                  <div className="mt-auto flex flex-col gap-2">
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline">
-                        <FileText className="w-3 h-3 mr-1" /> Cadastrar
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => navigate('/robo-lances')}
+                      >
+                        <KeyRound className="w-3 h-3 mr-1" /> Credenciais
                       </Button>
-                      <Button size="sm" variant="outline" asChild>
-                        <a href={portal.url} target="_blank" rel="noopener noreferrer">
-                          <Globe className="w-3 h-3 mr-1" /> Acessar
-                        </a>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => navigate('/robo-lances')}
+                      >
+                        <ShieldCheck className="w-3 h-3 mr-1" /> Certificado
                       </Button>
                     </div>
+                    <Button size="sm" variant="default" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" asChild>
+                      <a href={portal.url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-3 h-3 mr-1" /> Acessar Portal
+                      </a>
+                    </Button>
                   </div>
                 </div>
               ))}
