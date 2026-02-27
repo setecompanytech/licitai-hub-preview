@@ -265,13 +265,19 @@ export default function LicitacoesTab() {
           const key = `${item.numero}-${item.orgao}`.toLowerCase();
           if (!seenIds.has(key)) {
             seenIds.add(key);
+            // Normalize status from PNCP (e.g. "Divulgada no PNCP") to match local filters
+            let normalizedStatus = item.status || 'Publicado';
+            if (/divulgad|publicad|aberta/i.test(normalizedStatus)) normalizedStatus = 'Publicado';
+            else if (/homologad/i.test(normalizedStatus)) normalizedStatus = 'Homologada';
+            else if (/encerrad|fechad/i.test(normalizedStatus)) normalizedStatus = 'Perdida';
+
             allResults.push({
               id: `ia-${idx}`,
               numero: item.numero || '-',
               orgao: item.orgao || '-',
               objeto: item.titulo || '-',
               modalidade: item.modalidade || 'Não informada',
-              status: item.status || 'Publicado',
+              status: normalizedStatus,
               valor_estimado: item.valor_estimado || null,
               uf: item.uf || null,
               municipio: item.municipio || null,
@@ -288,6 +294,10 @@ export default function LicitacoesTab() {
         });
       }
 
+      // Reset filters when entering search mode to avoid filtering out results
+      setStatusFilter('all');
+      setModalidadeFilter('all');
+      setPortalFilter('all');
       setResultadosBusca(allResults);
       setModoResultados('busca');
 
