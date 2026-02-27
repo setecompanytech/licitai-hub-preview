@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Building2, Bell, Globe, Shield } from 'lucide-react';
+import { Building2, Bell, Globe, Shield, Newspaper } from 'lucide-react';
 import CnaesSecundarios from '@/components/configuracoes/CnaesSecundarios';
 import PlanoAssinatura from '@/components/configuracoes/PlanoAssinatura';
 
@@ -86,6 +86,29 @@ export default function Configuracoes() {
                 <div key={portal} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
                   <span className="text-sm font-medium">{portal}</span>
                   <Switch defaultChecked={portal !== 'BEC/SP'} />
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Diários Oficiais */}
+          <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <Newspaper className="w-5 h-5 text-accent" />
+              <h2 className="text-sm font-semibold">Diários Oficiais Monitorados</h2>
+            </div>
+            <div className="space-y-3">
+              {[
+                'DOU (Federal)',
+                'IOEPA (Estadual)',
+                'TCMPA (Municípios)',
+                'DOE/SP',
+                'IOERJ',
+                'DODF.e (Distrito Federal)',
+              ].map((fonte) => (
+                <div key={fonte} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <span className="text-sm font-medium">{fonte}</span>
+                  <Switch defaultChecked />
                 </div>
               ))}
             </div>
