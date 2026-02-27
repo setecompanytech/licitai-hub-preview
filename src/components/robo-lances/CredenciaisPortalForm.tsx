@@ -19,14 +19,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const PORTAIS = [
   { id: 'pncp', nome: 'PNCP' },
-  { id: 'compras-gov', nome: 'Compras.gov.br' },
+  { id: 'compras-gov', nome: 'Compras Governamentais' },
   { id: 'bll', nome: 'BLL Compras' },
-  { id: 'blc', nome: 'BLC Licitações' },
   { id: 'licitanet', nome: 'Licitanet' },
   { id: 'licitacoes-e', nome: 'Licitações-e (BB)' },
   { id: 'portal-compras', nome: 'Portal de Compras Públicas' },
   { id: 'tcmpa', nome: 'TCM-PA' },
-  { id: 'compras-gov-br', nome: 'Compras Governamentais' },
 ];
 
 export default function CredenciaisPortalForm() {

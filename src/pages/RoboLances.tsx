@@ -12,15 +12,13 @@ import {
 import CredenciaisPortalForm from '@/components/robo-lances/CredenciaisPortalForm';
 
 const portais = [
-  { id: 'pncp', nome: 'PNCP', url: 'pncp.gov.br', status: 'conectado', sessoes: 3 },
-  { id: 'compras-gov', nome: 'Compras.gov.br', url: 'comprasnet.gov.br', status: 'conectado', sessoes: 2 },
-  { id: 'bll', nome: 'BLL Compras', url: 'bllcompras.com', status: 'conectado', sessoes: 1 },
-  { id: 'blc', nome: 'BLC Licitações', url: 'blc.com.br', status: 'desconectado', sessoes: 0 },
-  { id: 'licitanet', nome: 'Licitanet', url: 'licitanet.com.br', status: 'conectado', sessoes: 2 },
-  { id: 'licitacoes-e', nome: 'Licitações-e (BB)', url: 'licitacoes-e.com.br', status: 'conectado', sessoes: 4 },
-  { id: 'portal-compras', nome: 'Portal de Compras Públicas', url: 'portaldecompraspublicas.com.br', status: 'conectado', sessoes: 1 },
-  { id: 'tcmpa', nome: 'TCM-PA', url: 'tcm.pa.gov.br', status: 'conectado', sessoes: 1 },
-  { id: 'compras-gov-br', nome: 'Compras Governamentais', url: 'comprasgovernamentais.gov.br', status: 'desconectado', sessoes: 0 },
+  { id: 'pncp', nome: 'PNCP', url: 'https://www.gov.br/pncp/pt-br', status: 'conectado', sessoes: 3 },
+  { id: 'compras-gov', nome: 'Compras Governamentais', url: 'https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/landing', status: 'conectado', sessoes: 2 },
+  { id: 'bll', nome: 'BLL Compras', url: 'https://bllcompras.com', status: 'conectado', sessoes: 1 },
+  { id: 'licitanet', nome: 'Licitanet', url: 'https://www.licitanet.com.br', status: 'conectado', sessoes: 2 },
+  { id: 'licitacoes-e', nome: 'Licitações-e (BB)', url: 'https://licitacoes-e2.bb.com.br/aop-inter-estatico/', status: 'conectado', sessoes: 4 },
+  { id: 'portal-compras', nome: 'Portal de Compras Públicas', url: 'https://www.portaldecompraspublicas.com.br', status: 'conectado', sessoes: 1 },
+  { id: 'tcmpa', nome: 'TCM-PA', url: 'https://www.tcm.pa.gov.br', status: 'conectado', sessoes: 1 },
 ];
 
 type Lance = {

@@ -82,7 +82,7 @@ export default function Configuracoes() {
               <h2 className="text-sm font-semibold">Portais Monitorados</h2>
             </div>
             <div className="space-y-3">
-              {['Compras.gov.br', 'PNCP', 'BEC/SP', 'Licitações-e (BB)'].map((portal) => (
+              {['Compras Governamentais', 'PNCP', 'BEC/SP', 'Licitações-e (BB)'].map((portal) => (
                 <div key={portal} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
                   <span className="text-sm font-medium">{portal}</span>
                   <Switch defaultChecked={portal !== 'BEC/SP'} />

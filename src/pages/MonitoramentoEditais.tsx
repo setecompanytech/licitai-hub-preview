@@ -79,14 +79,12 @@ const tipoConfig: Record<TipoDocumento, { label: string; icon: typeof FileText; 
 
 const portaisMonitorados = [
   { id: "pncp", nome: "PNCP", url: "https://www.gov.br/pncp/pt-br", ativo: true },
-  { id: "compras-gov", nome: "Compras.gov.br", url: "comprasnet.gov.br", ativo: true },
-  { id: "bll", nome: "BLL Compras", url: "bllcompras.com", ativo: true },
-  { id: "blc", nome: "BLC Licitações", url: "blc.com.br", ativo: false },
-  { id: "licitanet", nome: "Licitanet", url: "licitanet.com.br", ativo: true },
-  { id: "licitacoes-e", nome: "Licitações-e (BB)", url: "licitacoes-e.com.br", ativo: true },
-  { id: "portal-compras", nome: "Portal de Compras Públicas", url: "portaldecompraspublicas.com.br", ativo: true },
-  { id: "tcmpa", nome: "TCM-PA", url: "tcm.pa.gov.br", ativo: true },
-  { id: "compras-gov-br", nome: "Compras Governamentais", url: "comprasgovernamentais.gov.br", ativo: false },
+  { id: "compras-gov", nome: "Compras Governamentais", url: "https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/landing", ativo: true },
+  { id: "bll", nome: "BLL Compras", url: "https://bllcompras.com", ativo: true },
+  { id: "licitanet", nome: "Licitanet", url: "https://www.licitanet.com.br", ativo: true },
+  { id: "licitacoes-e", nome: "Licitações-e (BB)", url: "https://licitacoes-e2.bb.com.br/aop-inter-estatico/", ativo: true },
+  { id: "portal-compras", nome: "Portal de Compras Públicas", url: "https://www.portaldecompraspublicas.com.br", ativo: true },
+  { id: "tcmpa", nome: "TCM-PA", url: "https://www.tcm.pa.gov.br", ativo: true },
 ];
 
 const mockDocumentos: Documento[] = [
@@ -525,8 +523,10 @@ export default function MonitoramentoEditais() {
                       <Button size="sm" variant="outline">
                         <FileText className="w-3 h-3 mr-1" /> Cadastrar
                       </Button>
-                      <Button size="sm" variant="outline">
-                        <Globe className="w-3 h-3 mr-1" /> Acessar
+                      <Button size="sm" variant="outline" asChild>
+                        <a href={portal.url} target="_blank" rel="noopener noreferrer">
+                          <Globe className="w-3 h-3 mr-1" /> Acessar
+                        </a>
                       </Button>
                     </div>
                   </div>
