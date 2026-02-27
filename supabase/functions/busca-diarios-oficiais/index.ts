@@ -1,179 +1,498 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Diários Oficiais prioritários
-const DIARIOS_OFICIAIS = [
-  { id: "dou", nome: "Diário Oficial da União", uf: null, url: "in.gov.br", dominio: "site:in.gov.br OR site:gov.br/dou" },
-  { id: "doe-pa", nome: "DOE Pará (IOEPA)", uf: "PA", url: "ioepa.pa.gov.br", dominio: "site:ioepa.pa.gov.br OR site:pa.gov.br" },
-  { id: "doe-ma", nome: "DOE Maranhão", uf: "MA", url: "imprensaoficial.ma.gov.br", dominio: "site:ma.gov.br" },
-  { id: "doe-ap", nome: "DOE Amapá", uf: "AP", url: "imprensaoficial.ap.gov.br", dominio: "site:ap.gov.br" },
-  { id: "doe-to", nome: "DOE Tocantins", uf: "TO", url: "imprensaoficial.to.gov.br", dominio: "site:to.gov.br" },
-  { id: "doe-ac", nome: "DOE Acre", uf: "AC", url: "doe.ac.gov.br", dominio: "site:ac.gov.br" },
-  { id: "doe-am", nome: "DOE Amazonas", uf: "AM", url: "imprensaoficial.am.gov.br", dominio: "site:am.gov.br" },
-  { id: "doe-ro", nome: "DOE Rondônia", uf: "RO", url: "imprensaoficial.ro.gov.br", dominio: "site:ro.gov.br" },
-  { id: "doe-rr", nome: "DOE Roraima", uf: "RR", url: "imprensaoficial.rr.gov.br", dominio: "site:rr.gov.br" },
-  { id: "doe-al", nome: "DOE Alagoas", uf: "AL", url: "imprensaoficial.al.gov.br", dominio: "site:al.gov.br" },
-  { id: "doe-ba", nome: "DOE Bahia", uf: "BA", url: "imprensaoficial.ba.gov.br", dominio: "site:ba.gov.br" },
-  { id: "doe-ce", nome: "DOE Ceará", uf: "CE", url: "imprensaoficial.ce.gov.br", dominio: "site:ce.gov.br" },
-  { id: "doe-df", nome: "DOE Distrito Federal", uf: "DF", url: "ioplan.df.gov.br", dominio: "site:df.gov.br" },
-  { id: "doe-es", nome: "DOE Espírito Santo", uf: "ES", url: "imprensaoficial.es.gov.br", dominio: "site:es.gov.br" },
-  { id: "doe-go", nome: "DOE Goiás", uf: "GO", url: "imprensaoficial.go.gov.br", dominio: "site:go.gov.br" },
-  { id: "doe-mg", nome: "DOE Minas Gerais", uf: "MG", url: "imprensaoficial.mg.gov.br", dominio: "site:mg.gov.br" },
-  { id: "doe-rj", nome: "DOE Rio de Janeiro", uf: "RJ", url: "imprensaoficial.rj.gov.br", dominio: "site:rj.gov.br" },
-  { id: "doe-sp", nome: "DOE São Paulo", uf: "SP", url: "doe.sp.gov.br", dominio: "site:sp.gov.br" },
-  { id: "doe-pr", nome: "DOE Paraná", uf: "PR", url: "imprensaoficial.pr.gov.br", dominio: "site:pr.gov.br" },
-  { id: "doe-pe", nome: "DOE Pernambuco", uf: "PE", url: "imprensaoficial.pe.gov.br", dominio: "site:pe.gov.br" },
-  { id: "doe-pi", nome: "DOE Piauí", uf: "PI", url: "imprensaoficial.pi.gov.br", dominio: "site:pi.gov.br" },
-  { id: "doe-rn", nome: "DOE Rio Grande do Norte", uf: "RN", url: "imprensaoficial.rn.gov.br", dominio: "site:rn.gov.br" },
-  { id: "doe-rs", nome: "DOE Rio Grande do Sul", uf: "RS", url: "imprensaoficial.rs.gov.br", dominio: "site:rs.gov.br" },
-  { id: "doe-sc", nome: "DOE Santa Catarina", uf: "SC", url: "imprensaoficial.sc.gov.br", dominio: "site:sc.gov.br" },
-  { id: "doe-se", nome: "DOE Sergipe", uf: "SE", url: "imprensaoficial.se.gov.br", dominio: "site:se.gov.br" },
-  { id: "doe-mt", nome: "DOE Mato Grosso", uf: "MT", url: "imprensaoficial.mt.gov.br", dominio: "site:mt.gov.br" },
-  { id: "doe-ms", nome: "DOE Mato Grosso do Sul", uf: "MS", url: "imprensaoficial.ms.gov.br", dominio: "site:ms.gov.br" },
-  { id: "doe-pb", nome: "DOE Paraíba", uf: "PB", url: "pb.gov.br", dominio: "site:pb.gov.br" },
-];
+const FETCH_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  Accept: "application/json",
+};
 
-const TIPOS_ATO = [
-  "aviso_licitacao", "edital", "suspensao", "cancelamento", "adiamento",
-  "revogacao", "homologacao", "adjudicacao", "aditivamento", "errata",
-  "resultado", "contrato", "ata_registro_precos"
-];
+// Map modalidade codes to labels
+const MODALIDADE_MAP: Record<string, string> = {
+  "1": "Leilão Eletrônico",
+  "2": "Diálogo Competitivo",
+  "3": "Concurso",
+  "4": "Concorrência Eletrônica",
+  "5": "Concorrência Presencial",
+  "6": "Pregão Eletrônico",
+  "7": "Pregão Presencial",
+  "8": "Dispensa de Licitação",
+  "9": "Inexigibilidade",
+  "10": "Manifestação de Interesse",
+  "11": "Pré-qualificação",
+  "12": "Credenciamento",
+  "13": "Leilão Presencial",
+};
 
-serve(async (req) => {
+// PNCP situação to tipo mapping
+function classificarTipoPncp(situacao: string, titulo: string): string {
+  const sit = (situacao || "").toLowerCase();
+  const tit = (titulo || "").toLowerCase();
+
+  if (sit.includes("suspens")) return "suspensao";
+  if (sit.includes("revogad")) return "revogacao";
+  if (sit.includes("anulad") || sit.includes("cancelad")) return "cancelamento";
+  if (sit.includes("homolog")) return "homologacao";
+  if (sit.includes("adjudic")) return "adjudicacao";
+  if (tit.includes("errata") || tit.includes("retifica")) return "errata";
+  if (tit.includes("resultado")) return "resultado";
+  if (tit.includes("contrato")) return "contrato";
+  if (tit.includes("ata de registro")) return "ata_registro_precos";
+  if (tit.includes("adiament") || tit.includes("prorroga")) return "adiamento";
+  if (tit.includes("aditiv")) return "aditivamento";
+  if (sit.includes("aberta") || sit.includes("publicad")) return "aviso_licitacao";
+  return "edital";
+}
+
+// Format date as yyyyMMdd for PNCP
+function formatDatePNCP(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}${m}${d}`;
+}
+
+// ── PNCP API ──────────────────────────────────────────────────────────────
+async function buscarPNCP(
+  ufs: string[],
+  palavrasChave: string[],
+  diasRetroativos: number
+): Promise<any[]> {
+  const resultados: any[] = [];
+  const agora = new Date();
+  const dataInicial = formatDatePNCP(new Date(agora.getTime() - diasRetroativos * 86400000));
+  const dataFinal = formatDatePNCP(agora);
+
+  // Search multiple modalities
+  const modalidades = ["6", "4", "8", "5", "9", "1"];
+
+  for (const modalidade of modalidades) {
+    try {
+      const params = new URLSearchParams({
+        dataInicial,
+        dataFinal,
+        codigoModalidadeContratacao: modalidade,
+        pagina: "1",
+        tamanhoPagina: "50",
+      });
+
+      // Add keyword search
+      if (palavrasChave.length > 0) {
+        // Use first 3 keywords for query
+        params.set("q", palavrasChave.slice(0, 3).join(" "));
+      }
+
+      const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params}`;
+      console.log(`PNCP query (mod=${modalidade}): ${url}`);
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
+      const resp = await fetch(url, {
+        headers: FETCH_HEADERS,
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!resp.ok) {
+        const text = await resp.text();
+        console.log(`PNCP ${resp.status}: ${text.substring(0, 200)}`);
+        continue;
+      }
+
+      const data = await resp.json();
+      const items = data.data || data || [];
+
+      if (!Array.isArray(items) || items.length === 0) continue;
+      console.log(`PNCP mod=${modalidade}: ${items.length} results`);
+
+      for (const item of items) {
+        const ufItem = item.unidadeOrgao?.ufSigla || item.orgaoEntidade?.ufSigla || "";
+        // Filter by UF if specified (but always include federal "DF")
+        if (ufs.length > 0 && !ufs.includes(ufItem) && ufItem !== "DF" && ufs[0] !== "TODOS") {
+          continue;
+        }
+
+        const situacao = item.situacaoCompraItem || item.situacaoCompra || "";
+        const titulo = item.objetoCompra || item.descricao || "Sem título";
+        const orgaoNome = item.orgaoEntidade?.razaoSocial || item.unidadeOrgao?.nomeUnidade || "Órgão não identificado";
+        const municipio = item.unidadeOrgao?.municipioNome || item.orgaoEntidade?.municipioNome || null;
+        const cnpjOrgao = item.orgaoEntidade?.cnpj || "";
+        const anoCompra = item.anoCompra || "";
+        const seqCompra = item.sequencialCompra || "";
+        const numControlePncp = item.numeroControlePNCP || "";
+        const modalidadeNome = MODALIDADE_MAP[modalidade] || `Modalidade ${modalidade}`;
+        const valorEstimado = item.valorTotalEstimado || item.valorTotalHomologado || null;
+        const dataPublicacao = item.dataPublicacaoPncp || item.dataInclusao || new Date().toISOString();
+
+        // Build a real URL to PNCP
+        let urlPncp = "";
+        if (cnpjOrgao && anoCompra && seqCompra) {
+          urlPncp = `https://pncp.gov.br/app/editais/${cnpjOrgao}/${anoCompra}/${seqCompra}`;
+        } else if (numControlePncp) {
+          urlPncp = `https://pncp.gov.br/app/editais?q=${encodeURIComponent(numControlePncp)}`;
+        }
+
+        // Extract link to original portal
+        const linkOrigem = item.linkSistemaOrigem || urlPncp;
+
+        resultados.push({
+          titulo: titulo.substring(0, 500),
+          orgao: orgaoNome,
+          tipo: classificarTipoPncp(situacao, titulo),
+          data_publicacao: dataPublicacao.split("T")[0],
+          valor_estimado: valorEstimado,
+          municipio,
+          uf: ufItem,
+          url: linkOrigem || urlPncp,
+          relevancia: 80,
+          palavras_chave_encontradas: palavrasChave.filter((kw) =>
+            titulo.toLowerCase().includes(kw.toLowerCase())
+          ),
+          modalidade: modalidadeNome,
+          portal: "PNCP",
+          cnpj_orgao: cnpjOrgao,
+          ano_compra: anoCompra,
+          seq_compra: seqCompra,
+          pncp_numero: numControlePncp,
+          fonte_real: true,
+        });
+      }
+    } catch (e) {
+      console.error(`PNCP mod=${modalidade} error:`, e);
+    }
+  }
+
+  return resultados;
+}
+
+// ── Compras Governamentais API (Federal) ──────────────────────────────────
+async function buscarComprasGov(
+  palavrasChave: string[],
+  diasRetroativos: number
+): Promise<any[]> {
+  const resultados: any[] = [];
+
+  try {
+    const agora = new Date();
+    const dataInicial = new Date(agora.getTime() - diasRetroativos * 86400000);
+    const dataInicialStr = `${String(dataInicial.getDate()).padStart(2, "0")}/${String(dataInicial.getMonth() + 1).padStart(2, "0")}/${dataInicial.getFullYear()}`;
+
+    const url = `https://compras.dados.gov.br/licitacoes/v1/licitacoes.json?data_publicacao_min=${dataInicialStr}&offset=0&limit=50`;
+    console.log(`ComprasGov query: ${url}`);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    const resp = await fetch(url, {
+      headers: FETCH_HEADERS,
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!resp.ok) {
+      console.log(`ComprasGov ${resp.status}`);
+      return resultados;
+    }
+
+    const data = await resp.json();
+    const items = data._embedded?.licitacoes || [];
+    console.log(`ComprasGov: ${items.length} results`);
+
+    for (const item of items) {
+      const objeto = item.objeto || "Sem objeto";
+      
+      // Check if keywords match
+      const matched = palavrasChave.some((kw) =>
+        objeto.toLowerCase().includes(kw.toLowerCase())
+      );
+      if (!matched && palavrasChave.length > 0) continue;
+
+      const uasg = item.uasg?.toString() || "";
+      const numLicitacao = item.numero || "";
+
+      resultados.push({
+        titulo: objeto.substring(0, 500),
+        orgao: item.informacoes_gerais || `UASG ${uasg}`,
+        tipo: "aviso_licitacao",
+        data_publicacao: item.data_publicacao || new Date().toISOString().split("T")[0],
+        valor_estimado: item.valor_estimado || null,
+        municipio: null,
+        uf: "DF", // Federal
+        url: `https://www.gov.br/compras/pt-br`,
+        relevancia: 65,
+        palavras_chave_encontradas: palavrasChave.filter((kw) =>
+          objeto.toLowerCase().includes(kw.toLowerCase())
+        ),
+        modalidade: item.modalidade || "Pregão Eletrônico",
+        portal: "Compras Governamentais",
+        fonte_real: true,
+      });
+    }
+  } catch (e) {
+    console.error("ComprasGov error:", e);
+  }
+
+  return resultados;
+}
+
+// ── DOU - Imprensa Nacional (scrape search page) ──────────────────────────
+async function buscarDOU(
+  palavrasChave: string[],
+  diasRetroativos: number
+): Promise<any[]> {
+  const resultados: any[] = [];
+
+  try {
+    // DOU search API
+    const query = palavrasChave.slice(0, 3).join("+");
+    const url = `https://www.in.gov.br/consulta/-/buscar/dou?q=${encodeURIComponent(query)}&s=0&sortType=0&delta=20&newPage=true&currentPage=1`;
+    console.log(`DOU query: ${url}`);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    const resp = await fetch(url, {
+      headers: {
+        ...FETCH_HEADERS,
+        Accept: "text/html,application/xhtml+xml,*/*",
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!resp.ok) {
+      console.log(`DOU ${resp.status}`);
+      return resultados;
+    }
+
+    const html = await resp.text();
+
+    // Extract JSON data from the DOU search results page
+    // DOU uses a specific pattern with resultados-wrapper
+    const jsonMatch = html.match(/var\s+jsonArray\s*=\s*(\[[\s\S]*?\]);/);
+    if (jsonMatch) {
+      try {
+        const items = JSON.parse(jsonMatch[1]);
+        console.log(`DOU: ${items.length} results from jsonArray`);
+
+        for (const item of items.slice(0, 20)) {
+          resultados.push({
+            titulo: (item.title || item.titulo || "Publicação DOU").substring(0, 500),
+            orgao: item.artCategory || item.orgao || "Diário Oficial da União",
+            tipo: "edital",
+            data_publicacao: item.pubDate || new Date().toISOString().split("T")[0],
+            valor_estimado: null,
+            municipio: null,
+            uf: "DF",
+            url: item.urlTitle ? `https://www.in.gov.br/web/dou/-/${item.urlTitle}` : null,
+            relevancia: 70,
+            palavras_chave_encontradas: palavrasChave.filter((kw) =>
+              (item.title || "").toLowerCase().includes(kw.toLowerCase())
+            ),
+            modalidade: null,
+            portal: "Diário Oficial da União",
+            fonte_real: true,
+          });
+        }
+      } catch (parseErr) {
+        console.log("DOU JSON parse error:", parseErr);
+      }
+    }
+
+    // Fallback: scrape links from HTML
+    if (resultados.length === 0) {
+      const linkRegex =
+        /<a[^>]*href=["'](\/web\/dou\/-\/[^"']+)["'][^>]*>[\s\S]*?<\/a>/gi;
+      const titleRegex = /<p[^>]*class=["']title-marker["'][^>]*>([\s\S]*?)<\/p>/gi;
+
+      let linkMatch;
+      const links: string[] = [];
+      while ((linkMatch = linkRegex.exec(html)) !== null && links.length < 20) {
+        links.push(linkMatch[1]);
+      }
+
+      let titleMatch;
+      const titles: string[] = [];
+      while ((titleMatch = titleRegex.exec(html)) !== null && titles.length < 20) {
+        titles.push(titleMatch[1].replace(/<[^>]+>/g, "").trim());
+      }
+
+      console.log(`DOU fallback: ${links.length} links, ${titles.length} titles`);
+
+      for (let i = 0; i < Math.min(links.length, titles.length); i++) {
+        resultados.push({
+          titulo: titles[i].substring(0, 500),
+          orgao: "Diário Oficial da União",
+          tipo: "edital",
+          data_publicacao: new Date().toISOString().split("T")[0],
+          valor_estimado: null,
+          municipio: null,
+          uf: "DF",
+          url: `https://www.in.gov.br${links[i]}`,
+          relevancia: 60,
+          palavras_chave_encontradas: [],
+          modalidade: null,
+          portal: "Diário Oficial da União",
+          fonte_real: true,
+        });
+      }
+    }
+  } catch (e) {
+    console.error("DOU error:", e);
+  }
+
+  return resultados;
+}
+
+// ── AI Classification & Enrichment (for results lacking classification) ───
+async function classificarComIA(
+  resultados: any[],
+  apiKey: string
+): Promise<any[]> {
+  if (resultados.length === 0) return resultados;
+
+  // Only classify items without clear tipo
+  const paraClassificar = resultados
+    .filter((r) => !r.tipo || r.tipo === "edital")
+    .slice(0, 30);
+
+  if (paraClassificar.length === 0) return resultados;
+
+  const resumos = paraClassificar.map((r, i) => `${i}: "${r.titulo}" - ${r.orgao}`).join("\n");
+
+  try {
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [
+          {
+            role: "system",
+            content:
+              "Você classifica atos licitatórios. Para cada item, retorne o tipo e score de relevância (0-100) para empresas de construção civil. Retorne APENAS JSON.",
+          },
+          {
+            role: "user",
+            content: `Classifique cada ato abaixo. Tipos válidos: aviso_licitacao, edital, suspensao, cancelamento, adiamento, revogacao, homologacao, adjudicacao, aditivamento, errata, resultado, contrato, ata_registro_precos.
+
+${resumos}
+
+Retorne JSON: [{"i": 0, "tipo": "aviso_licitacao", "rel": 85}, ...]`,
+          },
+        ],
+        temperature: 0.2,
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      console.log("AI classification failed:", aiResponse.status);
+      return resultados;
+    }
+
+    const aiData = await aiResponse.json();
+    let content = aiData.choices?.[0]?.message?.content || "";
+    content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+
+    const classificacoes = JSON.parse(content);
+    if (Array.isArray(classificacoes)) {
+      for (const c of classificacoes) {
+        if (typeof c.i === "number" && c.i < paraClassificar.length) {
+          const original = paraClassificar[c.i];
+          if (c.tipo) original.tipo = c.tipo;
+          if (c.rel) original.relevancia = c.rel;
+        }
+      }
+    }
+  } catch (e) {
+    console.error("AI classification error:", e);
+  }
+
+  return resultados;
+}
+
+// ── Main Handler ──────────────────────────────────────────────────────────
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("Não autorizado");
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const anonClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!);
-    const { data: { user }, error: authError } = await anonClient.auth.getUser(authHeader.replace("Bearer ", ""));
+    const { data: { user }, error: authError } = await anonClient.auth.getUser(
+      authHeader.replace("Bearer ", "")
+    );
     if (authError || !user) throw new Error("Não autorizado");
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const body = await req.json();
     const {
-      palavras_chave = ["licitação", "pregão", "concorrência", "obra", "construção", "pavimentação"],
+      palavras_chave = ["licitação", "pregão", "obra", "construção", "pavimentação", "infraestrutura"],
       ufs = ["PA"],
-      cnae = "42.11-1",
       dias_retroativos = 7,
     } = body;
 
-    // Filtrar diários com base nas UFs selecionadas
-    const diariosParaBuscar = DIARIOS_OFICIAIS.filter(d => 
-      d.id === "dou" || // Sempre busca no DOU
-      (d.uf && ufs.includes(d.uf))
+    console.log(`Busca diários: UFs=${ufs.join(",")}, dias=${dias_retroativos}, palavras=${palavras_chave.join(",")}`);
+
+    // Run all API queries in parallel
+    const [pncpResults, comprasGovResults, douResults] = await Promise.all([
+      buscarPNCP(ufs, palavras_chave, dias_retroativos),
+      buscarComprasGov(palavras_chave, dias_retroativos),
+      buscarDOU(palavras_chave, dias_retroativos),
+    ]);
+
+    let todosResultados = [...pncpResults, ...comprasGovResults, ...douResults];
+    console.log(
+      `Total: ${todosResultados.length} (PNCP: ${pncpResults.length}, ComprasGov: ${comprasGovResults.length}, DOU: ${douResults.length})`
     );
 
-    const dataInicio = new Date();
-    dataInicio.setDate(dataInicio.getDate() - dias_retroativos);
-    const dataInicioStr = dataInicio.toISOString().split("T")[0];
-
-    // Para cada diário, usa a IA para gerar atos simulados baseados em dados reais
-    const resultados: any[] = [];
-
-    for (const diario of diariosParaBuscar) {
-      const prompt = `Você é um sistema de monitoramento de diários oficiais brasileiros especializado em licitações públicas.
-
-Simule a busca no ${diario.nome} (${diario.url}) dos últimos ${dias_retroativos} dias (a partir de ${dataInicioStr}) e retorne atos licitatórios relevantes para empresas do CNAE ${cnae} (construção civil, obras, pavimentação, infraestrutura).
-
-Palavras-chave de interesse: ${palavras_chave.join(", ")}
-${diario.uf ? `UF: ${diario.uf}` : "Abrangência: Federal"}
-
-IMPORTANTE: Gere atos REALISTAS e PLAUSÍVEIS que poderiam realmente aparecer nesse diário oficial. Use nomes de órgãos públicos reais da UF, números de processo no formato correto, valores compatíveis com obras públicas.
-
-Retorne um JSON com a seguinte estrutura (array de objetos):
-[
-  {
-    "titulo": "Título resumido do ato",
-    "orgao": "Nome do órgão público",
-    "tipo": "um de: ${TIPOS_ATO.join(", ")}",
-    "numero_processo": "PE-XXX/2026 ou formato similar",
-    "data_publicacao": "YYYY-MM-DD",
-    "valor_estimado": 1500000,
-    "municipio": "Nome do município ou null se federal",
-    "uf": "${diario.uf || 'DF'}",
-    "resumo": "Resumo do objeto da licitação em 1-2 frases",
-    "url_fonte": "URL plausível do diário oficial",
-    "relevancia": 85,
-    "palavras_chave_encontradas": ["palavra1", "palavra2"],
-    "modalidade": "Pregão Eletrônico / Concorrência / Tomada de Preços / Dispensa / RDC"
-  }
-]
-
-Gere entre 3 e 8 atos para este diário. Retorne APENAS o JSON, sem markdown.`;
-
-      try {
-        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: [
-              { role: "system", content: "Você é um sistema de busca de diários oficiais. Retorne APENAS JSON válido." },
-              { role: "user", content: prompt },
-            ],
-            temperature: 0.7,
-          }),
-        });
-
-        if (!aiResponse.ok) {
-          console.error(`Erro ao buscar ${diario.nome}:`, aiResponse.status);
-          continue;
-        }
-
-        const aiData = await aiResponse.json();
-        let content = aiData.choices?.[0]?.message?.content || "";
-
-        // Limpar markdown se presente
-        content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-
-        try {
-          const atos = JSON.parse(content);
-          if (Array.isArray(atos)) {
-            for (const ato of atos) {
-              resultados.push({
-                ...ato,
-                diario_id: diario.id,
-                diario_nome: diario.nome,
-                portal: diario.url,
-              });
-            }
-          }
-        } catch (parseErr) {
-          console.error(`Erro ao parsear resposta do ${diario.nome}:`, parseErr);
-        }
-      } catch (fetchErr) {
-        console.error(`Erro de fetch para ${diario.nome}:`, fetchErr);
-      }
+    // Classify with AI if API key is available
+    if (LOVABLE_API_KEY && todosResultados.length > 0) {
+      todosResultados = await classificarComIA(todosResultados, LOVABLE_API_KEY);
     }
 
-    // Salvar resultados no banco de dados
-    const registros = resultados.map(r => ({
+    // Deduplicate by title similarity
+    const vistos = new Set<string>();
+    todosResultados = todosResultados.filter((r) => {
+      const chave = `${r.titulo.substring(0, 60).toLowerCase()}_${r.orgao.substring(0, 30).toLowerCase()}`;
+      if (vistos.has(chave)) return false;
+      vistos.add(chave);
+      return true;
+    });
+
+    // Sort by relevance
+    todosResultados.sort((a, b) => (b.relevancia || 0) - (a.relevancia || 0));
+
+    // Limit to top 100 results
+    todosResultados = todosResultados.slice(0, 100);
+
+    // Prepare records for database
+    const registros = todosResultados.map((r) => ({
       user_id: user.id,
       titulo: r.titulo || "Sem título",
       orgao: r.orgao || "Órgão não identificado",
       tipo: r.tipo || "aviso_licitacao",
-      portal: r.diario_nome || r.portal,
+      portal: r.portal || "PNCP",
       data_publicacao: r.data_publicacao || new Date().toISOString().split("T")[0],
       valor_estimado: r.valor_estimado || null,
       municipio: r.municipio || null,
       uf: r.uf || null,
-      url: r.url_fonte || null,
+      url: r.url || null,
       relevancia_score: r.relevancia || 50,
       palavras_chave: r.palavras_chave_encontradas || [],
       cnae_compativel: true,
@@ -181,29 +500,42 @@ Gere entre 3 e 8 atos para este diário. Retorne APENAS o JSON, sem markdown.`;
       status: r.tipo || "novo",
     }));
 
+    // Save to database
     if (registros.length > 0) {
       const { error: insertError } = await supabase
         .from("monitoramento_editais")
         .insert(registros);
-      if (insertError) console.error("Erro ao inserir:", insertError);
+      if (insertError) console.error("Insert error:", insertError);
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      total: resultados.length,
-      diarios_pesquisados: diariosParaBuscar.map(d => d.nome),
-      resultados,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // Prepare response with source breakdown
+    const fontes: string[] = [];
+    if (pncpResults.length > 0) fontes.push(`PNCP (${pncpResults.length})`);
+    if (comprasGovResults.length > 0) fontes.push(`Compras Gov (${comprasGovResults.length})`);
+    if (douResults.length > 0) fontes.push(`DOU (${douResults.length})`);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        total: todosResultados.length,
+        fontes_reais: true,
+        diarios_pesquisados: fontes,
+        detalhes: {
+          pncp: pncpResults.length,
+          compras_gov: comprasGovResults.length,
+          dou: douResults.length,
+        },
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (e) {
     console.error("Erro busca-diarios-oficiais:", e);
-    return new Response(JSON.stringify({
-      success: false,
-      error: e instanceof Error ? e.message : "Erro desconhecido",
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: e instanceof Error ? e.message : "Erro desconhecido",
+      }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });
