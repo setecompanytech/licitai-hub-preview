@@ -331,6 +331,57 @@ export type Database = {
         }
         Relationships: []
       }
+      contratos_gov: {
+        Row: {
+          ano: number
+          created_at: string
+          descricao: string | null
+          id: string
+          modalidade: string | null
+          orgao: string
+          quantidade_itens: number
+          situacao: string | null
+          tipo: string
+          updated_at: string
+          user_id: string
+          valor_total: number
+          vigencia_fim: string | null
+          vigencia_inicio: string | null
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          modalidade?: string | null
+          orgao: string
+          quantidade_itens?: number
+          situacao?: string | null
+          tipo?: string
+          updated_at?: string
+          user_id: string
+          valor_total?: number
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          modalidade?: string | null
+          orgao?: string
+          quantidade_itens?: number
+          situacao?: string | null
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+          valor_total?: number
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Relationships: []
+      }
       credenciais_portais: {
         Row: {
           certificado_nome: string | null

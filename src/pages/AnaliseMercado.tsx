@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   BarChart3, TrendingUp, TrendingDown, DollarSign, Package,
-  Building2, MapPin, Search, Download, PieChart, Activity, Landmark
+  Building2, MapPin, Search, Download, PieChart, Activity, Landmark, FileText
 } from 'lucide-react';
 import TransparenciaPA from '@/components/analise-mercado/TransparenciaPA';
+import ContratosGov from '@/components/analise-mercado/ContratosGov';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RPieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
 
 const segmentoData = [
@@ -113,6 +114,7 @@ export default function AnaliseMercado() {
         <Tabs defaultValue="transparencia-pa" className="space-y-4">
           <TabsList>
             <TabsTrigger value="transparencia-pa"><Landmark className="w-4 h-4 mr-1" /> Transparência PA</TabsTrigger>
+            <TabsTrigger value="contratos-gov"><FileText className="w-4 h-4 mr-1" /> Contratos Gov</TabsTrigger>
             <TabsTrigger value="segmentos"><PieChart className="w-4 h-4 mr-1" /> Por Segmento</TabsTrigger>
             <TabsTrigger value="precos"><TrendingUp className="w-4 h-4 mr-1" /> Preços Praticados</TabsTrigger>
             <TabsTrigger value="produtos"><Package className="w-4 h-4 mr-1" /> Mais Solicitados</TabsTrigger>
@@ -120,6 +122,10 @@ export default function AnaliseMercado() {
 
           <TabsContent value="transparencia-pa">
             <TransparenciaPA />
+          </TabsContent>
+
+          <TabsContent value="contratos-gov">
+            <ContratosGov />
           </TabsContent>
 
 
