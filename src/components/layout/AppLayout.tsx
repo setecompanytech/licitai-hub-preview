@@ -2,6 +2,7 @@ import { ReactNode, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppSidebar from './AppSidebar';
+import AlertaVencimentoBanner from './AlertaVencimentoBanner';
 import { Bell, Menu, X } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
@@ -66,7 +67,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
         </header>
-        <main className="p-3 sm:p-6">{children}</main>
+        <main className="p-3 sm:p-6">
+          <AlertaVencimentoBanner />
+          {children}
+        </main>
       </div>
 
       <NotificationCenter
