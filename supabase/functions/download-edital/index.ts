@@ -489,6 +489,84 @@ Deno.serve(async (req) => {
       if (searchResult) return searchResult;
     }
 
+    // Strategy 4: Try Firecrawl to scrape the portal page for download links
+    const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+    if (FIRECRAWL_API_KEY && url) {
+      console.log(`Trying Firecrawl scrape: ${url}`);
+      try {
+        const fcResp = await fetch("https://api.firecrawl.dev/v1/scrape", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            url,
+            formats: ["links", "markdown"],
+            onlyMainContent: true,
+            waitFor: 3000,
+          }),
+        });
+
+        if (fcResp.ok) {
+          const fcData = await fcResp.json();
+          const links: string[] = fcData.data?.links || [];
+          
+          // Find downloadable file links
+          const docLinks = links.filter((l: string) =>
+            /\.(pdf|zip|doc|docx|xls|xlsx|rar|7z)(\?|$)/i.test(l)
+          );
+
+          console.log(`Firecrawl found ${docLinks.length} doc links from ${links.length} total`);
+
+          if (docLinks.length > 0) {
+            // Try downloading the first document
+            const firstResult = await fetchFileAsBase64(docLinks[0]);
+            if (firstResult.success && firstResult.base64) {
+              const ext = (firstResult.contentType || "").includes("pdf") ? "pdf" : "zip";
+              return new Response(
+                JSON.stringify({
+                  success: true,
+                  tipo: "arquivo_direto",
+                  arquivo: {
+                    nome: firstResult.fileName || `edital.${ext}`,
+                    conteudo_base64: firstResult.base64,
+                    content_type: firstResult.contentType,
+                    tamanho: firstResult.size,
+                  },
+                  documentos_disponiveis: docLinks.slice(0, 10).map((l: string) => ({
+                    url: l,
+                    nome: decodeURIComponent(l.split("/").pop()?.split("?")[0] || "documento"),
+                  })),
+                  portal: "Firecrawl",
+                }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+
+            // Return discovered URLs
+            return new Response(
+              JSON.stringify({
+                success: true,
+                tipo: "download_urls",
+                documentos: docLinks.slice(0, 10).map((l: string) => ({
+                  url: l,
+                  nome: decodeURIComponent(l.split("/").pop()?.split("?")[0] || "documento"),
+                })),
+                portal: "Portal",
+              }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        } else {
+          const errText = await fcResp.text();
+          console.log(`Firecrawl error: ${fcResp.status} ${errText.substring(0, 200)}`);
+        }
+      } catch (fcErr) {
+        console.error("Firecrawl error:", fcErr);
+      }
+    }
+
     // No document found
     return new Response(
       JSON.stringify({
