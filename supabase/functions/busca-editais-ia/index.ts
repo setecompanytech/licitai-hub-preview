@@ -545,6 +545,9 @@ Deno.serve(async (req) => {
 
     // Portals that block direct download — PNCP is auto-included as fallback
     const PORTAIS_BLOQUEADOS = new Set(["licitacoese", "banparanet"]);
+    const PORTAL_ALIASES: Record<string, string> = {
+      "licitacoes-e": "licitacoese",
+    };
     const temPortalBloqueado = portais.some((p: string) => {
       const mapped = PORTAL_ALIASES[p] || p;
       return PORTAIS_BLOQUEADOS.has(mapped);
@@ -560,10 +563,6 @@ Deno.serve(async (req) => {
     }
 
     // Firecrawl scraping for other portals
-    // Map frontend portal IDs to backend keys (handle aliases)
-    const PORTAL_ALIASES: Record<string, string> = {
-      "licitacoes-e": "licitacoese",
-    };
     if (FIRECRAWL_API_KEY) {
       const scrapePortals = portais.includes("todos")
         ? Object.keys(PORTAIS_SCRAPE)
