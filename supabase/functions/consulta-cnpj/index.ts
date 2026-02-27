@@ -22,12 +22,17 @@ serve(async (req) => {
     const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`);
 
     if (!response.ok) {
-      if (response.status === 404) {
-        return new Response(JSON.stringify({ error: "CNPJ não encontrado" }), {
-          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      if (response.status === 404 || response.status === 400) {
+        return new Response(JSON.stringify({ error: "CNPJ não encontrado na base da Receita Federal. Verifique o número e tente novamente, ou preencha os dados manualmente." }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      throw new Error(`BrasilAPI error: ${response.status}`);
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Muitas consultas simultâneas. Aguarde alguns segundos e tente novamente." }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      throw new Error(`Erro ao consultar CNPJ (código ${response.status}). Tente novamente ou preencha os dados manualmente.`);
     }
 
     const data = await response.json();
