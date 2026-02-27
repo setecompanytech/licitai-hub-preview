@@ -7,8 +7,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { Search, MapPin, Calendar as CalendarIcon2, Building2, CalendarDays, RefreshCw, Sparkles, ExternalLink, Globe, Download, FileText, FileSpreadsheet, FileJson } from 'lucide-react';
+import { Search, MapPin, Calendar as CalendarIcon2, Building2, CalendarDays, RefreshCw, Sparkles, ExternalLink, Globe, Download, FileText, FileSpreadsheet, FileJson, FileArchive } from 'lucide-react';
 import { downloadCSV, downloadPDF, downloadJSON } from '@/lib/download-utils';
+import JSZip from 'jszip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -208,11 +209,7 @@ export default function LicitacoesTab() {
     setResultadosBusca([]);
   };
 
-  const handleDownload = (tipo: 'csv' | 'pdf' | 'json') => {
-    if (filtered.length === 0) {
-      toast.error('Nenhum registro para exportar');
-      return;
-    }
+  const getExportData = () => {
     const headers = ['Número', 'Objeto', 'Órgão', 'Modalidade', 'Portal', 'UF', 'Município', 'Valor Estimado', 'Encerramento', 'Status'];
     const rows = filtered.map(l => [
       l.numero,
@@ -227,10 +224,38 @@ export default function LicitacoesTab() {
       l.status,
     ]);
     const ts = new Date().toISOString().slice(0, 10);
+    return { headers, rows, ts };
+  };
+
+  const handleDownload = (tipo: 'csv' | 'pdf' | 'json') => {
+    if (filtered.length === 0) { toast.error('Nenhum registro para exportar'); return; }
+    const { headers, rows, ts } = getExportData();
     if (tipo === 'csv') downloadCSV(`licitacoes-${ts}`, headers, rows);
     else if (tipo === 'pdf') downloadPDF(`licitacoes-${ts}`, 'Licitações Filtradas', headers, rows);
     else downloadJSON(`licitacoes-${ts}`, filtered);
     toast.success(`Download ${tipo.toUpperCase()} realizado`);
+  };
+
+  const handleDownloadZip = async () => {
+    if (filtered.length === 0) { toast.error('Nenhum registro para exportar'); return; }
+    const { headers, rows, ts } = getExportData();
+    const bom = '\uFEFF';
+    const csvContent = [headers.join(';'), ...rows.map(r => r.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(';'))].join('\n');
+    const jsonContent = JSON.stringify(filtered, null, 2);
+
+    const zip = new JSZip();
+    zip.file(`licitacoes-${ts}.csv`, bom + csvContent);
+    zip.file(`licitacoes-${ts}.json`, jsonContent);
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `licitacoes-${ts}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Download ZIP realizado');
   };
 
   const dadosExibidos = modoResultados === 'busca' ? resultadosBusca : licitacoes;
@@ -287,6 +312,9 @@ export default function LicitacoesTab() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleDownload('json')} className="gap-2 text-xs">
                   <FileJson className="w-3.5 h-3.5" /> JSON
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDownloadZip} className="gap-2 text-xs">
+                  <FileArchive className="w-3.5 h-3.5" /> ZIP (CSV + JSON)
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
