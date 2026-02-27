@@ -258,6 +258,50 @@ export default function LicitacoesTab() {
     toast.success('Download ZIP realizado');
   };
 
+  const getLicRow = (l: Licitacao | ResultadoBusca) => [
+    l.numero, l.objeto, l.orgao, l.modalidade, l.portal || '-',
+    l.uf || '-', l.municipio || '-',
+    l.valor_estimado ? formatCurrency(l.valor_estimado) : '-',
+    l.data_encerramento ? new Date(l.data_encerramento).toLocaleDateString('pt-BR') : '-',
+    l.status,
+  ];
+
+  const handleDownloadItem = (lic: Licitacao | ResultadoBusca, tipo: 'csv' | 'pdf' | 'json' | 'zip') => {
+    const headers = ['Número', 'Objeto', 'Órgão', 'Modalidade', 'Portal', 'UF', 'Município', 'Valor Estimado', 'Encerramento', 'Status'];
+    const row = getLicRow(lic);
+    const ts = new Date().toISOString().slice(0, 10);
+    const fname = `edital-${lic.numero.replace(/[\/\\]/g, '-')}-${ts}`;
+
+    if (tipo === 'csv') {
+      downloadCSV(fname, headers, [row]);
+      toast.success('CSV do edital baixado');
+    } else if (tipo === 'pdf') {
+      downloadPDF(fname, `Edital ${lic.numero}`, headers, [row]);
+      toast.success('PDF do edital baixado');
+    } else if (tipo === 'json') {
+      downloadJSON(fname, lic);
+      toast.success('JSON do edital baixado');
+    } else {
+      const bom = '\uFEFF';
+      const csvContent = [headers.join(';'), row.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(';')].join('\n');
+      const jsonContent = JSON.stringify(lic, null, 2);
+      const zip = new JSZip();
+      zip.file(`${fname}.csv`, bom + csvContent);
+      zip.file(`${fname}.json`, jsonContent);
+      zip.generateAsync({ type: 'blob' }).then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${fname}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success('ZIP do edital baixado');
+      });
+    }
+  };
+
   const dadosExibidos = modoResultados === 'busca' ? resultadosBusca : licitacoes;
 
   const filtered = dadosExibidos.filter((l) => {
@@ -492,11 +536,12 @@ export default function LicitacoesTab() {
                 <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>
                 <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Encerramento</th>
                 <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
+                <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Download</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && !loading && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma licitação encontrada. Use a busca acima para pesquisar nos portais.</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma licitação encontrada. Use a busca acima para pesquisar nos portais.</td></tr>
               )}
               {filtered.map((lic, i) => {
                 const st = statusConfig[lic.status] || { label: lic.status, className: 'bg-muted text-muted-foreground' };
@@ -539,6 +584,29 @@ export default function LicitacoesTab() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', st.className)}>{st.label}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] gap-1">
+                            <Download className="w-3 h-3" /> Baixar
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'csv')} className="gap-2 text-xs">
+                            <FileSpreadsheet className="w-3.5 h-3.5" /> CSV / Excel
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'pdf')} className="gap-2 text-xs">
+                            <FileText className="w-3.5 h-3.5" /> PDF
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'json')} className="gap-2 text-xs">
+                            <FileJson className="w-3.5 h-3.5" /> JSON
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'zip')} className="gap-2 text-xs">
+                            <FileArchive className="w-3.5 h-3.5" /> ZIP (CSV + JSON)
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 );
