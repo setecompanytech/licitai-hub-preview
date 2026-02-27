@@ -184,47 +184,52 @@ export default function LicitacoesTab() {
       const token = session.data.session?.access_token;
       const portais = portaisSelecionados.length > 0 ? portaisSelecionados : ['pncp'];
 
-      // Launch both searches in parallel for speed
-      const [buscaResult, iaResult] = await Promise.allSettled([
-        // 1) Standard search
-        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/busca-licitacoes`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            query: queryText,
-            uf: ufFilter !== 'all' ? ufFilter : undefined,
-            modalidade: modalidadeFilter !== 'all' ? modalidadeFilter : undefined,
-            portal: portais.length === 1 ? portais[0] : 'all',
-            dataInicio: dataInicio ? dataInicio.toISOString().split('T')[0] : undefined,
-            dataFim: dataFim ? dataFim.toISOString().split('T')[0] : undefined,
-            pagina: 1,
-          }),
-        }).then(r => r.ok ? r.json() : null),
+      // Use busca-editais-ia as the primary search engine (real data for ALL portals)
+      // busca-licitacoes only called for PNCP as a complement when IA is disabled
+      const hasPncp = portais.includes('pncp');
+      const useBuscaLicitacoes = !comAnaliseIA && hasPncp;
 
-        // 2) AI-powered search (if enabled)
-        comAnaliseIA
-          ? fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/busca-editais-ia`, {
+      const [buscaResult, iaResult] = await Promise.allSettled([
+        // 1) Standard PNCP-only search (only when IA is disabled, as IA already searches PNCP)
+        useBuscaLicitacoes
+          ? fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/busca-licitacoes`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
               body: JSON.stringify({
                 query: queryText,
                 uf: ufFilter !== 'all' ? ufFilter : undefined,
-                portais,
-                com_analise_ia: true,
-                limite: 30,
+                modalidade: modalidadeFilter !== 'all' ? modalidadeFilter : undefined,
+                portal: 'pncp',
+                dataInicio: dataInicio ? dataInicio.toISOString().split('T')[0] : undefined,
+                dataFim: dataFim ? dataFim.toISOString().split('T')[0] : undefined,
+                pagina: 1,
               }),
             }).then(r => r.ok ? r.json() : null)
           : Promise.resolve(null),
+
+        // 2) AI-powered search (primary — searches ALL portals with real data via PNCP API + Firecrawl)
+        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/busca-editais-ia`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            query: queryText,
+            uf: ufFilter !== 'all' ? ufFilter : undefined,
+            portais,
+            com_analise_ia: comAnaliseIA,
+            limite: 50,
+          }),
+        }).then(r => r.ok ? r.json() : null),
       ]);
 
       // Merge results from both sources
       const allResults: ResultadoBusca[] = [];
       const seenIds = new Set<string>();
 
-      // Process standard search results
+      // Process standard search results (PNCP only, skip mock data)
       if (buscaResult.status === 'fulfilled' && buscaResult.value) {
         const data = buscaResult.value;
         (data.items || []).forEach((item: any, idx: number) => {
+          if (item.isMock) return; // Skip mock/simulated data
           const id = item.id || `std-${idx}`;
           if (!seenIds.has(id)) {
             seenIds.add(id);
