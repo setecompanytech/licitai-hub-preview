@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import LicitacoesTab from "@/components/monitoramento/LicitacoesTab";
 import DiariosOficiaisTab from "@/components/monitoramento/DiariosOficiaisTab";
+import BuscaInteligenteTab from "@/components/monitoramento/BuscaInteligenteTab";
 
 type TipoDocumento =
   | "edital"
@@ -170,6 +171,10 @@ export default function MonitoramentoEditais() {
               <List className="w-4 h-4 mr-1" />
               Licitações
             </TabsTrigger>
+            <TabsTrigger value="busca-ia">
+              <Search className="w-4 h-4 mr-1" />
+              Busca Inteligente IA
+            </TabsTrigger>
             <TabsTrigger value="diarios">
               <Newspaper className="w-4 h-4 mr-1" />
               Diários Oficiais
@@ -180,6 +185,10 @@ export default function MonitoramentoEditais() {
 
           <TabsContent value="licitacoes">
             <LicitacoesTab />
+          </TabsContent>
+
+          <TabsContent value="busca-ia">
+            <BuscaInteligenteTab />
           </TabsContent>
 
           <TabsContent value="diarios">

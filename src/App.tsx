@@ -36,7 +36,7 @@ import Boletins from "./pages/Boletins";
 import Ebook from "./pages/Ebook";
 import PropostaTecnica from "./pages/PropostaTecnica";
 import HistoricoLicitacoes from "./pages/HistoricoLicitacoes";
-import BuscaInteligenteIA from "./pages/BuscaInteligenteIA";
+
 
 import WhatsAppSetores from "./pages/WhatsAppSetores";
 import NotFound from "./pages/NotFound";
@@ -86,7 +86,7 @@ const App = () => (
               <Route path="/ebook" element={<ProtectedPages><Ebook /></ProtectedPages>} />
               <Route path="/proposta-tecnica" element={<ProtectedPages><PropostaTecnica /></ProtectedPages>} />
               <Route path="/historico-licitacoes" element={<ProtectedPages><HistoricoLicitacoes /></ProtectedPages>} />
-              <Route path="/busca-inteligente" element={<ProtectedPages><BuscaInteligenteIA /></ProtectedPages>} />
+              <Route path="/busca-inteligente" element={<Navigate to="/monitoramento-editais" replace />} />
               <Route path="/comprasgov-envio" element={<Navigate to="/proposta-tecnica" replace />} />
               <Route path="/whatsapp-setores" element={<ProtectedPages><WhatsAppSetores /></ProtectedPages>} />
               <Route path="*" element={<NotFound />} />
