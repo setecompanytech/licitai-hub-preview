@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import LicitacoesTab from "@/components/monitoramento/LicitacoesTab";
 import DiariosOficiaisTab from "@/components/monitoramento/DiariosOficiaisTab";
+import ConfiguracaoPesquisaTab from "@/components/monitoramento/ConfiguracaoPesquisaTab";
 
 
 
@@ -231,53 +232,7 @@ export default function MonitoramentoEditais() {
           </TabsContent>
 
           <TabsContent value="config" className="space-y-4">
-            <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4">
-              <h3 className="text-sm font-semibold">Configuração de Pesquisa Automática</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-muted-foreground">CNAE Principal</label>
-                  <Input defaultValue="42.11-1 – Construção de rodovias e ferrovias" className="mt-1" readOnly />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">CNAEs Secundários (cadastrados)</label>
-                  <Input defaultValue="42.13-8, 41.20-4" className="mt-1" readOnly />
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Gerencie em Configurações → CNAEs Secundários
-                  </p>
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Palavras-chave</label>
-                  <Input defaultValue="construção, pavimentação, obra, reforma" className="mt-1" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">UFs monitoradas</label>
-                  <Input defaultValue="PA, MA, AP, TO" className="mt-1" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Frequência de busca</label>
-                  <Input defaultValue="A cada 30 minutos" className="mt-1" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Valor mínimo (R$)</label>
-                  <Input defaultValue="500.000" className="mt-1" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Valor máximo (R$)</label>
-                  <Input defaultValue="100.000.000" className="mt-1" />
-                </div>
-              </div>
-              <div className="pt-2">
-                <h4 className="text-xs font-semibold mb-2 text-muted-foreground">Tipos de documento para buscar</h4>
-                <div className="flex flex-wrap gap-2">
-                  {(Object.keys(tipoConfig) as TipoDocumento[]).map((tipo) => (
-                    <Badge key={tipo} variant="outline" className={tipoConfig[tipo].color + " cursor-pointer"}>
-                      <CheckCircle2 className="w-3 h-3 mr-1" /> {tipoConfig[tipo].label}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">Salvar Configuração</Button>
-            </div>
+            <ConfiguracaoPesquisaTab />
           </TabsContent>
         </Tabs>
       </div>
