@@ -15,6 +15,33 @@ const PORTAIS_INFO: Record<string, { nome: string; url: string }> = {
   comprasrj: { nome: "Compras Públicas RJ", url: "https://www.compras.rj.gov.br" },
 };
 
+// PNCP modalidade codes
+const MODALIDADES_PNCP: Record<string, number> = {
+  "leilão": 1,
+  "diálogo competitivo": 2,
+  "concurso": 3,
+  "concorrência": 4,
+  "concorrência - eletrônica": 5,
+  "pregão": 6,
+  "pregão eletrônico": 6,
+  "pregão - eletrônico": 6,
+  "dispensa de licitação": 7,
+  "inexigibilidade": 8,
+  "manifestação de interesse": 9,
+  "pré-qualificação": 10,
+  "credenciamento": 11,
+  "leilão - eletrônico": 12,
+  "concurso - eletrônico": 13,
+};
+
+// Format date to yyyyMMdd
+function formatDatePNCP(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}${m}${d}`;
+}
+
 function gerarDadosPorPortal(
   portalId: string,
   query: string,
@@ -75,6 +102,10 @@ function gerarDadosPorPortal(
       data_abertura: dataAbertura.toISOString().split("T")[0],
       portal: info.nome,
       url: info.url,
+      // Mock data doesn't have real identifiers
+      pncpNumero: null,
+      cnpjOrgao: null,
+      isMock: true,
     });
   }
   return items;
@@ -97,45 +128,86 @@ serve(async (req) => {
     // Tentar API real do PNCP se ele estiver na lista
     if (portaisParaBuscar.includes("pncp")) {
       try {
+        const now = new Date();
+        const dataInicialDate = dataInicio ? new Date(dataInicio) : new Date(now.getTime() - 90 * 86400000);
+        const dataFinalDate = dataFim ? new Date(dataFim) : new Date(now.getTime() + 90 * 86400000);
+
         const params = new URLSearchParams();
-        if (query) params.set("termoPesquisa", query);
-        if (uf) params.set("uf", uf);
+        params.set("dataInicial", formatDatePNCP(dataInicialDate));
+        params.set("dataFinal", formatDatePNCP(dataFinalDate));
         params.set("pagina", String(pagina || 1));
         params.set("tamanhoPagina", "20");
 
+        // codigoModalidadeContratacao is required - default to Pregão Eletrônico (6)
+        let codModalidade = 6;
+        if (modalidade) {
+          const key = modalidade.toLowerCase().trim();
+          codModalidade = MODALIDADES_PNCP[key] || 6;
+        }
+        params.set("codigoModalidadeContratacao", String(codModalidade));
+
+        if (uf) params.set("uf", uf);
+
         const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params.toString()}`;
+        console.log(`PNCP API: ${url}`);
+        
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 6000);
+        const timeout = setTimeout(() => controller.abort(), 15000);
         const response = await fetch(url, {
-          headers: { Accept: "application/json" },
+          headers: { 
+            Accept: "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          },
           signal: controller.signal,
         });
         clearTimeout(timeout);
 
         if (response.ok) {
           const data = await response.json();
-          const pncpItems = (data.data || data.resultado || []).map((item: any) => ({
-            numero: item.numeroControlePNCP || item.numero || "-",
-            orgao: item.orgaoEntidade?.razaoSocial || item.nomeOrgao || "-",
-            objeto: item.objetoCompra || item.description || "-",
-            modalidade: item.modalidadeNome || modalidade || "Pregão Eletrônico",
-            status: "Publicado",
-            valor_estimado: item.valorTotalEstimado || null,
+          const pncpArray = data.data || [];
+
+          console.log(`PNCP: ${pncpArray.length} resultados reais (total: ${data.totalRegistros})`);
+
+          // Filter by query term if provided
+          let filtered = pncpArray;
+          if (query) {
+            const q = query.toLowerCase();
+            filtered = pncpArray.filter((item: any) => {
+              const obj = (item.objetoCompra || "").toLowerCase();
+              const org = (item.orgaoEntidade?.razaoSocial || "").toLowerCase();
+              return obj.includes(q) || org.includes(q);
+            });
+            // If filter is too aggressive, use all results
+            if (filtered.length === 0) filtered = pncpArray;
+          }
+
+          const pncpItems = filtered.map((item: any) => ({
+            numero: item.numeroCompra || item.numeroControlePNCP || "-",
+            orgao: item.orgaoEntidade?.razaoSocial || "-",
+            objeto: item.objetoCompra || "-",
+            modalidade: item.modalidadeNome || "Pregão - Eletrônico",
+            status: item.situacaoCompraNome || "Publicado",
+            valor_estimado: item.valorTotalEstimado || item.valorTotalHomologado || null,
             uf: item.unidadeOrgao?.ufSigla || uf || null,
             municipio: item.unidadeOrgao?.municipioNome || null,
-            data_abertura: item.dataEncerramentoProposta || null,
+            data_abertura: item.dataEncerramentoProposta?.split("T")[0] || item.dataAberturaProposta?.split("T")[0] || null,
             portal: "PNCP",
-            url: item.linkSistemaOrigem || "https://pncp.gov.br",
+            url: item.linkSistemaOrigem || `https://pncp.gov.br/app/editais/${item.numeroControlePNCP || ""}`,
             pncpNumero: item.numeroControlePNCP || null,
             cnpjOrgao: item.orgaoEntidade?.cnpj || null,
+            anoCompra: item.anoCompra || null,
+            sequencialCompra: item.sequencialCompra || null,
+            isMock: false,
           }));
           allItems.push(...pncpItems);
         } else {
-          await response.text();
-          // Fallback para PNCP
+          const errorText = await response.text();
+          console.log(`PNCP API error ${response.status}: ${errorText.substring(0, 300)}`);
+          // Fallback para dados simulados
           allItems.push(...gerarDadosPorPortal("pncp", query || "", uf || "", modalidade || "", dataInicio, dataFim));
         }
-      } catch {
+      } catch (e) {
+        console.log("PNCP API error:", e);
         allItems.push(...gerarDadosPorPortal("pncp", query || "", uf || "", modalidade || "", dataInicio, dataFim));
       }
     }
