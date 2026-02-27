@@ -79,7 +79,7 @@ export default function TransparenciaPA() {
       if (error) throw error;
 
       if (data?.fallback) {
-        toast.info('Portal com carregamento lento. Use a importação de planilha abaixo.', { duration: 6000 });
+        toast.info(data?.error || 'Use a importação de planilha abaixo.', { duration: 6000 });
       } else if (data?.success && data?.data?.length > 0) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
@@ -95,7 +95,8 @@ export default function TransparenciaPA() {
         const { error: insertError } = await supabase.from('transparencia_empenhos').insert(rows);
         if (insertError) throw insertError;
 
-        toast.success(`${rows.length} órgãos importados com sucesso!`);
+        const sourceLabel = data.source === 'ai-knowledge' ? 'IA (estimativas)' : 'portal';
+        toast.success(`${rows.length} órgãos importados via ${sourceLabel}!`);
         loadDados();
       } else {
         toast.info('Nenhum dado extraído. Tente importar uma planilha do portal.', { duration: 5000 });
