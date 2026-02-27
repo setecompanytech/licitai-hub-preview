@@ -315,6 +315,120 @@ async function scrapePortalPage(
   }
 }
 
+// ── Enrich Firecrawl results with PNCP download data ─────────────────────
+async function enrichWithPncpData(items: any[]): Promise<any[]> {
+  const needsEnrichment = items.filter(
+    (r) => !r.cnpj_orgao && !r.pncp_numero && r.titulo && r.portal !== "PNCP"
+  );
+  if (needsEnrichment.length === 0) return items;
+
+  console.log(`Enriching ${needsEnrichment.length} Firecrawl results with PNCP data`);
+
+  // Group by keywords to minimize API calls
+  const keywords = new Set<string>();
+  for (const r of needsEnrichment) {
+    const words = (r.titulo || "")
+      .replace(/(?:aviso|edital|pregão|licitação|homologação|registro|preços?)[- ]*/gi, "")
+      .trim()
+      .split(/\s+/)
+      .filter((w: string) => w.length > 4)
+      .slice(0, 3);
+    if (words.length > 0) keywords.add(words.join(" "));
+  }
+
+  // Search PNCP for each keyword set (max 3 queries to avoid slowdown)
+  const pncpResults: any[] = [];
+  const keywordArr = Array.from(keywords).slice(0, 3);
+
+  for (const kw of keywordArr) {
+    try {
+      const now = new Date();
+      const dataInicial = formatDatePNCP(new Date(now.getTime() - 180 * 86400000));
+      const dataFinal = formatDatePNCP(new Date(now.getTime() + 90 * 86400000));
+
+      for (const mod of ["6", "8", "5"]) {
+        const params = new URLSearchParams({
+          dataInicial,
+          dataFinal,
+          codigoModalidadeContratacao: mod,
+          pagina: "1",
+          tamanhoPagina: "15",
+          q: kw.substring(0, 80),
+        });
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const resp = await fetch(
+          `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params}`,
+          { headers: FETCH_HEADERS, signal: controller.signal }
+        );
+        clearTimeout(timeout);
+
+        if (!resp.ok) { await resp.text(); continue; }
+        const data = await resp.json();
+        const pncpItems = data.data || [];
+        for (const p of pncpItems) {
+          pncpResults.push({
+            objeto: (p.objetoCompra || "").toLowerCase(),
+            orgao: (p.orgaoEntidade?.razaoSocial || "").toLowerCase(),
+            cnpj: p.orgaoEntidade?.cnpj || "",
+            ano: p.anoCompra || "",
+            seq: p.sequencialCompra || "",
+            pncpNumero: p.numeroControlePNCP || "",
+            url: p.linkSistemaOrigem || "",
+          });
+        }
+        if (pncpItems.length > 0) break; // Found results for this modalidade
+      }
+    } catch (e) {
+      console.error("PNCP enrichment error:", e);
+    }
+  }
+
+  if (pncpResults.length === 0) return items;
+  console.log(`PNCP enrichment: found ${pncpResults.length} potential matches`);
+
+  // Match Firecrawl results with PNCP results by title/object similarity
+  for (const item of items) {
+    if (item.cnpj_orgao || item.pncp_numero || item.portal === "PNCP") continue;
+
+    const titleLower = (item.titulo || "").toLowerCase();
+    const titleWords = titleLower.split(/\s+/).filter((w: string) => w.length > 4);
+
+    let bestMatch: any = null;
+    let bestScore = 0;
+
+    for (const pncp of pncpResults) {
+      let score = 0;
+      for (const word of titleWords) {
+        if (pncp.objeto.includes(word)) score++;
+      }
+      // Normalize by word count
+      const normalized = titleWords.length > 0 ? score / titleWords.length : 0;
+      if (normalized > bestScore && normalized >= 0.3) {
+        bestScore = normalized;
+        bestMatch = pncp;
+      }
+    }
+
+    if (bestMatch) {
+      item.cnpj_orgao = bestMatch.cnpj;
+      item.ano_compra = bestMatch.ano;
+      item.seq_compra = bestMatch.seq;
+      item.pncp_numero = bestMatch.pncpNumero;
+      item.tem_download = true;
+      item.fonte_real = true;
+      // Keep original URL if specific, otherwise use PNCP
+      if (!item.url || item.url_portal_generico) {
+        item.url = `https://pncp.gov.br/app/editais/${bestMatch.cnpj}/${bestMatch.ano}/${bestMatch.seq}`;
+      }
+      console.log(`Enriched: "${item.titulo.substring(0, 50)}" → PNCP ${bestMatch.cnpj}/${bestMatch.ano}/${bestMatch.seq}`);
+    }
+  }
+
+  return items;
+}
+
 // ── AI Analysis of results ────────────────────────────────────────────────
 async function analisarComIA(
   resultados: any[],
@@ -450,6 +564,9 @@ Deno.serve(async (req) => {
     });
 
     console.log(`Total: ${allItems.length} resultados de ${portalLabels.join(", ")}`);
+
+    // ── Enrich Firecrawl results with PNCP download data ──────────
+    allItems = await enrichWithPncpData(allItems);
 
     // ── AI Analysis ───────────────────────────────────────────────────
     let analise = "";
