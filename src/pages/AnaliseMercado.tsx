@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   BarChart3, TrendingUp, TrendingDown, DollarSign, Package,
-  Building2, MapPin, Search, Download, PieChart, Activity
+  Building2, MapPin, Search, Download, PieChart, Activity, Landmark
 } from 'lucide-react';
+import TransparenciaPA from '@/components/analise-mercado/TransparenciaPA';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RPieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
 
 const segmentoData = [
@@ -109,12 +110,19 @@ export default function AnaliseMercado() {
           </div>
         </div>
 
-        <Tabs defaultValue="segmentos" className="space-y-4">
+        <Tabs defaultValue="transparencia-pa" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="transparencia-pa"><Landmark className="w-4 h-4 mr-1" /> Transparência PA</TabsTrigger>
             <TabsTrigger value="segmentos"><PieChart className="w-4 h-4 mr-1" /> Por Segmento</TabsTrigger>
             <TabsTrigger value="precos"><TrendingUp className="w-4 h-4 mr-1" /> Preços Praticados</TabsTrigger>
             <TabsTrigger value="produtos"><Package className="w-4 h-4 mr-1" /> Mais Solicitados</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="transparencia-pa">
+            <TransparenciaPA />
+          </TabsContent>
+
+
 
           <TabsContent value="segmentos" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

@@ -1084,6 +1084,51 @@ export type Database = {
         }
         Relationships: []
       }
+      transparencia_empenhos: {
+        Row: {
+          ano: number
+          categoria: string | null
+          created_at: string
+          fonte_recurso: string | null
+          id: string
+          municipio: string | null
+          orgao: string
+          quantidade_empenhos: number
+          uf: string | null
+          updated_at: string
+          user_id: string
+          valor_total: number
+        }
+        Insert: {
+          ano: number
+          categoria?: string | null
+          created_at?: string
+          fonte_recurso?: string | null
+          id?: string
+          municipio?: string | null
+          orgao: string
+          quantidade_empenhos?: number
+          uf?: string | null
+          updated_at?: string
+          user_id: string
+          valor_total?: number
+        }
+        Update: {
+          ano?: number
+          categoria?: string | null
+          created_at?: string
+          fonte_recurso?: string | null
+          id?: string
+          municipio?: string | null
+          orgao?: string
+          quantidade_empenhos?: number
+          uf?: string | null
+          updated_at?: string
+          user_id?: string
+          valor_total?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
