@@ -5,12 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { Search, MapPin, Calendar as CalendarIcon2, Building2, CalendarDays } from 'lucide-react';
+import { Search, MapPin, Calendar as CalendarIcon2, Building2, CalendarDays, RefreshCw, Sparkles, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 type Licitacao = {
   id: string;
@@ -56,6 +58,10 @@ export default function LicitacoesTab() {
   const [ufFilter, setUfFilter] = useState<string>('all');
   const [dataInicio, setDataInicio] = useState<Date | undefined>();
   const [dataFim, setDataFim] = useState<Date | undefined>();
+  const [buscando, setBuscando] = useState(false);
+  const [progresso, setProgresso] = useState(0);
+  const [buscaAvancada, setBuscaAvancada] = useState('');
+  const [buscandoIA, setBuscandoIA] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -76,6 +82,64 @@ export default function LicitacoesTab() {
 
   const handleRegiaoChange = (v: string) => { setRegiaoFilter(v); setUfFilter('all'); };
 
+  const handleBuscarLicitacoes = async () => {
+    if (!user) return;
+    setBuscando(true);
+    setProgresso(0);
+
+    const interval = setInterval(() => {
+      setProgresso(p => Math.min(90, p + Math.random() * 12));
+    }, 500);
+
+    try {
+      const keywords = buscaAvancada
+        ? buscaAvancada.split(',').map(s => s.trim()).filter(Boolean)
+        : undefined;
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/busca-licitacoes`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            query: keywords?.join(' ') || search || 'licitação',
+            uf: ufFilter !== 'all' ? ufFilter : undefined,
+            modalidade: modalidadeFilter !== 'all' ? modalidadeFilter : undefined,
+            pagina: 1,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        toast.error('Erro na busca. Tente novamente.');
+        return;
+      }
+
+      const data = await response.json();
+      toast.success(`${data.total || 0} licitações encontradas via ${data.fonte || 'API'}`);
+    } catch (err) {
+      toast.error('Erro ao conectar com o serviço de busca');
+      console.error(err);
+    } finally {
+      clearInterval(interval);
+      setProgresso(100);
+      setTimeout(() => { setBuscando(false); setProgresso(0); }, 500);
+    }
+  };
+
+  const handleBuscaIA = async () => {
+    if (!buscaAvancada.trim()) {
+      toast.error('Digite termos para a pesquisa avançada');
+      return;
+    }
+    setBuscandoIA(true);
+    await handleBuscarLicitacoes();
+    setBuscandoIA(false);
+  };
+
   const filtered = licitacoes.filter((l) => {
     const matchSearch =
       l.objeto.toLowerCase().includes(search.toLowerCase()) ||
@@ -95,6 +159,75 @@ export default function LicitacoesTab() {
 
   return (
     <div className="space-y-4">
+      {/* Header de busca */}
+      <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <Search className="w-5 h-5 text-accent" />
+            <h3 className="font-semibold text-sm">Buscar Licitações</h3>
+            <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-[10px]">
+              {filtered.length} registros
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleBuscarLicitacoes}
+              disabled={buscando}
+              size="sm"
+              className="bg-accent hover:bg-accent/90 text-accent-foreground"
+            >
+              {buscando ? (
+                <><RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin" /> Buscando...</>
+              ) : (
+                <><Search className="w-3.5 h-3.5 mr-1" /> Buscar Licitações</>
+              )}
+            </Button>
+            <Button size="sm" variant="outline" asChild>
+              <a href="https://pncp.gov.br/app/editais?pagina=1" target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="w-3.5 h-3.5 mr-1" /> PNCP
+              </a>
+            </Button>
+          </div>
+        </div>
+
+        {buscando && (
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Pesquisando licitações no PNCP...</span>
+              <span>{Math.round(progresso)}%</span>
+            </div>
+            <Progress value={progresso} className="h-1.5" />
+          </div>
+        )}
+
+        {/* Pesquisa avançada com IA */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent" />
+            <Input
+              placeholder="Pesquisa avançada (ex: pavimentação, saneamento, TI, infraestrutura...)"
+              value={buscaAvancada}
+              onChange={e => setBuscaAvancada(e.target.value)}
+              className="pl-9 text-xs"
+              onKeyDown={e => e.key === 'Enter' && handleBuscaIA()}
+            />
+          </div>
+          <Button
+            onClick={handleBuscaIA}
+            disabled={buscandoIA || buscando}
+            size="sm"
+            variant="outline"
+            className="shrink-0"
+          >
+            {buscandoIA ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <><Sparkles className="w-3.5 h-3.5 mr-1" /> Pesquisar com IA</>
+            )}
+          </Button>
+        </div>
+      </div>
+
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[250px] max-w-md">
