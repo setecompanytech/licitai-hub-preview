@@ -11,6 +11,9 @@ import {
 } from 'lucide-react';
 import CredenciaisPortalForm from '@/components/robo-lances/CredenciaisPortalForm';
 import ConfigurarLanceDialog, { type LanceConfig } from '@/components/robo-lances/ConfigurarLanceDialog';
+import GuiaPassoAPasso from '@/components/robo-lances/GuiaPassoAPasso';
+import DeteccaoPortais from '@/components/robo-lances/DeteccaoPortais';
+import SimulacaoDisputa from '@/components/robo-lances/SimulacaoDisputa';
 import { toast } from 'sonner';
 
 const portais = [
@@ -100,6 +103,12 @@ export default function RoboLances() {
           </div>
         </div>
 
+        {/* Guia passo-a-passo */}
+        <GuiaPassoAPasso />
+
+        {/* Detecção de portais */}
+        <DeteccaoPortais />
+
         <Tabs defaultValue="lances" className="space-y-4">
           <TabsList>
             <TabsTrigger value="lances">Lances Ativos</TabsTrigger>
@@ -135,9 +144,9 @@ export default function RoboLances() {
                 <p className="text-sm text-muted-foreground">
                   Nenhuma sessão de lance cadastrada ainda.
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  Clique em <strong>"Nova Sessão de Lance"</strong> para configurar os parâmetros automáticos como no EFFECTI.
-                </p>
+                 <p className="text-xs text-muted-foreground">
+                   Clique em <strong>"Nova Sessão de Lance"</strong> para configurar os parâmetros automáticos de disputa.
+                 </p>
               </div>
             )}
 
@@ -254,6 +263,16 @@ export default function RoboLances() {
                         </Button>
                       </div>
                     </div>
+                  )}
+
+                  {/* Simulação de disputa */}
+                  {(lance.status === 'ativo' || lance.status === 'aguardando') && (
+                    <SimulacaoDisputa
+                      lance={lance}
+                      onUpdate={(updated) =>
+                        setLances((prev) => prev.map((l) => (l.id === updated.id ? updated : l)))
+                      }
+                    />
                   )}
                 </div>
               ))}
