@@ -9,35 +9,22 @@ import {
   Download,
   Search,
   FileText,
-  AlertTriangle,
   XCircle,
   Clock,
   CheckCircle2,
   RefreshCw,
   Globe,
   Building2,
-  Filter,
   CalendarDays,
   PauseCircle,
   FileCheck,
   Award,
-  Ban,
   ArrowUpDown,
   List,
-  FileDown,
-  FileSpreadsheet,
   Newspaper,
 } from "lucide-react";
 import LicitacoesTab from "@/components/monitoramento/LicitacoesTab";
 import DiariosOficiaisTab from "@/components/monitoramento/DiariosOficiaisTab";
-import { downloadCSV, downloadTextReport, downloadPDF } from "@/lib/download-utils";
-import { toast } from "sonner";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 type TipoDocumento =
   | "edital"
@@ -48,19 +35,6 @@ type TipoDocumento =
   | "aditivado"
   | "adjudicado"
   | "homologado";
-
-type Documento = {
-  id: string;
-  tipo: TipoDocumento;
-  numero: string;
-  orgao: string;
-  portal: string;
-  objeto: string;
-  dataPublicacao: string;
-  valor: number;
-  baixado: boolean;
-  url: string;
-};
 
 const tipoConfig: Record<TipoDocumento, { label: string; icon: typeof FileText; color: string }> = {
   edital: { label: "Edital", icon: FileText, color: "bg-info/15 text-info border-info/30" },
@@ -90,146 +64,14 @@ const portaisMonitorados = [
   { id: "compras-rj", nome: "Compras Públicas RJ", url: "https://www.compras.rj.gov.br/", ativo: true },
 ];
 
-const mockDocumentos: Documento[] = [
-  {
-    id: "1",
-    tipo: "edital",
-    numero: "PE-001/2026",
-    orgao: "Prefeitura de Belém",
-    portal: "PNCP",
-    objeto: "Construção de ponte sobre o Rio Guamá – Lote 3",
-    dataPublicacao: "2026-02-18",
-    valor: 12500000,
-    baixado: true,
-    url: "#",
-  },
-  {
-    id: "2",
-    tipo: "aviso",
-    numero: "AV-045/2026",
-    orgao: "SEDOP/PA",
-    portal: "Compras.gov.br",
-    objeto: "Aviso de licitação para pavimentação asfáltica BR-316",
-    dataPublicacao: "2026-02-19",
-    valor: 8900000,
-    baixado: false,
-    url: "#",
-  },
-  {
-    id: "3",
-    tipo: "cancelamento",
-    numero: "PE-012/2026",
-    orgao: "SEMAS/PA",
-    portal: "BLL Compras",
-    objeto: "Cancelamento – Reforma do prédio sede",
-    dataPublicacao: "2026-02-17",
-    valor: 3200000,
-    baixado: false,
-    url: "#",
-  },
-  {
-    id: "4",
-    tipo: "suspenso",
-    numero: "CC-003/2026",
-    orgao: "DNIT",
-    portal: "Licitações-e (BB)",
-    objeto: "Suspensão – Obra de contenção na PA-150",
-    dataPublicacao: "2026-02-16",
-    valor: 5600000,
-    baixado: false,
-    url: "#",
-  },
-  {
-    id: "5",
-    tipo: "adiado",
-    numero: "PE-078/2026",
-    orgao: "SETRAN/PA",
-    portal: "PNCP",
-    objeto: "Adiamento – Sinalização viária em Ananindeua",
-    dataPublicacao: "2026-02-15",
-    valor: 1800000,
-    baixado: true,
-    url: "#",
-  },
-  {
-    id: "6",
-    tipo: "aditivado",
-    numero: "CT-022/2025",
-    orgao: "Prefeitura de Marituba",
-    portal: "Portal de Compras Públicas",
-    objeto: "Aditivo – Ampliação de escola municipal",
-    dataPublicacao: "2026-02-20",
-    valor: 2100000,
-    baixado: false,
-    url: "#",
-  },
-  {
-    id: "7",
-    tipo: "adjudicado",
-    numero: "PE-099/2025",
-    orgao: "COSANPA",
-    portal: "Compras.gov.br",
-    objeto: "Adjudicação – Sistema de abastecimento de água",
-    dataPublicacao: "2026-02-14",
-    valor: 7400000,
-    baixado: true,
-    url: "#",
-  },
-  {
-    id: "8",
-    tipo: "homologado",
-    numero: "CC-001/2026",
-    orgao: "Governo do Pará",
-    portal: "PNCP",
-    objeto: "Homologação – Construção do novo terminal rodoviário",
-    dataPublicacao: "2026-02-13",
-    valor: 45000000,
-    baixado: true,
-    url: "#",
-  },
-  {
-    id: "9",
-    tipo: "edital",
-    numero: "PE-155/2026",
-    orgao: "TCM-PA",
-    portal: "TCM-PA",
-    objeto: "Reforma e adequação do prédio do tribunal",
-    dataPublicacao: "2026-02-21",
-    valor: 6300000,
-    baixado: false,
-    url: "#",
-  },
-  {
-    id: "10",
-    tipo: "aviso",
-    numero: "AV-088/2026",
-    orgao: "UFPA",
-    portal: "Compras.gov.br",
-    objeto: "Aviso de licitação para construção de laboratório",
-    dataPublicacao: "2026-02-20",
-    valor: 4200000,
-    baixado: false,
-    url: "#",
-  },
-];
-
-const formatCurrency = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const mockDocumentoCount: Record<TipoDocumento, number> = {
+  edital: 3, aviso: 2, cancelamento: 1, suspenso: 1, adiado: 1, aditivado: 1, adjudicado: 1, homologado: 1,
+};
 
 export default function MonitoramentoEditais() {
-  const [busca, setBusca] = useState("");
-  const [tipoFiltro, setTipoFiltro] = useState<TipoDocumento | "todos">("todos");
   const [pesquisando, setPesquisando] = useState(false);
   const [progresso, setProgresso] = useState(0);
-
-  const documentosFiltrados = mockDocumentos.filter((doc) => {
-    const matchBusca =
-      !busca ||
-      doc.objeto.toLowerCase().includes(busca.toLowerCase()) ||
-      doc.numero.toLowerCase().includes(busca.toLowerCase()) ||
-      doc.orgao.toLowerCase().includes(busca.toLowerCase());
-    const matchTipo = tipoFiltro === "todos" || doc.tipo === tipoFiltro;
-    return matchBusca && matchTipo;
-  });
+  const [tipoFiltro, setTipoFiltro] = useState<TipoDocumento | "todos">("todos");
 
   const handlePesquisar = () => {
     setPesquisando(true);
@@ -245,8 +87,6 @@ export default function MonitoramentoEditais() {
       });
     }, 400);
   };
-
-  const totalPorTipo = (tipo: TipoDocumento) => mockDocumentos.filter((d) => d.tipo === tipo).length;
 
   return (
     <AppLayout>
@@ -309,7 +149,7 @@ export default function MonitoramentoEditais() {
           {(Object.keys(tipoConfig) as TipoDocumento[]).map((tipo) => {
             const cfg = tipoConfig[tipo];
             const Icon = cfg.icon;
-            const count = totalPorTipo(tipo);
+            const count = mockDocumentoCount[tipo];
             return (
               <button
                 key={tipo}
@@ -330,7 +170,6 @@ export default function MonitoramentoEditais() {
               <List className="w-4 h-4 mr-1" />
               Licitações
             </TabsTrigger>
-            <TabsTrigger value="resultados">Resultados ({documentosFiltrados.length})</TabsTrigger>
             <TabsTrigger value="diarios">
               <Newspaper className="w-4 h-4 mr-1" />
               Diários Oficiais
@@ -339,166 +178,14 @@ export default function MonitoramentoEditais() {
             <TabsTrigger value="config">Configuração de Pesquisa</TabsTrigger>
           </TabsList>
 
-          {/* Licitações */}
           <TabsContent value="licitacoes">
             <LicitacoesTab />
           </TabsContent>
 
-          {/* Diários Oficiais */}
           <TabsContent value="diarios">
             <DiariosOficiaisTab />
           </TabsContent>
 
-          {/* Resultados */}
-          <TabsContent value="resultados" className="space-y-4">
-            {/* Search + filter */}
-            <div className="flex gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por número, órgão ou objeto..."
-                  value={busca}
-                  onChange={(e) => setBusca(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setBusca("");
-                  setTipoFiltro("todos");
-                }}
-              >
-                <Filter className="w-4 h-4 mr-1" /> Limpar Filtros
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-1" /> Exportar
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => {
-                      downloadCSV(
-                        "editais-monitoramento",
-                        ["Número", "Tipo", "Órgão", "Portal", "Objeto", "Data Publicação", "Valor", "Status"],
-                        documentosFiltrados.map((d) => [
-                          d.numero,
-                          tipoConfig[d.tipo].label,
-                          d.orgao,
-                          d.portal,
-                          d.objeto,
-                          new Date(d.dataPublicacao).toLocaleDateString("pt-BR"),
-                          formatCurrency(d.valor),
-                          d.baixado ? "Baixado" : "Pendente",
-                        ]),
-                      );
-                      toast.success("CSV exportado com sucesso!");
-                    }}
-                  >
-                    <FileSpreadsheet className="w-4 h-4 mr-2" /> Exportar CSV
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      const lines = documentosFiltrados.map(
-                        (d) =>
-                          `${d.numero} | ${tipoConfig[d.tipo].label} | ${d.orgao}\n  Objeto: ${d.objeto}\n  Portal: ${d.portal} | Data: ${new Date(d.dataPublicacao).toLocaleDateString("pt-BR")} | Valor: ${formatCurrency(d.valor)}\n`,
-                      );
-                      downloadTextReport(
-                        "editais-relatorio",
-                        `RELATÓRIO DE EDITAIS MONITORADOS\nGerado em: ${new Date().toLocaleString("pt-BR")}\nTotal: ${documentosFiltrados.length} documentos\n${"=".repeat(60)}\n\n${lines.join("\n")}`,
-                      );
-                      toast.success("Relatório exportado com sucesso!");
-                    }}
-                  >
-                    <FileDown className="w-4 h-4 mr-2" /> Exportar Relatório TXT
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      downloadPDF(
-                        "editais-monitoramento",
-                        "Relatório de Editais Monitorados",
-                        ["Número", "Tipo", "Órgão", "Portal", "Objeto", "Data", "Valor"],
-                        documentosFiltrados.map((d) => [
-                          d.numero,
-                          tipoConfig[d.tipo].label,
-                          d.orgao,
-                          d.portal,
-                          d.objeto,
-                          new Date(d.dataPublicacao).toLocaleDateString("pt-BR"),
-                          formatCurrency(d.valor),
-                        ]),
-                      );
-                      toast.success("PDF exportado com sucesso!");
-                    }}
-                  >
-                    <FileText className="w-4 h-4 mr-2" /> Exportar PDF
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            {/* Document list */}
-            <div className="space-y-3">
-              {documentosFiltrados.map((doc) => {
-                const cfg = tipoConfig[doc.tipo];
-                const Icon = cfg.icon;
-                return (
-                  <div
-                    key={doc.id}
-                    className="bg-card rounded-xl border border-border/50 p-4 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${cfg.color}`}>
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="font-semibold text-sm">{doc.numero}</span>
-                          <Badge variant="outline" className={cfg.color + " text-[10px]"}>
-                            {cfg.label}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">• {doc.portal}</span>
-                        </div>
-                        <p className="text-sm text-foreground truncate">{doc.objeto}</p>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span>{doc.orgao}</span>
-                          <span>•</span>
-                          <span>{new Date(doc.dataPublicacao).toLocaleDateString("pt-BR")}</span>
-                          <span>•</span>
-                          <span className="font-medium text-foreground">{formatCurrency(doc.valor)}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 ml-4">
-                      {doc.baixado ? (
-                        <Badge variant="outline" className="bg-success/15 text-success border-success/30">
-                          <CheckCircle2 className="w-3 h-3 mr-1" /> Baixado
-                        </Badge>
-                      ) : (
-                        <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                          <Download className="w-3 h-3 mr-1" /> Baixar
-                        </Button>
-                      )}
-                      <Button size="sm" variant="outline">
-                        <Globe className="w-3 h-3 mr-1" /> Ver no Portal
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-              {documentosFiltrados.length === 0 && (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Search className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                  <p className="text-sm">Nenhum documento encontrado com os filtros aplicados.</p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
-
-          {/* Portais Monitorados */}
           <TabsContent value="portais" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {portaisMonitorados.map((portal) => (
@@ -538,7 +225,6 @@ export default function MonitoramentoEditais() {
             </div>
           </TabsContent>
 
-          {/* Configuração */}
           <TabsContent value="config" className="space-y-4">
             <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4">
               <h3 className="text-sm font-semibold">Configuração de Pesquisa Automática</h3>
