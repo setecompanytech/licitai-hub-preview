@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { Search, MapPin, Calendar as CalendarIcon2, Building2, CalendarDays, RefreshCw, Sparkles, ExternalLink } from 'lucide-react';
+import { Search, MapPin, Calendar as CalendarIcon2, Building2, CalendarDays, RefreshCw, Sparkles, ExternalLink, Globe } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,7 +25,33 @@ type Licitacao = {
   uf: string | null;
   municipio: string | null;
   data_encerramento: string | null;
+  portal?: string | null;
 };
+
+type ResultadoBusca = {
+  id: string;
+  numero: string;
+  orgao: string;
+  objeto: string;
+  modalidade: string;
+  status: string;
+  valor_estimado: number | null;
+  uf: string | null;
+  municipio: string | null;
+  data_encerramento: string | null;
+  portal: string;
+  url?: string;
+};
+
+const PORTAIS = [
+  { id: 'pncp', nome: 'PNCP', url: 'https://pncp.gov.br/app/editais?pagina=1' },
+  { id: 'comprasnet', nome: 'Compras Governamentais', url: 'https://www.gov.br/compras/pt-br' },
+  { id: 'licitacoes-e', nome: 'Licitações-e (BB)', url: 'https://licitacoes-e2.bb.com.br/aop-inter-estatico/' },
+  { id: 'bnc', nome: 'BNC', url: 'https://bnc.org.br/' },
+  { id: 'banparanet', nome: 'Banparanet PA', url: 'https://cotacao.banpara.b.br/portal/Mural.aspx' },
+  { id: 'becsp', nome: 'BEC/SP', url: 'https://www.bec.sp.gov.br/BECSP/Home/Home.aspx' },
+  { id: 'comprasrj', nome: 'Compras Públicas RJ', url: 'https://www.compras.rj.gov.br/' },
+];
 
 const regioes: Record<string, string[]> = {
   'Norte': ['AC', 'AM', 'AP', 'PA', 'RO', 'RR', 'TO'],
@@ -50,10 +76,12 @@ const formatCurrency = (v: number) =>
 export default function LicitacoesTab() {
   const { user } = useAuth();
   const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
+  const [resultadosBusca, setResultadosBusca] = useState<ResultadoBusca[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [modalidadeFilter, setModalidadeFilter] = useState<string>('all');
+  const [portalFilter, setPortalFilter] = useState<string>('all');
   const [regiaoFilter, setRegiaoFilter] = useState<string>('all');
   const [ufFilter, setUfFilter] = useState<string>('all');
   const [dataInicio, setDataInicio] = useState<Date | undefined>();
@@ -62,12 +90,13 @@ export default function LicitacoesTab() {
   const [progresso, setProgresso] = useState(0);
   const [buscaAvancada, setBuscaAvancada] = useState('');
   const [buscandoIA, setBuscandoIA] = useState(false);
+  const [modoResultados, setModoResultados] = useState<'local' | 'busca'>('local');
 
   useEffect(() => {
     if (!user) return;
     supabase
       .from('licitacoes')
-      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, uf, municipio, data_encerramento')
+      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, uf, municipio, data_encerramento, portal')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
@@ -82,7 +111,7 @@ export default function LicitacoesTab() {
 
   const handleRegiaoChange = (v: string) => { setRegiaoFilter(v); setUfFilter('all'); };
 
-  const handleBuscarLicitacoes = async () => {
+  const handleBuscarLicitacoes = async (queryOverride?: string) => {
     if (!user) return;
     setBuscando(true);
     setProgresso(0);
@@ -92,9 +121,7 @@ export default function LicitacoesTab() {
     }, 500);
 
     try {
-      const keywords = buscaAvancada
-        ? buscaAvancada.split(',').map(s => s.trim()).filter(Boolean)
-        : undefined;
+      const queryText = queryOverride || search || 'licitação';
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/busca-licitacoes`,
@@ -105,7 +132,7 @@ export default function LicitacoesTab() {
             Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
           },
           body: JSON.stringify({
-            query: keywords?.join(' ') || search || 'licitação',
+            query: queryText,
             uf: ufFilter !== 'all' ? ufFilter : undefined,
             modalidade: modalidadeFilter !== 'all' ? modalidadeFilter : undefined,
             pagina: 1,
@@ -119,7 +146,24 @@ export default function LicitacoesTab() {
       }
 
       const data = await response.json();
-      toast.success(`${data.total || 0} licitações encontradas via ${data.fonte || 'API'}`);
+      const items = (data.items || []).map((item: any, idx: number) => ({
+        id: item.id || `busca-${idx}`,
+        numero: item.numero || item.numeroControlePNCP || '-',
+        orgao: item.orgao || item.nomeOrgao || item.orgaoEntidade?.razaoSocial || '-',
+        objeto: item.objeto || item.objetoCompra || item.description || '-',
+        modalidade: item.modalidade || item.modalidadeNome || 'Não informada',
+        status: item.status || 'Publicado',
+        valor_estimado: item.valor_estimado || item.valorTotalEstimado || null,
+        uf: item.uf || item.unidadeOrgao?.ufSigla || null,
+        municipio: item.municipio || item.unidadeOrgao?.municipioNome || null,
+        data_encerramento: item.data_encerramento || item.dataEncerramentoProposta || null,
+        portal: data.fonte || 'PNCP',
+        url: item.url || item.linkSistemaOrigem || null,
+      }));
+
+      setResultadosBusca(items);
+      setModoResultados('busca');
+      toast.success(`${items.length} licitações encontradas via ${data.fonte || 'PNCP'}`);
     } catch (err) {
       toast.error('Erro ao conectar com o serviço de busca');
       console.error(err);
@@ -136,25 +180,34 @@ export default function LicitacoesTab() {
       return;
     }
     setBuscandoIA(true);
-    await handleBuscarLicitacoes();
+    await handleBuscarLicitacoes(buscaAvancada);
     setBuscandoIA(false);
   };
 
-  const filtered = licitacoes.filter((l) => {
-    const matchSearch =
-      l.objeto.toLowerCase().includes(search.toLowerCase()) ||
-      l.orgao.toLowerCase().includes(search.toLowerCase()) ||
-      l.numero.toLowerCase().includes(search.toLowerCase()) ||
-      (l.municipio || '').toLowerCase().includes(search.toLowerCase()) ||
-      (l.uf || '').toLowerCase().includes(search.toLowerCase());
+  const handleVoltarLocal = () => {
+    setModoResultados('local');
+    setResultadosBusca([]);
+  };
+
+  const dadosExibidos = modoResultados === 'busca' ? resultadosBusca : licitacoes;
+
+  const filtered = dadosExibidos.filter((l) => {
+    const s = search.toLowerCase();
+    const matchSearch = !s ||
+      l.objeto.toLowerCase().includes(s) ||
+      l.orgao.toLowerCase().includes(s) ||
+      l.numero.toLowerCase().includes(s) ||
+      (l.municipio || '').toLowerCase().includes(s) ||
+      (l.uf || '').toLowerCase().includes(s);
     const matchStatus = statusFilter === 'all' || l.status === statusFilter;
     const matchModalidade = modalidadeFilter === 'all' || l.modalidade === modalidadeFilter;
+    const matchPortal = portalFilter === 'all' || (l.portal || '').toLowerCase().includes(portalFilter.toLowerCase());
     const matchDataInicio = !dataInicio || (l.data_encerramento && new Date(l.data_encerramento) >= dataInicio);
     const matchDataFim = !dataFim || (l.data_encerramento && new Date(l.data_encerramento) <= new Date(dataFim.getTime() + 86400000));
     const matchUf = ufFilter === 'all'
       ? (regiaoFilter === 'all' || ufsDisponiveis.includes(l.uf || ''))
       : l.uf === ufFilter;
-    return matchSearch && matchStatus && matchModalidade && matchUf && matchDataInicio && matchDataFim;
+    return matchSearch && matchStatus && matchModalidade && matchPortal && matchUf && matchDataInicio && matchDataFim;
   });
 
   return (
@@ -168,32 +221,53 @@ export default function LicitacoesTab() {
             <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-[10px]">
               {filtered.length} registros
             </Badge>
+            {modoResultados === 'busca' && (
+              <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-[10px] cursor-pointer" onClick={handleVoltarLocal}>
+                ✕ Resultados da busca — Clique para voltar
+              </Badge>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={handleBuscarLicitacoes}
-              disabled={buscando}
-              size="sm"
-              className="bg-accent hover:bg-accent/90 text-accent-foreground"
-            >
-              {buscando ? (
-                <><RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin" /> Buscando...</>
-              ) : (
-                <><Search className="w-3.5 h-3.5 mr-1" /> Buscar Licitações</>
-              )}
-            </Button>
-            <Button size="sm" variant="outline" asChild>
-              <a href="https://pncp.gov.br/app/editais?pagina=1" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-3.5 h-3.5 mr-1" /> PNCP
-              </a>
-            </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {PORTAIS.map(p => (
+              <Button key={p.id} size="sm" variant="outline" className="text-[10px] h-7 px-2" asChild>
+                <a href={p.url} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="w-3 h-3 mr-1" /> {p.nome}
+                </a>
+              </Button>
+            ))}
           </div>
+        </div>
+
+        {/* Busca manual */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por CNPJ, objeto, órgão, número, município..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-9 text-xs"
+              onKeyDown={e => e.key === 'Enter' && handleBuscarLicitacoes()}
+            />
+          </div>
+          <Button
+            onClick={() => handleBuscarLicitacoes()}
+            disabled={buscando}
+            size="sm"
+            className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0"
+          >
+            {buscando ? (
+              <><RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin" /> Buscando...</>
+            ) : (
+              <><Search className="w-3.5 h-3.5 mr-1" /> Buscar</>
+            )}
+          </Button>
         </div>
 
         {buscando && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Pesquisando licitações no PNCP...</span>
+              <span>Pesquisando licitações nos portais...</span>
               <span>{Math.round(progresso)}%</span>
             </div>
             <Progress value={progresso} className="h-1.5" />
@@ -205,7 +279,7 @@ export default function LicitacoesTab() {
           <div className="relative flex-1">
             <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent" />
             <Input
-              placeholder="Pesquisa avançada (ex: pavimentação, saneamento, TI, infraestrutura...)"
+              placeholder="Pesquisa avançada com IA (ex: pavimentação, saneamento, TI, infraestrutura...)"
               value={buscaAvancada}
               onChange={e => setBuscaAvancada(e.target.value)}
               className="pl-9 text-xs"
@@ -220,7 +294,7 @@ export default function LicitacoesTab() {
             className="shrink-0"
           >
             {buscandoIA ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              <><RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin" /> Buscando...</>
             ) : (
               <><Sparkles className="w-3.5 h-3.5 mr-1" /> Pesquisar com IA</>
             )}
@@ -230,10 +304,15 @@ export default function LicitacoesTab() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[250px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Buscar por CNPJ, objeto, órgão, número, município..." className="pl-9 bg-card border-border/50" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
+        <Select value={portalFilter} onValueChange={setPortalFilter}>
+          <SelectTrigger className="w-[200px] bg-card border-border/50">
+            <Globe className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" /><SelectValue placeholder="Portal" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os portais</SelectItem>
+            {PORTAIS.map(p => <SelectItem key={p.id} value={p.nome}>{p.nome}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className={cn("h-10 text-xs gap-1.5", dataInicio && "text-foreground")}>
@@ -308,6 +387,7 @@ export default function LicitacoesTab() {
               <tr className="border-b border-border/50 bg-muted/30">
                 <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Nº / Objeto</th>
                 <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Órgão</th>
+                <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Portal</th>
                 <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>
                 <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Encerramento</th>
                 <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
@@ -315,12 +395,18 @@ export default function LicitacoesTab() {
             </thead>
             <tbody>
               {filtered.length === 0 && !loading && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma licitação encontrada.</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma licitação encontrada. Use a busca acima para pesquisar nos portais.</td></tr>
               )}
               {filtered.map((lic, i) => {
                 const st = statusConfig[lic.status] || { label: lic.status, className: 'bg-muted text-muted-foreground' };
+                const url = (lic as ResultadoBusca).url;
                 return (
-                  <tr key={lic.id} className="border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer animate-fade-in" style={{ animationDelay: `${i * 40}ms` }}>
+                  <tr
+                    key={lic.id}
+                    className="border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer animate-fade-in"
+                    style={{ animationDelay: `${i * 40}ms` }}
+                    onClick={() => url && window.open(url, '_blank')}
+                  >
                     <td className="px-4 py-3">
                       <span className="text-xs font-mono text-muted-foreground block">{lic.numero}</span>
                       <span className="text-sm font-medium line-clamp-1">{lic.objeto}</span>
@@ -335,6 +421,11 @@ export default function LicitacoesTab() {
                           <MapPin className="w-3 h-3" />{lic.municipio}/{lic.uf}
                         </span>
                       )}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <Badge variant="outline" className="text-[10px] px-2 py-0.5">
+                        {lic.portal || '-'}
+                      </Badge>
                     </td>
                     <td className="px-4 py-3 text-sm text-right font-semibold">{lic.valor_estimado ? formatCurrency(lic.valor_estimado) : '-'}</td>
                     <td className="px-4 py-3 text-center">
