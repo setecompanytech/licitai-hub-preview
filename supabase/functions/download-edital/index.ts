@@ -1,29 +1,370 @@
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Portal-specific document URL builders
-function buildPncpDocUrl(numero: string): string {
-  // PNCP API for downloading edital documents
-  const cleaned = numero.replace(/[^0-9]/g, '');
-  return `https://pncp.gov.br/api/consulta/v1/contratacoes/${cleaned}/arquivos`;
+const FETCH_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  Accept:
+    "application/pdf,application/zip,application/octet-stream,application/json,text/html,*/*",
+};
+
+// Parse PNCP control number: "CNPJ-ANO-SEQUENCIAL"
+function parsePncpNumero(
+  numero: string
+): { cnpj: string; ano: string; sequencial: string } | null {
+  // Format: 00000000000000-1-000001/2024 or 00394502000144-1-000042/2024
+  const match = numero.match(
+    /(\d{14})-(\d+)-(\d+)(?:\/(\d{4}))?/
+  );
+  if (match) {
+    return {
+      cnpj: match[1],
+      ano: match[4] || new Date().getFullYear().toString(),
+      sequencial: match[3],
+    };
+  }
+  return null;
 }
 
-function buildPortalDocUrl(portal: string, url: string | null, numero: string): string | null {
-  if (url) return url;
-  
-  const portalUrls: Record<string, string> = {
-    'PNCP': `https://pncp.gov.br/app/editais?q=${encodeURIComponent(numero)}`,
-    'Compras Governamentais': `https://www.gov.br/compras/pt-br`,
-    'Licitações-e (BB)': `https://licitacoes-e2.bb.com.br/aop-inter-estatico/`,
-    'BNC': `https://bnc.org.br/`,
-    'Banparanet PA': `https://cotacao.banpara.b.br/portal/Mural.aspx`,
-    'BEC/SP': `https://www.bec.sp.gov.br/BECSP/Home/Home.aspx`,
-    'Compras Públicas RJ': `https://www.compras.rj.gov.br/`,
-  };
-  
-  return portalUrls[portal] || null;
+// Fetch and return binary file as base64 response  
+async function fetchFileAsBase64(
+  url: string,
+  timeoutMs = 15000
+): Promise<{
+  success: boolean;
+  base64?: string;
+  contentType?: string;
+  size?: number;
+  fileName?: string;
+  error?: string;
+}> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    const resp = await fetch(url, {
+      headers: FETCH_HEADERS,
+      signal: controller.signal,
+      redirect: "follow",
+    });
+    clearTimeout(timeout);
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      console.log(`Fetch failed ${resp.status}: ${text.substring(0, 200)}`);
+      return { success: false, error: `HTTP ${resp.status}` };
+    }
+
+    const contentType = resp.headers.get("content-type") || "application/octet-stream";
+    
+    // Check if it's a binary file we want
+    const isBinary =
+      contentType.includes("pdf") ||
+      contentType.includes("zip") ||
+      contentType.includes("octet-stream") ||
+      contentType.includes("msword") ||
+      contentType.includes("officedocument") ||
+      contentType.includes("excel");
+
+    if (!isBinary) {
+      await resp.text(); // consume
+      return { success: false, error: "Not a downloadable file" };
+    }
+
+    const buffer = await resp.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+
+    // Convert to base64 in chunks to avoid call stack issues
+    let binary = "";
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, i + chunkSize);
+      binary += String.fromCharCode(...chunk);
+    }
+    const base64 = btoa(binary);
+
+    // Try to get filename from content-disposition
+    const disposition = resp.headers.get("content-disposition") || "";
+    const fileNameMatch = disposition.match(/filename[^;=\n]*=["']?([^"';\n]+)/i);
+    const fileName = fileNameMatch?.[1] || null;
+
+    return {
+      success: true,
+      base64,
+      contentType,
+      size: buffer.byteLength,
+      fileName: fileName || undefined,
+    };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Fetch error" };
+  }
+}
+
+// Try PNCP API to list & download documents
+async function tryPncpDownload(
+  cnpj: string,
+  ano: string,
+  sequencial: string
+): Promise<Response | null> {
+  // Step 1: List available documents
+  const listUrl = `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${ano}/${sequencial}/arquivos`;
+  console.log(`PNCP list docs: ${listUrl}`);
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    const listResp = await fetch(listUrl, {
+      headers: { ...FETCH_HEADERS, Accept: "application/json" },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!listResp.ok) {
+      await listResp.text();
+      console.log(`PNCP list failed: ${listResp.status}`);
+      return null;
+    }
+
+    const docs = await listResp.json();
+    const arquivos = Array.isArray(docs) ? docs : [];
+    
+    if (arquivos.length === 0) {
+      console.log("PNCP: no documents found");
+      return null;
+    }
+
+    console.log(`PNCP: found ${arquivos.length} documents`);
+
+    // Step 2: Download the edital file (prefer tipo=2 = Edital, or first file)
+    const editalDoc =
+      arquivos.find((d: any) => d.tipoDocumentoId === 2) ||
+      arquivos.find((d: any) =>
+        (d.titulo || d.nomeArquivo || "").toLowerCase().includes("edital")
+      ) ||
+      arquivos[0];
+
+    const seqArquivo = editalDoc.sequencialDocumento || editalDoc.sequencialArquivo || 1;
+    const downloadUrl = `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${ano}/${sequencial}/arquivos/${seqArquivo}`;
+    console.log(`PNCP download: ${downloadUrl}`);
+
+    const result = await fetchFileAsBase64(downloadUrl);
+
+    if (result.success && result.base64) {
+      const ext = (result.contentType || "").includes("pdf") ? "pdf" : "zip";
+      const nome = result.fileName || editalDoc.nomeArquivo || `edital.${ext}`;
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          tipo: "arquivo_direto",
+          arquivo: {
+            nome,
+            conteudo_base64: result.base64,
+            content_type: result.contentType,
+            tamanho: result.size,
+          },
+          documentos_disponiveis: arquivos.map((d: any) => ({
+            sequencial: d.sequencialDocumento || d.sequencialArquivo,
+            nome: d.nomeArquivo || d.titulo || "Documento",
+            tipo: d.tipoDocumentoNome || "Arquivo",
+          })),
+          portal: "PNCP",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // If binary download failed, try returning the direct download URLs for client
+    const docsWithUrls = arquivos.map((d: any, idx: number) => {
+      const seq = d.sequencialDocumento || d.sequencialArquivo || idx + 1;
+      return {
+        nome: d.nomeArquivo || d.titulo || `documento-${idx + 1}`,
+        url: `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${ano}/${sequencial}/arquivos/${seq}`,
+        tipo: d.tipoDocumentoNome || "Arquivo",
+      };
+    });
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        tipo: "download_urls",
+        documentos: docsWithUrls,
+        portal: "PNCP",
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (e) {
+    console.log("PNCP error:", e);
+    return null;
+  }
+}
+
+// Try downloading from a direct URL (linkSistemaOrigem or similar)
+async function tryDirectUrlDownload(url: string): Promise<Response | null> {
+  console.log(`Trying direct download: ${url}`);
+
+  // First try fetching the URL directly as binary
+  const result = await fetchFileAsBase64(url);
+  if (result.success && result.base64) {
+    const ext = (result.contentType || "").includes("pdf") ? "pdf" : "zip";
+    return new Response(
+      JSON.stringify({
+        success: true,
+        tipo: "arquivo_direto",
+        arquivo: {
+          nome: result.fileName || `edital.${ext}`,
+          conteudo_base64: result.base64,
+          content_type: result.contentType,
+          tamanho: result.size,
+        },
+        portal: "Portal",
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // If not binary, try scraping the HTML page for document links
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const resp = await fetch(url, {
+      headers: { ...FETCH_HEADERS, Accept: "text/html,*/*" },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!resp.ok) {
+      await resp.text();
+      return null;
+    }
+
+    const contentType = resp.headers.get("content-type") || "";
+    if (!contentType.includes("html") && !contentType.includes("text")) {
+      await resp.text();
+      return null;
+    }
+
+    const html = await resp.text();
+
+    // Extract document download links
+    const docLinks: Array<{ url: string; nome: string }> = [];
+    const linkRegex =
+      /href=["']([^"']*?\.(pdf|zip|doc|docx|xls|xlsx|rar|7z)(?:\?[^"']*)?)/gi;
+    let match;
+    while ((match = linkRegex.exec(html)) !== null) {
+      let link = match[1];
+      if (link.startsWith("/")) {
+        link = new URL(url).origin + link;
+      } else if (!link.startsWith("http")) {
+        link = url.substring(0, url.lastIndexOf("/") + 1) + link;
+      }
+      const fileName = decodeURIComponent(link.split("/").pop()?.split("?")[0] || "documento");
+      docLinks.push({ url: link, nome: fileName });
+    }
+
+    if (docLinks.length === 0) return null;
+
+    // Try to download the first document
+    const firstResult = await fetchFileAsBase64(docLinks[0].url);
+    if (firstResult.success && firstResult.base64) {
+      const ext = (firstResult.contentType || "").includes("pdf") ? "pdf" : "zip";
+      return new Response(
+        JSON.stringify({
+          success: true,
+          tipo: "arquivo_direto",
+          arquivo: {
+            nome: firstResult.fileName || docLinks[0].nome || `edital.${ext}`,
+            conteudo_base64: firstResult.base64,
+            content_type: firstResult.contentType,
+            tamanho: firstResult.size,
+          },
+          documentos_disponiveis: docLinks.slice(0, 10),
+          portal: "Portal",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Return the discovered links for client-side download
+    return new Response(
+      JSON.stringify({
+        success: true,
+        tipo: "download_urls",
+        documentos: docLinks.slice(0, 10),
+        portal: "Portal",
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (e) {
+    console.log("Direct URL scrape error:", e);
+    return null;
+  }
+}
+
+// Try PNCP search + download for non-PNCP portals
+async function tryPncpSearch(
+  numero: string,
+  orgao: string,
+  objeto: string
+): Promise<Response | null> {
+  try {
+    // Search PNCP by term
+    const termo = numero !== "-" ? numero.replace(/[^\w\s]/g, " ").trim() : objeto.substring(0, 50);
+    const params = new URLSearchParams({
+      termoPesquisa: termo,
+      pagina: "1",
+      tamanhoPagina: "5",
+    });
+
+    const searchUrl = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params}`;
+    console.log(`PNCP search fallback: ${searchUrl}`);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    const resp = await fetch(searchUrl, {
+      headers: { ...FETCH_HEADERS, Accept: "application/json" },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!resp.ok) {
+      await resp.text();
+      return null;
+    }
+
+    const data = await resp.json();
+    const items = data.data || data.resultado || [];
+    
+    if (items.length === 0) return null;
+
+    // Use first result to download documents
+    const item = items[0];
+    const cnpj = item.orgaoEntidade?.cnpj || item.cnpjCompra;
+    const parsed = parsePncpNumero(item.numeroControlePNCP || "");
+    
+    if (parsed) {
+      return tryPncpDownload(parsed.cnpj, parsed.ano, parsed.sequencial);
+    } else if (cnpj) {
+      // Try to extract year and sequencial from the control number
+      const ctrl = item.numeroControlePNCP || "";
+      const parts = ctrl.split("-");
+      if (parts.length >= 3) {
+        const seq = parts[2].split("/")[0];
+        const ano = parts[2].split("/")[1] || new Date().getFullYear().toString();
+        return tryPncpDownload(parts[0], ano, seq);
+      }
+    }
+
+    return null;
+  } catch (e) {
+    console.log("PNCP search fallback error:", e);
+    return null;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -32,172 +373,71 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { numero, portal, url, orgao, objeto } = await req.json();
+    const body = await req.json();
+    const { numero, portal, url, orgao, objeto, cnpjOrgao, pncpNumero } = body;
 
-    if (!numero) {
+    if (!numero && !url) {
       return new Response(
-        JSON.stringify({ success: false, error: "Número da licitação é obrigatório" }),
+        JSON.stringify({ success: false, error: "Número ou URL do edital é obrigatório" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Downloading edital: ${numero} from ${portal}`);
+    console.log(`Download edital: num=${numero} portal=${portal} url=${url} pncp=${pncpNumero}`);
 
-    // Try PNCP API first for document listing
-    if (portal === 'PNCP' || !portal) {
-      try {
-        const apiUrl = buildPncpDocUrl(numero);
-        console.log(`Fetching PNCP docs from: ${apiUrl}`);
-        
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
-        
-        const response = await fetch(apiUrl, {
-          headers: { Accept: "application/json" },
-          signal: controller.signal,
-        });
-        clearTimeout(timeout);
+    // Strategy 1: If we have a PNCP control number, use it directly
+    const pncpParsed = parsePncpNumero(pncpNumero || numero || "");
+    if (pncpParsed) {
+      console.log(`Parsed PNCP: cnpj=${pncpParsed.cnpj} ano=${pncpParsed.ano} seq=${pncpParsed.sequencial}`);
+      const result = await tryPncpDownload(pncpParsed.cnpj, pncpParsed.ano, pncpParsed.sequencial);
+      if (result) return result;
+    }
 
-        if (response.ok) {
-          const docs = await response.json();
-          const arquivos = Array.isArray(docs) ? docs : (docs.data || docs.arquivos || []);
-          
-          if (arquivos.length > 0) {
-            // Return list of available documents with download URLs
-            const documentos = arquivos.map((doc: any) => ({
-              nome: doc.nomeArquivo || doc.nome || doc.titulo || 'Documento',
-              url: doc.url || doc.urlArquivo || doc.linkDownload || null,
-              tipo: doc.tipoDocumento || doc.tipo || 'Edital',
-              tamanho: doc.tamanhoArquivo || null,
-            }));
-
-            return new Response(
-              JSON.stringify({ 
-                success: true, 
-                tipo: 'lista_documentos',
-                documentos,
-                portal: 'PNCP',
-                numero,
-              }),
-              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-        } else {
-          await response.text();
-        }
-      } catch (e) {
-        console.log("PNCP API unavailable, trying direct URL:", e);
+    // Strategy 2: If we have cnpjOrgao + numero, try PNCP directly
+    if (cnpjOrgao && numero) {
+      const numMatch = numero.match(/(\d+)\/(\d{4})/);
+      if (numMatch) {
+        const result = await tryPncpDownload(
+          cnpjOrgao.replace(/[^\d]/g, ""),
+          numMatch[2],
+          numMatch[1].padStart(6, "0")
+        );
+        if (result) return result;
       }
     }
 
-    // Try to fetch the document directly from the portal URL
-    const docUrl = url || buildPortalDocUrl(portal || 'PNCP', null, numero);
-    
-    if (docUrl) {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
-        
-        const response = await fetch(docUrl, {
-          signal: controller.signal,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          },
-        });
-        clearTimeout(timeout);
-
-        const contentType = response.headers.get('content-type') || '';
-        
-        // If it's a PDF or binary, return it as downloadable
-        if (contentType.includes('application/pdf') || 
-            contentType.includes('application/zip') ||
-            contentType.includes('application/octet-stream')) {
-          
-          const buffer = await response.arrayBuffer();
-          const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-          const ext = contentType.includes('pdf') ? 'pdf' : contentType.includes('zip') ? 'zip' : 'bin';
-
-          return new Response(
-            JSON.stringify({
-              success: true,
-              tipo: 'arquivo_direto',
-              arquivo: {
-                nome: `edital-${numero.replace(/[\/\\]/g, '-')}.${ext}`,
-                conteudo_base64: base64,
-                content_type: contentType,
-                tamanho: buffer.byteLength,
-              },
-              portal: portal || 'Portal',
-              numero,
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        // If HTML, extract links to documents
-        const html = await response.text();
-        const pdfLinks: string[] = [];
-        const linkRegex = /href=["']([^"']*\.(pdf|zip|doc|docx|xls|xlsx)[^"']*)/gi;
-        let match;
-        while ((match = linkRegex.exec(html)) !== null) {
-          let link = match[1];
-          if (link.startsWith('/')) {
-            const origin = new URL(docUrl).origin;
-            link = origin + link;
-          } else if (!link.startsWith('http')) {
-            const base = docUrl.substring(0, docUrl.lastIndexOf('/') + 1);
-            link = base + link;
-          }
-          pdfLinks.push(link);
-        }
-
-        if (pdfLinks.length > 0) {
-          const documentos = pdfLinks.slice(0, 10).map((link, idx) => {
-            const fileName = decodeURIComponent(link.split('/').pop() || `documento-${idx + 1}`);
-            return {
-              nome: fileName,
-              url: link,
-              tipo: 'Documento do Edital',
-            };
-          });
-
-          return new Response(
-            JSON.stringify({
-              success: true,
-              tipo: 'lista_documentos',
-              documentos,
-              portal: portal || 'Portal',
-              numero,
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-      } catch (e) {
-        console.log("Direct fetch failed:", e);
-      }
+    // Strategy 3: Try direct URL download (linkSistemaOrigem)
+    if (url) {
+      const result = await tryDirectUrlDownload(url);
+      if (result) return result;
     }
 
-    // Fallback: return redirect URL to the portal
-    const fallbackUrl = docUrl || buildPortalDocUrl(portal || 'PNCP', url, numero);
-    
+    // Strategy 4: Search PNCP by keywords and download
+    const searchResult = await tryPncpSearch(numero || "", orgao || "", objeto || "");
+    if (searchResult) return searchResult;
+
+    // No document found
     return new Response(
       JSON.stringify({
-        success: true,
-        tipo: 'redirecionamento',
-        url: fallbackUrl,
-        mensagem: `O edital ${numero} pode ser baixado diretamente no portal ${portal || 'de licitações'}.`,
-        portal: portal || 'Portal',
-        numero,
+        success: false,
+        error: `Não foi possível localizar o arquivo do edital ${numero || ""} no ${portal || "portal"}. O edital pode não estar disponível para download público via API.`,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
-
   } catch (e) {
     console.error("Download edital error:", e);
     return new Response(
-      JSON.stringify({ success: false, error: e instanceof Error ? e.message : "Erro no download" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({
+        success: false,
+        error: e instanceof Error ? e.message : "Erro no download do edital",
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
   }
 });

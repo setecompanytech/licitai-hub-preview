@@ -44,6 +44,8 @@ type ResultadoBusca = {
   data_encerramento: string | null;
   portal: string;
   url?: string;
+  pncpNumero?: string;
+  cnpjOrgao?: string;
 };
 
 const PORTAIS = [
@@ -175,6 +177,8 @@ export default function LicitacoesTab() {
         data_encerramento: item.data_encerramento || item.data_abertura || item.dataEncerramentoProposta || null,
         portal: item.portal || data.fonte || 'PNCP',
         url: item.url || item.linkSistemaOrigem || null,
+        pncpNumero: item.numeroControlePNCP || item.pncpNumero || null,
+        cnpjOrgao: item.cnpjOrgao || item.orgaoEntidade?.cnpj || null,
       }));
 
       setResultadosBusca(items);
@@ -306,8 +310,10 @@ export default function LicitacoesTab() {
 
   const handleDownloadEditalPortal = async (lic: Licitacao | ResultadoBusca) => {
     setDownloadingEdital(lic.id);
+    toast.info('Buscando edital nos portais... Aguarde.');
     try {
       const session = await supabase.auth.getSession();
+      const buscaLic = lic as ResultadoBusca;
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-edital`,
         {
@@ -319,34 +325,30 @@ export default function LicitacoesTab() {
           body: JSON.stringify({
             numero: lic.numero,
             portal: lic.portal || 'PNCP',
-            url: (lic as ResultadoBusca).url || null,
+            url: buscaLic.url || null,
             orgao: lic.orgao,
             objeto: lic.objeto,
+            pncpNumero: buscaLic.pncpNumero || null,
+            cnpjOrgao: buscaLic.cnpjOrgao || null,
           }),
         }
       );
 
-      if (!response.ok) {
-        toast.error('Erro ao buscar edital no portal');
-        return;
-      }
-
       const data = await response.json();
 
       if (!data.success) {
-        toast.error(data.error || 'Erro ao buscar edital');
+        toast.error(data.error || 'Não foi possível baixar o edital deste portal.');
         return;
       }
 
       if (data.tipo === 'arquivo_direto') {
-        // Direct file download from base64
+        // Direct binary download
         const byteChars = atob(data.arquivo.conteudo_base64);
-        const byteNumbers = new Array(byteChars.length);
+        const byteNumbers = new Uint8Array(byteChars.length);
         for (let i = 0; i < byteChars.length; i++) {
           byteNumbers[i] = byteChars.charCodeAt(i);
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: data.arquivo.content_type });
+        const blob = new Blob([byteNumbers], { type: data.arquivo.content_type });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -355,24 +357,28 @@ export default function LicitacoesTab() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        toast.success(`Edital ${lic.numero} baixado com sucesso!`);
-      } else if (data.tipo === 'lista_documentos' && data.documentos?.length > 0) {
-        // Multiple docs: download first one, show info about others
-        const firstDoc = data.documentos[0];
-        if (firstDoc.url) {
-          window.open(firstDoc.url, '_blank');
-          toast.success(`${data.documentos.length} documento(s) encontrado(s). Abrindo download...`);
-        } else {
-          toast.info(`${data.documentos.length} documento(s) encontrado(s) no ${data.portal}`);
+        
+        const sizeMB = data.arquivo.tamanho ? `(${(data.arquivo.tamanho / 1024 / 1024).toFixed(1)} MB)` : '';
+        toast.success(`Edital "${data.arquivo.nome}" baixado com sucesso! ${sizeMB}`);
+        
+        if (data.documentos_disponiveis?.length > 1) {
+          toast.info(`Mais ${data.documentos_disponiveis.length - 1} documento(s) disponível(is) nesta contratação.`);
         }
-      } else if (data.tipo === 'redirecionamento') {
-        // Redirect to portal
-        window.open(data.url, '_blank');
-        toast.info(data.mensagem || `Redirecionando para o portal ${data.portal}...`);
+      } else if (data.tipo === 'download_urls' && data.documentos?.length > 0) {
+        // We have direct URLs - download the first one via browser
+        const firstDoc = data.documentos[0];
+        const a = document.createElement('a');
+        a.href = firstDoc.url;
+        a.download = firstDoc.nome || 'edital';
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        toast.success(`Baixando "${firstDoc.nome}" do ${data.portal}. ${data.documentos.length > 1 ? `(+${data.documentos.length - 1} arquivo(s) disponível(is))` : ''}`);
       }
     } catch (err) {
       console.error('Erro download edital:', err);
-      toast.error('Erro ao conectar com o serviço de download');
+      toast.error('Erro ao conectar com o serviço de download de editais.');
     } finally {
       setDownloadingEdital(null);
     }

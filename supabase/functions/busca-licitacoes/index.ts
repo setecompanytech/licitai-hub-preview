@@ -126,6 +126,8 @@ serve(async (req) => {
             data_abertura: item.dataEncerramentoProposta || null,
             portal: "PNCP",
             url: item.linkSistemaOrigem || "https://pncp.gov.br",
+            pncpNumero: item.numeroControlePNCP || null,
+            cnpjOrgao: item.orgaoEntidade?.cnpj || null,
           }));
           allItems.push(...pncpItems);
         } else {
