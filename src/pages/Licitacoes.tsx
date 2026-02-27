@@ -4,8 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { Search, Filter, MapPin, Calendar, Building2, ArrowUpDown } from 'lucide-react';
+import { Search, Filter, MapPin, Calendar as CalendarIcon2, Building2, ArrowUpDown, CalendarDays } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import CountdownTimer from '@/components/licitacoes/CountdownTimer';
 import { useAuth } from '@/contexts/AuthContext';
@@ -54,6 +58,8 @@ export default function Licitacoes() {
   const [modalidadeFilter, setModalidadeFilter] = useState<string>('all');
   const [regiaoFilter, setRegiaoFilter] = useState<string>('all');
   const [ufFilter, setUfFilter] = useState<string>('all');
+  const [dataInicio, setDataInicio] = useState<Date | undefined>();
+  const [dataFim, setDataFim] = useState<Date | undefined>();
 
   useEffect(() => {
     if (!user) return;
@@ -78,13 +84,16 @@ export default function Licitacoes() {
     const matchSearch =
       l.objeto.toLowerCase().includes(search.toLowerCase()) ||
       l.orgao.toLowerCase().includes(search.toLowerCase()) ||
-      l.numero.toLowerCase().includes(search.toLowerCase());
+      l.numero.toLowerCase().includes(search.toLowerCase()) ||
+      (l.municipio || '').toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all' || l.status === statusFilter;
     const matchModalidade = modalidadeFilter === 'all' || l.modalidade === modalidadeFilter;
+    const matchDataInicio = !dataInicio || (l.data_encerramento && new Date(l.data_encerramento) >= dataInicio);
+    const matchDataFim = !dataFim || (l.data_encerramento && new Date(l.data_encerramento) <= new Date(dataFim.getTime() + 86400000));
     const matchUf = ufFilter === 'all'
       ? (regiaoFilter === 'all' || ufsDisponiveis.includes(l.uf || ''))
       : l.uf === ufFilter;
-    return matchSearch && matchStatus && matchModalidade && matchUf;
+    return matchSearch && matchStatus && matchModalidade && matchUf && matchDataInicio && matchDataFim;
   });
 
   return (
@@ -100,8 +109,35 @@ export default function Licitacoes() {
       <div className="flex flex-wrap items-center gap-3 mb-3">
         <div className="relative flex-1 min-w-[250px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Buscar por objeto, órgão ou número..." className="pl-9 bg-card border-border/50" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input placeholder="Buscar por CNPJ, objeto, órgão, número, município..." className="pl-9 bg-card border-border/50" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className={cn("h-10 text-xs gap-1.5", dataInicio && "text-foreground")}>
+              <CalendarDays className="w-3.5 h-3.5" />
+              {dataInicio ? format(dataInicio, "dd/MM/yyyy") : "Data início"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="single" selected={dataInicio} onSelect={setDataInicio} locale={ptBR} className="p-3 pointer-events-auto" />
+          </PopoverContent>
+        </Popover>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className={cn("h-10 text-xs gap-1.5", dataFim && "text-foreground")}>
+              <CalendarDays className="w-3.5 h-3.5" />
+              {dataFim ? format(dataFim, "dd/MM/yyyy") : "Data fim"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="single" selected={dataFim} onSelect={setDataFim} locale={ptBR} className="p-3 pointer-events-auto" />
+          </PopoverContent>
+        </Popover>
+        {(dataInicio || dataFim) && (
+          <Button variant="ghost" size="sm" className="h-10 text-xs" onClick={() => { setDataInicio(undefined); setDataFim(undefined); }}>
+            Limpar datas
+          </Button>
+        )}
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[160px] bg-card border-border/50"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
@@ -178,7 +214,7 @@ export default function Licitacoes() {
                     <td className="px-4 py-3 text-center">
                       {lic.data_encerramento ? (
                         <span className="text-sm flex items-center justify-center gap-1">
-                          <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                          <CalendarIcon2 className="w-3.5 h-3.5 text-muted-foreground" />
                           {new Date(lic.data_encerramento).toLocaleDateString('pt-BR')}
                         </span>
                       ) : '-'}
