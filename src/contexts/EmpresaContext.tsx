@@ -27,7 +27,7 @@ type EmpresaContextType = {
   loading: boolean;
   setEmpresaAtiva: (empresaId: string | 'todas') => Promise<void>;
   reloadEmpresas: () => Promise<void>;
-  addEmpresa: (data: { cnpj: string; razao_social: string; nome_fantasia?: string; cnae_principal?: string; uf?: string; municipio?: string; certificado_path?: string; certificado_nome?: string; certificado_tipo?: string; certificado_validade?: string }) => Promise<{ id: string } | null>;
+  addEmpresa: (data: { cnpj: string; razao_social: string; nome_fantasia?: string; cnae_principal?: string; uf?: string; municipio?: string; endereco?: string; certificado_path?: string; certificado_nome?: string; certificado_tipo?: string; certificado_validade?: string }) => Promise<{ id: string } | null>;
 };
 
 const EmpresaContext = createContext<EmpresaContextType | undefined>(undefined);
@@ -119,14 +119,22 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       .select('id')
       .single();
 
-    if (error || !empresa) return null;
+    if (error) {
+      console.error('addEmpresa insert error:', error);
+      throw new Error(error.message || 'Erro ao inserir empresa');
+    }
+    if (!empresa) return null;
 
     // Add self as admin
-    await supabase.from('empresa_membros').insert({
+    const { error: membroError } = await supabase.from('empresa_membros').insert({
       empresa_id: empresa.id,
       user_id: user.id,
       papel: 'admin',
     });
+
+    if (membroError) {
+      console.error('addEmpresa membro error:', membroError);
+    }
 
     await loadEmpresas();
     return empresa;
