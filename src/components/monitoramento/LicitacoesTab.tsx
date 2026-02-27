@@ -41,6 +41,7 @@ type ResultadoBusca = {
   anoCompra?: number;
   sequencialCompra?: number;
   isMock?: boolean;
+  tem_download?: boolean;
 };
 
 const PORTAIS = [
@@ -84,7 +85,9 @@ const GENERIC_PORTAL_URLS = [
   'https://www.bec.sp.gov.br',
   'https://www.compras.rj.gov.br',
   'https://licitacoes-e2.bb.com.br/aop-inter-estatico/',
+  'https://licitacoes-e2.bb.com.br',
   'https://cotacao.banpara.b.br/portal/Mural.aspx',
+  'https://cotacao.banpara.b.br',
   'https://www.licitanet.com.br',
   'https://bllcompras.com',
   'https://www.portaldecompraspublicas.com.br',
@@ -94,7 +97,13 @@ const GENERIC_PORTAL_URLS = [
 function isGenericPortalUrl(url: string): boolean {
   if (!url) return true;
   const clean = url.replace(/\/+$/, '').split('?')[0].split('#')[0];
-  return GENERIC_PORTAL_URLS.some(b => clean === b || clean === b.replace(/\/+$/, ''));
+  if (GENERIC_PORTAL_URLS.some(b => clean === b || clean === b.replace(/\/+$/, ''))) return true;
+  try {
+    const parsed = new URL(url);
+    const parts = parsed.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
+    if (parts.length <= 1) return true;
+  } catch { return true; }
+  return false;
 }
 
 const SUGESTOES_RAPIDAS = [
@@ -265,6 +274,9 @@ export default function LicitacoesTab() {
               url: item.url || null,
               pncpNumero: item.pncp_numero || null,
               cnpjOrgao: item.cnpj_orgao || null,
+              anoCompra: item.ano_compra || null,
+              sequencialCompra: item.seq_compra || null,
+              tem_download: item.tem_download ?? false,
             });
           }
         });
