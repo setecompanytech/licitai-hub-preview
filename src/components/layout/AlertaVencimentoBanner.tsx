@@ -90,7 +90,9 @@ export default function AlertaVencimentoBanner() {
         )}
       </div>
       <button
-        onClick={() => navigate('/configuracoes')}
+        onClick={() => {
+          navigate('/configuracoes?scroll=planos');
+        }}
         className={cn(
           'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap',
           severity === 'expired' || severity === 'critical'
@@ -101,7 +103,7 @@ export default function AlertaVencimentoBanner() {
         )}
       >
         <CreditCard className="w-3.5 h-3.5" />
-        Renovar
+        Renovar Agora
       </button>
       <button onClick={() => setDismissed(true)} className="p-1 rounded hover:bg-foreground/10 transition-colors">
         <X className="w-4 h-4" />
