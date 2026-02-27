@@ -445,7 +445,7 @@ async function analisarComIA(
   apiKey: string
 ): Promise<{ analise: string; resultados_ranqueados: any[] }> {
   const resumo = resultados.slice(0, 20).map((r, i) =>
-    `${i + 1}. [${r.portal}] ${r.titulo} | ${r.orgao} | ${r.modalidade} | ${r.valor_estimado ? `R$ ${r.valor_estimado.toLocaleString("pt-BR")}` : "Valor N/I"} | ${r.uf || "UF N/I"}`
+    `${i + 1}. [${r.portal}] ${r.titulo} | ${r.orgao} | ${r.modalidade} | ${r.valor_estimado ? `R$ ${r.valor_estimado.toLocaleString("pt-BR")}` : "Valor N/I"} | ${r.uf || "UF N/I"} | Download: ${r.download_disponivel ? "✅ Disponível" : "❌ Indisponível"}`
   ).join("\n");
 
   try {
@@ -464,6 +464,7 @@ async function analisarComIA(
 1. Um resumo executivo dos editais encontrados
 2. Destaques relevantes (maiores valores, prazos próximos)
 3. Recomendações para o licitante
+4. Alertas sobre editais sem download direto disponível (indicados com ❌) — oriente o usuário a acessar manualmente o portal nesses casos
 Responda em português, de forma objetiva e profissional. Use markdown.`,
           },
           {
@@ -542,10 +543,20 @@ Deno.serve(async (req) => {
     const promises: Promise<any[]>[] = [];
     const portalLabels: string[] = [];
 
-    // Always search PNCP (real API)
-    if (portais.includes("pncp") || portais.includes("todos")) {
+    // Portals that block direct download — PNCP is auto-included as fallback
+    const PORTAIS_BLOQUEADOS = new Set(["licitacoese", "banparanet"]);
+    const temPortalBloqueado = portais.some((p: string) => {
+      const mapped = PORTAL_ALIASES[p] || p;
+      return PORTAIS_BLOQUEADOS.has(mapped);
+    });
+
+    // Always search PNCP (real API) — also auto-include when blocked portals are selected
+    if (portais.includes("pncp") || portais.includes("todos") || temPortalBloqueado) {
       promises.push(buscarPNCP({ query, uf, modalidade, dataInicio: data_inicio, dataFim: data_fim, cnpj, limite }));
       portalLabels.push("PNCP");
+      if (temPortalBloqueado && !portais.includes("pncp")) {
+        console.log("PNCP auto-incluído como fallback para portais com acesso bloqueado");
+      }
     }
 
     // Firecrawl scraping for other portals
@@ -583,12 +594,50 @@ Deno.serve(async (req) => {
     // ── Enrich Firecrawl results with PNCP download data ──────────
     allItems = await enrichWithPncpData(allItems);
 
+    // ── Classify download availability ──────────────────────────────
+    for (const item of allItems) {
+      if (item.portal === "PNCP" && item.cnpj_orgao && item.ano_compra && item.seq_compra) {
+        item.download_disponivel = true;
+        item.download_fonte = "PNCP";
+      } else if (item.cnpj_orgao && item.ano_compra && item.seq_compra) {
+        // Enriched from PNCP
+        item.download_disponivel = true;
+        item.download_fonte = "PNCP (enriquecido)";
+      } else if (item.url && !item.url_portal_generico) {
+        // Has a specific URL but no PNCP data — check if portal is blocked
+        const portalKey = Object.keys(PORTAIS_SCRAPE).find(k => PORTAIS_SCRAPE[k].nome === item.portal);
+        if (portalKey && PORTAIS_BLOQUEADOS.has(portalKey)) {
+          item.download_disponivel = false;
+          item.download_fonte = "Portal bloqueado (acesso manual)";
+        } else {
+          item.download_disponivel = true;
+          item.download_fonte = item.portal;
+        }
+      } else {
+        item.download_disponivel = false;
+        item.download_fonte = "Indisponível";
+      }
+    }
+
+    // ── Sort: prioritize items with download available ────────────
+    allItems.sort((a, b) => {
+      if (a.download_disponivel && !b.download_disponivel) return -1;
+      if (!a.download_disponivel && b.download_disponivel) return 1;
+      // Secondary: PNCP first, then enriched, then others
+      if (a.portal === "PNCP" && b.portal !== "PNCP") return -1;
+      if (a.portal !== "PNCP" && b.portal === "PNCP") return 1;
+      return 0;
+    });
+
     // ── AI Analysis ───────────────────────────────────────────────────
     let analise = "";
     if (com_analise_ia && LOVABLE_API_KEY && allItems.length > 0) {
       const resultado = await analisarComIA(allItems, query, LOVABLE_API_KEY);
       analise = resultado.analise;
     }
+
+    const totalComDownload = allItems.filter(r => r.download_disponivel).length;
+    const totalSemDownload = allItems.filter(r => !r.download_disponivel).length;
 
     return new Response(
       JSON.stringify({
@@ -598,6 +647,11 @@ Deno.serve(async (req) => {
         analise_ia: analise,
         portais_consultados: portalLabels,
         query,
+        resumo_download: {
+          com_download: totalComDownload,
+          sem_download: totalSemDownload,
+          pncp_fallback_ativo: temPortalBloqueado && !portais.includes("pncp"),
+        },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
