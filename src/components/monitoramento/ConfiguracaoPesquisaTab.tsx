@@ -219,8 +219,8 @@ export default function ConfiguracaoPesquisaTab() {
 
       if (error) throw error;
 
-      const cnaePrincipal = data?.cnae_fiscal
-        ? `${data.cnae_fiscal} - ${data.cnae_fiscal_descricao || ''}`
+      const cnaePrincipal = data?.cnaePrincipal || data?.cnae_fiscal
+        ? `${data.cnae_fiscal || data.cnaePrincipal}${data.cnae_fiscal_descricao ? ' - ' + data.cnae_fiscal_descricao : ''}`
         : empresaAtiva.cnae_principal;
 
       if (cnaePrincipal && cnaePrincipal !== empresaAtiva.cnae_principal) {
@@ -228,11 +228,25 @@ export default function ConfiguracaoPesquisaTab() {
       }
 
       const secundarios: string[] = [];
-      if (data?.cnaes_secundarios && Array.isArray(data.cnaes_secundarios)) {
+      if (data?.cnaesSecundarios && Array.isArray(data.cnaesSecundarios)) {
+        data.cnaesSecundarios.forEach((c: any) => {
+          if (typeof c === 'string') {
+            secundarios.push(c);
+          } else {
+            const code = c.codigo?.toString() || '';
+            const desc = c.descricao || '';
+            if (code) secundarios.push(`${code} - ${desc}`.trim());
+          }
+        });
+      } else if (data?.cnaes_secundarios && Array.isArray(data.cnaes_secundarios)) {
         data.cnaes_secundarios.forEach((c: any) => {
-          const code = c.codigo?.toString() || '';
-          const desc = c.descricao || '';
-          if (code) secundarios.push(`${code} - ${desc}`.trim());
+          if (typeof c === 'string') {
+            secundarios.push(c);
+          } else {
+            const code = c.codigo?.toString() || '';
+            const desc = c.descricao || '';
+            if (code) secundarios.push(`${code} - ${desc}`.trim());
+          }
         });
       }
 
