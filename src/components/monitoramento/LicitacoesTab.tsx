@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { Search, MapPin, Calendar as CalendarIcon2, Building2, CalendarDays, RefreshCw, Sparkles, ExternalLink, Globe, Download, FileText, FileSpreadsheet, FileJson, FileArchive } from 'lucide-react';
+import { Search, MapPin, Calendar as CalendarIcon2, Building2, CalendarDays, RefreshCw, Sparkles, ExternalLink, Globe, Download, FileText, FileSpreadsheet, FileJson, FileArchive, FileDown, Loader2 } from 'lucide-react';
 import { downloadCSV, downloadPDF, downloadJSON } from '@/lib/download-utils';
 import JSZip from 'jszip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -266,6 +266,8 @@ export default function LicitacoesTab() {
     l.status,
   ];
 
+  const [downloadingEdital, setDownloadingEdital] = useState<string | null>(null);
+
   const handleDownloadItem = (lic: Licitacao | ResultadoBusca, tipo: 'csv' | 'pdf' | 'json' | 'zip') => {
     const headers = ['Número', 'Objeto', 'Órgão', 'Modalidade', 'Portal', 'UF', 'Município', 'Valor Estimado', 'Encerramento', 'Status'];
     const row = getLicRow(lic);
@@ -299,6 +301,80 @@ export default function LicitacoesTab() {
         URL.revokeObjectURL(url);
         toast.success('ZIP do edital baixado');
       });
+    }
+  };
+
+  const handleDownloadEditalPortal = async (lic: Licitacao | ResultadoBusca) => {
+    setDownloadingEdital(lic.id);
+    try {
+      const session = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-edital`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.data.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            numero: lic.numero,
+            portal: lic.portal || 'PNCP',
+            url: (lic as ResultadoBusca).url || null,
+            orgao: lic.orgao,
+            objeto: lic.objeto,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        toast.error('Erro ao buscar edital no portal');
+        return;
+      }
+
+      const data = await response.json();
+
+      if (!data.success) {
+        toast.error(data.error || 'Erro ao buscar edital');
+        return;
+      }
+
+      if (data.tipo === 'arquivo_direto') {
+        // Direct file download from base64
+        const byteChars = atob(data.arquivo.conteudo_base64);
+        const byteNumbers = new Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) {
+          byteNumbers[i] = byteChars.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: data.arquivo.content_type });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = data.arquivo.nome;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success(`Edital ${lic.numero} baixado com sucesso!`);
+      } else if (data.tipo === 'lista_documentos' && data.documentos?.length > 0) {
+        // Multiple docs: download first one, show info about others
+        const firstDoc = data.documentos[0];
+        if (firstDoc.url) {
+          window.open(firstDoc.url, '_blank');
+          toast.success(`${data.documentos.length} documento(s) encontrado(s). Abrindo download...`);
+        } else {
+          toast.info(`${data.documentos.length} documento(s) encontrado(s) no ${data.portal}`);
+        }
+      } else if (data.tipo === 'redirecionamento') {
+        // Redirect to portal
+        window.open(data.url, '_blank');
+        toast.info(data.mensagem || `Redirecionando para o portal ${data.portal}...`);
+      }
+    } catch (err) {
+      console.error('Erro download edital:', err);
+      toast.error('Erro ao conectar com o serviço de download');
+    } finally {
+      setDownloadingEdital(null);
     }
   };
 
@@ -593,6 +669,18 @@ export default function LicitacoesTab() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem 
+                            onClick={() => handleDownloadEditalPortal(lic)} 
+                            className="gap-2 text-xs font-semibold text-accent"
+                            disabled={downloadingEdital === lic.id}
+                          >
+                            {downloadingEdital === lic.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <FileDown className="w-3.5 h-3.5" />
+                            )}
+                            Edital Completo (Portal)
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'csv')} className="gap-2 text-xs">
                             <FileSpreadsheet className="w-3.5 h-3.5" /> CSV / Excel
                           </DropdownMenuItem>
