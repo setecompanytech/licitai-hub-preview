@@ -7,7 +7,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { Search, MapPin, Calendar as CalendarIcon2, Building2, CalendarDays, RefreshCw, Sparkles, ExternalLink, Globe } from 'lucide-react';
+import { Search, MapPin, Calendar as CalendarIcon2, Building2, CalendarDays, RefreshCw, Sparkles, ExternalLink, Globe, Download, FileText, FileSpreadsheet, FileJson } from 'lucide-react';
+import { downloadCSV, downloadPDF, downloadJSON } from '@/lib/download-utils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -206,6 +208,31 @@ export default function LicitacoesTab() {
     setResultadosBusca([]);
   };
 
+  const handleDownload = (tipo: 'csv' | 'pdf' | 'json') => {
+    if (filtered.length === 0) {
+      toast.error('Nenhum registro para exportar');
+      return;
+    }
+    const headers = ['Número', 'Objeto', 'Órgão', 'Modalidade', 'Portal', 'UF', 'Município', 'Valor Estimado', 'Encerramento', 'Status'];
+    const rows = filtered.map(l => [
+      l.numero,
+      l.objeto,
+      l.orgao,
+      l.modalidade,
+      l.portal || '-',
+      l.uf || '-',
+      l.municipio || '-',
+      l.valor_estimado ? formatCurrency(l.valor_estimado) : '-',
+      l.data_encerramento ? new Date(l.data_encerramento).toLocaleDateString('pt-BR') : '-',
+      l.status,
+    ]);
+    const ts = new Date().toISOString().slice(0, 10);
+    if (tipo === 'csv') downloadCSV(`licitacoes-${ts}`, headers, rows);
+    else if (tipo === 'pdf') downloadPDF(`licitacoes-${ts}`, 'Licitações Filtradas', headers, rows);
+    else downloadJSON(`licitacoes-${ts}`, filtered);
+    toast.success(`Download ${tipo.toUpperCase()} realizado`);
+  };
+
   const dadosExibidos = modoResultados === 'busca' ? resultadosBusca : licitacoes;
 
   const filtered = dadosExibidos.filter((l) => {
@@ -245,6 +272,24 @@ export default function LicitacoesTab() {
             )}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="text-xs h-7 px-3 gap-1.5" disabled={filtered.length === 0}>
+                  <Download className="w-3.5 h-3.5" /> Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleDownload('csv')} className="gap-2 text-xs">
+                  <FileSpreadsheet className="w-3.5 h-3.5" /> CSV / Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDownload('pdf')} className="gap-2 text-xs">
+                  <FileText className="w-3.5 h-3.5" /> PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDownload('json')} className="gap-2 text-xs">
+                  <FileJson className="w-3.5 h-3.5" /> JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {PORTAIS.map(p => (
               <Button key={p.id} size="sm" variant="outline" className="text-[10px] h-7 px-2" asChild>
                 <a href={p.url} target="_blank" rel="noopener noreferrer">
