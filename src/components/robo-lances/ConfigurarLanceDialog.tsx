@@ -118,7 +118,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
             {editingLance ? 'Editar Sessão de Lance' : 'Configurar Nova Sessão de Lance'}
           </DialogTitle>
           <DialogDescription>
-            Configure os parâmetros para a fase de lances automáticos, similar ao sistema EFFECTI.
+            Configure os parâmetros para a fase de lances automáticos do pregão eletrônico.
           </DialogDescription>
         </DialogHeader>
 
