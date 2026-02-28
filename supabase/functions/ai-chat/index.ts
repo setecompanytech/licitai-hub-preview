@@ -89,7 +89,7 @@ FORMATO OBRIGATÓRIO DE RESPOSTA (siga EXATAMENTE esta estrutura):
 REGRAS RÍGIDAS:
 - SEMPRE siga a estrutura acima, sem pular seções
 - Mínimo 3 fornecedores por produto, máximo 8
-- Fontes: Mercado Livre, Amazon, Magazine Luiza, KaBuM, Pichau, Terabyte, Americanas, Casas Bahia, Carrefour, Gimba, Assaí, Makro, Chipart, Balão da Informática
+- Fontes: Mercado Livre, Amazon, Magazine Luiza, KaBuM, Pichau, Terabyte, Americanas, Casas Bahia, Carrefour, Gimba, Assaí, Makro, Chipart, Balão da Informática, Shopee, AliExpress, CROI
 - Linguagem técnica, objetiva, impessoal — sem adjetivos comerciais
 - Todos os preços em Reais (R$) com duas casas decimais
 - Se pesquisar múltiplos produtos, repita toda a estrutura para CADA produto, separando com linha horizontal
