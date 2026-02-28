@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   DollarSign, Search, ShoppingCart, TrendingUp, TrendingDown,
-  ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText, Loader2, Bot
+  ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText, Loader2, Bot,
+  Monitor, Briefcase, SprayCan, UtensilsCrossed, Filter
 } from 'lucide-react';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
@@ -91,11 +92,20 @@ const fonteColors: Record<string, string> = {
 
 export default function Precificacao() {
   const [search, setSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('todos');
   const [aiResult, setAiResult] = useState('');
   const [isSearchingAI, setIsSearchingAI] = useState(false);
   const navigate = useNavigate();
   const { addItem, hasPending, pendingItems } = usePropostaCart();
   const abortRef = useRef(false);
+
+  const categories = [
+    { id: 'todos', label: 'Todos', icon: Filter },
+    { id: 'informatica', label: 'Informática e Tecnologia', icon: Monitor },
+    { id: 'escritorio', label: 'Escritório e Papelaria', icon: Briefcase },
+    { id: 'limpeza', label: 'Higiene e Limpeza', icon: SprayCan },
+    { id: 'alimenticios', label: 'Gêneros Alimentícios', icon: UtensilsCrossed },
+  ];
 
   const handleAISearch = async () => {
     if (!search.trim()) {
@@ -106,8 +116,15 @@ export default function Precificacao() {
     setAiResult('');
     abortRef.current = false;
 
+    const categoryLabel = selectedCategory !== 'todos'
+      ? categories.find(c => c.id === selectedCategory)?.label
+      : null;
+    const categoryInstruction = categoryLabel
+      ? `\nCATEGORIA SELECIONADA: ${categoryLabel}. Foque a pesquisa nesta categoria.`
+      : '';
+
     await streamAIChat({
-      messages: [{ role: 'user', content: `Pesquise preços de mercado para: "${search}".
+      messages: [{ role: 'user', content: `Pesquise preços de mercado para: "${search}".${categoryInstruction}
 
 Para cada produto encontrado, apresente os resultados organizados em tabelas markdown com as seguintes colunas:
 | Produto | Marca | Modelo | Fornecedor/Loja | Preço (R$) | Link do Site | Telefone | Email | Condição | Data |
@@ -193,6 +210,26 @@ REGRAS:
               <p className="text-2xl font-bold">{s.value}</p>
             </div>
           ))}
+        </div>
+
+        {/* Category Filters */}
+        <div className="flex gap-2 flex-wrap">
+          {categories.map((cat) => {
+            const Icon = cat.icon;
+            const isActive = selectedCategory === cat.id;
+            return (
+              <Button
+                key={cat.id}
+                variant={isActive ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedCategory(cat.id)}
+                className={isActive ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}
+              >
+                <Icon className="w-4 h-4 mr-1" />
+                {cat.label}
+              </Button>
+            );
+          })}
         </div>
 
         {/* Search */}
