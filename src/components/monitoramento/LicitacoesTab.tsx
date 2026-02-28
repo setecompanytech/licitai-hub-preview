@@ -164,6 +164,7 @@ export default function LicitacoesTab() {
   const [downloadingEdital, setDownloadingEdital] = useState<string | null>(null);
   const [comAnaliseIA, setComAnaliseIA] = useState(true);
   const [portalFilter, setPortalFilter] = useState<string>('all');
+  const [filtroDiariosPublicadosDownload, setFiltroDiariosPublicadosDownload] = useState(false);
   const resultadosRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -356,10 +357,14 @@ export default function LicitacoesTab() {
         });
       }
 
-      // Reset filters when entering search mode to avoid filtering out results
+      // Reset filtros locais para não esconder resultados da nova busca
       setStatusFilter('all');
       setModalidadeFilter('all');
       setPortalFilter('all');
+      setRegiaoFilter('all');
+      setUfFilter('all');
+      setDataInicio(undefined);
+      setDataFim(undefined);
       setResultadosBusca(allResults);
       setModoResultados('busca');
 
@@ -459,6 +464,21 @@ export default function LicitacoesTab() {
     }
   };
 
+  const isDiarioOficialPortal = (portal?: string | null): boolean => {
+    const value = (portal || '').toLowerCase();
+    return (
+      value.includes('diário oficial') ||
+      value.includes('dou') ||
+      value.includes('ioepa') ||
+      value.includes('doe') ||
+      value.includes('ioerj') ||
+      value.includes('dodf') ||
+      value.includes('belém') ||
+      value.includes('belem') ||
+      value.includes('ananindeua')
+    );
+  };
+
   const hasEditalDownload = (lic: ResultadoBusca): boolean => {
     if (lic.isMock) return false;
     // Explicitly marked as no download by the backend
@@ -528,7 +548,12 @@ export default function LicitacoesTab() {
     const matchUf = ufFilter === 'all'
       ? (regiaoFilter === 'all' || ufsDisponiveis.includes(l.uf || ''))
       : l.uf === ufFilter;
-    return matchSearch && matchStatus && matchModalidade && matchPortal && matchUf && matchDataInicio && matchDataFim;
+    const matchDiariosPublicadosDownload = !filtroDiariosPublicadosDownload || (
+      isDiarioOficialPortal(l.portal) &&
+      normalizeStatus(l.status) === 'Publicado' &&
+      hasEditalDownload(l)
+    );
+    return matchSearch && matchStatus && matchModalidade && matchPortal && matchUf && matchDataInicio && matchDataFim && matchDiariosPublicadosDownload;
   });
 
   return (
@@ -767,6 +792,14 @@ export default function LicitacoesTab() {
                   Limpar datas
                 </Button>
               )}
+              <label className="flex items-center gap-1.5 text-xs cursor-pointer px-2 py-1 rounded-md border border-border/50 bg-background">
+                <Checkbox
+                  checked={filtroDiariosPublicadosDownload}
+                  onCheckedChange={(v) => setFiltroDiariosPublicadosDownload(!!v)}
+                  className="h-3.5 w-3.5"
+                />
+                <span className="text-muted-foreground">Diários publicados c/ download oficial</span>
+              </label>
             </div>
           </div>
         )}
@@ -797,11 +830,18 @@ export default function LicitacoesTab() {
         <p className="text-sm text-muted-foreground">
           {loading ? 'Carregando...' : `${filtered.length} licitações encontradas`}
         </p>
-        {modoResultados === 'busca' && (
-          <Badge variant="outline" className="text-[10px]">
-            Resultados da busca
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {filtroDiariosPublicadosDownload && (
+            <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent border-accent/30">
+              Diários oficiais publicados
+            </Badge>
+          )}
+          {modoResultados === 'busca' && (
+            <Badge variant="outline" className="text-[10px]">
+              Resultados da busca
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Table */}
