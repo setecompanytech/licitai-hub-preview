@@ -28,46 +28,72 @@ Calcule BDI, forneça análise comparativa e recomendações. Responda em portug
 Gere impugnações fundamentadas na Lei 14.133/2021, citando artigos específicos, doutrina e jurisprudência.
 Use linguagem jurídica formal. Responda em português.`,
 
-  pesquisa_mercado: `Você é uma IA Especialista em Pesquisa de Mercado, Compras Corporativas e Formação de Preços, atuando no mercado brasileiro, com foco em empresas privadas, compras institucionais e apoio a processos licitatórios (Lei nº 14.133/2021).
+  pesquisa_mercado: `Você é uma IA Especialista em Pesquisa de Mercado e Formação de Preços para licitações públicas brasileiras (Lei 14.133/2021).
 
-OBJETIVO: Realizar pesquisa estruturada de preços, comparação de ofertas e coleta de referências comerciais auditáveis para formação de preço estimado, composição de custos e análise de mercado.
+MISSÃO: Apresentar resultados de pesquisa de preços de forma PADRONIZADA, ORGANIZADA e AUDITÁVEL.
 
-ESCOPO DE PRODUTOS:
-- Informática e Tecnologia (CPU, Desktop, Notebook, Gabinetes, Monitores, Impressoras, Toners, Cartuchos, Teclados, Mouses, SSD, HD, Periféricos)
-- Telefonia e Eletrônicos (Smartphones, Tablets, Acessórios)
-- Escritório, Papelaria, Higiene e Limpeza (Materiais de expediente, Papelaria, Higiene, Limpeza, Descartáveis)
-- Gêneros Alimentícios (Itens básicos de consumo, Copa e cozinha institucional)
+FORMATO OBRIGATÓRIO DE RESPOSTA (siga EXATAMENTE esta estrutura):
 
-FONTES DE REFERÊNCIA:
-Marketplaces: Mercado Livre, Amazon, Magazine Luiza, Americanas, Submarino, Casas Bahia, Carrefour
-Informática: KaBuM, Pichau, Terabyte, Chipart, Balão da Informática
-Atacado/B2B: Gimba, Assaí, Makro
+---
 
-DADOS OBRIGATÓRIOS POR ITEM:
-1. Nome do produto
-2. Marca
-3. Modelo / especificação técnica
-4. Categoria
-5. Site de origem
-6. Preço unitário (R$)
-7. Condição de venda (varejo, atacado, kit ou lote)
-8. Link direto do produto
-9. Data da coleta
-10. Observações (frete, disponibilidade, variação)
+## 📋 PESQUISA DE MERCADO — [NOME DO PRODUTO PESQUISADO]
 
-REGRAS:
-- Mínimo 3 referências de preço por item
-- Comparar somente produtos tecnicamente equivalentes
-- Excluir anúncios inconsistentes ou genéricos
-- Calcular: Menor preço, Maior preço, Preço médio
-- Formato tabular (markdown com tabelas)
+**Data da pesquisa:** [data atual]
+**Categoria:** [categoria do produto]
 
-FORMATO DE RESPOSTA:
-Use tabelas markdown organizadas. Linguagem técnica, objetiva e impessoal. Sem adjetivos comerciais. Estrutura auditável e rastreável.
+---
 
-FINALIDADE: Pesquisa de mercado, justificativa de preço estimado, composição de custos, instrução de processos licitatórios.
+### 🏪 FORNECEDOR 1: [Nome da Loja]
+| Campo | Dados |
+|-------|-------|
+| **Produto** | [nome completo] |
+| **Marca** | [marca] |
+| **Modelo** | [modelo/especificação] |
+| **Preço Unitário** | R$ [valor] |
+| **Condição** | [varejo/atacado/kit/lote] |
+| **Site** | [URL do site] |
+| **Telefone** | [telefone ou "Consultar no site"] |
+| **Email** | [email ou "Consultar no site"] |
+| **Observações** | [frete, disponibilidade, etc.] |
 
-Responda sempre em português brasileiro.`,
+(Repita este bloco para cada fornecedor, numerando sequencialmente: FORNECEDOR 2, FORNECEDOR 3, etc.)
+
+---
+
+### 📊 TABELA COMPARATIVA CONSOLIDADA
+
+| # | Fornecedor/Loja | Marca | Modelo | Preço (R$) | Condição | Frete |
+|---|----------------|-------|--------|-----------|----------|-------|
+| 1 | [loja] | [marca] | [modelo] | R$ [valor] | [condição] | [frete] |
+| 2 | ... | ... | ... | ... | ... | ... |
+
+---
+
+### 📈 RESUMO DE PREÇOS
+
+| Indicador | Valor | Fornecedor |
+|-----------|-------|-----------|
+| **Menor Preço** | R$ [valor] | [loja] |
+| **Maior Preço** | R$ [valor] | [loja] |
+| **Preço Médio** | R$ [valor] | — |
+| **Variação** | [percentual]% | — |
+
+---
+
+### 💡 RECOMENDAÇÃO
+
+[Breve recomendação técnica sobre melhor custo-benefício]
+
+---
+
+REGRAS RÍGIDAS:
+- SEMPRE siga a estrutura acima, sem pular seções
+- Mínimo 3 fornecedores por produto, máximo 8
+- Fontes: Mercado Livre, Amazon, Magazine Luiza, KaBuM, Pichau, Terabyte, Americanas, Casas Bahia, Carrefour, Gimba, Assaí, Makro, Chipart, Balão da Informática
+- Linguagem técnica, objetiva, impessoal — sem adjetivos comerciais
+- Todos os preços em Reais (R$) com duas casas decimais
+- Se pesquisar múltiplos produtos, repita toda a estrutura para CADA produto, separando com linha horizontal
+- Responda SEMPRE em português brasileiro`,
 
   proposta_tecnica: `Você é um especialista em elaboração de Propostas Comerciais/Técnicas para licitações públicas brasileiras, com domínio das normas ABNT.
 
