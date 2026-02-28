@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   ExternalLink, Star, Truck, ShieldCheck, Store, TrendingDown,
-  Package, LayoutGrid, List, Percent, ArrowUpDown, ImageIcon, Loader2, Plus
+  Package, LayoutGrid, List, Percent, ArrowUpDown, ImageIcon, Loader2, Plus,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
@@ -25,6 +26,7 @@ export type FornecedorML = {
   frete: string;
   url: string;
   image_url?: string;
+  images?: string[];
   parcelas?: string;
   avaliacao?: number;
   vendedor_qualificado?: boolean;
@@ -168,6 +170,76 @@ function useQuickAddToProposta() {
   };
 }
 
+/* ─── Image Gallery with sliding ─── */
+function ImageGallery({ item, className, onClick }: { item: FornecedorML; className?: string; onClick?: () => void }) {
+  const allImages = (item.images?.length ? item.images : (item.image_url ? [item.image_url] : [])).filter(isValidImageUrl);
+  const [idx, setIdx] = useState(0);
+  const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set());
+
+  const validImages = allImages.filter(url => !failedUrls.has(url));
+  const currentImg = validImages[idx % validImages.length];
+  const hasMultiple = validImages.length > 1;
+
+  const prev = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIdx(i => (i - 1 + validImages.length) % validImages.length);
+  }, [validImages.length]);
+
+  const next = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIdx(i => (i + 1) % validImages.length);
+  }, [validImages.length]);
+
+  const handleError = useCallback((url: string) => {
+    setFailedUrls(prev => new Set(prev).add(url));
+  }, []);
+
+  return (
+    <div className={`relative group/gallery overflow-hidden ${className || ''}`} onClick={onClick}>
+      {currentImg ? (
+        <img
+          src={currentImg}
+          alt={item.produto}
+          className="w-full h-full object-contain p-2"
+          onError={() => handleError(currentImg)}
+        />
+      ) : (
+        <Package className="w-16 h-16 text-muted-foreground/20 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+      )}
+      {hasMultiple && (
+        <>
+          <button
+            onClick={prev}
+            className="absolute left-1 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover/gallery:opacity-100 transition-opacity shadow-sm hover:bg-background"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={next}
+            className="absolute right-1 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover/gallery:opacity-100 transition-opacity shadow-sm hover:bg-background"
+          >
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+          {/* Dots indicator */}
+          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
+            {validImages.map((_, i) => (
+              <button
+                key={i}
+                onClick={(e) => { e.stopPropagation(); setIdx(i); }}
+                className={`w-1.5 h-1.5 rounded-full transition-all ${
+                  i === idx % validImages.length
+                    ? 'bg-primary w-3'
+                    : 'bg-foreground/30 hover:bg-foreground/50'
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ─── Google Shopping Grid Card ─── */
 function GoogleShoppingCard({ item, isCheapest, onOpenFicha, onQuickAdd }: { item: FornecedorML; isCheapest: boolean; onOpenFicha: () => void; onQuickAdd: () => void }) {
   const desconto = getDiscountPercent(item);
@@ -200,21 +272,12 @@ function GoogleShoppingCard({ item, isCheapest, onOpenFicha, onQuickAdd }: { ite
         <Plus className="w-4 h-4" />
       </button>
 
-      {/* Image area - clickable */}
-      <div
-        className="relative w-full aspect-square bg-muted/10 flex items-center justify-center p-4 border-b border-border/20 overflow-hidden cursor-pointer"
+      {/* Image area - sliding gallery */}
+      <ImageGallery
+        item={item}
+        className="w-full aspect-square bg-muted/10 flex items-center justify-center border-b border-border/20 cursor-pointer"
         onClick={onOpenFicha}
-      >
-        {isValidImageUrl(item.image_url) ? (
-          <img
-            src={item.image_url}
-            alt={item.produto}
-            className="w-full h-full object-contain"
-            onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }}
-          />
-        ) : null}
-        <Package className={`w-16 h-16 text-muted-foreground/20 absolute ${isValidImageUrl(item.image_url) ? 'hidden' : ''}`} />
-      </div>
+      />
 
       {/* Content - clickable */}
       <div className="flex flex-col flex-1 p-3 gap-1.5 cursor-pointer" onClick={onOpenFicha}>
@@ -293,21 +356,12 @@ function MercadoLivreCard({ item, isCheapest, onOpenFicha, onQuickAdd }: { item:
 
   return (
     <div className="group flex gap-4 p-4 bg-card border border-border/40 rounded-lg hover:shadow-md hover:border-primary/30 transition-all duration-200 relative">
-      {/* Image - clickable */}
-      <div
-        className="flex-shrink-0 w-[160px] h-[160px] bg-muted/10 rounded-md flex items-center justify-center border border-border/20 overflow-hidden cursor-pointer"
+      {/* Image - sliding gallery */}
+      <ImageGallery
+        item={item}
+        className="flex-shrink-0 w-[160px] h-[160px] bg-muted/10 rounded-md flex items-center justify-center border border-border/20 cursor-pointer"
         onClick={onOpenFicha}
-      >
-        {isValidImageUrl(item.image_url) ? (
-          <img
-            src={item.image_url}
-            alt={item.produto}
-            className="w-full h-full object-contain p-2"
-            onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }}
-          />
-        ) : null}
-        <Package className={`w-12 h-12 text-muted-foreground/20 ${isValidImageUrl(item.image_url) ? 'hidden' : ''}`} />
-      </div>
+      />
 
       {/* Content */}
       <div className="flex-1 min-w-0 flex flex-col justify-between">
