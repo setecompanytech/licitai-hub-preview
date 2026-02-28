@@ -68,6 +68,7 @@ function detectStore(url: string): string {
   if (u.includes('pichau.com.br')) return 'Pichau';
   if (u.includes('terabyteshop.com.br')) return 'Terabyte';
   if (u.includes('havan.com.br')) return 'Havan';
+  if (u.includes('gazinatacado.com.br')) return 'Gazin Atacado';
   if (u.includes('google.com')) return 'Google Shopping';
   if (u.includes('buscape.com.br')) return 'Buscapé';
   if (u.includes('zoom.com.br')) return 'Zoom';
@@ -381,6 +382,7 @@ serve(async (req) => {
       searchProducts(apiKey, `${termo} comprar preço site:magazineluiza.com.br OR site:kabum.com.br`, 10),
       searchProducts(apiKey, `${termo} comprar preço site:americanas.com.br OR site:casasbahia.com.br`, 8),
       searchProducts(apiKey, `${termo} comprar preço site:shopee.com.br OR site:carrefour.com.br`, 8),
+      searchProducts(apiKey, `${termo} comprar preço site:gazinatacado.com.br`, 8),
       searchProducts(apiKey, `${termo} comprar preço site:buscape.com.br OR site:zoom.com.br`, 8),
       searchProducts(apiKey, `${termo} preço comprar Brasil`, 12),
     ]);

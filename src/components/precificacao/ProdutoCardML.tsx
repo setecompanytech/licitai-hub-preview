@@ -120,6 +120,7 @@ function buildRealStoreUrl(loja: string, produto: string): string {
     'aliexpress': `https://pt.aliexpress.com/w/wholesale-${q.replace(/%20/g, '-')}.html`,
     'submarino': `https://www.submarino.com.br/busca/${q}`,
     'havan': `https://www.havan.com.br/busca?q=${q}`,
+    'gazinatacado': `https://www.gazinatacado.com.br/catalogsearch/result/?q=${q}`,
     'leroymerlin': `https://www.leroymerlin.com.br/search?term=${q}`,
     'madeiramadeira': `https://www.madeiramadeira.com.br/busca?q=${q}`,
     'fastshop': `https://www.fastshop.com.br/web/s/${q}`,
