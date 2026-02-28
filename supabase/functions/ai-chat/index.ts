@@ -72,7 +72,7 @@ REGRAS RÍGIDAS:
 - Retorne APENAS o JSON, sem nenhum texto, markdown ou explicação
 - NÃO use crases, blocos de código ou qualquer formatação markdown
 - Mínimo 3 fornecedores por produto, máximo 8
-- Fontes: Mercado Livre, Amazon, Magazine Luiza, KaBuM, Pichau, Terabyte, Americanas, Casas Bahia, Carrefour, Gimba, Assaí, Makro, Chipart, Balão da Informática, Shopee, AliExpress, CROI
+- Fontes: Mercado Livre, Amazon, Magazine Luiza, KaBuM, Pichau, Terabyte, Americanas, Casas Bahia, Carrefour, Gimba, Assaí, Makro, Chipart, Balão da Informática, Shopee, AliExpress, CROI, Ibyte, Havan, Submarino
 - Todos os preços numéricos (sem "R$"), use ponto como separador decimal
 - Se pesquisar múltiplos produtos, retorne um array de objetos no formato acima
 - Os dados devem ser realistas e baseados em preços praticados no mercado brasileiro
