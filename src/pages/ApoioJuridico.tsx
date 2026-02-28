@@ -11,6 +11,8 @@ import {
   ArrowUpDown, Calculator
 } from 'lucide-react';
 import ReequilibrioIA from '@/components/apoio-juridico/ReequilibrioIA';
+import BaseJuridicaUpload from '@/components/apoio-juridico/BaseJuridicaUpload';
+import GeradorIAComBase from '@/components/apoio-juridico/GeradorIAComBase';
 
 type Modelo = {
   id: string;
@@ -67,6 +69,7 @@ export default function ApoioJuridico() {
             <TabsTrigger value="reequilibrio">Reequilíbrio IA</TabsTrigger>
             <TabsTrigger value="gerador">Gerador IA</TabsTrigger>
             <TabsTrigger value="legislacao">Legislação</TabsTrigger>
+            <TabsTrigger value="base-juridica">Base Jurídica IA</TabsTrigger>
           </TabsList>
 
           {/* Modelos */}
@@ -133,39 +136,12 @@ export default function ApoioJuridico() {
 
           {/* Gerador IA */}
           <TabsContent value="gerador" className="space-y-4">
-            <div className="bg-card rounded-xl border border-border/50 p-6 shadow-sm space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-5 h-5 text-accent" />
-                <h3 className="text-sm font-semibold">Gerador de Documentos com IA</h3>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-muted-foreground">Tipo de Documento</label>
-                  <select className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                    <option>Impugnação ao Edital</option>
-                    <option>Recurso Administrativo</option>
-                    <option>Contrarrazões</option>
-                    <option>Pedido de Esclarecimento</option>
-                    <option>Pedido de Reconsideração</option>
-                    <option>Reequilíbrio Econômico-Financeiro</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Nº do Edital</label>
-                  <Input placeholder="PE-001/2026" className="mt-1" />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Fundamentação / Contexto</label>
-                <Textarea
-                  placeholder="Descreva os fatos, a cláusula contestada e os fundamentos jurídicos..."
-                  className="mt-1 min-h-[120px]"
-                />
-              </div>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                <Sparkles className="w-4 h-4 mr-1" /> Gerar Documento
-              </Button>
-            </div>
+            <GeradorIAComBase />
+          </TabsContent>
+
+          {/* Base Jurídica */}
+          <TabsContent value="base-juridica">
+            <BaseJuridicaUpload />
           </TabsContent>
 
           {/* Legislação */}

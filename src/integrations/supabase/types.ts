@@ -169,6 +169,57 @@ export type Database = {
           },
         ]
       }
+      base_juridica: {
+        Row: {
+          arquivo_nome: string
+          arquivo_path: string | null
+          created_at: string
+          data_documento: string | null
+          ementa: string | null
+          id: string
+          numero_processo: string | null
+          tags: string[] | null
+          texto_integral: string | null
+          tipo: string
+          titulo: string
+          tribunal: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          arquivo_nome: string
+          arquivo_path?: string | null
+          created_at?: string
+          data_documento?: string | null
+          ementa?: string | null
+          id?: string
+          numero_processo?: string | null
+          tags?: string[] | null
+          texto_integral?: string | null
+          tipo?: string
+          titulo: string
+          tribunal?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          arquivo_nome?: string
+          arquivo_path?: string | null
+          created_at?: string
+          data_documento?: string | null
+          ementa?: string | null
+          id?: string
+          numero_processo?: string | null
+          tags?: string[] | null
+          texto_integral?: string | null
+          tipo?: string
+          titulo?: string
+          tribunal?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       boletim_envios: {
         Row: {
           created_at: string
