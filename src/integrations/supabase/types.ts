@@ -220,6 +220,66 @@ export type Database = {
         }
         Relationships: []
       }
+      blog_artigos: {
+        Row: {
+          autor: string
+          caso_fortuito: boolean | null
+          categoria: string
+          conteudo: string
+          created_at: string
+          data_publicacao: string
+          destaque: boolean | null
+          fonte_nome: string | null
+          fonte_url: string | null
+          forca_maior: boolean | null
+          id: string
+          resumo: string
+          tags: string[] | null
+          tcu_referencia: string | null
+          tempo_leitura: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          autor?: string
+          caso_fortuito?: boolean | null
+          categoria?: string
+          conteudo: string
+          created_at?: string
+          data_publicacao?: string
+          destaque?: boolean | null
+          fonte_nome?: string | null
+          fonte_url?: string | null
+          forca_maior?: boolean | null
+          id?: string
+          resumo: string
+          tags?: string[] | null
+          tcu_referencia?: string | null
+          tempo_leitura?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          autor?: string
+          caso_fortuito?: boolean | null
+          categoria?: string
+          conteudo?: string
+          created_at?: string
+          data_publicacao?: string
+          destaque?: boolean | null
+          fonte_nome?: string | null
+          fonte_url?: string | null
+          forca_maior?: boolean | null
+          id?: string
+          resumo?: string
+          tags?: string[] | null
+          tcu_referencia?: string | null
+          tempo_leitura?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       boletim_envios: {
         Row: {
           created_at: string
