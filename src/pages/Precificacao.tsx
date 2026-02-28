@@ -29,6 +29,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 import PainelPrecosGov from '@/components/precificacao/PainelPrecosGov';
 import CotacaoFornecedorUpload from '@/components/precificacao/CotacaoFornecedorUpload';
+import ComparativoDashboard from '@/components/precificacao/ComparativoDashboard';
 
 type FontePreco = {
   fonte: string;
@@ -539,6 +540,9 @@ export default function Precificacao() {
             <TabsTrigger value="fornecedores" className="gap-1.5">
               <Upload className="w-3.5 h-3.5" /> Cotações de Fornecedores
             </TabsTrigger>
+            <TabsTrigger value="comparativo" className="gap-1.5">
+              <BarChart3 className="w-3.5 h-3.5" /> Comparativo
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="marketplaces" className="space-y-4">
@@ -1020,6 +1024,12 @@ export default function Precificacao() {
           <TabsContent value="fornecedores">
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
               <CotacaoFornecedorUpload />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="comparativo">
+            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+              <ComparativoDashboard />
             </div>
           </TabsContent>
         </Tabs>
