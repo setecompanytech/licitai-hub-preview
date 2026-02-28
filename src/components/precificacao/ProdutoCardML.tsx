@@ -13,6 +13,7 @@ export type FornecedorML = {
   produto: string;
   marca: string;
   modelo: string;
+  categoria?: string;
   preco: number;
   preco_original?: number;
   condicao: string;
@@ -31,6 +32,7 @@ export type PesquisaMLResult = {
   produto: string;
   data_pesquisa: string;
   categoria: string;
+  subcategorias?: string[];
   fornecedores: FornecedorML[];
   resumo: {
     menor_preco: number;

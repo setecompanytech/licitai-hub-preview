@@ -12,7 +12,7 @@ import {
   DollarSign, Search, ShoppingCart, TrendingUp, TrendingDown,
   ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText, Loader2, Bot,
   Filter, Save, History, Trash2, Eye, CalendarIcon,
-  MapPin, Globe
+  MapPin, Globe, ChevronRight, Tag, X
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
@@ -193,19 +193,37 @@ export default function Precificacao() {
     setSelectedCidade('todos');
   };
 
-  // Dynamic categories extracted from AI search results
-  const dynamicCategories = (() => {
-    if (!aiParsedData) return [];
+  // Dynamic category tree extracted from AI search results
+  const categoryTree = (() => {
+    if (!aiParsedData) return { main: '', subs: [] as { name: string; count: number }[], total: 0 };
     const results = Array.isArray(aiParsedData) ? aiParsedData : [aiParsedData];
-    const cats = new Set<string>();
+    const mainCat = results[0]?.categoria || '';
+    const subCounts: Record<string, number> = {};
+    let total = 0;
     results.forEach((r: any) => {
-      if (r?.categoria) cats.add(r.categoria);
       r?.fornecedores?.forEach((f: any) => {
-        if (f?.categoria) cats.add(f.categoria);
+        total++;
+        const cat = f?.categoria || 'Outros';
+        subCounts[cat] = (subCounts[cat] || 0) + 1;
       });
+      // Also use top-level subcategorias if available
+      if (r?.subcategorias) {
+        r.subcategorias.forEach((s: string) => {
+          if (!subCounts[s]) subCounts[s] = 0;
+        });
+      }
     });
-    return Array.from(cats).sort();
+    const subs = Object.entries(subCounts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+    return { main: mainCat, subs, total };
   })();
+
+  // Filter fornecedores by selected category
+  const filteredByCategory = (fornecedores: any[]) => {
+    if (selectedCategory === 'todos') return fornecedores;
+    return fornecedores.filter((f: any) => (f?.categoria || 'Outros') === selectedCategory);
+  };
 
 
   const loadSavedSearches = async () => {
@@ -408,29 +426,17 @@ Retorne APENAS JSON puro, sem markdown, sem crases, sem texto adicional. Mínimo
           ))}
         </div>
 
-        {/* Category Filter – Dynamic from results */}
-        {dynamicCategories.length > 0 && (
-          <div className="flex gap-3 items-center flex-wrap">
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Filter className="w-4 h-4" />
-              <span className="font-medium">Categoria:</span>
-            </div>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-[320px] h-9">
-                <SelectValue placeholder="Todas as categorias" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todas as categorias</SelectItem>
-                {dynamicCategories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedCategory !== 'todos' && (
-              <Button variant="ghost" size="sm" onClick={() => setSelectedCategory('todos')}>
-                ✕ Limpar
-              </Button>
-            )}
+        {/* ML-style Category Breadcrumb */}
+        {categoryTree.subs.length > 0 && selectedCategory !== 'todos' && (
+          <div className="flex items-center gap-1.5 text-sm">
+            <button onClick={() => setSelectedCategory('todos')} className="text-primary hover:underline">
+              {categoryTree.main || 'Resultados'}
+            </button>
+            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-foreground font-medium">{selectedCategory}</span>
+            <button onClick={() => setSelectedCategory('todos')} className="ml-2 p-0.5 rounded-full hover:bg-muted">
+              <X className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
           </div>
         )}
 
@@ -580,26 +586,80 @@ Retorne APENAS JSON puro, sem markdown, sem crases, sem texto adicional. Mínimo
           </div>
         )}
 
-        {/* AI Results */}
+        {/* AI Results with ML-style sidebar */}
         {(aiResult || isSearchingAI) && (
-          <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Bot className="w-5 h-5 text-[#3483fa]" />
-                <h3 className="font-semibold text-sm">Resultado da Pesquisa de Mercado</h3>
-                {isSearchingAI && <Loader2 className="w-4 h-4 animate-spin text-[#3483fa]" />}
+          <div className="flex gap-5">
+            {/* Left Sidebar – ML Category Filter */}
+            {categoryTree.subs.length > 1 && !isSearchingAI && (
+              <div className="w-[220px] flex-shrink-0">
+                <div className="sticky top-4 bg-card border border-border/40 rounded-lg p-3">
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <Tag className="w-3.5 h-3.5 text-primary" />
+                    <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                      {categoryTree.main || 'Categorias'}
+                    </h4>
+                  </div>
+                  <ul className="space-y-0.5">
+                    <li>
+                      <button
+                        onClick={() => setSelectedCategory('todos')}
+                        className={cn(
+                          "w-full flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors",
+                          selectedCategory === 'todos'
+                            ? "bg-primary/10 text-primary font-semibold"
+                            : "text-foreground hover:bg-muted"
+                        )}
+                      >
+                        <span>Todas</span>
+                        <span className="text-[10px] text-muted-foreground">({categoryTree.total})</span>
+                      </button>
+                    </li>
+                    {categoryTree.subs.map((sub) => (
+                      <li key={sub.name}>
+                        <button
+                          onClick={() => setSelectedCategory(sub.name)}
+                          className={cn(
+                            "w-full flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors",
+                            selectedCategory === sub.name
+                              ? "bg-primary/10 text-primary font-semibold"
+                              : "text-foreground hover:bg-muted"
+                          )}
+                        >
+                          <span className="truncate">{sub.name}</span>
+                          <span className="text-[10px] text-muted-foreground ml-1">({sub.count})</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              {aiResult && !isSearchingAI && (
-                <Button size="sm" variant="outline" onClick={handleSaveSearch}>
-                  <Save className="w-4 h-4 mr-1" /> Salvar Pesquisa
-                </Button>
-              )}
+            )}
+
+            {/* Results Content */}
+            <div className="flex-1 min-w-0">
+              <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Bot className="w-5 h-5 text-[#3483fa]" />
+                    <h3 className="font-semibold text-sm">Resultado da Pesquisa de Mercado</h3>
+                    {isSearchingAI && <Loader2 className="w-4 h-4 animate-spin text-[#3483fa]" />}
+                  </div>
+                  {aiResult && !isSearchingAI && (
+                    <Button size="sm" variant="outline" onClick={handleSaveSearch}>
+                      <Save className="w-4 h-4 mr-1" /> Salvar Pesquisa
+                    </Button>
+                  )}
+                </div>
+                <PesquisaResultML
+                  data={aiParsedData ? {
+                    ...aiParsedData,
+                    fornecedores: filteredByCategory(aiParsedData.fornecedores),
+                  } : null}
+                  isLoading={isSearchingAI}
+                  rawMarkdown={!aiParsedData && !isSearchingAI ? aiResult : undefined}
+                />
+              </div>
             </div>
-            <PesquisaResultML
-              data={aiParsedData}
-              isLoading={isSearchingAI}
-              rawMarkdown={!aiParsedData && !isSearchingAI ? aiResult : undefined}
-            />
           </div>
         )}
 

@@ -37,13 +37,15 @@ FORMATO OBRIGATÓRIO DE RESPOSTA — retorne EXATAMENTE este JSON (sem nenhum te
 {
   "produto": "[nome do produto pesquisado]",
   "data_pesquisa": "[data atual YYYY-MM-DD]",
-  "categoria": "[categoria do produto]",
+  "categoria": "[categoria principal do produto - ex: Tecnologia, Ferramentas, Construção, etc.]",
+  "subcategorias": ["[lista de subcategorias encontradas nos resultados - ex: Notebooks, Periféricos]"],
   "fornecedores": [
     {
       "loja": "[Nome da Loja/Site]",
       "produto": "[nome completo do produto encontrado]",
       "marca": "[marca]",
       "modelo": "[modelo/especificação]",
+      "categoria": "[categoria do fornecedor - deve ser uma das subcategorias acima]",
       "preco": [valor numérico sem R$],
       "preco_original": [valor original se houver desconto, ou null],
       "condicao": "[Novo/Usado/Recondicionado]",
