@@ -12,7 +12,7 @@ import {
   DollarSign, Search, ShoppingCart, TrendingUp, TrendingDown,
   ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText, Loader2, Bot,
   Filter, Save, History, Trash2, Eye, CalendarIcon,
-  MapPin, Globe, ChevronRight, Tag, X, Truck, CheckSquare, Square
+  MapPin, Globe, ChevronRight, Tag, X, Truck, CheckSquare, Square, Store, Award
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
@@ -173,6 +173,8 @@ export default function Precificacao() {
   const [filterCondicao, setFilterCondicao] = useState<'todos' | 'Novo' | 'Usado' | 'Recondicionado'>('todos');
   const [filterPrecoMin, setFilterPrecoMin] = useState('');
   const [filterPrecoMax, setFilterPrecoMax] = useState('');
+  const [filterLojas, setFilterLojas] = useState<string[]>([]);
+  const [filterMarcas, setFilterMarcas] = useState<string[]>([]);
   const navigate = useNavigate();
   const { addItem, hasPending, pendingItems } = usePropostaCart();
   const abortRef = useRef(false);
@@ -228,6 +230,10 @@ export default function Precificacao() {
     return fornecedores.filter((f: any) => {
       // Category
       if (selectedCategory !== 'todos' && (f?.categoria || 'Outros') !== selectedCategory) return false;
+      // Lojas
+      if (filterLojas.length > 0 && !filterLojas.includes(f?.loja || '')) return false;
+      // Marcas
+      if (filterMarcas.length > 0 && !filterMarcas.includes(f?.marca || '')) return false;
       // Frete grátis
       if (filterFreteGratis) {
         const frete = (f?.frete || '').toLowerCase();
@@ -255,6 +261,30 @@ export default function Precificacao() {
     return Array.from(conds).sort();
   })();
 
+  // Derived: unique stores from results
+  const availableLojas = (() => {
+    if (!aiParsedData) return [] as { name: string; count: number }[];
+    const counts: Record<string, number> = {};
+    const results = Array.isArray(aiParsedData) ? aiParsedData : [aiParsedData];
+    results.forEach((r: any) => r?.fornecedores?.forEach((f: any) => {
+      const loja = f?.loja || 'Outros';
+      counts[loja] = (counts[loja] || 0) + 1;
+    }));
+    return Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+  })();
+
+  // Derived: unique brands from results
+  const availableMarcas = (() => {
+    if (!aiParsedData) return [] as { name: string; count: number }[];
+    const counts: Record<string, number> = {};
+    const results = Array.isArray(aiParsedData) ? aiParsedData : [aiParsedData];
+    results.forEach((r: any) => r?.fornecedores?.forEach((f: any) => {
+      const marca = f?.marca || 'Sem marca';
+      counts[marca] = (counts[marca] || 0) + 1;
+    }));
+    return Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+  })();
+
   // Price range from results
   const priceRange = (() => {
     if (!aiParsedData) return { min: 0, max: 0 };
@@ -270,9 +300,19 @@ export default function Precificacao() {
     setFilterCondicao('todos');
     setFilterPrecoMin('');
     setFilterPrecoMax('');
+    setFilterLojas([]);
+    setFilterMarcas([]);
   };
 
-  const hasActiveFilters = selectedCategory !== 'todos' || filterFreteGratis || filterCondicao !== 'todos' || filterPrecoMin !== '' || filterPrecoMax !== '';
+  const hasActiveFilters = selectedCategory !== 'todos' || filterFreteGratis || filterCondicao !== 'todos' || filterPrecoMin !== '' || filterPrecoMax !== '' || filterLojas.length > 0 || filterMarcas.length > 0;
+
+  const toggleLojaFilter = (loja: string) => {
+    setFilterLojas(prev => prev.includes(loja) ? prev.filter(l => l !== loja) : [...prev, loja]);
+  };
+
+  const toggleMarcaFilter = (marca: string) => {
+    setFilterMarcas(prev => prev.includes(marca) ? prev.filter(m => m !== marca) : [...prev, marca]);
+  };
 
   const loadSavedSearches = async () => {
     if (!user) return;
@@ -782,6 +822,74 @@ Retorne APENAS JSON puro, sem markdown, sem crases, sem texto adicional. Mínimo
                       Frete grátis
                     </button>
                   </div>
+
+                  {/* Lojas */}
+                  {availableLojas.length > 0 && (
+                    <div className="bg-card border border-border/40 rounded-lg p-3">
+                      <h4 className="text-[11px] font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Store className="w-3 h-3 text-primary" />
+                        Lojas
+                      </h4>
+                      <ul className="space-y-0.5 max-h-[180px] overflow-y-auto">
+                        {availableLojas.map((loja) => (
+                          <li key={loja.name}>
+                            <button
+                              onClick={() => toggleLojaFilter(loja.name)}
+                              className={cn(
+                                "w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors",
+                                filterLojas.includes(loja.name)
+                                  ? "bg-primary/10 text-primary font-semibold"
+                                  : "text-foreground hover:bg-muted"
+                              )}
+                            >
+                              {filterLojas.includes(loja.name) ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3 text-muted-foreground" />}
+                              <span className="truncate flex-1 text-left">{loja.name}</span>
+                              <span className="text-[10px] text-muted-foreground ml-1">({loja.count})</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      {filterLojas.length > 0 && (
+                        <button onClick={() => setFilterLojas([])} className="text-[10px] text-primary hover:underline mt-1.5">
+                          Limpar lojas
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Marcas */}
+                  {availableMarcas.length > 0 && (
+                    <div className="bg-card border border-border/40 rounded-lg p-3">
+                      <h4 className="text-[11px] font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Award className="w-3 h-3 text-primary" />
+                        Marcas
+                      </h4>
+                      <ul className="space-y-0.5 max-h-[180px] overflow-y-auto">
+                        {availableMarcas.map((marca) => (
+                          <li key={marca.name}>
+                            <button
+                              onClick={() => toggleMarcaFilter(marca.name)}
+                              className={cn(
+                                "w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors",
+                                filterMarcas.includes(marca.name)
+                                  ? "bg-primary/10 text-primary font-semibold"
+                                  : "text-foreground hover:bg-muted"
+                              )}
+                            >
+                              {filterMarcas.includes(marca.name) ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3 text-muted-foreground" />}
+                              <span className="truncate flex-1 text-left">{marca.name}</span>
+                              <span className="text-[10px] text-muted-foreground ml-1">({marca.count})</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      {filterMarcas.length > 0 && (
+                        <button onClick={() => setFilterMarcas([])} className="text-[10px] text-primary hover:underline mt-1.5">
+                          Limpar marcas
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
