@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -90,11 +90,15 @@ function isValidImageUrl(url?: string): boolean {
   if (/m\.media-amazon\.com\/images\/I\//i.test(trimmed)) return true;
   if (/images\.kabum\.com\.br/i.test(trimmed)) return true;
   if (/magazineluiza/i.test(trimmed) && /\.(jpg|png|webp)/i.test(trimmed)) return true;
-  // Reject known fakes
+  if (/gazinatacado/i.test(trimmed) && /\.(jpg|png|webp)/i.test(trimmed)) return true;
+  // Reject known fakes, ads, banners
   if (/\/D_NQ_NP_ID-MLB/i.test(trimmed)) return false;
   if (/placeholder/i.test(trimmed)) return false;
-  if (/logo|icon|sprite|banner|favicon|badge|selo/i.test(trimmed)) return false;
-  if (/1x1|pixel|tracking/i.test(trimmed)) return false;
+  if (/logo|icon|sprite|banner|favicon|badge|selo|stamp|watermark/i.test(trimmed)) return false;
+  if (/1x1|pixel|tracking|analytics|ad[s]?[_\-\/]|doubleclick|googlesyndication|adsense|adserver|pubmatic|criteo|taboola|outbrain/i.test(trimmed)) return false;
+  if (/promo[çc]|campanha|oferta.*banner|slide.*banner|carousel.*ad|anuncio/i.test(trimmed)) return false;
+  // Reject tiny images (likely icons/tracking)
+  if (/[_\-\/](\d{1,2})x(\d{1,2})\./i.test(trimmed)) return false;
   // Accept any other image URL that ends with image extension
   if (/\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i.test(trimmed)) return true;
   return false;
@@ -171,71 +175,60 @@ function useQuickAddToProposta() {
   };
 }
 
-/* ─── Image Gallery with sliding ─── */
+/* ─── Image Gallery with auto-slide ─── */
 function ImageGallery({ item, className, onClick }: { item: FornecedorML; className?: string; onClick?: () => void }) {
   const allImages = (item.images?.length ? item.images : (item.image_url ? [item.image_url] : [])).filter(isValidImageUrl);
   const [idx, setIdx] = useState(0);
   const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set());
+  const [paused, setPaused] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const validImages = allImages.filter(url => !failedUrls.has(url));
-  const currentImg = validImages[idx % validImages.length];
   const hasMultiple = validImages.length > 1;
+  const safeIdx = validImages.length > 0 ? idx % validImages.length : 0;
+  const currentImg = validImages[safeIdx];
 
-  const prev = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIdx(i => (i - 1 + validImages.length) % validImages.length);
-  }, [validImages.length]);
-
-  const next = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIdx(i => (i + 1) % validImages.length);
-  }, [validImages.length]);
+  // Auto-slide every 3 seconds
+  useEffect(() => {
+    if (!hasMultiple || paused) return;
+    intervalRef.current = setInterval(() => {
+      setIdx(i => (i + 1) % validImages.length);
+    }, 3000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [hasMultiple, paused, validImages.length]);
 
   const handleError = useCallback((url: string) => {
     setFailedUrls(prev => new Set(prev).add(url));
   }, []);
 
   return (
-    <div className={`relative group/gallery overflow-hidden ${className || ''}`} onClick={onClick}>
+    <div
+      className={`relative overflow-hidden ${className || ''}`}
+      onClick={onClick}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
       {currentImg ? (
         <img
           src={currentImg}
           alt={item.produto}
-          className="w-full h-full object-contain p-2"
+          className="w-full h-full object-contain p-2 transition-opacity duration-300"
           onError={() => handleError(currentImg)}
         />
       ) : (
         <Package className="w-16 h-16 text-muted-foreground/20 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
       )}
       {hasMultiple && (
-        <>
-          <button
-            onClick={prev}
-            className="absolute left-1 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover/gallery:opacity-100 transition-opacity shadow-sm hover:bg-background"
-          >
-            <ChevronLeft className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={next}
-            className="absolute right-1 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover/gallery:opacity-100 transition-opacity shadow-sm hover:bg-background"
-          >
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-          {/* Dots indicator */}
-          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
-            {validImages.map((_, i) => (
-              <button
-                key={i}
-                onClick={(e) => { e.stopPropagation(); setIdx(i); }}
-                className={`w-1.5 h-1.5 rounded-full transition-all ${
-                  i === idx % validImages.length
-                    ? 'bg-primary w-3'
-                    : 'bg-foreground/30 hover:bg-foreground/50'
-                }`}
-              />
-            ))}
-          </div>
-        </>
+        <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
+          {validImages.map((_, i) => (
+            <span
+              key={i}
+              className={`w-1.5 h-1.5 rounded-full transition-all ${
+                i === safeIdx ? 'bg-primary w-3' : 'bg-foreground/30'
+              }`}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
