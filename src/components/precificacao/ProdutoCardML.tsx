@@ -117,6 +117,29 @@ function buildRealStoreUrl(loja: string, produto: string): string {
     'balaodainformatica': `https://www.balaodasinformatica.com.br/busca?q=${q}`,
     'chipart': `https://www.chipart.com.br/busca?q=${q}`,
     'ibyte': `https://www.ibyte.com.br/catalogsearch/result/?q=${q}`,
+    // E-commerce platforms (Bling integrations)
+    'tray': `https://www.tray.com.br`,
+    'nuvemshop': `https://www.nuvemshop.com.br`,
+    'lojaintegrada': `https://lojaintegrada.com.br`,
+    'shopify': `https://www.shopify.com/br/search?q=${q}`,
+    'vtex': `https://www.vtex.com`,
+    'woocommerce': `https://woo.com`,
+    'mercadoshops': `https://www.mercadoshops.com.br`,
+    'bagy': `https://www.bagy.com.br`,
+    'wix': `https://www.wix.com`,
+    'wake': `https://www.wake.tech`,
+    'opencart': `https://www.opencart.com`,
+    'prestashop': `https://www.prestashop.com`,
+    'magento': `https://business.adobe.com/products/magento/magento-commerce.html`,
+    // Additional retailers
+    'leroymerlin': `https://www.leroymerlin.com.br/search?term=${q}`,
+    'madeiramadeira': `https://www.madeiramadeira.com.br/busca?q=${q}`,
+    'fastshop': `https://www.fastshop.com.br/web/s/${q}`,
+    'colombo': `https://www.colombo.com.br/busca?q=${q}`,
+    'centauro': `https://www.centauro.com.br/busca?q=${q}`,
+    'dafiti': `https://www.dafiti.com.br/catalog/?q=${q}`,
+    'netshoes': `https://www.netshoes.com.br/busca?q=${q}`,
+    'zattini': `https://www.zattini.com.br/busca?q=${q}`,
   };
 
   // Try to match store name
