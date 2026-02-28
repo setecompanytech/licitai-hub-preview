@@ -483,73 +483,77 @@ Deno.serve(async (req) => {
 
     // Build texto_integral in gazette format for each result
     function montarTextoIntegral(r: any): string {
-      const partes: string[] = [];
+      const linhas: string[] = [];
 
-      // Tipo do ato
+      // Tipo do ato (título em destaque)
       const tipoLabel: Record<string, string> = {
         aviso_licitacao: "AVISO DE LICITAÇÃO",
-        edital: "EDITAL",
-        suspensao: "AVISO DE SUSPENSÃO",
-        cancelamento: "AVISO DE CANCELAMENTO",
-        adiamento: "AVISO DE ADIAMENTO",
-        revogacao: "AVISO DE REVOGAÇÃO",
+        edital: "EDITAL DE LICITAÇÃO",
+        suspensao: "AVISO DE SUSPENSÃO DE LICITAÇÃO",
+        cancelamento: "AVISO DE CANCELAMENTO DE LICITAÇÃO",
+        adiamento: "AVISO DE ADIAMENTO DE LICITAÇÃO",
+        revogacao: "AVISO DE REVOGAÇÃO DE LICITAÇÃO",
         homologacao: "TERMO DE HOMOLOGAÇÃO",
         adjudicacao: "TERMO DE ADJUDICAÇÃO",
         aditivamento: "EXTRATO DE TERMO ADITIVO",
-        errata: "ERRATA",
+        errata: "ERRATA DE EDITAL",
         resultado: "RESULTADO DE JULGAMENTO",
         contrato: "EXTRATO DE CONTRATO",
         ata_registro_precos: "ATA DE REGISTRO DE PREÇOS",
       };
 
-      partes.push(tipoLabel[r.tipo] || "PUBLICAÇÃO");
+      const tipoTitulo = tipoLabel[r.tipo] || "PUBLICAÇÃO OFICIAL";
 
-      // Modalidade e número
+      // Subtítulo com modalidade
       if (r.modalidade) {
-        partes[0] += `. ${r.modalidade.toUpperCase()}`;
+        linhas.push(`${tipoTitulo}`);
+        linhas.push(`${r.modalidade.toUpperCase()}`);
+      } else {
+        linhas.push(tipoTitulo);
+      }
+
+      // Órgão responsável
+      if (r.orgao) {
+        linhas.push(`${r.orgao}, comunica:`);
       }
 
       // Objeto
       if (r.titulo) {
-        partes.push(`OBJETO: ${r.titulo.toUpperCase()}`);
-      }
-
-      // Órgão
-      if (r.orgao) {
-        partes.push(`ÓRGÃO: ${r.orgao.toUpperCase()}`);
+        linhas.push(`OBJETO: ${r.titulo}`);
       }
 
       // Valor estimado
       if (r.valor_estimado) {
         const valorFmt = Number(r.valor_estimado).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-        partes.push(`VALOR ESTIMADO: ${valorFmt}`);
+        linhas.push(`VALOR ESTIMADO: ${valorFmt}`);
       }
 
-      // Data
+      // Data de abertura / publicação
       if (r.data_publicacao) {
         const d = new Date(r.data_publicacao + "T12:00:00");
         const dataFmt = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-        partes.push(`DATA DE PUBLICAÇÃO: ${dataFmt}`);
+        linhas.push(`DATA DA ABERTURA: ${dataFmt}`);
       }
 
-      // Local/município
+      // Local / município
       if (r.municipio && r.uf) {
-        partes.push(`LOCAL: ${r.municipio.toUpperCase()}/${r.uf}`);
+        linhas.push(`LOCAL: ${r.municipio}/${r.uf}`);
       } else if (r.uf) {
-        partes.push(`UF: ${r.uf}`);
+        linhas.push(`UF: ${r.uf}`);
       }
 
-      // Portal de origem
+      // Portal / fonte
       if (r.portal) {
-        partes.push(`FONTE: ${r.portal.toUpperCase()}`);
+        linhas.push(`FONTE: ${r.portal}`);
       }
 
       // URL do edital
       if (r.url) {
-        partes.push(`EDITAL DISPONÍVEL EM: ${r.url}`);
+        linhas.push(`ENTREGA DO EDITAL: Os interessados poderão retirar o edital no sítio:`);
+        linhas.push(`${r.url}`);
       }
 
-      return partes.join(". ") + ".";
+      return linhas.join("\n");
     }
 
     // Prepare records for database
