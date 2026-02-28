@@ -73,6 +73,68 @@ function isFreteGratis(frete?: string) {
   return f.includes('grátis') || f.includes('gratis') || frete === '0' || frete === 'R$ 0,00';
 }
 
+/** Validates if an image URL looks real (not a fake AI-generated CDN URL) */
+function isValidImageUrl(url?: string): boolean {
+  if (!url) return false;
+  const trimmed = url.trim();
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) return false;
+  // Reject obviously fake patterns (AI often generates IDs like D_NQ_NP_ID, placeholder slugs, etc.)
+  if (/\/D_NQ_NP_\w+-MLB\.webp/i.test(trimmed)) return false;
+  if (/\/image\/ID\./i.test(trimmed)) return false;
+  if (/\/ID\/imagem\./i.test(trimmed)) return false;
+  if (/placeholder/i.test(trimmed)) return false;
+  return true;
+}
+
+/** Builds a real search URL for a store based on product name */
+function buildRealStoreUrl(loja: string, produto: string): string {
+  const q = encodeURIComponent(produto);
+  const lojaLower = loja.toLowerCase().replace(/\s+/g, '');
+
+  const storeSearchUrls: Record<string, string> = {
+    'mercadolivre': `https://lista.mercadolivre.com.br/${q.replace(/%20/g, '-')}`,
+    'amazon': `https://www.amazon.com.br/s?k=${q}`,
+    'magazineluiza': `https://www.magazineluiza.com.br/busca/${q}/`,
+    'magalu': `https://www.magazineluiza.com.br/busca/${q}/`,
+    'kabum': `https://www.kabum.com.br/busca/${q}`,
+    'pichau': `https://www.pichau.com.br/search?q=${q}`,
+    'terabyte': `https://www.terabyteshop.com.br/busca?str=${q}`,
+    'americanas': `https://www.americanas.com.br/busca/${q}`,
+    'casasbahia': `https://www.casasbahia.com.br/busca/${q}`,
+    'carrefour': `https://www.carrefour.com.br/s?q=${q}`,
+    'shopee': `https://shopee.com.br/search?keyword=${q}`,
+    'aliexpress': `https://pt.aliexpress.com/w/wholesale-${q.replace(/%20/g, '-')}.html`,
+    'submarino': `https://www.submarino.com.br/busca/${q}`,
+    'havan': `https://www.havan.com.br/busca?q=${q}`,
+    'gimba': `https://www.gimba.com.br/busca?q=${q}`,
+    'balãodainformática': `https://www.balaodasinformatica.com.br/busca?q=${q}`,
+    'balaodainformatica': `https://www.balaodasinformatica.com.br/busca?q=${q}`,
+    'chipart': `https://www.chipart.com.br/busca?q=${q}`,
+    'ibyte': `https://www.ibyte.com.br/catalogsearch/result/?q=${q}`,
+  };
+
+  // Try to match store name
+  for (const [key, url] of Object.entries(storeSearchUrls)) {
+    if (lojaLower.includes(key)) return url;
+  }
+
+  // Fallback: Google Shopping search with store name
+  return `https://www.google.com.br/search?tbm=shop&q=${encodeURIComponent(produto + ' ' + loja)}`;
+}
+
+/** Gets effective URL: uses original if it looks valid, otherwise builds a search URL */
+function getEffectiveUrl(item: FornecedorML): string {
+  const url = item.url?.trim();
+  // Check if URL looks like a real product page (not a fake AI slug)
+  if (url && url.startsWith('https://') && !url.includes('/produto-slug/') && !url.includes('/produto-i.') && url !== '#') {
+    // Additional heuristic: reject if URL contains obvious placeholder patterns
+    if (!/\/p\/MLB\d{5}$/i.test(url) && !/\/dp\/B0XXXXX/i.test(url) && !/\/produto\/\d{5}\/nome$/i.test(url)) {
+      return url;
+    }
+  }
+  return buildRealStoreUrl(item.loja, item.produto);
+}
+
 /* ─── Google Shopping Grid Card ─── */
 function GoogleShoppingCard({ item, isCheapest }: { item: FornecedorML; isCheapest: boolean }) {
   const desconto = getDiscountPercent(item);
@@ -97,7 +159,7 @@ function GoogleShoppingCard({ item, isCheapest }: { item: FornecedorML; isCheape
 
       {/* Image area */}
       <div className="relative w-full aspect-square bg-muted/10 flex items-center justify-center p-4 border-b border-border/20 overflow-hidden">
-        {item.image_url ? (
+        {isValidImageUrl(item.image_url) ? (
           <img
             src={item.image_url}
             alt={item.produto}
@@ -105,7 +167,7 @@ function GoogleShoppingCard({ item, isCheapest }: { item: FornecedorML; isCheape
             onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }}
           />
         ) : null}
-        <Package className={`w-16 h-16 text-muted-foreground/20 absolute ${item.image_url ? 'hidden' : ''}`} />
+        <Package className={`w-16 h-16 text-muted-foreground/20 absolute ${isValidImageUrl(item.image_url) ? 'hidden' : ''}`} />
       </div>
 
       {/* Content */}
@@ -157,19 +219,17 @@ function GoogleShoppingCard({ item, isCheapest }: { item: FornecedorML; isCheape
       </div>
 
       {/* Footer action */}
-      {item.url && item.url !== '#' && (
-        <div className="border-t border-border/20 px-3 py-2">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="w-full text-primary hover:text-primary hover:bg-primary/10 text-xs h-7"
-            onClick={() => window.open(item.url, '_blank')}
-          >
-            <ExternalLink className="w-3 h-3 mr-1" />
-            Ver oferta
-          </Button>
-        </div>
-      )}
+      <div className="border-t border-border/20 px-3 py-2">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="w-full text-primary hover:text-primary hover:bg-primary/10 text-xs h-7"
+          onClick={() => window.open(getEffectiveUrl(item), '_blank')}
+        >
+          <ExternalLink className="w-3 h-3 mr-1" />
+          Ver oferta
+        </Button>
+      </div>
     </div>
   );
 }
@@ -182,7 +242,7 @@ function MercadoLivreCard({ item, isCheapest }: { item: FornecedorML; isCheapest
     <div className="group flex gap-4 p-4 bg-card border border-border/40 rounded-lg hover:shadow-md hover:border-primary/30 transition-all duration-200 relative">
       {/* Image */}
       <div className="flex-shrink-0 w-[160px] h-[160px] bg-muted/10 rounded-md flex items-center justify-center border border-border/20 overflow-hidden">
-        {item.image_url ? (
+        {isValidImageUrl(item.image_url) ? (
           <img
             src={item.image_url}
             alt={item.produto}
@@ -190,7 +250,7 @@ function MercadoLivreCard({ item, isCheapest }: { item: FornecedorML; isCheapest
             onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }}
           />
         ) : null}
-        <Package className={`w-12 h-12 text-muted-foreground/20 ${item.image_url ? 'hidden' : ''}`} />
+        <Package className={`w-12 h-12 text-muted-foreground/20 ${isValidImageUrl(item.image_url) ? 'hidden' : ''}`} />
       </div>
 
       {/* Content */}
@@ -267,17 +327,15 @@ function MercadoLivreCard({ item, isCheapest }: { item: FornecedorML; isCheapest
         <Badge variant="outline" className="text-[10px]">
           {item.condicao || 'Novo'}
         </Badge>
-        {item.url && item.url !== '#' && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-primary hover:text-primary hover:bg-primary/10"
-            onClick={() => window.open(item.url, '_blank')}
-          >
-            <ExternalLink className="w-3.5 h-3.5 mr-1" />
-            <span className="text-xs">Ver</span>
-          </Button>
-        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-primary hover:text-primary hover:bg-primary/10"
+          onClick={() => window.open(getEffectiveUrl(item), '_blank')}
+        >
+          <ExternalLink className="w-3.5 h-3.5 mr-1" />
+          <span className="text-xs">Ver</span>
+        </Button>
       </div>
     </div>
   );
