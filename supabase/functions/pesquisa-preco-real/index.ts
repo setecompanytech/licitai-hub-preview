@@ -91,7 +91,7 @@ function isLikelyProductDetailPage(url: string, loja: string): boolean {
   if (loja === 'Magazine Luiza') return /\/p\//i.test(u) && !u.includes('/busca/');
   if (loja === 'KaBuM' || loja === 'Terabyte' || loja === 'Pichau') return /\/produto\//i.test(u);
   if (loja === 'Shopee') return /-i\.\d+\.\d+/i.test(url);
-  if (loja === 'Gazin Atacado') return /\/produto\//i.test(u) || /\/p\//i.test(u);
+  if (loja === 'Gazin Atacado') return u.includes('gazinatacado.com.br');
 
   return !isSearchOrListingPage(url);
 }
@@ -307,6 +307,14 @@ function isMainProduct(title: string, searchTerm: string, url: string, loja: str
     return false;
   }
 
+  // Skip generic category pages (e.g. "Eletrodomésticos no atacado", "Freezer no atacado")
+  if (/^(eletrodomésticos|eletrônicos|informática|móveis|utilidades)\s*(no\s*atacado|em\s*oferta)/i.test(titleLower)) {
+    return false;
+  }
+  if (/^(gazin\s*atacado|inicio|home)\s*[:|\-]?\s*$/i.test(titleLower.replace(/\s+/g, ' ').trim())) {
+    return false;
+  }
+
   // At least one significant word from the search should appear in the title
   const searchWords = searchLower.split(/\s+/).filter(w => w.length > 3);
   if (searchWords.length > 0) {
@@ -446,7 +454,7 @@ serve(async (req) => {
       searchProducts(apiKey, `${termo} comprar preço site:magazineluiza.com.br OR site:kabum.com.br`, 10),
       searchProducts(apiKey, `${termo} comprar preço site:americanas.com.br OR site:casasbahia.com.br`, 8),
       searchProducts(apiKey, `${termo} comprar preço site:shopee.com.br OR site:carrefour.com.br`, 8),
-      searchProducts(apiKey, `${termo} comprar preço site:gazinatacado.com.br`, 8),
+      searchProducts(apiKey, `"${termo}" site:gazinatacado.com.br`, 8),
       searchProducts(apiKey, `${termo} comprar preço site:buscape.com.br OR site:zoom.com.br`, 8),
       searchProducts(apiKey, `${termo} preço comprar Brasil`, 12),
     ]);
