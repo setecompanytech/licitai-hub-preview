@@ -457,6 +457,7 @@ export function PesquisaResultML({
   if (!data && !rawMarkdown) return null;
 
   if (data) {
+    const freteMaisBarato = freteResult?.opcoes?.find(o => o.valor > 0) || freteResult?.opcoes?.[0] || null;
     const sorted = [...data.fornecedores].sort((a, b) => {
       const freteVal = freteMaisBarato?.valor || 0;
       if (sortMode === 'menor') return a.preco - b.preco;
@@ -468,8 +469,6 @@ export function PesquisaResultML({
       return scoreB - scoreA;
     });
     const cheapestPrice = Math.min(...data.fornecedores.map(f => f.preco));
-    // Get cheapest freight option if available
-    const freteMaisBarato = freteResult?.opcoes?.find(o => o.valor > 0) || freteResult?.opcoes?.[0] || null;
     return (
       <div className="space-y-4">
         {/* Header */}
