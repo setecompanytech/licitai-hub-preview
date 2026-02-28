@@ -78,19 +78,24 @@ function isFreteGratis(frete?: string) {
   return f.includes('grátis') || f.includes('gratis') || frete === '0' || frete === 'R$ 0,00';
 }
 
-/** Validates if an image URL looks real (not a fake AI-generated CDN URL) */
+/** Validates if an image URL looks real (not a fake/placeholder) */
 function isValidImageUrl(url?: string): boolean {
   if (!url) return false;
   const trimmed = url.trim();
   if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) return false;
+  // Known good CDNs
   if (/http2\.mlstatic\.com\/D_/i.test(trimmed)) return true;
   if (/m\.media-amazon\.com\/images\/I\//i.test(trimmed)) return true;
-  if (/\/D_NQ_NP_\w+-MLB\.webp$/i.test(trimmed)) return false;
-  if (/\/image\/ID\./i.test(trimmed)) return false;
-  if (/\/ID\/imagem\./i.test(trimmed)) return false;
-  if (/placeholder/i.test(trimmed)) return false;
+  if (/images\.kabum\.com\.br/i.test(trimmed)) return true;
+  if (/magazineluiza/i.test(trimmed) && /\.(jpg|png|webp)/i.test(trimmed)) return true;
+  // Reject known fakes
   if (/\/D_NQ_NP_ID-MLB/i.test(trimmed)) return false;
-  return true;
+  if (/placeholder/i.test(trimmed)) return false;
+  if (/logo|icon|sprite|banner|favicon|badge|selo/i.test(trimmed)) return false;
+  if (/1x1|pixel|tracking/i.test(trimmed)) return false;
+  // Accept any other image URL that ends with image extension
+  if (/\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i.test(trimmed)) return true;
+  return false;
 }
 
 /** Builds a real search URL for a store based on product name */
