@@ -69,6 +69,8 @@ function detectStore(url: string): string {
   if (u.includes('terabyteshop.com.br')) return 'Terabyte';
   if (u.includes('havan.com.br')) return 'Havan';
   if (u.includes('gazinatacado.com.br')) return 'Gazin Atacado';
+  if (u.includes('webcontinental.com.br')) return 'Webcontinental';
+  if (u.includes('pontofrio.com.br')) return 'Ponto Frio';
   if (u.includes('google.com')) return 'Google Shopping';
   if (u.includes('buscape.com.br')) return 'Buscapé';
   if (u.includes('zoom.com.br')) return 'Zoom';
@@ -99,7 +101,8 @@ function isLikelyProductDetailPage(url: string, loja: string): boolean {
 function storeRequiresDetailPage(loja: string): boolean {
   return [
     'Amazon', 'Mercado Livre', 'Magazine Luiza', 'KaBuM', 'Terabyte', 'Pichau', 'Shopee', 'Gazin Atacado',
-    'Americanas', 'Casas Bahia', 'Carrefour', 'Havan', 'Fast Shop', 'Leroy Merlin', 'MadeiraMadeira'
+    'Americanas', 'Casas Bahia', 'Carrefour', 'Havan', 'Fast Shop', 'Leroy Merlin', 'MadeiraMadeira',
+    'Webcontinental', 'Ponto Frio'
   ].includes(loja);
 }
 
@@ -456,6 +459,7 @@ serve(async (req) => {
       searchProducts(apiKey, `${termo} comprar preço site:shopee.com.br OR site:carrefour.com.br`, 8),
       searchProducts(apiKey, `"${termo}" site:gazinatacado.com.br`, 8),
       searchProducts(apiKey, `${termo} comprar preço site:buscape.com.br OR site:zoom.com.br`, 8),
+      searchProducts(apiKey, `${termo} comprar preço site:webcontinental.com.br OR site:pontofrio.com.br`, 8),
       searchProducts(apiKey, `${termo} preço comprar Brasil`, 12),
     ]);
 
