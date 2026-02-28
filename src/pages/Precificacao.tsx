@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import AppLayout from '@/components/layout/AppLayout';
@@ -12,9 +12,10 @@ import {
   DollarSign, Search, ShoppingCart, TrendingUp, TrendingDown,
   ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText, Loader2, Bot,
   Filter, Save, History, Trash2, Eye, CalendarIcon,
-  MapPin, Globe
+  MapPin, Globe, ChevronsUpDown, Check
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import { toast } from 'sonner';
@@ -169,6 +170,7 @@ export default function Precificacao() {
   const [selectedRegiao, setSelectedRegiao] = useState('todos');
   const [selectedEstado, setSelectedEstado] = useState('todos');
   const [selectedCidade, setSelectedCidade] = useState('todos');
+  const [categoryOpen, setCategoryOpen] = useState(false);
   const navigate = useNavigate();
   const { addItem, hasPending, pendingItems } = usePropostaCart();
   const abortRef = useRef(false);
@@ -428,23 +430,47 @@ Retorne APENAS JSON puro, sem markdown, sem crases, sem texto adicional. Mínimo
             <Filter className="w-4 h-4" />
             <span className="font-medium">Categoria:</span>
           </div>
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-[280px] h-9">
-              <SelectValue placeholder="Todas as categorias" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[400px]">
-              <SelectItem value="todos">Todas as categorias</SelectItem>
-              {Object.entries(CATEGORIAS).map(([grupo, subs]) => (
-                <div key={grupo}>
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{grupo}</div>
-                  <SelectItem value={grupo}>{grupo} (geral)</SelectItem>
-                  {subs.map((sub) => (
-                    <SelectItem key={sub} value={`${grupo} > ${sub}`}>  ↳ {sub}</SelectItem>
+          <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" role="combobox" aria-expanded={categoryOpen} className="w-[320px] h-9 justify-between font-normal">
+                <span className="truncate">
+                  {selectedCategory === 'todos' ? 'Todas as categorias' : selectedCategory}
+                </span>
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[320px] p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Buscar categoria..." />
+                <CommandList className="max-h-[350px]">
+                  <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem value="todos" onSelect={() => { setSelectedCategory('todos'); setCategoryOpen(false); }}>
+                      <Check className={cn("mr-2 h-4 w-4", selectedCategory === 'todos' ? "opacity-100" : "opacity-0")} />
+                      Todas as categorias
+                    </CommandItem>
+                  </CommandGroup>
+                  {Object.entries(CATEGORIAS).map(([grupo, subs]) => (
+                    <CommandGroup key={grupo} heading={grupo}>
+                      <CommandItem value={grupo} onSelect={() => { setSelectedCategory(grupo); setCategoryOpen(false); }}>
+                        <Check className={cn("mr-2 h-4 w-4", selectedCategory === grupo ? "opacity-100" : "opacity-0")} />
+                        {grupo} (geral)
+                      </CommandItem>
+                      {subs.map((sub) => {
+                        const val = `${grupo} > ${sub}`;
+                        return (
+                          <CommandItem key={val} value={`${grupo} ${sub}`} onSelect={() => { setSelectedCategory(val); setCategoryOpen(false); }}>
+                            <Check className={cn("mr-2 h-4 w-4", selectedCategory === val ? "opacity-100" : "opacity-0")} />
+                            <span className="ml-2">↳ {sub}</span>
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
                   ))}
-                </div>
-              ))}
-            </SelectContent>
-          </Select>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
           {selectedCategory !== 'todos' && (
             <Button variant="ghost" size="sm" onClick={() => setSelectedCategory('todos')}>
               Limpar
