@@ -72,6 +72,7 @@ function detectStore(url: string): string {
   if (u.includes('webcontinental.com.br')) return 'Webcontinental';
   if (u.includes('pontofrio.com.br')) return 'Ponto Frio';
   if (u.includes('rakaymed.com.br')) return 'Rakay Med';
+  if (u.includes('hospitalardistribuidora.com.br')) return 'Hospitalar Distribuidora';
   if (u.includes('google.com')) return 'Google Shopping';
   if (u.includes('buscape.com.br')) return 'Buscapé';
   if (u.includes('zoom.com.br')) return 'Zoom';
@@ -103,7 +104,7 @@ function storeRequiresDetailPage(loja: string): boolean {
   return [
     'Amazon', 'Mercado Livre', 'Magazine Luiza', 'KaBuM', 'Terabyte', 'Pichau', 'Shopee', 'Gazin Atacado',
     'Americanas', 'Casas Bahia', 'Carrefour', 'Havan', 'Fast Shop', 'Leroy Merlin', 'MadeiraMadeira',
-    'Webcontinental', 'Ponto Frio', 'Rakay Med'
+    'Webcontinental', 'Ponto Frio', 'Rakay Med', 'Hospitalar Distribuidora'
   ].includes(loja);
 }
 
@@ -461,7 +462,7 @@ serve(async (req) => {
       searchProducts(apiKey, `"${termo}" site:gazinatacado.com.br`, 8),
       searchProducts(apiKey, `${termo} comprar preço site:buscape.com.br OR site:zoom.com.br`, 8),
       searchProducts(apiKey, `${termo} comprar preço site:webcontinental.com.br OR site:pontofrio.com.br`, 8),
-      searchProducts(apiKey, `${termo} site:rakaymed.com.br`, 8),
+      searchProducts(apiKey, `${termo} site:rakaymed.com.br OR site:hospitalardistribuidora.com.br`, 8),
       searchProducts(apiKey, `${termo} preço comprar Brasil`, 12),
     ]);
 
