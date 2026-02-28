@@ -572,8 +572,15 @@ Deno.serve(async (req) => {
       texto_integral: montarTextoIntegral(r),
     }));
 
-    // Save to database
+    // Save to database — remove old records first to avoid duplicates
     if (registros.length > 0) {
+      // Delete previous results for this user to prevent accumulation of duplicates
+      const { error: deleteError } = await supabase
+        .from("monitoramento_editais")
+        .delete()
+        .eq("user_id", user.id);
+      if (deleteError) console.error("Delete old records error:", deleteError);
+
       const { error: insertError } = await supabase
         .from("monitoramento_editais")
         .insert(registros);
