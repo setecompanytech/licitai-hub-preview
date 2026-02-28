@@ -1,13 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import {
   DollarSign, Search, ShoppingCart, TrendingUp, TrendingDown,
   ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText, Loader2, Bot,
-  Monitor, Briefcase, SprayCan, UtensilsCrossed, Filter, Save, History, Trash2, Eye
+  Monitor, Briefcase, SprayCan, UtensilsCrossed, Filter, Save, History, Trash2, Eye, CalendarIcon
 } from 'lucide-react';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
@@ -101,6 +105,8 @@ export default function Precificacao() {
   const [savedSearches, setSavedSearches] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const navigate = useNavigate();
   const { addItem, hasPending, pendingItems } = usePropostaCart();
   const abortRef = useRef(false);
@@ -117,11 +123,20 @@ export default function Precificacao() {
   const loadSavedSearches = async () => {
     if (!user) return;
     setLoadingHistory(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from('pesquisas_preco')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(20);
+    if (dateFrom) {
+      query = query.gte('created_at', dateFrom.toISOString());
+    }
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23, 59, 59, 999);
+      query = query.lte('created_at', end.toISOString());
+    }
+    const { data, error } = await query;
     if (error) {
       toast.error('Erro ao carregar histórico.');
     } else {
@@ -166,7 +181,7 @@ export default function Precificacao() {
 
   useEffect(() => {
     if (showHistory) loadSavedSearches();
-  }, [showHistory]);
+  }, [showHistory, dateFrom, dateTo]);
 
   const handleAISearch = async () => {
     if (!search.trim()) {
@@ -324,6 +339,36 @@ Siga RIGOROSAMENTE o formato padronizado: blocos por fornecedor (com produto, ma
               <History className="w-5 h-5 text-accent" />
               <h3 className="font-semibold text-sm">Pesquisas Salvas</h3>
               {loadingHistory && <Loader2 className="w-4 h-4 animate-spin text-accent" />}
+            </div>
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
+                    <CalendarIcon className="w-4 h-4 mr-1" />
+                    {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Data inicial"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className={cn("p-3 pointer-events-auto")} />
+                </PopoverContent>
+              </Popover>
+              <span className="text-xs text-muted-foreground">até</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
+                    <CalendarIcon className="w-4 h-4 mr-1" />
+                    {dateTo ? format(dateTo, "dd/MM/yyyy") : "Data final"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className={cn("p-3 pointer-events-auto")} />
+                </PopoverContent>
+              </Popover>
+              {(dateFrom || dateTo) && (
+                <Button variant="ghost" size="sm" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }}>
+                  Limpar datas
+                </Button>
+              )}
             </div>
             {savedSearches.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhuma pesquisa salva ainda.</p>
