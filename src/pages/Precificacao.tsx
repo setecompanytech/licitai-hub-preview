@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   DollarSign, Search, ShoppingCart, TrendingUp, TrendingDown,
-  ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText
+  ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText, Loader2, Bot
 } from 'lucide-react';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import { toast } from 'sonner';
+import { streamAIChat, type ChatMessage } from '@/lib/ai-stream';
+import ReactMarkdown from 'react-markdown';
 
 type FontePreco = {
   fonte: string;
@@ -89,8 +91,34 @@ const fonteColors: Record<string, string> = {
 
 export default function Precificacao() {
   const [search, setSearch] = useState('');
+  const [aiResult, setAiResult] = useState('');
+  const [isSearchingAI, setIsSearchingAI] = useState(false);
   const navigate = useNavigate();
   const { addItem, hasPending, pendingItems } = usePropostaCart();
+  const abortRef = useRef(false);
+
+  const handleAISearch = async () => {
+    if (!search.trim()) {
+      toast.error('Digite um produto para buscar.');
+      return;
+    }
+    setIsSearchingAI(true);
+    setAiResult('');
+    abortRef.current = false;
+
+    await streamAIChat({
+      messages: [{ role: 'user', content: `Pesquise preços de mercado para: "${search}". Apresente os resultados em tabela markdown com todas as colunas obrigatórias.` }],
+      action: 'pesquisa_mercado',
+      onDelta: (text) => {
+        if (!abortRef.current) setAiResult((prev) => prev + text);
+      },
+      onDone: () => setIsSearchingAI(false),
+      onError: (err) => {
+        toast.error(err);
+        setIsSearchingAI(false);
+      },
+    });
+  };
 
   const handleAddToProposta = (item: ItemPesquisa, preco: number) => {
     const valorTotal = preco * item.quantidade;
@@ -156,15 +184,43 @@ export default function Precificacao() {
         </div>
 
         {/* Search */}
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar item..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex gap-2 w-full max-w-2xl">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Ex: Notebook Dell i7, Monitor 24'', Toner HP..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAISearch()}
+              className="pl-9"
+            />
+          </div>
+          <Button
+            onClick={handleAISearch}
+            disabled={isSearchingAI}
+            className="bg-accent hover:bg-accent/90 text-accent-foreground min-w-[120px]"
+          >
+            {isSearchingAI ? (
+              <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Buscando...</>
+            ) : (
+              <><Bot className="w-4 h-4 mr-1" /> BUSCAR</>
+            )}
+          </Button>
         </div>
+
+        {/* AI Results */}
+        {(aiResult || isSearchingAI) && (
+          <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Bot className="w-5 h-5 text-accent" />
+              <h3 className="font-semibold text-sm">Resultado da Pesquisa de Mercado (IA)</h3>
+              {isSearchingAI && <Loader2 className="w-4 h-4 animate-spin text-accent" />}
+            </div>
+            <div className="prose prose-sm max-w-none dark:prose-invert overflow-x-auto">
+              <ReactMarkdown>{aiResult}</ReactMarkdown>
+            </div>
+          </div>
+        )}
 
         {/* Pending items banner */}
         {hasPending && (
