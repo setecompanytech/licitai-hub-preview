@@ -113,7 +113,15 @@ export default function DiariosOficiaisTab() {
     if (error) {
       console.error('Erro ao carregar atos:', error);
     } else {
-      setAtos(data || []);
+      // Deduplicate client-side by title+orgao similarity
+      const seen = new Set<string>();
+      const unique = (data || []).filter(a => {
+        const key = `${a.titulo.substring(0, 60).toLowerCase()}_${a.orgao.substring(0, 30).toLowerCase()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      setAtos(unique);
     }
     setLoading(false);
   };
@@ -372,7 +380,7 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
             <Newspaper className="w-5 h-5 text-accent" />
             <h3 className="font-semibold text-sm">Busca nos Diários Oficiais</h3>
             <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-[10px]">
-              {naoLidos > 0 ? `${naoLidos} novos` : `${atos.length} registros`}
+              {naoLidos > 0 ? `${naoLidos} novos` : `${atosOrdenados.length} registros`}
             </Badge>
           </div>
           <div className="flex items-center gap-2">
