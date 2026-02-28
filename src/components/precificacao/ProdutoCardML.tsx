@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   ExternalLink, Star, Truck, ShieldCheck, Store, TrendingDown,
-  Package, LayoutGrid, List, Percent, ArrowUpDown
+  Package, LayoutGrid, List, Percent, ArrowUpDown, ImageIcon, Loader2
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -78,11 +78,16 @@ function isValidImageUrl(url?: string): boolean {
   if (!url) return false;
   const trimmed = url.trim();
   if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) return false;
-  // Reject obviously fake patterns (AI often generates IDs like D_NQ_NP_ID, placeholder slugs, etc.)
-  if (/\/D_NQ_NP_\w+-MLB\.webp/i.test(trimmed)) return false;
+  // Allow real ML/Amazon images (from Firecrawl scraping)
+  if (/http2\.mlstatic\.com\/D_/i.test(trimmed)) return true;
+  if (/m\.media-amazon\.com\/images\/I\//i.test(trimmed)) return true;
+  // Reject obviously fake patterns (AI often generates template IDs)
+  if (/\/D_NQ_NP_\w+-MLB\.webp$/i.test(trimmed)) return false;
   if (/\/image\/ID\./i.test(trimmed)) return false;
   if (/\/ID\/imagem\./i.test(trimmed)) return false;
   if (/placeholder/i.test(trimmed)) return false;
+  // Reject generic AI template URLs
+  if (/\/D_NQ_NP_ID-MLB/i.test(trimmed)) return false;
   return true;
 }
 
@@ -402,10 +407,12 @@ function LoadingSkeleton() {
 export function PesquisaResultML({
   data,
   isLoading,
+  isLoadingImages,
   rawMarkdown,
 }: {
   data: PesquisaMLResult | null;
   isLoading: boolean;
+  isLoadingImages?: boolean;
   rawMarkdown?: string;
 }) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -435,6 +442,12 @@ export function PesquisaResultML({
             </h3>
             <p className="text-xs text-muted-foreground">
               {data.fornecedores.length} fornecedores encontrados · Pesquisa em {data.data_pesquisa}
+              {isLoadingImages && (
+                <span className="ml-2 inline-flex items-center gap-1 text-primary">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Buscando imagens reais...
+                </span>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
