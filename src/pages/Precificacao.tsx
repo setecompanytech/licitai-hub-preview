@@ -12,7 +12,7 @@ import {
   DollarSign, Search, ShoppingCart, TrendingUp, TrendingDown,
   ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText, Loader2, Bot,
   Filter, Save, History, Trash2, Eye, CalendarIcon,
-  MapPin, Globe, ChevronRight, Tag, X
+  MapPin, Globe, ChevronRight, Tag, X, Truck, CheckSquare, Square
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
@@ -169,6 +169,10 @@ export default function Precificacao() {
   const [selectedRegiao, setSelectedRegiao] = useState('todos');
   const [selectedEstado, setSelectedEstado] = useState('todos');
   const [selectedCidade, setSelectedCidade] = useState('todos');
+  const [filterFreteGratis, setFilterFreteGratis] = useState(false);
+  const [filterCondicao, setFilterCondicao] = useState<'todos' | 'Novo' | 'Usado' | 'Recondicionado'>('todos');
+  const [filterPrecoMin, setFilterPrecoMin] = useState('');
+  const [filterPrecoMax, setFilterPrecoMax] = useState('');
   const navigate = useNavigate();
   const { addItem, hasPending, pendingItems } = usePropostaCart();
   const abortRef = useRef(false);
@@ -219,12 +223,56 @@ export default function Precificacao() {
     return { main: mainCat, subs, total };
   })();
 
-  // Filter fornecedores by selected category
-  const filteredByCategory = (fornecedores: any[]) => {
-    if (selectedCategory === 'todos') return fornecedores;
-    return fornecedores.filter((f: any) => (f?.categoria || 'Outros') === selectedCategory);
+  // Combined filter for all sidebar options
+  const applyAllFilters = (fornecedores: any[]) => {
+    return fornecedores.filter((f: any) => {
+      // Category
+      if (selectedCategory !== 'todos' && (f?.categoria || 'Outros') !== selectedCategory) return false;
+      // Frete grátis
+      if (filterFreteGratis) {
+        const frete = (f?.frete || '').toLowerCase();
+        const isFree = frete.includes('grátis') || frete.includes('gratis') || frete === '0' || frete === 'r$ 0,00';
+        if (!isFree) return false;
+      }
+      // Condição
+      if (filterCondicao !== 'todos' && (f?.condicao || 'Novo') !== filterCondicao) return false;
+      // Preço mínimo
+      const pMin = parseFloat(filterPrecoMin);
+      if (!isNaN(pMin) && f?.preco < pMin) return false;
+      // Preço máximo
+      const pMax = parseFloat(filterPrecoMax);
+      if (!isNaN(pMax) && f?.preco > pMax) return false;
+      return true;
+    });
   };
 
+  // Derived: unique conditions from results
+  const availableConditions = (() => {
+    if (!aiParsedData) return [];
+    const conds = new Set<string>();
+    const results = Array.isArray(aiParsedData) ? aiParsedData : [aiParsedData];
+    results.forEach((r: any) => r?.fornecedores?.forEach((f: any) => conds.add(f?.condicao || 'Novo')));
+    return Array.from(conds).sort();
+  })();
+
+  // Price range from results
+  const priceRange = (() => {
+    if (!aiParsedData) return { min: 0, max: 0 };
+    const results = Array.isArray(aiParsedData) ? aiParsedData : [aiParsedData];
+    const prices: number[] = [];
+    results.forEach((r: any) => r?.fornecedores?.forEach((f: any) => { if (f?.preco) prices.push(f.preco); }));
+    return { min: Math.min(...prices), max: Math.max(...prices) };
+  })();
+
+  const resetAllFilters = () => {
+    setSelectedCategory('todos');
+    setFilterFreteGratis(false);
+    setFilterCondicao('todos');
+    setFilterPrecoMin('');
+    setFilterPrecoMax('');
+  };
+
+  const hasActiveFilters = selectedCategory !== 'todos' || filterFreteGratis || filterCondicao !== 'todos' || filterPrecoMin !== '' || filterPrecoMax !== '';
 
   const loadSavedSearches = async () => {
     if (!user) return;
@@ -323,7 +371,7 @@ export default function Precificacao() {
     }
     setIsSearchingAI(true);
     setCurrentSearchTerm(search);
-    setSelectedCategory('todos');
+    resetAllFilters();
     setAiResult('');
     setAiParsedData(null);
     abortRef.current = false;
@@ -589,48 +637,151 @@ Retorne APENAS JSON puro, sem markdown, sem crases, sem texto adicional. Mínimo
         {/* AI Results with ML-style sidebar */}
         {(aiResult || isSearchingAI) && (
           <div className="flex gap-5">
-            {/* Left Sidebar – ML Category Filter */}
-            {categoryTree.subs.length > 1 && !isSearchingAI && (
-              <div className="w-[220px] flex-shrink-0">
-                <div className="sticky top-4 bg-card border border-border/40 rounded-lg p-3">
-                  <div className="flex items-center gap-1.5 mb-3">
-                    <Tag className="w-3.5 h-3.5 text-primary" />
-                    <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                      {categoryTree.main || 'Categorias'}
+            {/* Left Sidebar – ML Filters */}
+            {aiParsedData && !isSearchingAI && (
+              <div className="w-[230px] flex-shrink-0 hidden md:block">
+                <div className="sticky top-4 space-y-3">
+                  {/* Active filters summary */}
+                  {hasActiveFilters && (
+                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-2.5 flex items-center justify-between">
+                      <span className="text-[11px] text-primary font-medium">Filtros ativos</span>
+                      <button onClick={resetAllFilters} className="text-[10px] text-primary hover:underline">Limpar todos</button>
+                    </div>
+                  )}
+
+                  {/* Categories */}
+                  {categoryTree.subs.length > 0 && (
+                    <div className="bg-card border border-border/40 rounded-lg p-3">
+                      <h4 className="text-[11px] font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Tag className="w-3 h-3 text-primary" />
+                        {categoryTree.main || 'Categorias'}
+                      </h4>
+                      <ul className="space-y-0.5">
+                        <li>
+                          <button
+                            onClick={() => setSelectedCategory('todos')}
+                            className={cn(
+                              "w-full flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors",
+                              selectedCategory === 'todos'
+                                ? "bg-primary/10 text-primary font-semibold"
+                                : "text-foreground hover:bg-muted"
+                            )}
+                          >
+                            <span>Todas</span>
+                            <span className="text-[10px] text-muted-foreground">({categoryTree.total})</span>
+                          </button>
+                        </li>
+                        {categoryTree.subs.map((sub) => (
+                          <li key={sub.name}>
+                            <button
+                              onClick={() => setSelectedCategory(sub.name)}
+                              className={cn(
+                                "w-full flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors",
+                                selectedCategory === sub.name
+                                  ? "bg-primary/10 text-primary font-semibold"
+                                  : "text-foreground hover:bg-muted"
+                              )}
+                            >
+                              <span className="truncate">{sub.name}</span>
+                              <span className="text-[10px] text-muted-foreground ml-1">({sub.count})</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Price Range */}
+                  <div className="bg-card border border-border/40 rounded-lg p-3">
+                    <h4 className="text-[11px] font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <DollarSign className="w-3 h-3 text-primary" />
+                      Faixa de preço
                     </h4>
-                  </div>
-                  <ul className="space-y-0.5">
-                    <li>
-                      <button
-                        onClick={() => setSelectedCategory('todos')}
-                        className={cn(
-                          "w-full flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors",
-                          selectedCategory === 'todos'
-                            ? "bg-primary/10 text-primary font-semibold"
-                            : "text-foreground hover:bg-muted"
-                        )}
-                      >
-                        <span>Todas</span>
-                        <span className="text-[10px] text-muted-foreground">({categoryTree.total})</span>
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        type="number"
+                        placeholder={priceRange.min > 0 ? `${Math.floor(priceRange.min)}` : 'Mín'}
+                        value={filterPrecoMin}
+                        onChange={(e) => setFilterPrecoMin(e.target.value)}
+                        className="h-7 text-xs px-2"
+                      />
+                      <span className="text-xs text-muted-foreground">–</span>
+                      <Input
+                        type="number"
+                        placeholder={priceRange.max > 0 ? `${Math.ceil(priceRange.max)}` : 'Máx'}
+                        value={filterPrecoMax}
+                        onChange={(e) => setFilterPrecoMax(e.target.value)}
+                        className="h-7 text-xs px-2"
+                      />
+                    </div>
+                    {(filterPrecoMin || filterPrecoMax) && (
+                      <button onClick={() => { setFilterPrecoMin(''); setFilterPrecoMax(''); }} className="text-[10px] text-primary hover:underline mt-1.5">
+                        Limpar preço
                       </button>
-                    </li>
-                    {categoryTree.subs.map((sub) => (
-                      <li key={sub.name}>
-                        <button
-                          onClick={() => setSelectedCategory(sub.name)}
-                          className={cn(
-                            "w-full flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors",
-                            selectedCategory === sub.name
-                              ? "bg-primary/10 text-primary font-semibold"
-                              : "text-foreground hover:bg-muted"
-                          )}
-                        >
-                          <span className="truncate">{sub.name}</span>
-                          <span className="text-[10px] text-muted-foreground ml-1">({sub.count})</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+                    )}
+                  </div>
+
+                  {/* Condição */}
+                  {availableConditions.length > 0 && (
+                    <div className="bg-card border border-border/40 rounded-lg p-3">
+                      <h4 className="text-[11px] font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Package className="w-3 h-3 text-primary" />
+                        Condição
+                      </h4>
+                      <ul className="space-y-0.5">
+                        <li>
+                          <button
+                            onClick={() => setFilterCondicao('todos')}
+                            className={cn(
+                              "w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors",
+                              filterCondicao === 'todos'
+                                ? "bg-primary/10 text-primary font-semibold"
+                                : "text-foreground hover:bg-muted"
+                            )}
+                          >
+                            {filterCondicao === 'todos' ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3 text-muted-foreground" />}
+                            Todos
+                          </button>
+                        </li>
+                        {availableConditions.map((cond) => (
+                          <li key={cond}>
+                            <button
+                              onClick={() => setFilterCondicao(cond as any)}
+                              className={cn(
+                                "w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors",
+                                filterCondicao === cond
+                                  ? "bg-primary/10 text-primary font-semibold"
+                                  : "text-foreground hover:bg-muted"
+                              )}
+                            >
+                              {filterCondicao === cond ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3 text-muted-foreground" />}
+                              {cond}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Frete Grátis */}
+                  <div className="bg-card border border-border/40 rounded-lg p-3">
+                    <h4 className="text-[11px] font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <Truck className="w-3 h-3 text-primary" />
+                      Envio
+                    </h4>
+                    <button
+                      onClick={() => setFilterFreteGratis(!filterFreteGratis)}
+                      className={cn(
+                        "w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors",
+                        filterFreteGratis
+                          ? "bg-success/10 text-success font-semibold"
+                          : "text-foreground hover:bg-muted"
+                      )}
+                    >
+                      {filterFreteGratis ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3 text-muted-foreground" />}
+                      Frete grátis
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -653,7 +804,7 @@ Retorne APENAS JSON puro, sem markdown, sem crases, sem texto adicional. Mínimo
                 <PesquisaResultML
                   data={aiParsedData ? {
                     ...aiParsedData,
-                    fornecedores: filteredByCategory(aiParsedData.fornecedores),
+                    fornecedores: applyAllFilters(aiParsedData.fornecedores),
                   } : null}
                   isLoading={isSearchingAI}
                   rawMarkdown={!aiParsedData && !isSearchingAI ? aiResult : undefined}
