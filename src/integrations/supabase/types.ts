@@ -1022,6 +1022,33 @@ export type Database = {
         }
         Relationships: []
       }
+      pesquisas_preco: {
+        Row: {
+          categoria: string | null
+          created_at: string
+          id: string
+          resultado: string
+          termo_busca: string
+          user_id: string
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string
+          id?: string
+          resultado: string
+          termo_busca: string
+          user_id: string
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string
+          id?: string
+          resultado?: string
+          termo_busca?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       planos: {
         Row: {
           ativo: boolean | null

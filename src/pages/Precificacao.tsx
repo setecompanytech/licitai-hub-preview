@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
@@ -7,13 +7,15 @@ import { Input } from '@/components/ui/input';
 import {
   DollarSign, Search, ShoppingCart, TrendingUp, TrendingDown,
   ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText, Loader2, Bot,
-  Monitor, Briefcase, SprayCan, UtensilsCrossed, Filter
+  Monitor, Briefcase, SprayCan, UtensilsCrossed, Filter, Save, History, Trash2, Eye
 } from 'lucide-react';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import { toast } from 'sonner';
 import { streamAIChat, type ChatMessage } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 type FontePreco = {
   fonte: string;
@@ -95,9 +97,14 @@ export default function Precificacao() {
   const [selectedCategory, setSelectedCategory] = useState('todos');
   const [aiResult, setAiResult] = useState('');
   const [isSearchingAI, setIsSearchingAI] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [savedSearches, setSavedSearches] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [currentSearchTerm, setCurrentSearchTerm] = useState('');
   const navigate = useNavigate();
   const { addItem, hasPending, pendingItems } = usePropostaCart();
   const abortRef = useRef(false);
+  const { user } = useAuth();
 
   const categories = [
     { id: 'todos', label: 'Todos', icon: Filter },
@@ -107,12 +114,67 @@ export default function Precificacao() {
     { id: 'alimenticios', label: 'Gêneros Alimentícios', icon: UtensilsCrossed },
   ];
 
+  const loadSavedSearches = async () => {
+    if (!user) return;
+    setLoadingHistory(true);
+    const { data, error } = await supabase
+      .from('pesquisas_preco')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (error) {
+      toast.error('Erro ao carregar histórico.');
+    } else {
+      setSavedSearches(data || []);
+    }
+    setLoadingHistory(false);
+  };
+
+  const handleSaveSearch = async () => {
+    if (!user || !aiResult.trim()) return;
+    const { error } = await supabase.from('pesquisas_preco').insert({
+      user_id: user.id,
+      termo_busca: currentSearchTerm,
+      categoria: selectedCategory,
+      resultado: aiResult,
+    });
+    if (error) {
+      toast.error('Erro ao salvar pesquisa.');
+    } else {
+      toast.success('Pesquisa salva com sucesso!');
+      if (showHistory) loadSavedSearches();
+    }
+  };
+
+  const handleDeleteSearch = async (id: string) => {
+    const { error } = await supabase.from('pesquisas_preco').delete().eq('id', id);
+    if (error) {
+      toast.error('Erro ao excluir pesquisa.');
+    } else {
+      toast.success('Pesquisa excluída.');
+      setSavedSearches(prev => prev.filter(s => s.id !== id));
+    }
+  };
+
+  const handleViewSearch = (item: any) => {
+    setAiResult(item.resultado);
+    setCurrentSearchTerm(item.termo_busca);
+    setSearch(item.termo_busca);
+    setSelectedCategory(item.categoria || 'todos');
+    setShowHistory(false);
+  };
+
+  useEffect(() => {
+    if (showHistory) loadSavedSearches();
+  }, [showHistory]);
+
   const handleAISearch = async () => {
     if (!search.trim()) {
       toast.error('Digite um produto para buscar.');
       return;
     }
     setIsSearchingAI(true);
+    setCurrentSearchTerm(search);
     setAiResult('');
     abortRef.current = false;
 
@@ -255,15 +317,66 @@ REGRAS:
               <><Bot className="w-4 h-4 mr-1" /> BUSCAR</>
             )}
           </Button>
+          <Button
+            variant="outline"
+            size="default"
+            onClick={() => setShowHistory(!showHistory)}
+            className="min-w-[120px]"
+          >
+            <History className="w-4 h-4 mr-1" /> Histórico
+          </Button>
         </div>
+
+        {/* Saved Searches History */}
+        {showHistory && (
+          <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <History className="w-5 h-5 text-accent" />
+              <h3 className="font-semibold text-sm">Pesquisas Salvas</h3>
+              {loadingHistory && <Loader2 className="w-4 h-4 animate-spin text-accent" />}
+            </div>
+            {savedSearches.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhuma pesquisa salva ainda.</p>
+            ) : (
+              <div className="space-y-2">
+                {savedSearches.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-border/30 hover:bg-muted/50 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{item.termo_busca}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.categoria !== 'todos' && <Badge variant="outline" className="mr-2 text-[10px]">{item.categoria}</Badge>}
+                        {new Date(item.created_at).toLocaleString('pt-BR')}
+                      </p>
+                    </div>
+                    <div className="flex gap-1 ml-2">
+                      <Button size="sm" variant="ghost" onClick={() => handleViewSearch(item)} title="Visualizar">
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleDeleteSearch(item.id)} title="Excluir" className="text-destructive hover:text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* AI Results */}
         {(aiResult || isSearchingAI) && (
           <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Bot className="w-5 h-5 text-accent" />
-              <h3 className="font-semibold text-sm">Resultado da Pesquisa de Mercado (IA)</h3>
-              {isSearchingAI && <Loader2 className="w-4 h-4 animate-spin text-accent" />}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Bot className="w-5 h-5 text-accent" />
+                <h3 className="font-semibold text-sm">Resultado da Pesquisa de Mercado (IA)</h3>
+                {isSearchingAI && <Loader2 className="w-4 h-4 animate-spin text-accent" />}
+              </div>
+              {aiResult && !isSearchingAI && (
+                <Button size="sm" variant="outline" onClick={handleSaveSearch}>
+                  <Save className="w-4 h-4 mr-1" /> Salvar Pesquisa
+                </Button>
+              )}
             </div>
             <div className="prose prose-sm max-w-none dark:prose-invert overflow-x-auto">
               <ReactMarkdown>{aiResult}</ReactMarkdown>
