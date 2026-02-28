@@ -186,19 +186,9 @@ export default function Precificacao() {
       : '';
 
     await streamAIChat({
-      messages: [{ role: 'user', content: `Pesquise preços de mercado para: "${search}".${categoryInstruction}
+      messages: [{ role: 'user', content: `Realize pesquisa de mercado para: "${search}".${categoryInstruction}
 
-Para cada produto encontrado, apresente os resultados organizados em tabelas markdown com as seguintes colunas:
-| Produto | Marca | Modelo | Fornecedor/Loja | Preço (R$) | Link do Site | Telefone | Email | Condição | Data |
-
-REGRAS:
-- Liste produtos de VÁRIAS marcas e fornecedores diferentes
-- Inclua obrigatoriamente o link direto do site de cada fornecedor
-- Inclua telefone e email de contato do fornecedor quando disponível (se não encontrar, coloque "Consultar no site")
-- Identifique claramente o nome da loja/fornecedor
-- Mínimo 3 fornecedores por produto
-- Ao final, apresente um resumo com: Menor preço, Maior preço e Preço médio
-- Organize por categoria quando houver múltiplos produtos` }],
+Siga RIGOROSAMENTE o formato padronizado: blocos por fornecedor (com produto, marca, modelo, preço, site, telefone, email), tabela comparativa consolidada, resumo de preços e recomendação. Mínimo 3 fornecedores.` }],
       action: 'pesquisa_mercado',
       onDelta: (text) => {
         if (!abortRef.current) setAiResult((prev) => prev + text);
