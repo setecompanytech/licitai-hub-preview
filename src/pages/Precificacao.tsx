@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { streamAIChat, type ChatMessage } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
+import { PesquisaResultML, type PesquisaMLResult } from '@/components/precificacao/ProdutoCardML';
 import { useAuth } from '@/contexts/AuthContext';
 
 type FontePreco = {
@@ -100,6 +101,7 @@ export default function Precificacao() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('todos');
   const [aiResult, setAiResult] = useState('');
+  const [aiParsedData, setAiParsedData] = useState<PesquisaMLResult | null>(null);
   const [isSearchingAI, setIsSearchingAI] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [savedSearches, setSavedSearches] = useState<any[]>([]);
@@ -177,7 +179,34 @@ export default function Precificacao() {
     setSearch(item.termo_busca);
     setSelectedCategory(item.categoria || 'todos');
     setShowHistory(false);
+    // Try to parse old saved searches as JSON too
+    tryParseAiResult(item.resultado);
   };
+
+  const tryParseAiResult = (text: string) => {
+    try {
+      // Clean up: remove markdown code fences if present
+      let clean = text.trim();
+      if (clean.startsWith('```')) {
+        clean = clean.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
+      }
+      const parsed = JSON.parse(clean);
+      if (parsed.fornecedores) {
+        setAiParsedData(parsed as PesquisaMLResult);
+      } else if (Array.isArray(parsed) && parsed[0]?.fornecedores) {
+        setAiParsedData(parsed[0] as PesquisaMLResult);
+      }
+    } catch {
+      setAiParsedData(null);
+    }
+  };
+
+  // Parse AI result when streaming finishes
+  useEffect(() => {
+    if (!isSearchingAI && aiResult) {
+      tryParseAiResult(aiResult);
+    }
+  }, [isSearchingAI, aiResult]);
 
   useEffect(() => {
     if (showHistory) loadSavedSearches();
@@ -191,6 +220,7 @@ export default function Precificacao() {
     setIsSearchingAI(true);
     setCurrentSearchTerm(search);
     setAiResult('');
+    setAiParsedData(null);
     abortRef.current = false;
 
     const categoryLabel = selectedCategory !== 'todos'
@@ -203,12 +233,14 @@ export default function Precificacao() {
     await streamAIChat({
       messages: [{ role: 'user', content: `Realize pesquisa de mercado para: "${search}".${categoryInstruction}
 
-Siga RIGOROSAMENTE o formato padronizado: blocos por fornecedor (com produto, marca, modelo, preço, site, telefone, email), tabela comparativa consolidada, resumo de preços e recomendação. Mínimo 3 fornecedores.` }],
+Retorne APENAS JSON puro, sem markdown, sem crases, sem texto adicional. Mínimo 5 fornecedores.` }],
       action: 'pesquisa_mercado',
       onDelta: (text) => {
         if (!abortRef.current) setAiResult((prev) => prev + text);
       },
-      onDone: () => setIsSearchingAI(false),
+      onDone: () => {
+        setIsSearchingAI(false);
+      },
       onError: (err) => {
         toast.error(err);
         setIsSearchingAI(false);
@@ -403,9 +435,9 @@ Siga RIGOROSAMENTE o formato padronizado: blocos por fornecedor (com produto, ma
           <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Bot className="w-5 h-5 text-accent" />
-                <h3 className="font-semibold text-sm">Resultado da Pesquisa de Mercado (IA)</h3>
-                {isSearchingAI && <Loader2 className="w-4 h-4 animate-spin text-accent" />}
+                <Bot className="w-5 h-5 text-[#3483fa]" />
+                <h3 className="font-semibold text-sm">Resultado da Pesquisa de Mercado</h3>
+                {isSearchingAI && <Loader2 className="w-4 h-4 animate-spin text-[#3483fa]" />}
               </div>
               {aiResult && !isSearchingAI && (
                 <Button size="sm" variant="outline" onClick={handleSaveSearch}>
@@ -413,9 +445,11 @@ Siga RIGOROSAMENTE o formato padronizado: blocos por fornecedor (com produto, ma
                 </Button>
               )}
             </div>
-            <div className="prose prose-sm max-w-none dark:prose-invert overflow-x-auto">
-              <ReactMarkdown>{aiResult}</ReactMarkdown>
-            </div>
+            <PesquisaResultML
+              data={aiParsedData}
+              isLoading={isSearchingAI}
+              rawMarkdown={!aiParsedData && !isSearchingAI ? aiResult : undefined}
+            />
           </div>
         )}
 
