@@ -23,7 +23,7 @@ type ProdutoExtraido = {
   vendedor_qualificado?: boolean;
 };
 
-/* ─── Known brands for extraction ─── */
+/* ─── Known brands ─── */
 const KNOWN_BRANDS = [
   'Dell', 'HP', 'Lenovo', 'Samsung', 'Apple', 'LG', 'Sony', 'Asus', 'Acer',
   'Philips', 'Panasonic', 'Motorola', 'Xiaomi', 'Intel', 'AMD', 'Corsair',
@@ -33,7 +33,6 @@ const KNOWN_BRANDS = [
   'Suvinil', 'Coral', 'Sherwin-Williams', 'Tigre', 'Amanco', 'Quartzolit',
   'Kingston', 'HyperX', 'Redragon', 'JBL', 'Edifier', 'TP-Link', 'Nvidia',
   'Gigabyte', 'MSI', 'Razer', 'SteelSeries', 'AOC', 'BenQ', 'ViewSonic',
-  'Fujioka', 'Ibyte', 'Mirão',
 ];
 
 function extractBrand(title: string): string {
@@ -67,87 +66,208 @@ function detectStore(url: string): string {
   if (u.includes('aliexpress.com')) return 'AliExpress';
   if (u.includes('pichau.com.br')) return 'Pichau';
   if (u.includes('terabyteshop.com.br')) return 'Terabyte';
-  if (u.includes('ibyte.com.br')) return 'Ibyte';
-  if (u.includes('fujioka.com.br')) return 'Fujioka';
   if (u.includes('havan.com.br')) return 'Havan';
   if (u.includes('google.com')) return 'Google Shopping';
   if (u.includes('buscape.com.br')) return 'Buscapé';
   if (u.includes('zoom.com.br')) return 'Zoom';
-  if (u.includes('pontofrio.com.br')) return 'Ponto Frio';
-  if (u.includes('extra.com.br')) return 'Extra';
-  if (u.includes('girafa.com.br')) return 'Girafa';
-  if (u.includes('chipart.com.br')) return 'Chipart';
-  // E-commerce platforms (Bling integrations)
-  if (u.includes('tray.com.br')) return 'Tray';
-  if (u.includes('nuvemshop.com.br') || u.includes('lojanuvem')) return 'Nuvemshop';
-  if (u.includes('lojaintegrada.com.br')) return 'Loja Integrada';
-  if (u.includes('shopify.com') || u.includes('myshopify.com')) return 'Shopify';
-  if (u.includes('vtex.com')) return 'VTEX';
-  if (u.includes('woocommerce') || u.includes('wordpress')) return 'WooCommerce';
-  if (u.includes('mercadoshops.com')) return 'Mercado Shops';
-  if (u.includes('bagy.com.br')) return 'Bagy';
-  if (u.includes('wix.com')) return 'Wix';
-  if (u.includes('wake.tech') || u.includes('wake.commerce')) return 'Wake';
-  if (u.includes('opencart')) return 'OpenCart';
-  if (u.includes('prestashop')) return 'PrestaShop';
-  if (u.includes('magento')) return 'Magento';
   if (u.includes('leroymerlin.com.br')) return 'Leroy Merlin';
   if (u.includes('madeiramadeira.com.br')) return 'MadeiraMadeira';
-  if (u.includes('pontofrio.com.br')) return 'Ponto Frio';
   if (u.includes('fastshop.com.br')) return 'Fast Shop';
-  if (u.includes('girafa.com.br')) return 'Girafa';
-  if (u.includes('colombo.com.br')) return 'Colombo';
-  if (u.includes('centauro.com.br')) return 'Centauro';
-  if (u.includes('dafiti.com.br')) return 'Dafiti';
-  if (u.includes('netshoes.com.br')) return 'Netshoes';
-  if (u.includes('zattini.com.br')) return 'Zattini';
   return 'Outros';
 }
 
-/** Extract price from text/markdown content */
-function extractPrices(text: string): number[] {
-  const prices: number[] = [];
-  // Match R$ X.XXX,XX or R$ X,XX patterns
-  const matches = text.matchAll(/R\$\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})/gi);
-  for (const m of matches) {
-    const val = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
-    if (!isNaN(val) && val > 1 && val < 500000) prices.push(val);
+/**
+ * INTELLIGENT PRICE EXTRACTION
+ * Filters out accessory/insurance/case prices by:
+ * 1. Only using prices that appear near the product title context
+ * 2. Excluding prices from lines mentioning insurance/case/protection/accessory
+ * 3. Using the MOST PROMINENT price (usually the first large one)
+ */
+function extractMainProductPrice(title: string, fullText: string): { preco: number; precoOriginal?: number } | null {
+  const prices: { value: number; context: string; lineIdx: number }[] = [];
+  const lines = fullText.split('\n');
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const matches = line.matchAll(/R\$\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})/gi);
+    for (const m of matches) {
+      const val = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
+      if (!isNaN(val) && val > 1 && val < 500000) {
+        prices.push({ value: val, context: line, lineIdx: i });
+      }
+    }
   }
-  return prices;
+
+  if (prices.length === 0) return null;
+
+  // Keywords that indicate the price is NOT for the main product
+  const ACCESSORY_KEYWORDS = /seguro|proteç[aã]o|garantia\s*estendida|capa\s*protetora|película|case\s*para|acessório|carregador\s*para|fone\s*para|suporte\s*para|adaptador\s*para|cabo\s*para|mouse\s*pad|kit\s*de\s*limp/i;
+
+  // Keywords that indicate this IS the product price
+  const PRODUCT_PRICE_KEYWORDS = /à\s*vista|no\s*pix|preço|comprar|adicionar|carrinho|por\s*R\$|de\s*R\$/i;
+
+  // Filter out prices from accessory/insurance contexts
+  const mainPrices = prices.filter(p => {
+    // Check surrounding lines too (2 lines before and after)
+    const contextWindow = lines.slice(Math.max(0, p.lineIdx - 2), Math.min(lines.length, p.lineIdx + 3)).join(' ');
+    if (ACCESSORY_KEYWORDS.test(contextWindow)) return false;
+    return true;
+  });
+
+  // If all were filtered, use originals but with caution
+  const validPrices = mainPrices.length > 0 ? mainPrices : prices;
+
+  // Estimate a reasonable price range based on the product title
+  // Use median-based approach: cluster prices and pick the main cluster
+  const sortedValues = validPrices.map(p => p.value).sort((a, b) => a - b);
+
+  if (sortedValues.length === 1) {
+    return { preco: sortedValues[0] };
+  }
+
+  // Use statistical filtering: remove extreme outliers
+  // If the cheapest price is < 10% of the most expensive, it's likely an accessory
+  const median = sortedValues[Math.floor(sortedValues.length / 2)];
+
+  // Main price is the one closest to the first prominent price that's
+  // within a reasonable range (not an accessory price)
+  // Rule: if a price is less than 15% of the median, it's an accessory/addon
+  const reasonablePrices = sortedValues.filter(p => p >= median * 0.15);
+
+  if (reasonablePrices.length === 0) {
+    return { preco: sortedValues[0] };
+  }
+
+  // Pick the first reasonable price (usually the main displayed price)
+  const firstReasonable = validPrices.find(p => reasonablePrices.includes(p.value));
+  const preco = firstReasonable?.value || reasonablePrices[0];
+
+  // Find original price (crossed out / "de R$") - must be higher
+  const precoOriginal = sortedValues.find(p => p > preco * 1.05) || undefined;
+
+  return { preco, precoOriginal };
 }
 
-/** Extract image URL from markdown content */
-function extractImage(markdown: string): string | undefined {
-  // Look for image markdown patterns
-  const imgMatch = markdown.match(/!\[[^\]]*\]\((https?:\/\/[^\s)]+(?:\.jpg|\.png|\.webp|\.jpeg)[^\s)]*)\)/i)
-    || markdown.match(/(https?:\/\/(?:http2\.mlstatic\.com|m\.media-amazon\.com|[^"\s]+magazineluiza|[^"\s]+kabum)[^\s"'<>]+)/i);
-  return imgMatch ? imgMatch[1] : undefined;
+/** Extract image URL from search result */
+function extractImage(result: any): string | undefined {
+  const markdown = result.markdown || '';
+  const url = result.url || '';
+
+  // 1. Try Open Graph / metadata image first (most reliable)
+  const ogImage = result.metadata?.ogImage || result.metadata?.['og:image'];
+  if (ogImage && isProductImage(ogImage)) return ogImage;
+
+  // 2. ML static images (Mercado Livre CDN - very reliable)
+  const mlMatch = markdown.match(/(https?:\/\/http2\.mlstatic\.com\/D_[^\s"')]+\.(?:jpg|webp|png))/i);
+  if (mlMatch) return mlMatch[1];
+
+  // 3. Amazon product images
+  const amzMatch = markdown.match(/(https?:\/\/m\.media-amazon\.com\/images\/I\/[^\s"')]+\.(?:jpg|webp|png))/i);
+  if (amzMatch) return amzMatch[1];
+
+  // 4. Kabum images
+  const kabumMatch = markdown.match(/(https?:\/\/images\.kabum\.com\.br\/[^\s"')]+\.(?:jpg|webp|png))/i);
+  if (kabumMatch) return kabumMatch[1];
+
+  // 5. Magazine Luiza images
+  const magaluMatch = markdown.match(/(https?:\/\/[^\s"')]*magazineluiza[^\s"')]*\.(?:jpg|webp|png))/i);
+  if (magaluMatch) return magaluMatch[1];
+
+  // 6. Generic markdown image - first one that looks like a product photo
+  const imgMatches = [...markdown.matchAll(/!\[[^\]]*\]\((https?:\/\/[^\s)]+\.(?:jpg|jpeg|png|webp)[^\s)]*)\)/gi)];
+  for (const m of imgMatches) {
+    if (isProductImage(m[1])) return m[1];
+  }
+
+  // 7. Raw image URLs in text
+  const rawImgMatch = markdown.match(/(https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp))(?:\?[^\s"'<>]*)?/i);
+  if (rawImgMatch && isProductImage(rawImgMatch[1])) return rawImgMatch[1];
+
+  return undefined;
+}
+
+/** Check if URL looks like a real product image (not logo/icon/banner) */
+function isProductImage(url: string): boolean {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  // Reject non-product images
+  if (/logo|icon|sprite|banner|favicon|avatar|badge|selo|stamp|watermark/i.test(lower)) return false;
+  if (/1x1|pixel|tracking|analytics/i.test(lower)) return false;
+  // Reject very small images (thumbnail indicators in URL)
+  if (/_S_\d{2,3}\.\w+$/i.test(lower)) return false;
+  if (/\/D_NQ_NP_ID-MLB/i.test(lower)) return false;
+  return true;
+}
+
+/**
+ * Validates that the title is for a real product, not an accessory/insurance
+ */
+function isMainProduct(title: string, searchTerm: string): boolean {
+  const titleLower = title.toLowerCase();
+  const searchLower = searchTerm.toLowerCase();
+
+  // Skip items that are clearly accessories/insurance for the product
+  const SKIP_PATTERNS = [
+    /^seguro\s/i,
+    /^proteç[aã]o\s/i,
+    /^garantia\s*estendida/i,
+    /^capa\s*(para|de|do|da)\s/i,
+    /^película\s/i,
+    /^case\s*(para|de|do|da)\s/i,
+    /^suporte\s*(para|de|do|da)\s/i,
+    /^kit\s*de\s*limpeza/i,
+    /^adaptador\s*(para|de|do|da)\s/i,
+    /^cabo\s*(para|de|do|da)\s/i,
+    /^carregador\s*(para|de|do|da)\s/i,
+    /^mouse\s*pad/i,
+    /^skin\s*(para|de|do|da)\s/i,
+    /^adesivo\s*(para|de|do|da)\s/i,
+  ];
+
+  for (const pattern of SKIP_PATTERNS) {
+    if (pattern.test(titleLower)) return false;
+  }
+
+  // Also check if the title has very low relevance to search term
+  // At least one significant word from the search should appear in the title
+  const searchWords = searchLower.split(/\s+/).filter(w => w.length > 3);
+  if (searchWords.length > 0) {
+    const matchCount = searchWords.filter(w => titleLower.includes(w)).length;
+    // At least 1 word should match
+    if (matchCount === 0) return false;
+  }
+
+  return true;
 }
 
 /** Parse a Firecrawl search result into product entries */
-function parseSearchResult(result: any): ProdutoExtraido | null {
+function parseSearchResult(result: any, searchTerm: string): ProdutoExtraido | null {
   const url = result.url || '';
   const title = result.title || '';
   const description = result.description || '';
   const markdown = result.markdown || '';
-  const fullText = `${title} ${description} ${markdown}`;
+  const fullText = `${title}\n${description}\n${markdown}`;
 
   if (!title || title.length < 5) return null;
 
-  // Extract price
-  const prices = extractPrices(fullText);
-  if (prices.length === 0) return null;
-  
-  // Use the first (usually main) price
-  const preco = prices[0];
-  const precoOriginal = prices.length > 1 && prices[1] > preco ? prices[1] : undefined;
+  // Check if this is actually the main product, not an accessory
+  if (!isMainProduct(title, searchTerm)) {
+    console.log(`Filtered out accessory: "${title.substring(0, 80)}"`);
+    return null;
+  }
+
+  // Use intelligent price extraction
+  const priceResult = extractMainProductPrice(title, fullText);
+  if (!priceResult) return null;
+
+  const { preco, precoOriginal } = priceResult;
 
   const loja = detectStore(url);
-  
+
   // Check for free shipping
   const freteGratis = /frete\s*gr[aá]tis|entrega\s*gr[aá]tis|free.shipping|sem\s*custo\s*de\s*envio/i.test(fullText);
-  
-  // Check for condition
+
+  // Condition
   let condicao = 'Novo';
   if (/usado|segunda\s*mão|second.hand/i.test(fullText)) condicao = 'Usado';
   if (/recondicionado|refurbished|seminovo/i.test(fullText)) condicao = 'Recondicionado';
@@ -159,8 +279,8 @@ function parseSearchResult(result: any): ProdutoExtraido | null {
   // Parcelas
   const parcelasMatch = fullText.match(/(\d{1,2}x\s*(?:de\s*)?R\$\s*[0-9.,]+(?:\s*sem\s*juros)?)/i);
 
-  // Image
-  const image_url = extractImage(markdown);
+  // Image - use dedicated extractor
+  const image_url = extractImage(result);
 
   // Qualified seller
   const vendedorQualificado = /mercadol[ií]der|loja.oficial|vendedor.destaque|prime|full/i.test(fullText);
@@ -240,14 +360,13 @@ serve(async (req) => {
 
     console.log(`Pesquisa real para: "${termo}"`);
 
-    // Run multiple targeted searches in parallel for different marketplaces + Google Shopping
+    // Run targeted searches
     const searches = await Promise.allSettled([
       searchProducts(apiKey, `${termo} comprar preço site:mercadolivre.com.br`, 12),
       searchProducts(apiKey, `${termo} comprar preço site:amazon.com.br`, 10),
       searchProducts(apiKey, `${termo} comprar preço site:magazineluiza.com.br OR site:kabum.com.br`, 10),
       searchProducts(apiKey, `${termo} comprar preço site:americanas.com.br OR site:casasbahia.com.br`, 8),
       searchProducts(apiKey, `${termo} comprar preço site:shopee.com.br OR site:carrefour.com.br`, 8),
-      searchProducts(apiKey, `${termo} comprar preço site:shopping.google.com OR site:google.com/shopping`, 10),
       searchProducts(apiKey, `${termo} comprar preço site:buscape.com.br OR site:zoom.com.br`, 8),
       searchProducts(apiKey, `${termo} preço comprar Brasil`, 12),
     ]);
@@ -259,12 +378,12 @@ serve(async (req) => {
     for (const result of searches) {
       if (result.status !== 'fulfilled') continue;
       for (const item of result.value) {
-        // Deduplicate by URL
         const url = (item.url || '').split('?')[0];
         if (seenUrls.has(url)) continue;
         seenUrls.add(url);
 
-        const produto = parseSearchResult(item);
+        // Pass search term for relevance checking
+        const produto = parseSearchResult(item, termo);
         if (produto) {
           allFornecedores.push(produto);
           fonteCount[produto.loja] = (fonteCount[produto.loja] || 0) + 1;
@@ -274,6 +393,19 @@ serve(async (req) => {
 
     // Sort by price
     allFornecedores.sort((a, b) => a.preco - b.preco);
+
+    // POST-PROCESSING: Remove statistical outliers
+    // If median is known, remove items priced < 10% of median (likely accessories that slipped through)
+    if (allFornecedores.length >= 3) {
+      const medianIdx = Math.floor(allFornecedores.length / 2);
+      const median = allFornecedores[medianIdx].preco;
+      const threshold = median * 0.10; // 10% of median
+      const filtered = allFornecedores.filter(f => f.preco >= threshold);
+      if (filtered.length >= 3) {
+        allFornecedores.length = 0;
+        allFornecedores.push(...filtered);
+      }
+    }
 
     console.log(`Total: ${allFornecedores.length} produtos de ${Object.keys(fonteCount).length} fontes`);
     console.log("Fontes:", JSON.stringify(fonteCount));
