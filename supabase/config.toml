@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.robo-lances-webhook]
 verify_jwt = false
+
+[functions.blog-ia-alimentar]
+verify_jwt = false
