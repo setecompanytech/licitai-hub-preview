@@ -11,8 +11,10 @@ import { cn } from '@/lib/utils';
 import {
   DollarSign, Search, ShoppingCart, TrendingUp, TrendingDown,
   ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText, Loader2, Bot,
-  Monitor, Briefcase, SprayCan, UtensilsCrossed, Filter, Save, History, Trash2, Eye, CalendarIcon
+  Monitor, Briefcase, SprayCan, UtensilsCrossed, Filter, Save, History, Trash2, Eye, CalendarIcon,
+  MapPin, Globe
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import { toast } from 'sonner';
@@ -97,6 +99,61 @@ const fonteColors: Record<string, string> = {
   SINAPI: 'bg-accent/15 text-accent',
 };
 
+const REGIOES_ESTADOS: Record<string, { label: string; estados: { uf: string; nome: string; cidades: string[] }[] }> = {
+  norte: {
+    label: 'Norte',
+    estados: [
+      { uf: 'PA', nome: 'Pará', cidades: ['Belém', 'Ananindeua', 'Santarém', 'Marabá', 'Castanhal', 'Parauapebas'] },
+      { uf: 'AM', nome: 'Amazonas', cidades: ['Manaus', 'Parintins', 'Itacoatiara'] },
+      { uf: 'TO', nome: 'Tocantins', cidades: ['Palmas', 'Araguaína', 'Gurupi'] },
+      { uf: 'RO', nome: 'Rondônia', cidades: ['Porto Velho', 'Ji-Paraná'] },
+      { uf: 'AC', nome: 'Acre', cidades: ['Rio Branco', 'Cruzeiro do Sul'] },
+      { uf: 'AP', nome: 'Amapá', cidades: ['Macapá', 'Santana'] },
+      { uf: 'RR', nome: 'Roraima', cidades: ['Boa Vista'] },
+    ],
+  },
+  nordeste: {
+    label: 'Nordeste',
+    estados: [
+      { uf: 'BA', nome: 'Bahia', cidades: ['Salvador', 'Feira de Santana', 'Vitória da Conquista'] },
+      { uf: 'CE', nome: 'Ceará', cidades: ['Fortaleza', 'Caucaia', 'Juazeiro do Norte'] },
+      { uf: 'PE', nome: 'Pernambuco', cidades: ['Recife', 'Jaboatão dos Guararapes', 'Olinda'] },
+      { uf: 'MA', nome: 'Maranhão', cidades: ['São Luís', 'Imperatriz'] },
+      { uf: 'PB', nome: 'Paraíba', cidades: ['João Pessoa', 'Campina Grande'] },
+      { uf: 'RN', nome: 'Rio Grande do Norte', cidades: ['Natal', 'Mossoró'] },
+      { uf: 'AL', nome: 'Alagoas', cidades: ['Maceió', 'Arapiraca'] },
+      { uf: 'PI', nome: 'Piauí', cidades: ['Teresina', 'Parnaíba'] },
+      { uf: 'SE', nome: 'Sergipe', cidades: ['Aracaju'] },
+    ],
+  },
+  sudeste: {
+    label: 'Sudeste',
+    estados: [
+      { uf: 'SP', nome: 'São Paulo', cidades: ['São Paulo', 'Campinas', 'Guarulhos', 'Santos'] },
+      { uf: 'RJ', nome: 'Rio de Janeiro', cidades: ['Rio de Janeiro', 'Niterói', 'São Gonçalo'] },
+      { uf: 'MG', nome: 'Minas Gerais', cidades: ['Belo Horizonte', 'Uberlândia', 'Contagem'] },
+      { uf: 'ES', nome: 'Espírito Santo', cidades: ['Vitória', 'Vila Velha', 'Serra'] },
+    ],
+  },
+  sul: {
+    label: 'Sul',
+    estados: [
+      { uf: 'PR', nome: 'Paraná', cidades: ['Curitiba', 'Londrina', 'Maringá'] },
+      { uf: 'SC', nome: 'Santa Catarina', cidades: ['Florianópolis', 'Joinville', 'Blumenau'] },
+      { uf: 'RS', nome: 'Rio Grande do Sul', cidades: ['Porto Alegre', 'Caxias do Sul', 'Pelotas'] },
+    ],
+  },
+  centro_oeste: {
+    label: 'Centro-Oeste',
+    estados: [
+      { uf: 'GO', nome: 'Goiás', cidades: ['Goiânia', 'Aparecida de Goiânia', 'Anápolis'] },
+      { uf: 'MT', nome: 'Mato Grosso', cidades: ['Cuiabá', 'Várzea Grande', 'Rondonópolis'] },
+      { uf: 'MS', nome: 'Mato Grosso do Sul', cidades: ['Campo Grande', 'Dourados'] },
+      { uf: 'DF', nome: 'Distrito Federal', cidades: ['Brasília'] },
+    ],
+  },
+};
+
 export default function Precificacao() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('todos');
@@ -109,10 +166,32 @@ export default function Precificacao() {
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [selectedRegiao, setSelectedRegiao] = useState('todos');
+  const [selectedEstado, setSelectedEstado] = useState('todos');
+  const [selectedCidade, setSelectedCidade] = useState('todos');
   const navigate = useNavigate();
   const { addItem, hasPending, pendingItems } = usePropostaCart();
   const abortRef = useRef(false);
   const { user } = useAuth();
+
+  const availableEstados = selectedRegiao !== 'todos'
+    ? REGIOES_ESTADOS[selectedRegiao]?.estados || []
+    : Object.values(REGIOES_ESTADOS).flatMap(r => r.estados);
+
+  const availableCidades = selectedEstado !== 'todos'
+    ? availableEstados.find(e => e.uf === selectedEstado)?.cidades || []
+    : availableEstados.flatMap(e => e.cidades);
+
+  const handleRegiaoChange = (val: string) => {
+    setSelectedRegiao(val);
+    setSelectedEstado('todos');
+    setSelectedCidade('todos');
+  };
+
+  const handleEstadoChange = (val: string) => {
+    setSelectedEstado(val);
+    setSelectedCidade('todos');
+  };
 
   const categories = [
     { id: 'todos', label: 'Todos', icon: Filter },
@@ -230,8 +309,20 @@ export default function Precificacao() {
       ? `\nCATEGORIA SELECIONADA: ${categoryLabel}. Foque a pesquisa nesta categoria.`
       : '';
 
+    // Build location instruction
+    const locationParts: string[] = [];
+    if (selectedCidade !== 'todos') locationParts.push(`cidade: ${selectedCidade}`);
+    if (selectedEstado !== 'todos') {
+      const estadoNome = availableEstados.find(e => e.uf === selectedEstado)?.nome || selectedEstado;
+      locationParts.push(`estado: ${estadoNome} (${selectedEstado})`);
+    }
+    if (selectedRegiao !== 'todos') locationParts.push(`região: ${REGIOES_ESTADOS[selectedRegiao]?.label}`);
+    const locationInstruction = locationParts.length > 0
+      ? `\nLOCALIZAÇÃO: Priorize fornecedores e preços com entrega para ${locationParts.join(', ')}. Considere frete para essa região.`
+      : '';
+
     await streamAIChat({
-      messages: [{ role: 'user', content: `Realize pesquisa de mercado para: "${search}".${categoryInstruction}
+      messages: [{ role: 'user', content: `Realize pesquisa de mercado para: "${search}".${categoryInstruction}${locationInstruction}
 
 Retorne APENAS JSON puro, sem markdown, sem crases, sem texto adicional. Mínimo 5 fornecedores.` }],
       action: 'pesquisa_mercado',
@@ -329,6 +420,53 @@ Retorne APENAS JSON puro, sem markdown, sem crases, sem texto adicional. Mínimo
               </Button>
             );
           })}
+        </div>
+
+        {/* Geographic Filters */}
+        <div className="flex gap-3 items-center flex-wrap">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <MapPin className="w-4 h-4" />
+            <span className="font-medium">Localização:</span>
+          </div>
+          <Select value={selectedRegiao} onValueChange={handleRegiaoChange}>
+            <SelectTrigger className="w-[150px] h-9">
+              <Globe className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
+              <SelectValue placeholder="Região" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas as regiões</SelectItem>
+              {Object.entries(REGIOES_ESTADOS).map(([key, r]) => (
+                <SelectItem key={key} value={key}>{r.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={selectedEstado} onValueChange={handleEstadoChange}>
+            <SelectTrigger className="w-[180px] h-9">
+              <SelectValue placeholder="Estado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os estados</SelectItem>
+              {availableEstados.map((e) => (
+                <SelectItem key={e.uf} value={e.uf}>{e.nome} ({e.uf})</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={selectedCidade} onValueChange={setSelectedCidade}>
+            <SelectTrigger className="w-[180px] h-9">
+              <SelectValue placeholder="Cidade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas as cidades</SelectItem>
+              {availableCidades.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {(selectedRegiao !== 'todos' || selectedEstado !== 'todos' || selectedCidade !== 'todos') && (
+            <Button variant="ghost" size="sm" onClick={() => { setSelectedRegiao('todos'); setSelectedEstado('todos'); setSelectedCidade('todos'); }}>
+              Limpar
+            </Button>
+          )}
         </div>
 
         {/* Search */}
