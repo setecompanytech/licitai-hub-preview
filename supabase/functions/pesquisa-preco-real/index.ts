@@ -240,13 +240,15 @@ serve(async (req) => {
 
     console.log(`Pesquisa real para: "${termo}"`);
 
-    // Run multiple targeted searches in parallel for different marketplaces
+    // Run multiple targeted searches in parallel for different marketplaces + Google Shopping
     const searches = await Promise.allSettled([
       searchProducts(apiKey, `${termo} comprar preço site:mercadolivre.com.br`, 12),
       searchProducts(apiKey, `${termo} comprar preço site:amazon.com.br`, 10),
       searchProducts(apiKey, `${termo} comprar preço site:magazineluiza.com.br OR site:kabum.com.br`, 10),
       searchProducts(apiKey, `${termo} comprar preço site:americanas.com.br OR site:casasbahia.com.br`, 8),
       searchProducts(apiKey, `${termo} comprar preço site:shopee.com.br OR site:carrefour.com.br`, 8),
+      searchProducts(apiKey, `${termo} comprar preço site:shopping.google.com OR site:google.com/shopping`, 10),
+      searchProducts(apiKey, `${termo} comprar preço site:buscape.com.br OR site:zoom.com.br`, 8),
       searchProducts(apiKey, `${termo} preço comprar Brasil`, 12),
     ]);
 
