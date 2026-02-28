@@ -203,9 +203,11 @@ function extractImage(result: any): string | undefined {
 function isProductImage(url: string): boolean {
   if (!url) return false;
   const lower = url.toLowerCase();
-  // Reject non-product images
+  // Reject non-product images (logos, icons, banners, ads)
   if (/logo|icon|sprite|banner|favicon|avatar|badge|selo|stamp|watermark/i.test(lower)) return false;
   if (/1x1|pixel|tracking|analytics/i.test(lower)) return false;
+  if (/ad[s]?[_\-\/]|doubleclick|googlesyndication|adsense|adserver|pubmatic|criteo|taboola|outbrain/i.test(lower)) return false;
+  if (/promo|campanha|anuncio|slide.*banner/i.test(lower)) return false;
   // Reject very small images (thumbnail indicators in URL)
   if (/_S_\d{2,3}\.\w+$/i.test(lower)) return false;
   if (/\/D_NQ_NP_ID-MLB/i.test(lower)) return false;
