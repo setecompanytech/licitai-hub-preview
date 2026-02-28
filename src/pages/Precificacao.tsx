@@ -24,6 +24,7 @@ import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
 import { PesquisaResultML, type PesquisaMLResult } from '@/components/precificacao/ProdutoCardML';
 import { useAuth } from '@/contexts/AuthContext';
+import { CotacaoFrete, type CotacaoFreteResult, type FreteOpcao } from '@/components/precificacao/CotacaoFrete';
 
 type FontePreco = {
   fonte: string;
@@ -180,6 +181,7 @@ export default function Precificacao() {
   const { addItem, hasPending, pendingItems } = usePropostaCart();
   const abortRef = useRef(false);
   const { user } = useAuth();
+  const [freteResult, setFreteResult] = useState<CotacaoFreteResult | null>(null);
 
   const availableEstados = selectedRegiao !== 'todos'
     ? REGIOES_ESTADOS[selectedRegiao]?.estados || []
@@ -608,6 +610,12 @@ export default function Precificacao() {
           </Button>
         </div>
 
+        {/* Freight Quoting */}
+        <CotacaoFrete
+          onFreteCalculado={setFreteResult}
+          precoProduto={aiParsedData?.resumo?.preco_medio}
+        />
+
         {/* Saved Searches History */}
         {showHistory && (
           <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
@@ -916,6 +924,7 @@ export default function Precificacao() {
                   } : null}
                   isLoading={isSearchingAI}
                   rawMarkdown={!aiParsedData && !isSearchingAI ? aiResult : undefined}
+                  freteResult={freteResult}
                 />
               </div>
             </div>
