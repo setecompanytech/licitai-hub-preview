@@ -175,6 +175,8 @@ export default function Precificacao() {
   const [filterPrecoMax, setFilterPrecoMax] = useState('');
   const [filterLojas, setFilterLojas] = useState<string[]>([]);
   const [filterMarcas, setFilterMarcas] = useState<string[]>([]);
+  const [enrichedImages, setEnrichedImages] = useState<Record<number, string>>({});
+  const [isLoadingImages, setIsLoadingImages] = useState(false);
   const navigate = useNavigate();
   const { addItem, hasPending, pendingItems } = usePropostaCart();
   const abortRef = useRef(false);
@@ -400,6 +402,78 @@ export default function Precificacao() {
     }
   }, [isSearchingAI, aiResult]);
 
+  // Fetch real product images via Firecrawl after AI results load
+  useEffect(() => {
+    if (!aiParsedData || !currentSearchTerm) return;
+    const fornecedores = aiParsedData.fornecedores;
+    if (!fornecedores || fornecedores.length === 0) return;
+
+    const fetchImages = async () => {
+      setIsLoadingImages(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('busca-imagens-produto', {
+          body: { termo: currentSearchTerm },
+        });
+
+        if (error || !data?.success || !data?.imagens?.length) {
+          console.warn('Sem imagens reais encontradas:', error || 'Nenhum resultado');
+          setIsLoadingImages(false);
+          return;
+        }
+
+        const imagens: { titulo: string; image_url: string; fonte: string }[] = data.imagens;
+
+        // Match images to fornecedores by keyword similarity
+        const imageMap: Record<number, string> = {};
+        const searchWords = currentSearchTerm.toLowerCase().split(/\s+/);
+
+        fornecedores.forEach((f: any, idx: number) => {
+          const produtoWords = (f.produto || '').toLowerCase().split(/\s+/);
+          const marcaWord = (f.marca || '').toLowerCase();
+
+          let bestScore = 0;
+          let bestImage = '';
+
+          for (const img of imagens) {
+            const imgTitle = img.titulo.toLowerCase();
+            let score = 0;
+
+            // Score by matching words from the product name
+            for (const word of produtoWords) {
+              if (word.length > 2 && imgTitle.includes(word)) score += 2;
+            }
+            // Bonus for brand match
+            if (marcaWord && marcaWord.length > 1 && imgTitle.includes(marcaWord)) score += 5;
+            // Bonus for search term words match
+            for (const w of searchWords) {
+              if (w.length > 2 && imgTitle.includes(w)) score += 1;
+            }
+
+            if (score > bestScore) {
+              bestScore = score;
+              bestImage = img.image_url;
+            }
+          }
+
+          // Only assign if we got a reasonable match (at least 2 words matched)
+          if (bestScore >= 3 && bestImage) {
+            imageMap[idx] = bestImage;
+          } else if (imagens.length > 0) {
+            // Fallback: assign first image (same product type)
+            imageMap[idx] = imagens[0].image_url;
+          }
+        });
+
+        setEnrichedImages(imageMap);
+      } catch (e) {
+        console.error('Erro ao buscar imagens reais:', e);
+      }
+      setIsLoadingImages(false);
+    };
+
+    fetchImages();
+  }, [aiParsedData, currentSearchTerm]);
+
   useEffect(() => {
     if (showHistory) loadSavedSearches();
   }, [showHistory, dateFrom, dateTo]);
@@ -414,6 +488,7 @@ export default function Precificacao() {
     resetAllFilters();
     setAiResult('');
     setAiParsedData(null);
+    setEnrichedImages({});
     abortRef.current = false;
 
     const catInstLabel = selectedCategory !== 'todos' ? selectedCategory : null;
@@ -912,9 +987,15 @@ Retorne APENAS JSON puro, sem markdown, sem crases, sem texto adicional. Mínimo
                 <PesquisaResultML
                   data={aiParsedData ? {
                     ...aiParsedData,
-                    fornecedores: applyAllFilters(aiParsedData.fornecedores),
+                    fornecedores: applyAllFilters(aiParsedData.fornecedores).map((f: any, idx: number) => {
+                      // Find the original index to map enriched images
+                      const origIdx = aiParsedData.fornecedores.indexOf(f);
+                      const realImage = enrichedImages[origIdx];
+                      return realImage ? { ...f, image_url: realImage } : f;
+                    }),
                   } : null}
                   isLoading={isSearchingAI}
+                  isLoadingImages={isLoadingImages}
                   rawMarkdown={!aiParsedData && !isSearchingAI ? aiResult : undefined}
                 />
               </div>
