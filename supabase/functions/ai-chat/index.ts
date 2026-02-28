@@ -48,7 +48,8 @@ FORMATO OBRIGATÓRIO DE RESPOSTA — retorne EXATAMENTE este JSON (sem nenhum te
       "preco_original": [valor original se houver desconto, ou null],
       "condicao": "[Novo/Usado/Recondicionado]",
       "frete": "[Grátis ou valor ex: R$ 25,00]",
-      "url": "[URL do produto no site]",
+      "url": "[URL REAL do produto no site - use o padrão de URL da loja, ex: https://www.mercadolivre.com.br/produto-slug/p/MLB12345, https://www.kabum.com.br/produto/12345/nome, https://www.amazon.com.br/dp/B0XXXXX, https://www.magazineluiza.com.br/produto/p/abc123, https://shopee.com.br/produto-i.123.456]",
+      "image_url": "[URL de imagem do produto - use URLs realistas de CDN como: https://http2.mlstatic.com/D_NQ_NP_ID-MLB.webp, https://images-americanas.com/image/ID.jpg, https://a-static.mlcdn.com.br/ID/imagem.jpg]",
       "parcelas": "[ex: 12x R$ 358,33 sem juros]",
       "avaliacao": [nota de 0 a 5, ex: 4.5],
       "vendedor_qualificado": [true/false],
@@ -71,9 +72,11 @@ FORMATO OBRIGATÓRIO DE RESPOSTA — retorne EXATAMENTE este JSON (sem nenhum te
 REGRAS RÍGIDAS:
 - Retorne APENAS o JSON, sem nenhum texto, markdown ou explicação
 - NÃO use crases, blocos de código ou qualquer formatação markdown
-- Mínimo 3 fornecedores por produto, máximo 8
+- Mínimo 5 fornecedores por produto, máximo 10
 - Fontes: Mercado Livre, Amazon, Magazine Luiza, KaBuM, Pichau, Terabyte, Americanas, Casas Bahia, Carrefour, Gimba, Assaí, Makro, Chipart, Balão da Informática, Shopee, AliExpress, CROI, Ibyte, Havan, Submarino
 - Todos os preços numéricos (sem "R$"), use ponto como separador decimal
+- URLS OBRIGATÓRIAS: Cada fornecedor DEVE ter uma URL realista seguindo o padrão real do site (ex: mercadolivre.com.br, amazon.com.br/dp/, kabum.com.br/produto/, magazineluiza.com.br/produto/p/)
+- IMAGENS OBRIGATÓRIAS: Cada fornecedor DEVE ter um campo "image_url" com URL realista de imagem do produto (use CDNs reais: http2.mlstatic.com, images-americanas.com, a-static.mlcdn.com.br, images-kabum.com)
 - Se pesquisar múltiplos produtos, retorne um array de objetos no formato acima
 - Os dados devem ser realistas e baseados em preços praticados no mercado brasileiro
 - Responda SEMPRE em português brasileiro`,

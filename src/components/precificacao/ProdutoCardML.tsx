@@ -18,6 +18,7 @@ export type FornecedorML = {
   condicao: string;
   frete: string;
   url: string;
+  image_url?: string;
   parcelas?: string;
   avaliacao?: number;
   vendedor_qualificado?: boolean;
@@ -93,8 +94,16 @@ function GoogleShoppingCard({ item, isCheapest }: { item: FornecedorML; isCheape
       )}
 
       {/* Image area */}
-      <div className="relative w-full aspect-square bg-muted/30 flex items-center justify-center p-6 border-b border-border/20">
-        <Package className="w-16 h-16 text-muted-foreground/20" />
+      <div className="relative w-full aspect-square bg-muted/10 flex items-center justify-center p-4 border-b border-border/20 overflow-hidden">
+        {item.image_url ? (
+          <img
+            src={item.image_url}
+            alt={item.produto}
+            className="w-full h-full object-contain"
+            onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }}
+          />
+        ) : null}
+        <Package className={`w-16 h-16 text-muted-foreground/20 absolute ${item.image_url ? 'hidden' : ''}`} />
       </div>
 
       {/* Content */}
@@ -169,9 +178,17 @@ function MercadoLivreCard({ item, isCheapest }: { item: FornecedorML; isCheapest
 
   return (
     <div className="group flex gap-4 p-4 bg-card border border-border/40 rounded-lg hover:shadow-md hover:border-primary/30 transition-all duration-200 relative">
-      {/* Image placeholder */}
-      <div className="flex-shrink-0 w-[160px] h-[160px] bg-muted/30 rounded-md flex items-center justify-center border border-border/20">
-        <Package className="w-12 h-12 text-muted-foreground/20" />
+      {/* Image */}
+      <div className="flex-shrink-0 w-[160px] h-[160px] bg-muted/10 rounded-md flex items-center justify-center border border-border/20 overflow-hidden">
+        {item.image_url ? (
+          <img
+            src={item.image_url}
+            alt={item.produto}
+            className="w-full h-full object-contain p-2"
+            onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }}
+          />
+        ) : null}
+        <Package className={`w-12 h-12 text-muted-foreground/20 ${item.image_url ? 'hidden' : ''}`} />
       </div>
 
       {/* Content */}

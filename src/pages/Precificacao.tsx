@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import AppLayout from '@/components/layout/AppLayout';
@@ -12,10 +12,9 @@ import {
   DollarSign, Search, ShoppingCart, TrendingUp, TrendingDown,
   ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText, Loader2, Bot,
   Filter, Save, History, Trash2, Eye, CalendarIcon,
-  MapPin, Globe, ChevronsUpDown, Check
+  MapPin, Globe
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import { toast } from 'sonner';
@@ -170,7 +169,6 @@ export default function Precificacao() {
   const [selectedRegiao, setSelectedRegiao] = useState('todos');
   const [selectedEstado, setSelectedEstado] = useState('todos');
   const [selectedCidade, setSelectedCidade] = useState('todos');
-  const [categoryOpen, setCategoryOpen] = useState(false);
   const navigate = useNavigate();
   const { addItem, hasPending, pendingItems } = usePropostaCart();
   const abortRef = useRef(false);
@@ -424,57 +422,66 @@ Retorne APENAS JSON puro, sem markdown, sem crases, sem texto adicional. Mínimo
           ))}
         </div>
 
-        {/* Category Filter */}
-        <div className="flex gap-3 items-center flex-wrap">
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Filter className="w-4 h-4" />
-            <span className="font-medium">Categoria:</span>
-          </div>
-          <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" role="combobox" aria-expanded={categoryOpen} className="w-[320px] h-9 justify-between font-normal">
-                <span className="truncate">
-                  {selectedCategory === 'todos' ? 'Todas as categorias' : selectedCategory}
-                </span>
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        {/* Category Filter – ML Style */}
+        <div className="bg-card border border-border/40 rounded-lg p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Categorias</span>
+            {selectedCategory !== 'todos' && (
+              <Button variant="ghost" size="sm" className="h-5 text-[10px] px-2 ml-auto" onClick={() => setSelectedCategory('todos')}>
+                ✕ Limpar
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[320px] p-0" align="start">
-              <Command>
-                <CommandInput placeholder="Buscar categoria..." />
-                <CommandList className="max-h-[350px]">
-                  <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
-                  <CommandGroup>
-                    <CommandItem value="todos" onSelect={() => { setSelectedCategory('todos'); setCategoryOpen(false); }}>
-                      <Check className={cn("mr-2 h-4 w-4", selectedCategory === 'todos' ? "opacity-100" : "opacity-0")} />
-                      Todas as categorias
-                    </CommandItem>
-                  </CommandGroup>
-                  {Object.entries(CATEGORIAS).map(([grupo, subs]) => (
-                    <CommandGroup key={grupo} heading={grupo}>
-                      <CommandItem value={grupo} onSelect={() => { setSelectedCategory(grupo); setCategoryOpen(false); }}>
-                        <Check className={cn("mr-2 h-4 w-4", selectedCategory === grupo ? "opacity-100" : "opacity-0")} />
-                        {grupo} (geral)
-                      </CommandItem>
-                      {subs.map((sub) => {
-                        const val = `${grupo} > ${sub}`;
-                        return (
-                          <CommandItem key={val} value={`${grupo} ${sub}`} onSelect={() => { setSelectedCategory(val); setCategoryOpen(false); }}>
-                            <Check className={cn("mr-2 h-4 w-4", selectedCategory === val ? "opacity-100" : "opacity-0")} />
-                            <span className="ml-2">↳ {sub}</span>
-                          </CommandItem>
-                        );
-                      })}
-                    </CommandGroup>
-                  ))}
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-          {selectedCategory !== 'todos' && (
-            <Button variant="ghost" size="sm" onClick={() => setSelectedCategory('todos')}>
-              Limpar
-            </Button>
+            )}
+          </div>
+          <div className="flex gap-1.5 flex-wrap">
+            <button
+              onClick={() => setSelectedCategory('todos')}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-xs font-medium transition-colors border",
+                selectedCategory === 'todos'
+                  ? "bg-[hsl(48,96%,53%)] text-[hsl(220,20%,15%)] border-[hsl(48,96%,45%)] shadow-sm"
+                  : "bg-card text-muted-foreground border-border hover:bg-muted"
+              )}
+            >
+              Todas
+            </button>
+            {Object.keys(CATEGORIAS).map((grupo) => (
+              <button
+                key={grupo}
+                onClick={() => setSelectedCategory(grupo)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-medium transition-colors border whitespace-nowrap",
+                  selectedCategory === grupo
+                    ? "bg-[hsl(48,96%,53%)] text-[hsl(220,20%,15%)] border-[hsl(48,96%,45%)] shadow-sm"
+                    : "bg-card text-muted-foreground border-border hover:bg-muted"
+                )}
+              >
+                {grupo}
+              </button>
+            ))}
+          </div>
+          {/* Subcategories */}
+          {selectedCategory !== 'todos' && CATEGORIAS[selectedCategory] && (
+            <div className="flex gap-1.5 flex-wrap mt-2 pt-2 border-t border-border/40">
+              {CATEGORIAS[selectedCategory].map((sub) => {
+                const val = `${selectedCategory} > ${sub}`;
+                const isActive = selectedCategory === val;
+                return (
+                  <button
+                    key={sub}
+                    onClick={() => setSelectedCategory(val)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-md text-[11px] transition-colors border",
+                      isActive
+                        ? "bg-primary/10 text-primary border-primary/30"
+                        : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
+                    )}
+                  >
+                    {sub}
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
 
