@@ -939,7 +939,7 @@ Responda APENAS em JSON, sem markdown:
             {/* Left Sidebar – ML Filters */}
             {aiParsedData && !isSearchingAI && (
               <div className="w-[230px] flex-shrink-0 hidden md:block">
-                <div className="sticky top-4 space-y-3">
+                <div className="sticky top-4 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1 space-y-3 scrollbar-thin">
                   {/* Active filters summary */}
                   {hasActiveFilters && (
                     <div className="bg-primary/5 border border-primary/20 rounded-lg p-2.5 flex items-center justify-between">
