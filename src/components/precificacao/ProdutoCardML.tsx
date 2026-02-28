@@ -4,10 +4,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   ExternalLink, Star, Truck, ShieldCheck, Store, TrendingDown,
-  Package, LayoutGrid, List, Percent, ArrowUpDown, ImageIcon, Loader2, Clock
+  Package, LayoutGrid, List, Percent, ArrowUpDown, ImageIcon, Loader2
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { FreteOpcao, CotacaoFreteResult } from '@/components/precificacao/CotacaoFrete';
+
 
 export type FornecedorML = {
   loja: string;
@@ -142,7 +142,7 @@ function getEffectiveUrl(item: FornecedorML): string {
 }
 
 /* ─── Google Shopping Grid Card ─── */
-function GoogleShoppingCard({ item, isCheapest, freteMaisBarato }: { item: FornecedorML; isCheapest: boolean; freteMaisBarato?: FreteOpcao | null }) {
+function GoogleShoppingCard({ item, isCheapest }: { item: FornecedorML; isCheapest: boolean }) {
   const desconto = getDiscountPercent(item);
 
   return (
@@ -221,22 +221,8 @@ function GoogleShoppingCard({ item, isCheapest, freteMaisBarato }: { item: Forne
             <Truck className="w-3 h-3" />
             <span className="text-[10px] font-semibold">Frete grátis</span>
           </div>
-        ) : freteMaisBarato ? (
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-1 text-xs">
-              <Truck className="w-3 h-3 text-primary" />
-              <span className="text-muted-foreground">
-                Frete: <span className="font-medium text-foreground">{formatCurrency(freteMaisBarato.valor)}</span>
-              </span>
-            </div>
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <Clock className="w-2.5 h-2.5" />
-              <span>{freteMaisBarato.prazo_dias} dias úteis</span>
-            </div>
-            <p className="text-xs font-bold text-primary">
-              Total: {formatCurrency(item.preco + freteMaisBarato.valor)}
-            </p>
-          </div>
+        ) : item.frete ? (
+          <span className="text-[10px] text-muted-foreground">Frete: {item.frete}</span>
         ) : null}
       </div>
 
@@ -257,7 +243,7 @@ function GoogleShoppingCard({ item, isCheapest, freteMaisBarato }: { item: Forne
 }
 
 /* ─── Mercado Livre List Card ─── */
-function MercadoLivreCard({ item, isCheapest, freteMaisBarato }: { item: FornecedorML; isCheapest: boolean; freteMaisBarato?: FreteOpcao | null }) {
+function MercadoLivreCard({ item, isCheapest }: { item: FornecedorML; isCheapest: boolean }) {
   const desconto = getDiscountPercent(item);
 
   return (
@@ -320,22 +306,6 @@ function MercadoLivreCard({ item, isCheapest, freteMaisBarato }: { item: Fornece
             <div className="flex items-center gap-1 text-success">
               <Truck className="w-3.5 h-3.5" />
               <span className="text-xs font-semibold">Frete grátis</span>
-            </div>
-          ) : freteMaisBarato ? (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1 text-xs">
-                <Truck className="w-3.5 h-3.5 text-primary" />
-                <span className="text-muted-foreground">
-                  Frete: <span className="font-medium text-foreground">{formatCurrency(freteMaisBarato.valor)}</span>
-                </span>
-              </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="w-3 h-3" />
-                <span>{freteMaisBarato.prazo_dias} dias</span>
-              </div>
-              <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold">
-                Total: {formatCurrency(item.preco + freteMaisBarato.valor)}
-              </Badge>
             </div>
           ) : (
             item.frete && (
@@ -442,28 +412,22 @@ export function PesquisaResultML({
   isLoading,
   isLoadingImages,
   rawMarkdown,
-  freteResult,
 }: {
   data: PesquisaMLResult | null;
   isLoading: boolean;
   isLoadingImages?: boolean;
   rawMarkdown?: string;
-  freteResult?: CotacaoFreteResult | null;
 }) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [sortMode, setSortMode] = useState<'relevante' | 'menor' | 'maior' | 'menor_total'>('relevante');
+  const [sortMode, setSortMode] = useState<'relevante' | 'menor' | 'maior'>('relevante');
 
   if (isLoading) return <LoadingSkeleton />;
   if (!data && !rawMarkdown) return null;
 
   if (data) {
-    const freteMaisBarato = freteResult?.opcoes?.find(o => o.valor > 0) || freteResult?.opcoes?.[0] || null;
     const sorted = [...data.fornecedores].sort((a, b) => {
-      const freteVal = freteMaisBarato?.valor || 0;
       if (sortMode === 'menor') return a.preco - b.preco;
       if (sortMode === 'maior') return b.preco - a.preco;
-      if (sortMode === 'menor_total') return (a.preco + freteVal) - (b.preco + freteVal);
-      // relevante: qualified first, then by rating desc, then price asc
       const scoreA = (a.vendedor_qualificado ? 100 : 0) + (a.avaliacao || 0) * 10 - a.preco * 0.001;
       const scoreB = (b.vendedor_qualificado ? 100 : 0) + (b.avaliacao || 0) * 10 - b.preco * 0.001;
       return scoreB - scoreA;
@@ -499,7 +463,6 @@ export function PesquisaResultML({
                   <SelectItem value="relevante">Mais relevantes</SelectItem>
                   <SelectItem value="menor">Menor preço</SelectItem>
                   <SelectItem value="maior">Maior preço</SelectItem>
-                  {freteMaisBarato && <SelectItem value="menor_total">Menor preço + frete</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
@@ -541,7 +504,6 @@ export function PesquisaResultML({
                 key={i}
                 item={item}
                 isCheapest={item.preco === cheapestPrice}
-                freteMaisBarato={freteMaisBarato}
               />
             ))}
           </div>
@@ -552,7 +514,6 @@ export function PesquisaResultML({
                 key={i}
                 item={item}
                 isCheapest={item.preco === cheapestPrice}
-                freteMaisBarato={freteMaisBarato}
               />
             ))}
           </div>
