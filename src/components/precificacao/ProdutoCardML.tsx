@@ -4,9 +4,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   ExternalLink, Star, Truck, ShieldCheck, Store, TrendingDown,
-  Package, LayoutGrid, List, Percent, ArrowUpDown, ImageIcon, Loader2
+  Package, LayoutGrid, List, Percent, ArrowUpDown, ImageIcon, Loader2, Plus
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { usePropostaCart } from '@/contexts/PropostaCartContext';
+import { valorPorExtenso } from '@/lib/numero-extenso';
+import { toast } from 'sonner';
+import FichaTecnicaProduto from './FichaTecnicaProduto';
 
 
 export type FornecedorML = {
@@ -79,15 +83,12 @@ function isValidImageUrl(url?: string): boolean {
   if (!url) return false;
   const trimmed = url.trim();
   if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) return false;
-  // Allow real ML/Amazon images (from Firecrawl scraping)
   if (/http2\.mlstatic\.com\/D_/i.test(trimmed)) return true;
   if (/m\.media-amazon\.com\/images\/I\//i.test(trimmed)) return true;
-  // Reject obviously fake patterns (AI often generates template IDs)
   if (/\/D_NQ_NP_\w+-MLB\.webp$/i.test(trimmed)) return false;
   if (/\/image\/ID\./i.test(trimmed)) return false;
   if (/\/ID\/imagem\./i.test(trimmed)) return false;
   if (/placeholder/i.test(trimmed)) return false;
-  // Reject generic AI template URLs
   if (/\/D_NQ_NP_ID-MLB/i.test(trimmed)) return false;
   return true;
 }
@@ -112,26 +113,6 @@ function buildRealStoreUrl(loja: string, produto: string): string {
     'aliexpress': `https://pt.aliexpress.com/w/wholesale-${q.replace(/%20/g, '-')}.html`,
     'submarino': `https://www.submarino.com.br/busca/${q}`,
     'havan': `https://www.havan.com.br/busca?q=${q}`,
-    'gimba': `https://www.gimba.com.br/busca?q=${q}`,
-    'balãodainformática': `https://www.balaodasinformatica.com.br/busca?q=${q}`,
-    'balaodainformatica': `https://www.balaodasinformatica.com.br/busca?q=${q}`,
-    'chipart': `https://www.chipart.com.br/busca?q=${q}`,
-    'ibyte': `https://www.ibyte.com.br/catalogsearch/result/?q=${q}`,
-    // E-commerce platforms (Bling integrations)
-    'tray': `https://www.tray.com.br`,
-    'nuvemshop': `https://www.nuvemshop.com.br`,
-    'lojaintegrada': `https://lojaintegrada.com.br`,
-    'shopify': `https://www.shopify.com/br/search?q=${q}`,
-    'vtex': `https://www.vtex.com`,
-    'woocommerce': `https://woo.com`,
-    'mercadoshops': `https://www.mercadoshops.com.br`,
-    'bagy': `https://www.bagy.com.br`,
-    'wix': `https://www.wix.com`,
-    'wake': `https://www.wake.tech`,
-    'opencart': `https://www.opencart.com`,
-    'prestashop': `https://www.prestashop.com`,
-    'magento': `https://business.adobe.com/products/magento/magento-commerce.html`,
-    // Additional retailers
     'leroymerlin': `https://www.leroymerlin.com.br/search?term=${q}`,
     'madeiramadeira': `https://www.madeiramadeira.com.br/busca?q=${q}`,
     'fastshop': `https://www.fastshop.com.br/web/s/${q}`,
@@ -142,21 +123,17 @@ function buildRealStoreUrl(loja: string, produto: string): string {
     'zattini': `https://www.zattini.com.br/busca?q=${q}`,
   };
 
-  // Try to match store name
   for (const [key, url] of Object.entries(storeSearchUrls)) {
     if (lojaLower.includes(key)) return url;
   }
 
-  // Fallback: Google Shopping search with store name
   return `https://www.google.com.br/search?tbm=shop&q=${encodeURIComponent(produto + ' ' + loja)}`;
 }
 
-/** Gets effective URL: uses original if it looks valid, otherwise builds a search URL */
+/** Gets effective URL */
 function getEffectiveUrl(item: FornecedorML): string {
   const url = item.url?.trim();
-  // Check if URL looks like a real product page (not a fake AI slug)
   if (url && url.startsWith('https://') && !url.includes('/produto-slug/') && !url.includes('/produto-i.') && url !== '#') {
-    // Additional heuristic: reject if URL contains obvious placeholder patterns
     if (!/\/p\/MLB\d{5}$/i.test(url) && !/\/dp\/B0XXXXX/i.test(url) && !/\/produto\/\d{5}\/nome$/i.test(url)) {
       return url;
     }
@@ -164,12 +141,34 @@ function getEffectiveUrl(item: FornecedorML): string {
   return buildRealStoreUrl(item.loja, item.produto);
 }
 
+/** Hook for quick add to proposal */
+function useQuickAddToProposta() {
+  const { addItem, pendingItems } = usePropostaCart();
+  
+  return (item: FornecedorML) => {
+    addItem({
+      item: String(pendingItems.length + 1),
+      descricao: item.produto.substring(0, 200),
+      quantidade: '1',
+      unidade: 'un',
+      marca: item.marca || '',
+      fabricante: item.marca || '',
+      modelo: item.modelo || '',
+      valorUnitario: item.preco.toFixed(2).replace('.', ','),
+      valorUnitarioExtenso: valorPorExtenso(item.preco),
+      valorTotal: item.preco.toFixed(2).replace('.', ','),
+      valorTotalExtenso: valorPorExtenso(item.preco),
+    });
+    toast.success('Produto adicionado à proposta!');
+  };
+}
+
 /* ─── Google Shopping Grid Card ─── */
-function GoogleShoppingCard({ item, isCheapest }: { item: FornecedorML; isCheapest: boolean }) {
+function GoogleShoppingCard({ item, isCheapest, onOpenFicha, onQuickAdd }: { item: FornecedorML; isCheapest: boolean; onOpenFicha: () => void; onQuickAdd: () => void }) {
   const desconto = getDiscountPercent(item);
 
   return (
-    <div className="group relative flex flex-col bg-card border border-border/40 rounded-xl overflow-hidden hover:shadow-lg hover:border-primary/30 transition-all duration-200 cursor-pointer">
+    <div className="group relative flex flex-col bg-card border border-border/40 rounded-xl overflow-hidden hover:shadow-lg hover:border-primary/30 transition-all duration-200">
       {/* Discount badge */}
       {desconto > 0 && (
         <div className="absolute top-2 left-2 z-10">
@@ -186,8 +185,21 @@ function GoogleShoppingCard({ item, isCheapest }: { item: FornecedorML; isCheape
         </div>
       )}
 
-      {/* Image area */}
-      <div className="relative w-full aspect-square bg-muted/10 flex items-center justify-center p-4 border-b border-border/20 overflow-hidden">
+      {/* Add to proposal - floating button */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onQuickAdd(); }}
+        className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-accent text-accent-foreground rounded-full w-7 h-7 flex items-center justify-center shadow-md hover:scale-110"
+        title="Adicionar à Proposta"
+        style={{ right: isCheapest ? '70px' : '8px' }}
+      >
+        <Plus className="w-4 h-4" />
+      </button>
+
+      {/* Image area - clickable */}
+      <div
+        className="relative w-full aspect-square bg-muted/10 flex items-center justify-center p-4 border-b border-border/20 overflow-hidden cursor-pointer"
+        onClick={onOpenFicha}
+      >
         {isValidImageUrl(item.image_url) ? (
           <img
             src={item.image_url}
@@ -199,21 +211,18 @@ function GoogleShoppingCard({ item, isCheapest }: { item: FornecedorML; isCheape
         <Package className={`w-16 h-16 text-muted-foreground/20 absolute ${isValidImageUrl(item.image_url) ? 'hidden' : ''}`} />
       </div>
 
-      {/* Content */}
-      <div className="flex flex-col flex-1 p-3 gap-1.5">
-        {/* Title */}
+      {/* Content - clickable */}
+      <div className="flex flex-col flex-1 p-3 gap-1.5 cursor-pointer" onClick={onOpenFicha}>
         <h3 className="text-xs font-normal text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors min-h-[2.5rem]">
           {item.produto}
         </h3>
 
-        {/* Rating */}
         {item.avaliacao ? (
           <RatingStars rating={item.avaliacao} />
         ) : (
           <div className="h-4" />
         )}
 
-        {/* Price */}
         <div className="mt-auto">
           {item.preco_original && item.preco_original > item.preco && (
             <p className="text-[11px] text-muted-foreground line-through leading-none">
@@ -230,7 +239,6 @@ function GoogleShoppingCard({ item, isCheapest }: { item: FornecedorML; isCheape
           )}
         </div>
 
-        {/* Store + Shipping */}
         <div className="flex items-center gap-1 mt-1">
           <Store className="w-3 h-3 text-muted-foreground/60" />
           <span className="text-[10px] text-muted-foreground truncate">{item.loja}</span>
@@ -249,16 +257,25 @@ function GoogleShoppingCard({ item, isCheapest }: { item: FornecedorML; isCheape
         ) : null}
       </div>
 
-      {/* Footer action */}
-      <div className="border-t border-border/20 px-3 py-2">
+      {/* Footer actions */}
+      <div className="border-t border-border/20 px-3 py-2 flex gap-1">
         <Button
           size="sm"
           variant="ghost"
-          className="w-full text-primary hover:text-primary hover:bg-primary/10 text-xs h-7"
-          onClick={() => window.open(getEffectiveUrl(item), '_blank')}
+          className="flex-1 text-primary hover:text-primary hover:bg-primary/10 text-xs h-7"
+          onClick={onOpenFicha}
         >
-          <ExternalLink className="w-3 h-3 mr-1" />
-          Ver oferta
+          <ImageIcon className="w-3 h-3 mr-1" />
+          Ficha Técnica
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-accent hover:text-accent hover:bg-accent/10 text-xs h-7 px-2"
+          onClick={(e) => { e.stopPropagation(); onQuickAdd(); }}
+          title="Adicionar à Proposta"
+        >
+          <Plus className="w-3.5 h-3.5" />
         </Button>
       </div>
     </div>
@@ -266,13 +283,16 @@ function GoogleShoppingCard({ item, isCheapest }: { item: FornecedorML; isCheape
 }
 
 /* ─── Mercado Livre List Card ─── */
-function MercadoLivreCard({ item, isCheapest }: { item: FornecedorML; isCheapest: boolean }) {
+function MercadoLivreCard({ item, isCheapest, onOpenFicha, onQuickAdd }: { item: FornecedorML; isCheapest: boolean; onOpenFicha: () => void; onQuickAdd: () => void }) {
   const desconto = getDiscountPercent(item);
 
   return (
     <div className="group flex gap-4 p-4 bg-card border border-border/40 rounded-lg hover:shadow-md hover:border-primary/30 transition-all duration-200 relative">
-      {/* Image */}
-      <div className="flex-shrink-0 w-[160px] h-[160px] bg-muted/10 rounded-md flex items-center justify-center border border-border/20 overflow-hidden">
+      {/* Image - clickable */}
+      <div
+        className="flex-shrink-0 w-[160px] h-[160px] bg-muted/10 rounded-md flex items-center justify-center border border-border/20 overflow-hidden cursor-pointer"
+        onClick={onOpenFicha}
+      >
         {isValidImageUrl(item.image_url) ? (
           <img
             src={item.image_url}
@@ -287,7 +307,10 @@ function MercadoLivreCard({ item, isCheapest }: { item: FornecedorML; isCheapest
       {/* Content */}
       <div className="flex-1 min-w-0 flex flex-col justify-between">
         <div>
-          <h3 className="text-sm font-normal text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors cursor-pointer">
+          <h3
+            className="text-sm font-normal text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors cursor-pointer"
+            onClick={onOpenFicha}
+          >
             {item.produto}
           </h3>
           <div className="flex items-center gap-2 mb-2 flex-wrap mt-1">
@@ -353,20 +376,30 @@ function MercadoLivreCard({ item, isCheapest }: { item: FornecedorML; isCheapest
         </div>
       </div>
 
-      {/* Right action */}
+      {/* Right actions */}
       <div className="flex flex-col items-end justify-between flex-shrink-0">
         <Badge variant="outline" className="text-[10px]">
           {item.condicao || 'Novo'}
         </Badge>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="text-primary hover:text-primary hover:bg-primary/10"
-          onClick={() => window.open(getEffectiveUrl(item), '_blank')}
-        >
-          <ExternalLink className="w-3.5 h-3.5 mr-1" />
-          <span className="text-xs">Ver</span>
-        </Button>
+        <div className="flex flex-col gap-1">
+          <Button
+            size="sm"
+            className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs"
+            onClick={(e) => { e.stopPropagation(); onQuickAdd(); }}
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            Proposta
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-primary hover:text-primary hover:bg-primary/10"
+            onClick={onOpenFicha}
+          >
+            <ImageIcon className="w-3.5 h-3.5 mr-1" />
+            <span className="text-xs">Ficha</span>
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -429,6 +462,7 @@ function LoadingSkeleton() {
   );
 }
 
+
 /* ─── Main Component ─── */
 export function PesquisaResultML({
   data,
@@ -443,6 +477,8 @@ export function PesquisaResultML({
 }) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortMode, setSortMode] = useState<'relevante' | 'menor' | 'maior'>('relevante');
+  const [fichaItem, setFichaItem] = useState<FornecedorML | null>(null);
+  const quickAdd = useQuickAddToProposta();
 
   if (isLoading) return <LoadingSkeleton />;
   if (!data && !rawMarkdown) return null;
@@ -527,6 +563,8 @@ export function PesquisaResultML({
                 key={i}
                 item={item}
                 isCheapest={item.preco === cheapestPrice}
+                onOpenFicha={() => setFichaItem(item)}
+                onQuickAdd={() => quickAdd(item)}
               />
             ))}
           </div>
@@ -537,6 +575,8 @@ export function PesquisaResultML({
                 key={i}
                 item={item}
                 isCheapest={item.preco === cheapestPrice}
+                onOpenFicha={() => setFichaItem(item)}
+                onQuickAdd={() => quickAdd(item)}
               />
             ))}
           </div>
@@ -544,6 +584,15 @@ export function PesquisaResultML({
 
         {/* Summary */}
         {data.resumo && <ResumoPrecos resumo={data.resumo} />}
+
+        {/* Ficha Técnica Dialog */}
+        {fichaItem && (
+          <FichaTecnicaProduto
+            open={!!fichaItem}
+            onOpenChange={(open) => { if (!open) setFichaItem(null); }}
+            produto={fichaItem}
+          />
+        )}
       </div>
     );
   }
