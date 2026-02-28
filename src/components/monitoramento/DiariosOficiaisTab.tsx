@@ -18,7 +18,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Filter } from 'lucide-react';
+import { streamAIChat } from '@/lib/ai-stream';
 
 type AtoLicitatorio = {
   id: string;
@@ -93,6 +94,8 @@ export default function DiariosOficiaisTab() {
   const [mostrarPortais, setMostrarPortais] = useState(false);
   const [buscaIA, setBuscaIA] = useState('');
   const [buscandoIA, setBuscandoIA] = useState(false);
+  const [filtrandoIA, setFiltrandoIA] = useState(false);
+  const [idsRelevantesIA, setIdsRelevantesIA] = useState<string[] | null>(null);
   const [dataInicio, setDataInicio] = useState<Date | undefined>();
   const [dataFim, setDataFim] = useState<Date | undefined>();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -185,8 +188,63 @@ export default function DiariosOficiaisTab() {
       return;
     }
     setBuscandoIA(true);
+    setIdsRelevantesIA(null);
     await handleBuscar();
     setBuscandoIA(false);
+  };
+
+  const handleFiltrarIA = async () => {
+    if (!buscaIA.trim()) {
+      toast.error('Digite o que deseja filtrar (ex: pavimentação, saneamento)');
+      return;
+    }
+    if (atos.length === 0) {
+      toast.error('Nenhum resultado carregado para filtrar. Busque nos portais primeiro.');
+      return;
+    }
+    setFiltrandoIA(true);
+
+    // Build a summary of existing results for AI analysis
+    const resumos = atos.slice(0, 60).map((a, i) => 
+      `${i}|${a.id}|${a.titulo.substring(0, 120)}|${a.orgao.substring(0, 60)}|${a.tipo || ''}|${a.municipio || ''}/${a.uf || ''}`
+    ).join('\n');
+
+    let content = '';
+    await streamAIChat({
+      messages: [{
+        role: 'user',
+        content: `Analise os atos licitatórios abaixo e retorne APENAS os IDs (coluna 2, UUID) dos que são RELEVANTES para o filtro: "${buscaIA}".
+
+Considere relevância semântica (não apenas palavras exatas). Por exemplo, "material hospitalar" deve incluir "luvas", "seringas", "medicamentos" etc.
+
+Formato de cada linha: índice|id|título|órgão|tipo|local
+
+${resumos}
+
+Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "id2", ...]`
+      }],
+      action: 'filtro_ia_diarios',
+      onDelta: (chunk) => { content += chunk; },
+      onDone: () => {
+        try {
+          const jsonMatch = content.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            const ids = JSON.parse(jsonMatch[0]) as string[];
+            setIdsRelevantesIA(ids);
+            toast.success(`IA encontrou ${ids.length} atos relevantes para "${buscaIA}"`);
+          } else {
+            toast.error('IA não conseguiu classificar os resultados.');
+          }
+        } catch {
+          toast.error('Erro ao processar resposta da IA.');
+        }
+        setFiltrandoIA(false);
+      },
+      onError: (err) => {
+        toast.error(err);
+        setFiltrandoIA(false);
+      },
+    });
   };
 
   const marcarComoLido = async (id: string) => {
@@ -272,6 +330,8 @@ export default function DiariosOficiaisTab() {
   };
 
   const atosFiltrados = atos.filter(a => {
+    // If AI filter is active, only show matching IDs
+    if (idsRelevantesIA !== null && !idsRelevantesIA.includes(a.id)) return false;
     const matchBusca = !busca ||
       a.titulo.toLowerCase().includes(busca.toLowerCase()) ||
       a.orgao.toLowerCase().includes(busca.toLowerCase()) ||
@@ -294,6 +354,11 @@ export default function DiariosOficiaisTab() {
       (fonteFiltro === 'pncp' && portalLower.includes('pncp'));
     return matchBusca && matchTipo && matchUf && matchFonte && matchDataInicio && matchDataFim;
   });
+
+  // Reorder: if AI filter is active, put matched items in the order returned by AI
+  const atosOrdenados = idsRelevantesIA !== null
+    ? atosFiltrados.sort((a, b) => idsRelevantesIA.indexOf(a.id) - idsRelevantesIA.indexOf(b.id))
+    : atosFiltrados;
 
   const naoLidos = atos.filter(a => !a.lido).length;
   const fonteAtual = FONTES_DIARIOS.find(f => f.id === fonteFiltro);
@@ -351,26 +416,51 @@ export default function DiariosOficiaisTab() {
           <div className="relative flex-1">
             <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent" />
             <Input
-              placeholder="Pesquisa avançada com IA (ex: pavimentação, saneamento, energia solar...)"
+              placeholder="Pesquisa com IA (ex: pavimentação, saneamento, energia solar...)"
               value={buscaIA}
-              onChange={e => setBuscaIA(e.target.value)}
+              onChange={e => { setBuscaIA(e.target.value); if (!e.target.value.trim()) setIdsRelevantesIA(null); }}
               className="pl-9 text-xs"
-              onKeyDown={e => e.key === 'Enter' && handleBuscaIA()}
+              onKeyDown={e => e.key === 'Enter' && handleFiltrarIA()}
             />
           </div>
           <Button
-            onClick={handleBuscaIA}
-            disabled={buscandoIA || buscando}
+            onClick={handleFiltrarIA}
+            disabled={filtrandoIA || buscandoIA || buscando}
             size="sm"
             variant="outline"
             className="shrink-0"
+            title="Filtra os resultados já carregados usando IA semântica"
+          >
+            {filtrandoIA ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <><Filter className="w-3.5 h-3.5 mr-1" /> Filtrar com IA</>
+            )}
+          </Button>
+          <Button
+            onClick={handleBuscaIA}
+            disabled={buscandoIA || buscando || filtrandoIA}
+            size="sm"
+            variant="outline"
+            className="shrink-0"
+            title="Busca novos resultados nos portais usando estes termos"
           >
             {buscandoIA ? (
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <><Sparkles className="w-3.5 h-3.5 mr-1" /> Pesquisar com IA</>
+              <><Sparkles className="w-3.5 h-3.5 mr-1" /> Buscar nos Portais</>
             )}
           </Button>
+          {idsRelevantesIA !== null && (
+            <Button
+              onClick={() => setIdsRelevantesIA(null)}
+              size="sm"
+              variant="ghost"
+              className="shrink-0 text-xs"
+            >
+              Limpar filtro IA
+            </Button>
+          )}
         </div>
 
         {/* Toggle para mostrar portais */}
@@ -496,12 +586,12 @@ export default function DiariosOficiaisTab() {
       )}
 
       <p className="text-xs text-muted-foreground">
-        {loading ? 'Carregando...' : `${atosFiltrados.length} atos encontrados`}
+        {loading ? 'Carregando...' : `${atosOrdenados.length} atos encontrados${idsRelevantesIA !== null ? ' (filtro IA ativo)' : ''}`}
       </p>
 
       {/* Lista de atos */}
       <div className="space-y-2">
-        {atosFiltrados.map(ato => {
+        {atosOrdenados.map(ato => {
           const cfg = tipoConfig[ato.tipo || ''] || { label: ato.tipo || 'Outro', icon: FileText, color: 'bg-muted text-muted-foreground border-border' };
           const Icon = cfg.icon;
           return (
@@ -630,7 +720,7 @@ export default function DiariosOficiaisTab() {
           );
         })}
 
-        {!loading && atosFiltrados.length === 0 && (
+        {!loading && atosOrdenados.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <Newspaper className="w-10 h-10 mx-auto mb-3 opacity-40" />
             <p className="text-sm">Nenhum ato encontrado nos diários oficiais.</p>
