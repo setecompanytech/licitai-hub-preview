@@ -193,34 +193,19 @@ export default function Precificacao() {
     setSelectedCidade('todos');
   };
 
-  const CATEGORIAS: Record<string, string[]> = {
-    'Veículos': ['Caminhões', 'Carros Antigos', 'Carros e Caminhonetes', 'Consórcios', 'Motorhomes', 'Motos', 'Náutica', 'Outros Veículos', 'Veículos Pesados', 'Ônibus'],
-    'Supermercado': ['Bebidas', 'Comida Preparada Congelados', 'Mercearia'],
-    'Tecnologia': ['Informática', 'Celulares e Telefones', 'Câmeras e Acessórios', 'Eletrônicos, Áudio e Vídeo', 'Games', 'Softwares', 'Gift Cards'],
-    'Casa e Móveis': ['Banheiros', 'Camas, Colchões e Acessórios', 'Cozinha', 'Cuidado da Casa e Lavanderia', 'Enfeites e Decoração', 'Iluminação Residencial', 'Jardim e Ar Livre', 'Móveis para Casa', 'Organização para Casa', 'Segurança para Casa', 'Têxteis de Casa e Decoração'],
-    'Eletrodomésticos': ['Ar e Ventilação', 'Bebedouros e Purificadores', 'Fornos e Fogões', 'Lavadores', 'Pequenos Eletrodomésticos', 'Refrigeração'],
-    'Esportes e Fitness': ['Artes Marciais e Boxe', 'Camping, Caça e Pesca', 'Ciclismo', 'Fitness e Musculação', 'Futebol', 'Natação', 'Pilates e Yoga', 'Surf e Bodyboard', 'Tênis', 'Moda Fitness', 'Monitores Esportivos'],
-    'Ferramentas': ['Ferramentas Elétricas', 'Ferramentas Industriais', 'Ferramentas Manuais', 'Ferramentas Pneumáticas', 'Ferramentas para Jardim', 'Medições e Instrumentação', 'Caixas e Organizadores'],
-    'Construção': ['Aberturas', 'Encanamento', 'Energia', 'Loja das Tintas', 'Materiais de Obra', 'Mobiliário para Banheiros', 'Mobiliário para Cozinhas', 'Máquinas para Construção', 'Pisos e Rejuntes'],
-    'Indústria e Comércio': ['Embalagem e Logística', 'Equipamento para Comércios', 'Equipamento para Escritórios', 'Gastronomia e Hotelaria', 'Gráfica e Impressão', 'Publicidade e Promoção', 'Segurança Laboral', 'Têxtil e Calçado', 'Uniformes e Roupa de Trabalho'],
-    'Pet Shop': ['Acessórios para Pets', 'Alimentação Animal', 'Higiene Animal', 'Saúde Animal'],
-    'Bebês': ['Alimentação e Amamentação', 'Alimentos para Bebês', 'Andadores e Mini Veículos', 'Banho do Bebê', 'Brinquedos para Bebês', 'Chupetas e Mordedores', 'Higiene e Cuidados com o Bebê', 'Maternidade', 'Passeio do Bebê', 'Quarto do Bebê', 'Roupas de Bebê', 'Saúde do Bebê', 'Segurança para Bebê'],
-    'Beleza e Cuidado Pessoal': ['Cuidados com a Pele', 'Cuidados com o Cabelo', 'Depilação', 'Farmácia', 'Higiene Pessoal', 'Manicure e Pedicure', 'Maquiagem', 'Perfumes', 'Tratamentos de Beleza', 'Barbearia'],
-    'Brinquedos e Hobbies': ['Ar Livre e Playground', 'Bonecos e Bonecas', 'Brinquedos Eletrônicos', 'Brinquedos de Montar', 'Hobbies', 'Jogos de Tabuleiro e Cartas', 'Miniaturas', 'Pelúcias', 'Veículos de Brinquedo', 'Álbuns e Figurinhas'],
-    'Calçados, Roupas e Bolsas': ['Acessórios de Moda', 'Calçados', 'Calças', 'Camisetas e Regatas', 'Malas e Bolsas', 'Moda Praia', 'Moda Íntima e Lingerie', 'Vestidos', 'Ternos', 'Indumentária Laboral e Escolar'],
-    'Joias e Relógios': ['Artigos de Joalharia', 'Canetas e Lapiseiras de Luxo', 'Joias e Bijuterias', 'Pedra Preciosa e Semipreciosa', 'Piercings', 'Porta Joias', 'Relógios', 'Acessórios Para Relógios'],
-    'Saúde': ['Cuidado da Saúde', 'Equipamento Médico', 'Massagem', 'Mobilidade', 'Ortopedia', 'Suplementos Alimentares', 'Terapias Alternativas'],
-    'Serviços': ['Academia e Esportes', 'Beleza, Estética e Bem Estar', 'Educação', 'Festas e Eventos', 'Gastronomia', 'Lar', 'Marketing e Internet', 'Saúde', 'Suporte Técnico', 'Viagens e Turismo'],
-    'Instrumentos Musicais': ['Baterias e Percussão', 'Equipamento para DJs', 'Estúdio de Gravação', 'Instrumentos de Corda', 'Instrumentos de Sopro', 'Pianos e Teclados', 'Microfones e Amplificadores'],
-    'Livros, Revistas e Comics': ['Ebooks', 'Livros Físicos', 'Revistas', 'Catálogos'],
-    'Festas e Lembrancinhas': ['Artigos para Festas', 'Decoração de Festa', 'Descartáveis para Festa', 'Fantasias e Cosplay', 'Lembrancinhas'],
-    'Imóveis': ['Apartamentos', 'Casas', 'Chácaras', 'Fazendas', 'Galpões', 'Lojas Comerciais', 'Salas Comerciais', 'Terrenos'],
-    'Antiguidades e Colecionáveis': ['Antiguidades', 'Cédulas e Moedas', 'Colecionáveis de Esportes', 'Esculturas', 'Filatelia', 'Militaria e Afins', 'Pôsteres'],
-    'Música, Filmes e Seriados': ['Filmes Físicos', 'Filmes Online', 'Música', 'Seriados', 'Cursos Completos'],
-    'Arte e Materiais Escolares': ['Artigos de Armarinho', 'Materiais Escolares', 'Arte e Trabalhos Manuais'],
-    'Ingressos': ['Eventos Esportivos', 'Shows', 'Teatro e Cultura', 'Exposições'],
-    'Outros': ['Artigos para Fumadores', 'Criptomoedas', 'Equipamento para Tatuagens', 'Esoterismo e Ocultismo', 'Coberturas Estendidas'],
-  };
+  // Dynamic categories extracted from AI search results
+  const dynamicCategories = (() => {
+    if (!aiParsedData) return [];
+    const results = Array.isArray(aiParsedData) ? aiParsedData : [aiParsedData];
+    const cats = new Set<string>();
+    results.forEach((r: any) => {
+      if (r?.categoria) cats.add(r.categoria);
+      r?.fornecedores?.forEach((f: any) => {
+        if (f?.categoria) cats.add(f.categoria);
+      });
+    });
+    return Array.from(cats).sort();
+  })();
 
 
   const loadSavedSearches = async () => {
@@ -320,6 +305,7 @@ export default function Precificacao() {
     }
     setIsSearchingAI(true);
     setCurrentSearchTerm(search);
+    setSelectedCategory('todos');
     setAiResult('');
     setAiParsedData(null);
     abortRef.current = false;
@@ -422,37 +408,31 @@ Retorne APENAS JSON puro, sem markdown, sem crases, sem texto adicional. Mínimo
           ))}
         </div>
 
-        {/* Category Filter */}
-        <div className="flex gap-3 items-center flex-wrap">
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Filter className="w-4 h-4" />
-            <span className="font-medium">Categoria:</span>
+        {/* Category Filter – Dynamic from results */}
+        {dynamicCategories.length > 0 && (
+          <div className="flex gap-3 items-center flex-wrap">
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Filter className="w-4 h-4" />
+              <span className="font-medium">Categoria:</span>
+            </div>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-[320px] h-9">
+                <SelectValue placeholder="Todas as categorias" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todas as categorias</SelectItem>
+                {dynamicCategories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedCategory !== 'todos' && (
+              <Button variant="ghost" size="sm" onClick={() => setSelectedCategory('todos')}>
+                ✕ Limpar
+              </Button>
+            )}
           </div>
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-[320px] h-9">
-              <SelectValue placeholder="Todas as categorias" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[400px]">
-              <SelectItem value="todos">Todas as categorias</SelectItem>
-              {Object.entries(CATEGORIAS).map(([grupo, subs]) => (
-                <div key={grupo}>
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-t border-border/40 mt-1 pt-1">{grupo}</div>
-                  <SelectItem value={grupo}>📁 {grupo}</SelectItem>
-                  {subs.map((sub) => (
-                    <SelectItem key={`${grupo} > ${sub}`} value={`${grupo} > ${sub}`}>
-                      &nbsp;&nbsp;↳ {sub}
-                    </SelectItem>
-                  ))}
-                </div>
-              ))}
-            </SelectContent>
-          </Select>
-          {selectedCategory !== 'todos' && (
-            <Button variant="ghost" size="sm" onClick={() => setSelectedCategory('todos')}>
-              ✕ Limpar
-            </Button>
-          )}
-        </div>
+        )}
 
         {/* Geographic Filters */}
         <div className="flex gap-3 items-center flex-wrap">
