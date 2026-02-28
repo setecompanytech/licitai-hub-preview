@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import { toast } from 'sonner';
+// streamAIChat kept for potential fallback usage
 import { streamAIChat, type ChatMessage } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
@@ -175,8 +176,6 @@ export default function Precificacao() {
   const [filterPrecoMax, setFilterPrecoMax] = useState('');
   const [filterLojas, setFilterLojas] = useState<string[]>([]);
   const [filterMarcas, setFilterMarcas] = useState<string[]>([]);
-  const [enrichedImages, setEnrichedImages] = useState<Record<number, string>>({});
-  const [isLoadingImages, setIsLoadingImages] = useState(false);
   const navigate = useNavigate();
   const { addItem, hasPending, pendingItems } = usePropostaCart();
   const abortRef = useRef(false);
@@ -402,77 +401,7 @@ export default function Precificacao() {
     }
   }, [isSearchingAI, aiResult]);
 
-  // Fetch real product images via Firecrawl after AI results load
-  useEffect(() => {
-    if (!aiParsedData || !currentSearchTerm) return;
-    const fornecedores = aiParsedData.fornecedores;
-    if (!fornecedores || fornecedores.length === 0) return;
-
-    const fetchImages = async () => {
-      setIsLoadingImages(true);
-      try {
-        const { data, error } = await supabase.functions.invoke('busca-imagens-produto', {
-          body: { termo: currentSearchTerm },
-        });
-
-        if (error || !data?.success || !data?.imagens?.length) {
-          console.warn('Sem imagens reais encontradas:', error || 'Nenhum resultado');
-          setIsLoadingImages(false);
-          return;
-        }
-
-        const imagens: { titulo: string; image_url: string; fonte: string }[] = data.imagens;
-
-        // Match images to fornecedores by keyword similarity
-        const imageMap: Record<number, string> = {};
-        const searchWords = currentSearchTerm.toLowerCase().split(/\s+/);
-
-        fornecedores.forEach((f: any, idx: number) => {
-          const produtoWords = (f.produto || '').toLowerCase().split(/\s+/);
-          const marcaWord = (f.marca || '').toLowerCase();
-
-          let bestScore = 0;
-          let bestImage = '';
-
-          for (const img of imagens) {
-            const imgTitle = img.titulo.toLowerCase();
-            let score = 0;
-
-            // Score by matching words from the product name
-            for (const word of produtoWords) {
-              if (word.length > 2 && imgTitle.includes(word)) score += 2;
-            }
-            // Bonus for brand match
-            if (marcaWord && marcaWord.length > 1 && imgTitle.includes(marcaWord)) score += 5;
-            // Bonus for search term words match
-            for (const w of searchWords) {
-              if (w.length > 2 && imgTitle.includes(w)) score += 1;
-            }
-
-            if (score > bestScore) {
-              bestScore = score;
-              bestImage = img.image_url;
-            }
-          }
-
-          // Only assign if we got a reasonable match (at least 2 words matched)
-          if (bestScore >= 3 && bestImage) {
-            imageMap[idx] = bestImage;
-          } else if (imagens.length > 0) {
-            // Fallback: assign first image (same product type)
-            imageMap[idx] = imagens[0].image_url;
-          }
-        });
-
-        setEnrichedImages(imageMap);
-      } catch (e) {
-        console.error('Erro ao buscar imagens reais:', e);
-      }
-      setIsLoadingImages(false);
-    };
-
-    fetchImages();
-  }, [aiParsedData, currentSearchTerm]);
+  // No longer needed - images come directly from real scraping
 
   useEffect(() => {
     if (showHistory) loadSavedSearches();
@@ -488,42 +417,38 @@ export default function Precificacao() {
     resetAllFilters();
     setAiResult('');
     setAiParsedData(null);
-    setEnrichedImages({});
+    
     abortRef.current = false;
 
-    const catInstLabel = selectedCategory !== 'todos' ? selectedCategory : null;
-    const categoryInstruction = catInstLabel
-      ? `\nCATEGORIA SELECIONADA: ${catInstLabel}. Foque a pesquisa nesta categoria.`
-      : '';
+    try {
+      // Use real marketplace scraping via Firecrawl
+      const { data, error } = await supabase.functions.invoke('pesquisa-preco-real', {
+        body: { termo: search },
+      });
 
-    // Build location instruction
-    const locationParts: string[] = [];
-    if (selectedCidade !== 'todos') locationParts.push(`cidade: ${selectedCidade}`);
-    if (selectedEstado !== 'todos') {
-      const estadoNome = availableEstados.find(e => e.uf === selectedEstado)?.nome || selectedEstado;
-      locationParts.push(`estado: ${estadoNome} (${selectedEstado})`);
+      if (error || !data?.success) {
+        const errMsg = error?.message || data?.error || 'Erro na pesquisa';
+        toast.error(errMsg);
+        console.error('Erro pesquisa real:', error || data?.error);
+        setIsSearchingAI(false);
+        return;
+      }
+
+      const result = data.data as PesquisaMLResult;
+      if (result && result.fornecedores?.length > 0) {
+        setAiParsedData(result);
+        setAiResult(JSON.stringify(result));
+        toast.success(`${result.fornecedores.length} produtos encontrados em ${Object.keys(data.data.fontes_consultadas || {}).length} marketplaces!`);
+      } else {
+        toast.warning('Nenhum produto encontrado nos marketplaces. Tente outro termo.');
+        setAiResult('');
+      }
+    } catch (e) {
+      console.error('Erro pesquisa:', e);
+      toast.error('Erro ao pesquisar nos marketplaces.');
     }
-    if (selectedRegiao !== 'todos') locationParts.push(`região: ${REGIOES_ESTADOS[selectedRegiao]?.label}`);
-    const locationInstruction = locationParts.length > 0
-      ? `\nLOCALIZAÇÃO: Priorize fornecedores e preços com entrega para ${locationParts.join(', ')}. Considere frete para essa região.`
-      : '';
 
-    await streamAIChat({
-      messages: [{ role: 'user', content: `Realize pesquisa de mercado para: "${search}".${categoryInstruction}${locationInstruction}
-
-Retorne APENAS JSON puro, sem markdown, sem crases, sem texto adicional. Mínimo 5 fornecedores.` }],
-      action: 'pesquisa_mercado',
-      onDelta: (text) => {
-        if (!abortRef.current) setAiResult((prev) => prev + text);
-      },
-      onDone: () => {
-        setIsSearchingAI(false);
-      },
-      onError: (err) => {
-        toast.error(err);
-        setIsSearchingAI(false);
-      },
-    });
+    setIsSearchingAI(false);
   };
 
   const handleAddToProposta = (item: ItemPesquisa, preco: number) => {
@@ -668,9 +593,9 @@ Retorne APENAS JSON puro, sem markdown, sem crases, sem texto adicional. Mínimo
             className="bg-accent hover:bg-accent/90 text-accent-foreground min-w-[120px]"
           >
             {isSearchingAI ? (
-              <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Buscando...</>
+              <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Pesquisando...</>
             ) : (
-              <><Bot className="w-4 h-4 mr-1" /> BUSCAR</>
+              <><Search className="w-4 h-4 mr-1" /> BUSCAR</>
             )}
           </Button>
           <Button
@@ -974,9 +899,9 @@ Retorne APENAS JSON puro, sem markdown, sem crases, sem texto adicional. Mínimo
               <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Bot className="w-5 h-5 text-[#3483fa]" />
-                    <h3 className="font-semibold text-sm">Resultado da Pesquisa de Mercado</h3>
-                    {isSearchingAI && <Loader2 className="w-4 h-4 animate-spin text-[#3483fa]" />}
+                    <ShoppingCart className="w-5 h-5 text-primary" />
+                    <h3 className="font-semibold text-sm">Resultados dos Marketplaces</h3>
+                    {isSearchingAI && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
                   </div>
                   {aiResult && !isSearchingAI && (
                     <Button size="sm" variant="outline" onClick={handleSaveSearch}>
@@ -987,15 +912,9 @@ Retorne APENAS JSON puro, sem markdown, sem crases, sem texto adicional. Mínimo
                 <PesquisaResultML
                   data={aiParsedData ? {
                     ...aiParsedData,
-                    fornecedores: applyAllFilters(aiParsedData.fornecedores).map((f: any, idx: number) => {
-                      // Find the original index to map enriched images
-                      const origIdx = aiParsedData.fornecedores.indexOf(f);
-                      const realImage = enrichedImages[origIdx];
-                      return realImage ? { ...f, image_url: realImage } : f;
-                    }),
+                    fornecedores: applyAllFilters(aiParsedData.fornecedores),
                   } : null}
                   isLoading={isSearchingAI}
-                  isLoadingImages={isLoadingImages}
                   rawMarkdown={!aiParsedData && !isSearchingAI ? aiResult : undefined}
                 />
               </div>
