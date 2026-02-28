@@ -4,8 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   ExternalLink, Star, Truck, ShieldCheck, Store, TrendingDown,
-  Package, LayoutGrid, List, Percent
+  Package, LayoutGrid, List, Percent, ArrowUpDown
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export type FornecedorML = {
   loja: string;
@@ -331,13 +332,21 @@ export function PesquisaResultML({
   rawMarkdown?: string;
 }) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [sortMode, setSortMode] = useState<'relevante' | 'menor' | 'maior'>('relevante');
 
   if (isLoading) return <LoadingSkeleton />;
   if (!data && !rawMarkdown) return null;
 
   if (data) {
-    const sorted = [...data.fornecedores].sort((a, b) => a.preco - b.preco);
-    const cheapestPrice = sorted[0]?.preco ?? 0;
+    const sorted = [...data.fornecedores].sort((a, b) => {
+      if (sortMode === 'menor') return a.preco - b.preco;
+      if (sortMode === 'maior') return b.preco - a.preco;
+      // relevante: qualified first, then by rating desc, then price asc
+      const scoreA = (a.vendedor_qualificado ? 100 : 0) + (a.avaliacao || 0) * 10 - a.preco * 0.001;
+      const scoreB = (b.vendedor_qualificado ? 100 : 0) + (b.avaliacao || 0) * 10 - b.preco * 0.001;
+      return scoreB - scoreA;
+    });
+    const cheapestPrice = Math.min(...data.fornecedores.map(f => f.preco));
 
     return (
       <div className="space-y-4">
@@ -351,8 +360,22 @@ export function PesquisaResultML({
               {data.fornecedores.length} fornecedores encontrados · Pesquisa em {data.data_pesquisa}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Visualização:</span>
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Sort */}
+            <div className="flex items-center gap-1.5">
+              <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />
+              <Select value={sortMode} onValueChange={(v) => setSortMode(v as any)}>
+                <SelectTrigger className="w-[170px] h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="relevante">Mais relevantes</SelectItem>
+                  <SelectItem value="menor">Menor preço</SelectItem>
+                  <SelectItem value="maior">Maior preço</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {/* View toggle */}
             <div className="flex border border-border rounded-md overflow-hidden">
               <button
                 onClick={() => setViewMode('grid')}
