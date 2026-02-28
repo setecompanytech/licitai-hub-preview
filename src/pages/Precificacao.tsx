@@ -24,6 +24,7 @@ import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
 import { PesquisaResultML, type PesquisaMLResult } from '@/components/precificacao/ProdutoCardML';
 import { useAuth } from '@/contexts/AuthContext';
+import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 
 
 type FontePreco = {
@@ -101,60 +102,6 @@ const fonteColors: Record<string, string> = {
   SINAPI: 'bg-accent/15 text-accent',
 };
 
-const REGIOES_ESTADOS: Record<string, { label: string; estados: { uf: string; nome: string; cidades: string[] }[] }> = {
-  norte: {
-    label: 'Norte',
-    estados: [
-      { uf: 'PA', nome: 'Pará', cidades: ['Belém', 'Ananindeua', 'Santarém', 'Marabá', 'Castanhal', 'Parauapebas'] },
-      { uf: 'AM', nome: 'Amazonas', cidades: ['Manaus', 'Parintins', 'Itacoatiara'] },
-      { uf: 'TO', nome: 'Tocantins', cidades: ['Palmas', 'Araguaína', 'Gurupi'] },
-      { uf: 'RO', nome: 'Rondônia', cidades: ['Porto Velho', 'Ji-Paraná'] },
-      { uf: 'AC', nome: 'Acre', cidades: ['Rio Branco', 'Cruzeiro do Sul'] },
-      { uf: 'AP', nome: 'Amapá', cidades: ['Macapá', 'Santana'] },
-      { uf: 'RR', nome: 'Roraima', cidades: ['Boa Vista'] },
-    ],
-  },
-  nordeste: {
-    label: 'Nordeste',
-    estados: [
-      { uf: 'BA', nome: 'Bahia', cidades: ['Salvador', 'Feira de Santana', 'Vitória da Conquista'] },
-      { uf: 'CE', nome: 'Ceará', cidades: ['Fortaleza', 'Caucaia', 'Juazeiro do Norte'] },
-      { uf: 'PE', nome: 'Pernambuco', cidades: ['Recife', 'Jaboatão dos Guararapes', 'Olinda'] },
-      { uf: 'MA', nome: 'Maranhão', cidades: ['São Luís', 'Imperatriz'] },
-      { uf: 'PB', nome: 'Paraíba', cidades: ['João Pessoa', 'Campina Grande'] },
-      { uf: 'RN', nome: 'Rio Grande do Norte', cidades: ['Natal', 'Mossoró'] },
-      { uf: 'AL', nome: 'Alagoas', cidades: ['Maceió', 'Arapiraca'] },
-      { uf: 'PI', nome: 'Piauí', cidades: ['Teresina', 'Parnaíba'] },
-      { uf: 'SE', nome: 'Sergipe', cidades: ['Aracaju'] },
-    ],
-  },
-  sudeste: {
-    label: 'Sudeste',
-    estados: [
-      { uf: 'SP', nome: 'São Paulo', cidades: ['São Paulo', 'Campinas', 'Guarulhos', 'Santos'] },
-      { uf: 'RJ', nome: 'Rio de Janeiro', cidades: ['Rio de Janeiro', 'Niterói', 'São Gonçalo'] },
-      { uf: 'MG', nome: 'Minas Gerais', cidades: ['Belo Horizonte', 'Uberlândia', 'Contagem'] },
-      { uf: 'ES', nome: 'Espírito Santo', cidades: ['Vitória', 'Vila Velha', 'Serra'] },
-    ],
-  },
-  sul: {
-    label: 'Sul',
-    estados: [
-      { uf: 'PR', nome: 'Paraná', cidades: ['Curitiba', 'Londrina', 'Maringá'] },
-      { uf: 'SC', nome: 'Santa Catarina', cidades: ['Florianópolis', 'Joinville', 'Blumenau'] },
-      { uf: 'RS', nome: 'Rio Grande do Sul', cidades: ['Porto Alegre', 'Caxias do Sul', 'Pelotas'] },
-    ],
-  },
-  centro_oeste: {
-    label: 'Centro-Oeste',
-    estados: [
-      { uf: 'GO', nome: 'Goiás', cidades: ['Goiânia', 'Aparecida de Goiânia', 'Anápolis'] },
-      { uf: 'MT', nome: 'Mato Grosso', cidades: ['Cuiabá', 'Várzea Grande', 'Rondonópolis'] },
-      { uf: 'MS', nome: 'Mato Grosso do Sul', cidades: ['Campo Grande', 'Dourados'] },
-      { uf: 'DF', nome: 'Distrito Federal', cidades: ['Brasília'] },
-    ],
-  },
-};
 
 export default function Precificacao() {
   const [search, setSearch] = useState('');
