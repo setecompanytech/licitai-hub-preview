@@ -78,6 +78,31 @@ function detectStore(url: string): string {
   return 'Outros';
 }
 
+function isSearchOrListingPage(url: string): boolean {
+  const u = url.toLowerCase();
+  return /\/busca\/|\/search|\/lista\/|\/list\/|catalogsearch|\?s?k=|[?&]q=|[?&]search=|[?&]str=|\/(?:categoria|departamento|monitores|notebooks|celulares)\//i.test(u);
+}
+
+function isLikelyProductDetailPage(url: string, loja: string): boolean {
+  const u = url.toLowerCase();
+
+  if (loja === 'Amazon') return /\/dp\/[a-z0-9]{8,}/i.test(url) || /\/gp\/product\//i.test(url);
+  if (loja === 'Mercado Livre') return /\/mlb[-/]?\d+/i.test(url) || /\/p\/mlb\d+/i.test(url);
+  if (loja === 'Magazine Luiza') return /\/p\//i.test(u) && !u.includes('/busca/');
+  if (loja === 'KaBuM' || loja === 'Terabyte' || loja === 'Pichau') return /\/produto\//i.test(u);
+  if (loja === 'Shopee') return /-i\.\d+\.\d+/i.test(url);
+  if (loja === 'Gazin Atacado') return /\/produto\//i.test(u) || /\/p\//i.test(u);
+
+  return !isSearchOrListingPage(url);
+}
+
+function storeRequiresDetailPage(loja: string): boolean {
+  return [
+    'Amazon', 'Mercado Livre', 'Magazine Luiza', 'KaBuM', 'Terabyte', 'Pichau', 'Shopee', 'Gazin Atacado',
+    'Americanas', 'Casas Bahia', 'Carrefour', 'Havan', 'Fast Shop', 'Leroy Merlin', 'MadeiraMadeira'
+  ].includes(loja);
+}
+
 /**
  * INTELLIGENT PRICE EXTRACTION
  * Filters out accessory/insurance/case prices by:
@@ -150,47 +175,69 @@ function extractMainProductPrice(title: string, fullText: string): { preco: numb
   return { preco, precoOriginal };
 }
 
+/** Score image quality/relevance to prioritize real product photos */
+function scoreImageCandidate(url: string): number {
+  const u = url.toLowerCase();
+  let score = 0;
+
+  if (/m\.media-amazon\.com\/images\/i\//i.test(u)) score += 4;
+  if (/http2\.mlstatic\.com\/d_/i.test(u)) score += 4;
+  if (/images\.kabum\.com\.br/i.test(u)) score += 3;
+  if (/\/produto\//i.test(u)) score += 3;
+  if (/_ac_|_sx|_sy|_sl/i.test(u)) score += 2;
+
+  if (/thumb|thumbnail/i.test(u)) score -= 2;
+  if (/og[_\-.]|social[-_]?share/i.test(u)) score -= 5;
+  if (/\/assets\/|\/static\/|\/themes\/|\/template\//i.test(u)) score -= 5;
+  if (/\/rating\/|\/stars\//i.test(u)) score -= 4;
+
+  return score;
+}
+
 /** Extract all product image URLs from search result */
 function extractImages(result: any): string[] {
   const markdown = result.markdown || '';
-  const images: string[] = [];
+  const candidates: { url: string; score: number }[] = [];
   const seen = new Set<string>();
 
   function addImg(url: string) {
     if (!url || seen.has(url) || !isProductImage(url)) return;
     seen.add(url);
-    images.push(url);
+    candidates.push({ url, score: scoreImageCandidate(url) });
   }
 
-  // 1. OG image
-  const ogImage = result.metadata?.ogImage || result.metadata?.['og:image'];
-  if (ogImage) addImg(ogImage);
-
-  // 2. ML static images
+  // 1. ML static images
   const mlMatches = [...markdown.matchAll(/(https?:\/\/http2\.mlstatic\.com\/D_[^\s"')]+\.(?:jpg|webp|png))/gi)];
   for (const m of mlMatches) addImg(m[1]);
 
-  // 3. Amazon images
+  // 2. Amazon images
   const amzMatches = [...markdown.matchAll(/(https?:\/\/m\.media-amazon\.com\/images\/I\/[^\s"')]+\.(?:jpg|webp|png))/gi)];
   for (const m of amzMatches) addImg(m[1]);
 
-  // 4. Kabum images
+  // 3. Kabum images
   const kabumMatches = [...markdown.matchAll(/(https?:\/\/images\.kabum\.com\.br\/[^\s"')]+\.(?:jpg|webp|png))/gi)];
   for (const m of kabumMatches) addImg(m[1]);
 
-  // 5. Magazine Luiza images
+  // 4. Magazine Luiza images
   const magaluMatches = [...markdown.matchAll(/(https?:\/\/[^\s"')]*magazineluiza[^\s"')]*\.(?:jpg|webp|png))/gi)];
   for (const m of magaluMatches) addImg(m[1]);
 
-  // 6. Markdown images
+  // 5. Markdown images
   const mdImgMatches = [...markdown.matchAll(/!\[[^\]]*\]\((https?:\/\/[^\s)]+\.(?:jpg|jpeg|png|webp)[^\s)]*)\)/gi)];
   for (const m of mdImgMatches) addImg(m[1]);
 
-  // 7. Raw image URLs
+  // 6. Raw image URLs
   const rawMatches = [...markdown.matchAll(/(https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp))(?:\?[^\s"'<>]*)?/gi)];
   for (const m of rawMatches) addImg(m[1]);
 
-  return images.slice(0, 6); // Max 6 images per product
+  // 7. OG image as fallback only
+  const ogImage = result.metadata?.ogImage || result.metadata?.['og:image'];
+  if (ogImage) addImg(ogImage);
+
+  return candidates
+    .sort((a, b) => b.score - a.score)
+    .map(c => c.url)
+    .slice(0, 6);
 }
 
 /** Extract single best image (backwards compat) */
@@ -203,23 +250,35 @@ function extractImage(result: any): string | undefined {
 function isProductImage(url: string): boolean {
   if (!url) return false;
   const lower = url.toLowerCase();
-  // Reject non-product images (logos, icons, banners, ads)
+
+  // Reject non-product images (logos, icons, banners, ads, site assets)
   if (/logo|icon|sprite|banner|favicon|avatar|badge|selo|stamp|watermark/i.test(lower)) return false;
   if (/1x1|pixel|tracking|analytics/i.test(lower)) return false;
   if (/ad[s]?[_\-\/]|doubleclick|googlesyndication|adsense|adserver|pubmatic|criteo|taboola|outbrain/i.test(lower)) return false;
-  if (/promo|campanha|anuncio|slide.*banner/i.test(lower)) return false;
-  // Reject very small images (thumbnail indicators in URL)
+  if (/promo|campanha|anuncio|slide.*banner|hero[-_]?banner|og[_\-.]|social[-_]?share/i.test(lower)) return false;
+  if (/\/assets\/|\/static\/|\/themes\/|\/template\/|\/rating\/|\/stars\//i.test(lower)) return false;
+  if (/vlibras|access_popup|shopee-pcmall-live-sg|kalunga\.jpg|og_tb\.png/i.test(lower)) return false;
+
+  // Reject very small images / known placeholders
   if (/_S_\d{2,3}\.\w+$/i.test(lower)) return false;
+  if (/_AC_US\d{1,3}_/i.test(lower)) return false;
   if (/\/D_NQ_NP_ID-MLB/i.test(lower)) return false;
-  return true;
+
+  return /\.(jpg|jpeg|png|webp)(\?.*)?$/i.test(lower);
 }
 
 /**
- * Validates that the title is for a real product, not an accessory/insurance
+ * Validates that the title is for a real product, not an accessory/insurance/listing page
  */
-function isMainProduct(title: string, searchTerm: string): boolean {
+function isMainProduct(title: string, searchTerm: string, url: string, loja: string): boolean {
   const titleLower = title.toLowerCase();
   const searchLower = searchTerm.toLowerCase();
+
+  // Skip list/search/category pages (these usually return wrong images and prices)
+  if (isSearchOrListingPage(url) && !isLikelyProductDetailPage(url, loja)) return false;
+
+  // For major marketplaces, only accept detail product pages
+  if (storeRequiresDetailPage(loja) && !isLikelyProductDetailPage(url, loja)) return false;
 
   // Skip items that are clearly accessories/insurance for the product
   const SKIP_PATTERNS = [
@@ -243,12 +302,15 @@ function isMainProduct(title: string, searchTerm: string): boolean {
     if (pattern.test(titleLower)) return false;
   }
 
-  // Also check if the title has very low relevance to search term
+  // Skip generic listing titles
+  if (/em promoç[aã]o|com menor preço|na amazon\.com\.br|mercado livre|\| shopee|resultado de busca|categoria/i.test(titleLower)) {
+    return false;
+  }
+
   // At least one significant word from the search should appear in the title
   const searchWords = searchLower.split(/\s+/).filter(w => w.length > 3);
   if (searchWords.length > 0) {
     const matchCount = searchWords.filter(w => titleLower.includes(w)).length;
-    // At least 1 word should match
     if (matchCount === 0) return false;
   }
 
@@ -265,9 +327,11 @@ function parseSearchResult(result: any, searchTerm: string): ProdutoExtraido | n
 
   if (!title || title.length < 5) return null;
 
-  // Check if this is actually the main product, not an accessory
-  if (!isMainProduct(title, searchTerm)) {
-    console.log(`Filtered out accessory: "${title.substring(0, 80)}"`);
+  const loja = detectStore(url);
+
+  // Check if this is actually the main product (not accessory/listing page)
+  if (!isMainProduct(title, searchTerm, url, loja)) {
+    console.log(`Filtered out non-product/listing: "${title.substring(0, 80)}"`);
     return null;
   }
 
@@ -276,8 +340,6 @@ function parseSearchResult(result: any, searchTerm: string): ProdutoExtraido | n
   if (!priceResult) return null;
 
   const { preco, precoOriginal } = priceResult;
-
-  const loja = detectStore(url);
 
   // Check for free shipping
   const freteGratis = /frete\s*gr[aá]tis|entrega\s*gr[aá]tis|free.shipping|sem\s*custo\s*de\s*envio/i.test(fullText);
