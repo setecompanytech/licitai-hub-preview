@@ -424,6 +424,51 @@ export type Database = {
         }
         Relationships: []
       }
+      cotacoes_fornecedor: {
+        Row: {
+          arquivo_nome: string
+          arquivo_path: string | null
+          cnpj_fornecedor: string | null
+          created_at: string
+          data_cotacao: string | null
+          id: string
+          itens: Json
+          nome_fornecedor: string
+          observacoes: string | null
+          updated_at: string
+          user_id: string
+          validade_dias: number | null
+        }
+        Insert: {
+          arquivo_nome: string
+          arquivo_path?: string | null
+          cnpj_fornecedor?: string | null
+          created_at?: string
+          data_cotacao?: string | null
+          id?: string
+          itens?: Json
+          nome_fornecedor: string
+          observacoes?: string | null
+          updated_at?: string
+          user_id: string
+          validade_dias?: number | null
+        }
+        Update: {
+          arquivo_nome?: string
+          arquivo_path?: string | null
+          cnpj_fornecedor?: string | null
+          created_at?: string
+          data_cotacao?: string | null
+          id?: string
+          itens?: Json
+          nome_fornecedor?: string
+          observacoes?: string | null
+          updated_at?: string
+          user_id?: string
+          validade_dias?: number | null
+        }
+        Relationships: []
+      }
       credenciais_portais: {
         Row: {
           certificado_nome: string | null

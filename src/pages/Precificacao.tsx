@@ -12,8 +12,10 @@ import {
   DollarSign, Search, ShoppingCart, TrendingUp, TrendingDown,
   ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText, Loader2, Bot,
   Filter, Save, History, Trash2, Eye, CalendarIcon,
-  MapPin, Globe, ChevronRight, Tag, X, Truck, CheckSquare, Square, Store, Award
+  MapPin, Globe, ChevronRight, Tag, X, Truck, CheckSquare, Square, Store, Award,
+  Building2, Upload
 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
@@ -25,7 +27,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { PesquisaResultML, type PesquisaMLResult } from '@/components/precificacao/ProdutoCardML';
 import { useAuth } from '@/contexts/AuthContext';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
-
+import PainelPrecosGov from '@/components/precificacao/PainelPrecosGov';
+import CotacaoFornecedorUpload from '@/components/precificacao/CotacaoFornecedorUpload';
 
 type FontePreco = {
   fonte: string;
@@ -432,7 +435,7 @@ export default function Precificacao() {
               Precificação de Preços
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Pesquisa integrada com Mercado Livre, Google Shopping, SINAPI e atacadistas
+              Pesquisa integrada com Mercado Livre, Google Shopping, Painel de Preços Gov.br e cotações de fornecedores
             </p>
           </div>
           <div className="flex gap-2">
@@ -524,6 +527,21 @@ export default function Precificacao() {
           )}
         </div>
 
+        {/* Source Tabs */}
+        <Tabs defaultValue="marketplaces" className="space-y-4">
+          <TabsList className="bg-muted/50">
+            <TabsTrigger value="marketplaces" className="gap-1.5">
+              <ShoppingCart className="w-3.5 h-3.5" /> Marketplaces
+            </TabsTrigger>
+            <TabsTrigger value="govbr" className="gap-1.5">
+              <Building2 className="w-3.5 h-3.5" /> Painel de Preços Gov.br
+            </TabsTrigger>
+            <TabsTrigger value="fornecedores" className="gap-1.5">
+              <Upload className="w-3.5 h-3.5" /> Cotações de Fornecedores
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="marketplaces" className="space-y-4">
         {/* Search */}
         <div className="flex gap-2 w-full max-w-2xl">
           <div className="relative flex-1">
@@ -951,6 +969,20 @@ export default function Precificacao() {
             </div>
           ))}
         </div>
+          </TabsContent>
+
+          <TabsContent value="govbr">
+            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+              <PainelPrecosGov />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="fornecedores">
+            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+              <CotacaoFornecedorUpload />
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );
