@@ -91,14 +91,17 @@ function isValidImageUrl(url?: string): boolean {
   if (/images\.kabum\.com\.br/i.test(trimmed)) return true;
   if (/magazineluiza/i.test(trimmed) && /\.(jpg|png|webp)/i.test(trimmed)) return true;
   if (/gazinatacado/i.test(trimmed) && /\.(jpg|png|webp)/i.test(trimmed)) return true;
-  // Reject known fakes, ads, banners
+  // Reject known fakes, ads, banners, site assets
   if (/\/D_NQ_NP_ID-MLB/i.test(trimmed)) return false;
   if (/placeholder/i.test(trimmed)) return false;
   if (/logo|icon|sprite|banner|favicon|badge|selo|stamp|watermark/i.test(trimmed)) return false;
   if (/1x1|pixel|tracking|analytics|ad[s]?[_\-\/]|doubleclick|googlesyndication|adsense|adserver|pubmatic|criteo|taboola|outbrain/i.test(trimmed)) return false;
-  if (/promo[çc]|campanha|oferta.*banner|slide.*banner|carousel.*ad|anuncio/i.test(trimmed)) return false;
+  if (/promo[çc]|campanha|oferta.*banner|slide.*banner|carousel.*ad|anuncio|hero[-_]?banner|og[_\-.]|social[-_]?share/i.test(trimmed)) return false;
+  if (/\/assets\/|\/static\/|\/themes\/|\/template\/|\/rating\/|\/stars\//i.test(trimmed)) return false;
+  if (/vlibras|access_popup|shopee-pcmall-live-sg|kalunga\.jpg|og_tb\.png/i.test(trimmed)) return false;
   // Reject tiny images (likely icons/tracking)
   if (/[_\-\/](\d{1,2})x(\d{1,2})\./i.test(trimmed)) return false;
+  if (/_AC_US\d{1,3}_/i.test(trimmed)) return false;
   // Accept any other image URL that ends with image extension
   if (/\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i.test(trimmed)) return true;
   return false;
