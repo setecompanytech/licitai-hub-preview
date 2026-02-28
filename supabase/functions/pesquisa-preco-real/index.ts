@@ -18,6 +18,7 @@ type ProdutoExtraido = {
   frete: string;
   url: string;
   image_url?: string;
+  images?: string[];
   parcelas?: string;
   avaliacao?: number;
   vendedor_qualificado?: boolean;
@@ -148,42 +149,53 @@ function extractMainProductPrice(title: string, fullText: string): { preco: numb
   return { preco, precoOriginal };
 }
 
-/** Extract image URL from search result */
-function extractImage(result: any): string | undefined {
+/** Extract all product image URLs from search result */
+function extractImages(result: any): string[] {
   const markdown = result.markdown || '';
-  const url = result.url || '';
+  const images: string[] = [];
+  const seen = new Set<string>();
 
-  // 1. Try Open Graph / metadata image first (most reliable)
-  const ogImage = result.metadata?.ogImage || result.metadata?.['og:image'];
-  if (ogImage && isProductImage(ogImage)) return ogImage;
-
-  // 2. ML static images (Mercado Livre CDN - very reliable)
-  const mlMatch = markdown.match(/(https?:\/\/http2\.mlstatic\.com\/D_[^\s"')]+\.(?:jpg|webp|png))/i);
-  if (mlMatch) return mlMatch[1];
-
-  // 3. Amazon product images
-  const amzMatch = markdown.match(/(https?:\/\/m\.media-amazon\.com\/images\/I\/[^\s"')]+\.(?:jpg|webp|png))/i);
-  if (amzMatch) return amzMatch[1];
-
-  // 4. Kabum images
-  const kabumMatch = markdown.match(/(https?:\/\/images\.kabum\.com\.br\/[^\s"')]+\.(?:jpg|webp|png))/i);
-  if (kabumMatch) return kabumMatch[1];
-
-  // 5. Magazine Luiza images
-  const magaluMatch = markdown.match(/(https?:\/\/[^\s"')]*magazineluiza[^\s"')]*\.(?:jpg|webp|png))/i);
-  if (magaluMatch) return magaluMatch[1];
-
-  // 6. Generic markdown image - first one that looks like a product photo
-  const imgMatches = [...markdown.matchAll(/!\[[^\]]*\]\((https?:\/\/[^\s)]+\.(?:jpg|jpeg|png|webp)[^\s)]*)\)/gi)];
-  for (const m of imgMatches) {
-    if (isProductImage(m[1])) return m[1];
+  function addImg(url: string) {
+    if (!url || seen.has(url) || !isProductImage(url)) return;
+    seen.add(url);
+    images.push(url);
   }
 
-  // 7. Raw image URLs in text
-  const rawImgMatch = markdown.match(/(https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp))(?:\?[^\s"'<>]*)?/i);
-  if (rawImgMatch && isProductImage(rawImgMatch[1])) return rawImgMatch[1];
+  // 1. OG image
+  const ogImage = result.metadata?.ogImage || result.metadata?.['og:image'];
+  if (ogImage) addImg(ogImage);
 
-  return undefined;
+  // 2. ML static images
+  const mlMatches = [...markdown.matchAll(/(https?:\/\/http2\.mlstatic\.com\/D_[^\s"')]+\.(?:jpg|webp|png))/gi)];
+  for (const m of mlMatches) addImg(m[1]);
+
+  // 3. Amazon images
+  const amzMatches = [...markdown.matchAll(/(https?:\/\/m\.media-amazon\.com\/images\/I\/[^\s"')]+\.(?:jpg|webp|png))/gi)];
+  for (const m of amzMatches) addImg(m[1]);
+
+  // 4. Kabum images
+  const kabumMatches = [...markdown.matchAll(/(https?:\/\/images\.kabum\.com\.br\/[^\s"')]+\.(?:jpg|webp|png))/gi)];
+  for (const m of kabumMatches) addImg(m[1]);
+
+  // 5. Magazine Luiza images
+  const magaluMatches = [...markdown.matchAll(/(https?:\/\/[^\s"')]*magazineluiza[^\s"')]*\.(?:jpg|webp|png))/gi)];
+  for (const m of magaluMatches) addImg(m[1]);
+
+  // 6. Markdown images
+  const mdImgMatches = [...markdown.matchAll(/!\[[^\]]*\]\((https?:\/\/[^\s)]+\.(?:jpg|jpeg|png|webp)[^\s)]*)\)/gi)];
+  for (const m of mdImgMatches) addImg(m[1]);
+
+  // 7. Raw image URLs
+  const rawMatches = [...markdown.matchAll(/(https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp))(?:\?[^\s"'<>]*)?/gi)];
+  for (const m of rawMatches) addImg(m[1]);
+
+  return images.slice(0, 6); // Max 6 images per product
+}
+
+/** Extract single best image (backwards compat) */
+function extractImage(result: any): string | undefined {
+  const imgs = extractImages(result);
+  return imgs.length > 0 ? imgs[0] : undefined;
 }
 
 /** Check if URL looks like a real product image (not logo/icon/banner) */
@@ -279,8 +291,9 @@ function parseSearchResult(result: any, searchTerm: string): ProdutoExtraido | n
   // Parcelas
   const parcelasMatch = fullText.match(/(\d{1,2}x\s*(?:de\s*)?R\$\s*[0-9.,]+(?:\s*sem\s*juros)?)/i);
 
-  // Image - use dedicated extractor
-  const image_url = extractImage(result);
+  // Images - use dedicated extractor
+  const allImages = extractImages(result);
+  const image_url = allImages.length > 0 ? allImages[0] : undefined;
 
   // Qualified seller
   const vendedorQualificado = /mercadol[ií]der|loja.oficial|vendedor.destaque|prime|full/i.test(fullText);
@@ -297,6 +310,7 @@ function parseSearchResult(result: any, searchTerm: string): ProdutoExtraido | n
     frete: freteGratis ? 'Frete grátis' : 'Consultar',
     url,
     image_url,
+    images: allImages.length > 1 ? allImages : undefined,
     parcelas: parcelasMatch ? parcelasMatch[1] : undefined,
     avaliacao,
     vendedor_qualificado: vendedorQualificado,
