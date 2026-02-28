@@ -77,6 +77,30 @@ function detectStore(url: string): string {
   if (u.includes('extra.com.br')) return 'Extra';
   if (u.includes('girafa.com.br')) return 'Girafa';
   if (u.includes('chipart.com.br')) return 'Chipart';
+  // E-commerce platforms (Bling integrations)
+  if (u.includes('tray.com.br')) return 'Tray';
+  if (u.includes('nuvemshop.com.br') || u.includes('lojanuvem')) return 'Nuvemshop';
+  if (u.includes('lojaintegrada.com.br')) return 'Loja Integrada';
+  if (u.includes('shopify.com') || u.includes('myshopify.com')) return 'Shopify';
+  if (u.includes('vtex.com')) return 'VTEX';
+  if (u.includes('woocommerce') || u.includes('wordpress')) return 'WooCommerce';
+  if (u.includes('mercadoshops.com')) return 'Mercado Shops';
+  if (u.includes('bagy.com.br')) return 'Bagy';
+  if (u.includes('wix.com')) return 'Wix';
+  if (u.includes('wake.tech') || u.includes('wake.commerce')) return 'Wake';
+  if (u.includes('opencart')) return 'OpenCart';
+  if (u.includes('prestashop')) return 'PrestaShop';
+  if (u.includes('magento')) return 'Magento';
+  if (u.includes('leroymerlin.com.br')) return 'Leroy Merlin';
+  if (u.includes('madeiramadeira.com.br')) return 'MadeiraMadeira';
+  if (u.includes('pontofrio.com.br')) return 'Ponto Frio';
+  if (u.includes('fastshop.com.br')) return 'Fast Shop';
+  if (u.includes('girafa.com.br')) return 'Girafa';
+  if (u.includes('colombo.com.br')) return 'Colombo';
+  if (u.includes('centauro.com.br')) return 'Centauro';
+  if (u.includes('dafiti.com.br')) return 'Dafiti';
+  if (u.includes('netshoes.com.br')) return 'Netshoes';
+  if (u.includes('zattini.com.br')) return 'Zattini';
   return 'Outros';
 }
 

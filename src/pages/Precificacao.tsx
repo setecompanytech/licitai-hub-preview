@@ -13,7 +13,7 @@ import {
   ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText, Loader2, Bot,
   Filter, Save, History, Trash2, Eye, CalendarIcon,
   MapPin, Globe, ChevronRight, Tag, X, Truck, CheckSquare, Square, Store, Award,
-  Building2, Upload
+  Building2, Upload, ShieldCheck
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -542,6 +542,46 @@ export default function Precificacao() {
           </TabsList>
 
           <TabsContent value="marketplaces" className="space-y-4">
+        {/* Integrated Platforms Banner */}
+        {!aiParsedData && !isSearchingAI && !showHistory && (
+          <div className="bg-gradient-to-r from-primary/5 via-accent/5 to-success/5 border border-primary/15 rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Globe className="w-5 h-5 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Plataformas e Marketplaces Integrados</h3>
+              <Badge variant="outline" className="text-[10px] ml-auto">+30 fontes</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              Pesquisa em tempo real nos principais marketplaces e plataformas de e-commerce do Brasil.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { title: 'Marketplaces', items: ['Mercado Livre', 'Amazon', 'Shopee', 'AliExpress', 'Magazine Luiza', 'Americanas'], icon: ShoppingCart },
+                { title: 'Varejo & Eletrônicos', items: ['KaBuM', 'Pichau', 'Terabyte', 'Fast Shop', 'Casas Bahia', 'Carrefour'], icon: Store },
+                { title: 'E-commerce Platforms', items: ['Shopify', 'VTEX', 'Nuvemshop', 'Tray', 'Loja Integrada', 'WooCommerce'], icon: Globe },
+                { title: 'Especializados', items: ['Leroy Merlin', 'MadeiraMadeira', 'Centauro', 'Netshoes', 'Havan', 'Colombo'], icon: Package },
+              ].map((group) => (
+                <div key={group.title} className="bg-card/80 rounded-lg border border-border/30 p-3">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <group.icon className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-[11px] font-semibold text-foreground">{group.title}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {group.items.map((item) => (
+                      <Badge key={item} variant="secondary" className="text-[9px] px-1.5 py-0.5 font-normal">
+                        {item}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
+              <ShieldCheck className="w-3.5 h-3.5 text-success" />
+              <span>Preços reais extraídos via scraping • Cadastro unificado • Estoque sincronizado • Conformidade Lei 14.133/2021</span>
+            </div>
+          </div>
+        )}
+
         {/* Search */}
         <div className="flex gap-2 w-full max-w-2xl">
           <div className="relative flex-1">
