@@ -31,6 +31,7 @@ import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 import PainelPrecosGov from '@/components/precificacao/PainelPrecosGov';
 import CotacaoFornecedorUpload from '@/components/precificacao/CotacaoFornecedorUpload';
 import ComparativoDashboard from '@/components/precificacao/ComparativoDashboard';
+import CotacaoEditalAutoIA from '@/components/precificacao/CotacaoEditalAutoIA';
 
 type FontePreco = {
   fonte: string;
@@ -689,9 +690,12 @@ Responda APENAS em JSON, sem markdown:
 
         {/* Source Tabs */}
         <Tabs defaultValue="marketplaces" className="space-y-4">
-          <TabsList className="bg-muted/50">
+          <TabsList className="bg-muted/50 flex-wrap h-auto">
             <TabsTrigger value="marketplaces" className="gap-1.5">
               <ShoppingCart className="w-3.5 h-3.5" /> Marketplaces
+            </TabsTrigger>
+            <TabsTrigger value="edital-auto" className="gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" /> Cotação por Edital (IA)
             </TabsTrigger>
             <TabsTrigger value="govbr" className="gap-1.5">
               <Building2 className="w-3.5 h-3.5" /> Painel de Preços Gov.br
@@ -1265,6 +1269,20 @@ Responda APENAS em JSON, sem markdown:
           <TabsContent value="govbr">
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
               <PainelPrecosGov />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="edital-auto">
+            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="w-5 h-5 text-accent" />
+                <h3 className="font-semibold text-sm">Cotação Automática por Edital / Termo de Referência</h3>
+                <Badge variant="outline" className="text-[10px] ml-auto">IA + Scraping Real</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                Envie o edital ou TR completo. A IA extrairá todos os itens e cotará cada um automaticamente nos +30 marketplaces integrados, indicando a origem de cada cotação.
+              </p>
+              <CotacaoEditalAutoIA />
             </div>
           </TabsContent>
 
