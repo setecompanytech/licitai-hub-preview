@@ -32,8 +32,7 @@ import PainelPrecosGov from '@/components/precificacao/PainelPrecosGov';
 import CotacaoFornecedorUpload from '@/components/precificacao/CotacaoFornecedorUpload';
 import ComparativoDashboard from '@/components/precificacao/ComparativoDashboard';
 import CotacaoEditalAutoIA from '@/components/precificacao/CotacaoEditalAutoIA';
-import CalculadoraTributaria from '@/components/precificacao/CalculadoraTributaria';
-import ComposicaoCustoIA from '@/components/precificacao/ComposicaoCustoIA';
+import CalculadoraUnificada from '@/components/precificacao/CalculadoraUnificada';
 
 type FontePreco = {
   fonte: string;
@@ -709,10 +708,7 @@ Responda APENAS em JSON, sem markdown:
               <BarChart3 className="w-3.5 h-3.5" /> Comparativo
             </TabsTrigger>
             <TabsTrigger value="calculadora" className="gap-1.5">
-              <Calculator className="w-3.5 h-3.5" /> Calculadora Tributária
-            </TabsTrigger>
-            <TabsTrigger value="composicao" className="gap-1.5">
-              <FileText className="w-3.5 h-3.5" /> Composição de Custo
+              <Calculator className="w-3.5 h-3.5" /> Calculadora & Composição
             </TabsTrigger>
           </TabsList>
 
@@ -1307,11 +1303,7 @@ Responda APENAS em JSON, sem markdown:
           </TabsContent>
 
           <TabsContent value="calculadora">
-            <CalculadoraTributaria />
-          </TabsContent>
-
-          <TabsContent value="composicao">
-            <ComposicaoCustoIA />
+            <CalculadoraUnificada />
           </TabsContent>
         </Tabs>
       </div>
