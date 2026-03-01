@@ -93,7 +93,7 @@ REGRAS RÍGIDAS:
 - Retorne APENAS o JSON, sem nenhum texto, markdown ou explicação
 - NÃO use crases, blocos de código ou qualquer formatação markdown
 - Mínimo 5 fornecedores por produto, máximo 10
-- Fontes: Mercado Livre, Amazon, Magazine Luiza, KaBuM, Pichau, Terabyte, Americanas, Casas Bahia, Carrefour, Gimba, Assaí, Makro, Chipart, Balão da Informática, Shopee, AliExpress, CROI, Ibyte, Havan, Submarino
+- Fontes: Mercado Livre, Amazon, Magazine Luiza, KaBuM, Pichau, Terabyte, Americanas, Casas Bahia, Carrefour, Gimba, Assaí, Makro, Chipart, Balão da Informática, Shopee, AliExpress, CROI, Ibyte, Havan, Submarino, Mirão Atacado
 - Todos os preços numéricos (sem "R$"), use ponto como separador decimal
 - URLS OBRIGATÓRIAS: Cada fornecedor DEVE ter uma URL realista seguindo o padrão real do site (ex: mercadolivre.com.br, amazon.com.br/dp/, kabum.com.br/produto/, magazineluiza.com.br/produto/p/)
 - IMAGENS OBRIGATÓRIAS: Cada fornecedor DEVE ter um campo "image_url" com URL realista de imagem do produto (use CDNs reais: http2.mlstatic.com, images-americanas.com, a-static.mlcdn.com.br, images-kabum.com)

@@ -79,6 +79,7 @@ function detectStore(url: string): string {
   if (u.includes('leroymerlin.com.br')) return 'Leroy Merlin';
   if (u.includes('madeiramadeira.com.br')) return 'MadeiraMadeira';
   if (u.includes('fastshop.com.br')) return 'Fast Shop';
+  if (u.includes('mirao.com.br')) return 'Mirão Atacado';
   return 'Outros';
 }
 
@@ -96,6 +97,7 @@ function isLikelyProductDetailPage(url: string, loja: string): boolean {
   if (loja === 'KaBuM' || loja === 'Terabyte' || loja === 'Pichau') return /\/produto\//i.test(u);
   if (loja === 'Shopee') return /-i\.\d+\.\d+/i.test(url);
   if (loja === 'Gazin Atacado') return u.includes('gazinatacado.com.br');
+  if (loja === 'Mirão Atacado') return u.includes('mirao.com.br') && (/\/produto\//i.test(u) || /\/p\//i.test(u));
 
   return !isSearchOrListingPage(url);
 }
@@ -104,7 +106,7 @@ function storeRequiresDetailPage(loja: string): boolean {
   return [
     'Amazon', 'Mercado Livre', 'Magazine Luiza', 'KaBuM', 'Terabyte', 'Pichau', 'Shopee', 'Gazin Atacado',
     'Americanas', 'Casas Bahia', 'Carrefour', 'Havan', 'Fast Shop', 'Leroy Merlin', 'MadeiraMadeira',
-    'Webcontinental', 'Ponto Frio', 'Rakay Med', 'Hospitalar Distribuidora'
+    'Webcontinental', 'Ponto Frio', 'Rakay Med', 'Hospitalar Distribuidora', 'Mirão Atacado'
   ].includes(loja);
 }
 
@@ -459,7 +461,7 @@ serve(async (req) => {
       searchProducts(apiKey, `${termo} comprar preço site:magazineluiza.com.br OR site:kabum.com.br`, 10),
       searchProducts(apiKey, `${termo} comprar preço site:americanas.com.br OR site:casasbahia.com.br`, 8),
       searchProducts(apiKey, `${termo} comprar preço site:shopee.com.br OR site:carrefour.com.br`, 8),
-      searchProducts(apiKey, `"${termo}" site:gazinatacado.com.br`, 8),
+      searchProducts(apiKey, `"${termo}" site:gazinatacado.com.br OR site:mirao.com.br`, 8),
       searchProducts(apiKey, `${termo} comprar preço site:buscape.com.br OR site:zoom.com.br`, 8),
       searchProducts(apiKey, `${termo} comprar preço site:webcontinental.com.br OR site:pontofrio.com.br`, 8),
       searchProducts(apiKey, `${termo} site:rakaymed.com.br OR site:hospitalardistribuidora.com.br`, 8),
