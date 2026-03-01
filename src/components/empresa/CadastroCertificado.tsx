@@ -27,6 +27,7 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
   const [municipio, setMunicipio] = useState('');
   const [endereco, setEndereco] = useState('');
   const [validade, setValidade] = useState('');
+  const [regimeTributario, setRegimeTributario] = useState('');
   const [loading, setLoading] = useState(false);
   const [buscando, setBuscando] = useState(false);
 
@@ -82,8 +83,8 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !file || !cnpj.trim() || !razaoSocial.trim()) {
-      toast.error('Preencha todos os campos obrigatórios');
+    if (!user || !file || !cnpj.trim() || !razaoSocial.trim() || !regimeTributario) {
+      toast.error('Preencha todos os campos obrigatórios (incluindo regime tributário)');
       return;
     }
 
@@ -113,6 +114,7 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
         certificado_nome: file.name,
         certificado_tipo: tipo,
         certificado_validade: validade || undefined,
+        regime_tributario: regimeTributario,
       });
 
       if (!empresa) {
@@ -124,6 +126,7 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
       toast.success(`Empresa ${razaoSocial} cadastrada com sucesso!`);
       setCnpj(''); setRazaoSocial(''); setNomeFantasia(''); setValidade('');
       setCnaePrincipal(''); setUf(''); setMunicipio(''); setEndereco('');
+      setRegimeTributario('');
       setFile(null);
       onSuccess?.();
     } catch (err: any) {
@@ -228,7 +231,21 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
         </div>
       </div>
 
-      <Button type="submit" disabled={loading || !file} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+      <div>
+        <Label className="text-xs">Regime Tributário *</Label>
+        <Select value={regimeTributario} onValueChange={setRegimeTributario}>
+          <SelectTrigger className="mt-1">
+            <SelectValue placeholder="Selecione o regime tributário" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="simples_nacional">Simples Nacional</SelectItem>
+            <SelectItem value="lucro_presumido">Lucro Presumido</SelectItem>
+            <SelectItem value="lucro_real">Lucro Real</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Button type="submit" disabled={loading || !file || !regimeTributario} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
         {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Building2 className="w-4 h-4 mr-2" />}
         {mode === 'login' ? 'Acessar' : 'Cadastrar Empresa'}
       </Button>

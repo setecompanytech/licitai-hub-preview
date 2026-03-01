@@ -75,6 +75,12 @@ export default function Empresas() {
                           {m.empresa.nome_fantasia || m.empresa.razao_social}
                         </h3>
                         <Badge variant="outline" className="text-[10px]">{m.papel}</Badge>
+                        {m.empresa.regime_tributario && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            {m.empresa.regime_tributario === 'simples_nacional' ? 'Simples Nacional' :
+                             m.empresa.regime_tributario === 'lucro_presumido' ? 'Lucro Presumido' : 'Lucro Real'}
+                          </Badge>
+                        )}
                         {!todasSelecionadas && empresaAtiva?.id === m.empresa_id && (
                           <Badge className="bg-accent/15 text-accent text-[10px]">Ativa</Badge>
                         )}

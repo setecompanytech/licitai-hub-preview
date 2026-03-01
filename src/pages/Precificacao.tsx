@@ -13,7 +13,7 @@ import {
   ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText, Loader2, Bot,
   Filter, Save, History, Trash2, Eye, CalendarIcon,
   MapPin, Globe, ChevronRight, Tag, X, Truck, CheckSquare, Square, Store, Award,
-  Building2, Upload, ShieldCheck, FileSearch, Clipboard, Sparkles
+  Building2, Upload, ShieldCheck, FileSearch, Clipboard, Sparkles, Calculator
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,6 +32,7 @@ import PainelPrecosGov from '@/components/precificacao/PainelPrecosGov';
 import CotacaoFornecedorUpload from '@/components/precificacao/CotacaoFornecedorUpload';
 import ComparativoDashboard from '@/components/precificacao/ComparativoDashboard';
 import CotacaoEditalAutoIA from '@/components/precificacao/CotacaoEditalAutoIA';
+import CalculadoraTributaria from '@/components/precificacao/CalculadoraTributaria';
 
 type FontePreco = {
   fonte: string;
@@ -706,6 +707,9 @@ Responda APENAS em JSON, sem markdown:
             <TabsTrigger value="comparativo" className="gap-1.5">
               <BarChart3 className="w-3.5 h-3.5" /> Comparativo
             </TabsTrigger>
+            <TabsTrigger value="calculadora" className="gap-1.5">
+              <Calculator className="w-3.5 h-3.5" /> Calculadora Tributária
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="marketplaces" className="space-y-4">
@@ -1296,6 +1300,10 @@ Responda APENAS em JSON, sem markdown:
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
               <ComparativoDashboard />
             </div>
+          </TabsContent>
+
+          <TabsContent value="calculadora">
+            <CalculadoraTributaria />
           </TabsContent>
         </Tabs>
       </div>

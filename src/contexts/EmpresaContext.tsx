@@ -12,6 +12,7 @@ type Empresa = {
   municipio: string | null;
   certificado_nome: string | null;
   certificado_validade: string | null;
+  regime_tributario: string | null;
 };
 
 type EmpresaMembro = {
@@ -27,7 +28,7 @@ type EmpresaContextType = {
   loading: boolean;
   setEmpresaAtiva: (empresaId: string | 'todas') => Promise<void>;
   reloadEmpresas: () => Promise<void>;
-  addEmpresa: (data: { cnpj: string; razao_social: string; nome_fantasia?: string; cnae_principal?: string; uf?: string; municipio?: string; endereco?: string; certificado_path?: string; certificado_nome?: string; certificado_tipo?: string; certificado_validade?: string }) => Promise<{ id: string } | null>;
+  addEmpresa: (data: { cnpj: string; razao_social: string; nome_fantasia?: string; cnae_principal?: string; uf?: string; municipio?: string; endereco?: string; certificado_path?: string; certificado_nome?: string; certificado_tipo?: string; certificado_validade?: string; regime_tributario?: string }) => Promise<{ id: string } | null>;
 };
 
 const EmpresaContext = createContext<EmpresaContextType | undefined>(undefined);
