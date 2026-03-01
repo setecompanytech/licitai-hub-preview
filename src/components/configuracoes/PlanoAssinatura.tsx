@@ -3,9 +3,17 @@ import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Check, Star, Zap } from 'lucide-react';
+import { CreditCard, Check, Star, Zap, QrCode, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+type PaymentMethod = 'pix' | 'boleto' | 'cartao';
+
+const paymentMethods: { key: PaymentMethod; label: string; icon: typeof CreditCard; desc: string }[] = [
+  { key: 'pix', label: 'PIX', icon: QrCode, desc: 'Aprovação instantânea' },
+  { key: 'boleto', label: 'Boleto', icon: FileText, desc: 'Até 3 dias úteis' },
+  { key: 'cartao', label: 'Cartão de Crédito', icon: CreditCard, desc: 'Parcele em até 12x' },
+];
 
 type BillingCycle = 'mensal' | 'trimestral' | 'semestral' | 'anual';
 
@@ -31,6 +39,7 @@ interface Plano {
 export default function PlanoAssinatura() {
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [cycle, setCycle] = useState<BillingCycle>('mensal');
+  const [payment, setPayment] = useState<PaymentMethod>('pix');
   const [loading, setLoading] = useState(true);
   const [highlight, setHighlight] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
@@ -83,7 +92,8 @@ export default function PlanoAssinatura() {
 
   const handleSelect = (plano: Plano) => {
     const price = getPrice(plano.preco_mensal);
-    toast.success(`Plano ${plano.nome} (${cycleConfig[cycle].label}) selecionado — ${formatCurrency(price.total)}`);
+    const methodLabel = paymentMethods.find(m => m.key === payment)?.label;
+    toast.success(`Plano ${plano.nome} (${cycleConfig[cycle].label}) via ${methodLabel} — ${formatCurrency(price.total)}`);
   };
 
   if (loading) {
@@ -143,6 +153,33 @@ export default function PlanoAssinatura() {
                     -{cfg.discount * 100}%
                   </span>
                 )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Payment method selector */}
+      <div className="mb-6">
+        <p className="text-xs font-semibold text-muted-foreground text-center mb-3">Forma de pagamento</p>
+        <div className="flex items-center justify-center gap-3">
+          {paymentMethods.map((m) => {
+            const active = payment === m.key;
+            const Icon = m.icon;
+            return (
+              <button
+                key={m.key}
+                onClick={() => setPayment(m.key)}
+                className={cn(
+                  'flex flex-col items-center gap-1.5 px-4 py-3 rounded-xl border transition-all duration-200 min-w-[110px]',
+                  active
+                    ? 'border-accent bg-accent/10 shadow-sm'
+                    : 'border-border/50 hover:border-accent/40 bg-transparent'
+                )}
+              >
+                <Icon className={cn('w-5 h-5', active ? 'text-accent' : 'text-muted-foreground')} />
+                <span className={cn('text-xs font-semibold', active ? 'text-foreground' : 'text-muted-foreground')}>{m.label}</span>
+                <span className="text-[10px] text-muted-foreground">{m.desc}</span>
               </button>
             );
           })}
