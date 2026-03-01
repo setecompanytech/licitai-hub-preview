@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calculator, ExternalLink, Info, TrendingUp } from 'lucide-react';
+import { Calculator, ExternalLink, Info, TrendingUp, Bot, Loader2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { streamAIChat } from '@/lib/ai-stream';
+import { toast } from 'sonner';
+import ReactMarkdown from 'react-markdown';
 
 type RegimeConfig = {
   label: string;
@@ -359,14 +362,139 @@ export default function CalculadoraTributaria() {
           <p className="text-[10px] text-muted-foreground text-center">
             Simulação baseada nas alíquotas vigentes. Para cálculos oficiais CBS/IBS, consulte a{' '}
             <a
-              href="https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/calculadora"
+              href="https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/calculadora/regime-geral"
               target="_blank"
               rel="noopener noreferrer"
               className="text-accent hover:underline"
             >
-              Calculadora do Gov.br
+              Calculadora da Receita Federal (Regime Geral)
             </a>.
           </p>
+        </div>
+      )}
+
+      {/* AI Tax Analysis */}
+      <SimulacaoIAReceita regime={regime} config={config} />
+    </div>
+  );
+}
+
+function SimulacaoIAReceita({ regime, config }: { regime: string; config: RegimeConfig }) {
+  const [valorOperacao, setValorOperacao] = useState('');
+  const [tipoOperacao, setTipoOperacao] = useState<'venda_mercadoria' | 'prestacao_servico' | 'importacao'>('venda_mercadoria');
+  const [iaResult, setIaResult] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const simularIA = async () => {
+    const valor = parseFloat(valorOperacao.replace(/\D/g, '')) / 100;
+    if (!valor || valor <= 0) {
+      toast.error('Informe o valor da operação.');
+      return;
+    }
+
+    setLoading(true);
+    setIaResult('');
+
+    const tipoLabel = {
+      venda_mercadoria: 'Venda de Mercadoria',
+      prestacao_servico: 'Prestação de Serviço',
+      importacao: 'Importação',
+    }[tipoOperacao];
+
+    try {
+      await streamAIChat({
+        messages: [{ role: 'user', content: `Valor: R$ ${valor.toFixed(2)}, Tipo: ${tipoLabel}, Regime: ${config.label}` }],
+        action: 'calculadora_tributaria',
+        context: `Você é um contador tributarista especializado na reforma tributária brasileira (CBS/IBS).
+Use como referência as regras da calculadora oficial da Receita Federal disponível em:
+https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/calculadora/regime-geral
+
+Com base no valor e tipo de operação informados, calcule e apresente:
+
+1. **CBS (Contribuição sobre Bens e Serviços)** - alíquota federal estimada de 8,8%
+2. **IBS (Imposto sobre Bens e Serviços)** - alíquota estadual/municipal estimada de 17,7%
+3. **Alíquota total estimada** (CBS + IBS ≈ 26,5%)
+4. **Valor do tributo** sobre a operação
+5. **Valor líquido** após tributação
+6. **Créditos tributários** possíveis (regime não-cumulativo)
+
+Considere o regime tributário da empresa (${config.label}) e suas particularidades:
+- Simples Nacional: possível isenção parcial na transição
+- Lucro Presumido: regime cumulativo, sem créditos
+- Lucro Real: regime não-cumulativo, com direito a créditos
+
+Formate em Markdown com tabelas quando adequado. Seja preciso e objetivo.
+Ao final, adicione nota de que os valores são estimativas baseadas nas alíquotas-teste do piloto CBS/IBS.`,
+        onDelta: (d) => setIaResult(prev => prev + d),
+        onDone: () => setLoading(false),
+        onError: (err) => {
+          toast.error('Erro na simulação IA: ' + err);
+          setLoading(false);
+        },
+      });
+    } catch {
+      setLoading(false);
+      toast.error('Erro ao conectar com a IA.');
+    }
+  };
+
+  return (
+    <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Bot className="w-5 h-5 text-accent" />
+          <h4 className="font-semibold text-sm">Simulação IA — CBS/IBS (Reforma Tributária)</h4>
+        </div>
+        <a
+          href="https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/calculadora/regime-geral"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-accent hover:underline flex items-center gap-1"
+        >
+          Calculadora Receita Federal <ExternalLink className="w-3 h-3" />
+        </a>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Simulação baseada nas alíquotas-teste do piloto CBS/IBS da Receita Federal para o {config.label}.
+      </p>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label className="text-xs">Valor da Operação (R$) *</Label>
+          <Input
+            value={valorOperacao}
+            onChange={e => {
+              const v = e.target.value.replace(/\D/g, '');
+              const num = parseInt(v || '0') / 100;
+              setValorOperacao(num > 0 ? num.toFixed(2).replace('.', ',') : '');
+            }}
+            placeholder="0,00"
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <Label className="text-xs">Tipo de Operação</Label>
+          <Select value={tipoOperacao} onValueChange={(v: any) => setTipoOperacao(v)}>
+            <SelectTrigger className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="venda_mercadoria">Venda de Mercadoria</SelectItem>
+              <SelectItem value="prestacao_servico">Prestação de Serviço</SelectItem>
+              <SelectItem value="importacao">Importação</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <Button onClick={simularIA} disabled={loading} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+        {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Bot className="w-4 h-4 mr-2" />}
+        Simular com IA (CBS/IBS)
+      </Button>
+
+      {iaResult && (
+        <div className="bg-muted/30 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert text-xs">
+          <ReactMarkdown>{iaResult}</ReactMarkdown>
         </div>
       )}
     </div>

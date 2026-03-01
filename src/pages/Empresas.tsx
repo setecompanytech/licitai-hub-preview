@@ -1,9 +1,10 @@
 import AppLayout from '@/components/layout/AppLayout';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Button } from '@/components/ui/button';
-import { Building2, Plus, ShieldCheck, Trash2, Users } from 'lucide-react';
+import { Building2, Pencil, Plus, ShieldCheck, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import CadastroCertificado from '@/components/empresa/CadastroCertificado';
+import EditEmpresaDialog from '@/components/empresa/EditEmpresaDialog';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -11,6 +12,7 @@ import { toast } from 'sonner';
 export default function Empresas() {
   const { empresas, empresaAtiva, todasSelecionadas, reloadEmpresas } = useEmpresa();
   const [showForm, setShowForm] = useState(false);
+  const [editEmpresa, setEditEmpresa] = useState<any>(null);
 
   const handleDelete = async (empresaId: string, razaoSocial: string) => {
     if (!confirm(`Remover a empresa "${razaoSocial}"? Essa ação não pode ser desfeita.`)) return;
@@ -99,14 +101,25 @@ export default function Empresas() {
                       </Badge>
                     )}
                     {m.papel === 'admin' && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive/60 hover:text-destructive"
-                        onClick={() => handleDelete(m.empresa_id, m.empresa.razao_social)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-accent"
+                          onClick={() => setEditEmpresa(m.empresa)}
+                          title="Editar empresa"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive/60 hover:text-destructive"
+                          onClick={() => handleDelete(m.empresa_id, m.empresa.razao_social)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -119,6 +132,13 @@ export default function Empresas() {
             ))}
           </div>
         )}
+
+        <EditEmpresaDialog
+          empresa={editEmpresa}
+          open={!!editEmpresa}
+          onOpenChange={(open) => { if (!open) setEditEmpresa(null); }}
+          onSuccess={() => { reloadEmpresas(); setEditEmpresa(null); }}
+        />
       </div>
     </AppLayout>
   );
