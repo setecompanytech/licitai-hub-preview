@@ -95,15 +95,39 @@ const REGIMES: Record<string, RegimeConfig> = {
   },
 };
 
-// ── Simples Nacional Faixas (Anexo I) ──
+// ── Simples Nacional Faixas (Anexo I – Comércio) – LC 123/2006, Art. 18 ──
+// Fonte: Receita Federal do Brasil – Resolução CGSN nº 140/2018, Anexo I
 const SIMPLES_FAIXAS = [
-  { min: 0, max: 180000, aliquota: 4.0, deducao: 0 },
-  { min: 180000.01, max: 360000, aliquota: 7.3, deducao: 5940 },
-  { min: 360000.01, max: 720000, aliquota: 9.5, deducao: 13860 },
-  { min: 720000.01, max: 1800000, aliquota: 10.7, deducao: 22500 },
-  { min: 1800000.01, max: 3600000, aliquota: 14.3, deducao: 87300 },
-  { min: 3600000.01, max: 4800000, aliquota: 19.0, deducao: 378000 },
+  { min: 0, max: 180000, aliquota: 4.0, deducao: 0, faixaNum: 1 },
+  { min: 180000.01, max: 360000, aliquota: 7.3, deducao: 5940, faixaNum: 2 },
+  { min: 360000.01, max: 720000, aliquota: 9.5, deducao: 13860, faixaNum: 3 },
+  { min: 720000.01, max: 1800000, aliquota: 10.7, deducao: 22500, faixaNum: 4 },
+  { min: 1800000.01, max: 3600000, aliquota: 14.3, deducao: 87300, faixaNum: 5 },
+  { min: 3600000.01, max: 4800000, aliquota: 19.0, deducao: 378000, faixaNum: 6 },
 ];
+
+// ── Partilha oficial dos tributos por faixa – Anexo I (LC 123/2006) ──
+// Percentuais de repartição da alíquota efetiva entre os tributos constituintes
+// Fonte: Art. 18, §4º da LC 123/2006 c/c Resolução CGSN nº 140/2018, Anexo I
+type PartilhaFaixa = {
+  IRPJ: number; CSLL: number; COFINS: number; PIS: number; CPP: number; ICMS: number;
+};
+
+const PARTILHA_ANEXO_I: Record<number, PartilhaFaixa> = {
+  // Faixa 1: IRPJ 5,50% | CSLL 3,50% | COFINS 12,74% | PIS/PASEP 2,76% | CPP 41,50% | ICMS 34,00%
+  1: { IRPJ: 5.50, CSLL: 3.50, COFINS: 12.74, PIS: 2.76, CPP: 41.50, ICMS: 34.00 },
+  // Faixa 2: mesma distribuição da 1ª faixa
+  2: { IRPJ: 5.50, CSLL: 3.50, COFINS: 12.74, PIS: 2.76, CPP: 41.50, ICMS: 34.00 },
+  // Faixa 3: CPP sobe para 42,00%, ICMS reduz para 33,50%
+  3: { IRPJ: 5.50, CSLL: 3.50, COFINS: 12.74, PIS: 2.76, CPP: 42.00, ICMS: 33.50 },
+  // Faixa 4: igual à 3ª
+  4: { IRPJ: 5.50, CSLL: 3.50, COFINS: 12.74, PIS: 2.76, CPP: 42.00, ICMS: 33.50 },
+  // Faixa 5: igual à 3ª
+  5: { IRPJ: 5.50, CSLL: 3.50, COFINS: 12.74, PIS: 2.76, CPP: 42.00, ICMS: 33.50 },
+  // Faixa 6: ICMS cobrado separadamente (sublimite estadual) – redistribuição sem ICMS
+  // IRPJ 13,50% | CSLL 10,00% | COFINS 28,27% | PIS/PASEP 6,13% | CPP 42,10% | ICMS 0,00%
+  6: { IRPJ: 13.50, CSLL: 10.00, COFINS: 28.27, PIS: 6.13, CPP: 42.10, ICMS: 0.00 },
+};
 
 function calcularSimplesNacional(rbt12: number) {
   const faixa = SIMPLES_FAIXAS.find(f => rbt12 >= f.min && rbt12 <= f.max);
@@ -112,6 +136,35 @@ function calcularSimplesNacional(rbt12: number) {
   const receitaMensal = rbt12 / 12;
   const valorDAS = receitaMensal * (aliquotaEfetiva / 100);
   return { aliquotaEfetiva: Math.max(0, aliquotaEfetiva), valorDAS, faixa };
+}
+
+function formatCurrencyShort(v: number) {
+  if (v >= 1000000) return `R$ ${(v/1000000).toFixed(1)}M`;
+  if (v >= 1000) return `R$ ${(v/1000).toFixed(0)}mil`;
+  return `R$ ${v}`;
+}
+
+// Calcula a partilha REAL dos tributos conforme LC 123/2006, Resolução CGSN nº 140/2018
+function getPartilhaSimplesReal(rbt12: number, icmsUFRate: number) {
+  const faixa = SIMPLES_FAIXAS.find(f => rbt12 >= f.min && rbt12 <= f.max);
+  if (!faixa) return null;
+  const partilha = PARTILHA_ANEXO_I[faixa.faixaNum];
+  const ae = Math.max(0, ((rbt12 * faixa.aliquota / 100) - faixa.deducao) / rbt12 * 100);
+  const faixaLabel = `${faixa.faixaNum}ª Faixa (RBT12 até ${formatCurrencyShort(faixa.max)})`;
+  const sublimiteICMS = faixa.faixaNum === 6;
+
+  return [
+    { nome: 'IRPJ', aliquota: +(ae * partilha.IRPJ / 100).toFixed(4), percentPartilha: partilha.IRPJ, info: `Partilha oficial: ${partilha.IRPJ}% × ${ae.toFixed(2)}% = ${(ae * partilha.IRPJ / 100).toFixed(4)}% — ${faixaLabel} — Anexo I, LC 123/2006` },
+    { nome: 'CSLL', aliquota: +(ae * partilha.CSLL / 100).toFixed(4), percentPartilha: partilha.CSLL, info: `Partilha oficial: ${partilha.CSLL}% × ${ae.toFixed(2)}% = ${(ae * partilha.CSLL / 100).toFixed(4)}% — ${faixaLabel} — Anexo I, LC 123/2006` },
+    { nome: 'COFINS', aliquota: +(ae * partilha.COFINS / 100).toFixed(4), percentPartilha: partilha.COFINS, info: `Partilha oficial: ${partilha.COFINS}% × ${ae.toFixed(2)}% = ${(ae * partilha.COFINS / 100).toFixed(4)}% — ${faixaLabel} — Anexo I, LC 123/2006` },
+    { nome: 'PIS/PASEP', aliquota: +(ae * partilha.PIS / 100).toFixed(4), percentPartilha: partilha.PIS, info: `Partilha oficial: ${partilha.PIS}% × ${ae.toFixed(2)}% = ${(ae * partilha.PIS / 100).toFixed(4)}% — ${faixaLabel} — Anexo I, LC 123/2006` },
+    { nome: 'CPP', aliquota: +(ae * partilha.CPP / 100).toFixed(4), percentPartilha: partilha.CPP, info: `Partilha oficial: ${partilha.CPP}% × ${ae.toFixed(2)}% = ${(ae * partilha.CPP / 100).toFixed(4)}% — ${faixaLabel} — Anexo I, LC 123/2006` },
+    ...(sublimiteICMS
+      ? [{ nome: 'ICMS (Sublimite)', aliquota: icmsUFRate, percentPartilha: 0, info: `6ª Faixa: ICMS cobrado separadamente pelo estado a ${icmsUFRate}% (sublimite estadual — Art. 13-A, LC 123/2006)` }]
+      : [{ nome: 'ICMS', aliquota: +(ae * partilha.ICMS / 100).toFixed(4), percentPartilha: partilha.ICMS, info: `Partilha oficial: ${partilha.ICMS}% × ${ae.toFixed(2)}% = ${(ae * partilha.ICMS / 100).toFixed(4)}% — ${faixaLabel} — Anexo I, LC 123/2006` }]
+    ),
+    { nome: 'DAS Total', aliquota: +ae.toFixed(2), percentPartilha: 100, info: `Alíquota efetiva: [(RBT12 × ${faixa.aliquota}%) − R$ ${faixa.deducao.toLocaleString('pt-BR')}] / RBT12 = ${ae.toFixed(2)}% — ${faixaLabel}` },
+  ];
 }
 
 const formatCurrency = (v: number) =>
@@ -166,8 +219,6 @@ export default function CalculadoraUnificada() {
 
   const ufInfo = UF_ICMS[ufCalculo];
   const regimeLabel = config.label;
-
-  // ── Get effective ICMS for the selected UF ──
   const icmsUF = ufInfo?.icms_interno || 18;
 
   // ── Build tributos with real percentages based on regime + UF ──
@@ -175,43 +226,33 @@ export default function CalculadoraUnificada() {
     if (regime === 'simples_nacional') {
       const faturamento12 = parseFloat(rbt12.replace(/\D/g, '')) / 100 || 0;
       if (faturamento12 > 0) {
-        const simples = calcularSimplesNacional(faturamento12);
-        // Simples Nacional distribui a alíquota efetiva entre os tributos (proporções aproximadas Anexo I)
-        const ae = simples.aliquotaEfetiva;
-        return [
-          { nome: 'IRPJ', aliquota: +(ae * 0.055).toFixed(2), info: `${(ae * 0.055).toFixed(2)}% da alíquota efetiva do DAS (${ae.toFixed(2)}%)` },
-          { nome: 'CSLL', aliquota: +(ae * 0.035).toFixed(2), info: `${(ae * 0.035).toFixed(2)}% da alíquota efetiva do DAS (${ae.toFixed(2)}%)` },
-          { nome: 'COFINS', aliquota: +(ae * 0.128).toFixed(2), info: `${(ae * 0.128).toFixed(2)}% da alíquota efetiva do DAS (${ae.toFixed(2)}%)` },
-          { nome: 'PIS/PASEP', aliquota: +(ae * 0.028).toFixed(2), info: `${(ae * 0.028).toFixed(2)}% da alíquota efetiva do DAS (${ae.toFixed(2)}%)` },
-          { nome: 'CPP', aliquota: +(ae * 0.435).toFixed(2), info: `${(ae * 0.435).toFixed(2)}% da alíquota efetiva do DAS (${ae.toFixed(2)}%)` },
-          { nome: 'ICMS', aliquota: +(ae * 0.319).toFixed(2), info: `${(ae * 0.319).toFixed(2)}% da alíquota efetiva do DAS (${ae.toFixed(2)}%)` },
-          { nome: 'DAS Total', aliquota: +ae.toFixed(2), info: `Alíquota efetiva total do DAS para RBT12 informado` },
-        ];
+        const partilha = getPartilhaSimplesReal(faturamento12, icmsUF);
+        if (partilha) return partilha;
       }
-      return config.tributos.map(t => ({ nome: t.nome, aliquota: t.aliquota, info: t.info }));
+      return config.tributos.map(t => ({ nome: t.nome, aliquota: t.aliquota, percentPartilha: 0, info: t.info }));
     }
 
     if (regime === 'lucro_presumido') {
       const baseIRPJ = atividade === 'servicos' ? 32 : 8;
       const baseCSLL = atividade === 'servicos' ? 32 : 12;
       return [
-        { nome: 'IRPJ', aliquota: 15, info: `15% sobre base presumida de ${baseIRPJ}% da receita. Adicional 10% acima de R$60mil/trim.` },
-        { nome: 'CSLL', aliquota: 9, info: `9% sobre base presumida de ${baseCSLL}% da receita.` },
-        { nome: 'COFINS', aliquota: 3, info: 'Regime cumulativo sobre receita bruta.' },
-        { nome: 'PIS/PASEP', aliquota: 0.65, info: 'Regime cumulativo sobre receita bruta.' },
-        ...(atividade === 'servicos' ? [{ nome: 'ISS', aliquota: ufInfo?.iss_max || 5, info: `ISS municipal: ${ufInfo?.iss_min || 2}% a ${ufInfo?.iss_max || 5}%` }] : []),
-        ...(atividade !== 'servicos' ? [{ nome: 'ICMS', aliquota: icmsUF, info: `ICMS interno de ${ufCalculo}: ${icmsUF}%` }] : []),
+        { nome: 'IRPJ', aliquota: 15, percentPartilha: 0, info: `15% sobre base presumida de ${baseIRPJ}% da receita. Adicional 10% acima de R$60mil/trim. — RIR/2018, Art. 587 e 591` },
+        { nome: 'CSLL', aliquota: 9, percentPartilha: 0, info: `9% sobre base presumida de ${baseCSLL}% da receita. — Lei 9.249/1995, Art. 20` },
+        { nome: 'COFINS', aliquota: 3, percentPartilha: 0, info: 'Regime cumulativo: 3% sobre receita bruta. — Lei 9.718/1998, Art. 8º' },
+        { nome: 'PIS/PASEP', aliquota: 0.65, percentPartilha: 0, info: 'Regime cumulativo: 0,65% sobre receita bruta. — Lei 9.715/1998, Art. 8º, I' },
+        ...(atividade === 'servicos' ? [{ nome: 'ISS', aliquota: ufInfo?.iss_max || 5, percentPartilha: 0, info: `ISS municipal: ${ufInfo?.iss_min || 2}% a ${ufInfo?.iss_max || 5}% — LC 116/2003` }] : []),
+        ...(atividade !== 'servicos' ? [{ nome: 'ICMS', aliquota: icmsUF, percentPartilha: 0, info: `ICMS interno de ${ufCalculo}: ${icmsUF}% — RICMS/${ufCalculo}` }] : []),
       ];
     }
 
     // Lucro Real
     return [
-      { nome: 'IRPJ', aliquota: 15, info: '15% sobre lucro real. Adicional 10% acima de R$20mil/mês.' },
-      { nome: 'CSLL', aliquota: 9, info: '9% sobre lucro real apurado.' },
-      { nome: 'COFINS', aliquota: 7.6, info: 'Regime não-cumulativo (7,6%). Direito a créditos.' },
-      { nome: 'PIS/PASEP', aliquota: 1.65, info: 'Regime não-cumulativo (1,65%). Direito a créditos.' },
-      ...(atividade === 'servicos' ? [{ nome: 'ISS', aliquota: ufInfo?.iss_max || 5, info: `ISS municipal: ${ufInfo?.iss_min || 2}% a ${ufInfo?.iss_max || 5}%` }] : []),
-      ...(atividade !== 'servicos' ? [{ nome: 'ICMS', aliquota: icmsUF, info: `ICMS interno de ${ufCalculo}: ${icmsUF}%. Direito a créditos.` }] : []),
+      { nome: 'IRPJ', aliquota: 15, percentPartilha: 0, info: '15% sobre lucro real. Adicional 10% acima de R$20mil/mês. — RIR/2018, Art. 622 e 624' },
+      { nome: 'CSLL', aliquota: 9, percentPartilha: 0, info: '9% sobre lucro real apurado. — Lei 7.689/1988, Art. 3º' },
+      { nome: 'COFINS', aliquota: 7.6, percentPartilha: 0, info: 'Regime não-cumulativo: 7,6%. Direito a créditos sobre insumos. — Lei 10.833/2003, Art. 2º' },
+      { nome: 'PIS/PASEP', aliquota: 1.65, percentPartilha: 0, info: 'Regime não-cumulativo: 1,65%. Direito a créditos sobre insumos. — Lei 10.637/2002, Art. 2º' },
+      ...(atividade === 'servicos' ? [{ nome: 'ISS', aliquota: ufInfo?.iss_max || 5, percentPartilha: 0, info: `ISS municipal: ${ufInfo?.iss_min || 2}% a ${ufInfo?.iss_max || 5}% — LC 116/2003` }] : []),
+      ...(atividade !== 'servicos' ? [{ nome: 'ICMS', aliquota: icmsUF, percentPartilha: 0, info: `ICMS interno de ${ufCalculo}: ${icmsUF}%. Direito a créditos. — RICMS/${ufCalculo}` }] : []),
     ];
   };
 
@@ -426,33 +467,47 @@ INSTRUÇÕES:
 
       {/* ── Alíquotas por tributo (ALWAYS VISIBLE) ── */}
       <div className="bg-card rounded-xl border border-border/50 p-5">
-        <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-accent" />
-          Alíquotas Tributárias Aplicadas — {regimeLabel} / {ufCalculo}
-        </h4>
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-semibold flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-accent" />
+            Alíquotas Tributárias Aplicadas — {regimeLabel} / {ufCalculo}
+          </h4>
+          {regime === 'simples_nacional' && (
+            <Badge variant="outline" className="text-[10px]">
+              Fonte: LC 123/2006 • Resolução CGSN nº 140/2018 • Anexo I (Comércio)
+            </Badge>
+          )}
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {tributosAtivos.map((t) => (
-            <div key={t.nome} className="bg-muted/30 rounded-lg p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium">{t.nome}</span>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="w-3 h-3 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs">
-                      <p className="text-xs">{t.info}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+          {tributosAtivos.map((t: any) => (
+            <div key={t.nome} className="bg-muted/30 rounded-lg p-3 space-y-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium">{t.nome}</span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="w-3 h-3 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-xs">
+                        <p className="text-xs">{t.info}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <span className="text-sm font-bold text-accent">{t.aliquota.toFixed(2)}%</span>
               </div>
-              <span className="text-sm font-bold text-accent">{t.aliquota.toFixed(2)}%</span>
+              {regime === 'simples_nacional' && t.percentPartilha > 0 && t.nome !== 'DAS Total' && (
+                <p className="text-[10px] text-muted-foreground">
+                  Partilha: {t.percentPartilha}% do DAS
+                </p>
+              )}
             </div>
           ))}
         </div>
         {regime === 'simples_nacional' && (!rbt12 || parseFloat(rbt12.replace(/\D/g, '')) === 0) && (
           <p className="text-[10px] text-muted-foreground mt-2">
-            ⚠ Informe o RBT12 (faturamento 12 meses) abaixo para calcular as alíquotas reais do Simples Nacional.
+            ⚠ Informe o RBT12 (faturamento 12 meses) abaixo para calcular as alíquotas reais com partilha oficial da Receita Federal.
           </p>
         )}
       </div>
