@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,8 @@ import { cn } from '@/lib/utils';
 import {
   Search, MapPin, Calendar as CalendarIcon2, Building2, CalendarDays, RefreshCw,
   Sparkles, Globe, Download, FileText, FileSpreadsheet, FileJson, FileArchive,
-  FileDown, Loader2, Send, ChevronDown, ChevronUp, Filter, X, Zap, Brain
+  FileDown, Loader2, Send, ChevronDown, ChevronUp, Filter, X, Zap, Brain,
+  Star, StarOff
 } from 'lucide-react';
 import { downloadCSV, downloadPDF, downloadJSON } from '@/lib/download-utils';
 import JSZip from 'jszip';
@@ -55,6 +56,9 @@ const PORTAIS = [
   { id: 'licitanet', nome: 'Licitanet', shortName: 'Licitanet' },
   { id: 'bll', nome: 'BLL Compras', shortName: 'BLL' },
   { id: 'portalcompras', nome: 'Portal de Compras Públicas', shortName: 'Portal Compras' },
+  { id: 'banrisul', nome: 'Banrisul (RS)', shortName: 'Banrisul' },
+  { id: 'comprasrs', nome: 'Compras RS', shortName: 'Compras RS' },
+  { id: 'procergs', nome: 'PROCERGS (RS)', shortName: 'PROCERGS' },
 ];
 
 const regioes: Record<string, string[]> = {
@@ -165,7 +169,61 @@ export default function LicitacoesTab() {
   const [comAnaliseIA, setComAnaliseIA] = useState(true);
   const [portalFilter, setPortalFilter] = useState<string>('all');
   const [filtroDiariosPublicadosDownload, setFiltroDiariosPublicadosDownload] = useState(false);
+  const [favoritos, setFavoritos] = useState<Set<string>>(new Set());
+  const [favoritando, setFavoritando] = useState<string | null>(null);
+  const [filtroFavoritos, setFiltroFavoritos] = useState(false);
   const resultadosRef = useRef<HTMLDivElement>(null);
+
+  // Carregar favoritos do banco
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('editais_favoritos')
+      .select('numero, orgao')
+      .eq('user_id', user.id)
+      .then(({ data }) => {
+        if (data) {
+          setFavoritos(new Set(data.map(f => `${f.numero}|${f.orgao}`)));
+        }
+      });
+  }, [user]);
+
+  const toggleFavorito = useCallback(async (lic: ResultadoBusca) => {
+    if (!user) return;
+    const key = `${lic.numero}|${lic.orgao}`;
+    setFavoritando(lic.id);
+    try {
+      if (favoritos.has(key)) {
+        await supabase
+          .from('editais_favoritos')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('numero', lic.numero)
+          .eq('orgao', lic.orgao);
+        setFavoritos(prev => { const n = new Set(prev); n.delete(key); return n; });
+        toast.success('Edital removido dos favoritos');
+      } else {
+        await supabase
+          .from('editais_favoritos')
+          .insert({
+            user_id: user.id,
+            numero: lic.numero,
+            orgao: lic.orgao,
+            objeto: lic.objeto,
+            modalidade: lic.modalidade,
+            portal: lic.portal,
+            uf: lic.uf,
+            municipio: lic.municipio,
+            valor_estimado: lic.valor_estimado,
+            data_abertura: lic.data_encerramento,
+            url: lic.url,
+          });
+        setFavoritos(prev => new Set(prev).add(key));
+        toast.success('⭐ Edital salvo nos favoritos!');
+      }
+    } catch { toast.error('Erro ao favoritar'); }
+    finally { setFavoritando(null); }
+  }, [user, favoritos]);
 
   useEffect(() => {
     if (!user) return;
@@ -553,7 +611,8 @@ export default function LicitacoesTab() {
       normalizeStatus(l.status) === 'Publicado' &&
       hasEditalDownload(l)
     );
-    return matchSearch && matchStatus && matchModalidade && matchPortal && matchUf && matchDataInicio && matchDataFim && matchDiariosPublicadosDownload;
+    const matchFavoritos = !filtroFavoritos || favoritos.has(`${l.numero}|${l.orgao}`);
+    return matchSearch && matchStatus && matchModalidade && matchPortal && matchUf && matchDataInicio && matchDataFim && matchDiariosPublicadosDownload && matchFavoritos;
   });
 
   return (
@@ -800,6 +859,15 @@ export default function LicitacoesTab() {
                 />
                 <span className="text-muted-foreground">Diários publicados c/ download oficial</span>
               </label>
+              <label className="flex items-center gap-1.5 text-xs cursor-pointer px-2 py-1 rounded-md border border-border/50 bg-background">
+                <Checkbox
+                  checked={filtroFavoritos}
+                  onCheckedChange={(v) => setFiltroFavoritos(!!v)}
+                  className="h-3.5 w-3.5"
+                />
+                <Star className="w-3.5 h-3.5 text-warning" />
+                <span className="text-muted-foreground">Somente favoritos ({favoritos.size})</span>
+              </label>
             </div>
           </div>
         )}
@@ -850,6 +918,9 @@ export default function LicitacoesTab() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border/50 bg-muted/30">
+                <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 w-10">
+                  <Star className="w-3.5 h-3.5 mx-auto text-warning" />
+                </th>
                 <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Nº / Objeto</th>
                 <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Órgão</th>
                 <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Portal</th>
@@ -861,14 +932,17 @@ export default function LicitacoesTab() {
             </thead>
             <tbody>
               {filtered.length === 0 && !loading && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                  {modoResultados === 'local'
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  {filtroFavoritos
+                    ? 'Nenhum edital favorito. Clique na ⭐ para salvar editais.'
+                    : modoResultados === 'local'
                     ? 'Nenhuma licitação salva. Use a busca acima para encontrar oportunidades.'
                     : 'Nenhum resultado encontrado. Tente ampliar os termos ou selecionar mais portais.'}
                 </td></tr>
               )}
               {filtered.map((lic, i) => {
                 const st = statusConfig[lic.status] || { label: lic.status, className: 'bg-muted text-muted-foreground' };
+                const isFav = favoritos.has(`${lic.numero}|${lic.orgao}`);
                 return (
                   <tr
                     key={lic.id}
@@ -876,6 +950,19 @@ export default function LicitacoesTab() {
                     style={{ animationDelay: `${i * 30}ms` }}
                     onClick={() => lic.url && window.open(lic.url, '_blank')}
                   >
+                    <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => toggleFavorito(lic)}
+                        disabled={favoritando === lic.id}
+                        className={cn(
+                          'p-1 rounded-md transition-colors hover:bg-warning/10',
+                          isFav ? 'text-warning' : 'text-muted-foreground/40 hover:text-warning/70'
+                        )}
+                        title={isFav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                      >
+                        {isFav ? <Star className="w-4 h-4 fill-current" /> : <StarOff className="w-4 h-4" />}
+                      </button>
+                    </td>
                     <td className="px-4 py-3">
                       <span className="text-xs font-mono text-muted-foreground block">{lic.numero}</span>
                       <span className="text-sm font-medium line-clamp-1">{lic.objeto}</span>

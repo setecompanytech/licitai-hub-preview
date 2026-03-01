@@ -13,6 +13,9 @@ const PORTAIS_INFO: Record<string, { nome: string; url: string }> = {
   banparanet: { nome: "Banparanet PA", url: "https://cotacao.banpara.b.br" },
   becsp: { nome: "BEC/SP", url: "https://www.bec.sp.gov.br" },
   comprasrj: { nome: "Compras Públicas RJ", url: "https://www.compras.rj.gov.br" },
+  banrisul: { nome: "Banrisul (RS)", url: "https://ww2.banrisul.com.br/bob/link/bobw00hn_ComprasEletronicas.aspx" },
+  comprasrs: { nome: "Compras RS", url: "https://compras.rs.gov.br" },
+  procergs: { nome: "PROCERGS (RS)", url: "https://pregaobanrisul.com.br" },
 };
 
 // PNCP modalidade codes

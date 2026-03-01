@@ -720,6 +720,57 @@ export type Database = {
           },
         ]
       }
+      editais_favoritos: {
+        Row: {
+          created_at: string
+          data_abertura: string | null
+          id: string
+          modalidade: string | null
+          municipio: string | null
+          notas: string | null
+          numero: string
+          objeto: string
+          orgao: string
+          portal: string | null
+          uf: string | null
+          url: string | null
+          user_id: string
+          valor_estimado: number | null
+        }
+        Insert: {
+          created_at?: string
+          data_abertura?: string | null
+          id?: string
+          modalidade?: string | null
+          municipio?: string | null
+          notas?: string | null
+          numero: string
+          objeto: string
+          orgao: string
+          portal?: string | null
+          uf?: string | null
+          url?: string | null
+          user_id: string
+          valor_estimado?: number | null
+        }
+        Update: {
+          created_at?: string
+          data_abertura?: string | null
+          id?: string
+          modalidade?: string | null
+          municipio?: string | null
+          notas?: string | null
+          numero?: string
+          objeto?: string
+          orgao?: string
+          portal?: string | null
+          uf?: string | null
+          url?: string | null
+          user_id?: string
+          valor_estimado?: number | null
+        }
+        Relationships: []
+      }
       empresa_membros: {
         Row: {
           created_at: string

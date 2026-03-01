@@ -9,6 +9,7 @@ import {
   Shield, FolderOpen, Download, Eye, FileArchive, ClipboardList
 } from 'lucide-react';
 import MergeDocumentos from '@/components/documentos/MergeDocumentos';
+import AlertaVencimentoDocumentos from '@/components/documentos/AlertaVencimentoDocumentos';
 import ChecklistModalidade from '@/components/licitacoes/ChecklistModalidade';
 
 type DocStatus = 'ok' | 'pendente' | 'vencido' | 'ausente';
@@ -89,6 +90,8 @@ export default function Documentos() {
           </TabsList>
 
           <TabsContent value="documentos" className="space-y-4">
+            {/* Alertas de vencimento */}
+            <AlertaVencimentoDocumentos documentos={documentos} />
             {/* Progress */}
             <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-2">
