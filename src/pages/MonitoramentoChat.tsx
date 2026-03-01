@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,57 @@ import {
   Megaphone, FileWarning, HelpCircle, FileEdit
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+
+// --- Sound Alert System ---
+function useSoundAlert() {
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  const playAlert = useCallback((type: 'convocacao' | 'mensagem' | 'alerta') => {
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      const ctx = audioCtxRef.current;
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      if (type === 'convocacao') {
+        // Urgent triple beep
+        oscillator.type = 'square';
+        oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+        oscillator.frequency.setValueAtTime(1100, ctx.currentTime + 0.15);
+        oscillator.frequency.setValueAtTime(880, ctx.currentTime + 0.3);
+        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        oscillator.start(ctx.currentTime);
+        oscillator.stop(ctx.currentTime + 0.5);
+      } else if (type === 'alerta') {
+        // Double beep
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(660, ctx.currentTime);
+        oscillator.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
+        gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        oscillator.start(ctx.currentTime);
+        oscillator.stop(ctx.currentTime + 0.3);
+      } else {
+        // Single soft tone
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(520, ctx.currentTime);
+        gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+        oscillator.start(ctx.currentTime);
+        oscillator.stop(ctx.currentTime + 0.2);
+      }
+    } catch (e) {
+      console.warn('Sound alert failed:', e);
+    }
+  }, []);
+
+  return playAlert;
+}
 
 type MensagemChat = {
   id: string;
@@ -89,6 +140,31 @@ export default function MonitoramentoChat() {
   const [alertaSonoro, setAlertaSonoro] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [mainTab, setMainTab] = useState('chat');
+  const playAlert = useSoundAlert();
+  const prevMsgCountRef = useRef(mockMensagens.length);
+
+  // Play sound on new convocação messages when alertaSonoro is on
+  useEffect(() => {
+    if (!alertaSonoro) return;
+    const pregaoAtivo = mockPregoes.find(p => p.id === pregaoSelecionado);
+    if (!pregaoAtivo) return;
+    
+    const mensagens = mockMensagens.filter(m => pregaoAtivo.numero === m.pregaoNumero);
+    const convocacoes = mensagens.filter(m => m.tipo === 'convocacao');
+    
+    if (convocacoes.length > 0 && mensagens.length > prevMsgCountRef.current) {
+      playAlert('convocacao');
+    }
+    prevMsgCountRef.current = mensagens.length;
+  }, [alertaSonoro, pregaoSelecionado, playAlert]);
+
+  // Demo: play sound when toggling alertaSonoro ON
+  const handleToggleSom = (checked: boolean) => {
+    setAlertaSonoro(checked);
+    if (checked) {
+      setTimeout(() => playAlert('mensagem'), 100);
+    }
+  };
 
   const muralTipoConfig = {
     aviso: { icon: Megaphone, color: 'text-warning bg-warning/10 border-warning/30' },
@@ -128,14 +204,23 @@ export default function MonitoramentoChat() {
               <Switch checked={autoRefresh} onCheckedChange={setAutoRefresh} />
             </div>
             <div className="flex items-center gap-2 text-sm">
-              {alertaSonoro ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-              <Switch checked={alertaSonoro} onCheckedChange={setAlertaSonoro} />
+              {alertaSonoro ? <Volume2 className="w-4 h-4 text-accent" /> : <VolumeX className="w-4 h-4 text-muted-foreground" />}
+              <Switch checked={alertaSonoro} onCheckedChange={handleToggleSom} />
+              <span className="text-xs text-muted-foreground">{alertaSonoro ? 'Som ativo' : 'Mudo'}</span>
             </div>
             <Button size="sm" variant="outline">
               <RefreshCw className="w-4 h-4 mr-1" /> Atualizar
             </Button>
           </div>
         </div>
+
+        {/* Sound alert indicator */}
+        {alertaSonoro && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-accent/10 rounded-lg border border-accent/20 text-xs text-accent">
+            <Volume2 className="w-4 h-4 animate-pulse" />
+            <span>Alertas sonoros ativados — você receberá notificações sonoras ao ser convocado ou quando houver mensagens urgentes</span>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-3">
@@ -227,6 +312,9 @@ export default function MonitoramentoChat() {
                         <p className="text-xs text-muted-foreground mt-0.5">{pregaoAtivo.orgao} — {pregaoAtivo.objeto}</p>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => { if (alertaSonoro) playAlert('convocacao'); }}>
+                          <Volume2 className="w-3 h-3 mr-1" /> Testar Som
+                        </Button>
                         <Button size="sm" variant="outline"><Eye className="w-3 h-3 mr-1" /> Ver no Portal</Button>
                       </div>
                     </div>
@@ -235,7 +323,10 @@ export default function MonitoramentoChat() {
                       {mensagensFiltradas.length > 0 ? mensagensFiltradas.map(msg => (
                         <div key={msg.id} className={`rounded-lg p-3 text-sm ${tipoMsgConfig[msg.tipo]}`}>
                           <div className="flex items-center justify-between mb-1">
-                            <span className="font-medium text-xs">{msg.remetente}</span>
+                            <span className="font-medium text-xs flex items-center gap-1.5">
+                              {msg.tipo === 'convocacao' && <Volume2 className="w-3 h-3 text-warning animate-pulse" />}
+                              {msg.remetente}
+                            </span>
                             <span className="text-[10px] text-muted-foreground">{msg.horario}</span>
                           </div>
                           <p className="text-sm">{msg.mensagem}</p>

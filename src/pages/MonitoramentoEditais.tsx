@@ -70,6 +70,9 @@ const portaisMonitorados = [
   { id: "banparanet", nome: "Banparanet (PA)", url: "https://cotacao.banpara.b.br/portal/Mural.aspx", ativo: true },
   { id: "bec-sp", nome: "BEC/SP", url: "https://www.bec.sp.gov.br/BECSP/Home/Home.aspx", ativo: true },
   { id: "compras-rj", nome: "Compras Públicas RJ", url: "https://www.compras.rj.gov.br/", ativo: true },
+  { id: "banrisul", nome: "Banrisul (RS)", url: "https://ww2.banrisul.com.br/bob/link/bobw00hn_ComprasEletronicas.aspx", ativo: true },
+  { id: "compras-rs", nome: "Compras RS", url: "https://compras.rs.gov.br/", ativo: true },
+  { id: "procergs", nome: "PROCERGS (RS)", url: "https://pregaobanrisul.com.br/", ativo: true },
 ];
 
 const mockDocumentoCount: Record<TipoDocumento, number> = {
