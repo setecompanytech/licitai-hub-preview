@@ -33,6 +33,7 @@ import CotacaoFornecedorUpload from '@/components/precificacao/CotacaoFornecedor
 import ComparativoDashboard from '@/components/precificacao/ComparativoDashboard';
 import CotacaoEditalAutoIA from '@/components/precificacao/CotacaoEditalAutoIA';
 import CalculadoraTributaria from '@/components/precificacao/CalculadoraTributaria';
+import ComposicaoCustoIA from '@/components/precificacao/ComposicaoCustoIA';
 
 type FontePreco = {
   fonte: string;
@@ -710,6 +711,9 @@ Responda APENAS em JSON, sem markdown:
             <TabsTrigger value="calculadora" className="gap-1.5">
               <Calculator className="w-3.5 h-3.5" /> Calculadora Tributária
             </TabsTrigger>
+            <TabsTrigger value="composicao" className="gap-1.5">
+              <FileText className="w-3.5 h-3.5" /> Composição de Custo
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="marketplaces" className="space-y-4">
@@ -1304,6 +1308,10 @@ Responda APENAS em JSON, sem markdown:
 
           <TabsContent value="calculadora">
             <CalculadoraTributaria />
+          </TabsContent>
+
+          <TabsContent value="composicao">
+            <ComposicaoCustoIA />
           </TabsContent>
         </Tabs>
       </div>
