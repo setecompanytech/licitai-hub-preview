@@ -10,13 +10,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import {
   Calculator, Bot, Loader2, FileText, Plus, Download, ExternalLink, MapPin, Building2,
-  ShieldCheck, Sparkles, TrendingUp, Info
+  ShieldCheck, Sparkles, TrendingUp, Info, BookOpen
 } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import {
+  ANEXOS_SIMPLES, getAnexoById,
+  calcularSimplesNacional, getPartilhaSimplesReal, formatCurrencyShort,
+  type AnexoSimples,
+} from '@/data/simples-nacional-anexos';
 
 // ── UF Database ──
 const UF_ICMS: Record<string, { nome: string; icms_interno: number; iss_min: number; iss_max: number }> = {
@@ -95,78 +103,6 @@ const REGIMES: Record<string, RegimeConfig> = {
   },
 };
 
-// ── Simples Nacional Faixas (Anexo I – Comércio) – LC 123/2006, Art. 18 ──
-// Fonte: Receita Federal do Brasil – Resolução CGSN nº 140/2018, Anexo I
-const SIMPLES_FAIXAS = [
-  { min: 0, max: 180000, aliquota: 4.0, deducao: 0, faixaNum: 1 },
-  { min: 180000.01, max: 360000, aliquota: 7.3, deducao: 5940, faixaNum: 2 },
-  { min: 360000.01, max: 720000, aliquota: 9.5, deducao: 13860, faixaNum: 3 },
-  { min: 720000.01, max: 1800000, aliquota: 10.7, deducao: 22500, faixaNum: 4 },
-  { min: 1800000.01, max: 3600000, aliquota: 14.3, deducao: 87300, faixaNum: 5 },
-  { min: 3600000.01, max: 4800000, aliquota: 19.0, deducao: 378000, faixaNum: 6 },
-];
-
-// ── Partilha oficial dos tributos por faixa – Anexo I (LC 123/2006) ──
-// Percentuais de repartição da alíquota efetiva entre os tributos constituintes
-// Fonte: Art. 18, §4º da LC 123/2006 c/c Resolução CGSN nº 140/2018, Anexo I
-type PartilhaFaixa = {
-  IRPJ: number; CSLL: number; COFINS: number; PIS: number; CPP: number; ICMS: number;
-};
-
-const PARTILHA_ANEXO_I: Record<number, PartilhaFaixa> = {
-  // Faixa 1: IRPJ 5,50% | CSLL 3,50% | COFINS 12,74% | PIS/PASEP 2,76% | CPP 41,50% | ICMS 34,00%
-  1: { IRPJ: 5.50, CSLL: 3.50, COFINS: 12.74, PIS: 2.76, CPP: 41.50, ICMS: 34.00 },
-  // Faixa 2: mesma distribuição da 1ª faixa
-  2: { IRPJ: 5.50, CSLL: 3.50, COFINS: 12.74, PIS: 2.76, CPP: 41.50, ICMS: 34.00 },
-  // Faixa 3: CPP sobe para 42,00%, ICMS reduz para 33,50%
-  3: { IRPJ: 5.50, CSLL: 3.50, COFINS: 12.74, PIS: 2.76, CPP: 42.00, ICMS: 33.50 },
-  // Faixa 4: igual à 3ª
-  4: { IRPJ: 5.50, CSLL: 3.50, COFINS: 12.74, PIS: 2.76, CPP: 42.00, ICMS: 33.50 },
-  // Faixa 5: igual à 3ª
-  5: { IRPJ: 5.50, CSLL: 3.50, COFINS: 12.74, PIS: 2.76, CPP: 42.00, ICMS: 33.50 },
-  // Faixa 6: ICMS cobrado separadamente (sublimite estadual) – redistribuição sem ICMS
-  // IRPJ 13,50% | CSLL 10,00% | COFINS 28,27% | PIS/PASEP 6,13% | CPP 42,10% | ICMS 0,00%
-  6: { IRPJ: 13.50, CSLL: 10.00, COFINS: 28.27, PIS: 6.13, CPP: 42.10, ICMS: 0.00 },
-};
-
-function calcularSimplesNacional(rbt12: number) {
-  const faixa = SIMPLES_FAIXAS.find(f => rbt12 >= f.min && rbt12 <= f.max);
-  if (!faixa) return { aliquotaEfetiva: 0, valorDAS: 0, faixa: null };
-  const aliquotaEfetiva = ((rbt12 * faixa.aliquota / 100) - faixa.deducao) / rbt12 * 100;
-  const receitaMensal = rbt12 / 12;
-  const valorDAS = receitaMensal * (aliquotaEfetiva / 100);
-  return { aliquotaEfetiva: Math.max(0, aliquotaEfetiva), valorDAS, faixa };
-}
-
-function formatCurrencyShort(v: number) {
-  if (v >= 1000000) return `R$ ${(v/1000000).toFixed(1)}M`;
-  if (v >= 1000) return `R$ ${(v/1000).toFixed(0)}mil`;
-  return `R$ ${v}`;
-}
-
-// Calcula a partilha REAL dos tributos conforme LC 123/2006, Resolução CGSN nº 140/2018
-function getPartilhaSimplesReal(rbt12: number, icmsUFRate: number) {
-  const faixa = SIMPLES_FAIXAS.find(f => rbt12 >= f.min && rbt12 <= f.max);
-  if (!faixa) return null;
-  const partilha = PARTILHA_ANEXO_I[faixa.faixaNum];
-  const ae = Math.max(0, ((rbt12 * faixa.aliquota / 100) - faixa.deducao) / rbt12 * 100);
-  const faixaLabel = `${faixa.faixaNum}ª Faixa (RBT12 até ${formatCurrencyShort(faixa.max)})`;
-  const sublimiteICMS = faixa.faixaNum === 6;
-
-  return [
-    { nome: 'IRPJ', aliquota: +(ae * partilha.IRPJ / 100).toFixed(4), percentPartilha: partilha.IRPJ, info: `Partilha oficial: ${partilha.IRPJ}% × ${ae.toFixed(2)}% = ${(ae * partilha.IRPJ / 100).toFixed(4)}% — ${faixaLabel} — Anexo I, LC 123/2006` },
-    { nome: 'CSLL', aliquota: +(ae * partilha.CSLL / 100).toFixed(4), percentPartilha: partilha.CSLL, info: `Partilha oficial: ${partilha.CSLL}% × ${ae.toFixed(2)}% = ${(ae * partilha.CSLL / 100).toFixed(4)}% — ${faixaLabel} — Anexo I, LC 123/2006` },
-    { nome: 'COFINS', aliquota: +(ae * partilha.COFINS / 100).toFixed(4), percentPartilha: partilha.COFINS, info: `Partilha oficial: ${partilha.COFINS}% × ${ae.toFixed(2)}% = ${(ae * partilha.COFINS / 100).toFixed(4)}% — ${faixaLabel} — Anexo I, LC 123/2006` },
-    { nome: 'PIS/PASEP', aliquota: +(ae * partilha.PIS / 100).toFixed(4), percentPartilha: partilha.PIS, info: `Partilha oficial: ${partilha.PIS}% × ${ae.toFixed(2)}% = ${(ae * partilha.PIS / 100).toFixed(4)}% — ${faixaLabel} — Anexo I, LC 123/2006` },
-    { nome: 'CPP', aliquota: +(ae * partilha.CPP / 100).toFixed(4), percentPartilha: partilha.CPP, info: `Partilha oficial: ${partilha.CPP}% × ${ae.toFixed(2)}% = ${(ae * partilha.CPP / 100).toFixed(4)}% — ${faixaLabel} — Anexo I, LC 123/2006` },
-    ...(sublimiteICMS
-      ? [{ nome: 'ICMS (Sublimite)', aliquota: icmsUFRate, percentPartilha: 0, info: `6ª Faixa: ICMS cobrado separadamente pelo estado a ${icmsUFRate}% (sublimite estadual — Art. 13-A, LC 123/2006)` }]
-      : [{ nome: 'ICMS', aliquota: +(ae * partilha.ICMS / 100).toFixed(4), percentPartilha: partilha.ICMS, info: `Partilha oficial: ${partilha.ICMS}% × ${ae.toFixed(2)}% = ${(ae * partilha.ICMS / 100).toFixed(4)}% — ${faixaLabel} — Anexo I, LC 123/2006` }]
-    ),
-    { nome: 'DAS Total', aliquota: +ae.toFixed(2), percentPartilha: 100, info: `Alíquota efetiva: [(RBT12 × ${faixa.aliquota}%) − R$ ${faixa.deducao.toLocaleString('pt-BR')}] / RBT12 = ${ae.toFixed(2)}% — ${faixaLabel}` },
-  ];
-}
-
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -193,6 +129,8 @@ export default function CalculadoraUnificada() {
   const [margemLucro, setMargemLucro] = useState('15');
   const [ufCalculo, setUfCalculo] = useState(ufEmpresa || 'PA');
   const [resultado, setResultado] = useState<any>(null);
+  const [anexoSelecionado, setAnexoSelecionado] = useState('anexo_i');
+  const [showTabelaPartilha, setShowTabelaPartilha] = useState(false);
 
   // ── Composição state ──
   const [frete, setFrete] = useState('');
@@ -220,13 +158,14 @@ export default function CalculadoraUnificada() {
   const ufInfo = UF_ICMS[ufCalculo];
   const regimeLabel = config.label;
   const icmsUF = ufInfo?.icms_interno || 18;
+  const anexoAtual = getAnexoById(anexoSelecionado) || ANEXOS_SIMPLES[0];
 
   // ── Build tributos with real percentages based on regime + UF ──
   const getTributosComAliquotas = () => {
     if (regime === 'simples_nacional') {
       const faturamento12 = parseFloat(rbt12.replace(/\D/g, '')) / 100 || 0;
       if (faturamento12 > 0) {
-        const partilha = getPartilhaSimplesReal(faturamento12, icmsUF);
+        const partilha = getPartilhaSimplesReal(faturamento12, anexoAtual, icmsUF, ufInfo?.iss_max || 5);
         if (partilha) return partilha;
       }
       return config.tributos.map(t => ({ nome: t.nome, aliquota: t.aliquota, percentPartilha: 0, info: t.info }));
@@ -268,7 +207,7 @@ export default function CalculadoraUnificada() {
 
     if (regime === 'simples_nacional') {
       const faturamento12 = parseFloat(rbt12.replace(/\D/g, '')) / 100 || receita * 12;
-      const simples = calcularSimplesNacional(faturamento12);
+      const simples = calcularSimplesNacional(faturamento12, anexoAtual);
       setResultado({
         regime: 'simples_nacional',
         receita,
@@ -278,6 +217,7 @@ export default function CalculadoraUnificada() {
         faixa: simples.faixa,
         tributos: [{ nome: 'DAS (Unificado)', valor: simples.valorDAS, aliquota: simples.aliquotaEfetiva }],
         totalTributos: simples.valorDAS,
+        anexo: anexoAtual.nome,
       });
     } else {
       const margem = parseFloat(margemLucro) / 100 || 0.15;
@@ -367,10 +307,12 @@ export default function CalculadoraUnificada() {
     // Include calculated percentages in prompt
     const tributosSummary = tributosAtivos.map(t => `   - ${t.nome}: ${t.aliquota}%`).join('\n');
 
+    const anexoInfo = regime === 'simples_nacional' ? `\n- Anexo: ${anexoAtual.nome}` : '';
+
     const prompt = `Gere a PLANILHA DE COMPOSIÇÃO DE CUSTO E FORMAÇÃO DE PREÇO conforme Lei nº 14.133/2021.
 
 DADOS DA EMPRESA:
-- Regime Tributário: ${regimeLabel}
+- Regime Tributário: ${regimeLabel}${anexoInfo}
 - UF: ${ufCalculo} (${ufInfo?.nome || ''})
 - ICMS interno: ${icmsUF}%
 - ISS municipal: ${ufInfo?.iss_min || 2}% a ${ufInfo?.iss_max || 5}%
@@ -459,11 +401,163 @@ INSTRUÇÕES:
           <Badge className="bg-primary/10 text-primary border-primary/20">
             <MapPin className="w-3 h-3 mr-1" /> {ufCalculo} — ICMS {icmsUF}%
           </Badge>
+          {regime === 'simples_nacional' && (
+            <Badge className="bg-secondary/50 text-secondary-foreground border-border/30">
+              <BookOpen className="w-3 h-3 mr-1" /> {anexoAtual.nome}
+            </Badge>
+          )}
           {empresaAtiva && (
             <Badge variant="outline" className="text-[10px]">{empresaAtiva.razao_social}</Badge>
           )}
         </div>
       </div>
+
+      {/* ── Seletor de Anexo (só Simples Nacional) ── */}
+      {regime === 'simples_nacional' && (
+        <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-accent" />
+              Anexo do Simples Nacional — LC 123/2006
+            </h4>
+            <Badge variant="outline" className="text-[10px]">
+              Resolução CGSN nº 140/2018
+            </Badge>
+          </div>
+
+          <div>
+            <Label className="text-xs">Selecione o Anexo da atividade da empresa</Label>
+            <Select value={anexoSelecionado} onValueChange={setAnexoSelecionado}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Selecione o Anexo" />
+              </SelectTrigger>
+              <SelectContent>
+                {ANEXOS_SIMPLES.map(a => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground mt-1.5">{anexoAtual.descricao}</p>
+            {anexoAtual.id === 'anexo_iv' && (
+              <p className="text-[10px] text-warning mt-1">
+                ⚠ No Anexo IV, a CPP (INSS patronal 20%) é recolhida separadamente, fora do DAS.
+              </p>
+            )}
+            {anexoAtual.id === 'anexo_v' && (
+              <p className="text-[10px] text-warning mt-1">
+                ⚠ No Anexo V, se o fator "r" (folha de pagamento ÷ receita bruta 12m) for ≥ 28%, a empresa é tributada pelo Anexo III (mais vantajoso).
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Switch checked={showTabelaPartilha} onCheckedChange={setShowTabelaPartilha} />
+            <span className="text-xs text-muted-foreground">Exibir tabela oficial de faixas e partilha</span>
+          </div>
+
+          {showTabelaPartilha && (
+            <div className="space-y-4">
+              {/* Tabela de Faixas */}
+              <div>
+                <p className="text-xs font-semibold mb-2">Faixas de Faturamento — {anexoAtual.nome}</p>
+                <div className="overflow-x-auto rounded-lg border border-border/50">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="text-[10px] font-semibold h-8">Faixa</TableHead>
+                        <TableHead className="text-[10px] font-semibold h-8 text-right">Alíquota</TableHead>
+                        <TableHead className="text-[10px] font-semibold h-8 text-right">Dedução</TableHead>
+                        <TableHead className="text-[10px] font-semibold h-8">RBT12 (12 meses)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {anexoAtual.faixas.map(f => {
+                        const rbt12Val = parseFloat(rbt12.replace(/\D/g, '')) / 100 || 0;
+                        const isActive = rbt12Val >= f.min && rbt12Val <= f.max;
+                        return (
+                          <TableRow key={f.faixaNum} className={isActive ? 'bg-accent/10 font-semibold' : ''}>
+                            <TableCell className="text-[10px] py-1.5">{f.faixaNum}ª Faixa</TableCell>
+                            <TableCell className="text-[10px] py-1.5 text-right">{f.aliquota.toFixed(2)}%</TableCell>
+                            <TableCell className="text-[10px] py-1.5 text-right">{f.deducao > 0 ? formatCurrency(f.deducao) : '—'}</TableCell>
+                            <TableCell className="text-[10px] py-1.5">
+                              {f.min === 0 ? 'Até' : `De ${formatCurrency(f.min)} a`} {formatCurrency(f.max)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Tabela de Partilha */}
+              <div>
+                <p className="text-xs font-semibold mb-2">Percentual de Repartição dos Tributos — {anexoAtual.nome}</p>
+                <div className="overflow-x-auto rounded-lg border border-border/50">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="text-[10px] font-semibold h-8">Faixa</TableHead>
+                        <TableHead className="text-[10px] font-semibold h-8 text-right">IRPJ</TableHead>
+                        <TableHead className="text-[10px] font-semibold h-8 text-right">CSLL</TableHead>
+                        <TableHead className="text-[10px] font-semibold h-8 text-right">COFINS</TableHead>
+                        <TableHead className="text-[10px] font-semibold h-8 text-right">PIS/PASEP</TableHead>
+                        <TableHead className="text-[10px] font-semibold h-8 text-right">CPP</TableHead>
+                        {(anexoAtual.id === 'anexo_i' || anexoAtual.id === 'anexo_ii') && (
+                          <TableHead className="text-[10px] font-semibold h-8 text-right">ICMS</TableHead>
+                        )}
+                        {(anexoAtual.id === 'anexo_iii' || anexoAtual.id === 'anexo_iv' || anexoAtual.id === 'anexo_v') && (
+                          <TableHead className="text-[10px] font-semibold h-8 text-right">ISS</TableHead>
+                        )}
+                        {anexoAtual.id === 'anexo_ii' && (
+                          <TableHead className="text-[10px] font-semibold h-8 text-right">IPI</TableHead>
+                        )}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {anexoAtual.faixas.map(f => {
+                        const p = anexoAtual.partilha[f.faixaNum];
+                        const rbt12Val = parseFloat(rbt12.replace(/\D/g, '')) / 100 || 0;
+                        const isActive = rbt12Val >= f.min && rbt12Val <= f.max;
+                        return (
+                          <TableRow key={f.faixaNum} className={isActive ? 'bg-accent/10 font-semibold' : ''}>
+                            <TableCell className="text-[10px] py-1.5">{f.faixaNum}ª</TableCell>
+                            <TableCell className="text-[10px] py-1.5 text-right">{p.IRPJ.toFixed(2)}%</TableCell>
+                            <TableCell className="text-[10px] py-1.5 text-right">{p.CSLL.toFixed(2)}%</TableCell>
+                            <TableCell className="text-[10px] py-1.5 text-right">{p.COFINS.toFixed(2)}%</TableCell>
+                            <TableCell className="text-[10px] py-1.5 text-right">{p.PIS.toFixed(2)}%</TableCell>
+                            <TableCell className="text-[10px] py-1.5 text-right">
+                              {p.CPP > 0 ? `${p.CPP.toFixed(2)}%` : '—'}
+                            </TableCell>
+                            {(anexoAtual.id === 'anexo_i' || anexoAtual.id === 'anexo_ii') && (
+                              <TableCell className="text-[10px] py-1.5 text-right">
+                                {p.ICMS > 0 ? `${p.ICMS.toFixed(2)}%` : '—'}
+                              </TableCell>
+                            )}
+                            {(anexoAtual.id === 'anexo_iii' || anexoAtual.id === 'anexo_iv' || anexoAtual.id === 'anexo_v') && (
+                              <TableCell className="text-[10px] py-1.5 text-right">
+                                {p.ISS > 0 ? `${p.ISS.toFixed(2)}%` : '—'}
+                              </TableCell>
+                            )}
+                            {anexoAtual.id === 'anexo_ii' && (
+                              <TableCell className="text-[10px] py-1.5 text-right">{p.IPI.toFixed(2)}%</TableCell>
+                            )}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1.5">
+                  Fonte: LC 123/2006, Art. 18 c/c Resolução CGSN nº 140/2018 — {anexoAtual.nome}. Percentuais de repartição sobre a alíquota efetiva do DAS.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Alíquotas por tributo (ALWAYS VISIBLE) ── */}
       <div className="bg-card rounded-xl border border-border/50 p-5">
@@ -474,7 +568,7 @@ INSTRUÇÕES:
           </h4>
           {regime === 'simples_nacional' && (
             <Badge variant="outline" className="text-[10px]">
-              Fonte: LC 123/2006 • Resolução CGSN nº 140/2018 • Anexo I (Comércio)
+              Fonte: LC 123/2006 • Resolução CGSN nº 140/2018 • {anexoAtual.nome}
             </Badge>
           )}
         </div>
@@ -498,8 +592,8 @@ INSTRUÇÕES:
                 <span className="text-sm font-bold text-accent">{t.aliquota.toFixed(2)}%</span>
               </div>
               {regime === 'simples_nacional' && t.percentPartilha > 0 && t.nome !== 'DAS Total' && (
-                <p className="text-[10px] text-muted-foreground">
-                  Partilha: {t.percentPartilha}% do DAS
+                <p className="text-xs text-muted-foreground">
+                  Partilha: {t.percentPartilha.toFixed(2)}% do DAS
                 </p>
               )}
             </div>
@@ -599,6 +693,9 @@ INSTRUÇÕES:
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-5 h-5 text-accent" />
             <h4 className="font-semibold text-sm">Resultado da Simulação Tributária</h4>
+            {resultado.anexo && (
+              <Badge variant="outline" className="text-[10px] ml-auto">{resultado.anexo}</Badge>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-3">
