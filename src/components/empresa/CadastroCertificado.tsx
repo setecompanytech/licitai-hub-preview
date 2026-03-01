@@ -28,6 +28,7 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
   const [endereco, setEndereco] = useState('');
   const [validade, setValidade] = useState('');
   const [regimeTributario, setRegimeTributario] = useState('');
+  const [senhaCertificado, setSenhaCertificado] = useState('');
   const [loading, setLoading] = useState(false);
   const [buscando, setBuscando] = useState(false);
 
@@ -83,8 +84,8 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !file || !cnpj.trim() || !razaoSocial.trim() || !regimeTributario) {
-      toast.error('Preencha todos os campos obrigatórios (incluindo regime tributário)');
+    if (!user || !file || !cnpj.trim() || !razaoSocial.trim() || !regimeTributario || !senhaCertificado.trim()) {
+      toast.error('Preencha todos os campos obrigatórios (incluindo senha do certificado e regime tributário)');
       return;
     }
 
@@ -126,7 +127,7 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
       toast.success(`Empresa ${razaoSocial} cadastrada com sucesso!`);
       setCnpj(''); setRazaoSocial(''); setNomeFantasia(''); setValidade('');
       setCnaePrincipal(''); setUf(''); setMunicipio(''); setEndereco('');
-      setRegimeTributario('');
+      setRegimeTributario(''); setSenhaCertificado('');
       setFile(null);
       onSuccess?.();
     } catch (err: any) {
@@ -170,6 +171,21 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
             <input type="file" accept=".pfx,.p12,.cer,.crt,.pem" onChange={handleFileChange} className="hidden" />
           </label>
         </div>
+      </div>
+
+      <div>
+        <Label className="text-xs">Senha do Certificado Digital *</Label>
+        <Input
+          type="password"
+          value={senhaCertificado}
+          onChange={e => setSenhaCertificado(e.target.value)}
+          placeholder="Digite a senha do certificado"
+          className="mt-1"
+          required
+        />
+        <p className="text-[10px] text-muted-foreground mt-1">
+          A senha é necessária para validar o certificado. Ela não será armazenada.
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -245,7 +261,7 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
         </Select>
       </div>
 
-      <Button type="submit" disabled={loading || !file || !regimeTributario} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+      <Button type="submit" disabled={loading || !file || !regimeTributario || !senhaCertificado.trim()} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
         {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Building2 className="w-4 h-4 mr-2" />}
         {mode === 'login' ? 'Acessar' : 'Cadastrar Empresa'}
       </Button>
