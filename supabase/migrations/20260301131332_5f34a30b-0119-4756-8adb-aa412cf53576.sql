@@ -1,0 +1,1 @@
+ALTER TABLE public.empresas ADD COLUMN regime_tributario text DEFAULT NULL;
