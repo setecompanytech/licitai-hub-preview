@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppSidebar from './AppSidebar';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
-import { Bell, Menu, X } from 'lucide-react';
+import { Bell, Menu, LayoutDashboard } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
+import MegaMenu from './MegaMenu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 
@@ -45,6 +46,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 <Menu className="w-5 h-5 text-foreground" />
               </button>
             )}
+            {!isMobile && (
+              <button
+                onClick={() => navigate('/')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                Dashboard
+              </button>
+            )}
+            {!isMobile && <MegaMenu />}
             {isMobile && (
               <span className="text-base font-bold tracking-tight">
                 Licit<span className="text-accent">IA</span>
