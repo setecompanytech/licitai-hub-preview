@@ -476,7 +476,34 @@ export default function PropostaTecnica() {
                 Proposta Comercial / Técnica Gerada
               </h2>
               <div className="flex items-center gap-2 flex-wrap">
-                <PropostaDownload proposal={proposal} numeroLicitacao={numeroLicitacao} timbradoUrl={timbradoUrl} />
+                <PropostaDownload
+                  proposal={proposal}
+                  numeroLicitacao={numeroLicitacao}
+                  timbradoUrl={timbradoUrl}
+                  empresaData={empresaAtiva}
+                  repData={{
+                    nome: repNome,
+                    cpf: repCpf,
+                    rg: repRg,
+                    orgaoExp: repOrgaoExp,
+                    cargo: repCargo,
+                    naturalidade: repNaturalidade,
+                    nacionalidade: repNacionalidade,
+                  }}
+                  bancData={{ banco, agencia, conta }}
+                  itens={itens}
+                  licitacaoData={{
+                    orgao,
+                    modalidade,
+                    objeto,
+                    valorEstimado,
+                    prazoValidade,
+                    localEntrega,
+                    liquidacaoNfe,
+                  }}
+                  telefone={telefone}
+                  email={email}
+                />
                 <Button variant="outline" size="sm" onClick={handleCopy}>
                   {copied ? <CheckCircle className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
                   {copied ? 'Copiado' : 'Copiar'}
