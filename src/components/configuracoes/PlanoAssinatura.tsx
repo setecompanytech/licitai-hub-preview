@@ -350,7 +350,7 @@ function CartaoCheckout({ plano, total, cycle }: { plano: Plano; total: number; 
 export default function PlanoAssinatura() {
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [cycle, setCycle] = useState<BillingCycle>('mensal');
-  const [payment, setPayment] = useState<PaymentMethod>('pix');
+  const [payment, setPayment] = useState<PaymentMethod | null>(null);
   const [loading, setLoading] = useState(true);
   const [highlight, setHighlight] = useState(false);
   const [selectedPlano, setSelectedPlano] = useState<Plano | null>(null);
@@ -468,32 +468,7 @@ export default function PlanoAssinatura() {
           </div>
         </div>
 
-        {/* Payment method selector */}
-        <div className="mb-6">
-          <p className="text-xs font-semibold text-muted-foreground text-center mb-3">Forma de pagamento</p>
-          <div className="flex items-center justify-center gap-3">
-            {paymentMethods.map((m) => {
-              const active = payment === m.key;
-              const Icon = m.icon;
-              return (
-                <button
-                  key={m.key}
-                  onClick={() => setPayment(m.key)}
-                  className={cn(
-                    'flex flex-col items-center gap-1.5 px-4 py-3 rounded-xl border transition-all duration-200 min-w-[110px]',
-                    active
-                      ? 'border-accent bg-accent/10 shadow-sm'
-                      : 'border-border/50 hover:border-accent/40 bg-transparent'
-                  )}
-                >
-                  <Icon className={cn('w-5 h-5', active ? 'text-accent' : 'text-muted-foreground')} />
-                  <span className={cn('text-xs font-semibold', active ? 'text-foreground' : 'text-muted-foreground')}>{m.label}</span>
-                  <span className="text-[10px] text-muted-foreground">{m.desc}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Payment method selector removed - now inside checkout dialog */}
 
         {/* Plans grid */}
         <div className="grid md:grid-cols-3 gap-4">
@@ -577,26 +552,69 @@ export default function PlanoAssinatura() {
       </section>
 
       {/* Checkout Dialog */}
-      <Dialog open={!!selectedPlano} onOpenChange={(open) => !open && setSelectedPlano(null)}>
+      <Dialog open={!!selectedPlano} onOpenChange={(open) => { if (!open) { setSelectedPlano(null); setPayment(null); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {payment === 'pix' && <QrCode className="w-5 h-5 text-accent" />}
-              {payment === 'boleto' && <FileText className="w-5 h-5 text-accent" />}
-              {payment === 'cartao' && <CreditCard className="w-5 h-5 text-accent" />}
-              Pagamento via {paymentMethods.find(m => m.key === payment)?.label}
+              {!payment && <><CreditCard className="w-5 h-5 text-accent" /> Escolha a forma de pagamento</>}
+              {payment === 'pix' && <><QrCode className="w-5 h-5 text-accent" /> Pagamento via PIX</>}
+              {payment === 'boleto' && <><FileText className="w-5 h-5 text-accent" /> Pagamento via Boleto</>}
+              {payment === 'cartao' && <><CreditCard className="w-5 h-5 text-accent" /> Pagamento via Cartão</>}
             </DialogTitle>
             <DialogDescription>
-              Finalize a assinatura do plano {selectedPlano?.nome}
+              {!payment
+                ? `Plano ${selectedPlano?.nome} • ${cycleConfig[cycle].label} — ${selectedPrice ? formatCurrency(selectedPrice.total) : ''}`
+                : `Finalize a assinatura do plano ${selectedPlano?.nome}`}
             </DialogDescription>
           </DialogHeader>
 
-          {selectedPlano && selectedPrice && (
-            <>
+          {selectedPlano && selectedPrice && !payment && (
+            <div className="space-y-4 py-2">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border/50">
+                <div>
+                  <p className="text-sm font-semibold">{selectedPlano.nome}</p>
+                  <p className="text-xs text-muted-foreground">{cycleConfig[cycle].label}</p>
+                </div>
+                <p className="text-lg font-bold">{formatCurrency(selectedPrice.total)}</p>
+              </div>
+
+              <div className="space-y-2">
+                {paymentMethods.map((m) => {
+                  const Icon = m.icon;
+                  return (
+                    <button
+                      key={m.key}
+                      onClick={() => setPayment(m.key)}
+                      className="w-full flex items-center gap-4 p-4 rounded-xl border border-border/50 hover:border-accent hover:bg-accent/5 transition-all duration-200 text-left"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                        <Icon className="w-5 h-5 text-accent" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold">{m.label}</p>
+                        <p className="text-xs text-muted-foreground">{m.desc}</p>
+                      </div>
+                      <ArrowLeft className="w-4 h-4 text-muted-foreground rotate-180" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {selectedPlano && selectedPrice && payment && (
+            <div>
+              <button
+                onClick={() => setPayment(null)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Alterar forma de pagamento
+              </button>
+
               {payment === 'pix' && <PixCheckout plano={selectedPlano} total={selectedPrice.total} cycle={cycle} />}
               {payment === 'boleto' && <BoletoCheckout plano={selectedPlano} total={selectedPrice.total} cycle={cycle} />}
               {payment === 'cartao' && <CartaoCheckout plano={selectedPlano} total={selectedPrice.total} cycle={cycle} />}
-            </>
+            </div>
           )}
         </DialogContent>
       </Dialog>
