@@ -19,7 +19,7 @@ import {
 import { streamAIChat } from '@/lib/ai-stream';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import { toast } from 'sonner';
-import ReactMarkdown from 'react-markdown';
+import ComposicaoResultado from './ComposicaoResultado';
 import {
   ANEXOS_SIMPLES, getAnexoById,
   calcularSimplesNacional, getPartilhaSimplesReal, formatCurrencyShort,
@@ -343,12 +343,57 @@ ${tributosSummary}
 ITENS:
 ${itensTexto}
 
-INSTRUÇÕES:
-1. Para CADA item, monte a composição detalhada usando as ALÍQUOTAS ACIMA.
-2. Apresente em TABELA MARKDOWN: | Componente | Base de Cálculo | Alíquota (%) | Valor (R$) |
-3. Apresente RESUMO FINAL com totais, BDI e preço formado.
-4. Emita parecer sobre viabilidade e alerta de inexequibilidade se margem < 5% (Art. 59).
-5. Use APENAS as alíquotas informadas acima — não invente valores.`;
+INSTRUÇÕES OBRIGATÓRIAS DE FORMATO:
+Responda EXCLUSIVAMENTE no formato JSON abaixo. Não inclua texto fora do JSON. Não use markdown.
+
+{
+  "itens": [
+    {
+      "descricao": "Nome do item",
+      "quantidade": 1,
+      "unidade": "UN",
+      "componentes": [
+        { "componente": "Custo Direto do Material", "baseCalculo": 0.00, "aliquota": null, "valor": 0.00 },
+        { "componente": "ICMS (${icmsUF}%)", "baseCalculo": 0.00, "aliquota": ${icmsUF}, "valor": 0.00 },
+        { "componente": "Frete", "baseCalculo": null, "aliquota": null, "valor": 0.00 },
+        { "componente": "Despesas Administrativas", "baseCalculo": null, "aliquota": null, "valor": 0.00 },
+        { "componente": "BDI", "baseCalculo": 0.00, "aliquota": 0.00, "valor": 0.00 },
+        { "componente": "Margem de Lucro (${margem}%)", "baseCalculo": 0.00, "aliquota": ${margem}, "valor": 0.00 }
+      ],
+      "custoUnitario": 0.00,
+      "precoUnitarioFormado": 0.00,
+      "precoTotal": 0.00
+    }
+  ],
+  "resumo": {
+    "custoTotalMateriais": 0.00,
+    "totalTributos": 0.00,
+    "tributosPorImposto": [
+      { "imposto": "ICMS", "aliquota": ${icmsUF}, "valor": 0.00 }
+    ],
+    "bdiTotal": 0.00,
+    "bdiPercentual": 0.00,
+    "freteTotal": 0.00,
+    "despesasAdm": 0.00,
+    "margemLucro": 0.00,
+    "precoTotalFormado": 0.00,
+    "precoExtenso": "texto por extenso"
+  },
+  "parecer": {
+    "viabilidade": "VIÁVEL ou ATENÇÃO ou INVIÁVEL",
+    "margemLiquida": 0.00,
+    "alertaInexequibilidade": false,
+    "observacoes": "Texto curto e direto sobre a viabilidade."
+  }
+}
+
+REGRAS:
+1. Para CADA item, detalhe TODOS os componentes de custo com alíquotas REAIS conforme informado.
+2. Use as ALÍQUOTAS ACIMA — não invente valores.
+3. Calcule o BDI consolidado incluindo tributos + despesas + margem.
+4. Se margem líquida < 5%, marque alertaInexequibilidade=true (Art. 59, Lei 14.133/21).
+5. Todos os valores monetários devem ter 2 casas decimais.
+6. Responda APENAS o JSON, sem blocos de código, sem markdown.`;
 
     try {
       await streamAIChat({
@@ -821,31 +866,7 @@ INSTRUÇÕES:
       </Button>
 
       {/* ── Resultado IA ── */}
-      {iaResult && (
-        <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Bot className="w-5 h-5 text-accent" />
-              <h4 className="font-semibold text-sm">Composição de Custo Gerada</h4>
-            </div>
-            <div className="flex gap-2">
-              <Badge className="bg-accent/10 text-accent text-[10px]">{regimeLabel} • {ufCalculo}</Badge>
-              <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(iaResult); toast.success('Copiado!'); }}>
-                <Download className="w-3.5 h-3.5 mr-1" /> Copiar
-              </Button>
-            </div>
-          </div>
-          <div className="bg-muted/30 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert text-xs overflow-auto">
-            <ReactMarkdown>{iaResult}</ReactMarkdown>
-          </div>
-          <p className="text-[10px] text-muted-foreground text-center">
-            Cálculo por IA Contábil com alíquotas reais para {ufCalculo} ({ufInfo?.nome}). Consulta oficial:{' '}
-            <a href="https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/calculadora/regime-geral" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
-              Calculadora da Receita Federal
-            </a>.
-          </p>
-        </div>
-      )}
+      {iaResult && <ComposicaoResultado iaResult={iaResult} regimeLabel={regimeLabel} ufCalculo={ufCalculo} ufNome={ufInfo?.nome || ''} />}
     </div>
   );
 }

@@ -14,7 +14,7 @@ import {
 import { streamAIChat } from '@/lib/ai-stream';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import { toast } from 'sonner';
-import ReactMarkdown from 'react-markdown';
+import ComposicaoResultado from './ComposicaoResultado';
 
 const UF_ICMS: Record<string, { nome: string; icms_interno: number; iss_min: number; iss_max: number }> = {
   AC: { nome: 'Acre', icms_interno: 19, iss_min: 2, iss_max: 5 },
@@ -133,51 +133,72 @@ export default function ComposicaoCustoIA() {
     const margem = parseFloat(margemLucro) || 15;
     const rbt = parseFloat(rbt12.replace(/\D/g, '')) / 100 || 0;
 
-    const prompt = `Gere a PLANILHA DE COMPOSIÇÃO DE CUSTO E FORMAÇÃO DE PREÇO conforme exigência da Lei nº 14.133/2021 para os itens abaixo.
+    const prompt = `Gere a PLANILHA DE COMPOSIÇÃO DE CUSTO E FORMAÇÃO DE PREÇO conforme Lei nº 14.133/2021.
 
 DADOS DA EMPRESA:
 - Regime Tributário: ${regimeLabel}
-- UF da empresa: ${ufCalculo} (${ufInfo?.nome || ''})
-- ICMS interno da UF: ${ufInfo?.icms_interno || 18}%
-- ISS municipal (faixa): ${ufInfo?.iss_min || 2}% a ${ufInfo?.iss_max || 5}%
-- Atividade principal: ${atividade}
-${regime === 'simples_nacional' && rbt > 0 ? `- Faturamento 12 meses (RBT12): R$ ${rbt.toFixed(2)}` : ''}
-- Margem de lucro desejada: ${margem}%
-- Frete estimado: R$ ${freteVal.toFixed(2)}
+- UF: ${ufCalculo} (${ufInfo?.nome || ''})
+- ICMS interno: ${ufInfo?.icms_interno || 18}%
+- ISS municipal: ${ufInfo?.iss_min || 2}% a ${ufInfo?.iss_max || 5}%
+- Atividade: ${atividade}
+${regime === 'simples_nacional' && rbt > 0 ? `- RBT12: R$ ${rbt.toFixed(2)}` : ''}
+- Margem de lucro: ${margem}%
+- Frete: R$ ${freteVal.toFixed(2)}
 - Despesas administrativas: R$ ${despAdm.toFixed(2)}
 
 ITENS:
 ${itensTexto}
 
-INSTRUÇÕES:
-1. Para CADA item, monte a composição detalhada com:
-   a) Custo direto do material/serviço
-   b) Encargos sociais e trabalhistas (se aplicável)
-   c) Tributos calculados REALMENTE conforme o regime ${regimeLabel} e UF ${ufCalculo}:
-      ${regime === 'simples_nacional' ? '- Calcule a alíquota efetiva do DAS usando: [(RBT12 × Alíquota Nominal) - Parcela a Deduzir] / RBT12' : ''}
-      ${regime === 'lucro_presumido' ? '- IRPJ (15% sobre base presumida), CSLL (9%), PIS (0,65%), COFINS (3%)' : ''}
-      ${regime === 'lucro_real' ? '- IRPJ (15% + adicional 10%), CSLL (9%), PIS (1,65%), COFINS (7,6%) com créditos' : ''}
-      - ICMS: ${ufInfo?.icms_interno || 18}% (alíquota interna de ${ufCalculo})
-      ${atividade === 'servicos' ? `- ISS: considerar alíquota do município (${ufInfo?.iss_min}% a ${ufInfo?.iss_max}%)` : ''}
-   d) BDI (Benefícios e Despesas Indiretas)
-   e) Despesas administrativas/operacionais
-   f) Frete e logística
-   g) Margem de lucro (${margem}%)
+INSTRUÇÕES OBRIGATÓRIAS DE FORMATO:
+Responda EXCLUSIVAMENTE no formato JSON abaixo. Não inclua texto fora do JSON. Não use markdown.
 
-2. Apresente em TABELA MARKDOWN com as colunas:
-   | Componente | Base de Cálculo | Alíquota (%) | Valor (R$) |
+{
+  "itens": [
+    {
+      "descricao": "Nome do item",
+      "quantidade": 1,
+      "unidade": "UN",
+      "componentes": [
+        { "componente": "Custo Direto do Material", "baseCalculo": 0.00, "aliquota": null, "valor": 0.00 },
+        { "componente": "ICMS (${ufInfo?.icms_interno || 18}%)", "baseCalculo": 0.00, "aliquota": ${ufInfo?.icms_interno || 18}, "valor": 0.00 },
+        { "componente": "Frete", "baseCalculo": null, "aliquota": null, "valor": 0.00 },
+        { "componente": "Despesas Administrativas", "baseCalculo": null, "aliquota": null, "valor": 0.00 },
+        { "componente": "BDI", "baseCalculo": 0.00, "aliquota": 0.00, "valor": 0.00 },
+        { "componente": "Margem de Lucro (${margem}%)", "baseCalculo": 0.00, "aliquota": ${margem}, "valor": 0.00 }
+      ],
+      "custoUnitario": 0.00,
+      "precoUnitarioFormado": 0.00,
+      "precoTotal": 0.00
+    }
+  ],
+  "resumo": {
+    "custoTotalMateriais": 0.00,
+    "totalTributos": 0.00,
+    "tributosPorImposto": [
+      { "imposto": "ICMS", "aliquota": ${ufInfo?.icms_interno || 18}, "valor": 0.00 }
+    ],
+    "bdiTotal": 0.00,
+    "bdiPercentual": 0.00,
+    "freteTotal": 0.00,
+    "despesasAdm": 0.00,
+    "margemLucro": 0.00,
+    "precoTotalFormado": 0.00,
+    "precoExtenso": "texto por extenso"
+  },
+  "parecer": {
+    "viabilidade": "VIÁVEL ou ATENÇÃO ou INVIÁVEL",
+    "margemLiquida": 0.00,
+    "alertaInexequibilidade": false,
+    "observacoes": "Texto curto sobre a viabilidade."
+  }
+}
 
-3. Apresente o RESUMO FINAL com:
-   - Custo total dos materiais/serviços
-   - Total de tributos (detalhado por imposto)
-   - BDI calculado
-   - Preço unitário formado
-   - Preço total formado
-   - Preço por extenso
-
-4. Ao final, emita parecer sobre a viabilidade econômica e margem líquida efetiva.
-
-5. IMPORTANTE: Use as alíquotas REAIS e VIGENTES para ${ufCalculo}. Não use valores genéricos.`;
+REGRAS:
+1. Detalhe TODOS os componentes de custo com alíquotas REAIS conforme regime ${regimeLabel} e UF ${ufCalculo}.
+2. Calcule o BDI consolidado incluindo tributos + despesas + margem.
+3. Se margem líquida < 5%, marque alertaInexequibilidade=true (Art. 59, Lei 14.133/21).
+4. Todos os valores monetários devem ter 2 casas decimais.
+5. Responda APENAS o JSON, sem blocos de código, sem markdown.`;
 
     try {
       await streamAIChat({
@@ -454,42 +475,7 @@ INSTRUÇÕES:
 
       {/* Result */}
       {iaResult && (
-        <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Bot className="w-5 h-5 text-accent" />
-              <h4 className="font-semibold text-sm">Composição de Custo Gerada</h4>
-            </div>
-            <div className="flex gap-2">
-              <Badge className="bg-accent/10 text-accent text-[10px]">
-                {regimeLabel} • {ufCalculo}
-              </Badge>
-              <Button variant="outline" size="sm" onClick={() => {
-                navigator.clipboard.writeText(iaResult);
-                toast.success('Composição copiada!');
-              }}>
-                <Download className="w-3.5 h-3.5 mr-1" /> Copiar
-              </Button>
-            </div>
-          </div>
-
-          <div className="bg-muted/30 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert text-xs overflow-auto">
-            <ReactMarkdown>{iaResult}</ReactMarkdown>
-          </div>
-
-          <p className="text-[10px] text-muted-foreground text-center">
-            Cálculo realizado por IA Contábil com alíquotas reais vigentes para {ufCalculo} ({ufInfo?.nome}).
-            Para consulta oficial CBS/IBS, acesse a{' '}
-            <a
-              href="https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/calculadora/regime-geral"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent hover:underline"
-            >
-              Calculadora da Receita Federal
-            </a>.
-          </p>
-        </div>
+        <ComposicaoResultado iaResult={iaResult} regimeLabel={regimeLabel} ufCalculo={ufCalculo} ufNome={ufInfo?.nome || ''} />
       )}
     </div>
   );
