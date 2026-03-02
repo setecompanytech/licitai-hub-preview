@@ -100,10 +100,11 @@ export default function MegaMenu() {
   return (
     <div ref={menuRef} className="relative">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => navigate('/ferramentas')}
+        onMouseEnter={() => setOpen(true)}
         className={cn(
           'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200',
-          open
+          location.pathname === '/ferramentas'
             ? 'bg-accent text-accent-foreground'
             : 'text-muted-foreground hover:text-foreground hover:bg-muted'
         )}

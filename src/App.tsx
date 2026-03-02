@@ -36,7 +36,7 @@ import Boletins from "./pages/Boletins";
 import Ebook from "./pages/Ebook";
 import PropostaTecnica from "./pages/PropostaTecnica";
 import HistoricoLicitacoes from "./pages/HistoricoLicitacoes";
-
+import Ferramentas from "./pages/Ferramentas";
 
 import WhatsAppSetores from "./pages/WhatsAppSetores";
 import TermosDeUso from "./pages/TermosDeUso";
@@ -88,6 +88,7 @@ const App = () => (
               <Route path="/ebook" element={<ProtectedPages><Ebook /></ProtectedPages>} />
               <Route path="/proposta-tecnica" element={<ProtectedPages><PropostaTecnica /></ProtectedPages>} />
               <Route path="/historico-licitacoes" element={<ProtectedPages><HistoricoLicitacoes /></ProtectedPages>} />
+              <Route path="/ferramentas" element={<ProtectedPages><Ferramentas /></ProtectedPages>} />
               <Route path="/busca-inteligente" element={<Navigate to="/monitoramento-editais" replace />} />
               <Route path="/comprasgov-envio" element={<Navigate to="/proposta-tecnica" replace />} />
               <Route path="/whatsapp-setores" element={<ProtectedPages><WhatsAppSetores /></ProtectedPages>} />
