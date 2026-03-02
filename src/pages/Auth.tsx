@@ -4,26 +4,86 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, Mail, Lock, User, ArrowRight, Loader2, ShieldCheck, KeyRound, ArrowLeft } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
+import {
+  Zap, Mail, Lock, User, ArrowRight, Loader2, ShieldCheck, KeyRound, ArrowLeft,
+  Phone, Building2, Briefcase, MapPin, ChevronRight
+} from 'lucide-react';
 import { toast } from 'sonner';
+
+const CARGOS = [
+  'Diretor(a)', 'Gerente', 'Coordenador(a)', 'Analista', 'Assistente',
+  'Pregoeiro(a)', 'Licitante', 'Consultor(a)', 'Empresário(a)', 'Outro'
+];
+
+const UFS = [
+  'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA',
+  'PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'
+];
+
+const COMO_CONHECEU = [
+  'Google / Busca', 'Indicação', 'Redes Sociais', 'Evento / Feira', 'Outro'
+];
+
+const QTD_FUNCIONARIOS = [
+  '1 a 5', '6 a 20', '21 a 50', '51 a 100', 'Mais de 100'
+];
+
+const LICITACOES_MES = [
+  '1 a 5', '6 a 15', '16 a 30', 'Mais de 30', 'Ainda não participo'
+];
+
+const FATURAMENTO_ANUAL = [
+  'Até R$ 100 mil', 'R$ 100 mil a R$ 500 mil', 'R$ 500 mil a R$ 1 milhão',
+  'R$ 1 milhão a R$ 5 milhões', 'Acima de R$ 5 milhões', 'Prefiro não informar'
+];
 
 type AuthStep = 'escolha' | 'manual' | 'certificado' | 'signup' | 'forgot';
 
 export default function Auth() {
   const [step, setStep] = useState<AuthStep>('escolha');
   const [email, setEmail] = useState('');
+  const [emailConfirm, setEmailConfirm] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [nome, setNome] = useState('');
+  const [cargo, setCargo] = useState('');
+  const [celular, setCelular] = useState('');
+  const [telefoneEmpresarial, setTelefoneEmpresarial] = useState('');
+  const [cnpj, setCnpj] = useState('');
+  const [uf, setUf] = useState('');
+  const [comoConheceu, setComoConheceu] = useState('');
+  const [qtdFuncionarios, setQtdFuncionarios] = useState('');
+  const [licitacoesMes, setLicitacoesMes] = useState('');
+  const [faturamentoAnual, setFaturamentoAnual] = useState('');
+  const [aceitaTermos, setAceitaTermos] = useState(false);
   const [loading, setLoading] = useState(false);
   const { user, signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
 
-  // Se já estiver logado, redireciona para a página inicial
   useEffect(() => {
     if (user) {
       navigate('/', { replace: true });
     }
   }, [user, navigate]);
+
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  };
+
+  const formatCnpj = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 14);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+    if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+    if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +100,12 @@ export default function Auth() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nome.trim()) { toast.error('Informe seu nome completo'); return; }
+    if (!celular.trim()) { toast.error('Informe seu celular'); return; }
+    if (email !== emailConfirm) { toast.error('Os e-mails não conferem'); return; }
+    if (password !== passwordConfirm) { toast.error('As senhas não conferem'); return; }
+    if (password.length < 6) { toast.error('A senha deve ter no mínimo 6 caracteres'); return; }
+    if (!aceitaTermos) { toast.error('Você precisa aceitar os termos de uso'); return; }
+
     setLoading(true);
     const { error } = await signUp(email, password, nome);
     setLoading(false);
@@ -71,6 +137,275 @@ export default function Auth() {
     </button>
   );
 
+  // Signup form - professional multi-section layout
+  if (step === 'signup') {
+    return (
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <div className="bg-card border-b border-border">
+          <div className="max-w-3xl mx-auto px-4 py-6 flex items-center justify-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center">
+              <Zap className="w-5 h-5 text-accent-foreground" />
+            </div>
+            <span className="text-2xl font-bold tracking-tight">
+              Licit<span className="text-accent">IA</span>
+            </span>
+          </div>
+        </div>
+
+        <div className="max-w-3xl mx-auto px-4 py-8">
+          <div className="bg-card rounded-2xl border border-border shadow-lg p-6 md:p-10">
+            <div className="mb-6">
+              <button onClick={() => setStep('escolha')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
+                <ArrowLeft className="w-4 h-4" />
+                Voltar
+              </button>
+              <h1 className="text-2xl font-bold">Cadastre-se</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Experimente todas as ferramentas do LicitIA por <strong className="text-accent">15 dias gratuitos</strong>
+              </p>
+            </div>
+
+            <form onSubmit={handleSignup} className="space-y-8">
+              {/* Seção 1: Dados do contato */}
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <User className="w-4 h-4 text-accent" />
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dados do contato</h2>
+                </div>
+                <Separator className="mb-4" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs font-medium">Nome completo *</Label>
+                    <Input
+                      value={nome}
+                      onChange={e => setNome(e.target.value)}
+                      placeholder="Seu nome completo"
+                      className="mt-1.5"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Cargo</Label>
+                    <Select value={cargo} onValueChange={setCargo}>
+                      <SelectTrigger className="mt-1.5">
+                        <SelectValue placeholder="Selecionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CARGOS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Celular *</Label>
+                    <Input
+                      value={celular}
+                      onChange={e => setCelular(formatPhone(e.target.value))}
+                      placeholder="(00) 00000-0000"
+                      className="mt-1.5"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Telefone empresarial</Label>
+                    <Input
+                      value={telefoneEmpresarial}
+                      onChange={e => setTelefoneEmpresarial(formatPhone(e.target.value))}
+                      placeholder="(00) 0000-0000"
+                      className="mt-1.5"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              {/* Seção 2: Dados da conta */}
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <Mail className="w-4 h-4 text-accent" />
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dados da conta</h2>
+                </div>
+                <Separator className="mb-4" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs font-medium">E-mail *</Label>
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="seu@email.com"
+                      className="mt-1.5"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Confirmar e-mail *</Label>
+                    <Input
+                      type="email"
+                      value={emailConfirm}
+                      onChange={e => setEmailConfirm(e.target.value)}
+                      placeholder="Confirme seu e-mail"
+                      className="mt-1.5"
+                      required
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label className="text-xs font-medium">CNPJ</Label>
+                    <Input
+                      value={cnpj}
+                      onChange={e => setCnpj(formatCnpj(e.target.value))}
+                      placeholder="00.000.000/0001-00"
+                      className="mt-1.5"
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-1">Opcional no cadastro. Você poderá cadastrar empresas depois.</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Escolha uma senha *</Label>
+                    <Input
+                      type="password"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="Mínimo 6 caracteres"
+                      className="mt-1.5"
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Confirmar senha *</Label>
+                    <Input
+                      type="password"
+                      value={passwordConfirm}
+                      onChange={e => setPasswordConfirm(e.target.value)}
+                      placeholder="Confirme sua senha"
+                      className="mt-1.5"
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                </div>
+              </section>
+
+              {/* Seção 3: Configuração do serviço */}
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <MapPin className="w-4 h-4 text-accent" />
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Configuração do serviço</h2>
+                </div>
+                <Separator className="mb-4" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs font-medium">Estado de atuação</Label>
+                    <Select value={uf} onValueChange={setUf}>
+                      <SelectTrigger className="mt-1.5">
+                        <SelectValue placeholder="Selecionar estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </section>
+
+              {/* Seção 4: Informações do perfil */}
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <Briefcase className="w-4 h-4 text-accent" />
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Informações do perfil</h2>
+                </div>
+                <Separator className="mb-4" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs font-medium">Como conheceu o LicitIA?</Label>
+                    <Select value={comoConheceu} onValueChange={setComoConheceu}>
+                      <SelectTrigger className="mt-1.5">
+                        <SelectValue placeholder="Selecionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COMO_CONHECEU.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Quantidade de funcionários?</Label>
+                    <Select value={qtdFuncionarios} onValueChange={setQtdFuncionarios}>
+                      <SelectTrigger className="mt-1.5">
+                        <SelectValue placeholder="Selecionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {QTD_FUNCIONARIOS.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Quantas licitações participa por mês?</Label>
+                    <Select value={licitacoesMes} onValueChange={setLicitacoesMes}>
+                      <SelectTrigger className="mt-1.5">
+                        <SelectValue placeholder="Selecionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LICITACOES_MES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Faturamento anual com licitações?</Label>
+                    <Select value={faturamentoAnual} onValueChange={setFaturamentoAnual}>
+                      <SelectTrigger className="mt-1.5">
+                        <SelectValue placeholder="Selecionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FATURAMENTO_ANUAL.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </section>
+
+              {/* Termos */}
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
+                <Checkbox
+                  id="termos"
+                  checked={aceitaTermos}
+                  onCheckedChange={(v) => setAceitaTermos(v === true)}
+                  className="mt-0.5"
+                />
+                <label htmlFor="termos" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
+                  Ao confirmar o cadastro, declaro estar ciente e de acordo com os{' '}
+                  <a href="/landing" className="text-accent hover:underline font-medium">Termos de uso</a>{' '}
+                  e a{' '}
+                  <a href="/landing" className="text-accent hover:underline font-medium">Política de Privacidade</a>.
+                </label>
+              </div>
+
+              {/* Submit */}
+              <Button
+                type="submit"
+                className="w-full h-12 text-base bg-accent hover:bg-accent/90 text-accent-foreground"
+                disabled={loading || !aceitaTermos}
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <ChevronRight className="w-5 h-5 mr-2" />}
+                Enviar cadastro
+              </Button>
+
+              <p className="text-center text-sm text-muted-foreground">
+                Já tem conta?{' '}
+                <button type="button" onClick={() => setStep('manual')} className="text-accent hover:underline font-medium">
+                  Fazer login
+                </button>
+              </p>
+            </form>
+          </div>
+
+          <p className="text-center text-xs text-muted-foreground mt-6 pb-8">
+            Sistema de Gestão de Licitações Públicas com IA
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Login and other steps
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--gradient-dark)' }}>
       <div className="w-full max-w-md">
@@ -86,7 +421,7 @@ export default function Auth() {
 
         <div className="bg-card rounded-2xl border border-border/50 shadow-2xl p-8">
 
-          {/* ===== STEP: ESCOLHA (como Gov.br) ===== */}
+          {/* ===== STEP: ESCOLHA ===== */}
           {step === 'escolha' && (
             <>
               <h2 className="text-xl font-bold text-center mb-1">Identifique-se</h2>
@@ -95,7 +430,6 @@ export default function Auth() {
               </p>
 
               <div className="space-y-3">
-                {/* Opção 1: Login com senha */}
                 <button
                   onClick={() => setStep('manual')}
                   className="w-full flex items-center gap-4 p-4 rounded-xl border border-border/50 hover:border-accent/50 hover:bg-accent/5 transition-all group text-left"
@@ -110,7 +444,6 @@ export default function Auth() {
                   <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors" />
                 </button>
 
-                {/* Opção 2: Certificado Digital */}
                 <button
                   onClick={() => setStep('certificado')}
                   className="w-full flex items-center gap-4 p-4 rounded-xl border border-border/50 hover:border-accent/50 hover:bg-accent/5 transition-all group text-left"
@@ -180,8 +513,8 @@ export default function Auth() {
 
               <div className="rounded-lg bg-muted/50 border border-border/50 p-4 mb-5">
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Para acessar via certificado digital, é necessário ter uma conta vinculada. 
-                  Se é seu primeiro acesso, <button onClick={() => setStep('signup')} className="text-accent hover:underline font-medium">crie sua conta</button> primeiro 
+                  Para acessar via certificado digital, é necessário ter uma conta vinculada.
+                  Se é seu primeiro acesso, <button onClick={() => setStep('signup')} className="text-accent hover:underline font-medium">crie sua conta</button> primeiro
                   e depois cadastre seus certificados na área de <strong>Empresas</strong>.
                 </p>
               </div>
@@ -202,47 +535,6 @@ export default function Auth() {
                   <strong className="text-foreground">Certificados aceitos:</strong> e-CNPJ A1, e-CNPJ A3, e-CPF A1, e-CPF A3 nos formatos .pfx, .p12, .cer, .crt e .pem.
                 </p>
               </div>
-            </>
-          )}
-
-          {/* ===== STEP: CADASTRO ===== */}
-          {step === 'signup' && (
-            <>
-              {backButton()}
-              <div className="flex items-center gap-2 mb-2">
-                <User className="w-5 h-5 text-accent" />
-                <h2 className="text-lg font-bold">Criar sua conta</h2>
-              </div>
-              <p className="text-sm text-muted-foreground mb-5">
-                🎁 Teste grátis por 3 dias — sem cartão de crédito
-              </p>
-
-              <form onSubmit={handleSignup} className="space-y-4">
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input placeholder="Nome completo" value={nome} onChange={e => setNome(e.target.value)} className="pl-10" required />
-                </div>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input type="email" placeholder="Seu e-mail" value={email} onChange={e => setEmail(e.target.value)} className="pl-10" required />
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input type="password" placeholder="Crie uma senha" value={password} onChange={e => setPassword(e.target.value)} className="pl-10" required minLength={6} />
-                </div>
-                <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={loading}>
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ArrowRight className="w-4 h-4 mr-2" />}
-                  Criar conta
-                </Button>
-              </form>
-
-              <p className="mt-4 text-center text-sm text-muted-foreground">
-                Já tem conta?{' '}
-                <button onClick={() => setStep('manual')} className="text-accent hover:underline font-medium">Fazer login</button>
-              </p>
-              <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                Sem cartão • Cancela quando quiser • Suporte online
-              </p>
             </>
           )}
 
