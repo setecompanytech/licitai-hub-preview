@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { FileText, Sparkles, Loader2, Copy, CheckCircle, Settings2 } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
-import ReactMarkdown from 'react-markdown';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
@@ -20,6 +19,7 @@ import PlanilhaPrecos from '@/components/proposta/PlanilhaPrecos';
 import TimbradoUploader from '@/components/proposta/TimbradoUploader';
 import EnvioProposta from '@/components/proposta/EnvioProposta';
 import PropostaDownload from '@/components/proposta/PropostaDownload';
+import PropostaRenderer from '@/components/proposta/PropostaRenderer';
 import DadosEmpresaUploader, { type ExtractedEmpresaData } from '@/components/proposta/DadosEmpresaUploader';
 import BancoSelector from '@/components/proposta/BancoSelector';
 import { Send } from 'lucide-react';
@@ -490,8 +490,16 @@ export default function PropostaTecnica() {
               </div>
             )}
 
-            <div className="prose prose-sm max-w-none dark:prose-invert bg-muted/30 rounded-lg p-6 text-sm leading-relaxed">
-              <ReactMarkdown>{proposal}</ReactMarkdown>
+            <div className="bg-white dark:bg-card rounded-lg p-8 shadow-inner border border-border/30" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
+              <PropostaRenderer
+                proposal={proposal}
+                empresaData={empresaAtiva}
+                repData={{
+                  nome: repNome,
+                  cpf: repCpf,
+                  cargo: repCargo,
+                }}
+              />
             </div>
           </div>
         )}
