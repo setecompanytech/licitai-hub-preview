@@ -92,6 +92,20 @@ export default function RoboLances() {
   const [chatInput, setChatInput] = useState('');
   const [activeMainTab, setActiveMainTab] = useState('disputar');
 
+  // Configurações globais persistidas em localStorage
+  const [configDecremento, setConfigDecremento] = useState(() => localStorage.getItem('robo_config_decremento') || '1.5');
+  const [configLanceMin, setConfigLanceMin] = useState(() => localStorage.getItem('robo_config_lance_min') || '85');
+  const [configIntervalo, setConfigIntervalo] = useState(() => localStorage.getItem('robo_config_intervalo') || '30');
+  const [configMaxLances, setConfigMaxLances] = useState(() => localStorage.getItem('robo_config_max_lances') || '20');
+
+  const handleSaveConfig = () => {
+    localStorage.setItem('robo_config_decremento', configDecremento);
+    localStorage.setItem('robo_config_lance_min', configLanceMin);
+    localStorage.setItem('robo_config_intervalo', configIntervalo);
+    localStorage.setItem('robo_config_max_lances', configMaxLances);
+    toast.success('Regras salvas com sucesso!');
+  };
+
   const selectedLance = useMemo(
     () => lances.find((l) => l.id === selectedId) ?? null,
     [lances, selectedId]
@@ -507,22 +521,22 @@ export default function RoboLances() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs text-muted-foreground">Decremento padrão (%)</label>
-                <Input defaultValue="1.5" className="mt-1" />
+                <Input value={configDecremento} onChange={(e) => setConfigDecremento(e.target.value)} className="mt-1" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Lance mínimo (% do estimado)</label>
-                <Input defaultValue="85" className="mt-1" />
+                <Input value={configLanceMin} onChange={(e) => setConfigLanceMin(e.target.value)} className="mt-1" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Intervalo entre lances (seg)</label>
-                <Input defaultValue="30" className="mt-1" />
+                <Input value={configIntervalo} onChange={(e) => setConfigIntervalo(e.target.value)} className="mt-1" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Máx. lances por sessão</label>
-                <Input defaultValue="20" className="mt-1" />
+                <Input value={configMaxLances} onChange={(e) => setConfigMaxLances(e.target.value)} className="mt-1" />
               </div>
             </div>
-            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+            <Button onClick={handleSaveConfig} className="bg-accent hover:bg-accent/90 text-accent-foreground">
               Salvar Regras
             </Button>
           </div>
