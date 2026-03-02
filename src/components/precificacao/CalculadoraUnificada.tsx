@@ -621,53 +621,6 @@ REGRAS:
         </div>
       )}
 
-      {/* ── Alíquotas por tributo (ALWAYS VISIBLE) ── */}
-      <div className="bg-card rounded-xl border border-border/50 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-sm font-semibold flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-accent" />
-            Alíquotas Tributárias Aplicadas — {regimeLabel} / {ufCalculo}
-          </h4>
-          {regime === 'simples_nacional' && (
-            <Badge variant="outline" className="text-[10px]">
-              Fonte: LC 123/2006 • Resolução CGSN nº 140/2018 • {anexoAtual.nome}
-            </Badge>
-          )}
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {tributosAtivos.map((t: any) => (
-            <div key={t.nome} className="bg-muted/30 rounded-lg p-3 space-y-1">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium">{t.nome}</span>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Info className="w-3 h-3 text-muted-foreground" />
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="max-w-xs">
-                        <p className="text-xs">{t.info}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-                <span className="text-sm font-bold text-accent">{t.aliquota.toFixed(2)}%</span>
-              </div>
-              {regime === 'simples_nacional' && t.percentPartilha > 0 && t.nome !== 'DAS Total' && (
-                <p className="text-xs text-muted-foreground">
-                  Partilha: {t.percentPartilha.toFixed(2)}% do DAS
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-        {regime === 'simples_nacional' && (!rbt12 || parseCurrencyInput(rbt12) === 0) && (
-          <p className="text-[10px] text-muted-foreground mt-2">
-            ⚠ Informe o RBT12 (faturamento 12 meses) abaixo para calcular as alíquotas reais com partilha oficial da Receita Federal.
-          </p>
-        )}
-      </div>
-
       {/* ── Parâmetros do Cálculo ── */}
       <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
         <h4 className="text-sm font-semibold flex items-center gap-2">
@@ -739,6 +692,53 @@ REGRAS:
         <Button onClick={calcular} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
           <Calculator className="w-4 h-4 mr-2" /> Calcular Tributos
         </Button>
+      </div>
+
+      {/* ── Alíquotas por tributo (AFTER parâmetros so RBT12 is filled) ── */}
+      <div className="bg-card rounded-xl border border-border/50 p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-semibold flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-accent" />
+            Alíquotas Tributárias Aplicadas — {regimeLabel} / {ufCalculo}
+          </h4>
+          {regime === 'simples_nacional' && (
+            <Badge variant="outline" className="text-[10px]">
+              Fonte: LC 123/2006 • Resolução CGSN nº 140/2018 • {anexoAtual.nome}
+            </Badge>
+          )}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {tributosAtivos.map((t: any) => (
+            <div key={t.nome} className="bg-muted/30 rounded-lg p-3 space-y-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium">{t.nome}</span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="w-3 h-3 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-xs">
+                        <p className="text-xs">{t.info}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <span className="text-sm font-bold text-accent">{t.aliquota.toFixed(2)}%</span>
+              </div>
+              {regime === 'simples_nacional' && t.percentPartilha > 0 && t.nome !== 'DAS Total' && (
+                <p className="text-xs text-muted-foreground">
+                  Partilha: {t.percentPartilha.toFixed(2)}% do DAS
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+        {regime === 'simples_nacional' && (!rbt12 || parseCurrencyInput(rbt12) === 0) && (
+          <p className="text-[10px] text-muted-foreground mt-2">
+            ⚠ Informe o RBT12 (faturamento 12 meses) acima para calcular as alíquotas reais com partilha oficial da Receita Federal.
+          </p>
+        )}
       </div>
 
       {/* ── Resultado dos Tributos ── */}
