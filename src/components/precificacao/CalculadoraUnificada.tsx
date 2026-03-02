@@ -106,6 +106,21 @@ const REGIMES: Record<string, RegimeConfig> = {
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+// Format currency input with thousands separator: R$ 1.000.000,00
+const formatCurrencyInput = (raw: string): string => {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+  const num = parseInt(digits, 10) / 100;
+  if (num <= 0) return '';
+  return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const parseCurrencyInput = (formatted: string): number => {
+  const digits = formatted.replace(/\D/g, '');
+  if (!digits) return 0;
+  return parseInt(digits, 10) / 100;
+};
+
 type AtividadeType = 'comercio' | 'servicos' | 'industria';
 
 type ItemCusto = {
@@ -163,7 +178,7 @@ export default function CalculadoraUnificada() {
   // ── Build tributos with real percentages based on regime + UF ──
   const getTributosComAliquotas = () => {
     if (regime === 'simples_nacional') {
-      const faturamento12 = parseFloat(rbt12.replace(/\D/g, '')) / 100 || 0;
+      const faturamento12 = parseCurrencyInput(rbt12);
       if (faturamento12 > 0) {
         const partilha = getPartilhaSimplesReal(faturamento12, anexoAtual, icmsUF, ufInfo?.iss_max || 5);
         if (partilha) return partilha;
@@ -199,14 +214,14 @@ export default function CalculadoraUnificada() {
 
   // ── Calcular tributos ──
   const calcular = () => {
-    const receita = parseFloat(receitaBruta.replace(/\D/g, '')) / 100;
+    const receita = parseCurrencyInput(receitaBruta);
     if (!receita || receita <= 0) {
       toast.error('Informe a receita bruta mensal.');
       return;
     }
 
     if (regime === 'simples_nacional') {
-      const faturamento12 = parseFloat(rbt12.replace(/\D/g, '')) / 100 || receita * 12;
+      const faturamento12 = parseCurrencyInput(rbt12) || receita * 12;
       const simples = calcularSimplesNacional(faturamento12, anexoAtual);
       setResultado({
         regime: 'simples_nacional',
@@ -294,15 +309,15 @@ export default function CalculadoraUnificada() {
     setIaResult('');
 
     const itensTexto = validItens.map((item, idx) => {
-      const custo = parseFloat(item.custoUnitario.replace(',', '.')) || 0;
+      const custo = parseCurrencyInput(item.custoUnitario);
       const qtd = parseFloat(item.quantidade) || 1;
       return `Item ${idx + 1}: ${item.descricao} | Qtd: ${qtd} ${item.unidade} | Custo Unitário: R$ ${custo.toFixed(2)}`;
     }).join('\n');
 
-    const freteVal = parseFloat(frete.replace(',', '.')) || 0;
-    const despAdm = parseFloat(despesasAdmin.replace(',', '.')) || 0;
+    const freteVal = parseCurrencyInput(frete);
+    const despAdm = parseCurrencyInput(despesasAdmin);
     const margem = parseFloat(margemLucro) || 15;
-    const rbt = parseFloat(rbt12.replace(/\D/g, '')) / 100 || 0;
+    const rbt = parseCurrencyInput(rbt12);
 
     // Include calculated percentages in prompt
     const tributosSummary = tributosAtivos.map(t => `   - ${t.nome}: ${t.aliquota}%`).join('\n');
@@ -353,7 +368,7 @@ INSTRUÇÕES:
     const validItens = itens.filter(i => i.descricao.trim() && i.custoUnitario.trim());
     if (validItens.length === 0) { toast.error('Nenhum item válido.'); return; }
     validItens.forEach((item, idx) => {
-      const custo = parseFloat(item.custoUnitario.replace(',', '.')) || 0;
+      const custo = parseCurrencyInput(item.custoUnitario);
       const qtd = parseFloat(item.quantidade) || 1;
       const markup = 1 + (parseFloat(margemLucro) || 15) / 100;
       const precoUnit = custo * markup;
@@ -474,7 +489,7 @@ INSTRUÇÕES:
                     </TableHeader>
                     <TableBody>
                       {anexoAtual.faixas.map(f => {
-                        const rbt12Val = parseFloat(rbt12.replace(/\D/g, '')) / 100 || 0;
+                        const rbt12Val = parseCurrencyInput(rbt12);
                         const isActive = rbt12Val >= f.min && rbt12Val <= f.max;
                         return (
                           <TableRow key={f.faixaNum} className={isActive ? 'bg-accent/10 font-semibold' : ''}>
@@ -519,7 +534,7 @@ INSTRUÇÕES:
                     <TableBody>
                       {anexoAtual.faixas.map(f => {
                         const p = anexoAtual.partilha[f.faixaNum];
-                        const rbt12Val = parseFloat(rbt12.replace(/\D/g, '')) / 100 || 0;
+                        const rbt12Val = parseCurrencyInput(rbt12);
                         const isActive = rbt12Val >= f.min && rbt12Val <= f.max;
                         return (
                           <TableRow key={f.faixaNum} className={isActive ? 'bg-accent/10 font-semibold' : ''}>
@@ -599,7 +614,7 @@ INSTRUÇÕES:
             </div>
           ))}
         </div>
-        {regime === 'simples_nacional' && (!rbt12 || parseFloat(rbt12.replace(/\D/g, '')) === 0) && (
+        {regime === 'simples_nacional' && (!rbt12 || parseCurrencyInput(rbt12) === 0) && (
           <p className="text-[10px] text-muted-foreground mt-2">
             ⚠ Informe o RBT12 (faturamento 12 meses) abaixo para calcular as alíquotas reais com partilha oficial da Receita Federal.
           </p>
@@ -618,12 +633,8 @@ INSTRUÇÕES:
             <Label className="text-xs">Receita Bruta Mensal (R$) *</Label>
             <Input
               value={receitaBruta}
-              onChange={e => {
-                const v = e.target.value.replace(/\D/g, '');
-                const num = parseInt(v || '0') / 100;
-                setReceitaBruta(num > 0 ? num.toFixed(2).replace('.', ',') : '');
-              }}
-              placeholder="0,00" className="mt-1"
+              onChange={e => setReceitaBruta(formatCurrencyInput(e.target.value))}
+              placeholder="R$ 0,00" className="mt-1"
             />
           </div>
           <div>
@@ -642,12 +653,8 @@ INSTRUÇÕES:
               <Label className="text-xs">RBT12 (Faturamento 12m)</Label>
               <Input
                 value={rbt12}
-                onChange={e => {
-                  const v = e.target.value.replace(/\D/g, '');
-                  const num = parseInt(v || '0') / 100;
-                  setRbt12(num > 0 ? num.toFixed(2).replace('.', ',') : '');
-                }}
-                placeholder="Automático se vazio" className="mt-1"
+                onChange={e => setRbt12(formatCurrencyInput(e.target.value))}
+                placeholder="R$ 0,00" className="mt-1"
               />
             </div>
           ) : (
@@ -674,11 +681,11 @@ INSTRUÇÕES:
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label className="text-xs">Frete Estimado (R$)</Label>
-            <Input value={frete} onChange={e => setFrete(e.target.value)} placeholder="0,00" className="mt-1" />
+            <Input value={frete} onChange={e => setFrete(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-1" />
           </div>
           <div>
             <Label className="text-xs">Despesas Administrativas (R$)</Label>
-            <Input value={despesasAdmin} onChange={e => setDespesasAdmin(e.target.value)} placeholder="0,00" className="mt-1" />
+            <Input value={despesasAdmin} onChange={e => setDespesasAdmin(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-1" />
           </div>
         </div>
 
@@ -778,7 +785,7 @@ INSTRUÇÕES:
             </div>
             <div className="col-span-2">
               <Label className="text-[10px]">Custo Unit. (R$) *</Label>
-              <Input value={item.custoUnitario} onChange={e => updateItem(idx, 'custoUnitario', e.target.value)} placeholder="0,00" className="mt-0.5" />
+              <Input value={item.custoUnitario} onChange={e => updateItem(idx, 'custoUnitario', formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-0.5" />
             </div>
             <div className="col-span-1">
               {itens.length > 1 && (
