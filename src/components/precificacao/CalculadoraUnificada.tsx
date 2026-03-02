@@ -314,8 +314,8 @@ export default function CalculadoraUnificada() {
       return `Item ${idx + 1}: ${item.descricao} | Qtd: ${qtd} ${item.unidade} | Custo Unitário: R$ ${custo.toFixed(2)}`;
     }).join('\n');
 
-    const freteVal = parseCurrencyInput(frete);
-    const despAdm = parseCurrencyInput(despesasAdmin);
+    const freteVal = parseFloat(frete) || 0;
+    const despAdm = parseFloat(despesasAdmin) || 0;
     const margem = parseFloat(margemLucro) || 15;
     const rbt = parseCurrencyInput(rbt12);
 
@@ -334,8 +334,8 @@ DADOS DA EMPRESA:
 - Atividade: ${atividade}
 ${regime === 'simples_nacional' && rbt > 0 ? `- RBT12: R$ ${rbt.toFixed(2)}` : ''}
 - Margem de lucro: ${margem}%
-- Frete: R$ ${freteVal.toFixed(2)}
-- Despesas administrativas: R$ ${despAdm.toFixed(2)}
+- Frete: ${freteVal}%
+- Despesas administrativas: ${despAdm}%
 
 ALÍQUOTAS CALCULADAS (usar estas exatamente):
 ${tributosSummary}
@@ -355,8 +355,8 @@ Responda EXCLUSIVAMENTE no formato JSON abaixo. Não inclua texto fora do JSON. 
       "componentes": [
         { "componente": "Custo Direto do Material", "baseCalculo": 0.00, "aliquota": null, "valor": 0.00 },
         { "componente": "ICMS (${icmsUF}%)", "baseCalculo": 0.00, "aliquota": ${icmsUF}, "valor": 0.00 },
-        { "componente": "Frete", "baseCalculo": null, "aliquota": null, "valor": 0.00 },
-        { "componente": "Despesas Administrativas", "baseCalculo": null, "aliquota": null, "valor": 0.00 },
+        { "componente": "Frete (${freteVal}%)", "baseCalculo": 0.00, "aliquota": ${freteVal}, "valor": 0.00 },
+        { "componente": "Despesas Administrativas (${despAdm}%)", "baseCalculo": 0.00, "aliquota": ${despAdm}, "valor": 0.00 },
         { "componente": "BDI", "baseCalculo": 0.00, "aliquota": 0.00, "valor": 0.00 },
         { "componente": "Margem de Lucro (${margem}%)", "baseCalculo": 0.00, "aliquota": ${margem}, "valor": 0.00 }
       ],
@@ -373,7 +373,9 @@ Responda EXCLUSIVAMENTE no formato JSON abaixo. Não inclua texto fora do JSON. 
     ],
     "bdiTotal": 0.00,
     "bdiPercentual": 0.00,
+    "fretePercentual": ${freteVal},
     "freteTotal": 0.00,
+    "despesasAdmPercentual": ${despAdm},
     "despesasAdm": 0.00,
     "margemLucro": 0.00,
     "precoTotalFormado": 0.00,
@@ -725,12 +727,12 @@ REGRAS:
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-xs">Frete Estimado (R$)</Label>
-            <Input value={frete} onChange={e => setFrete(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-1" />
+            <Label className="text-xs">Frete Estimado (%)</Label>
+            <Input type="number" value={frete} onChange={e => setFrete(e.target.value)} placeholder="0" className="mt-1" min={0} max={100} />
           </div>
           <div>
-            <Label className="text-xs">Despesas Administrativas (R$)</Label>
-            <Input value={despesasAdmin} onChange={e => setDespesasAdmin(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-1" />
+            <Label className="text-xs">Despesas Administrativas (%)</Label>
+            <Input type="number" value={despesasAdmin} onChange={e => setDespesasAdmin(e.target.value)} placeholder="0" className="mt-1" min={0} max={100} />
           </div>
         </div>
 
