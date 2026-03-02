@@ -26,8 +26,7 @@ export default function Ebook() {
   const handleDownload = async () => {
     setGenerating(true);
     try {
-      await new Promise((r) => setTimeout(r, 300));
-      generateEbook();
+      await generateEbook();
       toast.success('E-book ABNT gerado com sucesso.');
     } catch {
       toast.error('Erro ao gerar o e-book.');

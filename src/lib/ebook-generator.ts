@@ -1,15 +1,17 @@
 import jsPDF from 'jspdf';
 import { ebookSections } from '@/lib/ebook/content';
+import { loadChapterImages } from '@/lib/ebook/image-loader';
 import {
   ABNT_LAYOUT,
   drawChapterHeader,
   drawClosingPage,
   drawCoverPage,
   drawLogicalPageNumber,
-  drawModuleFigure,
+  ensureSpace,
   getContentWidth,
   getPageHeight,
   getPageWidth,
+  setBodyStyle,
   setSubheadingStyle,
   writeList,
   writeParagraph,
@@ -21,47 +23,104 @@ interface TocEntry {
   physicalPage: number;
 }
 
-function renderChapter(doc: jsPDF, chapterNumber: number, title: string, contextualizacao: string, fundamento: string, fluxos: string[], funcionalidades: string[], routeHint: string) {
+function addChapterImage(
+  doc: jsPDF,
+  dataUrl: string,
+  y: number,
+  chapterNumber: number,
+  chapterTitle: string,
+): number {
+  const contentWidth = getContentWidth(doc);
+  const imgWidth = contentWidth;
+  const imgHeight = imgWidth * (512 / 800); // maintain aspect ratio
+
+  y = ensureSpace(doc, y, imgHeight + 18, chapterNumber, chapterTitle);
+
+  const x = ABNT_LAYOUT.marginLeft;
+
+  // Draw border around image
+  doc.setDrawColor(170, 170, 170);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(x - 1, y - 1, imgWidth + 2, imgHeight + 2, 1, 1, 'S');
+
+  doc.addImage(dataUrl, 'PNG', x, y, imgWidth, imgHeight);
+
+  y += imgHeight + 4;
+
+  // Caption
+  doc.setFont('times', 'italic');
+  doc.setFontSize(10);
+  doc.setTextColor(85, 85, 85);
+  doc.text(
+    `Figura ${chapterNumber} — Tela do módulo "${chapterTitle}" no sistema LicitaIA.`,
+    x,
+    y,
+  );
+  y += 10;
+
+  return y;
+}
+
+function renderChapter(
+  doc: jsPDF,
+  chapterNumber: number,
+  title: string,
+  contextualizacao: string,
+  fundamento: string,
+  fluxos: string[],
+  funcionalidades: string[],
+  routeHint: string,
+  chapterImage?: string,
+) {
   doc.addPage();
   drawChapterHeader(doc, chapterNumber, title);
 
   let y = ABNT_LAYOUT.marginTop + 6;
 
+  // 1. Contextualização
   setSubheadingStyle(doc);
-  doc.text('Contextualizacao operacional', ABNT_LAYOUT.marginLeft, y);
+  doc.text('Contextualização operacional', ABNT_LAYOUT.marginLeft, y);
   y += 7;
   y = writeParagraph(doc, contextualizacao, y, chapterNumber, title);
 
+  // 2. Image right after context (didactic placement)
+  if (chapterImage) {
+    y += 2;
+    y = addChapterImage(doc, chapterImage, y, chapterNumber, title);
+  }
+
+  // 3. Fundamento
   setSubheadingStyle(doc);
-  doc.text('Fundamento tecnico e juridico', ABNT_LAYOUT.marginLeft, y);
+  y = ensureSpace(doc, y, 14, chapterNumber, title);
+  setSubheadingStyle(doc);
+  doc.text('Fundamento técnico e jurídico', ABNT_LAYOUT.marginLeft, y);
   y += 7;
   y = writeParagraph(doc, fundamento, y, chapterNumber, title);
 
-  y = drawModuleFigure(
-    doc,
-    y,
-    {
-      title,
-      contextualizacao,
-      fundamento,
-      fluxos,
-      funcionalidades,
-      routeHint,
-    },
-    chapterNumber,
-    title,
-  );
-
+  // 4. Fluxo
   y = writeList(doc, 'Fluxo recomendado de uso', fluxos, y, chapterNumber, title);
+
+  // 5. Funcionalidades
   y = writeList(doc, 'Funcionalidades essenciais', funcionalidades, y, chapterNumber, title);
 
+  // 6. Rota de acesso
+  y = ensureSpace(doc, y, 14, chapterNumber, title);
+  setBodyStyle(doc);
+  doc.setFont('times', 'italic');
+  doc.setFontSize(10);
+  doc.setTextColor(85, 85, 85);
+  doc.text(`Rota de acesso no sistema: ${routeHint}`, ABNT_LAYOUT.marginLeft, y);
+  y += 10;
+
+  // 7. Observação de governança
+  y = ensureSpace(doc, y, 20, chapterNumber, title);
   setSubheadingStyle(doc);
-  doc.text('Observacao de governanca', ABNT_LAYOUT.marginLeft, y);
+  doc.text('Observação de governança', ABNT_LAYOUT.marginLeft, y);
   y += 7;
 
   writeParagraph(
     doc,
-    'Este capitulo integra padronizacao de processo, rastreabilidade das decisoes e melhoria continua do desempenho da operacao de licitacoes.',
+    'Este capítulo integra padronização de processo, rastreabilidade das decisões e melhoria contínua do desempenho da operação de licitações.',
     y,
     chapterNumber,
     title,
@@ -83,12 +142,16 @@ function renderTableOfContents(doc: jsPDF, toc: TocEntry[]) {
   doc.setFont('times', 'bold');
   doc.setFontSize(18);
   doc.setTextColor(20, 20, 20);
-  doc.text('SUMARIO', ABNT_LAYOUT.marginLeft, 32);
+  doc.text('SUMÁRIO', ABNT_LAYOUT.marginLeft, 32);
 
   doc.setFont('times', 'normal');
   doc.setFontSize(11);
   doc.setTextColor(85, 85, 85);
-  doc.text('Clique em qualquer item para navegar ao capitulo correspondente.', ABNT_LAYOUT.marginLeft, 40);
+  doc.text(
+    'Clique em qualquer item para navegar ao capítulo correspondente.',
+    ABNT_LAYOUT.marginLeft,
+    40,
+  );
 
   let y = 52;
 
@@ -117,7 +180,9 @@ function renderTableOfContents(doc: jsPDF, toc: TocEntry[]) {
     doc.setFont('times', 'bold');
     doc.text(pageText, pageWidth - ABNT_LAYOUT.marginRight, y, { align: 'right' });
 
-    doc.link(ABNT_LAYOUT.marginLeft, y - 5, contentWidth, 7, { pageNumber: entry.physicalPage });
+    doc.link(ABNT_LAYOUT.marginLeft, y - 5, contentWidth, 7, {
+      pageNumber: entry.physicalPage,
+    });
 
     y += 10;
   });
@@ -125,7 +190,11 @@ function renderTableOfContents(doc: jsPDF, toc: TocEntry[]) {
   doc.setFont('times', 'italic');
   doc.setFontSize(10);
   doc.setTextColor(85, 85, 85);
-  doc.text('Padrao tipografico unico: Times New Roman, conforme ABNT NBR 14724.', ABNT_LAYOUT.marginLeft, pageHeight - 24);
+  doc.text(
+    'Padrão tipográfico único: Times New Roman, conforme ABNT NBR 14724.',
+    ABNT_LAYOUT.marginLeft,
+    pageHeight - 24,
+  );
 }
 
 function applyLogicalPagination(doc: jsPDF) {
@@ -139,12 +208,15 @@ function applyLogicalPagination(doc: jsPDF) {
   }
 }
 
-export function generateEbook(): void {
+export async function generateEbook(): Promise<void> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  // Load all chapter images in parallel
+  const chapterImages = await loadChapterImages();
 
   drawCoverPage(doc, ebookSections.length);
 
-  // Placeholder do sumario; sera preenchido ao final com paginas corretas.
+  // Placeholder for TOC; filled at the end with correct pages
   doc.addPage();
 
   const tocEntries: TocEntry[] = [];
@@ -168,6 +240,7 @@ export function generateEbook(): void {
       section.fluxos,
       section.funcionalidades,
       section.routeHint,
+      chapterImages[chapterNumber],
     );
   });
 
