@@ -521,19 +521,19 @@ export default function RoboLances() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs text-muted-foreground">Decremento padrão (%)</label>
-                <Input value={configDecremento} onChange={(e) => setConfigDecremento(e.target.value)} className="mt-1" />
+                <Input type="number" step="0.1" value={configDecremento} onChange={(e) => setConfigDecremento(e.target.value)} className="mt-1" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Lance mínimo (% do estimado)</label>
-                <Input value={configLanceMin} onChange={(e) => setConfigLanceMin(e.target.value)} className="mt-1" />
+                <Input type="number" step="1" value={configLanceMin} onChange={(e) => setConfigLanceMin(e.target.value)} className="mt-1" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Intervalo entre lances (seg)</label>
-                <Input value={configIntervalo} onChange={(e) => setConfigIntervalo(e.target.value)} className="mt-1" />
+                <Input type="number" step="1" min="1" value={configIntervalo} onChange={(e) => setConfigIntervalo(e.target.value)} className="mt-1" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Máx. lances por sessão</label>
-                <Input value={configMaxLances} onChange={(e) => setConfigMaxLances(e.target.value)} className="mt-1" />
+                <Input type="number" step="1" min="1" value={configMaxLances} onChange={(e) => setConfigMaxLances(e.target.value)} className="mt-1" />
               </div>
             </div>
             <Button onClick={handleSaveConfig} className="bg-accent hover:bg-accent/90 text-accent-foreground">
@@ -543,18 +543,23 @@ export default function RoboLances() {
         </TabsContent>
       </Tabs>
 
-      {/* ── Details Modal (Effecti-style) ── */}
+      {/* ── Details Modal ── */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg">Detalhes da licitação</DialogTitle>
+            <DialogTitle className="text-base font-semibold">Detalhes da licitação</DialogTitle>
           </DialogHeader>
           {selectedLance && (
-            <div className="space-y-4 py-2">
+            <div className="divide-y divide-border">
               {[
-                { icon: Building2, label: 'Portal', value: selectedLance.portal },
+                { icon: Building2, label: 'Empresa', value: '—' },
+                { icon: Hash, label: 'CNPJ', value: '—' },
+                { icon: Globe, label: 'Portal', value: selectedLance.portal },
                 { icon: Hash, label: 'Licitação', value: selectedLance.edital },
-                { icon: CalendarDays, label: 'Horário da Sessão', value: selectedLance.horario || 'Não definido' },
+                { icon: Building2, label: 'Órgão', value: '—' },
+                { icon: Hash, label: 'UASG', value: '—' },
+                { icon: CalendarDays, label: 'Data de abertura', value: selectedLance.horario || 'Não definido' },
+                { icon: FileText, label: 'Sistema de Registro de Preços', value: 'Não' },
                 { icon: TrendingDown, label: 'Valor de Referência', value: formatCurrency(selectedLance.valorReferencia) },
                 { icon: Target, label: 'Valor Inicial (1º Lance)', value: formatCurrency(selectedLance.valorInicial) },
                 { icon: AlertTriangle, label: 'Valor Mínimo (Piso)', value: formatCurrency(selectedLance.valorMinimo) },
@@ -564,8 +569,8 @@ export default function RoboLances() {
                 { icon: ListChecks, label: 'Máx. Lances', value: String(selectedLance.maxLances) },
                 { icon: Bot, label: 'Modo', value: selectedLance.modoAutomatico ? 'Automático' : 'Manual' },
               ].map((item) => (
-                <div key={item.label} className="flex items-start gap-3">
-                  <item.icon className="w-4 h-4 text-accent mt-0.5 shrink-0" />
+                <div key={item.label} className="flex items-start gap-3 py-3 px-1">
+                  <item.icon className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
                   <div>
                     <p className="text-xs font-semibold text-foreground">{item.label}</p>
                     <p className="text-sm text-muted-foreground">{item.value}</p>
