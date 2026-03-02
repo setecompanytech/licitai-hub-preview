@@ -4,9 +4,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import AnaliseCapag from '@/components/licitacoes/AnaliseCapag';
 import {
   Target, TrendingUp, Star, AlertTriangle, CheckCircle2,
-  Brain, Zap, Eye, BookmarkPlus, Filter, ArrowUpDown
+  Brain, Zap, Eye, BookmarkPlus, Filter, ArrowUpDown, Landmark
 } from 'lucide-react';
 
 type LicitacaoEstrategica = {
@@ -68,6 +70,7 @@ const formatCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'curren
 export default function LicitacoesEstrategicas() {
   const [filtro, setFiltro] = useState<'todas' | 'alta' | 'media' | 'baixa'>('todas');
   const [expandido, setExpandido] = useState<string | null>(null);
+  const [capagOrgao, setCapagOrgao] = useState<{ orgao: string; uf?: string; municipio?: string } | null>(null);
 
   const filtradas = mockEstrategicas.filter(l => filtro === 'todas' || l.recomendacao === filtro);
 
@@ -91,109 +94,154 @@ export default function LicitacoesEstrategicas() {
           </div>
         </div>
 
-        {/* Filtros */}
-        <div className="flex gap-2">
-          {(['todas', 'alta', 'media', 'baixa'] as const).map(f => (
-            <Button key={f} variant={filtro === f ? 'default' : 'outline'} size="sm" onClick={() => setFiltro(f)}
-              className={filtro === f ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}>
-              {f === 'todas' ? 'Todas' : f === 'alta' ? '⭐ Alta' : f === 'media' ? '⚠️ Média' : '🔻 Baixa'}
-            </Button>
-          ))}
-        </div>
+        <Tabs defaultValue="oportunidades" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="oportunidades">
+              <Target className="w-4 h-4 mr-1" /> Oportunidades
+            </TabsTrigger>
+            <TabsTrigger value="capag">
+              <Landmark className="w-4 h-4 mr-1" /> Análise CAPAG
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Lista */}
-        <div className="space-y-4">
-          {filtradas.map(lic => {
-            const cfg = recomendacaoConfig[lic.recomendacao];
-            const isExpanded = expandido === lic.id;
-            return (
-              <Card key={lic.id} className="p-5 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-bold text-sm">{lic.numero}</span>
-                      <Badge variant="outline" className={cfg.color + ' text-[10px]'}>
-                        <cfg.icon className="w-3 h-3 mr-1" /> {cfg.label}
-                      </Badge>
-                      {lic.salva && <Star className="w-4 h-4 text-warning fill-warning" />}
-                    </div>
-                    <p className="text-sm text-foreground">{lic.objeto}</p>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                      <span>{lic.orgao}</span>
-                      <span>•</span>
-                      <span>{new Date(lic.dataAbertura).toLocaleDateString('pt-BR')}</span>
-                      <span>•</span>
-                      <span className="font-medium text-foreground">{formatCurrency(lic.valor)}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 ml-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-accent">{lic.scoreGeral}%</div>
-                      <p className="text-[10px] text-muted-foreground">Score Geral</p>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <Button size="sm" variant="outline" onClick={() => setExpandido(isExpanded ? null : lic.id)}>
-                        <Eye className="w-3 h-3 mr-1" /> {isExpanded ? 'Recolher' : 'Detalhes'}
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <BookmarkPlus className="w-3 h-3 mr-1" /> Salvar
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+          <TabsContent value="oportunidades" className="space-y-4 mt-4">
+            {/* Filtros */}
+            <div className="flex gap-2">
+              {(['todas', 'alta', 'media', 'baixa'] as const).map(f => (
+                <Button key={f} variant={filtro === f ? 'default' : 'outline'} size="sm" onClick={() => setFiltro(f)}
+                  className={filtro === f ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}>
+                  {f === 'todas' ? 'Todas' : f === 'alta' ? '⭐ Alta' : f === 'media' ? '⚠️ Média' : '🔻 Baixa'}
+                </Button>
+              ))}
+            </div>
 
-                {isExpanded && (
-                  <div className="mt-4 pt-4 border-t border-border/50 space-y-4">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Relevância</p>
-                        <Progress value={lic.scoreRelevancia} className="h-2" />
-                        <p className="text-xs font-medium mt-1">{lic.scoreRelevancia}%</p>
+            {/* Lista */}
+            <div className="space-y-4">
+              {filtradas.map(lic => {
+                const cfg = recomendacaoConfig[lic.recomendacao];
+                const isExpanded = expandido === lic.id;
+                return (
+                  <Card key={lic.id} className="p-5 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-bold text-sm">{lic.numero}</span>
+                          <Badge variant="outline" className={cfg.color + ' text-[10px]'}>
+                            <cfg.icon className="w-3 h-3 mr-1" /> {cfg.label}
+                          </Badge>
+                          {lic.salva && <Star className="w-4 h-4 text-warning fill-warning" />}
+                        </div>
+                        <p className="text-sm text-foreground">{lic.objeto}</p>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          <span>{lic.orgao}</span>
+                          <span>•</span>
+                          <span>{new Date(lic.dataAbertura).toLocaleDateString('pt-BR')}</span>
+                          <span>•</span>
+                          <span className="font-medium text-foreground">{formatCurrency(lic.valor)}</span>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Viabilidade</p>
-                        <Progress value={lic.scoreViabilidade} className="h-2" />
-                        <p className="text-xs font-medium mt-1">{lic.scoreViabilidade}%</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Concorrência (favorável)</p>
-                        <Progress value={lic.scoreConcorrencia} className="h-2" />
-                        <p className="text-xs font-medium mt-1">{lic.scoreConcorrencia}%</p>
+                      <div className="flex items-center gap-3 ml-4">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-accent">{lic.scoreGeral}%</div>
+                          <p className="text-[10px] text-muted-foreground">Score Geral</p>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <Button size="sm" variant="outline" onClick={() => setExpandido(isExpanded ? null : lic.id)}>
+                            <Eye className="w-3 h-3 mr-1" /> {isExpanded ? 'Recolher' : 'Detalhes'}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setCapagOrgao({ orgao: lic.orgao })}>
+                            <Landmark className="w-3 h-3 mr-1" /> CAPAG
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <BookmarkPlus className="w-3 h-3 mr-1" /> Salvar
+                          </Button>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="text-xs font-semibold text-success mb-2 flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" /> Fatores Positivos
-                        </h4>
-                        <ul className="space-y-1">
-                          {lic.fatoresPositivos.map((f, i) => (
-                            <li key={i} className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Zap className="w-3 h-3 text-success" /> {f}
-                            </li>
-                          ))}
-                        </ul>
+                    {isExpanded && (
+                      <div className="mt-4 pt-4 border-t border-border/50 space-y-4">
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Relevância</p>
+                            <Progress value={lic.scoreRelevancia} className="h-2" />
+                            <p className="text-xs font-medium mt-1">{lic.scoreRelevancia}%</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Viabilidade</p>
+                            <Progress value={lic.scoreViabilidade} className="h-2" />
+                            <p className="text-xs font-medium mt-1">{lic.scoreViabilidade}%</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Concorrência (favorável)</p>
+                            <Progress value={lic.scoreConcorrencia} className="h-2" />
+                            <p className="text-xs font-medium mt-1">{lic.scoreConcorrencia}%</p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <h4 className="text-xs font-semibold text-success mb-2 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" /> Fatores Positivos
+                            </h4>
+                            <ul className="space-y-1">
+                              {lic.fatoresPositivos.map((f, i) => (
+                                <li key={i} className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Zap className="w-3 h-3 text-success" /> {f}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-semibold text-destructive mb-2 flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" /> Fatores de Risco
+                            </h4>
+                            <ul className="space-y-1">
+                              {lic.fatoresRisco.map((f, i) => (
+                                <li key={i} className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3 text-destructive" /> {f}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="text-xs font-semibold text-destructive mb-2 flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" /> Fatores de Risco
-                        </h4>
-                        <ul className="space-y-1">
-                          {lic.fatoresRisco.map((f, i) => (
-                            <li key={i} className="text-xs text-muted-foreground flex items-center gap-1">
-                              <AlertTriangle className="w-3 h-3 text-destructive" /> {f}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="capag" className="mt-4">
+            {capagOrgao ? (
+              <AnaliseCapag orgao={capagOrgao.orgao} uf={capagOrgao.uf} municipio={capagOrgao.municipio} />
+            ) : (
+              <div className="space-y-4">
+                <Card className="border-dashed border-2 border-muted-foreground/20">
+                  <div className="flex flex-col items-center justify-center py-10 gap-4">
+                    <div className="p-4 rounded-full bg-accent/10">
+                      <Landmark className="w-8 h-8 text-accent" />
+                    </div>
+                    <div className="text-center space-y-1">
+                      <h3 className="font-semibold text-lg">Selecione um Órgão para Análise</h3>
+                      <p className="text-sm text-muted-foreground max-w-md">
+                        Clique no botão <strong>CAPAG</strong> em qualquer licitação na aba "Oportunidades" ou selecione um órgão abaixo.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {[...new Set(mockEstrategicas.map(l => l.orgao))].map(org => (
+                        <Button key={org} variant="outline" size="sm" onClick={() => setCapagOrgao({ orgao: org })}>
+                          <Landmark className="w-3 h-3 mr-1" /> {org}
+                        </Button>
+                      ))}
                     </div>
                   </div>
-                )}
-              </Card>
-            );
-          })}
-        </div>
+                </Card>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );
