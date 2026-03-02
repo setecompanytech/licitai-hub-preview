@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { FileText, Sparkles, Loader2, Copy, CheckCircle, Settings2, Calculator } from 'lucide-react';
+import { FileText, Sparkles, Loader2, Copy, CheckCircle, Settings2 } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -15,7 +15,7 @@ import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { toast } from 'sonner';
 import EditalUploader, { type ExtractedEditalData, type EditalItem } from '@/components/proposta/EditalUploader';
 import PlanilhaPrecos from '@/components/proposta/PlanilhaPrecos';
-import SimplesNacionalCalculadora from '@/components/proposta/SimplesNacionalCalculadora';
+
 
 import TimbradoUploader from '@/components/proposta/TimbradoUploader';
 import EnvioProposta from '@/components/proposta/EnvioProposta';
@@ -373,20 +373,6 @@ export default function PropostaTecnica() {
           <h2 className="font-semibold text-lg">4. Planilha de Preços e Envio da Proposta</h2>
           <PlanilhaPrecos itens={itens} setItens={setItens} />
 
-          {/* Calculadora Tributária Simples Nacional */}
-          <div className="border-t border-border/50 pt-4 space-y-2">
-            <p className="text-sm font-medium text-foreground flex items-center gap-2">
-              <Calculator className="w-4 h-4 text-accent" />
-              Impostos e Tributos – Simples Nacional (Anexo I – Comércio)
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Calcule a alíquota efetiva e analise o impacto tributário na proposta com IA especialista
-            </p>
-            <SimplesNacionalCalculadora
-              valorGlobal={itens.reduce((sum, i) => sum + (parseFloat(i.valorTotal.replace(',', '.')) || 0), 0)}
-              itensResumo={itens.filter(i => i.descricao.trim()).map(i => `- ${i.descricao}: ${i.quantidade} ${i.unidade} x R$ ${i.valorUnitario} = R$ ${i.valorTotal}`).join('\n')}
-            />
-          </div>
 
           <div className="border-t border-border/50 pt-4 space-y-2">
             <p className="text-sm font-medium text-foreground flex items-center gap-2">

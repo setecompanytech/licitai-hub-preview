@@ -83,6 +83,20 @@ function calcularSimplesNacional(rbt12: number) {
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+const formatCurrencyInput = (raw: string): string => {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+  const num = parseInt(digits, 10) / 100;
+  if (num <= 0) return '';
+  return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const parseCurrencyInput = (formatted: string): number => {
+  const digits = formatted.replace(/\D/g, '');
+  if (!digits) return 0;
+  return parseInt(digits, 10) / 100;
+};
+
 type AtividadeType = 'comercio' | 'servicos' | 'industria';
 
 export default function CalculadoraTributaria() {
@@ -110,11 +124,11 @@ export default function CalculadoraTributaria() {
   }
 
   const calcular = () => {
-    const receita = parseFloat(receitaBruta.replace(/\D/g, '')) / 100;
+    const receita = parseCurrencyInput(receitaBruta);
     if (!receita || receita <= 0) return;
 
     if (regime === 'simples_nacional') {
-      const faturamento12 = parseFloat(rbt12.replace(/\D/g, '')) / 100 || receita * 12;
+      const faturamento12 = parseCurrencyInput(rbt12) || receita * 12;
       const simples = calcularSimplesNacional(faturamento12);
       setResultado({
         regime: 'simples_nacional',
@@ -229,12 +243,8 @@ export default function CalculadoraTributaria() {
             <Label className="text-xs">Receita Bruta Mensal (R$) *</Label>
             <Input
               value={receitaBruta}
-              onChange={e => {
-                const v = e.target.value.replace(/\D/g, '');
-                const num = parseInt(v || '0') / 100;
-                setReceitaBruta(num > 0 ? num.toFixed(2).replace('.', ',') : '');
-              }}
-              placeholder="0,00"
+              onChange={e => setReceitaBruta(formatCurrencyInput(e.target.value))}
+              placeholder="R$ 0,00"
               className="mt-1"
             />
           </div>
@@ -243,12 +253,8 @@ export default function CalculadoraTributaria() {
               <Label className="text-xs">Faturamento 12 meses (RBT12)</Label>
               <Input
                 value={rbt12}
-                onChange={e => {
-                  const v = e.target.value.replace(/\D/g, '');
-                  const num = parseInt(v || '0') / 100;
-                  setRbt12(num > 0 ? num.toFixed(2).replace('.', ',') : '');
-                }}
-                placeholder="Automático se vazio"
+                onChange={e => setRbt12(formatCurrencyInput(e.target.value))}
+                placeholder="R$ 0,00"
                 className="mt-1"
               />
             </div>
@@ -386,7 +392,7 @@ function SimulacaoIAReceita({ regime, config }: { regime: string; config: Regime
   const [loading, setLoading] = useState(false);
 
   const simularIA = async () => {
-    const valor = parseFloat(valorOperacao.replace(/\D/g, '')) / 100;
+    const valor = parseCurrencyInput(valorOperacao);
     if (!valor || valor <= 0) {
       toast.error('Informe o valor da operação.');
       return;
@@ -463,12 +469,8 @@ Ao final, adicione nota de que os valores são estimativas baseadas nas alíquot
           <Label className="text-xs">Valor da Operação (R$) *</Label>
           <Input
             value={valorOperacao}
-            onChange={e => {
-              const v = e.target.value.replace(/\D/g, '');
-              const num = parseInt(v || '0') / 100;
-              setValorOperacao(num > 0 ? num.toFixed(2).replace('.', ',') : '');
-            }}
-            placeholder="0,00"
+            onChange={e => setValorOperacao(formatCurrencyInput(e.target.value))}
+            placeholder="R$ 0,00"
             className="mt-1"
           />
         </div>
