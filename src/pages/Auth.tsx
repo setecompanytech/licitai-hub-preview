@@ -362,19 +362,22 @@ export default function Auth() {
                 </div>
               </section>
 
-              {/* Termos */}
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
+              {/* Declaração de Consentimento — LGPD */}
+              <div className="flex items-start gap-3 p-5 rounded-xl bg-muted/50 border border-border">
                 <Checkbox
                   id="termos"
                   checked={aceitaTermos}
                   onCheckedChange={(v) => setAceitaTermos(v === true)}
                   className="mt-0.5"
                 />
-                <label htmlFor="termos" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
-                  Ao confirmar o cadastro, declaro estar ciente e de acordo com os{' '}
-                  <a href="/landing" className="text-accent hover:underline font-medium">Termos de uso</a>{' '}
+                <label htmlFor="termos" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+                  <strong className="text-foreground text-sm block mb-1">Declaração de Consentimento</strong>
+                  Ao confirmar o cadastro, <strong>DECLARO</strong>, para os devidos fins de direito, que li, compreendi e aceito integralmente os{' '}
+                  <a href="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-semibold">Termos de Uso</a>{' '}
                   e a{' '}
-                  <a href="/landing" className="text-accent hover:underline font-medium">Política de Privacidade</a>.
+                  <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-semibold">Política de Privacidade</a>{' '}
+                  da plataforma LicitIA, manifestando consentimento livre, informado e inequívoco, nos termos do{' '}
+                  <strong>Art. 7º, inciso I, da Lei nº 13.709/2018 (LGPD)</strong>, para o tratamento de meus dados pessoais nas finalidades descritas nos referidos documentos.
                 </label>
               </div>
 
