@@ -8,8 +8,6 @@ import licitacoesELogo from '@/assets/portais/licitacoes-e.png';
 import comprasbrLogo from '@/assets/portais/comprasbr.png';
 import portalComprasLogo from '@/assets/portais/portal-compras-publicas.png';
 import licitanetLogo from '@/assets/portais/licitanet.png';
-import comprasnetBahiaLogo from '@/assets/portais/comprasnet-bahia.png';
-
 const portais = [
   { name: 'Comprasnet', logo: comprasnetLogo },
   { name: 'BLL Compras', logo: bllLogo },
@@ -19,7 +17,6 @@ const portais = [
   { name: 'ComprasBR', logo: comprasbrLogo },
   { name: 'Portal de Compras Públicas', logo: portalComprasLogo },
   { name: 'LicitaNet', logo: licitanetLogo },
-  { name: 'Comprasnet Bahia', logo: comprasnetBahiaLogo },
 ];
 
 export default function LogoCloudSection() {
@@ -43,7 +40,7 @@ export default function LogoCloudSection() {
                 <img
                   src={portal.logo}
                   alt={portal.name}
-                  className="max-w-full max-h-full object-contain opacity-70 group-hover:opacity-100 transition-opacity duration-300"
+                  className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform duration-300"
                 />
               </div>
               <span className="text-[11px] font-medium text-muted-foreground/60 group-hover:text-muted-foreground transition-colors text-center leading-tight max-w-[90px]">
