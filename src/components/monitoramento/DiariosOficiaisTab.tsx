@@ -8,10 +8,12 @@ import {
   Search, RefreshCw, FileText, AlertTriangle, XCircle, Clock,
   CheckCircle2, Globe, Building2, MapPin, Award, PauseCircle,
   ArrowUpDown, FileCheck, Newspaper, ExternalLink, Eye,
-  CalendarDays, Bookmark, Sparkles, ChevronDown, ChevronUp, CalendarIcon, Download
+  CalendarDays, Bookmark, Sparkles, ChevronDown, ChevronUp, CalendarIcon, Download,
+  FileSpreadsheet, FileJson
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,6 +22,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Loader2, Filter } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
+import { downloadCSV, downloadPDF, downloadJSON } from '@/lib/download-utils';
 
 type AtoLicitatorio = {
   id: string;
@@ -371,6 +374,220 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
   const naoLidos = atos.filter(a => !a.lido).length;
   const fonteAtual = FONTES_DIARIOS.find(f => f.id === fonteFiltro);
 
+  const getExportHeaders = () => ['Tipo', 'Título', 'Órgão', 'Portal/Fonte', 'UF', 'Município', 'Data Publicação', 'Valor Estimado', 'Palavras-chave'];
+
+  const getExportRows = (items: AtoLicitatorio[]) =>
+    items.map(a => [
+      tipoConfig[a.tipo || '']?.label || a.tipo || '-',
+      a.titulo,
+      a.orgao,
+      a.portal || '-',
+      a.uf || '-',
+      a.municipio || '-',
+      a.data_publicacao ? new Date(a.data_publicacao).toLocaleDateString('pt-BR') : '-',
+      a.valor_estimado ? formatCurrency(a.valor_estimado) : '-',
+      (a.palavras_chave || []).join(', ') || '-',
+    ]);
+
+  const handleExportBulk = (tipo: 'csv' | 'pdf' | 'json') => {
+    if (atosOrdenados.length === 0) { toast.error('Nenhum ato para exportar'); return; }
+    const ts = new Date().toISOString().slice(0, 10);
+    const headers = getExportHeaders();
+    const rows = getExportRows(atosOrdenados);
+    if (tipo === 'csv') downloadCSV(`diarios-oficiais-${ts}`, headers, rows);
+    else if (tipo === 'pdf') downloadPDF(`diarios-oficiais-${ts}`, 'Diários Oficiais — Atos Licitatórios', headers, rows);
+    else downloadJSON(`diarios-oficiais-${ts}`, atosOrdenados);
+    toast.success(`Exportação ${tipo.toUpperCase()} realizada com ${atosOrdenados.length} atos`);
+  };
+
+  const handleExportDOFormatPDF = () => {
+    if (atosOrdenados.length === 0) { toast.error('Nenhum ato para exportar'); return; }
+    // Generate a text-based PDF in official gazette format
+    const jsPDF = (window as any).jspdf?.jsPDF;
+    // Use import approach instead
+    import('jspdf').then(({ default: jsPDF }) => {
+      const doc = new jsPDF({ orientation: 'portrait' });
+      const ts = new Date().toLocaleString('pt-BR');
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DIÁRIO OFICIAL — ATOS LICITATÓRIOS', pageWidth / 2, 18, { align: 'center' });
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120);
+      doc.text(`Gerado em: ${ts} | ${atosOrdenados.length} publicações`, pageWidth / 2, 24, { align: 'center' });
+      doc.setTextColor(0);
+
+      let y = 34;
+      const lineHeight = 4.5;
+      const margin = 14;
+      const maxWidth = pageWidth - margin * 2;
+
+      atosOrdenados.forEach((ato, idx) => {
+        // Check if we need a new page
+        if (y > 270) { doc.addPage(); y = 18; }
+
+        const tipoLabel = (tipoConfig[ato.tipo || '']?.label || ato.tipo || 'ATO').toUpperCase();
+
+        // Separator
+        doc.setDrawColor(180);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 5;
+
+        // Type header
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${tipoLabel} — ${ato.orgao.toUpperCase()}`, margin, y);
+        y += lineHeight + 1;
+
+        // Portal and date
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100);
+        const metaLine = [
+          ato.portal ? `Fonte: ${ato.portal}` : null,
+          ato.data_publicacao ? `Data: ${new Date(ato.data_publicacao).toLocaleDateString('pt-BR')}` : null,
+          ato.municipio && ato.uf ? `Local: ${ato.municipio}/${ato.uf}` : ato.uf ? `UF: ${ato.uf}` : null,
+          ato.valor_estimado ? `Valor: ${formatCurrency(ato.valor_estimado)}` : null,
+        ].filter(Boolean).join(' | ');
+        doc.text(metaLine, margin, y);
+        y += lineHeight;
+        doc.setTextColor(0);
+
+        // Title
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        const titleLines = doc.splitTextToSize(ato.titulo, maxWidth);
+        titleLines.forEach((line: string) => {
+          if (y > 280) { doc.addPage(); y = 18; }
+          doc.text(line, margin, y);
+          y += lineHeight;
+        });
+
+        // Full text if available
+        if (ato.texto_integral) {
+          doc.setFont('courier', 'normal');
+          doc.setFontSize(7);
+          const textLines = doc.splitTextToSize(ato.texto_integral, maxWidth);
+          textLines.forEach((line: string) => {
+            if (y > 280) { doc.addPage(); y = 18; }
+            doc.text(line, margin, y);
+            y += lineHeight - 0.5;
+          });
+        }
+
+        // Keywords
+        if (ato.palavras_chave && ato.palavras_chave.length > 0) {
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(6.5);
+          doc.setTextColor(130);
+          doc.text(`Palavras-chave: ${ato.palavras_chave.join(', ')}`, margin, y);
+          doc.setTextColor(0);
+          y += lineHeight;
+        }
+
+        y += 4;
+      });
+
+      doc.save(`diario-oficial-${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast.success('PDF no formato Diário Oficial exportado com sucesso!');
+    });
+  };
+
+  const handleExportSingleDO = (ato: AtoLicitatorio) => {
+    import('jspdf').then(({ default: jsPDF }) => {
+      const doc = new jsPDF({ orientation: 'portrait' });
+      const ts = new Date().toLocaleString('pt-BR');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 14;
+      const maxWidth = pageWidth - margin * 2;
+      const lineHeight = 4.5;
+
+      const tipoLabel = (tipoConfig[ato.tipo || '']?.label || ato.tipo || 'ATO').toUpperCase();
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DIÁRIO OFICIAL', pageWidth / 2, 18, { align: 'center' });
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120);
+      doc.text(`Gerado em: ${ts}`, pageWidth / 2, 23, { align: 'center' });
+      doc.setTextColor(0);
+
+      let y = 34;
+      doc.setDrawColor(180);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 6;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${tipoLabel}`, margin, y);
+      y += lineHeight + 2;
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      const fields = [
+        ['ÓRGÃO:', ato.orgao],
+        ['FONTE:', ato.portal || 'N/I'],
+        ['DATA DE PUBLICAÇÃO:', ato.data_publicacao ? new Date(ato.data_publicacao).toLocaleDateString('pt-BR') : 'N/I'],
+        ['LOCAL:', [ato.municipio, ato.uf].filter(Boolean).join('/') || 'N/I'],
+        ['VALOR ESTIMADO:', ato.valor_estimado ? formatCurrency(ato.valor_estimado) : 'N/I'],
+      ];
+
+      fields.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.text(label as string, margin, y);
+        doc.setFont('helvetica', 'normal');
+        doc.text(value as string, margin + doc.getTextWidth(label as string) + 2, y);
+        y += lineHeight + 1;
+      });
+
+      y += 3;
+      doc.setFont('helvetica', 'bold');
+      doc.text('OBJETO:', margin, y);
+      y += lineHeight;
+      doc.setFont('helvetica', 'normal');
+      const titleLines = doc.splitTextToSize(ato.titulo, maxWidth);
+      titleLines.forEach((line: string) => {
+        if (y > 280) { doc.addPage(); y = 18; }
+        doc.text(line, margin, y);
+        y += lineHeight;
+      });
+
+      if (ato.texto_integral) {
+        y += 4;
+        doc.setDrawColor(200);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 5;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.text('TEXTO INTEGRAL DA PUBLICAÇÃO:', margin, y);
+        y += lineHeight + 2;
+        doc.setFont('courier', 'normal');
+        doc.setFontSize(7.5);
+        const textLines = doc.splitTextToSize(ato.texto_integral, maxWidth);
+        textLines.forEach((line: string) => {
+          if (y > 280) { doc.addPage(); y = 18; }
+          doc.text(line, margin, y);
+          y += lineHeight - 0.5;
+        });
+      }
+
+      if (ato.palavras_chave && ato.palavras_chave.length > 0) {
+        y += 4;
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(7);
+        doc.setTextColor(130);
+        doc.text(`Palavras-chave: ${ato.palavras_chave.join(', ')}`, margin, y);
+      }
+
+      const safeName = ato.titulo.substring(0, 40).replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-');
+      doc.save(`publicacao-${safeName}-${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast.success('PDF da publicação exportado!');
+    });
+  };
+
   return (
     <div className="space-y-4">
       {/* Header da busca */}
@@ -384,6 +601,27 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
             </Badge>
           </div>
           <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" disabled={atosOrdenados.length === 0}>
+                  <Download className="w-3.5 h-3.5" /> Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportDOFormatPDF} className="gap-2 text-xs font-semibold text-accent">
+                  <FileText className="w-3.5 h-3.5" /> PDF (Formato Diário Oficial)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportBulk('pdf')} className="gap-2 text-xs">
+                  <FileText className="w-3.5 h-3.5" /> PDF (Tabela)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportBulk('csv')} className="gap-2 text-xs">
+                  <FileSpreadsheet className="w-3.5 h-3.5" /> CSV / Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportBulk('json')} className="gap-2 text-xs">
+                  <FileJson className="w-3.5 h-3.5" /> JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Select value={ufsBusca[0] || 'PA'} onValueChange={v => setUfsBusca([v])}>
               <SelectTrigger className="w-[100px] h-8 text-xs">
                 <SelectValue />
@@ -694,6 +932,16 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
                       <Eye className="w-3.5 h-3.5" />
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 gap-1"
+                    onClick={() => handleExportSingleDO(ato)}
+                    title="Exportar publicação em PDF (formato DO)"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span className="text-[10px] hidden sm:inline">PDF</span>
+                  </Button>
                   {ato.url && (
                     <Button size="sm" variant="outline" className="h-7 px-2 gap-1" asChild>
                       <a href={ato.url} target="_blank" rel="noopener noreferrer" title="Ver no portal">
@@ -709,7 +957,7 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
                       className="h-7 px-2 gap-1"
                       disabled={downloadingId === ato.id}
                       onClick={() => handleDownloadPublicacao(ato)}
-                      title="Baixar publicação"
+                      title="Baixar publicação original"
                     >
                       {downloadingId === ato.id ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
