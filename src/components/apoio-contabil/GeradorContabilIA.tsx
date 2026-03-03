@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { Sparkles, Loader2, BookOpen, Copy } from 'lucide-react';
+import { Sparkles, Loader2, BookOpen, Copy, Upload, FileText, Archive } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
 
@@ -21,6 +22,77 @@ export default function GeradorContabilIA() {
   const [gerando, setGerando] = useState(false);
   const [docsBase, setDocsBase] = useState<DocRef[]>([]);
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; text: string }[]>([]);
+  const [extracting, setExtracting] = useState(false);
+  const [extractProgress, setExtractProgress] = useState(0);
+
+  const extractTextFromFile = async (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve((e.target?.result as string)?.slice(0, 50000) || '');
+      reader.onerror = () => resolve('');
+      reader.readAsText(file);
+    });
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setExtracting(true);
+    setExtractProgress(0);
+    const results: { name: string; text: string }[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setExtractProgress(Math.round(((i) / files.length) * 100));
+
+      if (file.name.endsWith('.zip')) {
+        try {
+          const JSZip = (await import('jszip')).default;
+          const zip = await JSZip.loadAsync(file);
+          const zipFiles = Object.values(zip.files).filter(f => !f.dir && (f.name.endsWith('.txt') || f.name.endsWith('.csv') || f.name.endsWith('.xml')));
+          for (const zf of zipFiles) {
+            const content = await zf.async('string');
+            results.push({ name: zf.name, text: content.slice(0, 30000) });
+          }
+          if (zipFiles.length === 0) {
+            const allFiles = Object.values(zip.files).filter(f => !f.dir);
+            for (const zf of allFiles.slice(0, 5)) {
+              try {
+                const content = await zf.async('string');
+                if (content && content.length > 50) {
+                  results.push({ name: zf.name, text: content.slice(0, 30000) });
+                }
+              } catch { /* binary */ }
+            }
+          }
+        } catch {
+          toast.error(`Erro ao processar ZIP: ${file.name}`);
+        }
+      } else {
+        const text = await extractTextFromFile(file);
+        if (text && text.length > 20) {
+          results.push({ name: file.name, text: text.slice(0, 50000) });
+        } else {
+          toast.info(`${file.name}: texto não extraído. Use a Base Contábil para PDFs complexos.`);
+        }
+      }
+    }
+
+    setExtractProgress(100);
+    if (results.length > 0) {
+      setUploadedFiles(prev => [...prev, ...results]);
+      const combined = results.map(r => `--- ${r.name} ---\n${r.text}`).join('\n\n');
+      setContexto(prev => prev ? prev + '\n\n' + combined : combined);
+      toast.success(`${results.length} arquivo(s) processado(s)!`);
+    }
+    setExtracting(false);
+    e.target.value = '';
+  };
+
+  const removeFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -92,6 +164,38 @@ export default function GeradorContabilIA() {
             <label className="text-xs text-muted-foreground">Referência / Nº Edital</label>
             <Input value={referencia} onChange={e => setReferencia(e.target.value)} placeholder="PE-001/2026 ou NBC TG 26" className="mt-1" />
           </div>
+        </div>
+
+        <div className="border border-dashed border-border rounded-lg p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Upload className="w-4 h-4 text-accent" />
+            <label className="text-xs font-medium">Upload de Arquivos (PDF, TXT, CSV, XLS, ZIP)</label>
+          </div>
+          <Input
+            type="file"
+            accept=".pdf,.txt,.csv,.xls,.xlsx,.xml,.doc,.docx,.zip"
+            multiple
+            onChange={handleFileUpload}
+            disabled={extracting}
+            className="text-xs"
+          />
+          {extracting && (
+            <div className="space-y-1">
+              <Progress value={extractProgress} className="h-2" />
+              <p className="text-[10px] text-muted-foreground">Extraindo texto... {extractProgress}%</p>
+            </div>
+          )}
+          {uploadedFiles.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {uploadedFiles.map((f, i) => (
+                <Badge key={i} variant="secondary" className="text-[10px] gap-1">
+                  {f.name.endsWith('.zip') ? <Archive className="w-2.5 h-2.5" /> : <FileText className="w-2.5 h-2.5" />}
+                  {f.name.slice(0, 30)}
+                  <button onClick={() => removeFile(i)} className="ml-1 text-destructive hover:text-destructive/80">×</button>
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
 
         <div>
