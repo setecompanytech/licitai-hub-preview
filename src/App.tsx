@@ -42,6 +42,7 @@ import Ferramentas from "./pages/Ferramentas";
 import WhatsAppSetores from "./pages/WhatsAppSetores";
 import TermosDeUso from "./pages/TermosDeUso";
 import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
+import LgpdPage from "./pages/LgpdPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -96,6 +97,7 @@ const App = () => (
               <Route path="/whatsapp-setores" element={<ProtectedPages><WhatsAppSetores /></ProtectedPages>} />
               <Route path="/termos-de-uso" element={<TermosDeUso />} />
               <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />
+              <Route path="/lgpd" element={<LgpdPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </PropostaCartProvider>

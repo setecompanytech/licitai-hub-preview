@@ -40,8 +40,8 @@ export default function LandingFooter() {
           <h4 className="font-bold text-sm mb-4">Legal</h4>
           <ul className="space-y-2.5 text-sm text-muted-foreground">
             <li><button onClick={() => navigate('/termos-de-uso')} className="hover:text-foreground transition-colors">Termos de Uso</button></li>
-            <li><button onClick={() => navigate('/politica-privacidade')} className="hover:text-foreground transition-colors">Política de Privacidade</button></li>
-            <li><span className="cursor-default">LGPD</span></li>
+            <li><button onClick={() => navigate('/politica-de-privacidade')} className="hover:text-foreground transition-colors">Política de Privacidade</button></li>
+            <li><button onClick={() => navigate('/lgpd')} className="hover:text-foreground transition-colors">LGPD</button></li>
           </ul>
         </div>
       </div>
