@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,11 +6,14 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   FileText, Upload, CheckCircle2, AlertTriangle, Clock,
-  Shield, FolderOpen, Download, Eye, FileArchive, ClipboardList
+  Shield, FolderOpen, Download, Eye, FileArchive, ClipboardList, Trash2, Loader2
 } from 'lucide-react';
 import MergeDocumentos from '@/components/documentos/MergeDocumentos';
 import AlertaVencimentoDocumentos from '@/components/documentos/AlertaVencimentoDocumentos';
 import ChecklistModalidade from '@/components/licitacoes/ChecklistModalidade';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 type DocStatus = 'ok' | 'pendente' | 'vencido' | 'ausente';
 
@@ -21,9 +24,10 @@ type Documento = {
   status: DocStatus;
   validade?: string;
   arquivo?: string;
+  storagePath?: string;
 };
 
-const documentos: Documento[] = [
+const documentosIniciais: Documento[] = [
   { nome: 'Ato Constitutivo / Contrato Social', categoria: 'Habilitação Jurídica', artigo: 'Art. 66', status: 'ok', arquivo: 'contrato-social.pdf' },
   { nome: 'Cédula de Identidade dos Sócios', categoria: 'Habilitação Jurídica', artigo: 'Art. 66', status: 'ok', arquivo: 'rg-socios.pdf' },
   { nome: 'Certidão Simplificada da Junta Comercial', categoria: 'Habilitação Jurídica', artigo: 'Art. 66', status: 'pendente', validade: '2026-03-15' },
@@ -52,11 +56,91 @@ const statusConfig: Record<DocStatus, { icon: typeof CheckCircle2; color: string
 export default function Documentos() {
   const [filter, setFilter] = useState<DocStatus | 'todos'>('todos');
   const [activeTab, setActiveTab] = useState('documentos');
+  const [documentos, setDocumentos] = useState<Documento[]>(documentosIniciais);
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+  const [removingIdx, setRemovingIdx] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingUploadIdx = useRef<number | null>(null);
+  const { user } = useAuth();
 
   const categorias = [...new Set(documentos.map((d) => d.categoria))];
   const filtered = filter === 'todos' ? documentos : documentos.filter((d) => d.status === filter);
   const okCount = documentos.filter((d) => d.status === 'ok').length;
   const progress = Math.round((okCount / documentos.length) * 100);
+
+  const handleUploadClick = (globalIdx: number) => {
+    pendingUploadIdx.current = globalIdx;
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const idx = pendingUploadIdx.current;
+    if (!file || idx === null || !user) return;
+
+    const allowed = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      toast.error('Formato não suportado. Use PDF, PNG, JPG ou WEBP.');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo 10MB.');
+      e.target.value = '';
+      return;
+    }
+
+    setUploadingIdx(idx);
+    const slug = documentos[idx].nome.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60);
+    const ext = file.name.split('.').pop();
+    const path = `${user.id}/${slug}.${ext}`;
+
+    // Remove old file if exists
+    if (documentos[idx].storagePath) {
+      await supabase.storage.from('documentos-habilitacao').remove([documentos[idx].storagePath!]);
+    }
+
+    const { error } = await supabase.storage.from('documentos-habilitacao').upload(path, file, { upsert: true });
+    if (error) {
+      toast.error('Erro ao enviar: ' + error.message);
+      setUploadingIdx(null);
+      e.target.value = '';
+      return;
+    }
+
+    setDocumentos(prev => prev.map((d, i) =>
+      i === idx ? { ...d, arquivo: file.name, storagePath: path, status: 'ok' as DocStatus } : d
+    ));
+
+    toast.success(`"${documentos[idx].nome}" enviado com sucesso!`);
+    setUploadingIdx(null);
+    e.target.value = '';
+  };
+
+  const handleRemove = async (globalIdx: number) => {
+    if (!user) return;
+    const doc = documentos[globalIdx];
+
+    setRemovingIdx(globalIdx);
+
+    if (doc.storagePath) {
+      const { error } = await supabase.storage.from('documentos-habilitacao').remove([doc.storagePath]);
+      if (error) {
+        toast.error('Erro ao remover: ' + error.message);
+        setRemovingIdx(null);
+        return;
+      }
+    }
+
+    setDocumentos(prev => prev.map((d, i) =>
+      i === globalIdx ? { ...d, arquivo: undefined, storagePath: undefined, status: 'pendente' as DocStatus } : d
+    ));
+
+    toast.success(`"${doc.nome}" removido.`);
+    setRemovingIdx(null);
+  };
+
+  const getGlobalIndex = (doc: Documento) => documentos.findIndex(d => d.nome === doc.nome);
 
   return (
     <AppLayout>
@@ -71,9 +155,6 @@ export default function Documentos() {
               Conformidade com a Lei 14.133/2021 e legislação vigente
             </p>
           </div>
-          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            <Upload className="w-4 h-4 mr-1" /> Enviar Documento
-          </Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -90,8 +171,8 @@ export default function Documentos() {
           </TabsList>
 
           <TabsContent value="documentos" className="space-y-4">
-            {/* Alertas de vencimento */}
             <AlertaVencimentoDocumentos documentos={documentos} />
+
             {/* Progress */}
             <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-2">
@@ -135,6 +216,10 @@ export default function Documentos() {
                       {docs.map((doc) => {
                         const cfg = statusConfig[doc.status];
                         const Icon = cfg.icon;
+                        const globalIdx = getGlobalIndex(doc);
+                        const isUploading = uploadingIdx === globalIdx;
+                        const isRemoving = removingIdx === globalIdx;
+
                         return (
                           <div key={doc.nome} className="flex items-center justify-between px-5 py-3">
                             <div className="flex items-center gap-3">
@@ -146,6 +231,11 @@ export default function Documentos() {
                                     Validade: {new Date(doc.validade).toLocaleDateString('pt-BR')}
                                   </p>
                                 )}
+                                {doc.arquivo && (
+                                  <p className="text-xs text-muted-foreground/70 flex items-center gap-1">
+                                    <FileText className="w-3 h-3" /> {doc.arquivo}
+                                  </p>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -154,12 +244,35 @@ export default function Documentos() {
                               </Badge>
                               {doc.arquivo ? (
                                 <div className="flex gap-1">
-                                  <Button size="sm" variant="ghost"><Eye className="w-3 h-3" /></Button>
-                                  <Button size="sm" variant="ghost"><Download className="w-3 h-3" /></Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleUploadClick(globalIdx)}
+                                    disabled={isUploading}
+                                    title="Substituir arquivo"
+                                  >
+                                    {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleRemove(globalIdx)}
+                                    disabled={isRemoving}
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    title="Remover arquivo"
+                                  >
+                                    {isRemoving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                                  </Button>
                                 </div>
                               ) : (
-                                <Button size="sm" variant="outline">
-                                  <Upload className="w-3 h-3 mr-1" /> Enviar
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleUploadClick(globalIdx)}
+                                  disabled={isUploading}
+                                >
+                                  {isUploading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Upload className="w-3 h-3 mr-1" />}
+                                  Enviar
                                 </Button>
                               )}
                             </div>
@@ -177,11 +290,19 @@ export default function Documentos() {
             <MergeDocumentos />
           </TabsContent>
 
-
           <TabsContent value="checklist">
             <ChecklistModalidade />
           </TabsContent>
         </Tabs>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.png,.jpg,.jpeg,.webp"
+          className="hidden"
+          onChange={handleFileChange}
+        />
       </div>
     </AppLayout>
   );
