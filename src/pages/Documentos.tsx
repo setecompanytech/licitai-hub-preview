@@ -117,6 +117,30 @@ export default function Documentos() {
     e.target.value = '';
   };
 
+  const handleDownload = async (globalIdx: number) => {
+    const doc = documentos[globalIdx];
+    if (!doc.storagePath || !user) {
+      toast.error('Nenhum arquivo disponível para download.');
+      return;
+    }
+
+    const { data, error } = await supabase.storage.from('documentos-habilitacao').download(doc.storagePath);
+    if (error || !data) {
+      toast.error('Erro ao baixar: ' + (error?.message ?? 'arquivo não encontrado'));
+      return;
+    }
+
+    const url = URL.createObjectURL(data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = doc.arquivo || 'documento';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast.success(`"${doc.nome}" baixado com sucesso!`);
+  };
+
   const handleRemove = async (globalIdx: number) => {
     if (!user) return;
     const doc = documentos[globalIdx];
@@ -244,6 +268,16 @@ export default function Documentos() {
                               </Badge>
                               {doc.arquivo ? (
                                 <div className="flex gap-1">
+                                  {doc.storagePath && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleDownload(globalIdx)}
+                                      title="Baixar arquivo"
+                                    >
+                                      <Download className="w-3 h-3" />
+                                    </Button>
+                                  )}
                                   <Button
                                     size="sm"
                                     variant="outline"
