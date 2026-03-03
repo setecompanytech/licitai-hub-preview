@@ -56,6 +56,53 @@ export type Database = {
         }
         Relationships: []
       }
+      apoio_contabil: {
+        Row: {
+          conteudo: string | null
+          created_at: string
+          fundamentacao: string | null
+          id: string
+          licitacao_id: string | null
+          status: string | null
+          tipo: string
+          titulo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conteudo?: string | null
+          created_at?: string
+          fundamentacao?: string | null
+          id?: string
+          licitacao_id?: string | null
+          status?: string | null
+          tipo?: string
+          titulo: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conteudo?: string | null
+          created_at?: string
+          fundamentacao?: string | null
+          id?: string
+          licitacao_id?: string | null
+          status?: string | null
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apoio_contabil_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       apoio_juridico: {
         Row: {
           conteudo: string | null
@@ -168,6 +215,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      base_contabil: {
+        Row: {
+          arquivo_nome: string
+          arquivo_path: string | null
+          created_at: string
+          data_documento: string | null
+          ementa: string | null
+          id: string
+          numero_documento: string | null
+          orgao_emissor: string | null
+          tags: string[] | null
+          texto_integral: string | null
+          tipo: string
+          titulo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          arquivo_nome: string
+          arquivo_path?: string | null
+          created_at?: string
+          data_documento?: string | null
+          ementa?: string | null
+          id?: string
+          numero_documento?: string | null
+          orgao_emissor?: string | null
+          tags?: string[] | null
+          texto_integral?: string | null
+          tipo?: string
+          titulo: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          arquivo_nome?: string
+          arquivo_path?: string | null
+          created_at?: string
+          data_documento?: string | null
+          ementa?: string | null
+          id?: string
+          numero_documento?: string | null
+          orgao_emissor?: string | null
+          tags?: string[] | null
+          texto_integral?: string | null
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       base_juridica: {
         Row: {

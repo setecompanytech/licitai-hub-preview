@@ -18,6 +18,7 @@ import {
   Shield,
   Scale,
   DollarSign,
+  Calculator,
   Download,
   LogOut,
   Building2,
@@ -85,6 +86,7 @@ const navGroups: NavGroup[] = [
       { icon: Shield, label: 'Documentos', path: '/documentos' },
       { icon: ClipboardCheck, label: 'Assessoria Cadastral', path: '/assessoria-cadastral' },
       { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
+      { icon: Calculator, label: 'Apoio Contábil', path: '/apoio-contabil' },
     ],
   },
   {
