@@ -16,6 +16,7 @@ import RoboLances from "./pages/RoboLances";
 import Concorrentes from "./pages/Concorrentes";
 import Documentos from "./pages/Documentos";
 import ApoioJuridico from "./pages/ApoioJuridico";
+import ApoioContabil from "./pages/ApoioContabil";
 import Precificacao from "./pages/Precificacao";
 import Assistente from "./pages/Assistente";
 import Analytics from "./pages/Analytics";
@@ -70,6 +71,7 @@ const App = () => (
               <Route path="/concorrentes" element={<ProtectedPages><Concorrentes /></ProtectedPages>} />
               <Route path="/documentos" element={<ProtectedPages><Documentos /></ProtectedPages>} />
               <Route path="/apoio-juridico" element={<ProtectedPages><ApoioJuridico /></ProtectedPages>} />
+              <Route path="/apoio-contabil" element={<ProtectedPages><ApoioContabil /></ProtectedPages>} />
               <Route path="/precificacao" element={<ProtectedPages><Precificacao /></ProtectedPages>} />
               <Route path="/assistente" element={<ProtectedPages><Assistente /></ProtectedPages>} />
               <Route path="/analytics" element={<ProtectedPages><Analytics /></ProtectedPages>} />
