@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import { streamAIChat } from '@/lib/ai-stream';
 
 type ResultadoBusca = {
   id: string;
@@ -172,6 +173,10 @@ export default function LicitacoesTab() {
   const [favoritos, setFavoritos] = useState<Set<string>>(new Set());
   const [favoritando, setFavoritando] = useState<string | null>(null);
   const [filtroFavoritos, setFiltroFavoritos] = useState(false);
+  const [expandedSummary, setExpandedSummary] = useState<string | null>(null);
+  const [summaryContent, setSummaryContent] = useState<Record<string, string>>({});
+  const [loadingSummary, setLoadingSummary] = useState<string | null>(null);
+  const [downloadingAnexos, setDownloadingAnexos] = useState<string | null>(null);
   const resultadosRef = useRef<HTMLDivElement>(null);
 
   // Carregar favoritos do banco
@@ -224,6 +229,103 @@ export default function LicitacoesTab() {
     } catch { toast.error('Erro ao favoritar'); }
     finally { setFavoritando(null); }
   }, [user, favoritos]);
+
+  const handleExpandSummary = useCallback(async (lic: ResultadoBusca) => {
+    if (expandedSummary === lic.id) {
+      setExpandedSummary(null);
+      return;
+    }
+    setExpandedSummary(lic.id);
+    if (summaryContent[lic.id]) return;
+
+    setLoadingSummary(lic.id);
+    let content = '';
+    await streamAIChat({
+      messages: [{
+        role: 'user',
+        content: `Analise este edital de licitação e forneça um resumo executivo completo para o fornecedor, incluindo:
+
+1. **RESUMO DO OBJETO**: Descrição clara e objetiva do que está sendo licitado
+2. **DADOS DO PROCESSO**: Número, modalidade, órgão, UF/Município
+3. **VALOR ESTIMADO**: Valor e condições financeiras
+4. **PRAZO E CRONOGRAMA**: Datas importantes (abertura, encerramento, vigência)
+5. **REQUISITOS DE HABILITAÇÃO**: Documentos e certidões exigidas (se identificáveis)
+6. **PONTOS DE ATENÇÃO**: Riscos, cláusulas restritivas, exigências técnicas especiais
+7. **RECOMENDAÇÃO ESTRATÉGICA**: Indicação de viabilidade para participação
+
+Dados do edital:
+- Número: ${lic.numero}
+- Órgão: ${lic.orgao}
+- Objeto: ${lic.objeto}
+- Modalidade: ${lic.modalidade}
+- Portal: ${lic.portal}
+- UF: ${lic.uf || 'N/I'} / Município: ${lic.municipio || 'N/I'}
+- Valor estimado: ${lic.valor_estimado ? formatCurrency(lic.valor_estimado) : 'Não informado'}
+- Encerramento: ${lic.data_encerramento ? new Date(lic.data_encerramento).toLocaleDateString('pt-BR') : 'N/I'}
+- Status: ${lic.status}
+- URL: ${lic.url || 'N/I'}
+
+Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (⚠️) e pontos positivos (✅).`
+      }],
+      action: 'resumo_edital',
+      onDelta: (chunk) => {
+        content += chunk;
+        setSummaryContent(prev => ({ ...prev, [lic.id]: content }));
+      },
+      onDone: () => setLoadingSummary(null),
+      onError: (err) => {
+        setSummaryContent(prev => ({ ...prev, [lic.id]: `❌ Erro ao gerar resumo: ${err}` }));
+        setLoadingSummary(null);
+      },
+    });
+  }, [expandedSummary, summaryContent]);
+
+  const handleDownloadAnexos = useCallback(async (lic: ResultadoBusca) => {
+    setDownloadingAnexos(lic.id);
+    toast.info('Buscando todos os anexos do edital...');
+    try {
+      const session = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-edital`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.data.session?.access_token}` },
+          body: JSON.stringify({
+            numero: lic.numero, portal: lic.portal || 'PNCP',
+            url: lic.url || null, orgao: lic.orgao, objeto: lic.objeto,
+            pncpNumero: lic.pncpNumero || null, cnpjOrgao: lic.cnpjOrgao || null,
+            anoCompra: lic.anoCompra || null, sequencialCompra: lic.sequencialCompra || null,
+            todos_anexos: true,
+          }),
+        }
+      );
+      const data = await response.json();
+      if (!data.success) { toast.error(data.error || 'Não foi possível obter os anexos.'); return; }
+
+      if (data.tipo === 'download_urls' && data.documentos?.length > 0) {
+        // Open all document URLs
+        for (const doc of data.documentos) {
+          if (doc.url) window.open(doc.url, '_blank');
+        }
+        toast.success(`${data.documentos.length} anexo(s) encontrado(s) e aberto(s) para download.`);
+      } else if (data.tipo === 'arquivo_direto') {
+        const byteChars = atob(data.arquivo.conteudo_base64);
+        const byteNumbers = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([byteNumbers], { type: data.arquivo.content_type });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = data.arquivo.nome;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success(`Anexo "${data.arquivo.nome}" baixado!`);
+      } else {
+        toast.warning('Nenhum anexo disponível para download direto.');
+        if (lic.url) window.open(lic.url, '_blank');
+      }
+    } catch { toast.error('Erro ao baixar anexos.'); }
+    finally { setDownloadingAnexos(null); }
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -943,82 +1045,126 @@ export default function LicitacoesTab() {
               {filtered.map((lic, i) => {
                 const st = statusConfig[lic.status] || { label: lic.status, className: 'bg-muted text-muted-foreground' };
                 const isFav = favoritos.has(`${lic.numero}|${lic.orgao}`);
+                const isExpanded = expandedSummary === lic.id;
                 return (
-                  <tr
-                    key={lic.id}
-                    className="border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer animate-fade-in"
-                    style={{ animationDelay: `${i * 30}ms` }}
-                    onClick={() => lic.url && window.open(lic.url, '_blank')}
-                  >
-                    <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
-                      <button
-                        onClick={() => toggleFavorito(lic)}
-                        disabled={favoritando === lic.id}
-                        className={cn(
-                          'p-1 rounded-md transition-colors hover:bg-warning/10',
-                          isFav ? 'text-warning' : 'text-muted-foreground/40 hover:text-warning/70'
-                        )}
-                        title={isFav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
-                      >
-                        {isFav ? <Star className="w-4 h-4 fill-current" /> : <StarOff className="w-4 h-4" />}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs font-mono text-muted-foreground block">{lic.numero}</span>
-                      <span className="text-sm font-medium line-clamp-1">{lic.objeto}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5 text-sm">
-                        <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                        <span className="line-clamp-1">{lic.orgao}</span>
-                      </div>
-                      {lic.municipio && lic.uf && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3" />{lic.municipio}/{lic.uf}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <Badge variant="outline" className="text-[10px] px-2 py-0.5">{lic.portal || '-'}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right font-semibold">{lic.valor_estimado ? formatCurrency(lic.valor_estimado) : '-'}</td>
-                    <td className="px-4 py-3 text-center">
-                      {lic.data_encerramento ? (
-                        <span className="text-sm flex items-center justify-center gap-1">
-                          <CalendarIcon2 className="w-3.5 h-3.5 text-muted-foreground" />
-                          {new Date(lic.data_encerramento).toLocaleDateString('pt-BR')}
-                        </span>
-                      ) : '-'}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', st.className)}>{st.label}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] gap-1">
-                            <Download className="w-3 h-3" /> Baixar
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {hasEditalDownload(lic) && (
-                            <DropdownMenuItem
-                              onClick={() => handleDownloadEditalPortal(lic)}
-                              className="gap-2 text-xs font-semibold text-accent"
-                              disabled={downloadingEdital === lic.id}
-                            >
-                              {downloadingEdital === lic.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
-                              Edital Completo (Portal)
-                            </DropdownMenuItem>
+                  <React.Fragment key={lic.id}>
+                    <tr
+                      className="border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer animate-fade-in"
+                      style={{ animationDelay: `${i * 30}ms` }}
+                      onClick={() => lic.url && window.open(lic.url, '_blank')}
+                    >
+                      <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
+                        <button
+                          onClick={() => toggleFavorito(lic)}
+                          disabled={favoritando === lic.id}
+                          className={cn(
+                            'p-1 rounded-md transition-colors hover:bg-warning/10',
+                            isFav ? 'text-warning' : 'text-muted-foreground/40 hover:text-warning/70'
                           )}
-                          <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'csv')} className="gap-2 text-xs"><FileSpreadsheet className="w-3.5 h-3.5" /> CSV</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'pdf')} className="gap-2 text-xs"><FileText className="w-3.5 h-3.5" /> PDF</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'json')} className="gap-2 text-xs"><FileJson className="w-3.5 h-3.5" /> JSON</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'zip')} className="gap-2 text-xs"><FileArchive className="w-3.5 h-3.5" /> ZIP</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
+                          title={isFav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                        >
+                          {isFav ? <Star className="w-4 h-4 fill-current" /> : <StarOff className="w-4 h-4" />}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs font-mono text-muted-foreground block">{lic.numero}</span>
+                        <span className="text-sm font-medium line-clamp-1">{lic.objeto}</span>
+                        <button
+                          onClick={e => { e.stopPropagation(); handleExpandSummary(lic); }}
+                          className="text-[10px] text-accent hover:underline flex items-center gap-1 mt-1"
+                        >
+                          <Brain className="w-3 h-3" />
+                          {isExpanded ? 'Ocultar resumo IA' : 'Resumo IA do Edital'}
+                          {loadingSummary === lic.id && <Loader2 className="w-3 h-3 animate-spin" />}
+                          {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5 text-sm">
+                          <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                          <span className="line-clamp-1">{lic.orgao}</span>
+                        </div>
+                        {lic.municipio && lic.uf && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <MapPin className="w-3 h-3" />{lic.municipio}/{lic.uf}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant="outline" className="text-[10px] px-2 py-0.5">{lic.portal || '-'}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right font-semibold">{lic.valor_estimado ? formatCurrency(lic.valor_estimado) : '-'}</td>
+                      <td className="px-4 py-3 text-center">
+                        {lic.data_encerramento ? (
+                          <span className="text-sm flex items-center justify-center gap-1">
+                            <CalendarIcon2 className="w-3.5 h-3.5 text-muted-foreground" />
+                            {new Date(lic.data_encerramento).toLocaleDateString('pt-BR')}
+                          </span>
+                        ) : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', st.className)}>{st.label}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] gap-1">
+                              <Download className="w-3 h-3" /> Baixar
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {hasEditalDownload(lic) && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => handleDownloadEditalPortal(lic)}
+                                  className="gap-2 text-xs font-semibold text-accent"
+                                  disabled={downloadingEdital === lic.id}
+                                >
+                                  {downloadingEdital === lic.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
+                                  Edital Completo (Portal)
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDownloadAnexos(lic)}
+                                  className="gap-2 text-xs text-accent"
+                                  disabled={downloadingAnexos === lic.id}
+                                >
+                                  {downloadingAnexos === lic.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileArchive className="w-3.5 h-3.5" />}
+                                  Todos os Anexos
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'csv')} className="gap-2 text-xs"><FileSpreadsheet className="w-3.5 h-3.5" /> CSV</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'pdf')} className="gap-2 text-xs"><FileText className="w-3.5 h-3.5" /> PDF</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'json')} className="gap-2 text-xs"><FileJson className="w-3.5 h-3.5" /> JSON</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'zip')} className="gap-2 text-xs"><FileArchive className="w-3.5 h-3.5" /> ZIP</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="animate-fade-in">
+                        <td colSpan={8} className="px-4 py-0">
+                          <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 my-2">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Brain className="w-4 h-4 text-accent" />
+                              <span className="text-xs font-semibold">Resumo Executivo por IA</span>
+                              <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-[10px]">Inteligência Artificial</Badge>
+                            </div>
+                            {summaryContent[lic.id] ? (
+                              <div className="prose prose-sm dark:prose-invert max-w-none text-xs">
+                                <ReactMarkdown>{summaryContent[lic.id]}</ReactMarkdown>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                                Analisando edital com IA...
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>
