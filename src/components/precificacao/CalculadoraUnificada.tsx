@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,13 +10,14 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
   Calculator, Bot, Loader2, FileText, Plus, Download, ExternalLink, MapPin, Building2,
-  ShieldCheck, Sparkles, TrendingUp, Info, BookOpen
+  ShieldCheck, Sparkles, TrendingUp, Info, BookOpen, Package, Wrench, HardHat, Save
 } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import { valorPorExtenso } from '@/lib/numero-extenso';
@@ -133,9 +136,13 @@ type ItemCusto = {
 export default function CalculadoraUnificada() {
   const { empresaAtiva } = useEmpresa();
   const { addItem } = usePropostaCart();
+  const { user } = useAuth();
   const regime = empresaAtiva?.regime_tributario || '';
   const config = REGIMES[regime];
   const ufEmpresa = empresaAtiva?.uf || '';
+
+  // Calculator type tab
+  const [calcTab, setCalcTab] = useState<'produto' | 'servico_simples' | 'servico_composicao'>('produto');
 
   // ── Shared state ──
   const [receitaBruta, setReceitaBruta] = useState('');
@@ -156,6 +163,11 @@ export default function CalculadoraUnificada() {
   const [iaResult, setIaResult] = useState('');
   const [loading, setLoading] = useState(false);
   const [enviarProposta, setEnviarProposta] = useState(false);
+
+  // ── Catálogo / Licitação ──
+  const [licitacaoNumero, setLicitacaoNumero] = useState('');
+  const [licitacaoOrgao, setLicitacaoOrgao] = useState('');
+  const [savingCatalogo, setSavingCatalogo] = useState(false);
 
   if (!regime || !config) {
     return (
@@ -430,6 +442,47 @@ REGRAS:
     toast.success(`${validItens.length} item(ns) enviado(s) para a Proposta Comercial!`);
   };
 
+  const salvarNoCatalogo = async () => {
+    if (!user) { toast.error('Faça login para salvar no catálogo'); return; }
+    const validItens = itens.filter(i => i.descricao.trim() && i.custoUnitario.trim());
+    if (validItens.length === 0) { toast.error('Nenhum item válido para salvar.'); return; }
+    setSavingCatalogo(true);
+    const margem = parseFloat(margemLucro) || 15;
+    const markup = 1 + margem / 100;
+    const freteVal = parseFloat(frete) || 0;
+    const bdiVal = parseFloat(despesasAdmin) || 0;
+    const rows = validItens.map(item => {
+      const custo = parseCurrencyInput(item.custoUnitario);
+      const qtd = parseFloat(item.quantidade) || 1;
+      const precoUnit = custo * markup;
+      return {
+        user_id: user.id,
+        tipo_calculo: calcTab,
+        descricao: item.descricao,
+        quantidade: qtd,
+        unidade: item.unidade,
+        custo_unitario: custo,
+        preco_unitario: Math.round(precoUnit * 100) / 100,
+        preco_total: Math.round(precoUnit * qtd * 100) / 100,
+        margem_lucro: margem,
+        tributos_total: resultado?.totalTributos || 0,
+        frete_percentual: freteVal,
+        bdi_percentual: bdiVal,
+        regime_tributario: regime,
+        licitacao_numero: licitacaoNumero || null,
+        licitacao_orgao: licitacaoOrgao || null,
+      };
+    });
+    const { error } = await supabase.from('catalogo_itens_precificados').insert(rows);
+    if (error) {
+      toast.error('Erro ao salvar no catálogo');
+      console.error(error);
+    } else {
+      toast.success(`${rows.length} item(ns) salvo(s) no catálogo!`);
+    }
+    setSavingCatalogo(false);
+  };
+
   return (
     <div className="space-y-6">
       {/* ── Header ── */}
@@ -438,7 +491,7 @@ REGRAS:
           <div className="flex items-center gap-2">
             <Calculator className="w-5 h-5 text-accent" />
             <h3 className="font-semibold text-sm">
-              Calculadora Tributária & Composição de Custo — {regimeLabel}
+              Calculadoras de Precificação — {regimeLabel}
             </h3>
           </div>
           <div className="flex items-center gap-2">
@@ -456,6 +509,23 @@ REGRAS:
         </div>
         <p className="text-xs text-muted-foreground">{config.description}</p>
 
+        {/* 3 Calculator Tabs */}
+        <div className="mt-4">
+          <Tabs value={calcTab} onValueChange={(v) => setCalcTab(v as any)}>
+            <TabsList className="w-full grid grid-cols-3">
+              <TabsTrigger value="produto" className="gap-1.5 text-xs">
+                <Package className="w-3.5 h-3.5" /> Produtos
+              </TabsTrigger>
+              <TabsTrigger value="servico_simples" className="gap-1.5 text-xs">
+                <Wrench className="w-3.5 h-3.5" /> Serviços Simples
+              </TabsTrigger>
+              <TabsTrigger value="servico_composicao" className="gap-1.5 text-xs">
+                <HardHat className="w-3.5 h-3.5" /> Composição BDI
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
         <div className="flex flex-wrap gap-2 mt-3">
           <Badge className="bg-accent/10 text-accent border-accent/20">
             <Building2 className="w-3 h-3 mr-1" /> {regimeLabel}
@@ -471,6 +541,46 @@ REGRAS:
           {empresaAtiva && (
             <Badge variant="outline" className="text-[10px]">{empresaAtiva.razao_social}</Badge>
           )}
+        </div>
+
+        {/* Calculator type descriptions */}
+        <div className="mt-3 bg-muted/30 rounded-lg p-3">
+          {calcTab === 'produto' && (
+            <p className="text-xs text-muted-foreground">
+              <strong className="text-foreground">Produtos:</strong> Calcule custo, margem, impostos e frete para formação de preço de produtos/mercadorias.
+            </p>
+          )}
+          {calcTab === 'servico_simples' && (
+            <p className="text-xs text-muted-foreground">
+              <strong className="text-foreground">Serviços Simples:</strong> Precificação de serviços sem composição detalhada — ideal para serviços com preço unitário fixo.
+            </p>
+          )}
+          {calcTab === 'servico_composicao' && (
+            <p className="text-xs text-muted-foreground">
+              <strong className="text-foreground">Composição BDI (Lei 14.133/21):</strong> Planilha de composição de custos com BDI e encargos detalhados — ideal para editais que exigem abertura de custos.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* ── Vinculação com Licitação ── */}
+      <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
+        <h4 className="text-sm font-semibold flex items-center gap-2">
+          <FileText className="w-4 h-4 text-accent" />
+          Vincular à Licitação (opcional)
+        </h4>
+        <p className="text-[10px] text-muted-foreground">
+          Vincule os itens precificados a um processo licitatório para facilitar a filtragem no catálogo e na Proposta Comercial.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs">Nº da Licitação</Label>
+            <Input value={licitacaoNumero} onChange={e => setLicitacaoNumero(e.target.value)} placeholder="Ex: PE 001/2026" className="mt-1" />
+          </div>
+          <div>
+            <Label className="text-xs">Órgão</Label>
+            <Input value={licitacaoOrgao} onChange={e => setLicitacaoOrgao(e.target.value)} placeholder="Ex: Prefeitura de Belém" className="mt-1" />
+          </div>
         </div>
       </div>
 
@@ -797,12 +907,16 @@ REGRAS:
         </div>
       )}
 
-      {/* ── Itens para Composição de Custo ── */}
+      {/* ── Itens para Precificação ── */}
       <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-semibold flex items-center gap-2">
             <FileText className="w-4 h-4 text-accent" />
-            Itens para Composição de Custo — Lei 14.133/2021
+            {calcTab === 'servico_composicao'
+              ? 'Itens para Composição de Custo — Lei 14.133/2021'
+              : calcTab === 'servico_simples'
+                ? 'Itens de Serviço'
+                : 'Itens de Produto'}
           </h4>
           <Button variant="outline" size="sm" onClick={addItemRow}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Item
@@ -843,8 +957,8 @@ REGRAS:
         ))}
       </div>
 
-      {/* ── Integração Proposta ── */}
-      <div className="bg-card rounded-xl border border-border/50 p-5">
+      {/* ── Integração Proposta & Catálogo ── */}
+      <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Switch checked={enviarProposta} onCheckedChange={setEnviarProposta} />
@@ -859,13 +973,32 @@ REGRAS:
             </Button>
           )}
         </div>
+
+        <div className="border-t border-border/30 pt-3">
+          <Button variant="outline" size="sm" onClick={salvarNoCatalogo} disabled={savingCatalogo} className="w-full">
+            {savingCatalogo ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+            Salvar no Catálogo de Itens Precificados
+          </Button>
+          <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
+            Itens salvos ficam disponíveis na aba Catálogo e podem ser importados em qualquer Proposta Comercial.
+          </p>
+        </div>
       </div>
 
-      {/* ── Gerar Composição ── */}
-      <Button onClick={gerarComposicao} disabled={loading} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12" size="lg">
-        {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Sparkles className="w-5 h-5 mr-2" />}
-        Gerar Composição de Custo com IA Contábil
-      </Button>
+      {/* ── Gerar Composição (only for composição tab) ── */}
+      {calcTab === 'servico_composicao' && (
+        <Button onClick={gerarComposicao} disabled={loading} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12" size="lg">
+          {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Sparkles className="w-5 h-5 mr-2" />}
+          Gerar Composição de Custo com IA Contábil
+        </Button>
+      )}
+
+      {calcTab !== 'servico_composicao' && (
+        <Button onClick={calcular} disabled={!receitaBruta} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12" size="lg">
+          <Calculator className="w-5 h-5 mr-2" />
+          {calcTab === 'produto' ? 'Calcular Preço do Produto' : 'Calcular Preço do Serviço'}
+        </Button>
+      )}
 
       {/* ── Resultado IA ── */}
       {iaResult && <ComposicaoResultado iaResult={iaResult} regimeLabel={regimeLabel} ufCalculo={ufCalculo} ufNome={ufInfo?.nome || ''} />}

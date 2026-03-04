@@ -19,6 +19,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { toast } from 'sonner';
+import { valorPorExtenso } from '@/lib/numero-extenso';
 import EditalUploader, { type ExtractedEditalData, type EditalItem } from '@/components/proposta/EditalUploader';
 import PlanilhaPrecos from '@/components/proposta/PlanilhaPrecos';
 import TimbradoUploader from '@/components/proposta/TimbradoUploader';
@@ -27,6 +28,7 @@ import PropostaDownload from '@/components/proposta/PropostaDownload';
 import PropostaRenderer from '@/components/proposta/PropostaRenderer';
 import DadosEmpresaUploader, { type ExtractedEmpresaData } from '@/components/proposta/DadosEmpresaUploader';
 import BancoSelector from '@/components/proposta/BancoSelector';
+import ImportarDoCatalogo from '@/components/proposta/ImportarDoCatalogo';
 
 const STEPS = [
   { id: 1, label: 'Edital', icon: FileText, desc: 'Upload e extração IA' },
@@ -631,8 +633,35 @@ export default function PropostaTecnica() {
               </div>
               <p className="text-sm text-muted-foreground">
                 11 colunas: Item, Descrição, Qtd, Unid, Marca, Fabricante, Modelo, Vlr Unit., Vlr Unit. Extenso, Vlr Total, Vlr Total Extenso.
-                Importe do Excel ou preencha manualmente.
+                Importe do Excel, do catálogo de precificação ou preencha manualmente.
               </p>
+
+              {/* Import from Catálogo */}
+              <ImportarDoCatalogo
+                onImport={(catalogItems) => {
+                  setItens(prev => {
+                    const hasEmpty = prev.length === 1 && !prev[0].descricao.trim();
+                    const base = hasEmpty ? [] : prev;
+                    const newItens = catalogItems.map((ci, idx) => ({
+                      item: String(base.length + idx + 1),
+                      descricao: ci.descricao,
+                      quantidade: String(ci.quantidade),
+                      unidade: ci.unidade,
+                      marca: ci.marca || '',
+                      fabricante: ci.fabricante || '',
+                      modelo: ci.modelo || '',
+                      valorUnitario: ci.preco_unitario.toFixed(2).replace('.', ','),
+                      valorUnitarioExtenso: valorPorExtenso(ci.preco_unitario),
+                      valorTotal: ci.preco_total.toFixed(2).replace('.', ','),
+                      valorTotalExtenso: valorPorExtenso(ci.preco_total),
+                    }));
+                    return [...base, ...newItens];
+                  });
+                  toast.success(`${catalogItems.length} item(ns) importado(s) do catálogo!`);
+                }}
+                licitacaoNumero={numeroLicitacao}
+              />
+
               <PlanilhaPrecos itens={itens} setItens={setItens} />
             </div>
           )}
