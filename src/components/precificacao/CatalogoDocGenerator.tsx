@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   FileText, BookOpen, Layout, Loader2, Download, Sparkles,
   Package, Image as ImageIcon, ClipboardList, RefreshCw, Palette,
-  Eye, ChevronLeft, ChevronRight, Settings2
+  Eye, ChevronLeft, ChevronRight, Settings2, Factory
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
@@ -60,6 +60,16 @@ const COLOR_THEMES: Record<ColorTheme, { label: string; primary: string; seconda
   bold: { label: 'Impactante', primary: '#742a2a', secondary: '#9b2c2c', accent: '#e53e3e', bg: '#fff5f5' },
 };
 
+// ─── Admin-managed manufacturer sources type ───
+interface FonteFabricante {
+  id: string;
+  nome: string;
+  url_base: string;
+  categoria: string;
+  palavras_chave: string[];
+  prioridade: number;
+}
+
 export default function CatalogoDocGenerator({ open, onOpenChange, items }: CatalogoDocGeneratorProps) {
   const [docType, setDocType] = useState<DocType>('catalogo');
   const [colorTheme, setColorTheme] = useState<ColorTheme>('corporate');
@@ -71,6 +81,21 @@ export default function CatalogoDocGenerator({ open, onOpenChange, items }: Cata
   const [docSubtitle, setDocSubtitle] = useState('');
   const [progressText, setProgressText] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
+  const [fontesFabricantes, setFontesFabricantes] = useState<FonteFabricante[]>([]);
+
+  // Load admin-managed manufacturer sources
+  useEffect(() => {
+    if (open) {
+      supabase
+        .from('fontes_fabricantes')
+        .select('id, nome, url_base, categoria, palavras_chave, prioridade')
+        .eq('ativo', true)
+        .order('prioridade', { ascending: false })
+        .then(({ data }) => {
+          setFontesFabricantes((data || []) as unknown as FonteFabricante[]);
+        });
+    }
+  }, [open]);
 
   const resetState = () => {
     setSpecs([]);
@@ -100,10 +125,18 @@ export default function CatalogoDocGenerator({ open, onOpenChange, items }: Cata
     return hasImageExt || hasImagePath || lower.includes('cdn');
   };
 
-  // ─── Spec Search (Enhanced with manufacturer site + real images) ───
+  // ─── Spec Search (Enhanced with admin sources + manufacturer site + real images) ───
   const searchProductSpecs = useCallback(async (item: CatalogoItem): Promise<ProductSpec> => {
     const searchTerm = [item.descricao, item.marca, item.modelo].filter(Boolean).join(' ').substring(0, 150);
     const brandTerm = item.marca || item.fabricante || '';
+    const descLower = item.descricao.toLowerCase();
+
+    // Find matching admin-managed sources by brand name or keywords
+    const matchedSources = fontesFabricantes.filter(f => {
+      const nameMatch = brandTerm && f.nome.toLowerCase().includes(brandTerm.toLowerCase());
+      const kwMatch = (f.palavras_chave || []).some(kw => descLower.includes(kw.toLowerCase()));
+      return nameMatch || kwMatch;
+    }).sort((a, b) => b.prioridade - a.prioridade);
 
     try {
       // === SEARCH 1: Technical specs from general sources ===
@@ -114,15 +147,30 @@ export default function CatalogoDocGenerator({ open, onOpenChange, items }: Cata
         },
       });
 
-      // === SEARCH 2: Manufacturer site for authentic images ===
-      const manufacturerSearchPromise = brandTerm
-        ? supabase.functions.invoke('firecrawl-search', {
-            body: {
-              query: `site:${brandTerm.toLowerCase().replace(/\s+/g, '')}.com.br OR site:${brandTerm.toLowerCase().replace(/\s+/g, '')}.com "${item.descricao}" produto`,
-              options: { limit: 2, lang: 'pt-br', country: 'BR', scrapeOptions: { formats: ['markdown', 'links'] } },
-            },
-          })
-        : Promise.resolve({ data: null, error: null });
+      // === SEARCH 2: Admin-managed manufacturer sources (priority) OR brand fallback ===
+      let manufacturerSearchPromise: Promise<any>;
+      if (matchedSources.length > 0) {
+        // Use admin-configured sources — search directly on their domains
+        const siteQueries = matchedSources.slice(0, 3).map(s => {
+          const domain = s.url_base.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+          return `site:${domain}`;
+        }).join(' OR ');
+        manufacturerSearchPromise = supabase.functions.invoke('firecrawl-search', {
+          body: {
+            query: `(${siteQueries}) "${item.descricao}" produto`,
+            options: { limit: 3, lang: 'pt-br', country: 'BR', scrapeOptions: { formats: ['markdown', 'links'] } },
+          },
+        });
+      } else if (brandTerm) {
+        manufacturerSearchPromise = supabase.functions.invoke('firecrawl-search', {
+          body: {
+            query: `site:${brandTerm.toLowerCase().replace(/\s+/g, '')}.com.br OR site:${brandTerm.toLowerCase().replace(/\s+/g, '')}.com "${item.descricao}" produto`,
+            options: { limit: 2, lang: 'pt-br', country: 'BR', scrapeOptions: { formats: ['markdown', 'links'] } },
+          },
+        });
+      } else {
+        manufacturerSearchPromise = Promise.resolve({ data: null, error: null });
+      }
 
       // === SEARCH 3: Product images from marketplaces ===
       const imageSearchPromise = supabase.functions.invoke('firecrawl-search', {
@@ -261,9 +309,13 @@ Responda APENAS em JSON válido, sem markdown:
       const finalImages = [...new Set([...aiImages, ...collectedImages])].slice(0, 6);
       parsed.imagens = finalImages;
 
-      // Ensure manufacturer URL
-      if (!parsed.site_fabricante && manufacturerUrl) {
-        parsed.site_fabricante = manufacturerUrl;
+      // Ensure manufacturer URL from admin sources or scraped data
+      if (!parsed.site_fabricante) {
+        if (matchedSources.length > 0) {
+          parsed.site_fabricante = matchedSources[0].url_base;
+        } else if (manufacturerUrl) {
+          parsed.site_fabricante = manufacturerUrl;
+        }
       }
 
       return parsed;
@@ -279,7 +331,7 @@ Responda APENAS em JSON válido, sem markdown:
         categoria: 'Geral',
       };
     }
-  }, []);
+  }, [fontesFabricantes]);
 
   // ─── Generate ───
   const handleGenerate = async () => {
@@ -791,6 +843,25 @@ Responda APENAS em JSON válido, sem markdown:
                     {items.length > 8 && <Badge variant="secondary" className="text-[9px]">+{items.length - 8} mais</Badge>}
                   </div>
                 </div>
+
+                {/* Admin sources indicator */}
+                {fontesFabricantes.length > 0 && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-xs space-y-1">
+                    <p className="font-semibold text-foreground flex items-center gap-1.5">
+                      <Factory className="w-3.5 h-3.5 text-primary" />
+                      {fontesFabricantes.length} fonte(s) de fabricantes configuradas
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {fontesFabricantes.slice(0, 10).map(f => (
+                        <Badge key={f.id} variant="outline" className="text-[8px]">{f.nome}</Badge>
+                      ))}
+                      {fontesFabricantes.length > 10 && (
+                        <Badge variant="secondary" className="text-[8px]">+{fontesFabricantes.length - 10}</Badge>
+                      )}
+                    </div>
+                    <p className="text-muted-foreground">A IA priorizará buscas nos sites oficiais destes fabricantes.</p>
+                  </div>
+                )}
 
                 <div className="flex justify-end">
                   <Button onClick={() => setStep('customize')} disabled={items.length === 0}>

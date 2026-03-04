@@ -1125,6 +1125,48 @@ export type Database = {
         }
         Relationships: []
       }
+      fontes_fabricantes: {
+        Row: {
+          ativo: boolean
+          categoria: string
+          created_at: string
+          created_by: string
+          descricao: string | null
+          id: string
+          nome: string
+          palavras_chave: string[] | null
+          prioridade: number
+          updated_at: string
+          url_base: string
+        }
+        Insert: {
+          ativo?: boolean
+          categoria?: string
+          created_at?: string
+          created_by: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          palavras_chave?: string[] | null
+          prioridade?: number
+          updated_at?: string
+          url_base: string
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string
+          created_at?: string
+          created_by?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          palavras_chave?: string[] | null
+          prioridade?: number
+          updated_at?: string
+          url_base?: string
+        }
+        Relationships: []
+      }
       kanban_tasks: {
         Row: {
           created_at: string
