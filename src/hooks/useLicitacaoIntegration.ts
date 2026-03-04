@@ -53,7 +53,7 @@ export function useLicitacaoIntegration() {
           orgao: edital.orgao,
           objeto: edital.objeto,
           modalidade: edital.modalidade || 'Pregão Eletrônico',
-          status: 'monitorando',
+          status: edital.status || 'Monitorando',
           valor_estimado: edital.valor_estimado,
           uf: edital.uf,
           municipio: edital.municipio,
