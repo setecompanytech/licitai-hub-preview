@@ -79,7 +79,7 @@ const navGroups: NavGroup[] = [
       { icon: TrendingUp, label: 'Análise de Mercado', path: '/analise-mercado' },
       { icon: Users, label: 'Concorrentes', path: '/concorrentes' },
       { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
-      { icon: Search, label: 'Proposta Técnica', path: '/proposta-tecnica' },
+      { icon: Search, label: 'Proposta Comercial', path: '/proposta-tecnica' },
     ],
   },
   {

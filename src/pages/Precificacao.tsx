@@ -1198,7 +1198,7 @@ Responda APENAS em JSON, sem markdown:
               <span><strong>{pendingItems.length}</strong> {pendingItems.length === 1 ? 'item adicionado' : 'itens adicionados'} à proposta</span>
             </div>
             <Button size="sm" onClick={() => navigate('/proposta-tecnica')} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-              <FileText className="w-4 h-4 mr-1" /> Ir para Proposta Técnica
+              <FileText className="w-4 h-4 mr-1" /> Ir para Proposta Comercial
             </Button>
           </div>
         )}
