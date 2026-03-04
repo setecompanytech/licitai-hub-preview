@@ -8,12 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   FileText, Sparkles, Loader2, Copy, CheckCircle, Settings2,
   ChevronRight, ChevronLeft, Building2, User, Receipt, Scale,
   ShieldCheck, Stamp, Send, Calendar, MapPin, Clock, CreditCard,
-  FileSignature, Upload as UploadIcon, Eye
+  FileSignature, Upload as UploadIcon, Eye, AlertCircle, Banknote
 } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -30,7 +29,7 @@ import DadosEmpresaUploader, { type ExtractedEmpresaData } from '@/components/pr
 import BancoSelector from '@/components/proposta/BancoSelector';
 
 const STEPS = [
-  { id: 1, label: 'Edital', icon: FileText, desc: 'Upload e extração' },
+  { id: 1, label: 'Edital', icon: FileText, desc: 'Upload e extração IA' },
   { id: 2, label: 'Empresa', icon: Building2, desc: 'Dados cadastrais' },
   { id: 3, label: 'Representante', icon: User, desc: 'Dados pessoais' },
   { id: 4, label: 'Licitação', icon: Receipt, desc: 'Dados do processo' },
@@ -157,6 +156,8 @@ export default function PropostaTecnica() {
     if (data.objeto) setObjeto(data.objeto);
     if (data.valorEstimado) setValorEstimado(data.valorEstimado);
     if (data.prazoValidade) setPrazoValidade(data.prazoValidade);
+    if (data.prazoPagamento) setPrazoPagamento(data.prazoPagamento);
+    if (data.prazoEntrega) setPrazoEntrega(data.prazoEntrega);
     if (data.localEntrega) setLocalEntrega(data.localEntrega);
     if (data.liquidacaoNfe) setLiquidacaoNfe(data.liquidacaoNfe);
     if (data.itens && data.itens.length > 0) setItens(data.itens);
@@ -240,7 +241,6 @@ export default function PropostaTecnica() {
       parts.push(`\nValor Global: R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
     }
 
-    // Declarações ativas
     const declAtivas = DECLARACOES_PADRAO.filter(d => declaracoes[d.key]);
     if (declAtivas.length > 0) {
       parts.push(`\n## Declarações Obrigatórias (INCLUA TODAS NO DOCUMENTO)`);
@@ -293,31 +293,32 @@ export default function PropostaTecnica() {
     if (repNome && repCpf) done.add(3);
     if (orgao && objeto) done.add(4);
     if (itens.some(i => i.descricao.trim())) done.add(5);
-    done.add(6); // declarations have defaults
-    done.add(7); // formatting has defaults
+    done.add(6);
+    done.add(7);
     return done;
   };
   const completed = completedSteps();
+
+  const totalItens = itens.filter(i => i.descricao.trim()).length;
+  const valorGlobal = itens.reduce((s, i) => s + (parseFloat(i.valorTotal.replace(',', '.')) || 0), 0);
 
   return (
     <AppLayout>
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-start justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <FileText className="w-6 h-6 text-accent" />
-              Proposta Comercial
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Montagem assistida por IA · Modelo conforme Lei 14.133/2021 e ABNT NBR 14724
-            </p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <FileText className="w-6 h-6 text-accent" />
+            Proposta Comercial
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Montagem assistida por IA · Modelo conforme Lei 14.133/2021 e ABNT NBR 14724
+          </p>
         </div>
 
         {/* Stepper */}
-        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-4">
-          <div className="flex items-center gap-1 overflow-x-auto pb-1">
+        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-3">
+          <div className="flex items-center gap-0.5 overflow-x-auto pb-1">
             {STEPS.map((step, idx) => {
               const Icon = step.icon;
               const isActive = currentStep === step.id;
@@ -326,24 +327,24 @@ export default function PropostaTecnica() {
                 <button
                   key={step.id}
                   onClick={() => setCurrentStep(step.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all shrink-0 ${
+                  className={`group flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-all shrink-0 ${
                     isActive
-                      ? 'bg-accent text-accent-foreground shadow-sm'
+                      ? 'bg-accent text-accent-foreground shadow-md'
                       : isDone
                         ? 'bg-accent/10 text-accent hover:bg-accent/20'
                         : 'text-muted-foreground hover:bg-muted/50'
                   }`}
                 >
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
                     isActive ? 'bg-accent-foreground/20' : isDone ? 'bg-accent/20' : 'bg-muted'
                   }`}>
-                    {isDone && !isActive ? <CheckCircle className="w-3.5 h-3.5" /> : step.id}
+                    {isDone && !isActive ? <CheckCircle className="w-4 h-4" /> : <Icon className="w-3.5 h-3.5" />}
                   </div>
-                  <div className="text-left hidden sm:block">
-                    <div>{step.label}</div>
-                    <div className="text-[10px] opacity-70">{step.desc}</div>
+                  <div className="text-left hidden md:block">
+                    <div className="leading-tight">{step.label}</div>
+                    <div className="text-[9px] opacity-60 leading-tight">{step.desc}</div>
                   </div>
-                  {idx < STEPS.length - 1 && <ChevronRight className="w-3 h-3 ml-1 opacity-30" />}
+                  {idx < STEPS.length - 1 && <ChevronRight className="w-3 h-3 ml-0.5 opacity-20" />}
                 </button>
               );
             })}
@@ -354,20 +355,38 @@ export default function PropostaTecnica() {
         <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6">
           {/* Step 1: Edital Upload */}
           {currentStep === 1 && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="space-y-5">
+              <div className="flex items-center gap-2 mb-1">
                 <FileText className="w-5 h-5 text-accent" />
                 <h2 className="font-semibold text-lg">Upload do Edital</h2>
               </div>
               <p className="text-sm text-muted-foreground">
                 Envie o edital (PDF, DOC, DOCX ou TXT) para que a IA extraia automaticamente: órgão gerenciador, número do processo,
-                objeto, planilha de itens com quantidades, prazos de validade, pagamento e local de entrega.
+                objeto, planilha de itens com quantidades e preços, prazos de validade, pagamento, entrega e local de entrega.
               </p>
               <EditalUploader onExtracted={handleEditalExtracted} isExtracting={isExtracting} setIsExtracting={setIsExtracting} />
-              {editalRawText && (
-                <Badge className="bg-accent/10 text-accent border-accent/30">
-                  <CheckCircle className="w-3 h-3 mr-1" /> Edital processado com sucesso
-                </Badge>
+
+              {/* Quick summary of extracted data */}
+              {(editalRawText || numeroLicitacao) && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+                  {[
+                    { label: 'Órgão', value: orgao, icon: Building2 },
+                    { label: 'Licitação', value: numeroLicitacao, icon: FileText },
+                    { label: 'Itens', value: `${totalItens} encontrado(s)`, icon: CreditCard },
+                    { label: 'Modalidade', value: modalidade, icon: Receipt },
+                  ].map((s, i) => {
+                    const Icon = s.icon;
+                    return (
+                      <div key={i} className="bg-accent/5 rounded-lg p-3 border border-accent/10">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Icon className="w-3.5 h-3.5 text-accent" />
+                          <span className="text-[10px] text-muted-foreground font-medium">{s.label}</span>
+                        </div>
+                        <p className="text-xs font-semibold text-foreground truncate">{s.value || '—'}</p>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}
@@ -375,12 +394,12 @@ export default function PropostaTecnica() {
           {/* Step 2: Empresa */}
           {currentStep === 2 && (
             <div className="space-y-5">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-1">
                 <Building2 className="w-5 h-5 text-accent" />
                 <h2 className="font-semibold text-lg">Dados da Empresa Licitante</h2>
               </div>
 
-              {empresaAtiva && (
+              {empresaAtiva ? (
                 <div className="bg-accent/5 rounded-lg p-4 text-sm border border-accent/20">
                   <p className="font-semibold text-foreground mb-1">{empresaAtiva.razao_social}</p>
                   <p className="text-muted-foreground">
@@ -389,6 +408,16 @@ export default function PropostaTecnica() {
                     {empresaAtiva.uf && `/${empresaAtiva.uf}`}
                     {empresaAtiva.regime_tributario && ` · ${empresaAtiva.regime_tributario}`}
                   </p>
+                  {empresaAtiva.endereco && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      <MapPin className="w-3 h-3 inline mr-1" />{empresaAtiva.endereco}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                  <p className="text-xs text-destructive">Nenhuma empresa ativa selecionada. Selecione uma empresa no menu superior.</p>
                 </div>
               )}
 
@@ -415,7 +444,7 @@ export default function PropostaTecnica() {
 
               <div className="border-t border-border/50 pt-4">
                 <p className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-accent" /> Dados Bancários
+                  <Banknote className="w-4 h-4 text-accent" /> Dados Bancários
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="space-y-2">
@@ -452,7 +481,7 @@ export default function PropostaTecnica() {
           {/* Step 3: Representante Legal */}
           {currentStep === 3 && (
             <div className="space-y-5">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-1">
                 <User className="w-5 h-5 text-accent" />
                 <h2 className="font-semibold text-lg">Representante Legal</h2>
               </div>
@@ -513,10 +542,18 @@ export default function PropostaTecnica() {
           {/* Step 4: Dados da Licitação */}
           {currentStep === 4 && (
             <div className="space-y-5">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-1">
                 <Receipt className="w-5 h-5 text-accent" />
                 <h2 className="font-semibold text-lg">Dados da Licitação</h2>
               </div>
+
+              {editalRawText && (
+                <div className="flex items-center gap-2 p-2.5 bg-accent/5 border border-accent/15 rounded-lg text-xs text-accent">
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  Campos pré-preenchidos pela extração do edital. Revise e ajuste conforme necessário.
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Número da Licitação *</Label>
@@ -555,19 +592,19 @@ export default function PropostaTecnica() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> Validade da Proposta Comercial</Label>
+                  <Label className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-accent" /> Validade da Proposta Comercial</Label>
                   <Input value={prazoValidade} onChange={e => setPrazoValidade(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Prazo de Pagamento</Label>
+                  <Label className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-accent" /> Prazo de Pagamento</Label>
                   <Input placeholder="Até 30 dias após recebimento definitivo" value={prazoPagamento} onChange={e => setPrazoPagamento(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Prazo de Entrega</Label>
+                  <Label className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-accent" /> Prazo de Entrega</Label>
                   <Input placeholder="Até X dias úteis/corridos após emissão da OF" value={prazoEntrega} onChange={e => setPrazoEntrega(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> Local de Entrega</Label>
+                  <Label className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-accent" /> Local de Entrega</Label>
                   <Input value={localEntrega} onChange={e => setLocalEntrega(e.target.value)} />
                 </div>
                 <div className="space-y-2 md:col-span-2">
@@ -581,12 +618,19 @@ export default function PropostaTecnica() {
           {/* Step 5: Planilha de Preços */}
           {currentStep === 5 && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <CreditCard className="w-5 h-5 text-accent" />
-                <h2 className="font-semibold text-lg">Planilha de Preços</h2>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-accent" />
+                  <h2 className="font-semibold text-lg">Planilha de Preços</h2>
+                </div>
+                {totalItens > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    {totalItens} item(ns) · R$ {valorGlobal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </Badge>
+                )}
               </div>
               <p className="text-sm text-muted-foreground">
-                11 colunas obrigatórias: Item, Descrição, Qtd, Unid, Marca, Fabricante, Modelo, Vlr Unit., Vlr Unit. Extenso, Vlr Total, Vlr Total Extenso.
+                11 colunas: Item, Descrição, Qtd, Unid, Marca, Fabricante, Modelo, Vlr Unit., Vlr Unit. Extenso, Vlr Total, Vlr Total Extenso.
                 Importe do Excel ou preencha manualmente.
               </p>
               <PlanilhaPrecos itens={itens} setItens={setItens} />
@@ -596,18 +640,22 @@ export default function PropostaTecnica() {
           {/* Step 6: Declarações */}
           {currentStep === 6 && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-1">
                 <Scale className="w-5 h-5 text-accent" />
                 <h2 className="font-semibold text-lg">Declarações Obrigatórias</h2>
               </div>
               <p className="text-sm text-muted-foreground">
                 Selecione as declarações que devem constar na proposta conforme exigências do edital e legislação vigente.
               </p>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {DECLARACOES_PADRAO.map(decl => (
                   <label
                     key={decl.key}
-                    className="flex items-start gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/30 cursor-pointer transition-colors"
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                      declaracoes[decl.key]
+                        ? 'border-accent/30 bg-accent/5'
+                        : 'border-border/50 hover:bg-muted/30'
+                    }`}
                   >
                     <Checkbox
                       checked={declaracoes[decl.key]}
@@ -647,7 +695,7 @@ export default function PropostaTecnica() {
           {/* Step 7: Formatação e Marca d'Água */}
           {currentStep === 7 && (
             <div className="space-y-6">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-1">
                 <Settings2 className="w-5 h-5 text-accent" />
                 <h2 className="font-semibold text-lg">Formatação e Marca d'Água</h2>
               </div>
@@ -698,7 +746,9 @@ export default function PropostaTecnica() {
               <div className="border-t border-border/50 pt-4 space-y-4">
                 <p className="font-medium text-sm flex items-center gap-2"><Stamp className="w-4 h-4 text-accent" /> Timbrado e Marca d'Água</p>
                 <TimbradoUploader empresaId={empresaAtiva?.id} timbradoUrl={timbradoUrl} setTimbradoUrl={setTimbradoUrl} />
-                <label className="flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/30 cursor-pointer">
+                <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                  usarMarcaDagua ? 'border-accent/30 bg-accent/5' : 'border-border/50 hover:bg-muted/30'
+                }`}>
                   <Checkbox checked={usarMarcaDagua} onCheckedChange={(v) => setUsarMarcaDagua(!!v)} />
                   <div>
                     <p className="text-sm font-medium">Aplicar logomarca como marca d'água</p>
@@ -720,24 +770,24 @@ export default function PropostaTecnica() {
 
           {/* Step 8: Gerar */}
           {currentStep === 8 && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="space-y-5">
+              <div className="flex items-center gap-2 mb-1">
                 <Sparkles className="w-5 h-5 text-accent" />
                 <h2 className="font-semibold text-lg">Gerar Proposta Final</h2>
               </div>
 
-              {/* Summary */}
+              {/* Summary cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
-                  { label: 'Órgão', value: orgao || '—', icon: Building2 },
-                  { label: 'Licitação', value: numeroLicitacao || '—', icon: FileText },
-                  { label: 'Itens', value: `${itens.filter(i => i.descricao.trim()).length} item(ns)`, icon: CreditCard },
-                  { label: 'Declarações', value: `${Object.values(declaracoes).filter(Boolean).length + declaracoesCustom.length}`, icon: Scale },
+                  { label: 'Órgão', value: orgao || '—', icon: Building2, color: 'text-accent' },
+                  { label: 'Licitação', value: numeroLicitacao || '—', icon: FileText, color: 'text-accent' },
+                  { label: 'Itens', value: `${totalItens} · R$ ${valorGlobal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: CreditCard, color: 'text-accent' },
+                  { label: 'Declarações', value: `${Object.values(declaracoes).filter(Boolean).length + declaracoesCustom.length} ativa(s)`, icon: Scale, color: 'text-accent' },
                 ].map((s, i) => {
                   const Icon = s.icon;
                   return (
-                    <div key={i} className="bg-muted/30 rounded-lg p-3 text-center">
-                      <Icon className="w-4 h-4 mx-auto mb-1 text-accent" />
+                    <div key={i} className="bg-muted/30 rounded-lg p-3 text-center border border-border/30">
+                      <Icon className={`w-4 h-4 mx-auto mb-1 ${s.color}`} />
                       <p className="text-[10px] text-muted-foreground">{s.label}</p>
                       <p className="text-xs font-semibold truncate">{s.value}</p>
                     </div>
@@ -745,9 +795,21 @@ export default function PropostaTecnica() {
                 })}
               </div>
 
+              {/* Validation warnings */}
+              {(!orgao || !objeto) && (
+                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm">
+                  <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                  <p className="text-xs text-destructive">
+                    {!orgao && 'Órgão gerenciador não informado. '}
+                    {!objeto && 'Objeto da licitação não informado. '}
+                    Preencha na etapa 4.
+                  </p>
+                </div>
+              )}
+
               <Button
                 onClick={handleGenerate}
-                disabled={isLoading || isExtracting}
+                disabled={isLoading || isExtracting || !orgao || !objeto}
                 className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold py-3"
                 size="lg"
               >
@@ -762,11 +824,21 @@ export default function PropostaTecnica() {
 
           {/* Navigation */}
           <div className="flex items-center justify-between pt-6 mt-6 border-t border-border/50">
-            <Button variant="outline" onClick={prevStep} disabled={currentStep === 1}>
+            <Button variant="outline" onClick={prevStep} disabled={currentStep === 1} size="sm">
               <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
             </Button>
-            <span className="text-xs text-muted-foreground">Etapa {currentStep} de {STEPS.length}</span>
-            <Button onClick={nextStep} disabled={currentStep === STEPS.length}>
+            <div className="flex items-center gap-1.5">
+              {STEPS.map(step => (
+                <button
+                  key={step.id}
+                  onClick={() => setCurrentStep(step.id)}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    currentStep === step.id ? 'bg-accent w-4' : completed.has(step.id) ? 'bg-accent/40' : 'bg-muted-foreground/20'
+                  }`}
+                />
+              ))}
+            </div>
+            <Button onClick={nextStep} disabled={currentStep === STEPS.length} size="sm">
               Próximo <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
@@ -824,7 +896,7 @@ export default function PropostaTecnica() {
 
             <div
               className="bg-white dark:bg-card rounded-lg p-8 shadow-inner border border-border/30 relative overflow-hidden"
-              style={{ fontFamily: "'Times New Roman', Times, serif" }}
+              style={{ fontFamily: `'${fontFamily}', Times, serif` }}
             >
               {/* Marca d'água */}
               {usarMarcaDagua && timbradoUrl && (
