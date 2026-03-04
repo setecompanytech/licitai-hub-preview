@@ -90,22 +90,28 @@ export default function EditEmpresaDialog({ empresa, open, onOpenChange, onSucce
       setUf(data.uf || uf);
       setMunicipio(data.municipio || municipio);
       setEndereco(data.endereco || endereco);
-      setComplemento(data.complemento || complemento);
-      setBairro(data.bairro || bairro);
+      setComplemento(data.complemento || '');
+      setBairro(data.bairro || '');
       setCep(data.cep || cep);
       setTelefone(data.telefone || telefone);
-      setEmail(data.email || email);
+      if (data.email && data.email.trim()) setEmail(data.email.trim());
+      if (data.inscricaoEstadual) setInscricaoEstadual(data.inscricaoEstadual);
       if (data.simples) setRegimeTributario('simples_nacional');
-      toast.success('Dados atualizados via Receita Federal!');
+      
+      const sources = ['Receita Federal'];
+      if (data.inscricaoEstadual) sources.push('SINTEGRA');
+      if (data.email) sources.push('E-mail');
+      toast.success(`Dados reais obtidos via ${sources.join(' + ')}!`);
 
-      // SINTEGRA for IE
-      if (data.uf) {
+      // If IE wasn't found in main query, try standalone SINTEGRA
+      if (!data.inscricaoEstadual && data.uf) {
         try {
           const { data: sintegra } = await supabase.functions.invoke('consulta-sintegra', {
             body: { cnpj: cnpjLimpo, uf: data.uf },
           });
           if (sintegra?.inscricaoEstadual) {
             setInscricaoEstadual(sintegra.inscricaoEstadual);
+            toast.success('Inscrição Estadual obtida via SINTEGRA!');
           }
         } catch { /* silent */ }
       }

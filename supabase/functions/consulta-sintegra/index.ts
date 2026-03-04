@@ -18,72 +18,101 @@ serve(async (req) => {
     }
 
     const cnpjLimpo = cnpj.replace(/\D/g, "");
-
-    // Try BrasilAPI CNPJ endpoint to get company data
-    const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`);
-    
-    if (!response.ok) {
-      return new Response(JSON.stringify({ error: "Erro ao consultar dados. Verifique o CNPJ informado." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const data = await response.json();
-
-    // Try to get real IE from ReceitaWS as fallback
+    const ufUpper = uf.toUpperCase();
     let inscricaoEstadual = "";
-    
+    let statusIE = "";
+    let fonte = "";
+
+    // ── Source 1: CNPJA Open API (Cadastro de Contribuintes) ──
     try {
-      const receitaResp = await fetch(`https://receitaws.com.br/v1/cnpj/${cnpjLimpo}`, {
-        headers: { "Accept": "application/json" }
+      const cnpjaResp = await fetch(`https://open.cnpja.com/office/${cnpjLimpo}`, {
+        headers: { "Accept": "application/json" },
       });
-      if (receitaResp.ok) {
-        const receitaData = await receitaResp.json();
-        // ReceitaWS doesn't directly provide IE, but some alternative APIs do
-        // Check if there's an inscricao_estadual field
-        if (receitaData.inscricao_estadual) {
-          inscricaoEstadual = receitaData.inscricao_estadual;
+      if (cnpjaResp.ok) {
+        const cnpjaData = await cnpjaResp.json();
+        console.log("CNPJA response keys:", Object.keys(cnpjaData));
+        
+        if (cnpjaData.registrations?.length > 0) {
+          console.log("CNPJA registrations found:", JSON.stringify(cnpjaData.registrations));
+          const stateReg = cnpjaData.registrations.find(
+            (r: any) => (r.state || "").toUpperCase() === ufUpper
+          );
+          if (stateReg) {
+            inscricaoEstadual = stateReg.number || "";
+            statusIE = stateReg.enabled ? "ATIVA" : "INATIVA";
+            fonte = "CNPJA/Cadastro Contribuintes";
+          } else {
+            const anyActive = cnpjaData.registrations.find((r: any) => r.enabled !== false);
+            if (anyActive?.number) {
+              inscricaoEstadual = anyActive.number;
+              statusIE = "ATIVA";
+              fonte = "CNPJA/Cadastro Contribuintes";
+            }
+          }
+        } else {
+          console.log("CNPJA: no registrations array or empty");
         }
+      } else {
+        const body = await cnpjaResp.text();
+        console.log("CNPJA error:", cnpjaResp.status, body);
       }
-    } catch {
-      // Silent fallback
+    } catch (e) {
+      console.error("CNPJA API error:", e);
     }
 
-    // If still no IE, try CasadosDados API
+    // ── Source 2: Speedio Public API ──
     if (!inscricaoEstadual) {
       try {
-        const casaResp = await fetch(`https://api.casadosdados.com.br/v2/public/cnpj/search`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: { termo: [cnpjLimpo] } }),
-        });
-        if (casaResp.ok) {
-          const casaData = await casaResp.json();
-          if (casaData?.data?.cnpj?.[0]?.inscricao_estadual) {
-            inscricaoEstadual = casaData.data.cnpj[0].inscricao_estadual;
+        const speedioResp = await fetch(`https://api-publica.speedio.com.br/buscarcnpj?cnpj=${cnpjLimpo}`);
+        if (speedioResp.ok) {
+          const speedioData = await speedioResp.json();
+          const ie = speedioData["INSCRICAO ESTADUAL"] || speedioData.inscricao_estadual || "";
+          console.log("Speedio IE:", ie);
+          
+          if (ie && ie !== "ISENTO" && ie !== "0" && ie !== "*" && ie.length > 3) {
+            inscricaoEstadual = ie;
+            statusIE = speedioData["STATUS"] || "ENCONTRADA";
+            fonte = "Speedio/Receita Federal";
           }
+        } else {
+          await speedioResp.text();
         }
-      } catch {
-        // Silent fallback
+      } catch (e) {
+        console.log("Speedio error:", e);
       }
     }
+
+    // ── Fallback: BrasilAPI for company name ──
+    let razaoSocial = "";
+    let nomeFantasia = "";
+    let municipio = "";
+    try {
+      const brasilResp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`);
+      if (brasilResp.ok) {
+        const brasilData = await brasilResp.json();
+        razaoSocial = brasilData.razao_social || "";
+        nomeFantasia = brasilData.nome_fantasia || "";
+        municipio = brasilData.municipio || "";
+      } else {
+        await brasilResp.text();
+      }
+    } catch { /* silent */ }
 
     const cnpjFormatado = cnpjLimpo.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
 
+    console.log("SINTEGRA FINAL:", JSON.stringify({ 
+      cnpj: cnpjFormatado, uf: ufUpper, ie: inscricaoEstadual, status: statusIE, fonte
+    }));
+
     const resultado = {
       cnpj: cnpjFormatado,
-      inscricaoEstadual: inscricaoEstadual || "",
-      razaoSocial: data.razao_social || "",
-      nomeFantasia: data.nome_fantasia || "",
-      situacaoCadastral: data.descricao_situacao_cadastral || "",
-      dataSituacao: data.data_situacao_cadastral || "",
-      regimeApuracao: data.opcao_pelo_simples ? "Simples Nacional" : "Regime Normal",
-      uf: uf.toUpperCase(),
-      municipio: data.municipio || "",
-      endereco: [data.logradouro, data.numero, data.complemento, data.bairro].filter(Boolean).join(", "),
-      cep: data.cep || "",
-      atividadePrincipal: data.cnae_fiscal_descricao || "",
+      inscricaoEstadual,
+      statusInscricao: statusIE,
+      fonte,
+      razaoSocial,
+      nomeFantasia,
+      uf: ufUpper,
+      municipio,
       dataConsulta: new Date().toISOString(),
     };
 
