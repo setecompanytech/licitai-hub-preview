@@ -51,6 +51,25 @@ type Props = {
   onDeleted: (id: string) => void;
 };
 
+/** Format a numeric value (in cents) to BRL display string */
+const formatBRL = (cents: number): string => {
+  const value = cents / 100;
+  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+/** Parse a BRL formatted string to raw number (float) */
+const parseBRL = (display: string): number | null => {
+  const cleaned = display.replace(/\./g, '').replace(',', '.');
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
+};
+
+/** Convert raw float to cents integer for internal state */
+const toCents = (value: number | null): number => {
+  if (value === null || isNaN(value)) return 0;
+  return Math.round(value * 100);
+};
+
 export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onSaved, onDeleted }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
@@ -74,7 +93,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
         orgao: licitacao.orgao || '',
         objeto: licitacao.objeto || '',
         status: licitacao.status || 'Monitorando',
-        valor_estimado: licitacao.valor_estimado?.toString() || '',
+        valor_estimado: licitacao.valor_estimado ? formatBRL(toCents(licitacao.valor_estimado)) : '',
         uf: licitacao.uf || '',
         municipio: licitacao.municipio || '',
         data_encerramento: licitacao.data_encerramento
@@ -94,7 +113,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
         orgao: form.orgao,
         objeto: form.objeto,
         status: form.status,
-        valor_estimado: form.valor_estimado ? parseFloat(form.valor_estimado) : null,
+        valor_estimado: form.valor_estimado ? parseBRL(form.valor_estimado) : null,
         uf: form.uf || null,
         municipio: form.municipio || null,
         data_encerramento: form.data_encerramento || null,
@@ -117,7 +136,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
         orgao: form.orgao,
         objeto: form.objeto,
         status: form.status,
-        valor_estimado: form.valor_estimado ? parseFloat(form.valor_estimado) : null,
+        valor_estimado: form.valor_estimado ? parseBRL(form.valor_estimado) : null,
         uf: form.uf || null,
         municipio: form.municipio || null,
         data_encerramento: form.data_encerramento || null,
@@ -211,10 +230,16 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
             <div className="space-y-1.5">
               <Label className="text-xs">Valor Estimado (R$)</Label>
               <Input
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 value={form.valor_estimado}
-                onChange={e => setForm(f => ({ ...f, valor_estimado: e.target.value }))}
+                onChange={e => {
+                  // Allow only digits, dots (thousand sep) and comma (decimal sep)
+                  let raw = e.target.value.replace(/[^\d]/g, '');
+                  if (!raw) { setForm(f => ({ ...f, valor_estimado: '' })); return; }
+                  const cents = parseInt(raw, 10);
+                  setForm(f => ({ ...f, valor_estimado: formatBRL(cents) }));
+                }}
                 className="h-9 text-sm"
                 placeholder="0,00"
               />
