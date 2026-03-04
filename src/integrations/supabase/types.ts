@@ -447,6 +447,92 @@ export type Database = {
         }
         Relationships: []
       }
+      catalogo_itens_precificados: {
+        Row: {
+          bdi_percentual: number | null
+          created_at: string
+          custo_unitario: number
+          descricao: string
+          detalhes: Json | null
+          fabricante: string | null
+          frete_percentual: number | null
+          id: string
+          licitacao_id: string | null
+          licitacao_numero: string | null
+          licitacao_orgao: string | null
+          marca: string | null
+          margem_lucro: number | null
+          modelo: string | null
+          preco_total: number
+          preco_unitario: number
+          quantidade: number
+          regime_tributario: string | null
+          tipo_calculo: string
+          tributos_total: number | null
+          unidade: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bdi_percentual?: number | null
+          created_at?: string
+          custo_unitario?: number
+          descricao: string
+          detalhes?: Json | null
+          fabricante?: string | null
+          frete_percentual?: number | null
+          id?: string
+          licitacao_id?: string | null
+          licitacao_numero?: string | null
+          licitacao_orgao?: string | null
+          marca?: string | null
+          margem_lucro?: number | null
+          modelo?: string | null
+          preco_total?: number
+          preco_unitario?: number
+          quantidade?: number
+          regime_tributario?: string | null
+          tipo_calculo?: string
+          tributos_total?: number | null
+          unidade?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bdi_percentual?: number | null
+          created_at?: string
+          custo_unitario?: number
+          descricao?: string
+          detalhes?: Json | null
+          fabricante?: string | null
+          frete_percentual?: number | null
+          id?: string
+          licitacao_id?: string | null
+          licitacao_numero?: string | null
+          licitacao_orgao?: string | null
+          marca?: string | null
+          margem_lucro?: number | null
+          modelo?: string | null
+          preco_total?: number
+          preco_unitario?: number
+          quantidade?: number
+          regime_tributario?: string | null
+          tipo_calculo?: string
+          tributos_total?: number | null
+          unidade?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalogo_itens_precificados_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           content: string

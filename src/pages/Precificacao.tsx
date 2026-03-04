@@ -33,6 +33,7 @@ import CotacaoFornecedorUpload from '@/components/precificacao/CotacaoFornecedor
 import ComparativoDashboard from '@/components/precificacao/ComparativoDashboard';
 import CotacaoEditalAutoIA from '@/components/precificacao/CotacaoEditalAutoIA';
 import CalculadoraUnificada from '@/components/precificacao/CalculadoraUnificada';
+import CatalogoPrecificados from '@/components/precificacao/CatalogoPrecificados';
 
 type FontePreco = {
   fonte: string;
@@ -708,7 +709,10 @@ Responda APENAS em JSON, sem markdown:
               <BarChart3 className="w-3.5 h-3.5" /> Comparativo
             </TabsTrigger>
             <TabsTrigger value="calculadora" className="gap-1.5">
-              <Calculator className="w-3.5 h-3.5" /> Calculadora & Composição
+              <Calculator className="w-3.5 h-3.5" /> Calculadoras
+            </TabsTrigger>
+            <TabsTrigger value="catalogo" className="gap-1.5">
+              <Package className="w-3.5 h-3.5" /> Catálogo
             </TabsTrigger>
           </TabsList>
 
@@ -1304,6 +1308,12 @@ Responda APENAS em JSON, sem markdown:
 
           <TabsContent value="calculadora">
             <CalculadoraUnificada />
+          </TabsContent>
+
+          <TabsContent value="catalogo">
+            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+              <CatalogoPrecificados />
+            </div>
           </TabsContent>
         </Tabs>
       </div>
