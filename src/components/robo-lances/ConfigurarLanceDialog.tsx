@@ -134,16 +134,12 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
   const [itens, setItens] = useState<DisputeItem[]>(editingLance?.itens || []);
   const [licitacaoIdRef, setLicitacaoIdRef] = useState<string | undefined>(editingLance?.licitacaoId);
 
-  // Step 2 – R$ discount values (user inputs in Reais, system calculates %)
-  const [descontoInicialReais, setDescontoInicialReais] = useState(
-    editingLance && editingLance.valorReferencia > 0
-      ? String(Math.round((editingLance.valorReferencia - editingLance.valorInicial) * 100) / 100)
-      : ''
+  // Step 2 – User edits R$ values directly; % is auto-calculated
+  const [valorInicialInput, setValorInicialInput] = useState(
+    editingLance ? String(editingLance.valorInicial) : ''
   );
-  const [descontoMinimoReais, setDescontoMinimoReais] = useState(
-    editingLance && editingLance.valorReferencia > 0
-      ? String(Math.round((editingLance.valorReferencia - editingLance.valorMinimo) * 100) / 100)
-      : ''
+  const [valorMinimoInput, setValorMinimoInput] = useState(
+    editingLance ? String(editingLance.valorMinimo) : ''
   );
 
   // New item form
@@ -158,25 +154,21 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     return itens.reduce((sum, item) => sum + (item.valorReferencia * item.quantidade), 0);
   }, [itens]);
 
-  const valorInicial = useMemo(() => {
-    const desconto = parseFloat(descontoInicialReais) || 0;
-    return Math.round((somaReferencia - desconto) * 100) / 100;
-  }, [somaReferencia, descontoInicialReais]);
+  const valorInicial = parseFloat(valorInicialInput) || 0;
+  const valorMinimo = parseFloat(valorMinimoInput) || 0;
 
-  const valorMinimo = useMemo(() => {
-    const desconto = parseFloat(descontoMinimoReais) || 0;
-    return Math.round((somaReferencia - desconto) * 100) / 100;
-  }, [somaReferencia, descontoMinimoReais]);
-
-  const pctInicial = useMemo(() => {
+  const pctDescontoInicial = useMemo(() => {
     if (somaReferencia <= 0) return 0;
-    return Math.round(((parseFloat(descontoInicialReais) || 0) / somaReferencia) * 10000) / 100;
-  }, [somaReferencia, descontoInicialReais]);
+    return Math.round(((somaReferencia - valorInicial) / somaReferencia) * 10000) / 100;
+  }, [somaReferencia, valorInicial]);
 
-  const pctMinimo = useMemo(() => {
+  const pctDescontoMinimo = useMemo(() => {
     if (somaReferencia <= 0) return 0;
-    return Math.round(((parseFloat(descontoMinimoReais) || 0) / somaReferencia) * 10000) / 100;
-  }, [somaReferencia, descontoMinimoReais]);
+    return Math.round(((somaReferencia - valorMinimo) / somaReferencia) * 10000) / 100;
+  }, [somaReferencia, valorMinimo]);
+
+  const inexequibilidadeInicial = pctDescontoInicial > 50;
+  const inexequibilidadeMinimo = pctDescontoMinimo > 50;
 
   // ── Fetch licitações from Kanban ──
   const fetchLicitacoes = useCallback(async () => {
@@ -281,6 +273,13 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
 
       setItens(importedItems);
 
+      // Auto-suggest initial and minimum values (95% and 80% of reference)
+      if (importedItems.length > 0) {
+        const total = importedItems.reduce((s, i) => s + (i.valorReferencia * i.quantidade), 0);
+        setValorInicialInput(String(Math.round(total * 0.95 * 100) / 100));
+        setValorMinimoInput(String(Math.round(total * 0.80 * 100) / 100));
+      }
+
       const itemCount = importedItems.length;
       toast.success(
         itemCount > 0
@@ -301,7 +300,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     setIntervaloSegundos('30'); setMaxLances('20'); setModoAutomatico(true); setHorario('');
     setItens([]); setTipoDisputa('item'); setStep(editingLance ? 1 : 0);
     setSelectedLicId(null); setSearchLic(''); setStatusFilter('todos'); setLicitacaoIdRef(undefined);
-    setDescontoInicialReais(''); setDescontoMinimoReais('');
+    setValorInicialInput(''); setValorMinimoInput('');
     resetItemForm();
   };
 
@@ -768,18 +767,18 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
               </div>
             )}
 
-            {/* ── Auto-calculated values panel ── */}
+            {/* ── Values panel ── */}
             {itens.length > 0 && (
               <div className="space-y-3 border border-accent/30 rounded-xl bg-accent/5 p-4">
                 <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Calculator className="w-4 h-4 text-accent" />
                   Valores da Disputa
                   <Badge variant="outline" className="text-[9px] bg-accent/10 text-accent border-accent/30 ml-auto">
-                    Calculado automaticamente
+                    Desconto calculado automaticamente
                   </Badge>
                 </h4>
                 <p className="text-[11px] text-muted-foreground">
-                  Os valores são calculados com base na somatória dos {itens.length} {itens.length === 1 ? 'item' : 'itens'} cadastrados (Qtd × Vlr Unit.).
+                  Edite os valores em R$ abaixo. O percentual de desconto é calculado automaticamente com base no Valor de Referência.
                 </p>
 
                 <div className="grid grid-cols-3 gap-3">
@@ -790,48 +789,69 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                     <p className="text-[9px] text-muted-foreground mt-0.5">Σ (Qtd × Vlr Unit.)</p>
                   </div>
 
-                  {/* Valor Inicial – input in R$, shows % */}
-                  <div className="bg-card rounded-lg border border-border p-3 text-center">
+                  {/* Valor Inicial – editable R$ */}
+                  <div className={`bg-card rounded-lg border p-3 text-center ${inexequibilidadeInicial ? 'border-destructive' : 'border-border'}`}>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Valor Inicial (1º lance)</p>
-                    <p className="text-lg font-bold text-accent mt-1 font-mono">{formatCurrency(valorInicial)}</p>
                     <div className="flex items-center justify-center gap-1 mt-1.5">
-                      <span className="text-[10px] text-muted-foreground">Desconto R$</span>
+                      <span className="text-xs text-muted-foreground font-medium">R$</span>
                       <Input
                         type="number"
                         step="0.01"
                         min="0"
-                        value={descontoInicialReais}
-                        onChange={(e) => setDescontoInicialReais(e.target.value)}
+                        value={valorInicialInput}
+                        onChange={(e) => setValorInicialInput(e.target.value)}
                         placeholder="0,00"
-                        className="h-6 w-24 text-[11px] text-center px-1"
+                        className="h-8 w-32 text-sm text-center px-1 font-mono font-bold"
                       />
                     </div>
-                    <p className="text-[9px] text-accent font-medium mt-1">≈ {pctInicial.toFixed(2)}% de desconto</p>
+                    <p className={`text-[10px] font-semibold mt-1.5 ${inexequibilidadeInicial ? 'text-destructive' : 'text-accent'}`}>
+                      {pctDescontoInicial >= 0 ? `↓ ${pctDescontoInicial.toFixed(2)}% de desconto` : `↑ ${Math.abs(pctDescontoInicial).toFixed(2)}% acima`}
+                    </p>
+                    {inexequibilidadeInicial && (
+                      <p className="text-[9px] text-destructive font-bold mt-0.5 animate-pulse">⚠️ INEXEQUÍVEL</p>
+                    )}
                   </div>
 
-                  {/* Valor Mínimo – input in R$, shows % */}
-                  <div className="bg-card rounded-lg border border-destructive/30 p-3 text-center">
+                  {/* Valor Mínimo – editable R$ */}
+                  <div className={`bg-card rounded-lg border p-3 text-center ${inexequibilidadeMinimo ? 'border-destructive' : 'border-destructive/30'}`}>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Valor Mínimo (piso)</p>
-                    <p className="text-lg font-bold text-destructive mt-1 font-mono">{formatCurrency(valorMinimo)}</p>
                     <div className="flex items-center justify-center gap-1 mt-1.5">
-                      <span className="text-[10px] text-muted-foreground">Desconto R$</span>
+                      <span className="text-xs text-muted-foreground font-medium">R$</span>
                       <Input
                         type="number"
                         step="0.01"
                         min="0"
-                        value={descontoMinimoReais}
-                        onChange={(e) => setDescontoMinimoReais(e.target.value)}
+                        value={valorMinimoInput}
+                        onChange={(e) => setValorMinimoInput(e.target.value)}
                         placeholder="0,00"
-                        className="h-6 w-24 text-[11px] text-center px-1"
+                        className="h-8 w-32 text-sm text-center px-1 font-mono font-bold"
                       />
                     </div>
-                    <p className="text-[9px] text-destructive font-medium mt-1">≈ {pctMinimo.toFixed(2)}% de desconto</p>
+                    <p className={`text-[10px] font-semibold mt-1.5 ${inexequibilidadeMinimo ? 'text-destructive' : 'text-destructive/80'}`}>
+                      {pctDescontoMinimo >= 0 ? `↓ ${pctDescontoMinimo.toFixed(2)}% de desconto` : `↑ ${Math.abs(pctDescontoMinimo).toFixed(2)}% acima`}
+                    </p>
+                    {inexequibilidadeMinimo && (
+                      <p className="text-[9px] text-destructive font-bold mt-0.5 animate-pulse">⚠️ INEXEQUÍVEL</p>
+                    )}
                   </div>
                 </div>
 
+                {/* Inexequibilidade alert banner */}
+                {(inexequibilidadeInicial || inexequibilidadeMinimo) && (
+                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-destructive/10 border border-destructive/40 text-xs text-destructive">
+                    <span className="text-base leading-none mt-0.5">🚨</span>
+                    <div>
+                      <p className="font-bold">Risco de Inexequibilidade (Art. 59, §4º da Lei 14.133/2021)</p>
+                      <p className="mt-0.5 text-destructive/80">
+                        Propostas com desconto superior a 50% do valor de referência podem ser consideradas inexequíveis pelo pregoeiro, exigindo comprovação de viabilidade econômica.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {valorMinimo > valorInicial && (
                   <p className="text-[10px] text-destructive flex items-center gap-1">
-                    ⚠️ O valor mínimo (piso) está acima do valor inicial. Ajuste os percentuais.
+                    ⚠️ O valor mínimo (piso) está acima do valor inicial. Revise os valores.
                   </p>
                 )}
               </div>
