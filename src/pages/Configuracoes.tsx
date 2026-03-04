@@ -146,13 +146,19 @@ export default function Configuracoes() {
         setBairro(data.bairro || '');
         if (data.cep) setCep(data.cep);
         if (data.telefone) setTelefone(data.telefone);
-        // Email: set even if it replaces current value, as long as API returned one
         if (data.email && data.email.trim()) setEmail(data.email.trim());
         if (data.cnpj) setCnpjInput(data.cnpj);
-        toast.success('Dados preenchidos via Receita Federal!');
+        // IE comes directly from CNPJA (real SINTEGRA data) in consulta-cnpj
+        if (data.inscricaoEstadual) setInscricaoEstadual(data.inscricaoEstadual);
+        
+        const sources = [];
+        sources.push('Receita Federal');
+        if (data.inscricaoEstadual) sources.push('SINTEGRA/Cadastro Contribuintes');
+        if (data.email) sources.push('E-mail');
+        toast.success(`Dados reais obtidos via ${sources.join(' + ')}!`);
 
-        // Auto-trigger SINTEGRA
-        if (data.uf) {
+        // Also trigger standalone SINTEGRA if IE wasn't found in the main query
+        if (!data.inscricaoEstadual && data.uf) {
           await handleConsultaSintegraInternal(cnpjLimpo, data.uf);
         }
       }
