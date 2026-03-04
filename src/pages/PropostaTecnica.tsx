@@ -267,7 +267,7 @@ export default function PropostaTecnica() {
     let content = '';
 
     await streamAIChat({
-      messages: [{ role: 'user', content: 'Gere a Proposta Comercial/Técnica completa seguindo rigorosamente a estrutura: 1) Cabeçalho e endereçamento ao Órgão Gerenciador, 2) Objeto, 3) Planilha de Preços com TODAS as 11 colunas (Item, Descrição, Qtde, Unid, Marca, Fabricante, Modelo, Vlr Unitário, Vlr Extenso, Vlr Total, Vlr Total Extenso), 4) Validade da Proposta, 5) Prazo e Condições de Pagamento, 6) Prazo e Local de Entrega, 7) Declarações obrigatórias, 8) Dados da Empresa Licitante, 9) Dados do Representante Legal, 10) Dados Bancários, 11) Local, Data e Assinatura.' }],
+      messages: [{ role: 'user', content: 'Gere a Proposta Comercial completa seguindo rigorosamente a estrutura: 1) Cabeçalho e endereçamento ao Órgão Gerenciador, 2) Objeto, 3) Planilha de Preços com TODAS as 11 colunas (Item, Descrição, Qtde, Unid, Marca, Fabricante, Modelo, Vlr Unitário, Vlr Extenso, Vlr Total, Vlr Total Extenso), 4) Validade da Proposta, 5) Prazo e Condições de Pagamento, 6) Prazo e Local de Entrega, 7) Declarações obrigatórias, 8) Dados da Empresa Licitante, 9) Dados do Representante Legal, 10) Dados Bancários, 11) Local, Data e Assinatura.' }],
       action: 'proposta_tecnica',
       context: buildContext(),
       onDelta: (chunk) => { content += chunk; setProposal(content); },
@@ -307,16 +307,11 @@ export default function PropostaTecnica() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
               <FileText className="w-6 h-6 text-accent" />
-              Proposta Comercial / Técnica
+              Proposta Comercial
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               Montagem assistida por IA · Modelo conforme Lei 14.133/2021 e ABNT NBR 14724
             </p>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Badge variant="outline" className="gap-1"><Stamp className="w-3 h-3" /> Conlicitação</Badge>
-            <Badge variant="outline" className="gap-1"><Stamp className="w-3 h-3" /> Effecti</Badge>
-            <Badge variant="outline" className="gap-1"><Stamp className="w-3 h-3" /> PrecificaJá</Badge>
           </div>
         </div>
 
@@ -759,7 +754,7 @@ export default function PropostaTecnica() {
                 {isLoading ? (
                   <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Gerando proposta...</>
                 ) : (
-                  <><Sparkles className="w-5 h-5 mr-2" /> Gerar Proposta Comercial / Técnica com IA</>
+                  <><Sparkles className="w-5 h-5 mr-2" /> Gerar Proposta Comercial com IA</>
                 )}
               </Button>
             </div>
@@ -783,7 +778,7 @@ export default function PropostaTecnica() {
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h2 className="font-semibold text-lg flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-accent" />
-                Proposta Comercial / Técnica Gerada
+                Proposta Comercial Gerada
               </h2>
               <div className="flex items-center gap-2 flex-wrap">
                 <PropostaDownload

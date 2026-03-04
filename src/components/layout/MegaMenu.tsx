@@ -34,7 +34,7 @@ const megaGroups: MegaMenuGroup[] = [
     title: 'Inteligência Artificial',
     items: [
       { icon: Bot, label: 'Assistente IA', path: '/assistente', isNew: true },
-      { icon: Search, label: 'Proposta Técnica', path: '/proposta-tecnica' },
+      { icon: Search, label: 'Proposta Comercial', path: '/proposta-tecnica' },
       { icon: Scale, label: 'Consultor Jurídico', path: '/apoio-juridico' },
       { icon: BookOpen, label: 'Blog IA', path: '/blog' },
     ],
