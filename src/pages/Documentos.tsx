@@ -4,9 +4,18 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import {
   FileText, Upload, CheckCircle2, AlertTriangle, Clock,
-  Shield, FolderOpen, Download, Eye, FileArchive, ClipboardList, Trash2, Loader2
+  Shield, FolderOpen, Download, FileArchive, ClipboardList, Trash2, Loader2,
+  CalendarDays, Bot
 } from 'lucide-react';
 import MergeDocumentos from '@/components/documentos/MergeDocumentos';
 import AlertaVencimentoDocumentos from '@/components/documentos/AlertaVencimentoDocumentos';
@@ -59,9 +68,16 @@ export default function Documentos() {
   const [documentos, setDocumentos] = useState<Documento[]>(documentosIniciais);
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const [removingIdx, setRemovingIdx] = useState<number | null>(null);
+  const [analyzingIdx, setAnalyzingIdx] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingUploadIdx = useRef<number | null>(null);
   const { user } = useAuth();
+
+  // Validade dialog state
+  const [validadeDialogOpen, setValidadeDialogOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingValidadeDate, setPendingValidadeDate] = useState<Date | undefined>(undefined);
+  const [pendingManualDate, setPendingManualDate] = useState('');
 
   const categorias = [...new Set(documentos.map((d) => d.categoria))];
   const filtered = filter === 'todos' ? documentos : documentos.filter((d) => d.status === filter);
@@ -90,7 +106,22 @@ export default function Documentos() {
       return;
     }
 
+    // Open validade dialog before uploading
+    setPendingFile(file);
+    setPendingValidadeDate(documentos[idx].validade ? new Date(documentos[idx].validade!) : undefined);
+    setPendingManualDate(documentos[idx].validade || '');
+    setValidadeDialogOpen(true);
+    e.target.value = '';
+  };
+
+  const handleConfirmUpload = async (skipValidade = false) => {
+    const file = pendingFile;
+    const idx = pendingUploadIdx.current;
+    if (!file || idx === null || !user) return;
+
+    setValidadeDialogOpen(false);
     setUploadingIdx(idx);
+
     const slug = documentos[idx].nome.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60);
     const ext = file.name.split('.').pop();
     const path = `${user.id}/${slug}.${ext}`;
@@ -104,17 +135,81 @@ export default function Documentos() {
     if (error) {
       toast.error('Erro ao enviar: ' + error.message);
       setUploadingIdx(null);
-      e.target.value = '';
+      setPendingFile(null);
       return;
     }
 
+    // Determine validade
+    let validadeStr: string | undefined;
+    if (!skipValidade) {
+      if (pendingValidadeDate) {
+        validadeStr = format(pendingValidadeDate, 'yyyy-MM-dd');
+      } else if (pendingManualDate) {
+        validadeStr = pendingManualDate;
+      }
+    }
+
+    // Calculate new status
+    let newStatus: DocStatus = 'ok';
+    if (validadeStr) {
+      const valDate = new Date(validadeStr);
+      if (valDate < new Date()) newStatus = 'vencido';
+    }
+
     setDocumentos(prev => prev.map((d, i) =>
-      i === idx ? { ...d, arquivo: file.name, storagePath: path, status: 'ok' as DocStatus } : d
+      i === idx ? {
+        ...d,
+        arquivo: file.name,
+        storagePath: path,
+        status: newStatus,
+        validade: validadeStr || d.validade
+      } : d
     ));
 
     toast.success(`"${documentos[idx].nome}" enviado com sucesso!`);
     setUploadingIdx(null);
-    e.target.value = '';
+    setPendingFile(null);
+    setPendingValidadeDate(undefined);
+    setPendingManualDate('');
+  };
+
+  const handleAIAnalysis = async () => {
+    const idx = pendingUploadIdx.current;
+    if (idx === null) return;
+
+    setAnalyzingIdx(idx);
+    
+    try {
+      // Call AI to analyze the document for expiry date
+      const response = await supabase.functions.invoke('ai-chat', {
+        body: {
+          messages: [
+            {
+              role: 'user',
+              content: `Analise o nome deste documento de habilitação para licitações e informe a validade padrão segundo a legislação brasileira. Documento: "${documentos[idx].nome}". Categoria: "${documentos[idx].categoria}". Responda APENAS com a data provável de vencimento no formato YYYY-MM-DD, calculando a partir de hoje (${format(new Date(), 'yyyy-MM-dd')}). Se não houver validade padrão, responda "SEM_VALIDADE".`
+            }
+          ]
+        }
+      });
+
+      if (response.data) {
+        const text = typeof response.data === 'string' ? response.data : 
+          response.data?.choices?.[0]?.message?.content || '';
+        const dateMatch = text.match(/\d{4}-\d{2}-\d{2}/);
+        if (dateMatch) {
+          const suggestedDate = new Date(dateMatch[0]);
+          setPendingValidadeDate(suggestedDate);
+          setPendingManualDate(dateMatch[0]);
+          toast.success(`IA sugeriu validade: ${format(suggestedDate, 'dd/MM/yyyy')}`);
+        } else {
+          toast.info('IA não identificou uma data de validade padrão para este documento.');
+        }
+      }
+    } catch {
+      toast.error('Erro na análise por IA. Informe a validade manualmente.');
+    } finally {
+      setAnalyzingIdx(null);
+    }
   };
 
   const handleDownload = async (globalIdx: number) => {
@@ -251,7 +346,8 @@ export default function Documentos() {
                               <div>
                                 <p className="text-sm font-medium">{doc.nome}</p>
                                 {doc.validade && (
-                                  <p className="text-xs text-muted-foreground">
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <CalendarDays className="w-3 h-3" />
                                     Validade: {new Date(doc.validade).toLocaleDateString('pt-BR')}
                                   </p>
                                 )}
@@ -337,6 +433,122 @@ export default function Documentos() {
           className="hidden"
           onChange={handleFileChange}
         />
+
+        {/* Validade Dialog */}
+        <Dialog open={validadeDialogOpen} onOpenChange={setValidadeDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CalendarDays className="w-5 h-5 text-accent" />
+                Validade do Documento
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Informe a data de vencimento do documento ou utilize a análise por IA para sugestão automática.
+              </p>
+
+              {pendingUploadIdx.current !== null && (
+                <div className="text-sm font-medium bg-muted/50 p-2 rounded">
+                  {documentos[pendingUploadIdx.current]?.nome}
+                </div>
+              )}
+
+              {/* Manual date input */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Data de Validade
+                </Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        'w-full justify-start text-left font-normal',
+                        !pendingValidadeDate && 'text-muted-foreground'
+                      )}
+                    >
+                      <CalendarDays className="mr-2 h-4 w-4" />
+                      {pendingValidadeDate
+                        ? format(pendingValidadeDate, 'dd/MM/yyyy', { locale: ptBR })
+                        : 'Selecione a validade'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={pendingValidadeDate}
+                      onSelect={(date) => {
+                        setPendingValidadeDate(date);
+                        if (date) setPendingManualDate(format(date, 'yyyy-MM-dd'));
+                      }}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Or manual text input */}
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Ou digite: DD/MM/AAAA</Label>
+                <Input
+                  placeholder="DD/MM/AAAA"
+                  value={pendingManualDate ? (() => {
+                    try {
+                      const d = new Date(pendingManualDate);
+                      return isNaN(d.getTime()) ? pendingManualDate : format(d, 'dd/MM/yyyy');
+                    } catch { return pendingManualDate; }
+                  })() : ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    // Try to parse DD/MM/YYYY
+                    const match = val.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+                    if (match) {
+                      const d = new Date(`${match[3]}-${match[2]}-${match[1]}`);
+                      if (!isNaN(d.getTime())) {
+                        setPendingValidadeDate(d);
+                        setPendingManualDate(format(d, 'yyyy-MM-dd'));
+                        return;
+                      }
+                    }
+                    setPendingManualDate(val);
+                  }}
+                />
+              </div>
+
+              {/* AI Analysis button */}
+              <Button
+                variant="outline"
+                className="w-full gap-2 border-accent/30 text-accent hover:bg-accent/10"
+                onClick={handleAIAnalysis}
+                disabled={analyzingIdx !== null}
+              >
+                {analyzingIdx !== null ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Bot className="w-4 h-4" />
+                )}
+                Sugerir Validade por IA
+              </Button>
+
+              {pendingValidadeDate && (
+                <div className="flex items-center gap-2 p-2 bg-accent/10 rounded-lg text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-accent" />
+                  <span>Validade: <strong>{format(pendingValidadeDate, 'dd/MM/yyyy')}</strong></span>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="flex gap-2">
+              <Button variant="ghost" onClick={() => handleConfirmUpload(true)}>
+                Pular (sem validade)
+              </Button>
+              <Button onClick={() => handleConfirmUpload(false)}>
+                Confirmar e Enviar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );

@@ -40,6 +40,7 @@ import HistoricoLicitacoes from "./pages/HistoricoLicitacoes";
 import Ferramentas from "./pages/Ferramentas";
 
 import WhatsAppSetores from "./pages/WhatsAppSetores";
+import Calendario from "./pages/Calendario";
 import TermosDeUso from "./pages/TermosDeUso";
 import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import LgpdPage from "./pages/LgpdPage";

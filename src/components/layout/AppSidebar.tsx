@@ -66,6 +66,7 @@ const navGroups: NavGroup[] = [
     title: 'Gestão de Licitações',
     items: [
       { icon: Target, label: 'Estratégicas', path: '/licitacoes-estrategicas' },
+      { icon: CalendarDays, label: 'Calendário', path: '/calendario' },
       { icon: Kanban, label: 'Kanban', path: '/kanban' },
       { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
       { icon: Archive, label: 'Histórico', path: '/historico-licitacoes' },
