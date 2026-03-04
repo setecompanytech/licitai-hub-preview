@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Bot, Trash2, Package, Layers, FileSearch, Loader2, Search, CheckCircle2, Building2, ArrowRight, Pencil } from 'lucide-react';
+import { Plus, Bot, Trash2, Package, Layers, FileSearch, Loader2, Search, CheckCircle2, Building2, ArrowRight, Pencil, Calculator } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -122,9 +122,6 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
   // Step 1 fields
   const [edital, setEdital] = useState(editingLance?.edital || '');
   const [portal, setPortal] = useState(editingLance?.portal || '');
-  const [valorReferencia, setValorReferencia] = useState(editingLance?.valorReferencia?.toString() || '');
-  const [valorInicial, setValorInicial] = useState(editingLance?.valorInicial?.toString() || '');
-  const [valorMinimo, setValorMinimo] = useState(editingLance?.valorMinimo?.toString() || '');
   const [decrementoMin, setDecrementoMin] = useState(editingLance?.decrementoMin?.toString() || '');
   const [decrementoPercentual, setDecrementoPercentual] = useState(editingLance?.decrementoPercentual?.toString() || '1.5');
   const [intervaloSegundos, setIntervaloSegundos] = useState(editingLance?.intervaloSegundos?.toString() || '30');
@@ -137,12 +134,39 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
   const [itens, setItens] = useState<DisputeItem[]>(editingLance?.itens || []);
   const [licitacaoIdRef, setLicitacaoIdRef] = useState<string | undefined>(editingLance?.licitacaoId);
 
+  // Step 2 – percentage adjustments for initial bid and floor
+  const [pctInicial, setPctInicial] = useState(
+    editingLance && editingLance.valorReferencia > 0
+      ? String(Math.round((1 - editingLance.valorInicial / editingLance.valorReferencia) * 100))
+      : '5'
+  );
+  const [pctMinimo, setPctMinimo] = useState(
+    editingLance && editingLance.valorReferencia > 0
+      ? String(Math.round((1 - editingLance.valorMinimo / editingLance.valorReferencia) * 100))
+      : '20'
+  );
+
   // New item form
   const [novoDesc, setNovoDesc] = useState('');
   const [novoQtd, setNovoQtd] = useState('1');
   const [novoUnidade, setNovoUnidade] = useState('UN');
   const [novoValorRef, setNovoValorRef] = useState('');
   const [novoLote, setNovoLote] = useState('');
+
+  // ── Auto-calculated values from items ──
+  const somaReferencia = useMemo(() => {
+    return itens.reduce((sum, item) => sum + (item.valorReferencia * item.quantidade), 0);
+  }, [itens]);
+
+  const valorInicial = useMemo(() => {
+    const pct = parseFloat(pctInicial) || 0;
+    return Math.round(somaReferencia * (1 - pct / 100) * 100) / 100;
+  }, [somaReferencia, pctInicial]);
+
+  const valorMinimo = useMemo(() => {
+    const pct = parseFloat(pctMinimo) || 0;
+    return Math.round(somaReferencia * (1 - pct / 100) * 100) / 100;
+  }, [somaReferencia, pctMinimo]);
 
   // ── Fetch licitações from Kanban ──
   const fetchLicitacoes = useCallback(async () => {
@@ -177,9 +201,6 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     // Fill Step 1 fields
     setEdital(lic.numero);
     setPortal(lic.portal || '');
-    setValorReferencia(lic.valor_estimado?.toString() || '');
-    setValorInicial(lic.valor_estimado ? (lic.valor_estimado * 0.95).toFixed(2) : '');
-    setValorMinimo(lic.valor_estimado ? (lic.valor_estimado * 0.80).toFixed(2) : '');
     setLicitacaoIdRef(lic.id);
 
     if (lic.data_encerramento) {
@@ -207,7 +228,6 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
       const importedItems: DisputeItem[] = [];
       let num = 1;
 
-      // From precificacao table
       if (precRes.data && precRes.data.length > 0) {
         for (const p of precRes.data as PrecificacaoRow[]) {
           importedItems.push({
@@ -227,7 +247,6 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
         }
       }
 
-      // From catalogo (avoid duplicates by description)
       if (catRes.data && catRes.data.length > 0) {
         const existingDescs = new Set(importedItems.map(i => i.descricao.toLowerCase()));
         for (const c of catRes.data as CatalogoRow[]) {
@@ -256,7 +275,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
       toast.success(
         itemCount > 0
           ? `✅ Processo importado com ${itemCount} ${itemCount === 1 ? 'item' : 'itens'}!`
-          : '✅ Dados do processo importados! Cadastre os itens manualmente no Passo 2.'
+          : '✅ Dados do processo importados! Cadastre os itens manualmente no Passo 3.'
       );
     } catch {
       toast.error('Erro ao importar itens do processo.');
@@ -267,11 +286,12 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
   };
 
   const resetForm = () => {
-    setEdital(''); setPortal(''); setValorReferencia(''); setValorInicial('');
-    setValorMinimo(''); setDecrementoMin(''); setDecrementoPercentual('1.5');
+    setEdital(''); setPortal('');
+    setDecrementoMin(''); setDecrementoPercentual('1.5');
     setIntervaloSegundos('30'); setMaxLances('20'); setModoAutomatico(true); setHorario('');
     setItens([]); setTipoDisputa('item'); setStep(editingLance ? 1 : 0);
     setSelectedLicId(null); setSearchLic(''); setStatusFilter('todos'); setLicitacaoIdRef(undefined);
+    setPctInicial('5'); setPctMinimo('20');
     resetItemForm();
   };
 
@@ -309,28 +329,22 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     const lance: LanceConfig = {
       id: editingLance?.id || crypto.randomUUID(),
       edital, portal,
-      valorReferencia: parseFloat(valorReferencia) || 0,
-      valorInicial: parseFloat(valorInicial) || 0,
-      valorMinimo: parseFloat(valorMinimo) || 0,
+      valorReferencia: somaReferencia,
+      valorInicial,
+      valorMinimo,
       decrementoMin: parseFloat(decrementoMin) || 0,
       decrementoPercentual: parseFloat(decrementoPercentual) || 1.5,
       intervaloSegundos: parseInt(intervaloSegundos) || 30,
       maxLances: parseInt(maxLances) || 20,
       modoAutomatico, status: 'aguardando', horario,
       meuLance: editingLance?.meuLance || 0,
-      valorAtual: parseFloat(valorReferencia) || 0,
+      valorAtual: somaReferencia,
       itens, tipoDisputa,
       licitacaoId: licitacaoIdRef,
     };
     onSave(lance);
     resetForm();
     setOpen(false);
-  };
-
-  const calcMinFromPercent = () => {
-    const ref = parseFloat(valorReferencia);
-    const pct = parseFloat(decrementoPercentual);
-    if (ref && pct) setValorMinimo((ref * (1 - pct / 100 * 10)).toFixed(2));
   };
 
   const step1Valid = edital && portal;
@@ -386,7 +400,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
           <DialogDescription>
             {step === 0 && 'Escolha como deseja cadastrar a disputa.'}
             {step === 1 && `Passo ${editingLance ? '1/2' : '2/3'} — Configure os parâmetros gerais da disputa.`}
-            {step === 2 && `Passo ${editingLance ? '2/2' : '3/3'} — Cadastre os itens e lotes para lances automáticos.`}
+            {step === 2 && `Passo ${editingLance ? '2/2' : '3/3'} — Cadastre os itens/lotes. Os valores da disputa são calculados automaticamente.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -571,8 +585,6 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
               </div>
             </div>
 
-
-
             <div className="space-y-3">
               <h4 className="text-sm font-semibold text-foreground">Regras de Decremento Automático</h4>
               <div className="grid grid-cols-2 gap-3">
@@ -610,28 +622,6 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
         {/* ── STEP 2: Items/Lots ── */}
         {step === 2 && (
           <div className="space-y-5 py-2">
-            {/* Valores da Disputa */}
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-foreground">Valores da Disputa</h4>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground">Valor de Referência (R$) *</label>
-                  <Input type="number" step="0.01" value={valorReferencia} onChange={(e) => setValorReferencia(e.target.value)} placeholder="0,00" className="mt-1" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Valor Inicial (1º lance) *</label>
-                  <Input type="number" step="0.01" value={valorInicial} onChange={(e) => setValorInicial(e.target.value)} placeholder="0,00" className="mt-1" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Valor Mínimo (piso) *</label>
-                  <Input type="number" step="0.01" value={valorMinimo} onChange={(e) => setValorMinimo(e.target.value)} placeholder="0,00" className="mt-1" />
-                  <button type="button" onClick={calcMinFromPercent} className="text-[10px] text-accent hover:underline mt-0.5">
-                    Calcular a partir do %
-                  </button>
-                </div>
-              </div>
-            </div>
-
             <div className="space-y-3">
               <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <Layers className="w-4 h-4 text-accent" /> Tipo de Disputa
@@ -680,7 +670,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                   <Input value={novoUnidade} onChange={(e) => setNovoUnidade(e.target.value)} placeholder="UN" className="mt-0.5 h-8 text-xs" />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-[10px] text-muted-foreground">Valor Ref. (R$)</label>
+                  <label className="text-[10px] text-muted-foreground">Valor Unit. (R$)</label>
                   <Input type="number" step="0.01" value={novoValorRef} onChange={(e) => setNovoValorRef(e.target.value)} placeholder="0,00" className="mt-0.5 h-8 text-xs" />
                 </div>
                 {tipoDisputa === 'lote' && (
@@ -715,7 +705,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                   )}
                 </div>
 
-                <div className="border border-border rounded-lg overflow-hidden max-h-52 overflow-y-auto">
+                <div className="border border-border rounded-lg overflow-hidden max-h-44 overflow-y-auto">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
@@ -724,7 +714,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                         <TableHead className="text-[10px] text-center">Qtd</TableHead>
                         <TableHead className="text-[10px] text-center">Unid.</TableHead>
                         {tipoDisputa === 'lote' && <TableHead className="text-[10px]">Lote</TableHead>}
-                        <TableHead className="text-[10px] text-right">Valor Ref.</TableHead>
+                        <TableHead className="text-[10px] text-right">Vlr Unit.</TableHead>
+                        <TableHead className="text-[10px] text-right">Vlr Total</TableHead>
                         <TableHead className="text-[10px] w-10" />
                       </TableRow>
                     </TableHeader>
@@ -732,7 +723,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                       {itens.map((item) => (
                         <TableRow key={item.id}>
                           <TableCell className="text-xs text-center font-medium">{item.numero}</TableCell>
-                          <TableCell className="text-xs max-w-[180px] truncate">{item.descricao}</TableCell>
+                          <TableCell className="text-xs max-w-[160px] truncate">{item.descricao}</TableCell>
                           <TableCell className="text-xs text-center">{item.quantidade}</TableCell>
                           <TableCell className="text-xs text-center">{item.unidade}</TableCell>
                           {tipoDisputa === 'lote' && (
@@ -740,6 +731,9 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                           )}
                           <TableCell className="text-xs text-right font-mono">
                             {item.valorReferencia > 0 ? formatCurrency(item.valorReferencia) : '—'}
+                          </TableCell>
+                          <TableCell className="text-xs text-right font-mono font-semibold">
+                            {item.valorReferencia > 0 ? formatCurrency(item.valorReferencia * item.quantidade) : '—'}
                           </TableCell>
                           <TableCell className="text-center">
                             <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={() => handleRemoveItem(item.id)}>
@@ -761,6 +755,75 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                 <p className="text-[10px] text-muted-foreground mt-1">
                   Preencha o formulário acima para adicionar itens à disputa.
                 </p>
+              </div>
+            )}
+
+            {/* ── Auto-calculated values panel ── */}
+            {itens.length > 0 && (
+              <div className="space-y-3 border border-accent/30 rounded-xl bg-accent/5 p-4">
+                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Calculator className="w-4 h-4 text-accent" />
+                  Valores da Disputa
+                  <Badge variant="outline" className="text-[9px] bg-accent/10 text-accent border-accent/30 ml-auto">
+                    Calculado automaticamente
+                  </Badge>
+                </h4>
+                <p className="text-[11px] text-muted-foreground">
+                  Os valores são calculados com base na somatória dos {itens.length} {itens.length === 1 ? 'item' : 'itens'} cadastrados (Qtd × Vlr Unit.).
+                </p>
+
+                <div className="grid grid-cols-3 gap-3">
+                  {/* Valor de Referência – read-only sum */}
+                  <div className="bg-card rounded-lg border border-border p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Valor de Referência</p>
+                    <p className="text-lg font-bold text-foreground mt-1 font-mono">{formatCurrency(somaReferencia)}</p>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">Σ (Qtd × Vlr Unit.)</p>
+                  </div>
+
+                  {/* Valor Inicial – adjustable % */}
+                  <div className="bg-card rounded-lg border border-border p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Valor Inicial (1º lance)</p>
+                    <p className="text-lg font-bold text-accent mt-1 font-mono">{formatCurrency(valorInicial)}</p>
+                    <div className="flex items-center justify-center gap-1 mt-1.5">
+                      <span className="text-[10px] text-muted-foreground">Desconto:</span>
+                      <Input
+                        type="number"
+                        step="1"
+                        min="0"
+                        max="99"
+                        value={pctInicial}
+                        onChange={(e) => setPctInicial(e.target.value)}
+                        className="h-6 w-14 text-[11px] text-center px-1"
+                      />
+                      <span className="text-[10px] text-muted-foreground">%</span>
+                    </div>
+                  </div>
+
+                  {/* Valor Mínimo – adjustable % */}
+                  <div className="bg-card rounded-lg border border-destructive/30 p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Valor Mínimo (piso)</p>
+                    <p className="text-lg font-bold text-destructive mt-1 font-mono">{formatCurrency(valorMinimo)}</p>
+                    <div className="flex items-center justify-center gap-1 mt-1.5">
+                      <span className="text-[10px] text-muted-foreground">Desconto:</span>
+                      <Input
+                        type="number"
+                        step="1"
+                        min="0"
+                        max="99"
+                        value={pctMinimo}
+                        onChange={(e) => setPctMinimo(e.target.value)}
+                        className="h-6 w-14 text-[11px] text-center px-1"
+                      />
+                      <span className="text-[10px] text-muted-foreground">%</span>
+                    </div>
+                  </div>
+                </div>
+
+                {valorMinimo > valorInicial && (
+                  <p className="text-[10px] text-destructive flex items-center gap-1">
+                    ⚠️ O valor mínimo (piso) está acima do valor inicial. Ajuste os percentuais.
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -791,7 +854,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
             {step === 2 && (
               <Button
                 onClick={handleSave}
-                disabled={itens.length === 0 || !valorReferencia || !valorInicial || !valorMinimo}
+                disabled={itens.length === 0 || somaReferencia <= 0 || valorMinimo > valorInicial}
                 className="bg-accent hover:bg-accent/90 text-accent-foreground"
               >
                 {editingLance ? 'Salvar Alterações' : 'Cadastrar Sessão'}
