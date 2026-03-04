@@ -176,7 +176,7 @@ export default function LicitacoesEstrategicas() {
                           <Button size="sm" variant="outline" onClick={() => setExpandido(isExpanded ? null : lic.id)}>
                             <Eye className="w-3 h-3 mr-1" /> {isExpanded ? 'Recolher' : 'Detalhes'}
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => setCapagOrgao({ orgao: lic.orgao })}>
+                          <Button size="sm" variant="outline" onClick={() => { setCapagOrgaoInput(lic.orgao); setCapagOrgao({ orgao: lic.orgao }); }}>
                             <Landmark className="w-3 h-3 mr-1" /> CAPAG
                           </Button>
                           <Button size="sm" variant="outline">
