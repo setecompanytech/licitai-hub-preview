@@ -42,6 +42,11 @@ export default function Index() {
         <StatCard label="Novas Hoje" value={kpis.licitacoesHoje.toString()} icon={Zap} />
       </div>
 
+      {/* Acesso Rápido — Módulos */}
+      <div className="mb-6">
+        <QuickAccessGrid />
+      </div>
+
       {/* Painel de Processos Licitatórios */}
       <div className="mb-6">
         <h2 className="text-lg font-bold tracking-tight mb-4">Processos Licitatórios</h2>
