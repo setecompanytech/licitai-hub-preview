@@ -11,11 +11,12 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Package, Search, Trash2, FileText, Filter, Loader2, ShoppingCart, Plus, Sparkles, Globe, Upload
+  Package, Search, Trash2, FileText, Filter, Loader2, ShoppingCart, Plus, Sparkles, Globe, Upload, BookOpen
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import { streamAIChat } from '@/lib/ai-stream';
+import CatalogoDocGenerator from './CatalogoDocGenerator';
 
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -60,6 +61,7 @@ export default function CatalogoPrecificados() {
   const [filterLicitacao, setFilterLicitacao] = useState('todos');
   const [licitacoes, setLicitacoes] = useState<{ id: string; numero: string; orgao: string }[]>([]);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [showDocGenerator, setShowDocGenerator] = useState(false);
 
   // ── Consulta Inteligente (AI search) ──
   const [showConsulta, setShowConsulta] = useState(false);
@@ -300,6 +302,19 @@ Responda APENAS em JSON:
           <Badge variant="outline" className="text-[10px]">{items.length} itens</Badge>
         </div>
         <div className="flex items-center gap-2">
+          <Button size="sm" onClick={() => {
+            const sel = filteredItems.filter(i => selectedItems.has(i.id));
+            if (sel.length === 0 && items.length > 0) {
+              // If no selection, use all items
+              setShowDocGenerator(true);
+            } else if (sel.length > 0) {
+              setShowDocGenerator(true);
+            } else {
+              toast.error('Nenhum item no catálogo.');
+            }
+          }} variant="outline" className="border-accent/30 text-accent hover:bg-accent/10">
+            <BookOpen className="w-3.5 h-3.5 mr-1" /> Ficha / Folder / Catálogo
+          </Button>
           <Button size="sm" onClick={() => setShowConsulta(!showConsulta)} variant={showConsulta ? 'default' : 'outline'}
             className={showConsulta ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}>
             <Sparkles className="w-3.5 h-3.5 mr-1" /> Consulta Inteligente
@@ -528,6 +543,24 @@ Responda APENAS em JSON:
           </span>
         </div>
       )}
+
+      {/* Doc Generator Dialog */}
+      <CatalogoDocGenerator
+        open={showDocGenerator}
+        onOpenChange={setShowDocGenerator}
+        items={(() => {
+          const sel = filteredItems.filter(i => selectedItems.has(i.id));
+          return (sel.length > 0 ? sel : filteredItems).map(i => ({
+            id: i.id,
+            descricao: i.descricao,
+            marca: i.marca,
+            fabricante: i.fabricante,
+            modelo: i.modelo,
+            unidade: i.unidade,
+            quantidade: i.quantidade,
+          }));
+        })()}
+      />
     </div>
   );
 }
