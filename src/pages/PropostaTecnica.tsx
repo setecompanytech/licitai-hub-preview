@@ -405,30 +405,64 @@ export default function PropostaTecnica() {
               </div>
 
               {empresaAtiva ? (
-                <div className="bg-accent/5 rounded-lg p-4 text-sm border border-accent/20">
-                  <p className="font-semibold text-foreground mb-1">{empresaAtiva.razao_social}</p>
-                  <p className="text-muted-foreground">
-                    CNPJ: {empresaAtiva.cnpj}
-                    {empresaAtiva.municipio && ` · ${empresaAtiva.municipio}`}
-                    {empresaAtiva.uf && `/${empresaAtiva.uf}`}
-                    {empresaAtiva.regime_tributario && ` · ${empresaAtiva.regime_tributario}`}
-                  </p>
-                  {empresaAtiva.endereco && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      <MapPin className="w-3 h-3 inline mr-1" />
-                      {empresaAtiva.endereco}
-                      {empresaAtiva.complemento && `, ${empresaAtiva.complemento}`}
-                      {empresaAtiva.bairro && ` - ${empresaAtiva.bairro}`}
-                      {empresaAtiva.cep && ` · CEP: ${empresaAtiva.cep}`}
-                    </p>
-                  )}
-                  {(empresaAtiva.telefone || empresaAtiva.email) && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {empresaAtiva.telefone && `Tel: ${empresaAtiva.telefone}`}
-                      {empresaAtiva.telefone && empresaAtiva.email && ' · '}
-                      {empresaAtiva.email && `E-mail: ${empresaAtiva.email}`}
-                    </p>
-                  )}
+                <div className="space-y-3">
+                  <div className="bg-accent/5 rounded-lg p-4 text-sm border border-accent/20">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <p className="font-semibold text-foreground mb-1">{empresaAtiva.razao_social}</p>
+                        {empresaAtiva.nome_fantasia && (
+                          <p className="text-xs text-muted-foreground">Nome Fantasia: {empresaAtiva.nome_fantasia}</p>
+                        )}
+                        <p className="text-muted-foreground">
+                          CNPJ: {empresaAtiva.cnpj}
+                          {empresaAtiva.cnae_principal && ` · CNAE: ${empresaAtiva.cnae_principal}`}
+                        </p>
+                        <p className="text-muted-foreground">
+                          {empresaAtiva.municipio && `${empresaAtiva.municipio}`}
+                          {empresaAtiva.uf && `/${empresaAtiva.uf}`}
+                          {empresaAtiva.regime_tributario && ` · ${empresaAtiva.regime_tributario}`}
+                        </p>
+                        {empresaAtiva.endereco && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            <MapPin className="w-3 h-3 inline mr-1" />
+                            {empresaAtiva.endereco}
+                            {empresaAtiva.complemento && `, ${empresaAtiva.complemento}`}
+                            {empresaAtiva.bairro && ` - ${empresaAtiva.bairro}`}
+                            {empresaAtiva.cep && ` · CEP: ${empresaAtiva.cep}`}
+                          </p>
+                        )}
+                        {(empresaAtiva.telefone || empresaAtiva.email) && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {empresaAtiva.telefone && `Tel: ${empresaAtiva.telefone}`}
+                            {empresaAtiva.telefone && empresaAtiva.email && ' · '}
+                            {empresaAtiva.email && `E-mail: ${empresaAtiva.email}`}
+                          </p>
+                        )}
+                        {(empresaAtiva.inscricao_estadual || empresaAtiva.inscricao_municipal) && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {empresaAtiva.inscricao_estadual && `IE: ${empresaAtiva.inscricao_estadual}`}
+                            {empresaAtiva.inscricao_estadual && empresaAtiva.inscricao_municipal && ' · '}
+                            {empresaAtiva.inscricao_municipal && `IM: ${empresaAtiva.inscricao_municipal}`}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 text-xs gap-1.5"
+                        onClick={() => {
+                          if (empresaAtiva.telefone) setTelefone(empresaAtiva.telefone);
+                          if (empresaAtiva.email) setEmail(empresaAtiva.email);
+                          if (empresaAtiva.inscricao_estadual) setInscEstadual(empresaAtiva.inscricao_estadual);
+                          if (empresaAtiva.inscricao_municipal) setInscMunicipal(empresaAtiva.inscricao_municipal);
+                          toast.success('Dados da empresa preenchidos automaticamente via Configurações!');
+                        }}
+                      >
+                        <Building2 className="w-3.5 h-3.5" />
+                        Preencher via Configurações
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
