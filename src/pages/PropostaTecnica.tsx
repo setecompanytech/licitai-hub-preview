@@ -133,6 +133,14 @@ export default function PropostaTecnica() {
       if (empresaAtiva.inscricao_municipal) setInscMunicipal(empresaAtiva.inscricao_municipal);
       if (empresaAtiva.telefone) setTelefone(empresaAtiva.telefone);
       if (empresaAtiva.email) setEmail(empresaAtiva.email);
+      // Auto-fill representative data from Configurações
+      if ((empresaAtiva as any).rep_nome) setRepNome((empresaAtiva as any).rep_nome);
+      if ((empresaAtiva as any).rep_cpf) setRepCpf((empresaAtiva as any).rep_cpf);
+      if ((empresaAtiva as any).rep_rg) setRepRg((empresaAtiva as any).rep_rg);
+      if ((empresaAtiva as any).rep_orgao_expedidor) setRepOrgaoExp((empresaAtiva as any).rep_orgao_expedidor);
+      if ((empresaAtiva as any).rep_cargo) setRepCargo((empresaAtiva as any).rep_cargo);
+      if ((empresaAtiva as any).rep_naturalidade) setRepNaturalidade((empresaAtiva as any).rep_naturalidade);
+      if ((empresaAtiva as any).rep_nacionalidade) setRepNacionalidade((empresaAtiva as any).rep_nacionalidade);
     }
   }, [empresaAtiva]);
 
@@ -455,7 +463,15 @@ export default function PropostaTecnica() {
                           if (empresaAtiva.email) setEmail(empresaAtiva.email);
                           if (empresaAtiva.inscricao_estadual) setInscEstadual(empresaAtiva.inscricao_estadual);
                           if (empresaAtiva.inscricao_municipal) setInscMunicipal(empresaAtiva.inscricao_municipal);
-                          toast.success('Dados da empresa preenchidos automaticamente via Configurações!');
+                          // Also fill representative
+                          if ((empresaAtiva as any).rep_nome) setRepNome((empresaAtiva as any).rep_nome);
+                          if ((empresaAtiva as any).rep_cpf) setRepCpf((empresaAtiva as any).rep_cpf);
+                          if ((empresaAtiva as any).rep_rg) setRepRg((empresaAtiva as any).rep_rg);
+                          if ((empresaAtiva as any).rep_orgao_expedidor) setRepOrgaoExp((empresaAtiva as any).rep_orgao_expedidor);
+                          if ((empresaAtiva as any).rep_cargo) setRepCargo((empresaAtiva as any).rep_cargo);
+                          if ((empresaAtiva as any).rep_naturalidade) setRepNaturalidade((empresaAtiva as any).rep_naturalidade);
+                          if ((empresaAtiva as any).rep_nacionalidade) setRepNacionalidade((empresaAtiva as any).rep_nacionalidade);
+                          toast.success('Dados da empresa e representante preenchidos via Configurações!');
                         }}
                       >
                         <Building2 className="w-3.5 h-3.5" />

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Bell, Globe, Shield, Newspaper, Search, Loader2, ExternalLink, CheckCircle2, AlertTriangle, ImageIcon } from 'lucide-react';
+import { Building2, Bell, Globe, Shield, Newspaper, Search, Loader2, ExternalLink, CheckCircle2, AlertTriangle, ImageIcon, User, Save } from 'lucide-react';
 import CnaesSecundarios from '@/components/configuracoes/CnaesSecundarios';
 import PlanoAssinatura from '@/components/configuracoes/PlanoAssinatura';
 import TimbradoUploader from '@/components/proposta/TimbradoUploader';
@@ -15,14 +15,34 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 
 export default function Configuracoes() {
   const { empresaAtiva, reloadEmpresas } = useEmpresa();
+
+  // Empresa fields
   const [cnpjInput, setCnpjInput] = useState('');
   const [razaoSocial, setRazaoSocial] = useState('');
+  const [nomeFantasia, setNomeFantasia] = useState('');
   const [cnaePrincipal, setCnaePrincipal] = useState('');
+  const [endereco, setEndereco] = useState('');
+  const [complemento, setComplemento] = useState('');
+  const [bairro, setBairro] = useState('');
+  const [cep, setCep] = useState('');
   const [cidade, setCidade] = useState('');
   const [uf, setUf] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [email, setEmail] = useState('');
   const [inscricaoMunicipal, setInscricaoMunicipal] = useState('');
   const [inscricaoEstadual, setInscricaoEstadual] = useState('');
   const [timbradoUrl, setTimbradoUrl] = useState<string | null>(null);
+
+  // Representante fields
+  const [repNome, setRepNome] = useState('');
+  const [repCpf, setRepCpf] = useState('');
+  const [repRg, setRepRg] = useState('');
+  const [repOrgaoExp, setRepOrgaoExp] = useState('');
+  const [repCargo, setRepCargo] = useState('');
+  const [repNaturalidade, setRepNaturalidade] = useState('');
+  const [repNacionalidade, setRepNacionalidade] = useState('Brasileira');
+
+  // Loading states
   const [loadingCnpj, setLoadingCnpj] = useState(false);
   const [loadingSintegra, setLoadingSintegra] = useState(false);
   const [loadingSalvar, setLoadingSalvar] = useState(false);
@@ -32,11 +52,27 @@ export default function Configuracoes() {
     if (empresaAtiva) {
       setCnpjInput(empresaAtiva.cnpj || '');
       setRazaoSocial(empresaAtiva.razao_social || '');
+      setNomeFantasia(empresaAtiva.nome_fantasia || '');
       setCnaePrincipal(empresaAtiva.cnae_principal || '');
+      setEndereco(empresaAtiva.endereco || '');
+      setComplemento(empresaAtiva.complemento || '');
+      setBairro(empresaAtiva.bairro || '');
+      setCep(empresaAtiva.cep || '');
       setCidade(empresaAtiva.municipio || '');
       setUf(empresaAtiva.uf || '');
-      setInscricaoMunicipal((empresaAtiva as any).inscricao_municipal || '');
-      setInscricaoEstadual((empresaAtiva as any).inscricao_estadual || '');
+      setTelefone(empresaAtiva.telefone || '');
+      setEmail(empresaAtiva.email || '');
+      setInscricaoMunicipal(empresaAtiva.inscricao_municipal || '');
+      setInscricaoEstadual(empresaAtiva.inscricao_estadual || '');
+      setTimbradoUrl(empresaAtiva.timbrado_url || null);
+      // Representante
+      setRepNome((empresaAtiva as any).rep_nome || '');
+      setRepCpf((empresaAtiva as any).rep_cpf || '');
+      setRepRg((empresaAtiva as any).rep_rg || '');
+      setRepOrgaoExp((empresaAtiva as any).rep_orgao_expedidor || '');
+      setRepCargo((empresaAtiva as any).rep_cargo || '');
+      setRepNaturalidade((empresaAtiva as any).rep_naturalidade || '');
+      setRepNacionalidade((empresaAtiva as any).rep_nacionalidade || 'Brasileira');
     }
   }, [empresaAtiva]);
 
@@ -52,12 +88,26 @@ export default function Configuracoes() {
         .update({
           cnpj: cnpjInput,
           razao_social: razaoSocial,
+          nome_fantasia: nomeFantasia || null,
           cnae_principal: cnaePrincipal,
+          endereco: endereco || null,
+          complemento: complemento || null,
+          bairro: bairro || null,
+          cep: cep || null,
           municipio: cidade,
           uf: uf,
+          telefone: telefone || null,
+          email: email || null,
           inscricao_municipal: inscricaoMunicipal || null,
           inscricao_estadual: inscricaoEstadual || null,
-        })
+          rep_nome: repNome || null,
+          rep_cpf: repCpf || null,
+          rep_rg: repRg || null,
+          rep_orgao_expedidor: repOrgaoExp || null,
+          rep_cargo: repCargo || null,
+          rep_naturalidade: repNaturalidade || null,
+          rep_nacionalidade: repNacionalidade || null,
+        } as any)
         .eq('id', empresaAtiva.id);
       if (error) throw error;
       await reloadEmpresas();
@@ -85,16 +135,47 @@ export default function Configuracoes() {
       if (data.error) {
         setErroCnpj(data.error);
       } else {
-        setRazaoSocial(data.razaoSocial || razaoSocial);
-        setCnaePrincipal(data.cnaePrincipal || cnaePrincipal);
-        setCidade(data.municipio || cidade);
-        setUf(data.uf || uf);
+        if (data.razaoSocial) setRazaoSocial(data.razaoSocial);
+        if (data.nomeFantasia) setNomeFantasia(data.nomeFantasia);
+        if (data.cnaePrincipal) setCnaePrincipal(data.cnaePrincipal);
+        if (data.municipio) setCidade(data.municipio);
+        if (data.uf) setUf(data.uf);
+        if (data.endereco) setEndereco(data.endereco);
+        if (data.complemento) setComplemento(data.complemento);
+        if (data.bairro) setBairro(data.bairro);
+        if (data.cep) setCep(data.cep);
+        if (data.telefone) setTelefone(data.telefone);
+        if (data.email) setEmail(data.email);
+        if (data.cnpj) setCnpjInput(data.cnpj);
         toast.success('Dados preenchidos via Receita Federal!');
+
+        // Auto-trigger SINTEGRA
+        if (data.uf) {
+          await handleConsultaSintegraInternal(cnpjLimpo, data.uf);
+        }
       }
     } catch (e: any) {
       setErroCnpj(e.message || 'Erro ao consultar CNPJ');
     } finally {
       setLoadingCnpj(false);
+    }
+  };
+
+  const handleConsultaSintegraInternal = async (cnpjLimpo: string, ufParam: string) => {
+    setLoadingSintegra(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('consulta-sintegra', {
+        body: { cnpj: cnpjLimpo, uf: ufParam },
+      });
+      if (error) throw error;
+      if (data?.inscricaoEstadual) {
+        setInscricaoEstadual(data.inscricaoEstadual);
+        toast.success('Inscrição Estadual obtida via SINTEGRA!');
+      }
+    } catch {
+      // Silent
+    } finally {
+      setLoadingSintegra(false);
     }
   };
 
@@ -109,24 +190,7 @@ export default function Configuracoes() {
       return;
     }
     setErroCnpj('');
-    setLoadingSintegra(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('consulta-sintegra', {
-        body: { cnpj: cnpjLimpo, uf: uf },
-      });
-      if (error) throw error;
-      if (data.error) {
-        setErroCnpj(data.error);
-      } else {
-        if (data.inscricaoEstadual) setInscricaoEstadual(data.inscricaoEstadual);
-        if (data.razaoSocial) setRazaoSocial(data.razaoSocial);
-        toast.success('Dados preenchidos via SINTEGRA!');
-      }
-    } catch (e: any) {
-      setErroCnpj(e.message || 'Erro ao consultar SINTEGRA');
-    } finally {
-      setLoadingSintegra(false);
-    }
+    await handleConsultaSintegraInternal(cnpjLimpo, uf);
   };
 
   return (
@@ -138,21 +202,17 @@ export default function Configuracoes() {
         </div>
 
         <div className="space-y-6">
-          {/* Empresa */}
+          {/* Dados da Empresa */}
           <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <Building2 className="w-5 h-5 text-accent" />
               <h2 className="text-sm font-semibold">Dados da Empresa</h2>
             </div>
             <div className="grid gap-4">
-              <div>
-                <Label className="text-xs">Razão Social</Label>
-                <Input value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)} className="mt-1" />
-              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-xs">CNPJ</Label>
-                  <Input value={cnpjInput} onChange={e => setCnpjInput(e.target.value)} className="mt-1" />
+                  <Input value={cnpjInput} onChange={e => setCnpjInput(e.target.value)} className="mt-1" placeholder="00.000.000/0001-00" />
                 </div>
                 <div>
                   <Label className="text-xs">CNAE Principal</Label>
@@ -206,27 +266,58 @@ export default function Configuracoes() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs">Razão Social</Label>
+                <Input value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)} className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs">Nome Fantasia</Label>
+                <Input value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)} className="mt-1" />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label className="text-xs">Cidade</Label>
-                  <Input value={cidade} onChange={e => setCidade(e.target.value)} className="mt-1" />
+                  <Label className="text-xs">CEP</Label>
+                  <Input value={cep} onChange={e => setCep(e.target.value)} className="mt-1" placeholder="00000-000" />
+                </div>
+                <div className="col-span-2">
+                  <Label className="text-xs">Endereço (Logradouro, Nº)</Label>
+                  <Input value={endereco} onChange={e => setEndereco(e.target.value)} className="mt-1" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label className="text-xs">Complemento</Label>
+                  <Input value={complemento} onChange={e => setComplemento(e.target.value)} className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">Bairro</Label>
+                  <Input value={bairro} onChange={e => setBairro(e.target.value)} className="mt-1" />
                 </div>
                 <div>
                   <Label className="text-xs">UF</Label>
-                  <Input value={uf} onChange={e => setUf(e.target.value)} className="mt-1" />
+                  <Input value={uf} onChange={e => setUf(e.target.value)} className="mt-1" maxLength={2} />
                 </div>
+              </div>
+
+              <div>
+                <Label className="text-xs">Município</Label>
+                <Input value={cidade} onChange={e => setCidade(e.target.value)} className="mt-1" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-xs">Inscrição Municipal</Label>
-                  <Input
-                    value={inscricaoMunicipal}
-                    onChange={e => setInscricaoMunicipal(e.target.value)}
-                    placeholder="Número da inscrição municipal"
-                    className="mt-1"
-                  />
+                  <Label className="text-xs">Telefone</Label>
+                  <Input value={telefone} onChange={e => setTelefone(e.target.value)} className="mt-1" placeholder="(XX) XXXXX-XXXX" />
                 </div>
+                <div>
+                  <Label className="text-xs">E-mail</Label>
+                  <Input value={email} onChange={e => setEmail(e.target.value)} className="mt-1" placeholder="contato@empresa.com" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-xs">Inscrição Estadual</Label>
                   <Input
@@ -240,6 +331,62 @@ export default function Configuracoes() {
                       <CheckCircle2 className="w-3 h-3 mr-1" /> Preenchido
                     </Badge>
                   )}
+                </div>
+                <div>
+                  <Label className="text-xs">Inscrição Municipal</Label>
+                  <Input
+                    value={inscricaoMunicipal}
+                    onChange={e => setInscricaoMunicipal(e.target.value)}
+                    placeholder="Número da inscrição municipal"
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Dados do Representante */}
+          <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <User className="w-5 h-5 text-accent" />
+              <h2 className="text-sm font-semibold">Dados do Representante Legal</h2>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              Preencha os dados do representante legal. Essas informações serão propagadas automaticamente para propostas comerciais, declarações, petições, recursos e demais documentos.
+            </p>
+            <div className="grid gap-4">
+              <div>
+                <Label className="text-xs">Nome Completo</Label>
+                <Input value={repNome} onChange={e => setRepNome(e.target.value)} className="mt-1" placeholder="Nome completo do representante" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs">CPF</Label>
+                  <Input value={repCpf} onChange={e => setRepCpf(e.target.value)} className="mt-1" placeholder="000.000.000-00" />
+                </div>
+                <div>
+                  <Label className="text-xs">RG</Label>
+                  <Input value={repRg} onChange={e => setRepRg(e.target.value)} className="mt-1" placeholder="Número do RG" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs">Órgão Expedidor</Label>
+                  <Input value={repOrgaoExp} onChange={e => setRepOrgaoExp(e.target.value)} className="mt-1" placeholder="SSP/XX" />
+                </div>
+                <div>
+                  <Label className="text-xs">Cargo / Função</Label>
+                  <Input value={repCargo} onChange={e => setRepCargo(e.target.value)} className="mt-1" placeholder="Sócio-Administrador" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs">Naturalidade</Label>
+                  <Input value={repNaturalidade} onChange={e => setRepNaturalidade(e.target.value)} className="mt-1" placeholder="Cidade/UF" />
+                </div>
+                <div>
+                  <Label className="text-xs">Nacionalidade</Label>
+                  <Input value={repNacionalidade} onChange={e => setRepNacionalidade(e.target.value)} className="mt-1" />
                 </div>
               </div>
             </div>
@@ -328,7 +475,7 @@ export default function Configuracoes() {
             onClick={handleSalvar}
             disabled={loadingSalvar || !empresaAtiva}
           >
-            {loadingSalvar ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            {loadingSalvar ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
             Salvar Configurações
           </Button>
         </div>

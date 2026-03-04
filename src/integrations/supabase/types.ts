@@ -1009,6 +1009,13 @@ export type Database = {
           nome_fantasia: string | null
           razao_social: string
           regime_tributario: string | null
+          rep_cargo: string | null
+          rep_cpf: string | null
+          rep_nacionalidade: string | null
+          rep_naturalidade: string | null
+          rep_nome: string | null
+          rep_orgao_expedidor: string | null
+          rep_rg: string | null
           telefone: string | null
           timbrado_path: string | null
           timbrado_url: string | null
@@ -1036,6 +1043,13 @@ export type Database = {
           nome_fantasia?: string | null
           razao_social: string
           regime_tributario?: string | null
+          rep_cargo?: string | null
+          rep_cpf?: string | null
+          rep_nacionalidade?: string | null
+          rep_naturalidade?: string | null
+          rep_nome?: string | null
+          rep_orgao_expedidor?: string | null
+          rep_rg?: string | null
           telefone?: string | null
           timbrado_path?: string | null
           timbrado_url?: string | null
@@ -1063,6 +1077,13 @@ export type Database = {
           nome_fantasia?: string | null
           razao_social?: string
           regime_tributario?: string | null
+          rep_cargo?: string | null
+          rep_cpf?: string | null
+          rep_nacionalidade?: string | null
+          rep_naturalidade?: string | null
+          rep_nome?: string | null
+          rep_orgao_expedidor?: string | null
+          rep_rg?: string | null
           telefone?: string | null
           timbrado_path?: string | null
           timbrado_url?: string | null
