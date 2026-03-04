@@ -3,6 +3,7 @@ import StatCard from '@/components/dashboard/StatCard';
 import LicitacoesChart from '@/components/dashboard/LicitacoesChart';
 import ValorChart from '@/components/dashboard/ValorChart';
 import PainelLicitacoes from '@/components/dashboard/PainelLicitacoes';
+import QuickAccessGrid from '@/components/dashboard/QuickAccessGrid';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
@@ -39,6 +40,11 @@ export default function Index() {
         <StatCard label="ROI Médio" value={`${kpis.roiMedio}%`} icon={TrendingUp} accentColor="hsl(38, 92%, 50%)" />
         <StatCard label="Valor Ganho" value={formatCurrency(kpis.valorTotalGanho)} icon={DollarSign} accentColor="hsl(210, 100%, 40%)" />
         <StatCard label="Novas Hoje" value={kpis.licitacoesHoje.toString()} icon={Zap} />
+      </div>
+
+      {/* Acesso Rápido — Módulos */}
+      <div className="mb-6">
+        <QuickAccessGrid />
       </div>
 
       {/* Painel de Processos Licitatórios */}
