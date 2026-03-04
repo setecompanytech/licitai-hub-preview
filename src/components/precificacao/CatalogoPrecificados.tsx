@@ -481,7 +481,19 @@ Responda APENAS em JSON:
                   <TableCell className="py-1.5">
                     <input type="checkbox" checked={selectedItems.has(item.id)} onChange={() => toggleSelect(item.id)} className="rounded border-border" />
                   </TableCell>
-                  <TableCell className="text-xs py-1.5 max-w-[200px] truncate">{item.descricao}</TableCell>
+                  <TableCell className="text-xs py-1.5 max-w-[250px]">
+                    <div className="flex items-center gap-2">
+                      {(item as any).detalhes?.image_url && (
+                        <img
+                          src={(item as any).detalhes.image_url}
+                          alt=""
+                          className="w-10 h-10 object-contain rounded border border-border/30 shrink-0"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      )}
+                      <span className="truncate">{item.descricao}</span>
+                    </div>
+                  </TableCell>
                   <TableCell className="text-xs py-1.5 text-center">{item.quantidade}</TableCell>
                   <TableCell className="text-xs py-1.5 text-center">{item.unidade}</TableCell>
                   <TableCell className="text-xs py-1.5">{item.marca || '—'}</TableCell>
