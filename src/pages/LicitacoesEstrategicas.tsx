@@ -85,7 +85,19 @@ const formatCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'curren
 export default function LicitacoesEstrategicas() {
   const [filtro, setFiltro] = useState<'todas' | 'alta' | 'media' | 'baixa'>('todas');
   const [expandido, setExpandido] = useState<string | null>(null);
+  const [capagUf, setCapagUf] = useState('');
+  const [capagMunicipio, setCapagMunicipio] = useState('');
+  const [capagOrgaoInput, setCapagOrgaoInput] = useState('');
   const [capagOrgao, setCapagOrgao] = useState<{ orgao: string; uf?: string; municipio?: string } | null>(null);
+
+  const iniciarCapag = () => {
+    if (!capagOrgaoInput.trim()) return;
+    setCapagOrgao({
+      orgao: capagOrgaoInput.trim(),
+      uf: capagUf || undefined,
+      municipio: capagMunicipio || undefined,
+    });
+  };
 
   const filtradas = mockEstrategicas.filter(l => filtro === 'todas' || l.recomendacao === filtro);
 
