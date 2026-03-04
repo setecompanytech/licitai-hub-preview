@@ -253,7 +253,7 @@ REGRAS:
       });
     });
 
-    toast.success(`${validItens.length} item(ns) enviado(s) para a Proposta Técnica!`);
+    toast.success(`${validItens.length} item(ns) enviado(s) para a Proposta Comercial!`);
   };
 
   return (
@@ -452,7 +452,7 @@ REGRAS:
           <div className="flex items-center gap-3">
             <Switch checked={enviarProposta} onCheckedChange={setEnviarProposta} />
             <div>
-              <p className="text-sm font-medium">Integrar à Proposta Técnica/Comercial</p>
+              <p className="text-sm font-medium">Integrar à Proposta Comercial</p>
               <p className="text-[10px] text-muted-foreground">
                 Opcional — os itens serão enviados à Planilha de Preços da proposta na finalização
               </p>

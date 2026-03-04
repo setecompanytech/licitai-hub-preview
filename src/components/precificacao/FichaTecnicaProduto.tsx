@@ -83,7 +83,7 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
       valorTotal: preco.toFixed(2).replace('.', ','),
       valorTotalExtenso: valorPorExtenso(preco),
     });
-    toast.success('Produto adicionado à proposta técnica!');
+    toast.success('Produto adicionado à proposta comercial!');
   };
 
   const images = ficha?.imagens?.length ? ficha.imagens : (produto.image_url ? [produto.image_url] : []);
