@@ -6,7 +6,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { FileText, Sparkles, Loader2, Copy, CheckCircle, Settings2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  FileText, Sparkles, Loader2, Copy, CheckCircle, Settings2,
+  ChevronRight, ChevronLeft, Building2, User, Receipt, Scale,
+  ShieldCheck, Stamp, Send, Calendar, MapPin, Clock, CreditCard,
+  FileSignature, Upload as UploadIcon, Eye
+} from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,28 +22,49 @@ import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { toast } from 'sonner';
 import EditalUploader, { type ExtractedEditalData, type EditalItem } from '@/components/proposta/EditalUploader';
 import PlanilhaPrecos from '@/components/proposta/PlanilhaPrecos';
-
-
 import TimbradoUploader from '@/components/proposta/TimbradoUploader';
 import EnvioProposta from '@/components/proposta/EnvioProposta';
 import PropostaDownload from '@/components/proposta/PropostaDownload';
 import PropostaRenderer from '@/components/proposta/PropostaRenderer';
 import DadosEmpresaUploader, { type ExtractedEmpresaData } from '@/components/proposta/DadosEmpresaUploader';
 import BancoSelector from '@/components/proposta/BancoSelector';
-import { Send } from 'lucide-react';
+
+const STEPS = [
+  { id: 1, label: 'Edital', icon: FileText, desc: 'Upload e extração' },
+  { id: 2, label: 'Empresa', icon: Building2, desc: 'Dados cadastrais' },
+  { id: 3, label: 'Representante', icon: User, desc: 'Dados pessoais' },
+  { id: 4, label: 'Licitação', icon: Receipt, desc: 'Dados do processo' },
+  { id: 5, label: 'Planilha', icon: CreditCard, desc: 'Preços e itens' },
+  { id: 6, label: 'Declarações', icon: Scale, desc: 'Obrigatórias' },
+  { id: 7, label: 'Formatação', icon: Settings2, desc: 'Layout e marca' },
+  { id: 8, label: 'Gerar', icon: Sparkles, desc: 'Proposta final' },
+];
+
+const DECLARACOES_PADRAO = [
+  { key: 'meEpp', label: 'Declaração de ME/EPP ou equiparada', base: 'LC 123/2006 c/c Lei 14.133/2021, Art. 4º, §2º' },
+  { key: 'inexistenciaFato', label: 'Inexistência de fato impeditivo à habilitação', base: 'Lei 14.133/2021, Art. 63, §1º' },
+  { key: 'menorAprendiz', label: 'Não emprego de menor de 18 anos em trabalho noturno, perigoso ou insalubre', base: 'Lei 14.133/2021, Art. 68, VI' },
+  { key: 'elaboracaoIndep', label: 'Elaboração independente de proposta', base: 'IN nº 01/2009 — MPOG' },
+  { key: 'reservadoMeEpp', label: 'Ciência de itens exclusivos/reservados para ME/EPP', base: 'LC 123/2006, Art. 48' },
+  { key: 'responsabilidade', label: 'Nos preços estão inclusos frete, tributos e encargos', base: 'Lei 14.133/2021, Art. 12, §3º' },
+  { key: 'conformidade', label: 'Os produtos/serviços atendem às normas técnicas vigentes', base: 'Lei 14.133/2021, Art. 41' },
+  { key: 'idoneidade', label: 'Declaração de idoneidade financeira e técnica', base: 'Lei 14.133/2021, Art. 62' },
+];
 
 export default function PropostaTecnica() {
   const { empresaAtiva } = useEmpresa();
   const { user } = useAuth();
   const { pendingItems, clearPending, hasPending } = usePropostaCart();
+  const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [proposal, setProposal] = useState('');
   const [copied, setCopied] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
 
-  // Timbrado
+  // Timbrado / Marca d'água
   const [timbradoUrl, setTimbradoUrl] = useState<string | null>(null);
+  const [usarMarcaDagua, setUsarMarcaDagua] = useState(true);
 
   // Form fields
   const [numeroLicitacao, setNumeroLicitacao] = useState('');
@@ -44,6 +73,8 @@ export default function PropostaTecnica() {
   const [objeto, setObjeto] = useState('');
   const [valorEstimado, setValorEstimado] = useState('');
   const [prazoValidade, setPrazoValidade] = useState('60 dias corridos');
+  const [prazoPagamento, setPrazoPagamento] = useState('Até 30 dias após recebimento definitivo e apresentação da Nota Fiscal');
+  const [prazoEntrega, setPrazoEntrega] = useState('');
   const [localEntrega, setLocalEntrega] = useState('');
   const [liquidacaoNfe, setLiquidacaoNfe] = useState('');
   const [editalRawText, setEditalRawText] = useState('');
@@ -61,18 +92,30 @@ export default function PropostaTecnica() {
   const [repCargo, setRepCargo] = useState('');
   const [repNaturalidade, setRepNaturalidade] = useState('');
   const [repNacionalidade, setRepNacionalidade] = useState('Brasileira');
+  const [repEstadoCivil, setRepEstadoCivil] = useState('');
+  const [repEndereco, setRepEndereco] = useState('');
 
   // Dados bancários
   const [banco, setBanco] = useState('');
   const [agencia, setAgencia] = useState('');
   const [conta, setConta] = useState('');
+  const [tipoConta, setTipoConta] = useState('Conta Corrente');
+  const [pix, setPix] = useState('');
 
   // Empresa extras
   const [telefone, setTelefone] = useState('');
   const [email, setEmail] = useState('');
+  const [inscEstadual, setInscEstadual] = useState('');
+  const [inscMunicipal, setInscMunicipal] = useState('');
+
+  // Declarações
+  const [declaracoes, setDeclaracoes] = useState<Record<string, boolean>>(
+    Object.fromEntries(DECLARACOES_PADRAO.map(d => [d.key, true]))
+  );
+  const [declaracoesCustom, setDeclaracoesCustom] = useState<string[]>([]);
 
   // Formatting options
-  const [fontFamily, setFontFamily] = useState('Arial');
+  const [fontFamily, setFontFamily] = useState('Times New Roman');
   const [fontSize, setFontSize] = useState(12);
   const [lineSpacing, setLineSpacing] = useState('1.5');
   const [marginStyle, setMarginStyle] = useState('ABNT (3/2 cm)');
@@ -82,6 +125,13 @@ export default function PropostaTecnica() {
       resultRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [proposal]);
+
+  useEffect(() => {
+    if (empresaAtiva) {
+      if (empresaAtiva.inscricao_estadual) setInscEstadual(empresaAtiva.inscricao_estadual);
+      if (empresaAtiva.inscricao_municipal) setInscMunicipal(empresaAtiva.inscricao_municipal);
+    }
+  }, [empresaAtiva]);
 
   // Import pending items from Precificação
   useEffect(() => {
@@ -111,6 +161,7 @@ export default function PropostaTecnica() {
     if (data.liquidacaoNfe) setLiquidacaoNfe(data.liquidacaoNfe);
     if (data.itens && data.itens.length > 0) setItens(data.itens);
     if (data.rawText) setEditalRawText(data.rawText);
+    toast.info('Dados extraídos! Avance para revisá-los.');
   };
 
   const handleEmpresaExtracted = (data: ExtractedEmpresaData) => {
@@ -132,56 +183,71 @@ export default function PropostaTecnica() {
     const parts: string[] = [];
 
     parts.push(`## Preferências de Formatação`);
-    parts.push(`- Fonte: ${fontFamily}`);
-    parts.push(`- Tamanho da Fonte: ${fontSize}pt`);
-    parts.push(`- Espaçamento entre linhas: ${lineSpacing}`);
-    parts.push(`- Margens: ${marginStyle}`);
+    parts.push(`- Fonte: ${fontFamily}, Tamanho: ${fontSize}pt, Espaçamento: ${lineSpacing}, Margens: ${marginStyle}`);
 
     if (empresaAtiva) {
-      parts.push(`## Dados da Empresa`);
+      parts.push(`\n## Dados da Empresa Licitante`);
       parts.push(`- Razão Social: ${empresaAtiva.razao_social}`);
       if (empresaAtiva.nome_fantasia) parts.push(`- Nome Fantasia: ${empresaAtiva.nome_fantasia}`);
       parts.push(`- CNPJ: ${empresaAtiva.cnpj}`);
       if (empresaAtiva.cnae_principal) parts.push(`- CNAE Principal: ${empresaAtiva.cnae_principal}`);
+      if (inscEstadual) parts.push(`- Inscrição Estadual: ${inscEstadual}`);
+      if (inscMunicipal) parts.push(`- Inscrição Municipal: ${inscMunicipal}`);
+      if (empresaAtiva.endereco) parts.push(`- Endereço: ${empresaAtiva.endereco}`);
       if (empresaAtiva.uf) parts.push(`- UF: ${empresaAtiva.uf}`);
       if (empresaAtiva.municipio) parts.push(`- Município: ${empresaAtiva.municipio}`);
+      if (empresaAtiva.regime_tributario) parts.push(`- Regime Tributário: ${empresaAtiva.regime_tributario}`);
     }
-
     if (telefone) parts.push(`- Telefone: ${telefone}`);
     if (email) parts.push(`- E-mail: ${email}`);
 
-    parts.push(`\n## Dados do Representante Legal`);
+    parts.push(`\n## Representante Legal`);
     if (repNome) parts.push(`- Nome: ${repNome}`);
     if (repCpf) parts.push(`- CPF: ${repCpf}`);
     if (repRg) parts.push(`- RG: ${repRg} — Expedido por: ${repOrgaoExp}`);
     if (repCargo) parts.push(`- Cargo/Função: ${repCargo}`);
     if (repNaturalidade) parts.push(`- Naturalidade: ${repNaturalidade}`);
     if (repNacionalidade) parts.push(`- Nacionalidade: ${repNacionalidade}`);
+    if (repEstadoCivil) parts.push(`- Estado Civil: ${repEstadoCivil}`);
+    if (repEndereco) parts.push(`- Endereço: ${repEndereco}`);
 
     parts.push(`\n## Dados Bancários`);
     if (banco) parts.push(`- Banco: ${banco}`);
     if (agencia) parts.push(`- Agência: ${agencia}`);
-    if (conta) parts.push(`- Conta Corrente: ${conta}`);
+    if (conta) parts.push(`- ${tipoConta}: ${conta}`);
+    if (pix) parts.push(`- Chave PIX: ${pix}`);
 
     parts.push(`\n## Dados da Licitação`);
     if (numeroLicitacao) parts.push(`- Número: ${numeroLicitacao}`);
-    if (orgao) parts.push(`- Órgão: ${orgao}`);
+    if (orgao) parts.push(`- Órgão Gerenciador: ${orgao}`);
     parts.push(`- Modalidade: ${modalidade}`);
     if (objeto) parts.push(`- Objeto: ${objeto}`);
     if (valorEstimado) parts.push(`- Valor Estimado: R$ ${valorEstimado}`);
-    if (prazoValidade) parts.push(`- Prazo de Validade: ${prazoValidade}`);
+    if (prazoValidade) parts.push(`- Validade da Proposta Comercial: ${prazoValidade}`);
+    if (prazoPagamento) parts.push(`- Prazo de Pagamento: ${prazoPagamento}`);
+    if (prazoEntrega) parts.push(`- Prazo de Entrega: ${prazoEntrega}`);
     if (localEntrega) parts.push(`- Local de Entrega: ${localEntrega}`);
     if (liquidacaoNfe) parts.push(`- Liquidação NFe: ${liquidacaoNfe}`);
 
     if (itens.length > 0 && itens.some(i => i.descricao.trim())) {
-      parts.push(`\n## Planilha de Preços (REPRODUZA FIELMENTE ESTA TABELA COM TODAS AS COLUNAS NA MESMA ORDEM)`);
-      parts.push('| ITEM | QTDE | UNID | DESCRIÇÃO | MARCA | MODELO | VL. UNIT. | VL. EXTENSO | VL. TOTAL | VL. EXTENSO |');
-      parts.push('|------|------|------|-----------|-------|--------|-----------|-------------|-----------|-------------|');
+      parts.push(`\n## Planilha de Preços (REPRODUZA FIELMENTE COM TODAS AS 11 COLUNAS)`);
+      parts.push('| ITEM | DESCRIÇÃO | QTDE | UNID | MARCA | FABRICANTE | MODELO | VL. UNIT. (R$) | VL. UNIT. EXTENSO | VL. TOTAL (R$) | VL. TOTAL EXTENSO |');
+      parts.push('|------|-----------|------|------|-------|------------|--------|----------------|-------------------|----------------|-------------------|');
       itens.forEach(i => {
-        parts.push(`| ${i.item} | ${i.quantidade} | ${i.unidade} | ${i.descricao} | ${i.marca || '-'} | ${i.modelo || '-'} | R$ ${i.valorUnitario} | ${i.valorUnitarioExtenso} | R$ ${i.valorTotal} | ${i.valorTotalExtenso} |`);
+        parts.push(`| ${i.item} | ${i.descricao} | ${i.quantidade} | ${i.unidade} | ${i.marca || '-'} | ${i.fabricante || '-'} | ${i.modelo || '-'} | R$ ${i.valorUnitario} | ${i.valorUnitarioExtenso || '-'} | R$ ${i.valorTotal} | ${i.valorTotalExtenso || '-'} |`);
       });
       const total = itens.reduce((s, i) => s + (parseFloat(i.valorTotal.replace(',', '.')) || 0), 0);
       parts.push(`\nValor Global: R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
+    }
+
+    // Declarações ativas
+    const declAtivas = DECLARACOES_PADRAO.filter(d => declaracoes[d.key]);
+    if (declAtivas.length > 0) {
+      parts.push(`\n## Declarações Obrigatórias (INCLUA TODAS NO DOCUMENTO)`);
+      declAtivas.forEach(d => parts.push(`- ${d.label} (${d.base})`));
+    }
+    if (declaracoesCustom.length > 0) {
+      declaracoesCustom.forEach(d => parts.push(`- ${d}`));
     }
 
     if (editalRawText) {
@@ -201,7 +267,7 @@ export default function PropostaTecnica() {
     let content = '';
 
     await streamAIChat({
-      messages: [{ role: 'user', content: 'Gere a Proposta Comercial/Técnica completa seguindo a estrutura definida, com todas as declarações obrigatórias, preenchendo os dados da empresa e do representante legal fornecidos.' }],
+      messages: [{ role: 'user', content: 'Gere a Proposta Comercial/Técnica completa seguindo rigorosamente a estrutura: 1) Cabeçalho e endereçamento ao Órgão Gerenciador, 2) Objeto, 3) Planilha de Preços com TODAS as 11 colunas (Item, Descrição, Qtde, Unid, Marca, Fabricante, Modelo, Vlr Unitário, Vlr Extenso, Vlr Total, Vlr Total Extenso), 4) Validade da Proposta, 5) Prazo e Condições de Pagamento, 6) Prazo e Local de Entrega, 7) Declarações obrigatórias, 8) Dados da Empresa Licitante, 9) Dados do Representante Legal, 10) Dados Bancários, 11) Local, Data e Assinatura.' }],
       action: 'proposta_tecnica',
       context: buildContext(),
       onDelta: (chunk) => { content += chunk; setProposal(content); },
@@ -217,255 +283,499 @@ export default function PropostaTecnica() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const nextStep = () => setCurrentStep(s => Math.min(s + 1, STEPS.length));
+  const prevStep = () => setCurrentStep(s => Math.max(s - 1, 1));
+
+  const completedSteps = () => {
+    const done = new Set<number>();
+    if (editalRawText || numeroLicitacao) done.add(1);
+    if (empresaAtiva) done.add(2);
+    if (repNome && repCpf) done.add(3);
+    if (orgao && objeto) done.add(4);
+    if (itens.some(i => i.descricao.trim())) done.add(5);
+    done.add(6); // declarations have defaults
+    done.add(7); // formatting has defaults
+    return done;
+  };
+  const completed = completedSteps();
+
   return (
     <AppLayout>
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <FileText className="w-6 h-6 text-accent" />
-            Proposta Comercial / Técnica
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Envie o edital para extração automática por IA e gere propostas completas com declarações obrigatórias
-          </p>
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              <FileText className="w-6 h-6 text-accent" />
+              Proposta Comercial / Técnica
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Montagem assistida por IA · Modelo conforme Lei 14.133/2021 e ABNT NBR 14724
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="outline" className="gap-1"><Stamp className="w-3 h-3" /> Conlicitação</Badge>
+            <Badge variant="outline" className="gap-1"><Stamp className="w-3 h-3" /> Effecti</Badge>
+            <Badge variant="outline" className="gap-1"><Stamp className="w-3 h-3" /> PrecificaJá</Badge>
+          </div>
         </div>
 
-        {/* Edital Upload */}
-        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6 space-y-4">
-          <h2 className="font-semibold text-lg flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-accent" />
-            1. Upload do Edital
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Envie o edital em PDF ou TXT para que a IA extraia automaticamente os dados da licitação.
-          </p>
-          <EditalUploader onExtracted={handleEditalExtracted} isExtracting={isExtracting} setIsExtracting={setIsExtracting} />
+        {/* Stepper */}
+        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-4">
+          <div className="flex items-center gap-1 overflow-x-auto pb-1">
+            {STEPS.map((step, idx) => {
+              const Icon = step.icon;
+              const isActive = currentStep === step.id;
+              const isDone = completed.has(step.id);
+              return (
+                <button
+                  key={step.id}
+                  onClick={() => setCurrentStep(step.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all shrink-0 ${
+                    isActive
+                      ? 'bg-accent text-accent-foreground shadow-sm'
+                      : isDone
+                        ? 'bg-accent/10 text-accent hover:bg-accent/20'
+                        : 'text-muted-foreground hover:bg-muted/50'
+                  }`}
+                >
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                    isActive ? 'bg-accent-foreground/20' : isDone ? 'bg-accent/20' : 'bg-muted'
+                  }`}>
+                    {isDone && !isActive ? <CheckCircle className="w-3.5 h-3.5" /> : step.id}
+                  </div>
+                  <div className="text-left hidden sm:block">
+                    <div>{step.label}</div>
+                    <div className="text-[10px] opacity-70">{step.desc}</div>
+                  </div>
+                  {idx < STEPS.length - 1 && <ChevronRight className="w-3 h-3 ml-1 opacity-30" />}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Company & Representative Info */}
-        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6 space-y-6">
-          <h2 className="font-semibold text-lg">2. Dados da Empresa e Representante Legal</h2>
-
-          {empresaAtiva && (
-            <div className="bg-muted/50 rounded-lg p-4 text-sm">
-              <p className="font-medium text-foreground mb-1">Empresa selecionada:</p>
-              <p className="text-muted-foreground">
-                {empresaAtiva.razao_social} — CNPJ: {empresaAtiva.cnpj}
-                {empresaAtiva.uf && ` — ${empresaAtiva.municipio || ''}/${empresaAtiva.uf}`}
+        {/* Step Content */}
+        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6">
+          {/* Step 1: Edital Upload */}
+          {currentStep === 1 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-5 h-5 text-accent" />
+                <h2 className="font-semibold text-lg">Upload do Edital</h2>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Envie o edital (PDF, DOC, DOCX ou TXT) para que a IA extraia automaticamente: órgão gerenciador, número do processo,
+                objeto, planilha de itens com quantidades, prazos de validade, pagamento e local de entrega.
               </p>
+              <EditalUploader onExtracted={handleEditalExtracted} isExtracting={isExtracting} setIsExtracting={setIsExtracting} />
+              {editalRawText && (
+                <Badge className="bg-accent/10 text-accent border-accent/30">
+                  <CheckCircle className="w-3 h-3 mr-1" /> Edital processado com sucesso
+                </Badge>
+              )}
             </div>
           )}
 
-          <DadosEmpresaUploader onExtracted={handleEmpresaExtracted} />
-
-          <TimbradoUploader empresaId={empresaAtiva?.id} timbradoUrl={timbradoUrl} setTimbradoUrl={setTimbradoUrl} />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Telefone</Label>
-              <Input placeholder="(XX) XXXXX-XXXX" value={telefone} onChange={e => setTelefone(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>E-mail</Label>
-              <Input placeholder="contato@empresa.com" value={email} onChange={e => setEmail(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="border-t border-border/50 pt-4">
-            <p className="text-sm font-medium text-foreground mb-3">Representante Legal</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Nome Completo</Label>
-                <Input value={repNome} onChange={e => setRepNome(e.target.value)} />
+          {/* Step 2: Empresa */}
+          {currentStep === 2 && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Building2 className="w-5 h-5 text-accent" />
+                <h2 className="font-semibold text-lg">Dados da Empresa Licitante</h2>
               </div>
-              <div className="space-y-2">
-                <Label>CPF</Label>
-                <Input placeholder="000.000.000-00" value={repCpf} onChange={e => setRepCpf(e.target.value)} />
+
+              {empresaAtiva && (
+                <div className="bg-accent/5 rounded-lg p-4 text-sm border border-accent/20">
+                  <p className="font-semibold text-foreground mb-1">{empresaAtiva.razao_social}</p>
+                  <p className="text-muted-foreground">
+                    CNPJ: {empresaAtiva.cnpj}
+                    {empresaAtiva.municipio && ` · ${empresaAtiva.municipio}`}
+                    {empresaAtiva.uf && `/${empresaAtiva.uf}`}
+                    {empresaAtiva.regime_tributario && ` · ${empresaAtiva.regime_tributario}`}
+                  </p>
+                </div>
+              )}
+
+              <DadosEmpresaUploader onExtracted={handleEmpresaExtracted} />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Telefone</Label>
+                  <Input placeholder="(XX) XXXXX-XXXX" value={telefone} onChange={e => setTelefone(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>E-mail</Label>
+                  <Input placeholder="contato@empresa.com" value={email} onChange={e => setEmail(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Inscrição Estadual</Label>
+                  <Input placeholder="ISENTO ou número" value={inscEstadual} onChange={e => setInscEstadual(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Inscrição Municipal</Label>
+                  <Input value={inscMunicipal} onChange={e => setInscMunicipal(e.target.value)} />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>RG</Label>
-                <Input value={repRg} onChange={e => setRepRg(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Órgão Expedidor</Label>
-                <Input placeholder="SSP/XX" value={repOrgaoExp} onChange={e => setRepOrgaoExp(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Cargo / Função</Label>
-                <Input placeholder="Sócio-Administrador" value={repCargo} onChange={e => setRepCargo(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Naturalidade</Label>
-                <Input value={repNaturalidade} onChange={e => setRepNaturalidade(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Nacionalidade</Label>
-                <Input value={repNacionalidade} onChange={e => setRepNacionalidade(e.target.value)} />
-              </div>
-            </div>
-          </div>
 
-          <div className="border-t border-border/50 pt-4">
-            <p className="text-sm font-medium text-foreground mb-3">Dados Bancários</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Banco</Label>
-                <BancoSelector value={banco} onChange={setBanco} />
-              </div>
-              <div className="space-y-2">
-                <Label>Agência</Label>
-                <Input value={agencia} onChange={e => setAgencia(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Conta Corrente</Label>
-                <Input value={conta} onChange={e => setConta(e.target.value)} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Licitação Data */}
-        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6 space-y-6">
-          <h2 className="font-semibold text-lg">3. Dados da Licitação</h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Número da Licitação *</Label>
-              <Input placeholder="Ex: PE 001/2026" value={numeroLicitacao} onChange={e => setNumeroLicitacao(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Órgão Licitante *</Label>
-              <Input placeholder="Ex: SEGEP/Prefeitura Municipal de Belém" value={orgao} onChange={e => setOrgao(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Modalidade</Label>
-              <Input value={modalidade} onChange={e => setModalidade(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Valor Estimado (R$)</Label>
-              <Input placeholder="500000.00" value={valorEstimado} onChange={e => setValorEstimado(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Objeto da Licitação *</Label>
-            <Textarea placeholder="Descrição detalhada do produto ou serviço conforme Termo de Referência..." value={objeto} onChange={e => setObjeto(e.target.value)} rows={4} />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Prazo de Validade</Label>
-              <Input value={prazoValidade} onChange={e => setPrazoValidade(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Local e Horário de Entrega</Label>
-              <Input value={localEntrega} onChange={e => setLocalEntrega(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Liquidação da NFe</Label>
-              <Input placeholder="Conforme edital" value={liquidacaoNfe} onChange={e => setLiquidacaoNfe(e.target.value)} />
-            </div>
-          </div>
-        </div>
-
-        {/* Planilha de preços e Envio */}
-        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6 space-y-6">
-          <h2 className="font-semibold text-lg">4. Planilha de Preços e Envio da Proposta</h2>
-          <PlanilhaPrecos itens={itens} setItens={setItens} />
-
-
-          <div className="border-t border-border/50 pt-4 space-y-2">
-            <p className="text-sm font-medium text-foreground flex items-center gap-2">
-              <Send className="w-4 h-4 text-accent" />
-              Envio da Proposta
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Prepare e envie sua proposta para portais de compras públicas
-            </p>
-            <EnvioProposta />
-          </div>
-        </div>
-
-        {/* Formatting Options */}
-        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6 space-y-6">
-          <h2 className="font-semibold text-lg flex items-center gap-2">
-            <Settings2 className="w-5 h-5 text-accent" />
-            5. Configurações de Formatação
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Defina a fonte, tamanho e espaçamento que a IA usará para gerar a proposta.
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label>Fonte</Label>
-              <Select value={fontFamily} onValueChange={setFontFamily}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Arial">Arial</SelectItem>
-                  <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                  <SelectItem value="Calibri">Calibri</SelectItem>
-                  <SelectItem value="Verdana">Verdana</SelectItem>
-                  <SelectItem value="Courier New">Courier New</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Tamanho da Fonte: {fontSize}pt</Label>
-              <Slider
-                value={[fontSize]}
-                onValueChange={([v]) => setFontSize(v)}
-                min={10}
-                max={14}
-                step={1}
-                className="mt-3"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>10pt</span><span>14pt</span>
+              <div className="border-t border-border/50 pt-4">
+                <p className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-accent" /> Dados Bancários
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Banco</Label>
+                    <BancoSelector value={banco} onChange={setBanco} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Agência</Label>
+                    <Input value={agencia} onChange={e => setAgencia(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Conta</Label>
+                    <Input value={conta} onChange={e => setConta(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tipo de Conta</Label>
+                    <Select value={tipoConta} onValueChange={setTipoConta}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Conta Corrente">Conta Corrente</SelectItem>
+                        <SelectItem value="Conta Poupança">Conta Poupança</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Chave PIX (opcional)</Label>
+                    <Input placeholder="CNPJ, e-mail, telefone ou chave aleatória" value={pix} onChange={e => setPix(e.target.value)} />
+                  </div>
+                </div>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label>Espaçamento entre Linhas</Label>
-              <Select value={lineSpacing} onValueChange={setLineSpacing}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1.0">Simples (1.0)</SelectItem>
-                  <SelectItem value="1.15">1.15</SelectItem>
-                  <SelectItem value="1.5">1.5 (ABNT)</SelectItem>
-                  <SelectItem value="2.0">Duplo (2.0)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Margens</Label>
-              <Select value={marginStyle} onValueChange={setMarginStyle}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ABNT (3/2 cm)">ABNT (3/2 cm)</SelectItem>
-                  <SelectItem value="Normal (2.5 cm)">Normal (2.5 cm)</SelectItem>
-                  <SelectItem value="Estreita (1.27 cm)">Estreita (1.27 cm)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-
-        {/* Generate Button */}
-        <Button
-          onClick={handleGenerate}
-          disabled={isLoading || isExtracting}
-          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold py-3"
-          size="lg"
-        >
-          {isLoading ? (
-            <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Gerando proposta...</>
-          ) : (
-            <><Sparkles className="w-5 h-5 mr-2" /> Gerar Proposta Comercial / Técnica com IA</>
           )}
-        </Button>
+
+          {/* Step 3: Representante Legal */}
+          {currentStep === 3 && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-2 mb-2">
+                <User className="w-5 h-5 text-accent" />
+                <h2 className="font-semibold text-lg">Representante Legal</h2>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Preencha os dados do representante legal que assinará a proposta. Esses dados podem ser extraídos automaticamente
+                do contrato social ou procuração na etapa anterior.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Nome Completo *</Label>
+                  <Input value={repNome} onChange={e => setRepNome(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>CPF *</Label>
+                  <Input placeholder="000.000.000-00" value={repCpf} onChange={e => setRepCpf(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>RG</Label>
+                  <Input value={repRg} onChange={e => setRepRg(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Órgão Expedidor</Label>
+                  <Input placeholder="SSP/XX" value={repOrgaoExp} onChange={e => setRepOrgaoExp(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cargo / Função</Label>
+                  <Input placeholder="Sócio-Administrador" value={repCargo} onChange={e => setRepCargo(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Naturalidade</Label>
+                  <Input value={repNaturalidade} onChange={e => setRepNaturalidade(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Nacionalidade</Label>
+                  <Input value={repNacionalidade} onChange={e => setRepNacionalidade(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Estado Civil</Label>
+                  <Select value={repEstadoCivil} onValueChange={setRepEstadoCivil}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Solteiro(a)">Solteiro(a)</SelectItem>
+                      <SelectItem value="Casado(a)">Casado(a)</SelectItem>
+                      <SelectItem value="Divorciado(a)">Divorciado(a)</SelectItem>
+                      <SelectItem value="Viúvo(a)">Viúvo(a)</SelectItem>
+                      <SelectItem value="União Estável">União Estável</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Endereço do Representante</Label>
+                  <Input placeholder="Rua, número, bairro, cidade/UF" value={repEndereco} onChange={e => setRepEndereco(e.target.value)} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Dados da Licitação */}
+          {currentStep === 4 && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Receipt className="w-5 h-5 text-accent" />
+                <h2 className="font-semibold text-lg">Dados da Licitação</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Número da Licitação *</Label>
+                  <Input placeholder="Ex: PE 001/2026" value={numeroLicitacao} onChange={e => setNumeroLicitacao(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Órgão Gerenciador *</Label>
+                  <Input placeholder="Ex: SEGEP/Prefeitura Municipal de Belém" value={orgao} onChange={e => setOrgao(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Modalidade</Label>
+                  <Select value={modalidade} onValueChange={setModalidade}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Pregão Eletrônico">Pregão Eletrônico</SelectItem>
+                      <SelectItem value="Pregão Presencial">Pregão Presencial</SelectItem>
+                      <SelectItem value="Concorrência">Concorrência</SelectItem>
+                      <SelectItem value="Tomada de Preços">Tomada de Preços</SelectItem>
+                      <SelectItem value="Convite">Convite</SelectItem>
+                      <SelectItem value="Dispensa de Licitação">Dispensa de Licitação</SelectItem>
+                      <SelectItem value="Inexigibilidade">Inexigibilidade</SelectItem>
+                      <SelectItem value="RDC">RDC</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Valor Estimado (R$)</Label>
+                  <Input placeholder="500.000,00" value={valorEstimado} onChange={e => setValorEstimado(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Objeto da Licitação *</Label>
+                <Textarea placeholder="Descrição detalhada do produto ou serviço conforme Termo de Referência..." value={objeto} onChange={e => setObjeto(e.target.value)} rows={4} />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> Validade da Proposta Comercial</Label>
+                  <Input value={prazoValidade} onChange={e => setPrazoValidade(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Prazo de Pagamento</Label>
+                  <Input placeholder="Até 30 dias após recebimento definitivo" value={prazoPagamento} onChange={e => setPrazoPagamento(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Prazo de Entrega</Label>
+                  <Input placeholder="Até X dias úteis/corridos após emissão da OF" value={prazoEntrega} onChange={e => setPrazoEntrega(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> Local de Entrega</Label>
+                  <Input value={localEntrega} onChange={e => setLocalEntrega(e.target.value)} />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Condições de Liquidação / NFe</Label>
+                  <Input placeholder="Conforme edital" value={liquidacaoNfe} onChange={e => setLiquidacaoNfe(e.target.value)} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Planilha de Preços */}
+          {currentStep === 5 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CreditCard className="w-5 h-5 text-accent" />
+                <h2 className="font-semibold text-lg">Planilha de Preços</h2>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                11 colunas obrigatórias: Item, Descrição, Qtd, Unid, Marca, Fabricante, Modelo, Vlr Unit., Vlr Unit. Extenso, Vlr Total, Vlr Total Extenso.
+                Importe do Excel ou preencha manualmente.
+              </p>
+              <PlanilhaPrecos itens={itens} setItens={setItens} />
+            </div>
+          )}
+
+          {/* Step 6: Declarações */}
+          {currentStep === 6 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Scale className="w-5 h-5 text-accent" />
+                <h2 className="font-semibold text-lg">Declarações Obrigatórias</h2>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Selecione as declarações que devem constar na proposta conforme exigências do edital e legislação vigente.
+              </p>
+              <div className="space-y-3">
+                {DECLARACOES_PADRAO.map(decl => (
+                  <label
+                    key={decl.key}
+                    className="flex items-start gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/30 cursor-pointer transition-colors"
+                  >
+                    <Checkbox
+                      checked={declaracoes[decl.key]}
+                      onCheckedChange={(v) => setDeclaracoes(prev => ({ ...prev, [decl.key]: !!v }))}
+                      className="mt-0.5"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{decl.label}</p>
+                      <p className="text-xs text-muted-foreground">{decl.base}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              {declaracoesCustom.length > 0 && (
+                <div className="space-y-2 pt-2">
+                  <p className="text-sm font-medium">Declarações adicionais:</p>
+                  {declaracoesCustom.map((d, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Input value={d} onChange={e => {
+                        const upd = [...declaracoesCustom];
+                        upd[i] = e.target.value;
+                        setDeclaracoesCustom(upd);
+                      }} className="text-sm" />
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeclaracoesCustom(prev => prev.filter((_, idx) => idx !== i))}>✕</Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <Button variant="outline" size="sm" onClick={() => setDeclaracoesCustom(prev => [...prev, ''])}>
+                + Adicionar declaração personalizada
+              </Button>
+            </div>
+          )}
+
+          {/* Step 7: Formatação e Marca d'Água */}
+          {currentStep === 7 && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Settings2 className="w-5 h-5 text-accent" />
+                <h2 className="font-semibold text-lg">Formatação e Marca d'Água</h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label>Fonte</Label>
+                  <Select value={fontFamily} onValueChange={setFontFamily}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                      <SelectItem value="Arial">Arial</SelectItem>
+                      <SelectItem value="Calibri">Calibri</SelectItem>
+                      <SelectItem value="Verdana">Verdana</SelectItem>
+                      <SelectItem value="Courier New">Courier New</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Tamanho: {fontSize}pt</Label>
+                  <Slider value={[fontSize]} onValueChange={([v]) => setFontSize(v)} min={10} max={14} step={1} className="mt-3" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Espaçamento</Label>
+                  <Select value={lineSpacing} onValueChange={setLineSpacing}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1.0">Simples (1.0)</SelectItem>
+                      <SelectItem value="1.15">1.15</SelectItem>
+                      <SelectItem value="1.5">1.5 (ABNT)</SelectItem>
+                      <SelectItem value="2.0">Duplo (2.0)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Margens</Label>
+                  <Select value={marginStyle} onValueChange={setMarginStyle}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ABNT (3/2 cm)">ABNT (3/2 cm)</SelectItem>
+                      <SelectItem value="Normal (2.5 cm)">Normal (2.5 cm)</SelectItem>
+                      <SelectItem value="Estreita (1.27 cm)">Estreita (1.27 cm)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="border-t border-border/50 pt-4 space-y-4">
+                <p className="font-medium text-sm flex items-center gap-2"><Stamp className="w-4 h-4 text-accent" /> Timbrado e Marca d'Água</p>
+                <TimbradoUploader empresaId={empresaAtiva?.id} timbradoUrl={timbradoUrl} setTimbradoUrl={setTimbradoUrl} />
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/30 cursor-pointer">
+                  <Checkbox checked={usarMarcaDagua} onCheckedChange={(v) => setUsarMarcaDagua(!!v)} />
+                  <div>
+                    <p className="text-sm font-medium">Aplicar logomarca como marca d'água</p>
+                    <p className="text-xs text-muted-foreground">A logomarca do timbrado será exibida como fundo translúcido em todas as páginas</p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Envio da Proposta */}
+              <div className="border-t border-border/50 pt-4 space-y-2">
+                <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <Send className="w-4 h-4 text-accent" /> Envio da Proposta
+                </p>
+                <p className="text-sm text-muted-foreground">Prepare e envie sua proposta para portais de compras públicas</p>
+                <EnvioProposta />
+              </div>
+            </div>
+          )}
+
+          {/* Step 8: Gerar */}
+          {currentStep === 8 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-5 h-5 text-accent" />
+                <h2 className="font-semibold text-lg">Gerar Proposta Final</h2>
+              </div>
+
+              {/* Summary */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { label: 'Órgão', value: orgao || '—', icon: Building2 },
+                  { label: 'Licitação', value: numeroLicitacao || '—', icon: FileText },
+                  { label: 'Itens', value: `${itens.filter(i => i.descricao.trim()).length} item(ns)`, icon: CreditCard },
+                  { label: 'Declarações', value: `${Object.values(declaracoes).filter(Boolean).length + declaracoesCustom.length}`, icon: Scale },
+                ].map((s, i) => {
+                  const Icon = s.icon;
+                  return (
+                    <div key={i} className="bg-muted/30 rounded-lg p-3 text-center">
+                      <Icon className="w-4 h-4 mx-auto mb-1 text-accent" />
+                      <p className="text-[10px] text-muted-foreground">{s.label}</p>
+                      <p className="text-xs font-semibold truncate">{s.value}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <Button
+                onClick={handleGenerate}
+                disabled={isLoading || isExtracting}
+                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold py-3"
+                size="lg"
+              >
+                {isLoading ? (
+                  <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Gerando proposta...</>
+                ) : (
+                  <><Sparkles className="w-5 h-5 mr-2" /> Gerar Proposta Comercial / Técnica com IA</>
+                )}
+              </Button>
+            </div>
+          )}
+
+          {/* Navigation */}
+          <div className="flex items-center justify-between pt-6 mt-6 border-t border-border/50">
+            <Button variant="outline" onClick={prevStep} disabled={currentStep === 1}>
+              <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
+            </Button>
+            <span className="text-xs text-muted-foreground">Etapa {currentStep} de {STEPS.length}</span>
+            <Button onClick={nextStep} disabled={currentStep === STEPS.length}>
+              Próximo <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        </div>
 
         {/* Result */}
         {proposal && (
@@ -517,16 +827,32 @@ export default function PropostaTecnica() {
               </div>
             )}
 
-            <div className="bg-white dark:bg-card rounded-lg p-8 shadow-inner border border-border/30" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
-              <PropostaRenderer
-                proposal={proposal}
-                empresaData={empresaAtiva}
-                repData={{
-                  nome: repNome,
-                  cpf: repCpf,
-                  cargo: repCargo,
-                }}
-              />
+            <div
+              className="bg-white dark:bg-card rounded-lg p-8 shadow-inner border border-border/30 relative overflow-hidden"
+              style={{ fontFamily: "'Times New Roman', Times, serif" }}
+            >
+              {/* Marca d'água */}
+              {usarMarcaDagua && timbradoUrl && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                  <img
+                    src={timbradoUrl}
+                    alt=""
+                    className="w-[400px] h-[400px] object-contain opacity-[0.06]"
+                    style={{ transform: 'rotate(-25deg)' }}
+                  />
+                </div>
+              )}
+              <div className="relative z-10">
+                <PropostaRenderer
+                  proposal={proposal}
+                  empresaData={empresaAtiva}
+                  repData={{
+                    nome: repNome,
+                    cpf: repCpf,
+                    cargo: repCargo,
+                  }}
+                />
+              </div>
             </div>
           </div>
         )}
