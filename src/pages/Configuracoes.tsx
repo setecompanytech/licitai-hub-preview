@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Building2, Bell, Globe, Shield, Newspaper, Search, Loader2, ExternalLink, CheckCircle2, AlertTriangle, ImageIcon, User, Save } from 'lucide-react';
 import CnaesSecundarios from '@/components/configuracoes/CnaesSecundarios';
 import PlanoAssinatura from '@/components/configuracoes/PlanoAssinatura';
+import RepresentanteUploader, { type ExtractedRepresentanteData } from '@/components/configuracoes/RepresentanteUploader';
 import TimbradoUploader from '@/components/proposta/TimbradoUploader';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -352,9 +353,22 @@ export default function Configuracoes() {
               <h2 className="text-sm font-semibold">Dados do Representante Legal</h2>
             </div>
             <p className="text-xs text-muted-foreground mb-4">
-              Preencha os dados do representante legal. Essas informações serão propagadas automaticamente para propostas comerciais, declarações, petições, recursos e demais documentos.
+              Preencha os dados do representante legal ou extraia automaticamente via upload de documento (contrato social, procuração, RG/CPF). Essas informações serão propagadas para propostas, declarações, petições, recursos e demais documentos.
             </p>
-            <div className="grid gap-4">
+
+            <RepresentanteUploader
+              onExtracted={(data: ExtractedRepresentanteData) => {
+                if (data.repNome) setRepNome(data.repNome);
+                if (data.repCpf) setRepCpf(data.repCpf);
+                if (data.repRg) setRepRg(data.repRg);
+                if (data.repOrgaoExp) setRepOrgaoExp(data.repOrgaoExp);
+                if (data.repCargo) setRepCargo(data.repCargo);
+                if (data.repNaturalidade) setRepNaturalidade(data.repNaturalidade);
+                if (data.repNacionalidade) setRepNacionalidade(data.repNacionalidade);
+              }}
+            />
+
+            <div className="grid gap-4 mt-4">
               <div>
                 <Label className="text-xs">Nome Completo</Label>
                 <Input value={repNome} onChange={e => setRepNome(e.target.value)} className="mt-1" placeholder="Nome completo do representante" />

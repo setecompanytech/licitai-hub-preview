@@ -37,15 +37,46 @@ serve(async (req) => {
 
     const data = await response.json();
 
+    // Build full address: "Logradouro, Número"
     const enderecoPartes = [data.logradouro, data.numero].filter(Boolean).join(", ");
-    const complemento = data.complemento || "";
-    const bairro = data.bairro || "";
-    const enderecoCompleto = [enderecoPartes, complemento, bairro].filter(Boolean).join(" - ");
+
+    // Format phone: "DDXXXXXXXX" -> "(DD) XXXXX-XXXX" or "(DD) XXXX-XXXX"
+    let telefoneFormatado = "";
+    if (data.ddd_telefone_1) {
+      const tel = data.ddd_telefone_1.replace(/\D/g, "");
+      if (tel.length >= 10) {
+        const ddd = tel.slice(0, 2);
+        const num = tel.slice(2);
+        if (num.length === 9) {
+          telefoneFormatado = `(${ddd}) ${num.slice(0, 5)}-${num.slice(5)}`;
+        } else if (num.length === 8) {
+          telefoneFormatado = `(${ddd}) ${num.slice(0, 4)}-${num.slice(4)}`;
+        } else {
+          telefoneFormatado = `(${ddd}) ${num}`;
+        }
+      } else {
+        telefoneFormatado = data.ddd_telefone_1;
+      }
+    }
+
+    // Format CNPJ
+    const cnpjFormatado = cnpjLimpo.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+
+    // Format CEP
+    let cepFormatado = "";
+    if (data.cep) {
+      const cepLimpo = String(data.cep).replace(/\D/g, "");
+      if (cepLimpo.length === 8) {
+        cepFormatado = `${cepLimpo.slice(0, 5)}-${cepLimpo.slice(5)}`;
+      } else {
+        cepFormatado = data.cep;
+      }
+    }
 
     const result = {
       razaoSocial: data.razao_social || "",
       nomeFantasia: data.nome_fantasia || "",
-      cnpj: cnpjLimpo.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5"),
+      cnpj: cnpjFormatado,
       situacao: data.descricao_situacao_cadastral || "",
       dataAbertura: data.data_inicio_atividade || "",
       naturezaJuridica: `${data.codigo_natureza_juridica || ""} - ${data.natureza_juridica || ""}`,
@@ -53,16 +84,16 @@ serve(async (req) => {
       cnaesSecundarios: (data.cnaes_secundarios || []).map(
         (c: any) => `${c.codigo} - ${c.descricao}`
       ),
-      endereco: enderecoCompleto,
-      complemento: complemento,
-      bairro: bairro,
-      cep: data.cep || "",
+      endereco: enderecoPartes,
+      complemento: data.complemento || "",
+      bairro: data.bairro || "",
+      cep: cepFormatado,
       municipio: data.municipio || "",
       uf: data.uf || "",
       porte: data.porte || "",
       capitalSocial: (data.capital_social || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
       email: data.email || "",
-      telefone: data.ddd_telefone_1 ? data.ddd_telefone_1.replace(/^(\d{2})(\d+)/, "($1) $2") : "",
+      telefone: telefoneFormatado,
       inscricaoEstadual: "",
       simples: data.opcao_pelo_simples || false,
     };
