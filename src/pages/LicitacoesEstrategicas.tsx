@@ -240,32 +240,76 @@ export default function LicitacoesEstrategicas() {
             </div>
           </TabsContent>
 
-          <TabsContent value="capag" className="mt-4">
-            {capagOrgao ? (
-              <AnaliseCapag orgao={capagOrgao.orgao} uf={capagOrgao.uf} municipio={capagOrgao.municipio} />
-            ) : (
-              <div className="space-y-4">
-                <Card className="border-dashed border-2 border-muted-foreground/20">
-                  <div className="flex flex-col items-center justify-center py-10 gap-4">
-                    <div className="p-4 rounded-full bg-accent/10">
-                      <Landmark className="w-8 h-8 text-accent" />
-                    </div>
-                    <div className="text-center space-y-1">
-                      <h3 className="font-semibold text-lg">Selecione um Órgão para Análise</h3>
-                      <p className="text-sm text-muted-foreground max-w-md">
-                        Clique no botão <strong>CAPAG</strong> em qualquer licitação na aba "Oportunidades" ou selecione um órgão abaixo.
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {[...new Set(mockEstrategicas.map(l => l.orgao))].map(org => (
-                        <Button key={org} variant="outline" size="sm" onClick={() => setCapagOrgao({ orgao: org })}>
-                          <Landmark className="w-3 h-3 mr-1" /> {org}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </Card>
+          <TabsContent value="capag" className="mt-4 space-y-4">
+            {/* Filtros CAPAG */}
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <MapPin className="w-4 h-4 text-accent" />
+                <h3 className="text-sm font-semibold">Consulta CAPAG por Ente Federativo</h3>
               </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <Select value={capagUf} onValueChange={(v) => { setCapagUf(v); setCapagMunicipio(''); }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a UF" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="federal">🏛️ Federal (União)</SelectItem>
+                    {UFS_BRASIL.map(uf => (
+                      <SelectItem key={uf.sigla} value={uf.sigla}>{uf.sigla} – {uf.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="Município (opcional)"
+                  value={capagMunicipio}
+                  onChange={e => setCapagMunicipio(e.target.value)}
+                  disabled={!capagUf || capagUf === 'federal'}
+                />
+                <Input
+                  placeholder="Nome do órgão / ente"
+                  value={capagOrgaoInput}
+                  onChange={e => setCapagOrgaoInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && iniciarCapag()}
+                />
+                <Button onClick={iniciarCapag} disabled={!capagOrgaoInput.trim()} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                  <Search className="w-4 h-4 mr-2" /> Analisar CAPAG
+                </Button>
+              </div>
+              {/* Atalhos rápidos */}
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                <span className="text-[10px] text-muted-foreground mr-1 self-center">Atalhos:</span>
+                {[...new Set(mockEstrategicas.map(l => l.orgao))].map(org => (
+                  <Button key={org} variant="ghost" size="sm" className="h-6 text-[10px] px-2"
+                    onClick={() => { setCapagOrgaoInput(org); setCapagOrgao({ orgao: org, uf: capagUf || undefined, municipio: capagMunicipio || undefined }); }}>
+                    {org}
+                  </Button>
+                ))}
+              </div>
+            </Card>
+
+            {/* Resultado */}
+            {capagOrgao ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className="text-xs">
+                    <Landmark className="w-3 h-3 mr-1" />
+                    {capagOrgao.orgao}{capagOrgao.uf ? ` • ${capagOrgao.uf}` : ''}{capagOrgao.municipio ? ` • ${capagOrgao.municipio}` : ''}
+                  </Badge>
+                  <Button variant="ghost" size="sm" onClick={() => setCapagOrgao(null)} className="text-xs">
+                    Nova consulta
+                  </Button>
+                </div>
+                <AnaliseCapag orgao={capagOrgao.orgao} uf={capagOrgao.uf} municipio={capagOrgao.municipio} />
+              </div>
+            ) : (
+              <Card className="border-dashed border-2 border-muted-foreground/20">
+                <div className="flex flex-col items-center justify-center py-8 gap-3">
+                  <Landmark className="w-8 h-8 text-muted-foreground/40" />
+                  <p className="text-sm text-muted-foreground">
+                    Preencha os filtros acima e clique em <strong>Analisar CAPAG</strong> para consultar.
+                  </p>
+                </div>
+              </Card>
             )}
           </TabsContent>
         </Tabs>
