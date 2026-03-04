@@ -198,14 +198,13 @@ export default function FloatingChat({ isLanding = false }: FloatingChatProps) {
             </div>
 
             {/* Quick actions (only when few messages) */}
-            {messages.length <= 1 && (
+            {messages.length <= 1 && !isLoading && (
               <div className="px-3 pb-2 flex flex-wrap gap-1.5">
                 {quickActions.map(q => (
                   <button
                     key={q}
-                    onClick={() => { setInput(q); setTimeout(handleSend, 50); }}
+                    onClick={() => setInput(q)}
                     className="text-[11px] px-2.5 py-1 rounded-full border border-border hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                    disabled={isLoading}
                   >
                     {q}
                   </button>
