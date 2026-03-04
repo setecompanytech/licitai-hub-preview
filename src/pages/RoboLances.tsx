@@ -24,21 +24,11 @@ import {
   Zap, Target, ArrowDown, Send, Trophy, XCircle,
 } from 'lucide-react';
 import CredenciaisPortalForm from '@/components/robo-lances/CredenciaisPortalForm';
-import ConfigurarLanceDialog, { type LanceConfig } from '@/components/robo-lances/ConfigurarLanceDialog';
+import ConfigurarLanceDialog, { type LanceConfig, type DisputeItem } from '@/components/robo-lances/ConfigurarLanceDialog';
 import AgenteExternoConfig from '@/components/robo-lances/AgenteExternoConfig';
 import AgenteTemplateDownload from '@/components/robo-lances/AgenteTemplateDownload';
 import { toast } from 'sonner';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
-
-/* ── mock items for each dispute ── */
-type DisputeItem = {
-  numero: number;
-  descricao: string;
-  situacao: 'disputando' | 'encerrado' | 'aguardando';
-  melhorLance: number | null;
-  seuUltimoLance: number | null;
-  disputando: boolean;
-};
 
 type ChatMessage = {
   id: string;
@@ -56,22 +46,6 @@ type Operation = {
   detalhes: string;
 };
 
-const generateMockItems = (lance: LanceConfig): DisputeItem[] => {
-  const count = 3 + Math.floor(Math.random() * 5);
-  const descs = [
-    'Película Protetora Tela', 'Curativo / Cobertura', 'Curativo / Cobertura Antimicrobiano',
-    'Material de Escritório', 'Toner para Impressora', 'Luva Procedimento',
-    'Álcool em Gel 70%', 'Papel A4 Resma 500fls',
-  ];
-  return Array.from({ length: count }, (_, i) => ({
-    numero: i + 1,
-    descricao: descs[i % descs.length],
-    situacao: i === 0 ? 'disputando' : i < count - 1 ? 'aguardando' : 'encerrado',
-    melhorLance: lance.valorReferencia * (0.7 + Math.random() * 0.25),
-    seuUltimoLance: i < 2 ? lance.valorInicial * (0.85 + Math.random() * 0.1) : null,
-    disputando: i < 2,
-  }));
-};
 
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -113,9 +87,9 @@ export default function RoboLances() {
     [lances, selectedId]
   );
 
-  const mockItems = useMemo(
-    () => (selectedLance ? generateMockItems(selectedLance) : []),
-    [selectedLance?.id]
+  const disputeItems = useMemo(
+    () => selectedLance?.itens ?? [],
+    [selectedLance?.id, selectedLance?.itens]
   );
 
   const mockChat: ChatMessage[] = selectedLance
@@ -128,7 +102,7 @@ export default function RoboLances() {
   const mockOps: Operation[] = selectedLance
     ? [
         { id: '1', timestamp: new Date(), acao: 'Login no portal', resultado: 'sucesso', detalhes: `Autenticado em ${selectedLance.portal}` },
-        { id: '2', timestamp: new Date(), acao: 'Carregamento de itens', resultado: 'sucesso', detalhes: `${mockItems.length} itens carregados` },
+        { id: '2', timestamp: new Date(), acao: 'Carregamento de itens', resultado: 'sucesso', detalhes: `${disputeItems.length} itens carregados` },
       ]
     : [];
 
@@ -362,6 +336,15 @@ export default function RoboLances() {
 
                 {/* ── Items Table ── */}
                 <div className="flex-1 overflow-auto">
+                  {disputeItems.length === 0 ? (
+                    <div className="flex-1 flex items-center justify-center py-16">
+                      <div className="text-center space-y-2">
+                        <ListChecks className="w-8 h-8 text-muted-foreground/40 mx-auto" />
+                        <p className="text-xs text-muted-foreground">Nenhum item cadastrado nesta disputa.</p>
+                        <p className="text-[10px] text-muted-foreground">Edite a disputa para adicionar itens e lotes.</p>
+                      </div>
+                    </div>
+                  ) : (
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
@@ -370,12 +353,13 @@ export default function RoboLances() {
                         <TableHead className="text-xs">Situação</TableHead>
                         <TableHead className="text-right text-xs">Melhor Lance</TableHead>
                         <TableHead className="text-right text-xs">Seu Último Lance</TableHead>
+                        <TableHead className="text-center text-xs">Qtd</TableHead>
                         <TableHead className="text-center text-xs">Disputando</TableHead>
                         <TableHead className="text-xs">Descrição</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {mockItems.map((item) => (
+                      {disputeItems.map((item) => (
                         <TableRow key={item.numero} className="group">
                           <TableCell className="text-center text-xs font-medium">{item.numero}</TableCell>
                           <TableCell className="text-center">
@@ -411,6 +395,9 @@ export default function RoboLances() {
                           <TableCell className="text-right text-xs font-mono">
                             {item.seuUltimoLance ? formatCurrency(item.seuUltimoLance) : '—'}
                           </TableCell>
+                          <TableCell className="text-center text-xs">
+                            {item.quantidade} {item.unidade}
+                          </TableCell>
                           <TableCell className="text-center">
                             {item.disputando ? (
                               <span className="inline-flex items-center gap-1 text-[10px] text-success font-medium">
@@ -427,6 +414,7 @@ export default function RoboLances() {
                       ))}
                     </TableBody>
                   </Table>
+                  )}
                 </div>
 
                 {/* ── Bottom Panel: Chat + Operations ── */}
