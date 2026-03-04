@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import {
   Search, Filter, RefreshCw, ExternalLink, Calendar, MapPin,
   ArrowUpDown, ChevronLeft, ChevronRight, Eye, Kanban, Crosshair,
-  FileText, Loader2,
+  FileText, Loader2, MessageSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -389,6 +389,15 @@ export default function PainelLicitacoes() {
                               onClick={() => navigate('/proposta-tecnica')}
                             >
                               <FileText className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              title="Mural / Chat"
+                              onClick={() => navigate(`/monitoramento-chat?lid=${lic.id}&num=${encodeURIComponent(lic.numero)}`)}
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
                             </Button>
                             <Button
                               size="sm"

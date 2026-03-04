@@ -1367,6 +1367,44 @@ export type Database = {
           },
         ]
       }
+      licitacao_mensagens: {
+        Row: {
+          conteudo: string
+          created_at: string
+          id: string
+          licitacao_id: string
+          metadata: Json | null
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          conteudo: string
+          created_at?: string
+          id?: string
+          licitacao_id: string
+          metadata?: Json | null
+          tipo?: string
+          user_id: string
+        }
+        Update: {
+          conteudo?: string
+          created_at?: string
+          id?: string
+          licitacao_id?: string
+          metadata?: Json | null
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "licitacao_mensagens_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       licitacoes: {
         Row: {
           arquivado_em: string | null
