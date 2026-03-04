@@ -138,7 +138,7 @@ export default function Precificacao() {
   const { user } = useAuth();
 
   // Spec-based search state
-  const [searchMode, setSearchMode] = useState<'simple' | 'spec'>('simple');
+  const [searchMode, setSearchMode] = useState<'simple' | 'spec' | 'edital'>('simple');
   const [specText, setSpecText] = useState('');
   const [specFile, setSpecFile] = useState<File | null>(null);
   const [isExtractingSpec, setIsExtractingSpec] = useState(false);
@@ -694,10 +694,7 @@ Responda APENAS em JSON, sem markdown:
         <Tabs defaultValue="marketplaces" className="space-y-4">
           <TabsList className="bg-muted/50 flex-wrap h-auto">
             <TabsTrigger value="marketplaces" className="gap-1.5">
-              <ShoppingCart className="w-3.5 h-3.5" /> Marketplaces
-            </TabsTrigger>
-            <TabsTrigger value="edital-auto" className="gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" /> Cotação por Edital (IA)
+              <ShoppingCart className="w-3.5 h-3.5" /> Pesquisa de Preços
             </TabsTrigger>
             <TabsTrigger value="govbr" className="gap-1.5">
               <Building2 className="w-3.5 h-3.5" /> Painel de Preços Gov.br
@@ -774,6 +771,14 @@ Responda APENAS em JSON, sem markdown:
             className={searchMode === 'spec' ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}
           >
             <FileSearch className="w-3.5 h-3.5 mr-1" /> Busca por Especificação
+          </Button>
+          <Button
+            variant={searchMode === 'edital' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSearchMode('edital')}
+            className={searchMode === 'edital' ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}
+          >
+            <Sparkles className="w-3.5 h-3.5 mr-1" /> Cotação por Edital (IA)
           </Button>
         </div>
 
@@ -875,6 +880,20 @@ Responda APENAS em JSON, sem markdown:
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {searchMode === 'edital' && (
+          <div className="bg-card border border-border/50 rounded-xl p-5 space-y-1">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-5 h-5 text-accent" />
+              <h3 className="font-semibold text-sm">Cotação Automática por Edital / Termo de Referência</h3>
+              <Badge variant="outline" className="text-[10px] ml-auto">IA + Scraping Real</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Envie o edital ou TR completo. A IA extrairá todos os itens e cotará cada um automaticamente nos +30 marketplaces integrados.
+            </p>
+            <CotacaoEditalAutoIA />
           </div>
         )}
 
@@ -1280,19 +1299,8 @@ Responda APENAS em JSON, sem markdown:
             </div>
           </TabsContent>
 
-          <TabsContent value="edital-auto">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-5 h-5 text-accent" />
-                <h3 className="font-semibold text-sm">Cotação Automática por Edital / Termo de Referência</h3>
-                <Badge variant="outline" className="text-[10px] ml-auto">IA + Scraping Real</Badge>
-              </div>
-              <p className="text-xs text-muted-foreground mb-4">
-                Envie o edital ou TR completo. A IA extrairá todos os itens e cotará cada um automaticamente nos +30 marketplaces integrados, indicando a origem de cada cotação.
-              </p>
-              <CotacaoEditalAutoIA />
-            </div>
-          </TabsContent>
+
+
 
           <TabsContent value="fornecedores">
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">

@@ -5,13 +5,15 @@ import { Button } from '@/components/ui/button';
 import {
   ExternalLink, Star, Truck, ShieldCheck, Store, TrendingDown,
   Package, LayoutGrid, List, Percent, ArrowUpDown, ImageIcon, Loader2, Plus,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Save
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import { toast } from 'sonner';
 import FichaTecnicaProduto from './FichaTecnicaProduto';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 
 export type FornecedorML = {
@@ -178,6 +180,41 @@ function useQuickAddToProposta() {
   };
 }
 
+/** Save item to catalog with real image */
+async function saveItemToCatalog(item: FornecedorML, userId: string) {
+  const allImages = (item.images?.length ? item.images : (item.image_url ? [item.image_url] : [])).filter(isValidImageUrl);
+  
+  const { error } = await supabase.from('catalogo_itens_precificados').insert({
+    user_id: userId,
+    tipo_calculo: 'produto',
+    descricao: item.produto.substring(0, 300),
+    quantidade: 1,
+    unidade: 'UN',
+    marca: item.marca || null,
+    modelo: item.modelo || null,
+    custo_unitario: item.preco,
+    preco_unitario: item.preco,
+    preco_total: item.preco,
+    detalhes: {
+      image_url: allImages[0] || null,
+      images: allImages.slice(0, 6),
+      loja: item.loja,
+      url: item.url,
+      condicao: item.condicao,
+      frete: item.frete,
+      avaliacao: item.avaliacao,
+      preco_original: item.preco_original,
+    },
+  });
+  
+  if (error) {
+    toast.error('Erro ao salvar no catálogo');
+    console.error(error);
+  } else {
+    toast.success('Produto salvo no catálogo com imagem!');
+  }
+}
+
 /* ─── Image Gallery with auto-slide ─── */
 function ImageGallery({ item, className, onClick }: { item: FornecedorML; className?: string; onClick?: () => void }) {
   const allImages = (item.images?.length ? item.images : (item.image_url ? [item.image_url] : [])).filter(isValidImageUrl);
@@ -238,7 +275,7 @@ function ImageGallery({ item, className, onClick }: { item: FornecedorML; classN
 }
 
 /* ─── Google Shopping Grid Card ─── */
-function GoogleShoppingCard({ item, isCheapest, onOpenFicha, onQuickAdd }: { item: FornecedorML; isCheapest: boolean; onOpenFicha: () => void; onQuickAdd: () => void }) {
+function GoogleShoppingCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveToCatalog }: { item: FornecedorML; isCheapest: boolean; onOpenFicha: () => void; onQuickAdd: () => void; onSaveToCatalog: () => void }) {
   const desconto = getDiscountPercent(item);
 
   return (
@@ -336,6 +373,15 @@ function GoogleShoppingCard({ item, isCheapest, onOpenFicha, onQuickAdd }: { ite
         <Button
           size="sm"
           variant="ghost"
+          className="text-success hover:text-success hover:bg-success/10 text-xs h-7 px-2"
+          onClick={(e) => { e.stopPropagation(); onSaveToCatalog(); }}
+          title="Salvar no Catálogo"
+        >
+          <Save className="w-3.5 h-3.5" />
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
           className="text-accent hover:text-accent hover:bg-accent/10 text-xs h-7 px-2"
           onClick={(e) => { e.stopPropagation(); onQuickAdd(); }}
           title="Adicionar à Proposta"
@@ -348,7 +394,7 @@ function GoogleShoppingCard({ item, isCheapest, onOpenFicha, onQuickAdd }: { ite
 }
 
 /* ─── Mercado Livre List Card ─── */
-function MercadoLivreCard({ item, isCheapest, onOpenFicha, onQuickAdd }: { item: FornecedorML; isCheapest: boolean; onOpenFicha: () => void; onQuickAdd: () => void }) {
+function MercadoLivreCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveToCatalog }: { item: FornecedorML; isCheapest: boolean; onOpenFicha: () => void; onQuickAdd: () => void; onSaveToCatalog: () => void }) {
   const desconto = getDiscountPercent(item);
 
   return (
@@ -448,6 +494,15 @@ function MercadoLivreCard({ item, isCheapest, onOpenFicha, onQuickAdd }: { item:
           </Button>
           <Button
             size="sm"
+            variant="outline"
+            className="text-success hover:text-success hover:bg-success/10 text-xs"
+            onClick={(e) => { e.stopPropagation(); onSaveToCatalog(); }}
+          >
+            <Save className="w-3.5 h-3.5 mr-1" />
+            Catálogo
+          </Button>
+          <Button
+            size="sm"
             variant="ghost"
             className="text-primary hover:text-primary hover:bg-primary/10"
             onClick={onOpenFicha}
@@ -535,6 +590,15 @@ export function PesquisaResultML({
   const [sortMode, setSortMode] = useState<'relevante' | 'menor' | 'maior'>('relevante');
   const [fichaItem, setFichaItem] = useState<FornecedorML | null>(null);
   const quickAdd = useQuickAddToProposta();
+  const { user } = useAuth();
+
+  const handleSaveToCatalog = (item: FornecedorML) => {
+    if (!user) {
+      toast.error('Faça login para salvar no catálogo');
+      return;
+    }
+    saveItemToCatalog(item, user.id);
+  };
 
   if (isLoading) return <LoadingSkeleton />;
   if (!data && !rawMarkdown) return null;
@@ -621,6 +685,7 @@ export function PesquisaResultML({
                 isCheapest={item.preco === cheapestPrice}
                 onOpenFicha={() => setFichaItem(item)}
                 onQuickAdd={() => quickAdd(item)}
+                onSaveToCatalog={() => handleSaveToCatalog(item)}
               />
             ))}
           </div>
@@ -633,6 +698,7 @@ export function PesquisaResultML({
                 isCheapest={item.preco === cheapestPrice}
                 onOpenFicha={() => setFichaItem(item)}
                 onQuickAdd={() => quickAdd(item)}
+                onSaveToCatalog={() => handleSaveToCatalog(item)}
               />
             ))}
           </div>
