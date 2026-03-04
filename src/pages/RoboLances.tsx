@@ -21,13 +21,14 @@ import {
   AlertTriangle, CheckCircle2, ExternalLink, RefreshCw, Trash2, Edit2,
   Eye, ChevronDown, Search, MessageSquare, ListChecks, Info,
   Building2, Hash, CalendarDays, FileText, Shield, MoreVertical,
-  Zap, Target, ArrowDown, Send,
+  Zap, Target, ArrowDown, Send, Trophy, XCircle,
 } from 'lucide-react';
 import CredenciaisPortalForm from '@/components/robo-lances/CredenciaisPortalForm';
 import ConfigurarLanceDialog, { type LanceConfig } from '@/components/robo-lances/ConfigurarLanceDialog';
 import AgenteExternoConfig from '@/components/robo-lances/AgenteExternoConfig';
 import AgenteTemplateDownload from '@/components/robo-lances/AgenteTemplateDownload';
 import { toast } from 'sonner';
+import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 
 /* ── mock items for each dispute ── */
 type DisputeItem = {
@@ -84,6 +85,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function RoboLances() {
+  const { registrarResultadoDisputa } = useLicitacaoIntegration();
   const [lances, setLances] = useState<LanceConfig[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -324,6 +326,24 @@ export default function RoboLances() {
                         </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Edit2 className="w-3.5 h-3.5 mr-2" /> Editar parâmetros
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-success focus:text-success"
+                          onClick={() => {
+                            setLances(prev => prev.map(l => l.id === selectedLance.id ? { ...l, status: 'encerrado' as const } : l));
+                            registrarResultadoDisputa(selectedLance.id, 'venceu', selectedLance.meuLance || selectedLance.valorMinimo);
+                          }}
+                        >
+                          <Trophy className="w-3.5 h-3.5 mr-2" /> Encerrar como Venceu
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => {
+                            setLances(prev => prev.map(l => l.id === selectedLance.id ? { ...l, status: 'encerrado' as const } : l));
+                            registrarResultadoDisputa(selectedLance.id, 'perdeu');
+                          }}
+                        >
+                          <XCircle className="w-3.5 h-3.5 mr-2" /> Encerrar como Perdeu
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"

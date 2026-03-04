@@ -24,6 +24,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { streamAIChat } from '@/lib/ai-stream';
+import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 
 type ResultadoBusca = {
   id: string;
@@ -149,9 +150,11 @@ const SUGESTOES_RAPIDAS = [
 
 export default function LicitacoesTab() {
   const { user } = useAuth();
+  const { iniciarProcesso } = useLicitacaoIntegration();
   const [licitacoes, setLicitacoes] = useState<ResultadoBusca[]>([]);
   const [resultadosBusca, setResultadosBusca] = useState<ResultadoBusca[]>([]);
   const [loading, setLoading] = useState(true);
+  const [iniciandoProcesso, setIniciandoProcesso] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [modalidadeFilter, setModalidadeFilter] = useState<string>('all');
@@ -326,6 +329,23 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (‚ö
     } catch { toast.error('Erro ao baixar anexos.'); }
     finally { setDownloadingAnexos(null); }
   }, []);
+
+  const handleIniciarProcesso = useCallback(async (lic: ResultadoBusca) => {
+    setIniciandoProcesso(lic.id);
+    await iniciarProcesso({
+      numero: lic.numero,
+      orgao: lic.orgao,
+      objeto: lic.objeto,
+      modalidade: lic.modalidade,
+      valor_estimado: lic.valor_estimado,
+      uf: lic.uf,
+      municipio: lic.municipio,
+      data_encerramento: lic.data_encerramento,
+      portal: lic.portal,
+      url: lic.url,
+    });
+    setIniciandoProcesso(null);
+  }, [iniciarProcesso]);
 
   useEffect(() => {
     if (!user) return;
@@ -1029,12 +1049,13 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (‚ö
                 <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>
                 <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Encerramento</th>
                 <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
+                <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3">A√ß√µes</th>
                 <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Download</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && !loading && (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-muted-foreground">
                   {filtroFavoritos
                     ? 'Nenhum edital favorito. Clique na ‚≠ê para salvar editais.'
                     : modoResultados === 'local'
@@ -1105,6 +1126,21 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (‚ö
                       <td className="px-4 py-3 text-center">
                         <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', st.className)}>{st.label}</Badge>
                       </td>
+                      <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-[10px] gap-1 bg-accent/10 text-accent border-accent/30 hover:bg-accent/20"
+                          onClick={() => handleIniciarProcesso(lic)}
+                          disabled={iniciandoProcesso === lic.id}
+                        >
+                          {iniciandoProcesso === lic.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <><FileText className="w-3 h-3" /> Iniciar</>
+                          )}
+                        </Button>
+                      </td>
                       <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -1143,7 +1179,7 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (‚ö
                     </tr>
                     {isExpanded && (
                       <tr className="animate-fade-in">
-                        <td colSpan={8} className="px-4 py-0">
+                        <td colSpan={9} className="px-4 py-0">
                           <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 my-2">
                             <div className="flex items-center gap-2 mb-2">
                               <Brain className="w-4 h-4 text-accent" />

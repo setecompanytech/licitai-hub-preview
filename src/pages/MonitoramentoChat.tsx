@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import {
   Megaphone, FileWarning, HelpCircle, FileEdit
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import LicitacaoChat from '@/components/licitacoes/LicitacaoChat';
 
 // --- Sound Alert System ---
 function useSoundAlert() {
@@ -135,11 +137,14 @@ const tipoMsgConfig = {
 };
 
 export default function MonitoramentoChat() {
+  const [searchParams] = useSearchParams();
+  const licitacaoId = searchParams.get('lid');
+  const licitacaoNumero = searchParams.get('num');
   const [busca, setBusca] = useState('');
   const [pregaoSelecionado, setPregaoSelecionado] = useState<string | null>('1');
   const [alertaSonoro, setAlertaSonoro] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [mainTab, setMainTab] = useState('chat');
+  const [mainTab, setMainTab] = useState(licitacaoId ? 'processo' : 'chat');
   const playAlert = useSoundAlert();
   const prevMsgCountRef = useRef(mockMensagens.length);
 
@@ -248,6 +253,11 @@ export default function MonitoramentoChat() {
 
         <Tabs value={mainTab} onValueChange={setMainTab}>
           <TabsList>
+            {licitacaoId && (
+              <TabsTrigger value="processo" className="flex items-center gap-1">
+                <MessageSquare className="w-4 h-4" /> Mural do Processo
+              </TabsTrigger>
+            )}
             <TabsTrigger value="chat" className="flex items-center gap-1">
               <MessageSquare className="w-4 h-4" /> Chat ao Vivo
             </TabsTrigger>
@@ -255,6 +265,17 @@ export default function MonitoramentoChat() {
               <Megaphone className="w-4 h-4" /> Mural
             </TabsTrigger>
           </TabsList>
+
+          {licitacaoId && (
+            <TabsContent value="processo">
+              <div className="max-w-3xl mx-auto">
+                <LicitacaoChat
+                  licitacaoId={licitacaoId}
+                  licitacaoNumero={licitacaoNumero || undefined}
+                />
+              </div>
+            </TabsContent>
+          )}
 
           <TabsContent value="chat">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
