@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { MapPin, Calendar, GripVertical, Plus } from 'lucide-react';
+import { MapPin, Calendar, GripVertical, Plus, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
+import EditLicitacaoDialog from '@/components/kanban/EditLicitacaoDialog';
 
 type LicitacaoKanban = {
   id: string;
@@ -61,6 +62,21 @@ export default function KanbanPage() {
   const [loading, setLoading] = useState(true);
   const [dragItem, setDragItem] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
+  const [editItem, setEditItem] = useState<LicitacaoKanban | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+
+  const handleEdit = (lic: LicitacaoKanban) => {
+    setEditItem(lic);
+    setEditOpen(true);
+  };
+
+  const handleSaved = (updated: LicitacaoKanban) => {
+    setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
+  };
+
+  const handleDeleted = (id: string) => {
+    setItems(prev => prev.filter(i => i.id !== id));
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -160,7 +176,16 @@ export default function KanbanPage() {
                       <div className="flex items-start gap-1.5">
                         <GripVertical className="w-3.5 h-3.5 text-muted-foreground/30 mt-0.5 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <span className="text-[10px] font-mono text-muted-foreground">{lic.numero}</span>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-mono text-muted-foreground">{lic.numero}</span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleEdit(lic); }}
+                              className="p-1 rounded-md hover:bg-accent/10 text-muted-foreground/40 hover:text-accent transition-colors"
+                              title="Editar processo"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                          </div>
                           <p className="text-xs font-medium mt-0.5 line-clamp-2 leading-tight">{lic.objeto}</p>
                           <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground flex-wrap">
                             {lic.municipio && lic.uf && (
@@ -189,6 +214,13 @@ export default function KanbanPage() {
           })}
         </div>
       )}
+      <EditLicitacaoDialog
+        licitacao={editItem}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSaved={handleSaved}
+        onDeleted={handleDeleted}
+      />
     </AppLayout>
   );
 }
