@@ -193,7 +193,7 @@ ${truncated}`
               <p className="text-xs text-muted-foreground">
                 {(editalFile.size / 1024).toFixed(0)} KB
                 {extracted && (
-                  <Badge className="ml-2 bg-green-600/10 text-green-700 dark:text-green-400 border-green-600/20 text-[10px]">
+                  <Badge className="ml-2 bg-accent/10 text-accent border-accent/20 text-[10px]">
                     <CheckCircle className="w-3 h-3 mr-1" /> Dados extraídos
                   </Badge>
                 )}
@@ -223,9 +223,9 @@ ${truncated}`
           )}
 
           {extracted && (
-            <div className="flex items-center gap-2 p-2.5 bg-green-600/5 border border-green-600/20 rounded-lg">
-              <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
-              <p className="text-xs text-green-700 dark:text-green-400">
+            <div className="flex items-center gap-2 p-2.5 bg-accent/5 border border-accent/20 rounded-lg">
+              <CheckCircle className="w-4 h-4 text-accent shrink-0" />
+              <p className="text-xs text-accent">
                 Extração concluída! Avance para revisar e editar os dados extraídos nas próximas etapas.
               </p>
             </div>
