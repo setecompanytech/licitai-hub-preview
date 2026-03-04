@@ -8,6 +8,7 @@ import NotificationCenter from '@/components/notifications/NotificationCenter';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
+import FloatingChat from '@/components/chat/FloatingChat';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const [notifOpen, setNotifOpen] = useState(false);
@@ -86,6 +87,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           navigate(path);
         }}
       />
+      <FloatingChat />
     </div>
   );
 }

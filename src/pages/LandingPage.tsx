@@ -9,6 +9,7 @@ import PlanosSection from '@/components/landing/PlanosSection';
 import FaqSection from '@/components/landing/FaqSection';
 import CtaSection from '@/components/landing/CtaSection';
 import LandingFooter from '@/components/landing/LandingFooter';
+import FloatingChat from '@/components/chat/FloatingChat';
 
 export default function LandingPage() {
   return (
@@ -24,6 +25,7 @@ export default function LandingPage() {
       <FaqSection />
       <CtaSection />
       <LandingFooter />
+      <FloatingChat isLanding />
     </div>
   );
 }
