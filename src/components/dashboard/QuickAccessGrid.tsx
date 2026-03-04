@@ -3,7 +3,7 @@ import {
   Download, Bell, Target, Archive, Bot, Search, Scale, BookOpen,
   Kanban, Shield, Building2, MessageSquare, Crosshair, TrendingUp,
   Users, DollarSign, ClipboardCheck, HeadphonesIcon, FileText,
-  BarChart3,
+  BarChart3, CalendarDays,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -43,6 +43,7 @@ const groups: QuickGroup[] = [
   {
     title: 'Gestão',
     items: [
+      { icon: CalendarDays, label: 'Calendário', path: '/calendario', badge: 'novo' },
       { icon: Kanban, label: 'Kanban', path: '/kanban' },
       { icon: Shield, label: 'Documentos', path: '/documentos' },
       { icon: Building2, label: 'Empresas', path: '/empresas' },
