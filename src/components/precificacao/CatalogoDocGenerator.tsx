@@ -34,6 +34,7 @@ interface ProductSpec {
   marca: string;
   modelo: string;
   categoria: string;
+  site_fabricante?: string;
 }
 
 type DocType = 'ficha' | 'folder' | 'catalogo';
@@ -78,34 +79,174 @@ export default function CatalogoDocGenerator({ open, onOpenChange, items }: Cata
     setProgressPercent(0);
   };
 
-  // ─── Spec Search ───
+  // ─── Image URL Validation ───
+  const isValidImageUrl = (url: string): boolean => {
+    if (!url || typeof url !== 'string') return false;
+    const lower = url.toLowerCase();
+    // Reject tracking pixels, ads, placeholders, data URIs, icons
+    const blocked = [
+      'doubleclick', 'adsense', 'googlesyndication', 'facebook.com/tr',
+      'pixel', 'tracking', 'analytics', '1x1', 'spacer', 'blank.gif',
+      'data:image', 'base64', 'favicon', '.ico', 'logo-', 'icon-',
+      'banner', 'ad-', 'sprite', 'loader', 'spinner', 'placeholder',
+      'no-image', 'sem-imagem', 'default-product', 'avatar',
+    ];
+    if (blocked.some(b => lower.includes(b))) return false;
+    // Must be a proper image URL
+    if (!lower.startsWith('http')) return false;
+    // Prefer product images (larger dimensions hinted in URL)
+    const hasImageExt = /\.(jpg|jpeg|png|webp)(\?|$)/i.test(lower);
+    const hasImagePath = /\/(product|prod|img|image|foto|photo|media|upload|asset)/i.test(lower);
+    return hasImageExt || hasImagePath || lower.includes('cdn');
+  };
+
+  // ─── Spec Search (Enhanced with manufacturer site + real images) ───
   const searchProductSpecs = useCallback(async (item: CatalogoItem): Promise<ProductSpec> => {
     const searchTerm = [item.descricao, item.marca, item.modelo].filter(Boolean).join(' ').substring(0, 150);
+    const brandTerm = item.marca || item.fabricante || '';
 
     try {
-      const { data, error } = await supabase.functions.invoke('firecrawl-search', {
+      // === SEARCH 1: Technical specs from general sources ===
+      const specSearchPromise = supabase.functions.invoke('firecrawl-search', {
         body: {
           query: `"${searchTerm}" especificações técnicas ficha técnica`,
           options: { limit: 3, lang: 'pt-br', country: 'BR', scrapeOptions: { formats: ['markdown'] } },
         },
       });
 
+      // === SEARCH 2: Manufacturer site for authentic images ===
+      const manufacturerSearchPromise = brandTerm
+        ? supabase.functions.invoke('firecrawl-search', {
+            body: {
+              query: `site:${brandTerm.toLowerCase().replace(/\s+/g, '')}.com.br OR site:${brandTerm.toLowerCase().replace(/\s+/g, '')}.com "${item.descricao}" produto`,
+              options: { limit: 2, lang: 'pt-br', country: 'BR', scrapeOptions: { formats: ['markdown', 'links'] } },
+            },
+          })
+        : Promise.resolve({ data: null, error: null });
+
+      // === SEARCH 3: Product images from marketplaces ===
+      const imageSearchPromise = supabase.functions.invoke('firecrawl-search', {
+        body: {
+          query: `"${searchTerm}" foto produto imagem`,
+          options: { limit: 3, lang: 'pt-br', country: 'BR', scrapeOptions: { formats: ['markdown'] } },
+        },
+      });
+
+      // Run all searches in parallel
+      const [specResult, mfgResult, imgResult] = await Promise.all([
+        specSearchPromise, manufacturerSearchPromise, imageSearchPromise,
+      ]);
+
+      // Aggregate scraped content
       let scrapedContent = '';
-      if (!error && data?.success && data?.data?.length > 0) {
-        scrapedContent = data.data
+      let collectedImages: string[] = [];
+      let manufacturerUrl = '';
+
+      // Process spec results
+      if (!specResult.error && specResult.data?.success && specResult.data?.data?.length > 0) {
+        scrapedContent = specResult.data.data
           .slice(0, 2)
           .map((r: any) => r.markdown || r.description || '')
           .join('\n\n')
-          .substring(0, 12000);
+          .substring(0, 10000);
       }
 
+      // Process manufacturer results (prioritize these images)
+      if (!mfgResult.error && mfgResult.data?.success && mfgResult.data?.data?.length > 0) {
+        const mfgData = mfgResult.data.data;
+        // Get manufacturer URL
+        manufacturerUrl = mfgData[0]?.url || '';
+        // Extract content and append
+        const mfgContent = mfgData
+          .slice(0, 1)
+          .map((r: any) => r.markdown || '')
+          .join('\n')
+          .substring(0, 5000);
+        if (mfgContent) {
+          scrapedContent += '\n\n--- SITE DO FABRICANTE ---\n' + mfgContent;
+        }
+      }
+
+      // Extract image URLs from all markdown content using regex
+      const allContent = [
+        specResult.data?.data,
+        mfgResult.data?.data,
+        imgResult.data?.data,
+      ]
+        .filter(Boolean)
+        .flat();
+
+      for (const result of allContent) {
+        if (!result) continue;
+        const md = result.markdown || result.description || '';
+        // Extract markdown image patterns: ![alt](url) and plain URLs ending in image extensions
+        const imgRegex = /(?:!\[[^\]]*\]\(([^)]+)\))|(?:https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]*)?)/gi;
+        let match;
+        while ((match = imgRegex.exec(md)) !== null) {
+          const url = match[1] || match[0];
+          if (isValidImageUrl(url)) {
+            collectedImages.push(url);
+          }
+        }
+        // Also check metadata for images
+        if (result.metadata?.ogImage) collectedImages.push(result.metadata.ogImage);
+      }
+
+      // Deduplicate images, prioritize manufacturer domain
+      const seen = new Set<string>();
+      const mfgDomain = brandTerm ? brandTerm.toLowerCase().replace(/\s+/g, '') : '';
+      collectedImages = collectedImages
+        .filter(url => {
+          const key = url.split('?')[0].toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .sort((a, b) => {
+          // Manufacturer images first
+          const aIsMfg = mfgDomain && a.toLowerCase().includes(mfgDomain) ? -1 : 0;
+          const bIsMfg = mfgDomain && b.toLowerCase().includes(mfgDomain) ? -1 : 0;
+          return aIsMfg - bIsMfg;
+        })
+        .slice(0, 6);
+
+      // === AI: Extract structured specs with image context ===
       let specJson = '';
       await streamAIChat({
-        messages: [{ role: 'user', content: `Produto: ${searchTerm}\n\nConteúdo:\n${scrapedContent || 'Sem conteúdo. Use conhecimento público.'}` }],
+        messages: [{ role: 'user', content: `Produto: ${searchTerm}\n\nConteúdo extraído:\n${scrapedContent.substring(0, 15000) || 'Sem conteúdo. Use conhecimento público.'}\n\nImagens encontradas na web:\n${collectedImages.slice(0, 6).join('\n') || 'Nenhuma'}` }],
         action: 'extrair-spec-produto',
-        context: `Extraia especificações técnicas REAIS do produto. Responda APENAS em JSON:
-{"nome":"...","descricao_detalhada":"...","especificacoes":[{"chave":"...","valor":"..."}],"imagens":["url"],"marca":"...","modelo":"...","categoria":"..."}
-REGRAS: Dados REAIS. Sem preços. Sem markdown.`,
+        context: `Você é um especialista em especificações técnicas de produtos para licitações públicas.
+
+TAREFA: Extraia especificações técnicas REAIS e FIÉIS do produto baseando-se no conteúdo fornecido.
+
+REGRAS CRÍTICAS:
+- APENAS dados REAIS encontrados no conteúdo ou de conhecimento público verificável
+- NÃO invente especificações. Se não encontrar, coloque "Consultar fabricante"
+- NÃO inclua preços, valores ou custos em NENHUM campo
+- Para imagens: SELECIONE APENAS URLs que mostrem o PRODUTO REAL (não logos, banners ou ícones)
+- Priorize imagens do site do fabricante quando disponíveis
+- Inclua o site oficial do fabricante se identificável
+
+Responda APENAS em JSON válido, sem markdown:
+{
+  "nome": "nome completo e correto do produto",
+  "descricao_detalhada": "descrição técnica sem preços",
+  "especificacoes": [
+    {"chave": "Dimensões", "valor": "..."},
+    {"chave": "Peso", "valor": "..."},
+    {"chave": "Material", "valor": "..."},
+    {"chave": "Cor/Acabamento", "valor": "..."},
+    {"chave": "Voltagem/Potência", "valor": "..."},
+    {"chave": "Garantia", "valor": "..."},
+    {"chave": "Certificações", "valor": "..."},
+    {"chave": "NCM/Código", "valor": "..."}
+  ],
+  "imagens": ["url_imagem_real_do_produto_1", "url_imagem_real_2"],
+  "marca": "marca real verificada",
+  "modelo": "modelo real verificado",
+  "categoria": "categoria do produto",
+  "site_fabricante": "https://www.fabricante.com.br/produto ou null"
+}`,
         onDelta: (d) => { specJson += d; },
         onDone: () => {},
         onError: () => {},
@@ -113,7 +254,19 @@ REGRAS: Dados REAIS. Sem preços. Sem markdown.`,
 
       let clean = specJson.trim();
       if (clean.startsWith('```')) clean = clean.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
-      return JSON.parse(clean) as ProductSpec;
+      const parsed = JSON.parse(clean) as ProductSpec;
+
+      // Merge AI-selected images with our scraped images (AI first, then scraped fallbacks)
+      const aiImages = (parsed.imagens || []).filter(isValidImageUrl);
+      const finalImages = [...new Set([...aiImages, ...collectedImages])].slice(0, 6);
+      parsed.imagens = finalImages;
+
+      // Ensure manufacturer URL
+      if (!parsed.site_fabricante && manufacturerUrl) {
+        parsed.site_fabricante = manufacturerUrl;
+      }
+
+      return parsed;
     } catch (e) {
       console.error('Spec error:', searchTerm, e);
       return {
@@ -397,16 +550,35 @@ REGRAS: Dados REAIS. Sem preços. Sem markdown.`,
         y += 4;
       }
 
-      // Images section (URLs only in PDF)
+      // Manufacturer site
+      if (spec.site_fabricante) {
+        checkNewPage(8);
+        writeText('SITE DO FABRICANTE', 10, { bold: true, color: theme.secondary });
+        y += 2;
+        doc.setFontSize(8.5);
+        const [acr2, acg2, acb2] = hexToRgb(theme.accent);
+        doc.setTextColor(acr2, acg2, acb2);
+        doc.textWithLink(`🌐 ${spec.site_fabricante.substring(0, 90)}`, mLeft, y, { url: spec.site_fabricante });
+        y += 6;
+      }
+
+      // Images section (URLs in PDF)
       if (spec.imagens.length > 0) {
-        checkNewPage(12);
-        writeText('REFERÊNCIAS VISUAIS', 10, { bold: true, color: theme.secondary });
+        checkNewPage(16);
+        writeText('REFERÊNCIAS VISUAIS DO PRODUTO', 10, { bold: true, color: theme.secondary });
         y += 2;
         doc.setFontSize(7.5);
         doc.setTextColor(100, 100, 100);
-        spec.imagens.slice(0, 3).forEach((url) => {
+        doc.setFont('helvetica', 'italic');
+        doc.text('Imagens autênticas extraídas de fontes públicas e sites de fabricantes:', mLeft, y);
+        y += 5;
+        doc.setFont('helvetica', 'normal');
+        spec.imagens.slice(0, 5).forEach((url, imgIdx) => {
           checkNewPage(5);
-          doc.textWithLink(`🔗 ${url.substring(0, 90)}`, mLeft, y, { url });
+          const label = url.toLowerCase().includes(spec.marca?.toLowerCase() || '___')
+            ? `📷 [Fabricante] ${url.substring(0, 85)}`
+            : `📷 [Fonte ${imgIdx + 1}] ${url.substring(0, 85)}`;
+          doc.textWithLink(label, mLeft, y, { url });
           y += 4;
         });
         y += 4;
@@ -763,33 +935,55 @@ REGRAS: Dados REAIS. Sem preços. Sem markdown.`,
                           key={i}
                           className="border border-border/40 rounded-xl p-4 bg-card hover:shadow-md transition-shadow"
                         >
-                          <div className="flex items-start gap-3">
-                            {spec.imagens.length > 0 ? (
-                              <div className="w-16 h-16 rounded-lg border border-border/30 overflow-hidden shrink-0 bg-muted/10">
-                                <img
-                                  src={spec.imagens[0]}
-                                  alt={spec.nome}
-                                  className="w-full h-full object-contain p-1"
-                                  onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
-                                />
-                              </div>
-                            ) : (
-                              <div className="w-16 h-16 rounded-lg border border-border/30 flex items-center justify-center bg-muted/20 shrink-0">
-                                <Package className="w-6 h-6 text-muted-foreground/40" />
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold truncate">{spec.nome}</p>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                {spec.marca && <Badge variant="outline" className="text-[8px]">{spec.marca}</Badge>}
-                                {spec.modelo && <Badge variant="outline" className="text-[8px]">{spec.modelo}</Badge>}
-                                <Badge variant="secondary" className="text-[8px]">{spec.categoria}</Badge>
-                              </div>
-                              <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{spec.descricao_detalhada}</p>
+                          {/* Image gallery */}
+                          {spec.imagens.length > 0 && (
+                            <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1">
+                              {spec.imagens.slice(0, 4).map((img, imgIdx) => (
+                                <div key={imgIdx} className="w-14 h-14 rounded-lg border border-border/30 overflow-hidden shrink-0 bg-muted/10">
+                                  <img
+                                    src={img}
+                                    alt={`${spec.nome} ${imgIdx + 1}`}
+                                    className="w-full h-full object-contain p-0.5"
+                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {spec.imagens.length === 0 && (
+                            <div className="w-full h-14 rounded-lg border border-border/30 flex items-center justify-center bg-muted/20 mb-3">
+                              <Package className="w-5 h-5 text-muted-foreground/30" />
+                              <span className="text-[9px] text-muted-foreground/50 ml-1.5">Sem imagens</span>
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold truncate">{spec.nome}</p>
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                              {spec.marca && <Badge variant="outline" className="text-[8px]">{spec.marca}</Badge>}
+                              {spec.modelo && <Badge variant="outline" className="text-[8px]">{spec.modelo}</Badge>}
+                              <Badge variant="secondary" className="text-[8px]">{spec.categoria}</Badge>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{spec.descricao_detalhada}</p>
+                            <div className="flex items-center gap-3 mt-1.5">
                               {spec.especificacoes.length > 0 && (
-                                <p className="text-[9px] text-accent mt-1 font-medium">
-                                  {spec.especificacoes.length} especificações encontradas
-                                </p>
+                                <span className="text-[9px] text-accent font-medium">
+                                  {spec.especificacoes.length} especificações
+                                </span>
+                              )}
+                              {spec.imagens.length > 0 && (
+                                <span className="text-[9px] text-primary font-medium">
+                                  📷 {spec.imagens.length} imagens
+                                </span>
+                              )}
+                              {spec.site_fabricante && (
+                                <a
+                                  href={spec.site_fabricante}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[9px] text-accent underline hover:no-underline"
+                                >
+                                  🌐 Fabricante
+                                </a>
                               )}
                             </div>
                           </div>
