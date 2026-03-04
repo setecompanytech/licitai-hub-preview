@@ -131,6 +131,8 @@ export default function PropostaTecnica() {
     if (empresaAtiva) {
       if (empresaAtiva.inscricao_estadual) setInscEstadual(empresaAtiva.inscricao_estadual);
       if (empresaAtiva.inscricao_municipal) setInscMunicipal(empresaAtiva.inscricao_municipal);
+      if (empresaAtiva.telefone) setTelefone(empresaAtiva.telefone);
+      if (empresaAtiva.email) setEmail(empresaAtiva.email);
     }
   }, [empresaAtiva]);
 
@@ -196,7 +198,8 @@ export default function PropostaTecnica() {
       if (empresaAtiva.cnae_principal) parts.push(`- CNAE Principal: ${empresaAtiva.cnae_principal}`);
       if (inscEstadual) parts.push(`- Inscrição Estadual: ${inscEstadual}`);
       if (inscMunicipal) parts.push(`- Inscrição Municipal: ${inscMunicipal}`);
-      if (empresaAtiva.endereco) parts.push(`- Endereço: ${empresaAtiva.endereco}`);
+      if (empresaAtiva.endereco) parts.push(`- Endereço: ${empresaAtiva.endereco}${empresaAtiva.complemento ? `, ${empresaAtiva.complemento}` : ''}${empresaAtiva.bairro ? ` - ${empresaAtiva.bairro}` : ''}`);
+      if (empresaAtiva.cep) parts.push(`- CEP: ${empresaAtiva.cep}`);
       if (empresaAtiva.uf) parts.push(`- UF: ${empresaAtiva.uf}`);
       if (empresaAtiva.municipio) parts.push(`- Município: ${empresaAtiva.municipio}`);
       if (empresaAtiva.regime_tributario) parts.push(`- Regime Tributário: ${empresaAtiva.regime_tributario}`);
@@ -412,7 +415,18 @@ export default function PropostaTecnica() {
                   </p>
                   {empresaAtiva.endereco && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      <MapPin className="w-3 h-3 inline mr-1" />{empresaAtiva.endereco}
+                      <MapPin className="w-3 h-3 inline mr-1" />
+                      {empresaAtiva.endereco}
+                      {empresaAtiva.complemento && `, ${empresaAtiva.complemento}`}
+                      {empresaAtiva.bairro && ` - ${empresaAtiva.bairro}`}
+                      {empresaAtiva.cep && ` · CEP: ${empresaAtiva.cep}`}
+                    </p>
+                  )}
+                  {(empresaAtiva.telefone || empresaAtiva.email) && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {empresaAtiva.telefone && `Tel: ${empresaAtiva.telefone}`}
+                      {empresaAtiva.telefone && empresaAtiva.email && ' · '}
+                      {empresaAtiva.email && `E-mail: ${empresaAtiva.email}`}
                     </p>
                   )}
                 </div>

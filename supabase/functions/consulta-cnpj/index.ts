@@ -37,6 +37,11 @@ serve(async (req) => {
 
     const data = await response.json();
 
+    const enderecoPartes = [data.logradouro, data.numero].filter(Boolean).join(", ");
+    const complemento = data.complemento || "";
+    const bairro = data.bairro || "";
+    const enderecoCompleto = [enderecoPartes, complemento, bairro].filter(Boolean).join(" - ");
+
     const result = {
       razaoSocial: data.razao_social || "",
       nomeFantasia: data.nome_fantasia || "",
@@ -48,13 +53,18 @@ serve(async (req) => {
       cnaesSecundarios: (data.cnaes_secundarios || []).map(
         (c: any) => `${c.codigo} - ${c.descricao}`
       ),
-      endereco: `${data.logradouro || ""}, ${data.numero || ""} - ${data.bairro || ""}`,
+      endereco: enderecoCompleto,
+      complemento: complemento,
+      bairro: bairro,
+      cep: data.cep || "",
       municipio: data.municipio || "",
       uf: data.uf || "",
       porte: data.porte || "",
       capitalSocial: (data.capital_social || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
       email: data.email || "",
-      telefone: data.ddd_telefone_1 || "",
+      telefone: data.ddd_telefone_1 ? data.ddd_telefone_1.replace(/^(\d{2})(\d+)/, "($1) $2") : "",
+      inscricaoEstadual: "",
+      simples: data.opcao_pelo_simples || false,
     };
 
     return new Response(JSON.stringify(result), {

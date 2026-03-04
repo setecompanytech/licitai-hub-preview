@@ -989,14 +989,18 @@ export type Database = {
       }
       empresas: {
         Row: {
+          bairro: string | null
+          cep: string | null
           certificado_nome: string | null
           certificado_path: string | null
           certificado_tipo: string | null
           certificado_validade: string | null
           cnae_principal: string | null
           cnpj: string
+          complemento: string | null
           created_at: string
           created_by: string
+          email: string | null
           endereco: string | null
           id: string
           inscricao_estadual: string | null
@@ -1005,20 +1009,25 @@ export type Database = {
           nome_fantasia: string | null
           razao_social: string
           regime_tributario: string | null
+          telefone: string | null
           timbrado_path: string | null
           timbrado_url: string | null
           uf: string | null
           updated_at: string
         }
         Insert: {
+          bairro?: string | null
+          cep?: string | null
           certificado_nome?: string | null
           certificado_path?: string | null
           certificado_tipo?: string | null
           certificado_validade?: string | null
           cnae_principal?: string | null
           cnpj: string
+          complemento?: string | null
           created_at?: string
           created_by: string
+          email?: string | null
           endereco?: string | null
           id?: string
           inscricao_estadual?: string | null
@@ -1027,20 +1036,25 @@ export type Database = {
           nome_fantasia?: string | null
           razao_social: string
           regime_tributario?: string | null
+          telefone?: string | null
           timbrado_path?: string | null
           timbrado_url?: string | null
           uf?: string | null
           updated_at?: string
         }
         Update: {
+          bairro?: string | null
+          cep?: string | null
           certificado_nome?: string | null
           certificado_path?: string | null
           certificado_tipo?: string | null
           certificado_validade?: string | null
           cnae_principal?: string | null
           cnpj?: string
+          complemento?: string | null
           created_at?: string
           created_by?: string
+          email?: string | null
           endereco?: string | null
           id?: string
           inscricao_estadual?: string | null
@@ -1049,6 +1063,7 @@ export type Database = {
           nome_fantasia?: string | null
           razao_social?: string
           regime_tributario?: string | null
+          telefone?: string | null
           timbrado_path?: string | null
           timbrado_url?: string | null
           uf?: string | null
