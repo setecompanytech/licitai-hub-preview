@@ -45,6 +45,7 @@ import Calendario from "./pages/Calendario";
 import TermosDeUso from "./pages/TermosDeUso";
 import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import LgpdPage from "./pages/LgpdPage";
+import TutorialPage from "./pages/TutorialPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -99,6 +100,7 @@ const App = () => (
               <Route path="/comprasgov-envio" element={<Navigate to="/proposta-tecnica" replace />} />
               <Route path="/whatsapp-setores" element={<ProtectedPages><WhatsAppSetores /></ProtectedPages>} />
               <Route path="/calendario" element={<ProtectedPages><Calendario /></ProtectedPages>} />
+              <Route path="/tutorial" element={<ProtectedPages><TutorialPage /></ProtectedPages>} />
               <Route path="/termos-de-uso" element={<TermosDeUso />} />
               <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />
               <Route path="/lgpd" element={<LgpdPage />} />
