@@ -128,9 +128,8 @@ export default function PropostaTecnica() {
 
   useEffect(() => {
     if (empresaAtiva) {
-      const emp = empresaAtiva as any;
-      if (emp.inscricao_estadual) setInscEstadual(emp.inscricao_estadual);
-      if (emp.inscricao_municipal) setInscMunicipal(emp.inscricao_municipal);
+      if (empresaAtiva.inscricao_estadual) setInscEstadual(empresaAtiva.inscricao_estadual);
+      if (empresaAtiva.inscricao_municipal) setInscMunicipal(empresaAtiva.inscricao_municipal);
     }
   }, [empresaAtiva]);
 
@@ -194,7 +193,7 @@ export default function PropostaTecnica() {
       if (empresaAtiva.cnae_principal) parts.push(`- CNAE Principal: ${empresaAtiva.cnae_principal}`);
       if (inscEstadual) parts.push(`- Inscrição Estadual: ${inscEstadual}`);
       if (inscMunicipal) parts.push(`- Inscrição Municipal: ${inscMunicipal}`);
-      if ((empresaAtiva as any).endereco) parts.push(`- Endereço: ${(empresaAtiva as any).endereco}`);
+      if (empresaAtiva.endereco) parts.push(`- Endereço: ${empresaAtiva.endereco}`);
       if (empresaAtiva.uf) parts.push(`- UF: ${empresaAtiva.uf}`);
       if (empresaAtiva.municipio) parts.push(`- Município: ${empresaAtiva.municipio}`);
       if (empresaAtiva.regime_tributario) parts.push(`- Regime Tributário: ${empresaAtiva.regime_tributario}`);
