@@ -142,11 +142,12 @@ export default function Configuracoes() {
         if (data.municipio) setCidade(data.municipio);
         if (data.uf) setUf(data.uf);
         if (data.endereco) setEndereco(data.endereco);
-        if (data.complemento) setComplemento(data.complemento);
-        if (data.bairro) setBairro(data.bairro);
+        setComplemento(data.complemento || '');
+        setBairro(data.bairro || '');
         if (data.cep) setCep(data.cep);
         if (data.telefone) setTelefone(data.telefone);
-        if (data.email) setEmail(data.email);
+        // Email: set even if it replaces current value, as long as API returned one
+        if (data.email && data.email.trim()) setEmail(data.email.trim());
         if (data.cnpj) setCnpjInput(data.cnpj);
         toast.success('Dados preenchidos via Receita Federal!');
 

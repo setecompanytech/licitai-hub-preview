@@ -18,29 +18,46 @@ serve(async (req) => {
 
     const cnpjLimpo = cnpj.replace(/\D/g, "");
 
-    // BrasilAPI - free, no auth required
-    const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`);
-
-    if (!response.ok) {
-      if (response.status === 404 || response.status === 400) {
-        return new Response(JSON.stringify({ error: "CNPJ não encontrado na base da Receita Federal. Verifique o número e tente novamente, ou preencha os dados manualmente." }), {
+    // Try BrasilAPI first
+    let data: any = null;
+    const brasilResp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`);
+    
+    if (brasilResp.ok) {
+      data = await brasilResp.json();
+    } else {
+      if (brasilResp.status === 404 || brasilResp.status === 400) {
+        return new Response(JSON.stringify({ error: "CNPJ não encontrado na base da Receita Federal." }), {
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Muitas consultas simultâneas. Aguarde alguns segundos e tente novamente." }), {
+      if (brasilResp.status === 429) {
+        return new Response(JSON.stringify({ error: "Muitas consultas simultâneas. Aguarde e tente novamente." }), {
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      throw new Error(`Erro ao consultar CNPJ (código ${response.status}). Tente novamente ou preencha os dados manualmente.`);
+      throw new Error(`Erro ao consultar CNPJ (código ${brasilResp.status}).`);
     }
 
-    const data = await response.json();
+    // Also try ReceitaWS for email (BrasilAPI sometimes returns empty email)
+    let emailExtra = "";
+    try {
+      const receitaResp = await fetch(`https://receitaws.com.br/v1/cnpj/${cnpjLimpo}`, {
+        headers: { "Accept": "application/json" }
+      });
+      if (receitaResp.ok) {
+        const receitaData = await receitaResp.json();
+        if (receitaData.email && receitaData.email.trim()) {
+          emailExtra = receitaData.email.trim().toLowerCase();
+        }
+      }
+    } catch {
+      // Silent - use BrasilAPI email
+    }
 
-    // Build full address: "Logradouro, Número"
+    // Build full address
     const enderecoPartes = [data.logradouro, data.numero].filter(Boolean).join(", ");
 
-    // Format phone: "DDXXXXXXXX" -> "(DD) XXXXX-XXXX" or "(DD) XXXX-XXXX"
+    // Format phone
     let telefoneFormatado = "";
     if (data.ddd_telefone_1) {
       const tel = data.ddd_telefone_1.replace(/\D/g, "");
@@ -73,6 +90,9 @@ serve(async (req) => {
       }
     }
 
+    // Use the best available email: prefer non-empty
+    const finalEmail = (data.email && data.email.trim()) ? data.email.trim().toLowerCase() : emailExtra;
+
     const result = {
       razaoSocial: data.razao_social || "",
       nomeFantasia: data.nome_fantasia || "",
@@ -92,7 +112,7 @@ serve(async (req) => {
       uf: data.uf || "",
       porte: data.porte || "",
       capitalSocial: (data.capital_social || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
-      email: data.email || "",
+      email: finalEmail,
       telefone: telefoneFormatado,
       inscricaoEstadual: "",
       simples: data.opcao_pelo_simples || false,
