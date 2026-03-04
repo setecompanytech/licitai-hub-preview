@@ -258,10 +258,20 @@ serve(async (req) => {
 
     const systemPrompt = SYSTEM_PROMPTS[action] || SYSTEM_PROMPTS.assistente;
 
+    // Truncate context and messages to avoid exceeding token limits
+    const MAX_CONTEXT_CHARS = 200000;
+    const MAX_MESSAGE_CHARS = 100000;
+    
+    const truncatedContext = context ? context.slice(0, MAX_CONTEXT_CHARS) : null;
+    const truncatedMessages = messages.map((m: { role: string; content: string }) => ({
+      ...m,
+      content: typeof m.content === 'string' ? m.content.slice(0, MAX_MESSAGE_CHARS) : m.content,
+    }));
+
     const allMessages = [
       { role: "system", content: systemPrompt },
-      ...(context ? [{ role: "user", content: `Contexto adicional:\n${context}` }] : []),
-      ...messages,
+      ...(truncatedContext ? [{ role: "user", content: `Contexto adicional:\n${truncatedContext}` }] : []),
+      ...truncatedMessages,
     ];
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
