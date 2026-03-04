@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Bell, Globe, Shield, Newspaper, Search, Loader2, ExternalLink, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Building2, Bell, Globe, Shield, Newspaper, Search, Loader2, ExternalLink, CheckCircle2, AlertTriangle, ImageIcon } from 'lucide-react';
 import CnaesSecundarios from '@/components/configuracoes/CnaesSecundarios';
 import PlanoAssinatura from '@/components/configuracoes/PlanoAssinatura';
+import TimbradoUploader from '@/components/proposta/TimbradoUploader';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -21,6 +22,7 @@ export default function Configuracoes() {
   const [uf, setUf] = useState('');
   const [inscricaoMunicipal, setInscricaoMunicipal] = useState('');
   const [inscricaoEstadual, setInscricaoEstadual] = useState('');
+  const [timbradoUrl, setTimbradoUrl] = useState<string | null>(null);
   const [loadingCnpj, setLoadingCnpj] = useState(false);
   const [loadingSintegra, setLoadingSintegra] = useState(false);
   const [loadingSalvar, setLoadingSalvar] = useState(false);
@@ -241,6 +243,15 @@ export default function Configuracoes() {
                 </div>
               </div>
             </div>
+          </section>
+
+          {/* Timbrado / Marca d'Água */}
+          <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+            <TimbradoUploader
+              empresaId={empresaAtiva?.id}
+              timbradoUrl={timbradoUrl}
+              setTimbradoUrl={setTimbradoUrl}
+            />
           </section>
 
           {/* Notificações */}
