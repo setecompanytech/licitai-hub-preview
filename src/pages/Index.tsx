@@ -3,6 +3,7 @@ import StatCard from '@/components/dashboard/StatCard';
 import LicitacoesChart from '@/components/dashboard/LicitacoesChart';
 import ValorChart from '@/components/dashboard/ValorChart';
 import PainelLicitacoes from '@/components/dashboard/PainelLicitacoes';
+import QuickAccessGrid from '@/components/dashboard/QuickAccessGrid';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
