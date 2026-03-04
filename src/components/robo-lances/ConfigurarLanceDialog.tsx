@@ -333,7 +333,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     if (ref && pct) setValorMinimo((ref * (1 - pct / 100 * 10)).toFixed(2));
   };
 
-  const step1Valid = edital && portal && valorReferencia && valorInicial && valorMinimo;
+  const step1Valid = edital && portal;
 
   const formatCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -571,26 +571,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
               </div>
             </div>
 
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-foreground">Valores</h4>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground">Valor de Referência (R$) *</label>
-                  <Input type="number" step="0.01" value={valorReferencia} onChange={(e) => setValorReferencia(e.target.value)} placeholder="0,00" className="mt-1" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Valor Inicial (1º lance) *</label>
-                  <Input type="number" step="0.01" value={valorInicial} onChange={(e) => setValorInicial(e.target.value)} placeholder="0,00" className="mt-1" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Valor Mínimo (piso) *</label>
-                  <Input type="number" step="0.01" value={valorMinimo} onChange={(e) => setValorMinimo(e.target.value)} placeholder="0,00" className="mt-1" />
-                  <button type="button" onClick={calcMinFromPercent} className="text-[10px] text-accent hover:underline mt-0.5">
-                    Calcular a partir do %
-                  </button>
-                </div>
-              </div>
-            </div>
+
 
             <div className="space-y-3">
               <h4 className="text-sm font-semibold text-foreground">Regras de Decremento Automático</h4>
@@ -629,6 +610,28 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
         {/* ── STEP 2: Items/Lots ── */}
         {step === 2 && (
           <div className="space-y-5 py-2">
+            {/* Valores da Disputa */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-foreground">Valores da Disputa</h4>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground">Valor de Referência (R$) *</label>
+                  <Input type="number" step="0.01" value={valorReferencia} onChange={(e) => setValorReferencia(e.target.value)} placeholder="0,00" className="mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Valor Inicial (1º lance) *</label>
+                  <Input type="number" step="0.01" value={valorInicial} onChange={(e) => setValorInicial(e.target.value)} placeholder="0,00" className="mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Valor Mínimo (piso) *</label>
+                  <Input type="number" step="0.01" value={valorMinimo} onChange={(e) => setValorMinimo(e.target.value)} placeholder="0,00" className="mt-1" />
+                  <button type="button" onClick={calcMinFromPercent} className="text-[10px] text-accent hover:underline mt-0.5">
+                    Calcular a partir do %
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-3">
               <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <Layers className="w-4 h-4 text-accent" /> Tipo de Disputa
@@ -788,7 +791,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
             {step === 2 && (
               <Button
                 onClick={handleSave}
-                disabled={itens.length === 0}
+                disabled={itens.length === 0 || !valorReferencia || !valorInicial || !valorMinimo}
                 className="bg-accent hover:bg-accent/90 text-accent-foreground"
               >
                 {editingLance ? 'Salvar Alterações' : 'Cadastrar Sessão'}
