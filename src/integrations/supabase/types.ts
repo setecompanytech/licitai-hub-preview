@@ -1167,6 +1167,56 @@ export type Database = {
         }
         Relationships: []
       }
+      import_jobs: {
+        Row: {
+          arquivo_nome: string | null
+          created_at: string
+          erros: Json | null
+          id: string
+          registros_importados: number | null
+          registros_total: number | null
+          source_id: string | null
+          status: string | null
+          tipo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          arquivo_nome?: string | null
+          created_at?: string
+          erros?: Json | null
+          id?: string
+          registros_importados?: number | null
+          registros_total?: number | null
+          source_id?: string | null
+          status?: string | null
+          tipo?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          arquivo_nome?: string | null
+          created_at?: string
+          erros?: Json | null
+          id?: string
+          registros_importados?: number | null
+          registros_total?: number | null
+          source_id?: string | null
+          status?: string | null
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_jobs_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "search_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kanban_tasks: {
         Row: {
           created_at: string
@@ -1494,6 +1544,75 @@ export type Database = {
         }
         Relationships: []
       }
+      offers_normalized: {
+        Row: {
+          coletado_em: string
+          condicao: string | null
+          created_at: string
+          estoque: boolean | null
+          frete: number | null
+          id: string
+          prazo_dias: number | null
+          preco: number
+          product_id: string | null
+          source_id: string | null
+          supplier_name: string | null
+          total: number | null
+          uf: string | null
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          coletado_em?: string
+          condicao?: string | null
+          created_at?: string
+          estoque?: boolean | null
+          frete?: number | null
+          id?: string
+          prazo_dias?: number | null
+          preco: number
+          product_id?: string | null
+          source_id?: string | null
+          supplier_name?: string | null
+          total?: number | null
+          uf?: string | null
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          coletado_em?: string
+          condicao?: string | null
+          created_at?: string
+          estoque?: boolean | null
+          frete?: number | null
+          id?: string
+          prazo_dias?: number | null
+          preco?: number
+          product_id?: string | null
+          source_id?: string | null
+          supplier_name?: string | null
+          total?: number | null
+          uf?: string | null
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offers_normalized_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_normalized"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_normalized_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "search_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pesquisas_preco: {
         Row: {
           categoria: string | null
@@ -1631,6 +1750,54 @@ export type Database = {
           },
         ]
       }
+      products_normalized: {
+        Row: {
+          atributos: Json | null
+          categoria: string | null
+          created_at: string
+          id: string
+          marca_normalizada: string | null
+          modelo: string | null
+          ncm: string | null
+          nome_normalizado: string
+          palavras_chave: string[] | null
+          titulo_original: string | null
+          unidade: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          atributos?: Json | null
+          categoria?: string | null
+          created_at?: string
+          id?: string
+          marca_normalizada?: string | null
+          modelo?: string | null
+          ncm?: string | null
+          nome_normalizado: string
+          palavras_chave?: string[] | null
+          titulo_original?: string | null
+          unidade?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          atributos?: Json | null
+          categoria?: string | null
+          created_at?: string
+          id?: string
+          marca_normalizada?: string | null
+          modelo?: string | null
+          ncm?: string | null
+          nome_normalizado?: string
+          palavras_chave?: string[] | null
+          titulo_original?: string | null
+          unidade?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1680,6 +1847,193 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      quotation_items: {
+        Row: {
+          created_at: string
+          data_coleta: string | null
+          descricao: string
+          fonte: string | null
+          fornecedor: string | null
+          frete: number | null
+          id: string
+          marca: string | null
+          observacoes: string | null
+          preco_unitario: number
+          quantidade: number
+          quotation_id: string
+          total: number | null
+          uf: string | null
+          unidade: string | null
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          data_coleta?: string | null
+          descricao: string
+          fonte?: string | null
+          fornecedor?: string | null
+          frete?: number | null
+          id?: string
+          marca?: string | null
+          observacoes?: string | null
+          preco_unitario?: number
+          quantidade?: number
+          quotation_id: string
+          total?: number | null
+          uf?: string | null
+          unidade?: string | null
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          data_coleta?: string | null
+          descricao?: string
+          fonte?: string | null
+          fornecedor?: string | null
+          frete?: number | null
+          id?: string
+          marca?: string | null
+          observacoes?: string | null
+          preco_unitario?: number
+          quantidade?: number
+          quotation_id?: string
+          total?: number | null
+          uf?: string | null
+          unidade?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_items_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotations: {
+        Row: {
+          created_at: string
+          id: string
+          list_id: string | null
+          nome: string
+          observacoes: string | null
+          orgao: string | null
+          processo: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+          valor_total: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          list_id?: string | null
+          nome: string
+          observacoes?: string | null
+          orgao?: string | null
+          processo?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+          valor_total?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          list_id?: string | null
+          nome?: string
+          observacoes?: string | null
+          orgao?: string | null
+          processo?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+          valor_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotations_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "shopping_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      search_logs: {
+        Row: {
+          created_at: string
+          filtros: Json | null
+          fontes_consultadas: string[] | null
+          id: string
+          resultados_count: number | null
+          termo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filtros?: Json | null
+          fontes_consultadas?: string[] | null
+          id?: string
+          resultados_count?: number | null
+          termo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filtros?: Json | null
+          fontes_consultadas?: string[] | null
+          id?: string
+          resultados_count?: number | null
+          termo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      search_sources: {
+        Row: {
+          ativo: boolean
+          campos_suportados: Json | null
+          categoria: string | null
+          created_at: string
+          id: string
+          logo_url: string | null
+          metodo_ingestao: string
+          nome: string
+          tipo: string
+          updated_at: string
+          url_base: string
+        }
+        Insert: {
+          ativo?: boolean
+          campos_suportados?: Json | null
+          categoria?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          metodo_ingestao?: string
+          nome: string
+          tipo?: string
+          updated_at?: string
+          url_base: string
+        }
+        Update: {
+          ativo?: boolean
+          campos_suportados?: Json | null
+          categoria?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          metodo_ingestao?: string
+          nome?: string
+          tipo?: string
+          updated_at?: string
+          url_base?: string
+        }
+        Relationships: []
       }
       sessoes_lance_real: {
         Row: {
@@ -1760,6 +2114,196 @@ export type Database = {
             columns: ["agente_id"]
             isOneToOne: false
             referencedRelation: "agente_externo_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shopping_list_items: {
+        Row: {
+          created_at: string
+          descricao: string
+          fonte_referencia: string | null
+          id: string
+          list_id: string
+          marca: string | null
+          observacoes: string | null
+          preco_referencia: number | null
+          product_id: string | null
+          quantidade: number
+          unidade: string | null
+          url_referencia: string | null
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          fonte_referencia?: string | null
+          id?: string
+          list_id: string
+          marca?: string | null
+          observacoes?: string | null
+          preco_referencia?: number | null
+          product_id?: string | null
+          quantidade?: number
+          unidade?: string | null
+          url_referencia?: string | null
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          fonte_referencia?: string | null
+          id?: string
+          list_id?: string
+          marca?: string | null
+          observacoes?: string | null
+          preco_referencia?: number | null
+          product_id?: string | null
+          quantidade?: number
+          unidade?: string | null
+          url_referencia?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopping_list_items_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "shopping_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_list_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_normalized"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shopping_lists: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      supplier_scores: {
+        Row: {
+          confiabilidade: number | null
+          consistencia_preco: number | null
+          created_at: string
+          id: string
+          nota_usuario: number | null
+          prazo_medio: number | null
+          score_final: number | null
+          supplier_id: string
+          taxa_divergencia: number | null
+          total_avaliacoes: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confiabilidade?: number | null
+          consistencia_preco?: number | null
+          created_at?: string
+          id?: string
+          nota_usuario?: number | null
+          prazo_medio?: number | null
+          score_final?: number | null
+          supplier_id: string
+          taxa_divergencia?: number | null
+          total_avaliacoes?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confiabilidade?: number | null
+          consistencia_preco?: number | null
+          created_at?: string
+          id?: string
+          nota_usuario?: number | null
+          prazo_medio?: number | null
+          score_final?: number | null
+          supplier_id?: string
+          taxa_divergencia?: number | null
+          total_avaliacoes?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_scores_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          cnpj: string | null
+          created_at: string
+          id: string
+          municipio: string | null
+          nome: string
+          source_id: string | null
+          uf: string | null
+          updated_at: string
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          cnpj?: string | null
+          created_at?: string
+          id?: string
+          municipio?: string | null
+          nome: string
+          source_id?: string | null
+          uf?: string | null
+          updated_at?: string
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          cnpj?: string | null
+          created_at?: string
+          id?: string
+          municipio?: string | null
+          nome?: string
+          source_id?: string | null
+          uf?: string | null
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "search_sources"
             referencedColumns: ["id"]
           },
         ]
