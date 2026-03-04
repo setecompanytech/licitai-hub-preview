@@ -10,9 +10,16 @@ type Empresa = {
   cnae_principal: string | null;
   uf: string | null;
   municipio: string | null;
+  endereco: string | null;
+  inscricao_estadual: string | null;
+  inscricao_municipal: string | null;
   certificado_nome: string | null;
+  certificado_path: string | null;
+  certificado_tipo: string | null;
   certificado_validade: string | null;
   regime_tributario: string | null;
+  timbrado_url: string | null;
+  timbrado_path: string | null;
 };
 
 type EmpresaMembro = {
