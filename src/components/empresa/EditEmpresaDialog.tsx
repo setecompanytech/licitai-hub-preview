@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, Search } from 'lucide-react';
 
 type Empresa = {
   id: string;
@@ -17,6 +17,11 @@ type Empresa = {
   uf: string | null;
   municipio: string | null;
   endereco?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cep?: string | null;
+  telefone?: string | null;
+  email?: string | null;
   regime_tributario: string | null;
   inscricao_estadual?: string | null;
   inscricao_municipal?: string | null;
@@ -36,10 +41,16 @@ export default function EditEmpresaDialog({ empresa, open, onOpenChange, onSucce
   const [uf, setUf] = useState('');
   const [municipio, setMunicipio] = useState('');
   const [endereco, setEndereco] = useState('');
+  const [complemento, setComplemento] = useState('');
+  const [bairro, setBairro] = useState('');
+  const [cep, setCep] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [email, setEmail] = useState('');
   const [regimeTributario, setRegimeTributario] = useState('');
   const [inscricaoEstadual, setInscricaoEstadual] = useState('');
   const [inscricaoMunicipal, setInscricaoMunicipal] = useState('');
   const [loading, setLoading] = useState(false);
+  const [buscando, setBuscando] = useState(false);
 
   useEffect(() => {
     if (empresa) {
@@ -49,11 +60,61 @@ export default function EditEmpresaDialog({ empresa, open, onOpenChange, onSucce
       setUf(empresa.uf || '');
       setMunicipio(empresa.municipio || '');
       setEndereco(empresa.endereco || '');
+      setComplemento(empresa.complemento || '');
+      setBairro(empresa.bairro || '');
+      setCep(empresa.cep || '');
+      setTelefone(empresa.telefone || '');
+      setEmail(empresa.email || '');
       setRegimeTributario(empresa.regime_tributario || '');
       setInscricaoEstadual(empresa.inscricao_estadual || '');
       setInscricaoMunicipal(empresa.inscricao_municipal || '');
     }
   }, [empresa]);
+
+  const handleBuscarCNPJ = async () => {
+    if (!empresa) return;
+    const cnpjLimpo = empresa.cnpj.replace(/\D/g, '');
+    if (cnpjLimpo.length !== 14) return;
+
+    setBuscando(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('consulta-cnpj', {
+        body: { cnpj: cnpjLimpo },
+      });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+
+      setRazaoSocial(data.razaoSocial || razaoSocial);
+      setNomeFantasia(data.nomeFantasia || nomeFantasia);
+      setCnaePrincipal(data.cnaePrincipal || cnaePrincipal);
+      setUf(data.uf || uf);
+      setMunicipio(data.municipio || municipio);
+      setEndereco(data.endereco || endereco);
+      setComplemento(data.complemento || complemento);
+      setBairro(data.bairro || bairro);
+      setCep(data.cep || cep);
+      setTelefone(data.telefone || telefone);
+      setEmail(data.email || email);
+      if (data.simples) setRegimeTributario('simples_nacional');
+      toast.success('Dados atualizados via Receita Federal!');
+
+      // SINTEGRA for IE
+      if (data.uf) {
+        try {
+          const { data: sintegra } = await supabase.functions.invoke('consulta-sintegra', {
+            body: { cnpj: cnpjLimpo, uf: data.uf },
+          });
+          if (sintegra?.inscricaoEstadual) {
+            setInscricaoEstadual(sintegra.inscricaoEstadual);
+          }
+        } catch { /* silent */ }
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao consultar CNPJ');
+    } finally {
+      setBuscando(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +136,11 @@ export default function EditEmpresaDialog({ empresa, open, onOpenChange, onSucce
           uf: uf.trim() || null,
           municipio: municipio.trim() || null,
           endereco: endereco.trim() || null,
+          complemento: complemento.trim() || null,
+          bairro: bairro.trim() || null,
+          cep: cep.trim() || null,
+          telefone: telefone.trim() || null,
+          email: email.trim() || null,
           regime_tributario: regimeTributario,
           inscricao_estadual: inscricaoEstadual.trim() || null,
           inscricao_municipal: inscricaoMunicipal.trim() || null,
@@ -100,6 +166,12 @@ export default function EditEmpresaDialog({ empresa, open, onOpenChange, onSucce
           <DialogTitle className="text-base">Editar Empresa — {empresa?.cnpj}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          <div className="flex justify-end">
+            <Button type="button" variant="outline" size="sm" onClick={handleBuscarCNPJ} disabled={buscando}>
+              {buscando ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Search className="w-3 h-3 mr-1" />}
+              Atualizar via Receita Federal
+            </Button>
+          </div>
           <div>
             <Label className="text-xs">Razão Social *</Label>
             <Input value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)} className="mt-1" required />
@@ -127,17 +199,41 @@ export default function EditEmpresaDialog({ empresa, open, onOpenChange, onSucce
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
+              <Label className="text-xs">Telefone</Label>
+              <Input value={telefone} onChange={e => setTelefone(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs">E-mail</Label>
+              <Input value={email} onChange={e => setEmail(e.target.value)} className="mt-1" />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <Label className="text-xs">CEP</Label>
+              <Input value={cep} onChange={e => setCep(e.target.value)} className="mt-1" />
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs">Endereço</Label>
+              <Input value={endereco} onChange={e => setEndereco(e.target.value)} className="mt-1" />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <Label className="text-xs">Complemento</Label>
+              <Input value={complemento} onChange={e => setComplemento(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs">Bairro</Label>
+              <Input value={bairro} onChange={e => setBairro(e.target.value)} className="mt-1" />
+            </div>
+            <div>
               <Label className="text-xs">UF</Label>
               <Input value={uf} onChange={e => setUf(e.target.value)} className="mt-1" maxLength={2} />
             </div>
-            <div>
-              <Label className="text-xs">Município</Label>
-              <Input value={municipio} onChange={e => setMunicipio(e.target.value)} className="mt-1" />
-            </div>
           </div>
           <div>
-            <Label className="text-xs">Endereço</Label>
-            <Input value={endereco} onChange={e => setEndereco(e.target.value)} className="mt-1" />
+            <Label className="text-xs">Município</Label>
+            <Input value={municipio} onChange={e => setMunicipio(e.target.value)} className="mt-1" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>

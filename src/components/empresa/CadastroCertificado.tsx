@@ -26,11 +26,18 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
   const [uf, setUf] = useState('');
   const [municipio, setMunicipio] = useState('');
   const [endereco, setEndereco] = useState('');
+  const [complemento, setComplemento] = useState('');
+  const [bairro, setBairro] = useState('');
+  const [cep, setCep] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [email, setEmail] = useState('');
+  const [inscricaoEstadual, setInscricaoEstadual] = useState('');
   const [validade, setValidade] = useState('');
   const [regimeTributario, setRegimeTributario] = useState('');
   const [senhaCertificado, setSenhaCertificado] = useState('');
   const [loading, setLoading] = useState(false);
   const [buscando, setBuscando] = useState(false);
+  const [buscandoSintegra, setBuscandoSintegra] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -73,12 +80,47 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
       setUf(data.uf || '');
       setMunicipio(data.municipio || '');
       setEndereco(data.endereco || '');
+      setComplemento(data.complemento || '');
+      setBairro(data.bairro || '');
+      setCep(data.cep || '');
+      setTelefone(data.telefone || '');
+      setEmail(data.email || '');
       setCnpj(data.cnpj || cnpj);
-      toast.success('Dados preenchidos automaticamente!');
+      if (data.simples) setRegimeTributario('simples_nacional');
+      toast.success('Dados da Receita Federal preenchidos automaticamente!');
+
+      // Auto-trigger SINTEGRA for IE
+      if (data.uf) {
+        await handleBuscarSintegra(cnpjLimpo, data.uf);
+      }
     } catch (err: any) {
       toast.error(err.message || 'Erro ao consultar CNPJ');
     } finally {
       setBuscando(false);
+    }
+  };
+
+  const handleBuscarSintegra = async (cnpjParam?: string, ufParam?: string) => {
+    const cnpjLimpo = (cnpjParam || cnpj).replace(/\D/g, '');
+    const ufValue = ufParam || uf;
+    if (cnpjLimpo.length !== 14 || !ufValue) return;
+
+    setBuscandoSintegra(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('consulta-sintegra', {
+        body: { cnpj: cnpjLimpo, uf: ufValue },
+      });
+      if (error) throw error;
+      if (data?.inscricaoEstadual && data.inscricaoEstadual !== 'ISENTO') {
+        setInscricaoEstadual(data.inscricaoEstadual);
+        toast.success('Inscrição Estadual obtida via SINTEGRA!');
+      } else {
+        setInscricaoEstadual(data?.inscricaoEstadual || 'ISENTO');
+      }
+    } catch {
+      // Silently fail — SINTEGRA is complementary
+    } finally {
+      setBuscandoSintegra(false);
     }
   };
 
@@ -111,6 +153,12 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
         uf: uf.trim() || undefined,
         municipio: municipio.trim() || undefined,
         endereco: endereco.trim() || undefined,
+        complemento: complemento.trim() || undefined,
+        bairro: bairro.trim() || undefined,
+        cep: cep.trim() || undefined,
+        telefone: telefone.trim() || undefined,
+        email: email.trim() || undefined,
+        inscricao_estadual: inscricaoEstadual.trim() || undefined,
         certificado_path: filePath,
         certificado_nome: file.name,
         certificado_tipo: tipo,
@@ -127,7 +175,9 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
       toast.success(`Empresa ${razaoSocial} cadastrada com sucesso!`);
       setCnpj(''); setRazaoSocial(''); setNomeFantasia(''); setValidade('');
       setCnaePrincipal(''); setUf(''); setMunicipio(''); setEndereco('');
-      setRegimeTributario(''); setSenhaCertificado('');
+      setRegimeTributario(''); setSenhaCertificado(''); setTelefone('');
+      setEmail(''); setInscricaoEstadual(''); setComplemento('');
+      setBairro(''); setCep('');
       setFile(null);
       onSuccess?.();
     } catch (err: any) {
@@ -204,12 +254,15 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
               size="icon"
               onClick={handleBuscarCNPJ}
               disabled={buscando || cnpj.replace(/\D/g, '').length < 14}
-              title="Buscar dados do CNPJ"
+              title="Buscar dados na Receita Federal e SINTEGRA"
               className="shrink-0"
             >
               {buscando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             </Button>
           </div>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {buscandoSintegra ? 'Consultando SINTEGRA...' : 'Clique na lupa para preencher automaticamente via Receita Federal + SINTEGRA'}
+          </p>
         </div>
         <div>
           <Label className="text-xs">Validade do Certificado</Label>
@@ -232,18 +285,51 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
         <Input value={cnaePrincipal} onChange={e => setCnaePrincipal(e.target.value)} placeholder="Ex: 6201500 - Desenvolvimento de software" className="mt-1" />
       </div>
 
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label className="text-xs">Telefone</Label>
+          <Input value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="(XX) XXXXX-XXXX" className="mt-1" />
+        </div>
+        <div>
+          <Label className="text-xs">E-mail</Label>
+          <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="contato@empresa.com" className="mt-1" />
+        </div>
+      </div>
+
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <Label className="text-xs">UF</Label>
-          <Input value={uf} onChange={e => setUf(e.target.value)} placeholder="SP" className="mt-1" maxLength={2} />
+          <Label className="text-xs">CEP</Label>
+          <Input value={cep} onChange={e => setCep(e.target.value)} placeholder="00000-000" className="mt-1" />
         </div>
+        <div className="col-span-2">
+          <Label className="text-xs">Endereço (Logradouro, Nº)</Label>
+          <Input value={endereco} onChange={e => setEndereco(e.target.value)} placeholder="Rua, nº - Bairro" className="mt-1" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <Label className="text-xs">Complemento</Label>
+          <Input value={complemento} onChange={e => setComplemento(e.target.value)} placeholder="Sala, Andar, etc." className="mt-1" />
+        </div>
+        <div>
+          <Label className="text-xs">Bairro</Label>
+          <Input value={bairro} onChange={e => setBairro(e.target.value)} placeholder="Bairro" className="mt-1" />
+        </div>
+        <div>
+          <Label className="text-xs">Inscrição Estadual</Label>
+          <Input value={inscricaoEstadual} onChange={e => setInscricaoEstadual(e.target.value)} placeholder="ISENTO ou nº" className="mt-1" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
         <div>
           <Label className="text-xs">Município</Label>
           <Input value={municipio} onChange={e => setMunicipio(e.target.value)} placeholder="São Paulo" className="mt-1" />
         </div>
         <div>
-          <Label className="text-xs">Endereço</Label>
-          <Input value={endereco} onChange={e => setEndereco(e.target.value)} placeholder="Rua, nº - Bairro" className="mt-1" />
+          <Label className="text-xs">UF</Label>
+          <Input value={uf} onChange={e => setUf(e.target.value)} placeholder="SP" className="mt-1" maxLength={2} />
         </div>
       </div>
 
