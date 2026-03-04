@@ -34,6 +34,10 @@ import ComparativoDashboard from '@/components/precificacao/ComparativoDashboard
 import CotacaoEditalAutoIA from '@/components/precificacao/CotacaoEditalAutoIA';
 import CalculadoraUnificada from '@/components/precificacao/CalculadoraUnificada';
 import CatalogoPrecificados from '@/components/precificacao/CatalogoPrecificados';
+import FontesManager from '@/components/precificacao/FontesManager';
+import ListasCompras from '@/components/precificacao/ListasCompras';
+import CotacoesManager from '@/components/precificacao/CotacoesManager';
+import ImportacoesManager from '@/components/precificacao/ImportacoesManager';
 
 type FontePreco = {
   fonte: string;
@@ -711,6 +715,18 @@ Responda APENAS em JSON, sem markdown:
             <TabsTrigger value="catalogo" className="gap-1.5">
               <Package className="w-3.5 h-3.5" /> Catálogo
             </TabsTrigger>
+            <TabsTrigger value="fontes" className="gap-1.5">
+              <Globe className="w-3.5 h-3.5" /> Fontes
+            </TabsTrigger>
+            <TabsTrigger value="listas" className="gap-1.5">
+              <ShoppingCart className="w-3.5 h-3.5" /> Listas
+            </TabsTrigger>
+            <TabsTrigger value="cotacoes" className="gap-1.5">
+              <FileText className="w-3.5 h-3.5" /> Cotações
+            </TabsTrigger>
+            <TabsTrigger value="importacoes" className="gap-1.5">
+              <Upload className="w-3.5 h-3.5" /> Importações
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="marketplaces" className="space-y-4">
@@ -1321,6 +1337,30 @@ Responda APENAS em JSON, sem markdown:
           <TabsContent value="catalogo">
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
               <CatalogoPrecificados />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="fontes">
+            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+              <FontesManager />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="listas">
+            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+              <ListasCompras />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="cotacoes">
+            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+              <CotacoesManager />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="importacoes">
+            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+              <ImportacoesManager />
             </div>
           </TabsContent>
         </Tabs>
