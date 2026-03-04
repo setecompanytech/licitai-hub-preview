@@ -25,6 +25,13 @@ type Empresa = {
   regime_tributario: string | null;
   timbrado_url: string | null;
   timbrado_path: string | null;
+  rep_nome: string | null;
+  rep_cpf: string | null;
+  rep_rg: string | null;
+  rep_orgao_expedidor: string | null;
+  rep_cargo: string | null;
+  rep_naturalidade: string | null;
+  rep_nacionalidade: string | null;
 };
 
 type EmpresaMembro = {
