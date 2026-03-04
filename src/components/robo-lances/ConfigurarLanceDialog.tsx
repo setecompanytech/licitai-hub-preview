@@ -134,16 +134,16 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
   const [itens, setItens] = useState<DisputeItem[]>(editingLance?.itens || []);
   const [licitacaoIdRef, setLicitacaoIdRef] = useState<string | undefined>(editingLance?.licitacaoId);
 
-  // Step 2 – percentage adjustments for initial bid and floor
-  const [pctInicial, setPctInicial] = useState(
+  // Step 2 – R$ discount values (user inputs in Reais, system calculates %)
+  const [descontoInicialReais, setDescontoInicialReais] = useState(
     editingLance && editingLance.valorReferencia > 0
-      ? String(Math.round((1 - editingLance.valorInicial / editingLance.valorReferencia) * 100))
-      : '5'
+      ? String(Math.round((editingLance.valorReferencia - editingLance.valorInicial) * 100) / 100)
+      : ''
   );
-  const [pctMinimo, setPctMinimo] = useState(
+  const [descontoMinimoReais, setDescontoMinimoReais] = useState(
     editingLance && editingLance.valorReferencia > 0
-      ? String(Math.round((1 - editingLance.valorMinimo / editingLance.valorReferencia) * 100))
-      : '20'
+      ? String(Math.round((editingLance.valorReferencia - editingLance.valorMinimo) * 100) / 100)
+      : ''
   );
 
   // New item form
@@ -159,14 +159,24 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
   }, [itens]);
 
   const valorInicial = useMemo(() => {
-    const pct = parseFloat(pctInicial) || 0;
-    return Math.round(somaReferencia * (1 - pct / 100) * 100) / 100;
-  }, [somaReferencia, pctInicial]);
+    const desconto = parseFloat(descontoInicialReais) || 0;
+    return Math.round((somaReferencia - desconto) * 100) / 100;
+  }, [somaReferencia, descontoInicialReais]);
 
   const valorMinimo = useMemo(() => {
-    const pct = parseFloat(pctMinimo) || 0;
-    return Math.round(somaReferencia * (1 - pct / 100) * 100) / 100;
-  }, [somaReferencia, pctMinimo]);
+    const desconto = parseFloat(descontoMinimoReais) || 0;
+    return Math.round((somaReferencia - desconto) * 100) / 100;
+  }, [somaReferencia, descontoMinimoReais]);
+
+  const pctInicial = useMemo(() => {
+    if (somaReferencia <= 0) return 0;
+    return Math.round(((parseFloat(descontoInicialReais) || 0) / somaReferencia) * 10000) / 100;
+  }, [somaReferencia, descontoInicialReais]);
+
+  const pctMinimo = useMemo(() => {
+    if (somaReferencia <= 0) return 0;
+    return Math.round(((parseFloat(descontoMinimoReais) || 0) / somaReferencia) * 10000) / 100;
+  }, [somaReferencia, descontoMinimoReais]);
 
   // ── Fetch licitações from Kanban ──
   const fetchLicitacoes = useCallback(async () => {
@@ -291,7 +301,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     setIntervaloSegundos('30'); setMaxLances('20'); setModoAutomatico(true); setHorario('');
     setItens([]); setTipoDisputa('item'); setStep(editingLance ? 1 : 0);
     setSelectedLicId(null); setSearchLic(''); setStatusFilter('todos'); setLicitacaoIdRef(undefined);
-    setPctInicial('5'); setPctMinimo('20');
+    setDescontoInicialReais(''); setDescontoMinimoReais('');
     resetItemForm();
   };
 
@@ -780,42 +790,42 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                     <p className="text-[9px] text-muted-foreground mt-0.5">Σ (Qtd × Vlr Unit.)</p>
                   </div>
 
-                  {/* Valor Inicial – adjustable % */}
+                  {/* Valor Inicial – input in R$, shows % */}
                   <div className="bg-card rounded-lg border border-border p-3 text-center">
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Valor Inicial (1º lance)</p>
                     <p className="text-lg font-bold text-accent mt-1 font-mono">{formatCurrency(valorInicial)}</p>
                     <div className="flex items-center justify-center gap-1 mt-1.5">
-                      <span className="text-[10px] text-muted-foreground">Desconto:</span>
+                      <span className="text-[10px] text-muted-foreground">Desconto R$</span>
                       <Input
                         type="number"
-                        step="1"
+                        step="0.01"
                         min="0"
-                        max="99"
-                        value={pctInicial}
-                        onChange={(e) => setPctInicial(e.target.value)}
-                        className="h-6 w-14 text-[11px] text-center px-1"
+                        value={descontoInicialReais}
+                        onChange={(e) => setDescontoInicialReais(e.target.value)}
+                        placeholder="0,00"
+                        className="h-6 w-24 text-[11px] text-center px-1"
                       />
-                      <span className="text-[10px] text-muted-foreground">%</span>
                     </div>
+                    <p className="text-[9px] text-accent font-medium mt-1">≈ {pctInicial.toFixed(2)}% de desconto</p>
                   </div>
 
-                  {/* Valor Mínimo – adjustable % */}
+                  {/* Valor Mínimo – input in R$, shows % */}
                   <div className="bg-card rounded-lg border border-destructive/30 p-3 text-center">
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Valor Mínimo (piso)</p>
                     <p className="text-lg font-bold text-destructive mt-1 font-mono">{formatCurrency(valorMinimo)}</p>
                     <div className="flex items-center justify-center gap-1 mt-1.5">
-                      <span className="text-[10px] text-muted-foreground">Desconto:</span>
+                      <span className="text-[10px] text-muted-foreground">Desconto R$</span>
                       <Input
                         type="number"
-                        step="1"
+                        step="0.01"
                         min="0"
-                        max="99"
-                        value={pctMinimo}
-                        onChange={(e) => setPctMinimo(e.target.value)}
-                        className="h-6 w-14 text-[11px] text-center px-1"
+                        value={descontoMinimoReais}
+                        onChange={(e) => setDescontoMinimoReais(e.target.value)}
+                        placeholder="0,00"
+                        className="h-6 w-24 text-[11px] text-center px-1"
                       />
-                      <span className="text-[10px] text-muted-foreground">%</span>
                     </div>
+                    <p className="text-[9px] text-destructive font-medium mt-1">≈ {pctMinimo.toFixed(2)}% de desconto</p>
                   </div>
                 </div>
 
