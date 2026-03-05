@@ -80,19 +80,45 @@ export default function KanbanPage() {
 
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from('licitacoes')
-      .select('id, numero, orgao, objeto, status, valor_estimado, uf, municipio, data_encerramento')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        const normalized = (data || []).map(item => ({
-          ...item,
-          status: normalizeStatus(item.status),
-        }));
-        setItems(normalized);
-        setLoading(false);
-      });
+
+    const loadData = async () => {
+      const { data } = await supabase
+        .from('licitacoes')
+        .select('id, numero, orgao, objeto, status, valor_estimado, uf, municipio, data_encerramento')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      setItems((data || []).map(item => ({ ...item, status: normalizeStatus(item.status) })));
+      setLoading(false);
+    };
+
+    loadData();
+
+    // Realtime: auto-sync when Robô de Lances, Monitoramento or any module updates a licitação
+    const channel = supabase
+      .channel('kanban_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'licitacoes', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newItem = payload.new as LicitacaoKanban;
+            setItems(prev => [{ ...newItem, status: normalizeStatus(newItem.status) }, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = payload.new as LicitacaoKanban;
+            setItems(prev => prev.map(i =>
+              i.id === updated.id ? { ...updated, status: normalizeStatus(updated.status) } : i
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            const deleted = payload.old as { id: string };
+            setItems(prev => prev.filter(i => i.id !== deleted.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const handleDragStart = (id: string) => setDragItem(id);
