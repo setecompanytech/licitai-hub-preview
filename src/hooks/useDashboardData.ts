@@ -52,6 +52,14 @@ const MODALIDADE_COLORS: Record<string, string> = {
   'Inexigibilidade': 'hsl(142, 71%, 45%)',
 };
 
+/** Applies empresa filter to a supabase query builder */
+function applyEmpresaFilter(query: any, empresaAtiva: any, todasSelecionadas: boolean) {
+  if (!todasSelecionadas && empresaAtiva) {
+    return query.eq('empresa_id', empresaAtiva.id);
+  }
+  return query;
+}
+
 export function useDashboardData() {
   const { user } = useAuth();
   const { empresaAtiva, todasSelecionadas } = useEmpresa();
@@ -80,6 +88,17 @@ export function useDashboardData() {
     setLoading(false);
   }
 
+  /** Helper to build a filtered query on licitacoes */
+  function licitacoesQuery() {
+    let q = supabase.from('licitacoes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id);
+    return applyEmpresaFilter(q, empresaAtiva, todasSelecionadas);
+  }
+
+  function licitacoesDataQuery(selectCols: string) {
+    let q = supabase.from('licitacoes').select(selectCols).eq('user_id', user!.id);
+    return applyEmpresaFilter(q, empresaAtiva, todasSelecionadas);
+  }
+
   async function loadKpis() {
     const today = new Date().toISOString().split('T')[0];
     const sixMonthsAgo = new Date();
@@ -92,24 +111,45 @@ export function useDashboardData() {
       { count: perdidas },
       { data: ganhos },
       { count: hoje },
+      { data: roiData },
     ] = await Promise.all([
-      supabase.from('licitacoes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id),
-      supabase.from('licitacoes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).in('status', ['Proposta Enviada', 'enviada', 'proposta']),
-      supabase.from('licitacoes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).in('status', ['Vencida', 'vencida', 'Homologada']),
-      supabase.from('licitacoes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).in('status', ['Perdida', 'perdida']),
-      supabase.from('licitacoes').select('valor_estimado, valor_adjudicado').eq('user_id', user!.id).in('status', ['Vencida', 'vencida', 'Homologada']).gte('created_at', sixMonthsAgo.toISOString()),
-      supabase.from('monitoramento_editais').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).gte('created_at', `${today}T00:00:00`),
+      licitacoesQuery(),
+      licitacoesQuery().in('status', ['Proposta Enviada', 'enviada', 'proposta']),
+      licitacoesQuery().in('status', ['Vencida', 'vencida', 'Homologada']),
+      licitacoesQuery().in('status', ['Perdida', 'perdida']),
+      licitacoesDataQuery('valor_estimado, valor_adjudicado').in('status', ['Vencida', 'vencida', 'Homologada']).gte('created_at', sixMonthsAgo.toISOString()),
+      applyEmpresaFilter(
+        supabase.from('monitoramento_editais').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).gte('created_at', `${today}T00:00:00`),
+        empresaAtiva, todasSelecionadas
+      ),
+      // ROI: get all won bids that have both valor_estimado AND valor_adjudicado
+      licitacoesDataQuery('valor_estimado, valor_adjudicado')
+        .in('status', ['Vencida', 'vencida', 'Homologada'])
+        .not('valor_estimado', 'is', null)
+        .not('valor_adjudicado', 'is', null),
     ]);
 
     const totalGanho = ganhos?.reduce((s, l) => s + (l.valor_adjudicado || l.valor_estimado || 0), 0) || 0;
     const totalDecididas = (vencidas || 0) + (perdidas || 0);
     const taxa = totalDecididas > 0 ? ((vencidas || 0) / totalDecididas) * 100 : 0;
 
+    // ROI = ((sum adjudicado - sum estimado) / sum estimado) * 100
+    // Positive ROI = saved money (bought below estimate)
+    let roi = 0;
+    if (roiData && roiData.length > 0) {
+      const sumEstimado = roiData.reduce((s, l) => s + (l.valor_estimado || 0), 0);
+      const sumAdjudicado = roiData.reduce((s, l) => s + (l.valor_adjudicado || 0), 0);
+      if (sumEstimado > 0) {
+        // Economy percentage: how much was saved vs estimated
+        roi = Math.round(((sumEstimado - sumAdjudicado) / sumEstimado) * 1000) / 10;
+      }
+    }
+
     setKpis({
       licitacoesMonitoradas: monitoradas || 0,
       propostasEnviadas: propostas || 0,
       taxaVitoria: Math.round(taxa * 10) / 10,
-      roiMedio: 0,
+      roiMedio: roi,
       valorTotalGanho: totalGanho,
       licitacoesHoje: hoje || 0,
     });
@@ -127,10 +167,10 @@ export function useDashboardData() {
       const label = MESES[d.getMonth()];
 
       const [{ count: v }, { count: p }, { count: pr }, { data: vals }] = await Promise.all([
-        supabase.from('licitacoes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).in('status', ['Vencida', 'vencida', 'Homologada']).gte('updated_at', start).lte('updated_at', end),
-        supabase.from('licitacoes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).in('status', ['Perdida', 'perdida']).gte('updated_at', start).lte('updated_at', end),
-        supabase.from('licitacoes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).in('status', ['Proposta Enviada', 'enviada', 'proposta']).gte('created_at', start).lte('created_at', end),
-        supabase.from('licitacoes').select('valor_estimado, valor_adjudicado').eq('user_id', user!.id).in('status', ['Vencida', 'vencida', 'Homologada']).gte('updated_at', start).lte('updated_at', end),
+        licitacoesQuery().in('status', ['Vencida', 'vencida', 'Homologada']).gte('updated_at', start).lte('updated_at', end),
+        licitacoesQuery().in('status', ['Perdida', 'perdida']).gte('updated_at', start).lte('updated_at', end),
+        licitacoesQuery().in('status', ['Proposta Enviada', 'enviada', 'proposta']).gte('created_at', start).lte('created_at', end),
+        licitacoesDataQuery('valor_estimado, valor_adjudicado').in('status', ['Vencida', 'vencida', 'Homologada']).gte('updated_at', start).lte('updated_at', end),
       ]);
 
       months.push({ mes: label, vitorias: v || 0, derrotas: p || 0, propostas: pr || 0 });
@@ -142,10 +182,7 @@ export function useDashboardData() {
   }
 
   async function loadModalidades() {
-    const { data } = await supabase
-      .from('licitacoes')
-      .select('modalidade')
-      .eq('user_id', user!.id);
+    const { data } = await licitacoesDataQuery('modalidade');
 
     if (!data || data.length === 0) {
       setModalidades([]);
@@ -153,7 +190,7 @@ export function useDashboardData() {
     }
 
     const counts: Record<string, number> = {};
-    data.forEach((l) => {
+    data.forEach((l: any) => {
       counts[l.modalidade] = (counts[l.modalidade] || 0) + 1;
     });
 
@@ -168,13 +205,14 @@ export function useDashboardData() {
   }
 
   async function loadRecentes() {
-    const { data } = await supabase
+    let q = supabase
       .from('licitacoes')
       .select('id, numero, orgao, objeto, status, valor_estimado, uf, municipio, data_encerramento')
       .eq('user_id', user!.id)
       .order('created_at', { ascending: false })
       .limit(5);
-
+    q = applyEmpresaFilter(q, empresaAtiva, todasSelecionadas);
+    const { data } = await q;
     setRecentes(data || []);
   }
 

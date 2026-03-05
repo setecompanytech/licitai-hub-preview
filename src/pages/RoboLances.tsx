@@ -29,6 +29,7 @@ import AgenteExternoConfig from '@/components/robo-lances/AgenteExternoConfig';
 import AgenteTemplateDownload from '@/components/robo-lances/AgenteTemplateDownload';
 import LicitacaoChat from '@/components/licitacoes/LicitacaoChat';
 import SimulacaoDisputa from '@/components/robo-lances/SimulacaoDisputa';
+import DisputasResumo from '@/components/robo-lances/DisputasResumo';
 import { toast } from 'sonner';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { supabase } from '@/integrations/supabase/client';
@@ -299,6 +300,9 @@ export default function RoboLances() {
 
           {/* MAIN CONTENT */}
           <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Simultaneous disputes summary bar */}
+            <DisputasResumo lances={lances} onSelect={setSelectedId} selectedId={selectedId} />
+
             {!selectedLance ? (
               /* empty state */
               <div className="flex-1 flex items-center justify-center bg-muted/20">
