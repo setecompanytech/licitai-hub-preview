@@ -30,6 +30,7 @@ import AgenteTemplateDownload from '@/components/robo-lances/AgenteTemplateDownl
 import LicitacaoChat from '@/components/licitacoes/LicitacaoChat';
 import SimulacaoDisputa from '@/components/robo-lances/SimulacaoDisputa';
 import DisputasResumo from '@/components/robo-lances/DisputasResumo';
+import ExportarResultados from '@/components/robo-lances/ExportarResultados';
 import { toast } from 'sonner';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { supabase } from '@/integrations/supabase/client';
@@ -197,6 +198,9 @@ export default function RoboLances() {
           <div className="flex items-center gap-3">
             <Bot className="w-5 h-5 text-accent" />
             <h1 className="text-lg font-bold tracking-tight">Robô de Lances</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <ExportarResultados lances={lances} />
           </div>
           <TabsList className="bg-muted/50">
             <TabsTrigger value="disputar" className="text-xs">
