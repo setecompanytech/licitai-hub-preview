@@ -28,6 +28,7 @@ import ConfigurarLanceDialog, { type LanceConfig, type DisputeItem } from '@/com
 import AgenteExternoConfig from '@/components/robo-lances/AgenteExternoConfig';
 import AgenteTemplateDownload from '@/components/robo-lances/AgenteTemplateDownload';
 import LicitacaoChat from '@/components/licitacoes/LicitacaoChat';
+import SimulacaoDisputa from '@/components/robo-lances/SimulacaoDisputa';
 import { toast } from 'sonner';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { supabase } from '@/integrations/supabase/client';
@@ -60,7 +61,7 @@ export default function RoboLances() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [bottomTab, setBottomTab] = useState<'mural' | 'operacoes'>('mural');
+  const [bottomTab, setBottomTab] = useState<'mural' | 'operacoes' | 'simulacao'>('mural');
   const [activeMainTab, setActiveMainTab] = useState('disputar');
 
   // Configurações globais persistidas em localStorage
@@ -474,7 +475,7 @@ export default function RoboLances() {
                 {/* ── Bottom Panel: Mural + Operations ── */}
                 <div className="border-t border-border bg-card shrink-0">
                   <div className="flex items-center gap-0 border-b border-border">
-                    <button
+                     <button
                       onClick={() => setBottomTab('mural')}
                       className={`px-4 py-2 text-xs font-medium transition-colors flex items-center gap-1.5 border-b-2 ${
                         bottomTab === 'mural'
@@ -483,6 +484,16 @@ export default function RoboLances() {
                       }`}
                     >
                       <MessageSquare className="w-3.5 h-3.5" /> Mural do Processo
+                    </button>
+                    <button
+                      onClick={() => setBottomTab('simulacao')}
+                      className={`px-4 py-2 text-xs font-medium transition-colors flex items-center gap-1.5 border-b-2 ${
+                        bottomTab === 'simulacao'
+                          ? 'border-accent text-accent'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Zap className="w-3.5 h-3.5" /> Simulação
                     </button>
                     <button
                       onClick={() => setBottomTab('operacoes')}
@@ -516,6 +527,16 @@ export default function RoboLances() {
                           </div>
                         </div>
                       )
+                    ) : bottomTab === 'simulacao' ? (
+                      <div className="p-3 overflow-auto h-full">
+                        <SimulacaoDisputa
+                          lance={selectedLance}
+                          onUpdate={(updated) => {
+                            setLances(prev => prev.map(l => l.id === updated.id ? updated : l));
+                          }}
+                          licitacaoId={selectedLance.licitacaoId}
+                        />
+                      </div>
                     ) : (
                       <div className="p-3 space-y-2 overflow-auto h-full">
                         {mockOps.map((op) => (
