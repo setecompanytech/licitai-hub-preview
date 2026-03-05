@@ -867,6 +867,7 @@ export type Database = {
           tipo: string
           updated_at: string
           user_id: string
+          validade: string | null
         }
         Insert: {
           arquivo_path?: string | null
@@ -880,6 +881,7 @@ export type Database = {
           tipo?: string
           updated_at?: string
           user_id: string
+          validade?: string | null
         }
         Update: {
           arquivo_path?: string | null
@@ -893,6 +895,7 @@ export type Database = {
           tipo?: string
           updated_at?: string
           user_id?: string
+          validade?: string | null
         }
         Relationships: [
           {
