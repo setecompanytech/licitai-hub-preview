@@ -14,6 +14,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { format, isWithinInterval, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import SyncCalendarButton from './SyncCalendarButton';
+import { CalendarEvent } from '@/lib/calendar-sync';
 
 interface LicitacaoEvento {
   id: string;
@@ -316,10 +318,24 @@ export default function CalendarioLicitacoes() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Calendar */}
         <Card className="lg:col-span-1 p-4">
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-accent" />
-            Calendário
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-accent" />
+              Calendário
+            </h3>
+            <SyncCalendarButton
+              events={licitacoes
+                .filter((l) => l.data_abertura)
+                .map((l): CalendarEvent => ({
+                  uid: l.id,
+                  title: `[${l.modalidade}] ${l.numero} — ${l.orgao}`,
+                  description: l.objeto,
+                  start: new Date(l.data_abertura!),
+                  end: l.data_encerramento ? new Date(l.data_encerramento) : undefined,
+                  alarm: 60,
+                }))}
+            />
+          </div>
           <Calendar
             mode="single"
             selected={selectedDate}
