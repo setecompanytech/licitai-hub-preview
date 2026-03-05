@@ -4,7 +4,10 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
   Play, Pause, RotateCcw, TrendingDown, Clock, Hash, DollarSign,
+  MessageSquare, Zap,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import type { LanceConfig } from './ConfigurarLanceDialog';
 
 type LanceHistorico = {
@@ -17,19 +20,38 @@ type LanceHistorico = {
 type Props = {
   lance: LanceConfig;
   onUpdate: (lance: LanceConfig) => void;
+  licitacaoId?: string | null;
 };
 
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-export default function SimulacaoDisputa({ lance, onUpdate }: Props) {
+export default function SimulacaoDisputa({ lance, onUpdate, licitacaoId }: Props) {
+  const { user } = useAuth();
   const [running, setRunning] = useState(false);
   const [historico, setHistorico] = useState<LanceHistorico[]>([]);
   const [valorAtual, setValorAtual] = useState(lance.valorInicial);
   const [rodada, setRodada] = useState(0);
   const [tempoRestante, setTempoRestante] = useState(lance.intervaloSegundos);
+  const [muralSync, setMuralSync] = useState(!!licitacaoId);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Post event to mural (licitacao_mensagens)
+  const postToMural = useCallback(async (conteudo: string, tipo: 'sistema' | 'alerta' | 'sucesso' = 'sistema') => {
+    const lid = licitacaoId || lance.licitacaoId;
+    if (!muralSync || !lid || !user) return;
+    try {
+      await supabase.from('licitacao_mensagens').insert({
+        licitacao_id: lid,
+        user_id: user.id,
+        conteudo,
+        tipo,
+      });
+    } catch (err) {
+      console.error('Erro ao postar no mural:', err);
+    }
+  }, [muralSync, licitacaoId, lance.licitacaoId, user]);
 
   const pararSimulacao = useCallback(() => {
     setRunning(false);
@@ -45,31 +67,32 @@ export default function SimulacaoDisputa({ lance, onUpdate }: Props) {
 
       if (novaRodada > lance.maxLances) {
         pararSimulacao();
+        postToMural(
+          `⏹️ **Simulação encerrada** — Limite de ${lance.maxLances} lances atingido.\n` +
+          `📋 Edital: ${lance.edital}`,
+          'alerta'
+        );
         return prev;
       }
 
       setValorAtual((prevValor) => {
-        // Calculate decrement
         let decremento = lance.decrementoMin;
         const decrementoPct = prevValor * (lance.decrementoPercentual / 100);
         if (decrementoPct > decremento) decremento = decrementoPct;
 
-        // Add some randomness to simulate a real competitor
         const fatorAleatorio = 0.8 + Math.random() * 0.4;
         decremento = decremento * fatorAleatorio;
 
         let novoValor = prevValor - decremento;
+        let atingiuPiso = false;
 
-        // Don't go below minimum
         if (novoValor < lance.valorMinimo) {
           novoValor = lance.valorMinimo;
-          // Stop after reaching minimum
+          atingiuPiso = true;
           setTimeout(() => pararSimulacao(), 100);
         }
 
         const novoValorFinal = Math.round(novoValor * 100) / 100;
-
-        // Alternate between "my bid" and "competitor bid"
         const tipo: 'meu' | 'concorrente' = novaRodada % 2 === 1 ? 'meu' : 'concorrente';
 
         setHistorico((h) => [
@@ -77,22 +100,61 @@ export default function SimulacaoDisputa({ lance, onUpdate }: Props) {
           ...h,
         ]);
 
+        // Post to mural
+        const desconto = lance.valorReferencia > 0
+          ? ((1 - novoValorFinal / lance.valorReferencia) * 100).toFixed(1)
+          : '0';
+
+        if (tipo === 'meu') {
+          postToMural(
+            `🤖 **Lance Automático #${novaRodada}** — ${formatCurrency(novoValorFinal)}\n` +
+            `📉 Desconto: ${desconto}% sobre referência\n` +
+            `📋 Edital: ${lance.edital}`,
+            'sistema'
+          );
+        } else {
+          postToMural(
+            `⚡ **Lance Concorrente #${novaRodada}** — ${formatCurrency(novoValorFinal)}\n` +
+            `📉 Desconto: ${desconto}% sobre referência`,
+            'alerta'
+          );
+        }
+
+        if (atingiuPiso) {
+          postToMural(
+            `🏁 **Simulação finalizada** — Valor mínimo (piso) atingido: ${formatCurrency(lance.valorMinimo)}\n` +
+            `💰 Economia total: ${formatCurrency(lance.valorReferencia - novoValorFinal)}\n` +
+            `📊 Desconto final: ${desconto}%\n` +
+            `📋 Edital: ${lance.edital}`,
+            'sucesso'
+          );
+        }
+
         return novoValorFinal;
       });
 
       setTempoRestante(lance.intervaloSegundos);
       return novaRodada;
     });
-  }, [lance, pararSimulacao]);
+  }, [lance, pararSimulacao, postToMural]);
 
   const iniciarSimulacao = useCallback(() => {
     setRunning(true);
     setTempoRestante(lance.intervaloSegundos);
 
-    // Execute first bid immediately
+    postToMural(
+      `▶️ **Simulação de disputa iniciada**\n` +
+      `📋 Edital: ${lance.edital}\n` +
+      `🏢 Portal: ${lance.portal}\n` +
+      `💰 Valor de Referência: ${formatCurrency(lance.valorReferencia)}\n` +
+      `🎯 Valor Inicial: ${formatCurrency(lance.valorInicial)}\n` +
+      `⬇️ Piso: ${formatCurrency(lance.valorMinimo)}\n` +
+      `⏱️ Intervalo: ${lance.intervaloSegundos}s | Máx: ${lance.maxLances} lances`,
+      'sistema'
+    );
+
     executarLance();
 
-    // Timer countdown
     timerRef.current = setInterval(() => {
       setTempoRestante((prev) => {
         if (prev <= 1) return lance.intervaloSegundos;
@@ -100,11 +162,10 @@ export default function SimulacaoDisputa({ lance, onUpdate }: Props) {
       });
     }, 1000);
 
-    // Bid interval
     intervalRef.current = setInterval(() => {
       executarLance();
     }, lance.intervaloSegundos * 1000);
-  }, [lance, executarLance]);
+  }, [lance, executarLance, postToMural]);
 
   const resetarSimulacao = useCallback(() => {
     pararSimulacao();
@@ -112,7 +173,12 @@ export default function SimulacaoDisputa({ lance, onUpdate }: Props) {
     setRodada(0);
     setHistorico([]);
     setTempoRestante(lance.intervaloSegundos);
-  }, [lance, pararSimulacao]);
+
+    postToMural(
+      `🔄 **Simulação resetada** — Parâmetros restaurados ao estado inicial.\n📋 Edital: ${lance.edital}`,
+      'sistema'
+    );
+  }, [lance, pararSimulacao, postToMural]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -122,6 +188,7 @@ export default function SimulacaoDisputa({ lance, onUpdate }: Props) {
     };
   }, []);
 
+  const lidAtivo = licitacaoId || lance.licitacaoId;
   const progresso = lance.valorReferencia > lance.valorMinimo
     ? ((lance.valorReferencia - valorAtual) / (lance.valorReferencia - lance.valorMinimo)) * 100
     : 0;
@@ -142,21 +209,46 @@ export default function SimulacaoDisputa({ lance, onUpdate }: Props) {
             </Badge>
           )}
         </div>
-        <div className="flex gap-1">
-          {!running ? (
-            <Button size="sm" variant="outline" onClick={iniciarSimulacao} disabled={rodada >= lance.maxLances}>
-              <Play className="w-3 h-3 mr-1" /> {rodada > 0 ? 'Retomar' : 'Iniciar'}
-            </Button>
-          ) : (
-            <Button size="sm" variant="outline" onClick={pararSimulacao}>
-              <Pause className="w-3 h-3 mr-1" /> Pausar
-            </Button>
+        <div className="flex items-center gap-2">
+          {/* Mural sync toggle */}
+          {lidAtivo && (
+            <button
+              onClick={() => setMuralSync(!muralSync)}
+              className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-full border transition-colors ${
+                muralSync
+                  ? 'bg-accent/10 text-accent border-accent/30'
+                  : 'bg-muted text-muted-foreground border-border'
+              }`}
+              title={muralSync ? 'Sincronizando com o Mural' : 'Mural desativado'}
+            >
+              <MessageSquare className="w-3 h-3" />
+              {muralSync ? 'Mural ativo' : 'Mural off'}
+            </button>
           )}
-          <Button size="sm" variant="ghost" onClick={resetarSimulacao}>
-            <RotateCcw className="w-3 h-3 mr-1" /> Resetar
-          </Button>
+          <div className="flex gap-1">
+            {!running ? (
+              <Button size="sm" variant="outline" onClick={iniciarSimulacao} disabled={rodada >= lance.maxLances}>
+                <Play className="w-3 h-3 mr-1" /> {rodada > 0 ? 'Retomar' : 'Iniciar'}
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" onClick={pararSimulacao}>
+                <Pause className="w-3 h-3 mr-1" /> Pausar
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={resetarSimulacao}>
+              <RotateCcw className="w-3 h-3 mr-1" /> Resetar
+            </Button>
+          </div>
         </div>
       </div>
+
+      {/* Mural sync indicator */}
+      {muralSync && lidAtivo && (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-accent/5 rounded-lg border border-accent/15 text-[10px] text-accent">
+          <Zap className="w-3 h-3" />
+          <span>Eventos da simulação serão publicados no Mural do Processo em tempo real</span>
+        </div>
+      )}
 
       {/* Stats row */}
       <div className="grid grid-cols-5 gap-3">
