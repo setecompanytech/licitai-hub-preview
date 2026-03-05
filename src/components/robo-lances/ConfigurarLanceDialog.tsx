@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -14,11 +14,12 @@ import {
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Bot, Trash2, Package, Layers, FileSearch, Loader2, Search, CheckCircle2, Building2, ArrowRight, Pencil, Calculator } from 'lucide-react';
+import { Plus, Bot, Trash2, Package, Layers, FileSearch, Loader2, Search, CheckCircle2, Building2, ArrowRight, Pencil, Calculator, Upload, FileText, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { streamAIChat } from '@/lib/ai-stream';
 
 const portaisDisponiveis = [
   { id: 'pncp', nome: 'PNCP' },
@@ -118,6 +119,12 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
   const [selectedLicId, setSelectedLicId] = useState<string | null>(null);
   const [loadingItems, setLoadingItems] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('todos');
+
+  // Step 0 – AI Extraction
+  const [editalFile, setEditalFile] = useState<File | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [showEditalUpload, setShowEditalUpload] = useState(false);
+  const editalFileRef = useRef<HTMLInputElement>(null);
 
   // Step 1 fields
   const [edital, setEdital] = useState(editingLance?.edital || '');
@@ -294,6 +301,119 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     }
   };
 
+  // ── AI Extraction from edital file ──
+  const handleEditalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (f.size > 15 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo 15MB.');
+      return;
+    }
+    setEditalFile(f);
+  };
+
+  const handleExtractFromEdital = async () => {
+    if (!editalFile) return;
+    setIsExtracting(true);
+
+    try {
+      const text = await editalFile.text();
+      const truncated = text.slice(0, 25000);
+      let content = '';
+
+      await streamAIChat({
+        messages: [{
+          role: 'user',
+          content: `Analise o Edital ou Termo de Referência abaixo e extraia TODOS os itens/lotes com os valores de referência.
+
+Retorne APENAS um JSON array, sem markdown, sem explicações:
+[
+  {"item": "1", "descricao": "descrição completa do produto/serviço", "quantidade": 10, "unidade": "UN", "valor_unitario": 150.00, "valor_total": 1500.00, "lote": "Lote 1"},
+  {"item": "2", "descricao": "...", "quantidade": 5, "unidade": "CX", "valor_unitario": 80.50, "valor_total": 402.50, "lote": "Lote 1"}
+]
+
+REGRAS IMPORTANTES:
+- Extraia TODOS os itens/lotes listados no Termo de Referência ou Edital
+- O campo "item" deve ser o número sequencial do item conforme o edital
+- A "descricao" deve ser completa e detalhada conforme o edital (incluir especificações técnicas, marca de referência, modelo quando disponível)
+- "quantidade" e "unidade" devem ser exatamente como constam no edital
+- "valor_unitario" é o valor unitário de referência/estimado do edital (R$)
+- "valor_total" = valor_unitario × quantidade
+- "lote" deve ser o lote conforme o edital. Se não houver lotes, use "Único"
+- Se os valores não estiverem explícitos, tente inferir do contexto ou use 0
+- Retorne [] se não encontrar itens
+
+DOCUMENTO:
+${truncated}`
+        }],
+        action: 'analise_edital',
+        onDelta: (chunk) => { content += chunk; },
+        onDone: () => {
+          try {
+            const jsonMatch = content.match(/\[[\s\S]*\]/);
+            if (!jsonMatch) {
+              toast.error('Não foi possível extrair itens do edital.');
+              setIsExtracting(false);
+              return;
+            }
+            const parsed = JSON.parse(jsonMatch[0]) as Array<{
+              item: string;
+              descricao: string;
+              quantidade: number;
+              unidade: string;
+              valor_unitario: number;
+              valor_total: number;
+              lote?: string;
+            }>;
+
+            if (parsed.length === 0) {
+              toast.warning('Nenhum item encontrado no documento.');
+              setIsExtracting(false);
+              return;
+            }
+
+            const extractedItems: DisputeItem[] = parsed.map((p, idx) => ({
+              id: crypto.randomUUID(),
+              numero: parseInt(p.item) || (idx + 1),
+              descricao: p.descricao,
+              quantidade: p.quantidade || 1,
+              unidade: p.unidade || 'UN',
+              valorReferencia: p.valor_unitario || 0,
+              valorMinimo: 0,
+              lote: p.lote || 'Único',
+              disputando: true,
+              situacao: 'aguardando' as const,
+              melhorLance: null,
+              seuUltimoLance: null,
+            }));
+
+            setItens(extractedItems);
+
+            // Auto-suggest initial and minimum values
+            const total = extractedItems.reduce((s, i) => s + (i.valorReferencia * i.quantidade), 0);
+            if (total > 0) {
+              setValorInicialInput(String(Math.round(total * 0.95 * 100) / 100));
+              setValorMinimoInput(String(Math.round(total * 0.80 * 100) / 100));
+            }
+
+            toast.success(`${parsed.length} itens extraídos do edital com valores de referência!`);
+            setStep(1);
+          } catch {
+            toast.error('Erro ao processar itens do edital.');
+          }
+          setIsExtracting(false);
+        },
+        onError: (err) => {
+          toast.error(err);
+          setIsExtracting(false);
+        },
+      });
+    } catch {
+      toast.error('Erro ao ler o arquivo.');
+      setIsExtracting(false);
+    }
+  };
+
   const resetForm = () => {
     setEdital(''); setPortal('');
     setDecrementoMin(''); setDecrementoPercentual('1.5');
@@ -301,6 +421,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     setItens([]); setTipoDisputa('item'); setStep(editingLance ? 1 : 0);
     setSelectedLicId(null); setSearchLic(''); setStatusFilter('todos'); setLicitacaoIdRef(undefined);
     setValorInicialInput(''); setValorMinimoInput('');
+    setEditalFile(null); setShowEditalUpload(false);
     resetItemForm();
   };
 
@@ -432,140 +553,222 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
         {/* ── STEP 0: Choose source ── */}
         {step === 0 && !editingLance && (
           <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <button
                 onClick={() => setStep(1)}
-                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-dashed border-border hover:border-accent/50 hover:bg-muted/30 transition-all text-center group"
+                className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-dashed border-border hover:border-accent/50 hover:bg-muted/30 transition-all text-center group"
               >
-                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center group-hover:bg-accent/10 transition-colors">
-                  <Pencil className="w-6 h-6 text-muted-foreground group-hover:text-accent" />
+                <div className="w-11 h-11 rounded-xl bg-muted flex items-center justify-center group-hover:bg-accent/10 transition-colors">
+                  <Pencil className="w-5 h-5 text-muted-foreground group-hover:text-accent" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Cadastro Manual</p>
-                  <p className="text-[11px] text-muted-foreground mt-1">Preencha todos os dados da disputa e adicione os itens manualmente.</p>
+                  <p className="text-xs font-semibold text-foreground">Cadastro Manual</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Preencha todos os dados manualmente.</p>
                 </div>
               </button>
               <button
                 onClick={() => { /* stay on step 0, show list below */ }}
-                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-accent/40 bg-accent/5 hover:bg-accent/10 transition-all text-center group"
+                className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-accent/40 bg-accent/5 hover:bg-accent/10 transition-all text-center group"
               >
-                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                  <FileSearch className="w-6 h-6 text-accent" />
+                <div className="w-11 h-11 rounded-xl bg-accent/10 flex items-center justify-center">
+                  <FileSearch className="w-5 h-5 text-accent" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Importar do Kanban</p>
-                  <p className="text-[11px] text-muted-foreground mt-1">Selecione um processo da sua gestão e importe dados + itens precificados automaticamente.</p>
+                  <p className="text-xs font-semibold text-foreground">Importar do Kanban</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Importe dados + itens precificados.</p>
+                </div>
+              </button>
+              <button
+                onClick={() => setShowEditalUpload(true)}
+                className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-dashed border-primary/40 hover:border-primary/60 hover:bg-primary/5 transition-all text-center group"
+              >
+                <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">Extrair do Edital (IA)</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Envie o edital e a IA extrai itens e valores.</p>
                 </div>
               </button>
             </div>
 
-            {/* Licitações list */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <FileSearch className="w-4 h-4 text-accent" />
-                  Seus Processos Licitatórios
-                </h4>
-                <Badge variant="outline" className="text-[10px]">
-                  {filteredLicitacoes.length} {filteredLicitacoes.length === 1 ? 'processo' : 'processos'}
-                </Badge>
-              </div>
+            {/* AI Edital Upload area */}
+            {showEditalUpload && (
+              <div className="space-y-3 border border-primary/30 rounded-xl bg-primary/5 p-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <h4 className="text-sm font-semibold text-foreground">Extração Inteligente do Edital</h4>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Envie o Edital ou Termo de Referência. A IA extrairá automaticamente: Nº do item, Descrição, Quantidade, Unidade, Valor Unitário e Valor Total de referência.
+                </p>
 
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por número, órgão ou objeto..."
-                    value={searchLic}
-                    onChange={(e) => setSearchLic(e.target.value)}
-                    className="h-8 pl-8 text-xs"
-                  />
-                </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="h-8 w-40 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map(s => (
-                      <SelectItem key={s} value={s} className="text-xs">
-                        {s === 'todos' ? 'Todos os status' : s}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {loadingLicitacoes ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-5 h-5 animate-spin text-accent" />
-                  <span className="text-xs text-muted-foreground ml-2">Carregando processos...</span>
-                </div>
-              ) : filteredLicitacoes.length === 0 ? (
-                <div className="text-center py-8 border border-dashed border-border rounded-lg bg-muted/20">
-                  <Building2 className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-                  <p className="text-xs text-muted-foreground">
-                    {licitacoes.length === 0
-                      ? 'Nenhum processo na gestão. Inicie um processo pelo Monitoramento ou Kanban.'
-                      : 'Nenhum processo encontrado com os filtros selecionados.'}
-                  </p>
-                </div>
-              ) : (
-                <ScrollArea className="max-h-64">
-                  <div className="space-y-1.5">
-                    {filteredLicitacoes.map((lic) => (
-                      <button
-                        key={lic.id}
-                        onClick={() => handleImportLicitacao(lic)}
-                        disabled={loadingItems && selectedLicId === lic.id}
-                        className={`w-full text-left rounded-lg border p-3 transition-all hover:border-accent/50 hover:bg-accent/5 group ${
-                          selectedLicId === lic.id && loadingItems
-                            ? 'border-accent bg-accent/5'
-                            : 'border-border'
-                        }`}
+                {!editalFile ? (
+                  <button
+                    type="button"
+                    onClick={() => editalFileRef.current?.click()}
+                    className="w-full border-2 border-dashed border-border rounded-lg p-6 flex flex-col items-center gap-2 hover:border-primary/50 hover:bg-muted/30 transition-colors"
+                  >
+                    <Upload className="w-6 h-6 text-primary/60" />
+                    <span className="text-xs font-medium text-foreground">Clique para enviar o arquivo</span>
+                    <span className="text-[10px] text-muted-foreground">PDF, DOC, DOCX, TXT — Máx. 15MB</span>
+                  </button>
+                ) : (
+                  <div className="bg-card rounded-lg p-3 border border-border/50 flex items-center gap-3">
+                    <FileText className="w-6 h-6 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{editalFile.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{(editalFile.size / 1024).toFixed(0)} KB</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleExtractFromEdital}
+                        disabled={isExtracting}
+                        size="sm"
+                        className="text-xs"
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-foreground">{lic.numero}</span>
-                              <Badge variant="outline" className={`text-[9px] ${statusColor(lic.status)}`}>
-                                {lic.status}
-                              </Badge>
+                        {isExtracting ? (
+                          <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> Extraindo...</>
+                        ) : (
+                          <><Sparkles className="w-3.5 h-3.5 mr-1" /> Extrair Itens e Valores</>
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => { setEditalFile(null); if (editalFileRef.current) editalFileRef.current.value = ''; }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <input ref={editalFileRef} type="file" accept=".pdf,.doc,.docx,.txt" className="hidden" onChange={handleEditalFileChange} />
+
+                {isExtracting && (
+                  <div className="flex items-center gap-2 text-xs text-primary">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Analisando o documento e extraindo itens, quantidades e valores de referência...
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Licitações list */}
+            {!showEditalUpload && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <FileSearch className="w-4 h-4 text-accent" />
+                    Seus Processos Licitatórios
+                  </h4>
+                  <Badge variant="outline" className="text-[10px]">
+                    {filteredLicitacoes.length} {filteredLicitacoes.length === 1 ? 'processo' : 'processos'}
+                  </Badge>
+                </div>
+
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por número, órgão ou objeto..."
+                      value={searchLic}
+                      onChange={(e) => setSearchLic(e.target.value)}
+                      className="h-8 pl-8 text-xs"
+                    />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="h-8 w-40 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions.map(s => (
+                        <SelectItem key={s} value={s} className="text-xs">
+                          {s === 'todos' ? 'Todos os status' : s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {loadingLicitacoes ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-5 h-5 animate-spin text-accent" />
+                    <span className="text-xs text-muted-foreground ml-2">Carregando processos...</span>
+                  </div>
+                ) : filteredLicitacoes.length === 0 ? (
+                  <div className="text-center py-8 border border-dashed border-border rounded-lg bg-muted/20">
+                    <Building2 className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                    <p className="text-xs text-muted-foreground">
+                      {licitacoes.length === 0
+                        ? 'Nenhum processo na gestão. Inicie um processo pelo Monitoramento ou Kanban.'
+                        : 'Nenhum processo encontrado com os filtros selecionados.'}
+                    </p>
+                  </div>
+                ) : (
+                  <ScrollArea className="max-h-64">
+                    <div className="space-y-1.5">
+                      {filteredLicitacoes.map((lic) => (
+                        <button
+                          key={lic.id}
+                          onClick={() => handleImportLicitacao(lic)}
+                          disabled={loadingItems && selectedLicId === lic.id}
+                          className={`w-full text-left rounded-lg border p-3 transition-all hover:border-accent/50 hover:bg-accent/5 group ${
+                            selectedLicId === lic.id && loadingItems
+                              ? 'border-accent bg-accent/5'
+                              : 'border-border'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-foreground">{lic.numero}</span>
+                                <Badge variant="outline" className={`text-[9px] ${statusColor(lic.status)}`}>
+                                  {lic.status}
+                                </Badge>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{lic.orgao}</p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{lic.objeto}</p>
+                              <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground">
+                                {lic.portal && <span>{lic.portal}</span>}
+                                {lic.valor_estimado && (
+                                  <span className="font-mono font-medium text-foreground">
+                                    {formatCurrency(lic.valor_estimado)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{lic.orgao}</p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{lic.objeto}</p>
-                            <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground">
-                              {lic.portal && <span>{lic.portal}</span>}
-                              {lic.valor_estimado && (
-                                <span className="font-mono font-medium text-foreground">
-                                  {formatCurrency(lic.valor_estimado)}
-                                </span>
+                            <div className="shrink-0 ml-3 self-center">
+                              {loadingItems && selectedLicId === lic.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                              ) : (
+                                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-accent transition-colors" />
                               )}
                             </div>
                           </div>
-                          <div className="shrink-0 ml-3 self-center">
-                            {loadingItems && selectedLicId === lic.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-accent" />
-                            ) : (
-                              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-accent transition-colors" />
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </ScrollArea>
-              )}
-            </div>
+                        </button>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+              </div>
+            )}
           </div>
         )}
 
         {/* ── STEP 1: Dispute data ── */}
         {step === 1 && (
           <div className="space-y-5 py-2">
-            {licitacaoIdRef && (
+            {(licitacaoIdRef || itens.length > 0) && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-success/10 border border-success/30 text-xs text-success">
                 <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                <span>Dados importados do processo <strong>{edital}</strong>. Revise e ajuste conforme necessário.</span>
+                <span>
+                  {licitacaoIdRef
+                    ? <>Dados importados do processo <strong>{edital}</strong>. Revise e ajuste conforme necessário.</>
+                    : <><strong>{itens.length} itens</strong> extraídos do edital por IA. Revise os dados abaixo.</>
+                  }
+                </span>
               </div>
             )}
 
