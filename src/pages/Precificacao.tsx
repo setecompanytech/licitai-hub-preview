@@ -59,51 +59,7 @@ type ItemPesquisa = {
   fontes: FontePreco[];
 };
 
-const itensMock: ItemPesquisa[] = [
-  {
-    id: '1',
-    descricao: 'Cimento Portland CP-II 50kg',
-    unidade: 'Saco',
-    quantidade: 500,
-    precoMedio: 38.90,
-    precoMin: 32.50,
-    precoMax: 45.90,
-    fontes: [
-      { fonte: 'Mercado Livre', url: '#', preco: 34.90, frete: 0, vendedor: 'Material Express', atualizado: '2026-02-15' },
-      { fonte: 'Google Shopping', url: '#', preco: 36.50, vendedor: 'Leroy Merlin', atualizado: '2026-02-16' },
-      { fonte: 'Atacadão Material', url: '#', preco: 32.50, frete: 150, vendedor: 'Direto Fábrica', atualizado: '2026-02-14' },
-      { fonte: 'SINAPI', url: '#', preco: 38.90, vendedor: 'Referência SINAPI', atualizado: '2026-02-01' },
-    ],
-  },
-  {
-    id: '2',
-    descricao: 'Vergalhão CA-50 10mm (12m)',
-    unidade: 'Barra',
-    quantidade: 200,
-    precoMedio: 52.30,
-    precoMin: 45.00,
-    precoMax: 62.00,
-    fontes: [
-      { fonte: 'Mercado Livre', url: '#', preco: 48.90, frete: 0, vendedor: 'Aço Brasil', atualizado: '2026-02-15' },
-      { fonte: 'Google Shopping', url: '#', preco: 52.30, vendedor: 'C&C', atualizado: '2026-02-16' },
-      { fonte: 'Distribuidora Norte', url: '#', preco: 45.00, frete: 200, vendedor: 'Ferro Norte PA', atualizado: '2026-02-13' },
-    ],
-  },
-  {
-    id: '3',
-    descricao: 'Tinta Acrílica Premium 18L Branco',
-    unidade: 'Lata',
-    quantidade: 50,
-    precoMedio: 289.00,
-    precoMin: 249.90,
-    precoMax: 339.90,
-    fontes: [
-      { fonte: 'Mercado Livre', url: '#', preco: 269.90, frete: 0, vendedor: 'Tintas Belém', atualizado: '2026-02-15' },
-      { fonte: 'Google Shopping', url: '#', preco: 289.00, vendedor: 'Telhanorte', atualizado: '2026-02-16' },
-      { fonte: 'Atacadista Cores', url: '#', preco: 249.90, frete: 80, vendedor: 'Atacado Tintas', atualizado: '2026-02-14' },
-    ],
-  },
-];
+const itensMock: ItemPesquisa[] = [];
 
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -618,10 +574,10 @@ Responda APENAS em JSON, sem markdown:
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: 'Itens Pesquisados', value: '3', icon: Package },
-            { label: 'Fontes Consultadas', value: '4', icon: ShoppingCart },
-            { label: 'Economia Potencial', value: '-12.4%', icon: TrendingDown, color: 'text-success' },
-            { label: 'Última Atualização', value: 'Hoje', icon: RefreshCw },
+            { label: 'Itens Pesquisados', value: '0', icon: Package },
+            { label: 'Fontes Consultadas', value: '0', icon: ShoppingCart },
+            { label: 'Economia Potencial', value: '-', icon: TrendingDown, color: 'text-success' },
+            { label: 'Última Atualização', value: '-', icon: RefreshCw },
           ].map((s) => (
             <div key={s.label} className="stat-card">
               <div className="flex items-center justify-between mb-2">

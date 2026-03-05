@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import {
-  CheckCircle2, AlertTriangle, FileText, CalendarDays, Clock
+  CheckCircle2, AlertTriangle, FileText, CalendarDays, Clock, Loader2, Inbox
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Boletim = {
   id: string;
@@ -16,34 +18,6 @@ type Boletim = {
   itens: { titulo: string; orgao: string; valor: string }[];
 };
 
-const mockBoletins: Boletim[] = [
-  {
-    id: '1', titulo: 'Novas licitações – Manhã', tipo: 'novas', data: '2026-02-22', hora: '08:00',
-    totalItens: 12, lido: false,
-    itens: [
-      { titulo: 'PE-201/2026 – Pavimentação em Ananindeua', orgao: 'Pref. Ananindeua', valor: 'R$ 4.500.000' },
-      { titulo: 'CC-015/2026 – Construção de escola', orgao: 'SEDUC/PA', valor: 'R$ 12.000.000' },
-      { titulo: 'PE-089/2026 – Reforma de UBS', orgao: 'SESPA', valor: 'R$ 2.300.000' },
-    ]
-  },
-  {
-    id: '2', titulo: 'Alterações e avisos – Meio-dia', tipo: 'alteracoes', data: '2026-02-22', hora: '12:00',
-    totalItens: 5, lido: false,
-    itens: [
-      { titulo: 'Suspensão – PE-012/2026', orgao: 'SEMAS/PA', valor: 'R$ 3.200.000' },
-      { titulo: 'Adiamento – PE-078/2026', orgao: 'SETRAN/PA', valor: 'R$ 1.800.000' },
-    ]
-  },
-  {
-    id: '3', titulo: 'Resultados do dia – Tarde', tipo: 'resultados', data: '2026-02-21', hora: '17:00',
-    totalItens: 8, lido: true,
-    itens: [
-      { titulo: 'Adjudicado – PE-099/2025', orgao: 'COSANPA', valor: 'R$ 7.400.000' },
-      { titulo: 'Homologado – CC-001/2026', orgao: 'Governo do Pará', valor: 'R$ 45.000.000' },
-    ]
-  },
-];
-
 const tipoConfig = {
   novas: { label: 'Novas Licitações', color: 'bg-success/15 text-success border-success/30', icon: FileText },
   alteracoes: { label: 'Alterações', color: 'bg-warning/15 text-warning border-warning/30', icon: AlertTriangle },
@@ -51,12 +25,64 @@ const tipoConfig = {
 };
 
 export default function BoletimList() {
+  const { user } = useAuth();
+  const [boletins, setBoletins] = useState<Boletim[]>([]);
+  const [loading, setLoading] = useState(true);
   const [boletimAberto, setBoletimAberto] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    loadBoletins();
+  }, [user]);
+
+  const loadBoletins = async () => {
+    if (!user) return;
+    setLoading(true);
+    const { data } = await supabase
+      .from('boletim_envios')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    // Map DB records to display format
+    const mapped: Boletim[] = (data || []).map((b: any) => ({
+      id: b.id,
+      titulo: b.tipo === 'manha' ? 'Boletim da Manhã' : b.tipo === 'meiodia' ? 'Boletim do Meio-dia' : 'Boletim da Tarde',
+      tipo: b.tipo === 'manha' ? 'novas' : b.tipo === 'meiodia' ? 'alteracoes' : 'resultados',
+      data: b.created_at?.split('T')[0] || '',
+      hora: new Date(b.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      totalItens: 0,
+      lido: b.status === 'lido',
+      itens: [],
+    }));
+
+    setBoletins(mapped);
+    setLoading(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (boletins.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <Inbox className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+        <p className="text-sm text-muted-foreground">Nenhum boletim enviado ainda.</p>
+        <p className="text-xs text-muted-foreground mt-1">Configure suas preferências de boletim para começar a receber.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
-      {mockBoletins.map(boletim => {
-        const cfg = tipoConfig[boletim.tipo];
+      {boletins.map(boletim => {
+        const cfg = tipoConfig[boletim.tipo] || tipoConfig.novas;
         const Icon = cfg.icon;
         const isOpen = boletimAberto === boletim.id;
         return (
@@ -77,7 +103,6 @@ export default function BoletimList() {
                       <span>{new Date(boletim.data).toLocaleDateString('pt-BR')}</span>
                       <Clock className="w-3 h-3" />
                       <span>{boletim.hora}</span>
-                      <span>• {boletim.totalItens} itens</span>
                     </div>
                   </div>
                 </div>
@@ -85,7 +110,7 @@ export default function BoletimList() {
               </div>
             </button>
 
-            {isOpen && (
+            {isOpen && boletim.itens.length > 0 && (
               <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
                 {boletim.itens.map((item, i) => (
                   <div key={i} className="flex items-center justify-between p-2 bg-muted/30 rounded-lg text-sm">
@@ -96,11 +121,6 @@ export default function BoletimList() {
                     <span className="text-xs font-medium">{item.valor}</span>
                   </div>
                 ))}
-                {boletim.totalItens > boletim.itens.length && (
-                  <p className="text-xs text-muted-foreground text-center pt-1">
-                    +{boletim.totalItens - boletim.itens.length} itens adicionais
-                  </p>
-                )}
               </div>
             )}
           </Card>

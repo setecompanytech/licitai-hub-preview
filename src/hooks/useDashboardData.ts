@@ -109,7 +109,7 @@ export function useDashboardData() {
       licitacoesMonitoradas: monitoradas || 0,
       propostasEnviadas: propostas || 0,
       taxaVitoria: Math.round(taxa * 10) / 10,
-      roiMedio: totalGanho > 0 ? 18.5 : 0,
+      roiMedio: 0,
       valorTotalGanho: totalGanho,
       licitacoesHoje: hoje || 0,
     });

@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Bell, Clock, FileWarning, TrendingDown, AlertTriangle,
-  CheckCircle2, X, ChevronDown
+  CheckCircle2, X, Loader2
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
-export type NotificationType = 'prazo' | 'documento' | 'lance' | 'edital' | 'sistema';
+export type NotificationType = 'prazo' | 'documento' | 'lance' | 'edital' | 'sistema' | 'info' | 'sucesso' | 'alerta';
 
 export type Notification = {
   id: string;
@@ -17,78 +19,24 @@ export type Notification = {
   timestamp: string;
   read: boolean;
   severity: 'info' | 'warning' | 'critical';
-  action?: string;
   actionPath?: string;
 };
 
-const mockNotifications: Notification[] = [
-  {
-    id: '1', type: 'prazo', title: 'Prazo vencendo em 24h',
-    message: 'PE-001/2026 – Proposta deve ser enviada até amanhã 18:00.',
-    timestamp: '2026-02-21T10:30:00', read: false, severity: 'critical',
-    action: 'Ver licitação', actionPath: '/licitacoes',
-  },
-  {
-    id: '2', type: 'prazo', title: 'Prazo vencendo em 48h',
-    message: 'CC-003/2026 – Habilitação encerra em 23/02/2026.',
-    timestamp: '2026-02-21T09:15:00', read: false, severity: 'warning',
-    action: 'Ver licitação', actionPath: '/licitacoes',
-  },
-  {
-    id: '3', type: 'documento', title: 'CRF (FGTS) vencido',
-    message: 'Certidão de Regularidade do FGTS venceu em 10/01/2026. Renove imediatamente.',
-    timestamp: '2026-02-21T08:00:00', read: false, severity: 'critical',
-    action: 'Ir para Documentos', actionPath: '/documentos',
-  },
-  {
-    id: '4', type: 'documento', title: 'Certidão da Junta vencendo',
-    message: 'Certidão Simplificada da Junta Comercial vence em 15/03/2026.',
-    timestamp: '2026-02-21T08:00:00', read: false, severity: 'warning',
-    action: 'Ir para Documentos', actionPath: '/documentos',
-  },
-  {
-    id: '5', type: 'documento', title: 'CAT ausente',
-    message: 'Certidão de Acervo Técnico ainda não foi enviada. Documento obrigatório.',
-    timestamp: '2026-02-20T17:00:00', read: true, severity: 'warning',
-    action: 'Enviar documento', actionPath: '/documentos',
-  },
-  {
-    id: '6', type: 'lance', title: 'Lance sendo superado!',
-    message: 'PE-012/2026 (Compras.gov.br) – Concorrente deu lance de R$ 865.000. Você está perdendo.',
-    timestamp: '2026-02-21T14:52:00', read: false, severity: 'critical',
-    action: 'Ir para Robô de Lances', actionPath: '/robo-lances',
-  },
-  {
-    id: '7', type: 'lance', title: 'Lance perdendo – CC-003/2026',
-    message: 'BLL Compras – Seu lance de R$ 2.250.000 foi superado por R$ 2.200.000.',
-    timestamp: '2026-02-21T14:45:00', read: false, severity: 'critical',
-    action: 'Dar novo lance', actionPath: '/robo-lances',
-  },
-  {
-    id: '8', type: 'edital', title: 'Novo edital compatível',
-    message: 'PE-099/2026 – Construção de ponte em Belém/PA. Valor: R$ 8.500.000.',
-    timestamp: '2026-02-21T07:30:00', read: true, severity: 'info',
-    action: 'Ver edital', actionPath: '/licitacoes',
-  },
-  {
-    id: '9', type: 'lance', title: 'Sessão iniciando em 15min',
-    message: 'PE-045/2026 (Licitações-e) inicia às 16:00. Prepare seu lance.',
-    timestamp: '2026-02-21T15:45:00', read: false, severity: 'warning',
-    action: 'Preparar lance', actionPath: '/robo-lances',
-  },
-  {
-    id: '10', type: 'sistema', title: 'Portal BLC reconectado',
-    message: 'A conexão com BLC Licitações foi restabelecida com sucesso.',
-    timestamp: '2026-02-21T06:00:00', read: true, severity: 'info',
-  },
-];
-
-const typeConfig: Record<NotificationType, { icon: typeof Bell; color: string; label: string }> = {
+const typeConfig: Record<string, { icon: typeof Bell; color: string; label: string }> = {
   prazo: { icon: Clock, color: 'text-warning', label: 'Prazo' },
   documento: { icon: FileWarning, color: 'text-destructive', label: 'Documento' },
   lance: { icon: TrendingDown, color: 'text-accent', label: 'Lance' },
   edital: { icon: CheckCircle2, color: 'text-success', label: 'Edital' },
   sistema: { icon: Bell, color: 'text-muted-foreground', label: 'Sistema' },
+  info: { icon: Bell, color: 'text-info', label: 'Info' },
+  sucesso: { icon: CheckCircle2, color: 'text-success', label: 'Sucesso' },
+  alerta: { icon: AlertTriangle, color: 'text-warning', label: 'Alerta' },
+};
+
+const severityFromTipo = (tipo: string): 'info' | 'warning' | 'critical' => {
+  if (tipo === 'alerta' || tipo === 'lance' || tipo === 'prazo') return 'critical';
+  if (tipo === 'documento') return 'warning';
+  return 'info';
 };
 
 const severityBorder: Record<string, string> = {
@@ -106,15 +54,57 @@ export default function NotificationCenter({
   onClose: () => void;
   onNavigate: (path: string) => void;
 }) {
-  const [notifications, setNotifications] = useState(mockNotifications);
-  const [filter, setFilter] = useState<NotificationType | 'all'>('all');
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [filter, setFilter] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!open || !user) return;
+    loadNotifications();
+  }, [open, user]);
+
+  const loadNotifications = async () => {
+    if (!user) return;
+    setLoading(true);
+    const { data } = await supabase
+      .from('notificacoes')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    const mapped: Notification[] = (data || []).map((n: any) => ({
+      id: n.id,
+      type: n.tipo || 'info',
+      title: n.titulo,
+      message: n.mensagem || '',
+      timestamp: n.created_at,
+      read: n.lida || false,
+      severity: severityFromTipo(n.tipo || 'info'),
+      actionPath: n.link,
+    }));
+    setNotifications(mapped);
+    setLoading(false);
+  };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
   const filtered = filter === 'all' ? notifications : notifications.filter((n) => n.type === filter);
 
-  const markAllRead = () => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  const markRead = (id: string) =>
+  const markAllRead = async () => {
+    if (!user) return;
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    await supabase
+      .from('notificacoes')
+      .update({ lida: true })
+      .eq('user_id', user.id)
+      .eq('lida', false);
+  };
+
+  const markRead = async (id: string) => {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    await supabase.from('notificacoes').update({ lida: true }).eq('id', id);
+  };
 
   if (!open) return null;
 
@@ -143,7 +133,7 @@ export default function NotificationCenter({
 
       {/* Filter chips */}
       <div className="flex gap-1 px-4 py-2 border-b border-border overflow-x-auto">
-        {(['all', 'prazo', 'documento', 'lance', 'edital', 'sistema'] as const).map((f) => (
+        {(['all', 'info', 'sucesso', 'alerta', 'sistema'] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -153,58 +143,64 @@ export default function NotificationCenter({
                 : 'bg-muted/50 text-muted-foreground hover:bg-muted'
             }`}
           >
-            {f === 'all' ? `Todas (${notifications.length})` : `${typeConfig[f].label} (${notifications.filter((n) => n.type === f).length})`}
+            {f === 'all' ? `Todas (${notifications.length})` : `${(typeConfig[f]?.label || f)} (${notifications.filter((n) => n.type === f).length})`}
           </button>
         ))}
       </div>
 
       {/* Notification list */}
       <ScrollArea className="max-h-[420px]">
-        <div className="divide-y divide-border/50">
-          {filtered.map((notif) => {
-            const cfg = typeConfig[notif.type];
-            const Icon = cfg.icon;
-            return (
-              <div
-                key={notif.id}
-                className={`px-4 py-3 border-l-[3px] ${severityBorder[notif.severity]} ${
-                  !notif.read ? 'bg-accent/5' : ''
-                } hover:bg-muted/30 transition-colors cursor-pointer`}
-                onClick={() => {
-                  markRead(notif.id);
-                  if (notif.actionPath) onNavigate(notif.actionPath);
-                }}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`mt-0.5 ${cfg.color}`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className={`text-sm font-medium ${!notif.read ? '' : 'text-muted-foreground'}`}>
-                        {notif.title}
-                      </p>
-                      {!notif.read && (
-                        <span className="w-2 h-2 rounded-full bg-accent flex-shrink-0" />
-                      )}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-12">
+            <Bell className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Nenhuma notificação</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border/50">
+            {filtered.map((notif) => {
+              const cfg = typeConfig[notif.type] || typeConfig.info;
+              const Icon = cfg.icon;
+              return (
+                <div
+                  key={notif.id}
+                  className={`px-4 py-3 border-l-[3px] ${severityBorder[notif.severity]} ${
+                    !notif.read ? 'bg-accent/5' : ''
+                  } hover:bg-muted/30 transition-colors cursor-pointer`}
+                  onClick={() => {
+                    markRead(notif.id);
+                    if (notif.actionPath) onNavigate(notif.actionPath);
+                  }}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 ${cfg.color}`}>
+                      <Icon className="w-4 h-4" />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notif.message}</p>
-                    <div className="flex items-center justify-between mt-1.5">
-                      <span className="text-[10px] text-muted-foreground">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className={`text-sm font-medium ${!notif.read ? '' : 'text-muted-foreground'}`}>
+                          {notif.title}
+                        </p>
+                        {!notif.read && (
+                          <span className="w-2 h-2 rounded-full bg-accent flex-shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notif.message}</p>
+                      <span className="text-[10px] text-muted-foreground mt-1 block">
                         {new Date(notif.timestamp).toLocaleString('pt-BR', {
                           day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
                         })}
                       </span>
-                      {notif.action && (
-                        <span className="text-[11px] text-accent font-medium">{notif.action} →</span>
-                      )}
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </ScrollArea>
 
       {/* Footer */}

@@ -24,69 +24,7 @@ type NewsItem = {
   variacaoPreco: string;
 };
 
-const mockNews: NewsItem[] = [
-  {
-    id: '1',
-    titulo: 'Enchentes no RS causam interrupção na cadeia de suprimentos de aço e cimento',
-    fonte: 'G1 / Economia',
-    data: '2026-02-20',
-    resumo: 'As enchentes que atingiram o Rio Grande do Sul nas últimas semanas provocaram a paralisação de 3 siderúrgicas e 5 fábricas de cimento. O impacto na oferta deve durar pelo menos 60 dias, com alta estimada de 15-25% nos preços regionais.',
-    impacto: 'alto',
-    categoria: 'Calamidade Pública',
-    url: '#',
-    produtosAfetados: ['Aço CA-50', 'Cimento CP-II', 'Vergalhão', 'Areia lavada'],
-    variacaoPreco: '+18% a +25%',
-  },
-  {
-    id: '2',
-    titulo: 'Decreto de calamidade pública no Pará após alagamentos em Belém e região',
-    fonte: 'Agência Brasil',
-    data: '2026-02-18',
-    resumo: 'O governador do Pará decretou estado de calamidade pública em 12 municípios após chuvas recordes. A infraestrutura logística foi severamente comprometida, elevando custos de transporte em até 40%.',
-    impacto: 'alto',
-    categoria: 'Caso Fortuito / Força Maior',
-    url: '#',
-    produtosAfetados: ['Transporte rodoviário', 'Brita', 'Madeira', 'Combustível diesel'],
-    variacaoPreco: '+30% a +40%',
-  },
-  {
-    id: '3',
-    titulo: 'Crise energética eleva custos de produção industrial em 12%',
-    fonte: 'Valor Econômico',
-    data: '2026-02-15',
-    resumo: 'A bandeira vermelha na tarifa de energia elétrica, mantida pelo terceiro mês consecutivo, tem impactado diretamente os custos de fabricação de materiais de construção e equipamentos industriais.',
-    impacto: 'medio',
-    categoria: 'Fato Superveniente',
-    url: '#',
-    produtosAfetados: ['Materiais industrializados', 'Tubulações PVC', 'Fiação elétrica'],
-    variacaoPreco: '+10% a +15%',
-  },
-  {
-    id: '4',
-    titulo: 'Greve dos caminhoneiros afeta distribuição de insumos na região Norte',
-    fonte: 'Folha de S.Paulo',
-    data: '2026-02-12',
-    resumo: 'A paralisação de caminhoneiros autônomos na BR-010 e BR-316 está causando desabastecimento de materiais de construção em Belém e municípios vizinhos há 5 dias.',
-    impacto: 'alto',
-    categoria: 'Caso Fortuito / Força Maior',
-    url: '#',
-    produtosAfetados: ['Todos os insumos via rodovia', 'Combustíveis', 'Alimentos'],
-    variacaoPreco: '+20% a +35%',
-  },
-  {
-    id: '5',
-    titulo: 'IBGE: INCC acumula alta de 8,7% nos últimos 12 meses',
-    fonte: 'IBGE / Indicadores',
-    data: '2026-02-10',
-    resumo: 'O Índice Nacional de Custo da Construção superou as projeções do mercado, evidenciando pressão inflacionária persistente no setor, especialmente em mão de obra especializada.',
-    impacto: 'medio',
-    categoria: 'Índice Econômico',
-    url: '#',
-    produtosAfetados: ['Mão de obra', 'Materiais em geral'],
-    variacaoPreco: '+8,7% acumulado',
-  },
-];
-
+const mockNews: NewsItem[] = [];
 const impactoConfig = {
   alto: { color: 'bg-destructive/15 text-destructive border-destructive/30', icon: AlertTriangle },
   medio: { color: 'bg-warning/15 text-warning border-warning/30', icon: TrendingUp },
