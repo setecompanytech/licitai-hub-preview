@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { streamAIChat } from '@/lib/ai-stream';
+import { useEditalExtraction, type LicitacaoItem } from '@/hooks/useEditalExtraction';
 
 const portaisDisponiveis = [
   { id: 'pncp', nome: 'PNCP' },
@@ -82,24 +82,23 @@ type LicitacaoRow = {
   data_encerramento: string | null;
 };
 
-type PrecificacaoRow = {
-  id: string;
-  item: string;
-  descricao: string | null;
-  quantidade: number | null;
-  unidade: string | null;
-  preco_unitario: number | null;
-  custo_unitario: number | null;
-};
-
-type CatalogoRow = {
-  id: string;
-  descricao: string;
-  quantidade: number;
-  unidade: string;
-  preco_unitario: number;
-  custo_unitario: number;
-};
+// Helper: convert LicitacaoItem[] to DisputeItem[]
+function licitacaoItensToDispute(items: LicitacaoItem[]): DisputeItem[] {
+  return items.map((item, idx) => ({
+    id: crypto.randomUUID(),
+    numero: item.numero || idx + 1,
+    descricao: item.descricao,
+    quantidade: item.quantidade || 1,
+    unidade: item.unidade || 'UN',
+    valorReferencia: item.valor_unitario || 0,
+    valorMinimo: 0,
+    lote: item.lote || 'Único',
+    disputando: true,
+    situacao: 'aguardando' as const,
+    melhorLance: null,
+    seuUltimoLance: null,
+  }));
+}
 
 type Props = {
   onSave: (lance: LanceConfig) => void;
@@ -109,6 +108,7 @@ type Props = {
 
 export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }: Props) {
   const { user } = useAuth();
+  const { fetchItens, extrairItensIA } = useEditalExtraction();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<0 | 1 | 2>(editingLance ? 1 : 0);
 
@@ -202,12 +202,27 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     }
   }, [open, step, fetchLicitacoes]);
 
-  // ── Import selected licitação ──
+  // ── Helper: set items + auto-detect dispute type + suggest values ──
+  const applyImportedItems = (importedItems: DisputeItem[]) => {
+    setItens(importedItems);
+    const uniqueLotes = [...new Set(importedItems.map(i => i.lote))].filter(l => l && l !== 'Único');
+    if (uniqueLotes.length > 1 || (uniqueLotes.length === 1 && importedItems.filter(i => i.lote === uniqueLotes[0]).length > 1)) {
+      setTipoDisputa('lote');
+    } else {
+      setTipoDisputa('item');
+    }
+    if (importedItems.length > 0) {
+      const total = importedItems.reduce((s, i) => s + (i.valorReferencia * i.quantidade), 0);
+      setValorInicialInput(String(Math.round(total * 0.95 * 100) / 100));
+      setValorMinimoInput(String(Math.round(total * 0.80 * 100) / 100));
+    }
+  };
+
+  // ── Import selected licitação (uses centralized licitacao_itens) ──
   const handleImportLicitacao = async (lic: LicitacaoRow) => {
     setSelectedLicId(lic.id);
     setLoadingItems(true);
 
-    // Fill Step 1 fields
     setEdital(lic.numero);
     setPortal(lic.portal || '');
     setLicitacaoIdRef(lic.id);
@@ -219,81 +234,10 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
       } catch { /* ignore */ }
     }
 
-    // Fetch items from precificacao + catalogo
     try {
-      const [precRes, catRes] = await Promise.all([
-        supabase
-          .from('precificacao')
-          .select('id, item, descricao, quantidade, unidade, preco_unitario, custo_unitario')
-          .eq('user_id', user!.id)
-          .eq('licitacao_id', lic.id),
-        supabase
-          .from('catalogo_itens_precificados')
-          .select('id, descricao, quantidade, unidade, preco_unitario, custo_unitario')
-          .eq('user_id', user!.id)
-          .eq('licitacao_id', lic.id),
-      ]);
-
-      const importedItems: DisputeItem[] = [];
-      let num = 1;
-
-      if (precRes.data && precRes.data.length > 0) {
-        for (const p of precRes.data as PrecificacaoRow[]) {
-          importedItems.push({
-            id: crypto.randomUUID(),
-            numero: num++,
-            descricao: p.descricao || p.item,
-            quantidade: p.quantidade || 1,
-            unidade: p.unidade || 'UN',
-            valorReferencia: p.preco_unitario || p.custo_unitario || 0,
-            valorMinimo: 0,
-            lote: `Lote ${Math.ceil(num / 5)}`,
-            disputando: true,
-            situacao: 'aguardando',
-            melhorLance: null,
-            seuUltimoLance: null,
-          });
-        }
-      }
-
-      if (catRes.data && catRes.data.length > 0) {
-        const existingDescs = new Set(importedItems.map(i => i.descricao.toLowerCase()));
-        for (const c of catRes.data as CatalogoRow[]) {
-          if (!existingDescs.has(c.descricao.toLowerCase())) {
-            importedItems.push({
-              id: crypto.randomUUID(),
-              numero: num++,
-              descricao: c.descricao,
-              quantidade: c.quantidade || 1,
-              unidade: c.unidade || 'UN',
-              valorReferencia: c.preco_unitario || c.custo_unitario || 0,
-              valorMinimo: 0,
-              lote: `Lote ${Math.ceil(num / 5)}`,
-              disputando: true,
-              situacao: 'aguardando',
-              melhorLance: null,
-              seuUltimoLance: null,
-            });
-          }
-        }
-      }
-
-      setItens(importedItems);
-
-      // Auto-detect dispute type
-      const uniqueLotes = [...new Set(importedItems.map(i => i.lote))].filter(l => l && l !== 'Único');
-      if (uniqueLotes.length > 1 || (uniqueLotes.length === 1 && importedItems.filter(i => i.lote === uniqueLotes[0]).length > 1)) {
-        setTipoDisputa('lote');
-      } else {
-        setTipoDisputa('item');
-      }
-
-      // Auto-suggest initial and minimum values (95% and 80% of reference)
-      if (importedItems.length > 0) {
-        const total = importedItems.reduce((s, i) => s + (i.valorReferencia * i.quantidade), 0);
-        setValorInicialInput(String(Math.round(total * 0.95 * 100) / 100));
-        setValorMinimoInput(String(Math.round(total * 0.80 * 100) / 100));
-      }
+      const centralItens = await fetchItens(lic.id);
+      const importedItems = licitacaoItensToDispute(centralItens);
+      applyImportedItems(importedItems);
 
       const itemCount = importedItems.length;
       toast.success(
@@ -309,7 +253,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     }
   };
 
-  // ── AI Extraction from edital file ──
+  // ── AI Extraction from edital file (uses centralized hook) ──
   const handleEditalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -326,106 +270,97 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
 
     try {
       const text = await editalFile.text();
-      const truncated = text.slice(0, 25000);
-      let content = '';
 
-      await streamAIChat({
-        messages: [{
-          role: 'user',
-          content: `Analise o Edital ou Termo de Referência abaixo e extraia TODOS os itens/lotes com os valores de referência.
+      // If we have a licitacaoId, use centralized extraction that persists
+      if (licitacaoIdRef) {
+        const saved = await extrairItensIA(licitacaoIdRef, text, { forceReExtract: true });
+        const disputeItems = licitacaoItensToDispute(saved);
+        applyImportedItems(disputeItems);
+        if (disputeItems.length > 0) setStep(1);
+      } else {
+        // No licitacaoId yet — use centralized extraction with a temp approach
+        // Extract via AI but don't persist (no licitacao_id)
+        const { streamAIChat } = await import('@/lib/ai-stream');
+        const truncated = text.slice(0, 25000);
+        let content = '';
+
+        await streamAIChat({
+          messages: [{
+            role: 'user',
+            content: `Analise o Edital ou Termo de Referência abaixo e extraia TODOS os itens/lotes com os valores de referência.
 
 Retorne APENAS um JSON array, sem markdown, sem explicações:
 [
-  {"item": "1", "descricao": "descrição completa do produto/serviço", "quantidade": 10, "unidade": "UN", "valor_unitario": 150.00, "valor_total": 1500.00, "lote": "Lote 1"},
-  {"item": "2", "descricao": "...", "quantidade": 5, "unidade": "CX", "valor_unitario": 80.50, "valor_total": 402.50, "lote": "Lote 1"}
+  {"item": "1", "descricao": "descrição completa", "quantidade": 10, "unidade": "UN", "valor_unitario": 150.00, "valor_total": 1500.00, "lote": "Lote 1"}
 ]
 
-REGRAS IMPORTANTES:
-- Extraia TODOS os itens/lotes listados no Termo de Referência ou Edital
-- O campo "item" deve ser o número sequencial do item conforme o edital
-- A "descricao" deve ser completa e detalhada conforme o edital (incluir especificações técnicas, marca de referência, modelo quando disponível)
-- "quantidade" e "unidade" devem ser exatamente como constam no edital
-- "valor_unitario" é o valor unitário de referência/estimado do edital (R$)
+REGRAS:
+- Extraia TODOS os itens/lotes do Termo de Referência ou Edital
+- "item" = número sequencial conforme edital
+- "descricao" completa com especificações técnicas
+- "quantidade" e "unidade" exatamente como no edital
+- "valor_unitario" = valor unitário de referência (R$)
 - "valor_total" = valor_unitario × quantidade
-- "lote" deve ser o lote conforme o edital. Se não houver lotes, use "Único"
-- Se os valores não estiverem explícitos, tente inferir do contexto ou use 0
+- "lote" conforme edital; se não houver lotes, use "Único"
+- Se valores não explícitos, use 0
 - Retorne [] se não encontrar itens
 
 DOCUMENTO:
 ${truncated}`
-        }],
-        action: 'analise_edital',
-        onDelta: (chunk) => { content += chunk; },
-        onDone: () => {
-          try {
-            const jsonMatch = content.match(/\[[\s\S]*\]/);
-            if (!jsonMatch) {
-              toast.error('Não foi possível extrair itens do edital.');
-              setIsExtracting(false);
-              return;
+          }],
+          action: 'analise_edital',
+          onDelta: (chunk) => { content += chunk; },
+          onDone: () => {
+            try {
+              const jsonMatch = content.match(/\[[\s\S]*\]/);
+              if (!jsonMatch) {
+                toast.error('Não foi possível extrair itens do edital.');
+                setIsExtracting(false);
+                return;
+              }
+              const parsed = JSON.parse(jsonMatch[0]) as Array<{
+                item: string; descricao: string; quantidade: number; unidade: string;
+                valor_unitario: number; valor_total: number; lote?: string;
+              }>;
+
+              if (parsed.length === 0) {
+                toast.warning('Nenhum item encontrado no documento.');
+                setIsExtracting(false);
+                return;
+              }
+
+              const extractedItems: DisputeItem[] = parsed.map((p, idx) => ({
+                id: crypto.randomUUID(),
+                numero: parseInt(p.item) || (idx + 1),
+                descricao: p.descricao,
+                quantidade: p.quantidade || 1,
+                unidade: p.unidade || 'UN',
+                valorReferencia: p.valor_unitario || 0,
+                valorMinimo: 0,
+                lote: p.lote || 'Único',
+                disputando: true,
+                situacao: 'aguardando' as const,
+                melhorLance: null,
+                seuUltimoLance: null,
+              }));
+
+              applyImportedItems(extractedItems);
+              toast.success(`${parsed.length} itens extraídos do edital!`);
+              setStep(1);
+            } catch {
+              toast.error('Erro ao processar itens do edital.');
             }
-            const parsed = JSON.parse(jsonMatch[0]) as Array<{
-              item: string;
-              descricao: string;
-              quantidade: number;
-              unidade: string;
-              valor_unitario: number;
-              valor_total: number;
-              lote?: string;
-            }>;
-
-            if (parsed.length === 0) {
-              toast.warning('Nenhum item encontrado no documento.');
-              setIsExtracting(false);
-              return;
-            }
-
-            const extractedItems: DisputeItem[] = parsed.map((p, idx) => ({
-              id: crypto.randomUUID(),
-              numero: parseInt(p.item) || (idx + 1),
-              descricao: p.descricao,
-              quantidade: p.quantidade || 1,
-              unidade: p.unidade || 'UN',
-              valorReferencia: p.valor_unitario || 0,
-              valorMinimo: 0,
-              lote: p.lote || 'Único',
-              disputando: true,
-              situacao: 'aguardando' as const,
-              melhorLance: null,
-              seuUltimoLance: null,
-            }));
-
-            setItens(extractedItems);
-
-            // Auto-detect dispute type from lotes
-            const uniqueLotes = [...new Set(extractedItems.map(i => i.lote))].filter(l => l && l !== 'Único');
-            if (uniqueLotes.length > 1 || (uniqueLotes.length === 1 && extractedItems.filter(i => i.lote === uniqueLotes[0]).length > 1)) {
-              setTipoDisputa('lote');
-            } else {
-              setTipoDisputa('item');
-            }
-
-            // Auto-suggest initial and minimum values
-            const total = extractedItems.reduce((s, i) => s + (i.valorReferencia * i.quantidade), 0);
-            if (total > 0) {
-              setValorInicialInput(String(Math.round(total * 0.95 * 100) / 100));
-              setValorMinimoInput(String(Math.round(total * 0.80 * 100) / 100));
-            }
-
-            toast.success(`${parsed.length} itens extraídos do edital com valores de referência!`);
-            setStep(1);
-          } catch {
-            toast.error('Erro ao processar itens do edital.');
-          }
-          setIsExtracting(false);
-        },
-        onError: (err) => {
-          toast.error(err);
-          setIsExtracting(false);
-        },
-      });
+            setIsExtracting(false);
+          },
+          onError: (err) => {
+            toast.error(err);
+            setIsExtracting(false);
+          },
+        });
+      }
     } catch {
       toast.error('Erro ao ler o arquivo.');
+    } finally {
       setIsExtracting(false);
     }
   };

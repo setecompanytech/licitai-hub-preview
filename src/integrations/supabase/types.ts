@@ -1367,6 +1367,71 @@ export type Database = {
           },
         ]
       }
+      licitacao_itens: {
+        Row: {
+          created_at: string
+          descricao: string
+          fabricante: string | null
+          id: string
+          licitacao_id: string
+          lote: string | null
+          marca: string | null
+          modelo: string | null
+          numero: number
+          origem: string | null
+          quantidade: number
+          unidade: string
+          updated_at: string
+          user_id: string
+          valor_total: number
+          valor_unitario: number
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          fabricante?: string | null
+          id?: string
+          licitacao_id: string
+          lote?: string | null
+          marca?: string | null
+          modelo?: string | null
+          numero?: number
+          origem?: string | null
+          quantidade?: number
+          unidade?: string
+          updated_at?: string
+          user_id: string
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          fabricante?: string | null
+          id?: string
+          licitacao_id?: string
+          lote?: string | null
+          marca?: string | null
+          modelo?: string | null
+          numero?: number
+          origem?: string | null
+          quantidade?: number
+          unidade?: string
+          updated_at?: string
+          user_id?: string
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "licitacao_itens_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       licitacao_mensagens: {
         Row: {
           conteudo: string
