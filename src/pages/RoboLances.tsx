@@ -27,16 +27,11 @@ import CredenciaisPortalForm from '@/components/robo-lances/CredenciaisPortalFor
 import ConfigurarLanceDialog, { type LanceConfig, type DisputeItem } from '@/components/robo-lances/ConfigurarLanceDialog';
 import AgenteExternoConfig from '@/components/robo-lances/AgenteExternoConfig';
 import AgenteTemplateDownload from '@/components/robo-lances/AgenteTemplateDownload';
+import LicitacaoChat from '@/components/licitacoes/LicitacaoChat';
 import { toast } from 'sonner';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
-
-type ChatMessage = {
-  id: string;
-  timestamp: Date;
-  autor: string;
-  texto: string;
-  tipo: 'sistema' | 'pregoeiro' | 'empresa';
-};
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Operation = {
   id: string;
@@ -59,13 +54,13 @@ const statusColors: Record<string, string> = {
 };
 
 export default function RoboLances() {
+  const { user } = useAuth();
   const { registrarResultadoDisputa } = useLicitacaoIntegration();
   const [lances, setLances] = useState<LanceConfig[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [bottomTab, setBottomTab] = useState<'chat' | 'operacoes'>('chat');
-  const [chatInput, setChatInput] = useState('');
+  const [bottomTab, setBottomTab] = useState<'mural' | 'operacoes'>('mural');
   const [activeMainTab, setActiveMainTab] = useState('disputar');
 
   // Configurações globais persistidas em localStorage
@@ -92,19 +87,48 @@ export default function RoboLances() {
     [selectedLance?.id, selectedLance?.itens]
   );
 
-  const mockChat: ChatMessage[] = selectedLance
-    ? [
-        { id: '1', timestamp: new Date(), autor: 'Sistema', texto: `Disputa ${selectedLance.edital} iniciada. Acompanhando itens em tempo real.`, tipo: 'sistema' },
-        { id: '2', timestamp: new Date(), autor: 'Pregoeiro', texto: 'Senhores licitantes, a fase de lances está aberta.', tipo: 'pregoeiro' },
-      ]
-    : [];
-
   const mockOps: Operation[] = selectedLance
     ? [
         { id: '1', timestamp: new Date(), acao: 'Login no portal', resultado: 'sucesso', detalhes: `Autenticado em ${selectedLance.portal}` },
         { id: '2', timestamp: new Date(), acao: 'Carregamento de itens', resultado: 'sucesso', detalhes: `${disputeItems.length} itens carregados` },
       ]
     : [];
+
+  /* ── Post dispute result to mural ── */
+  const postResultToMural = async (lance: LanceConfig, resultado: 'venceu' | 'perdeu', valorFinal?: number) => {
+    if (!user || !lance.licitacaoId) return;
+
+    const itensResumo = lance.itens.slice(0, 5).map(i =>
+      `  • Item ${i.numero}: ${i.descricao.slice(0, 50)}${i.descricao.length > 50 ? '...' : ''} — ${formatCurrency(i.valorReferencia)} × ${i.quantidade}`
+    ).join('\n');
+    const maisItens = lance.itens.length > 5 ? `\n  ...e mais ${lance.itens.length - 5} itens` : '';
+
+    const conteudo = resultado === 'venceu'
+      ? `🏆 **DISPUTA VENCIDA — ${lance.edital}**\n\n` +
+        `📋 Portal: ${lance.portal}\n` +
+        `💰 Valor de Referência: ${formatCurrency(lance.valorReferencia)}\n` +
+        `✅ Valor Final Adjudicado: ${valorFinal ? formatCurrency(valorFinal) : 'N/I'}\n` +
+        `📊 Desconto: ${lance.valorReferencia > 0 && valorFinal ? ((1 - valorFinal / lance.valorReferencia) * 100).toFixed(2) + '%' : 'N/I'}\n\n` +
+        `**Itens da disputa (${lance.itens.length}):**\n${itensResumo}${maisItens}\n\n` +
+        `⏱️ Encerrado em ${new Date().toLocaleString('pt-BR')}`
+      : `❌ **DISPUTA PERDIDA — ${lance.edital}**\n\n` +
+        `📋 Portal: ${lance.portal}\n` +
+        `💰 Valor de Referência: ${formatCurrency(lance.valorReferencia)}\n` +
+        `📊 ${lance.itens.length} itens disputados\n\n` +
+        `**Itens:**\n${itensResumo}${maisItens}\n\n` +
+        `⏱️ Encerrado em ${new Date().toLocaleString('pt-BR')}`;
+
+    try {
+      await supabase.from('licitacao_mensagens').insert({
+        licitacao_id: lance.licitacaoId,
+        user_id: user.id,
+        conteudo,
+        tipo: resultado === 'venceu' ? 'sucesso' : 'alerta',
+      });
+    } catch (err) {
+      console.error('Erro ao postar no mural:', err);
+    }
+  };
 
   /* ── handlers ── */
   const handleSaveLance = (lance: LanceConfig) => {
@@ -136,6 +160,30 @@ export default function RoboLances() {
         return l;
       })
     );
+  };
+
+  const handleEndDispute = async (resultado: 'venceu' | 'perdeu') => {
+    if (!selectedLance) return;
+
+    const valorFinal = resultado === 'venceu'
+      ? selectedLance.meuLance || selectedLance.valorMinimo
+      : undefined;
+
+    // Update local state
+    setLances(prev => prev.map(l =>
+      l.id === selectedLance.id ? { ...l, status: 'encerrado' as const } : l
+    ));
+
+    // Post to mural
+    await postResultToMural(selectedLance, resultado, valorFinal);
+
+    // Update licitação status if linked
+    if (selectedLance.licitacaoId) {
+      await registrarResultadoDisputa(selectedLance.licitacaoId, resultado, valorFinal);
+    }
+
+    // Switch to mural tab to show the result
+    setBottomTab('mural');
   };
 
   const filteredLances = lances.filter(
@@ -239,6 +287,14 @@ export default function RoboLances() {
                         Sessão: {lance.horario}
                       </div>
                     )}
+                    {lance.licitacaoId && (
+                      <div className={`flex items-center gap-1 text-[10px] mt-0.5 ${
+                        selectedId === lance.id ? 'text-accent-foreground/70' : 'text-muted-foreground'
+                      }`}>
+                        <MessageSquare className="w-3 h-3" />
+                        Vinculado ao Kanban
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>
@@ -303,19 +359,13 @@ export default function RoboLances() {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-success focus:text-success"
-                          onClick={() => {
-                            setLances(prev => prev.map(l => l.id === selectedLance.id ? { ...l, status: 'encerrado' as const } : l));
-                            registrarResultadoDisputa(selectedLance.id, 'venceu', selectedLance.meuLance || selectedLance.valorMinimo);
-                          }}
+                          onClick={() => handleEndDispute('venceu')}
                         >
                           <Trophy className="w-3.5 h-3.5 mr-2" /> Encerrar como Venceu
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
-                          onClick={() => {
-                            setLances(prev => prev.map(l => l.id === selectedLance.id ? { ...l, status: 'encerrado' as const } : l));
-                            registrarResultadoDisputa(selectedLance.id, 'perdeu');
-                          }}
+                          onClick={() => handleEndDispute('perdeu')}
                         >
                           <XCircle className="w-3.5 h-3.5 mr-2" /> Encerrar como Perdeu
                         </DropdownMenuItem>
@@ -351,6 +401,7 @@ export default function RoboLances() {
                         <TableHead className="w-10 text-center text-xs">Item</TableHead>
                         <TableHead className="w-10 text-center text-xs" />
                         <TableHead className="text-xs">Situação</TableHead>
+                        <TableHead className="text-right text-xs">Vlr Ref.</TableHead>
                         <TableHead className="text-right text-xs">Melhor Lance</TableHead>
                         <TableHead className="text-right text-xs">Seu Último Lance</TableHead>
                         <TableHead className="text-center text-xs">Qtd</TableHead>
@@ -389,6 +440,9 @@ export default function RoboLances() {
                               {item.situacao.charAt(0).toUpperCase() + item.situacao.slice(1)}
                             </Badge>
                           </TableCell>
+                          <TableCell className="text-right text-xs font-mono text-muted-foreground">
+                            {item.valorReferencia > 0 ? formatCurrency(item.valorReferencia) : '—'}
+                          </TableCell>
                           <TableCell className="text-right text-xs font-mono">
                             {item.melhorLance ? formatCurrency(item.melhorLance) : '—'}
                           </TableCell>
@@ -417,18 +471,18 @@ export default function RoboLances() {
                   )}
                 </div>
 
-                {/* ── Bottom Panel: Chat + Operations ── */}
+                {/* ── Bottom Panel: Mural + Operations ── */}
                 <div className="border-t border-border bg-card shrink-0">
                   <div className="flex items-center gap-0 border-b border-border">
                     <button
-                      onClick={() => setBottomTab('chat')}
+                      onClick={() => setBottomTab('mural')}
                       className={`px-4 py-2 text-xs font-medium transition-colors flex items-center gap-1.5 border-b-2 ${
-                        bottomTab === 'chat'
+                        bottomTab === 'mural'
                           ? 'border-accent text-accent'
                           : 'border-transparent text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      <MessageSquare className="w-3.5 h-3.5" /> Mensagens do chat
+                      <MessageSquare className="w-3.5 h-3.5" /> Mural do Processo
                     </button>
                     <button
                       onClick={() => setBottomTab('operacoes')}
@@ -442,30 +496,28 @@ export default function RoboLances() {
                     </button>
                   </div>
 
-                  <div className="h-36 overflow-auto">
-                    {bottomTab === 'chat' ? (
-                      <div className="p-3 space-y-2">
-                        {mockChat.map((msg) => (
-                          <div key={msg.id} className="flex gap-2 text-xs">
-                            <span className="text-muted-foreground shrink-0">
-                              {msg.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            <span className={`font-semibold shrink-0 ${
-                              msg.tipo === 'pregoeiro' ? 'text-warning' : msg.tipo === 'sistema' ? 'text-info' : 'text-foreground'
-                            }`}>
-                              [{msg.autor}]
-                            </span>
-                            <span className="text-foreground">{msg.texto}</span>
+                  <div className="h-48">
+                    {bottomTab === 'mural' ? (
+                      selectedLance?.licitacaoId ? (
+                        <LicitacaoChat
+                          licitacaoId={selectedLance.licitacaoId}
+                          licitacaoNumero={selectedLance.edital}
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-center space-y-2">
+                            <MessageSquare className="w-6 h-6 text-muted-foreground/30 mx-auto" />
+                            <p className="text-xs text-muted-foreground">
+                              Esta disputa não está vinculada a um processo do Kanban.
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              Importe do Kanban ao criar a disputa para ativar o Mural em tempo real.
+                            </p>
                           </div>
-                        ))}
-                        {mockChat.length === 0 && (
-                          <p className="text-xs text-muted-foreground text-center py-4">
-                            As mensagens do chat do pregoeiro aparecerão aqui em tempo real.
-                          </p>
-                        )}
-                      </div>
+                        </div>
+                      )
                     ) : (
-                      <div className="p-3 space-y-2">
+                      <div className="p-3 space-y-2 overflow-auto h-full">
                         {mockOps.map((op) => (
                           <div key={op.id} className="flex items-center gap-3 text-xs">
                             <span className="text-muted-foreground shrink-0">
@@ -488,21 +540,6 @@ export default function RoboLances() {
                       </div>
                     )}
                   </div>
-
-                  {/* Chat input */}
-                  {bottomTab === 'chat' && (
-                    <div className="border-t border-border px-3 py-2 flex gap-2">
-                      <Input
-                        placeholder="Enviar mensagem ao pregoeiro..."
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        className="h-8 text-xs flex-1"
-                      />
-                      <Button size="sm" className="h-8 bg-accent hover:bg-accent/90 text-accent-foreground">
-                        <Send className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  )}
                 </div>
               </>
             )}
