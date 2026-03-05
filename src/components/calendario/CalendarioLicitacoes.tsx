@@ -37,15 +37,15 @@ interface DocValidade {
 }
 
 const statusColors: Record<string, string> = {
-  Publicado: 'bg-blue-500',
-  Monitorando: 'bg-blue-500',
-  'Em Análise': 'bg-yellow-500',
-  'Proposta Enviada': 'bg-purple-500',
-  'Em Disputa': 'bg-orange-500',
-  Vencida: 'bg-green-500',
-  Perdida: 'bg-red-500',
-  Homologada: 'bg-emerald-600',
-  Arquivada: 'bg-gray-500',
+  Publicado: 'bg-info',
+  Monitorando: 'bg-info',
+  'Em Análise': 'bg-warning',
+  'Proposta Enviada': 'bg-primary',
+  'Em Disputa': 'bg-accent',
+  Vencida: 'bg-success',
+  Perdida: 'bg-destructive',
+  Homologada: 'bg-success',
+  Arquivada: 'bg-muted-foreground',
 };
 
 function calcDocStatus(validade: string): 'ok' | 'vencendo' | 'vencido' {
@@ -383,7 +383,7 @@ export default function CalendarioLicitacoes() {
                         <div
                           className={cn(
                             'w-2 h-2 rounded-full mt-1.5 flex-shrink-0',
-                            statusColors[l.status] || 'bg-gray-400'
+                            statusColors[l.status] || 'bg-muted-foreground'
                           )}
                         />
                         <div className="min-w-0">

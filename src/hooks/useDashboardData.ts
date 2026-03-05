@@ -97,11 +97,11 @@ export function useDashboardData() {
       supabase.from('licitacoes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).in('status', ['Proposta Enviada', 'enviada', 'proposta']),
       supabase.from('licitacoes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).in('status', ['Vencida', 'vencida', 'Homologada']),
       supabase.from('licitacoes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).in('status', ['Perdida', 'perdida']),
-      supabase.from('licitacoes').select('valor_estimado').eq('user_id', user!.id).in('status', ['Vencida', 'vencida', 'Homologada']).gte('created_at', sixMonthsAgo.toISOString()),
+      supabase.from('licitacoes').select('valor_estimado, valor_adjudicado').eq('user_id', user!.id).in('status', ['Vencida', 'vencida', 'Homologada']).gte('created_at', sixMonthsAgo.toISOString()),
       supabase.from('monitoramento_editais').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).gte('created_at', `${today}T00:00:00`),
     ]);
 
-    const totalGanho = ganhos?.reduce((s, l) => s + (l.valor_estimado || 0), 0) || 0;
+    const totalGanho = ganhos?.reduce((s, l) => s + (l.valor_adjudicado || l.valor_estimado || 0), 0) || 0;
     const totalDecididas = (vencidas || 0) + (perdidas || 0);
     const taxa = totalDecididas > 0 ? ((vencidas || 0) / totalDecididas) * 100 : 0;
 
@@ -130,11 +130,11 @@ export function useDashboardData() {
         supabase.from('licitacoes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).in('status', ['Vencida', 'vencida', 'Homologada']).gte('updated_at', start).lte('updated_at', end),
         supabase.from('licitacoes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).in('status', ['Perdida', 'perdida']).gte('updated_at', start).lte('updated_at', end),
         supabase.from('licitacoes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).in('status', ['Proposta Enviada', 'enviada', 'proposta']).gte('created_at', start).lte('created_at', end),
-        supabase.from('licitacoes').select('valor_estimado').eq('user_id', user!.id).in('status', ['Vencida', 'vencida', 'Homologada']).gte('updated_at', start).lte('updated_at', end),
+        supabase.from('licitacoes').select('valor_estimado, valor_adjudicado').eq('user_id', user!.id).in('status', ['Vencida', 'vencida', 'Homologada']).gte('updated_at', start).lte('updated_at', end),
       ]);
 
       months.push({ mes: label, vitorias: v || 0, derrotas: p || 0, propostas: pr || 0 });
-      monthsValor.push({ mes: label, valor: vals?.reduce((s, l) => s + (l.valor_estimado || 0), 0) || 0 });
+      monthsValor.push({ mes: label, valor: vals?.reduce((s, l) => s + (l.valor_adjudicado || l.valor_estimado || 0), 0) || 0 });
     }
 
     setChartMensal(months);
