@@ -88,12 +88,7 @@ export default function RoboLances() {
     [selectedLance?.id, selectedLance?.itens]
   );
 
-  const mockOps: Operation[] = selectedLance
-    ? [
-        { id: '1', timestamp: new Date(), acao: 'Login no portal', resultado: 'sucesso', detalhes: `Autenticado em ${selectedLance.portal}` },
-        { id: '2', timestamp: new Date(), acao: 'Carregamento de itens', resultado: 'sucesso', detalhes: `${disputeItems.length} itens carregados` },
-      ]
-    : [];
+  const [operations, setOperations] = useState<Operation[]>([]);
 
   /* ── Post dispute result to mural ── */
   const postResultToMural = async (lance: LanceConfig, resultado: 'venceu' | 'perdeu', valorFinal?: number) => {
@@ -539,25 +534,33 @@ export default function RoboLances() {
                       </div>
                     ) : (
                       <div className="p-3 space-y-2 overflow-auto h-full">
-                        {mockOps.map((op) => (
-                          <div key={op.id} className="flex items-center gap-3 text-xs">
-                            <span className="text-muted-foreground shrink-0">
-                              {op.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                            </span>
-                            <Badge
-                              variant="outline"
-                              className={`text-[9px] ${
-                                op.resultado === 'sucesso' ? 'bg-success/10 text-success border-success/30' :
-                                op.resultado === 'erro' ? 'bg-destructive/10 text-destructive border-destructive/30' :
-                                'bg-info/10 text-info border-info/30'
-                              }`}
-                            >
-                              {op.resultado}
-                            </Badge>
-                            <span className="font-medium text-foreground">{op.acao}</span>
-                            <span className="text-muted-foreground">{op.detalhes}</span>
+                        {operations.length === 0 ? (
+                          <div className="text-center py-8">
+                            <ListChecks className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                            <p className="text-xs text-muted-foreground">Nenhuma operação registrada.</p>
+                            <p className="text-[10px] text-muted-foreground mt-1">Inicie uma disputa para ver o log de operações.</p>
                           </div>
-                        ))}
+                        ) : (
+                          operations.map((op) => (
+                            <div key={op.id} className="flex items-center gap-3 text-xs">
+                              <span className="text-muted-foreground shrink-0">
+                                {op.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className={`text-[9px] ${
+                                  op.resultado === 'sucesso' ? 'bg-success/10 text-success border-success/30' :
+                                  op.resultado === 'erro' ? 'bg-destructive/10 text-destructive border-destructive/30' :
+                                  'bg-info/10 text-info border-info/30'
+                                }`}
+                              >
+                                {op.resultado}
+                              </Badge>
+                              <span className="font-medium text-foreground">{op.acao}</span>
+                              <span className="text-muted-foreground">{op.detalhes}</span>
+                            </div>
+                          ))
+                        )}
                       </div>
                     )}
                   </div>
