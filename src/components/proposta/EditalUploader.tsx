@@ -1,14 +1,16 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Upload, FileText, Loader2, X, CheckCircle, Sparkles, AlertCircle } from 'lucide-react';
+import { Upload, FileText, Loader2, X, CheckCircle, Sparkles, AlertCircle, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
+import { useEditalExtraction } from '@/hooks/useEditalExtraction';
 
 interface EditalUploaderProps {
   onExtracted: (data: ExtractedEditalData) => void;
   isExtracting: boolean;
   setIsExtracting: (v: boolean) => void;
+  licitacaoId?: string;
 }
 
 export interface ExtractedEditalData {
@@ -40,12 +42,22 @@ export interface EditalItem {
   valorTotalExtenso: string;
 }
 
-export default function EditalUploader({ onExtracted, isExtracting, setIsExtracting }: EditalUploaderProps) {
+export default function EditalUploader({ onExtracted, isExtracting, setIsExtracting, licitacaoId }: EditalUploaderProps) {
   const [editalFile, setEditalFile] = useState<File | null>(null);
   const [extracted, setExtracted] = useState(false);
   const [progress, setProgress] = useState('');
+  const [hasExistingItens, setHasExistingItens] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { fetchItens, saveItensManual } = useEditalExtraction();
 
+  // Check for existing centralized items
+  useEffect(() => {
+    if (licitacaoId) {
+      fetchItens(licitacaoId).then(items => {
+        setHasExistingItens(items.length > 0);
+      });
+    }
+  }, [licitacaoId, fetchItens]);
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -121,7 +133,7 @@ ${truncated}`
         content += chunk;
         setProgress('Extraindo dados do edital...');
       },
-      onDone: () => {
+      onDone: async () => {
         try {
           const jsonMatch = content.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
@@ -139,6 +151,26 @@ ${truncated}`
               valorTotal: i.valorTotal ? String(i.valorTotal).replace(/[^\d.,]/g, '') : '',
               valorTotalExtenso: '',
             }));
+
+            // Persist items centrally if licitacaoId is available
+            if (licitacaoId && itens.length > 0) {
+              await saveItensManual(licitacaoId, itens.map((item, idx) => ({
+                numero: parseInt(item.item) || idx + 1,
+                descricao: item.descricao,
+                quantidade: parseFloat(item.quantidade) || 1,
+                unidade: item.unidade,
+                valor_unitario: parseFloat(item.valorUnitario.replace(',', '.')) || 0,
+                valor_total: parseFloat(item.valorTotal.replace(',', '.')) || 0,
+                marca: item.marca || null,
+                fabricante: item.fabricante || null,
+                modelo: item.modelo || null,
+                origem: 'ia',
+                lote: 'Único',
+                licitacao_id: licitacaoId,
+                user_id: '',
+              })));
+              setHasExistingItens(true);
+            }
 
             onExtracted({
               numeroLicitacao: data.numeroLicitacao || '',
@@ -232,28 +264,73 @@ ${truncated}`
           )}
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          className="w-full border-2 border-dashed border-border/60 rounded-xl p-8 flex flex-col items-center gap-3 hover:border-accent/50 hover:bg-accent/5 transition-all group"
-        >
-          <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-            <Upload className="w-7 h-7 text-accent" />
-          </div>
-          <div className="text-center">
-            <span className="text-sm font-semibold text-foreground block">Envie o edital para extração automática</span>
-            <span className="text-xs text-muted-foreground mt-1 block">
-              A IA extrairá: órgão, itens, preços, prazos de pagamento, entrega, validade e local
-            </span>
-          </div>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant="outline" className="text-[10px]">PDF</Badge>
-            <Badge variant="outline" className="text-[10px]">DOC</Badge>
-            <Badge variant="outline" className="text-[10px]">DOCX</Badge>
-            <Badge variant="outline" className="text-[10px]">TXT</Badge>
-            <span className="text-[10px] text-muted-foreground">Máx. 10MB</span>
-          </div>
-        </button>
+        <div className="space-y-3">
+          {/* Show "Import existing items" button if centralized items exist */}
+          {hasExistingItens && licitacaoId && (
+            <button
+              type="button"
+              onClick={async () => {
+                setIsExtracting(true);
+                setProgress('Importando itens já extraídos...');
+                const items = await fetchItens(licitacaoId);
+                const itens: EditalItem[] = items.map(i => ({
+                  item: String(i.numero),
+                  descricao: i.descricao,
+                  quantidade: String(i.quantidade),
+                  unidade: i.unidade,
+                  marca: i.marca || '',
+                  fabricante: i.fabricante || '',
+                  modelo: i.modelo || '',
+                  valorUnitario: String(i.valor_unitario),
+                  valorUnitarioExtenso: '',
+                  valorTotal: String(i.valor_total),
+                  valorTotalExtenso: '',
+                }));
+                onExtracted({
+                  numeroLicitacao: '', orgao: '', modalidade: 'Pregão Eletrônico',
+                  objeto: '', valorEstimado: '', prazoValidade: '60 dias corridos',
+                  prazoPagamento: '', prazoEntrega: '', localEntrega: '',
+                  liquidacaoNfe: '', itens, rawText: '',
+                });
+                setExtracted(true);
+                setIsExtracting(false);
+                setProgress('');
+                toast.success(`${itens.length} itens importados da extração anterior!`);
+              }}
+              className="w-full border-2 border-accent/40 bg-accent/5 rounded-xl p-4 flex items-center gap-3 hover:bg-accent/10 transition-all"
+            >
+              <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
+                <Download className="w-5 h-5 text-accent" />
+              </div>
+              <div className="text-left flex-1">
+                <span className="text-sm font-semibold text-foreground block">Importar itens já extraídos</span>
+                <span className="text-xs text-muted-foreground">Reutilize a extração centralizada desta licitação</span>
+              </div>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="w-full border-2 border-dashed border-border/60 rounded-xl p-8 flex flex-col items-center gap-3 hover:border-accent/50 hover:bg-accent/5 transition-all group"
+          >
+            <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+              <Upload className="w-7 h-7 text-accent" />
+            </div>
+            <div className="text-center">
+              <span className="text-sm font-semibold text-foreground block">Envie o edital para extração automática</span>
+              <span className="text-xs text-muted-foreground mt-1 block">
+                A IA extrairá: órgão, itens, preços, prazos de pagamento, entrega, validade e local
+              </span>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="outline" className="text-[10px]">PDF</Badge>
+              <Badge variant="outline" className="text-[10px]">DOC</Badge>
+              <Badge variant="outline" className="text-[10px]">DOCX</Badge>
+              <Badge variant="outline" className="text-[10px]">TXT</Badge>
+              <span className="text-[10px] text-muted-foreground">Máx. 10MB</span>
+            </div>
+          </button>
+        </div>
       )}
       <input
         ref={fileRef}
