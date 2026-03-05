@@ -12,6 +12,8 @@ import {
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { playNotificationSound, isSoundEnabled, setSoundEnabled } from '@/lib/notification-sound';
+import { Volume2, VolumeX } from 'lucide-react';
 
 type Mensagem = {
   id: string;
@@ -48,7 +50,9 @@ export default function LicitacaoChat({ licitacaoId, licitacaoNumero }: Props) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const initialLoadDone = useRef(false);
 
   // Load messages
   useEffect(() => {
@@ -64,6 +68,7 @@ export default function LicitacaoChat({ licitacaoId, licitacaoNumero }: Props) {
 
       setMensagens((data as Mensagem[]) || []);
       setLoading(false);
+      initialLoadDone.current = true;
     };
 
     loadMessages();
@@ -80,7 +85,13 @@ export default function LicitacaoChat({ licitacaoId, licitacaoNumero }: Props) {
           filter: `licitacao_id=eq.${licitacaoId}`,
         },
         (payload) => {
-          setMensagens((prev) => [...prev, payload.new as Mensagem]);
+          const newMsg = payload.new as Mensagem;
+          setMensagens((prev) => [...prev, newMsg]);
+          // Play sound for incoming messages (not own)
+          if (initialLoadDone.current && newMsg.user_id !== user?.id && isSoundEnabled()) {
+            const soundType = newMsg.tipo === 'alerta' ? 'alert' : newMsg.tipo === 'sucesso' ? 'success' : 'message';
+            playNotificationSound(soundType);
+          }
         }
       )
       .subscribe();
@@ -119,6 +130,13 @@ export default function LicitacaoChat({ licitacaoId, licitacaoNumero }: Props) {
         {licitacaoNumero && (
           <Badge variant="outline" className="text-[10px]">{licitacaoNumero}</Badge>
         )}
+        <button
+          onClick={() => { const next = !soundOn; setSoundOn(next); setSoundEnabled(next); }}
+          className={`p-1 rounded transition-colors ${soundOn ? 'text-accent hover:bg-accent/10' : 'text-muted-foreground hover:bg-muted'}`}
+          title={soundOn ? 'Som ativado' : 'Som desativado'}
+        >
+          {soundOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+        </button>
         <Badge variant="outline" className="text-[10px] ml-auto bg-success/10 text-success border-success/30">
           <span className="w-1.5 h-1.5 rounded-full bg-success mr-1 animate-pulse" />
           Tempo real

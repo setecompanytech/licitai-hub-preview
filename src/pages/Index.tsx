@@ -8,6 +8,8 @@ import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { Eye, Send, Trophy, TrendingUp, DollarSign, Zap } from 'lucide-react';
+import RelatorioGerencialPDF from '@/components/relatorios/RelatorioGerencialPDF';
+import OnboardingWizard, { useOnboarding } from '@/components/onboarding/OnboardingWizard';
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(v);
@@ -15,6 +17,7 @@ const formatCurrency = (v: number) =>
 export default function Index() {
   const { empresaAtiva, todasSelecionadas } = useEmpresa();
   const { kpis, chartMensal, chartValor, loading } = useDashboardData();
+  const { showOnboarding, dismissOnboarding } = useOnboarding();
 
   const empresaLabel = todasSelecionadas
     ? 'Todas as Empresas'
@@ -29,7 +32,10 @@ export default function Index() {
             Resultados de: <span className="font-medium text-foreground">{empresaLabel}</span>
           </p>
         </div>
-        <EmpresaSelector />
+        <div className="flex items-center gap-2">
+          <RelatorioGerencialPDF />
+          <EmpresaSelector />
+        </div>
       </div>
 
       {/* KPI Grid */}
@@ -58,6 +64,7 @@ export default function Index() {
         <LicitacoesChart data={chartMensal} />
         <ValorChart data={chartValor} />
       </div>
+      <OnboardingWizard open={showOnboarding} onClose={dismissOnboarding} />
     </AppLayout>
   );
 }
