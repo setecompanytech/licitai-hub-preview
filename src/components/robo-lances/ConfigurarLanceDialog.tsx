@@ -280,6 +280,14 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
 
       setItens(importedItems);
 
+      // Auto-detect dispute type
+      const uniqueLotes = [...new Set(importedItems.map(i => i.lote))].filter(l => l && l !== 'Único');
+      if (uniqueLotes.length > 1 || (uniqueLotes.length === 1 && importedItems.filter(i => i.lote === uniqueLotes[0]).length > 1)) {
+        setTipoDisputa('lote');
+      } else {
+        setTipoDisputa('item');
+      }
+
       // Auto-suggest initial and minimum values (95% and 80% of reference)
       if (importedItems.length > 0) {
         const total = importedItems.reduce((s, i) => s + (i.valorReferencia * i.quantidade), 0);
@@ -389,6 +397,14 @@ ${truncated}`
 
             setItens(extractedItems);
 
+            // Auto-detect dispute type from lotes
+            const uniqueLotes = [...new Set(extractedItems.map(i => i.lote))].filter(l => l && l !== 'Único');
+            if (uniqueLotes.length > 1 || (uniqueLotes.length === 1 && extractedItems.filter(i => i.lote === uniqueLotes[0]).length > 1)) {
+              setTipoDisputa('lote');
+            } else {
+              setTipoDisputa('item');
+            }
+
             // Auto-suggest initial and minimum values
             const total = extractedItems.reduce((s, i) => s + (i.valorReferencia * i.quantidade), 0);
             if (total > 0) {
@@ -482,6 +498,11 @@ ${truncated}`
   const formatCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const lotes = [...new Set(itens.map(i => i.lote))].filter(Boolean);
+
+  const handleRemoveLote = (lote: string) => {
+    setItens(prev => prev.filter(i => i.lote !== lote).map((item, idx) => ({ ...item, numero: idx + 1 })));
+    toast.info(`Lote "${lote}" removido com todos os seus itens.`);
+  };
 
   // Filter licitações
   const statusOptions = ['todos', ...new Set(licitacoes.map(l => l.status))];
@@ -837,6 +858,11 @@ ${truncated}`
             <div className="space-y-3">
               <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <Layers className="w-4 h-4 text-accent" /> Tipo de Disputa
+                {(licitacaoIdRef || editalFile) && (
+                  <Badge variant="outline" className="text-[9px] bg-info/10 text-info border-info/30 ml-1">
+                    Detectado automaticamente
+                  </Badge>
+                )}
               </h4>
               <div className="flex gap-3">
                 <button
@@ -859,7 +885,7 @@ ${truncated}`
               <p className="text-[11px] text-muted-foreground">
                 {tipoDisputa === 'item'
                   ? 'Cada item será disputado individualmente. Os lances são enviados item a item.'
-                  : 'Os itens são agrupados em lotes. O lance é enviado para o lote como um todo.'}
+                  : 'Os itens são agrupados em lotes. O lance é enviado para o lote como um todo. Remova lotes ou itens que não deseja disputar.'}
               </p>
             </div>
 
@@ -917,46 +943,107 @@ ${truncated}`
                   )}
                 </div>
 
-                <div className="border border-border rounded-lg overflow-hidden max-h-44 overflow-y-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead className="text-[10px] w-10 text-center">Nº</TableHead>
-                        <TableHead className="text-[10px]">Descrição</TableHead>
-                        <TableHead className="text-[10px] text-center">Qtd</TableHead>
-                        <TableHead className="text-[10px] text-center">Unid.</TableHead>
-                        {tipoDisputa === 'lote' && <TableHead className="text-[10px]">Lote</TableHead>}
-                        <TableHead className="text-[10px] text-right">Vlr Unit.</TableHead>
-                        <TableHead className="text-[10px] text-right">Vlr Total</TableHead>
-                        <TableHead className="text-[10px] w-10" />
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {itens.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="text-xs text-center font-medium">{item.numero}</TableCell>
-                          <TableCell className="text-xs max-w-[160px] truncate">{item.descricao}</TableCell>
-                          <TableCell className="text-xs text-center">{item.quantidade}</TableCell>
-                          <TableCell className="text-xs text-center">{item.unidade}</TableCell>
-                          {tipoDisputa === 'lote' && (
-                            <TableCell><Badge variant="outline" className="text-[9px]">{item.lote}</Badge></TableCell>
-                          )}
-                          <TableCell className="text-xs text-right font-mono">
-                            {item.valorReferencia > 0 ? formatCurrency(item.valorReferencia) : '—'}
-                          </TableCell>
-                          <TableCell className="text-xs text-right font-mono font-semibold">
-                            {item.valorReferencia > 0 ? formatCurrency(item.valorReferencia * item.quantidade) : '—'}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={() => handleRemoveItem(item.id)}>
-                              <Trash2 className="w-3 h-3" />
+                {tipoDisputa === 'lote' && lotes.length > 0 ? (
+                  /* Grouped by lote view */
+                  <div className="space-y-3">
+                    {lotes.map((lote) => {
+                      const loteItens = itens.filter(i => i.lote === lote);
+                      const loteTotal = loteItens.reduce((s, i) => s + (i.valorReferencia * i.quantidade), 0);
+                      return (
+                        <div key={lote} className="border border-border rounded-lg overflow-hidden">
+                          <div className="flex items-center justify-between bg-muted/60 px-3 py-1.5 border-b border-border">
+                            <div className="flex items-center gap-2">
+                              <Layers className="w-3.5 h-3.5 text-accent" />
+                              <span className="text-xs font-bold text-foreground">{lote}</span>
+                              <Badge variant="outline" className="text-[9px]">{loteItens.length} {loteItens.length === 1 ? 'item' : 'itens'}</Badge>
+                              <span className="text-[10px] font-mono text-muted-foreground">{formatCurrency(loteTotal)}</span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-[10px] text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleRemoveLote(lote)}
+                            >
+                              <Trash2 className="w-3 h-3 mr-1" /> Remover Lote
                             </Button>
-                          </TableCell>
+                          </div>
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/30">
+                                <TableHead className="text-[10px] w-10 text-center">Nº</TableHead>
+                                <TableHead className="text-[10px]">Descrição</TableHead>
+                                <TableHead className="text-[10px] text-center">Qtd</TableHead>
+                                <TableHead className="text-[10px] text-center">Unid.</TableHead>
+                                <TableHead className="text-[10px] text-right">Vlr Unit.</TableHead>
+                                <TableHead className="text-[10px] text-right">Vlr Total</TableHead>
+                                <TableHead className="text-[10px] w-10" />
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {loteItens.map((item) => (
+                                <TableRow key={item.id}>
+                                  <TableCell className="text-xs text-center font-medium">{item.numero}</TableCell>
+                                  <TableCell className="text-xs max-w-[180px] truncate">{item.descricao}</TableCell>
+                                  <TableCell className="text-xs text-center">{item.quantidade}</TableCell>
+                                  <TableCell className="text-xs text-center">{item.unidade}</TableCell>
+                                  <TableCell className="text-xs text-right font-mono">
+                                    {item.valorReferencia > 0 ? formatCurrency(item.valorReferencia) : '—'}
+                                  </TableCell>
+                                  <TableCell className="text-xs text-right font-mono font-semibold">
+                                    {item.valorReferencia > 0 ? formatCurrency(item.valorReferencia * item.quantidade) : '—'}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={() => handleRemoveItem(item.id)}>
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* Flat item view */
+                  <div className="border border-border rounded-lg overflow-hidden max-h-44 overflow-y-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="text-[10px] w-10 text-center">Nº</TableHead>
+                          <TableHead className="text-[10px]">Descrição</TableHead>
+                          <TableHead className="text-[10px] text-center">Qtd</TableHead>
+                          <TableHead className="text-[10px] text-center">Unid.</TableHead>
+                          <TableHead className="text-[10px] text-right">Vlr Unit.</TableHead>
+                          <TableHead className="text-[10px] text-right">Vlr Total</TableHead>
+                          <TableHead className="text-[10px] w-10" />
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {itens.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="text-xs text-center font-medium">{item.numero}</TableCell>
+                            <TableCell className="text-xs max-w-[160px] truncate">{item.descricao}</TableCell>
+                            <TableCell className="text-xs text-center">{item.quantidade}</TableCell>
+                            <TableCell className="text-xs text-center">{item.unidade}</TableCell>
+                            <TableCell className="text-xs text-right font-mono">
+                              {item.valorReferencia > 0 ? formatCurrency(item.valorReferencia) : '—'}
+                            </TableCell>
+                            <TableCell className="text-xs text-right font-mono font-semibold">
+                              {item.valorReferencia > 0 ? formatCurrency(item.valorReferencia * item.quantidade) : '—'}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={() => handleRemoveItem(item.id)}>
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </div>
             )}
 
