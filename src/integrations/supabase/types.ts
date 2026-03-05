@@ -1480,6 +1480,7 @@ export type Database = {
           data_abertura: string | null
           data_encerramento: string | null
           data_homologacao: string | null
+          empresa_id: string | null
           id: string
           modalidade: string
           municipio: string | null
@@ -1504,6 +1505,7 @@ export type Database = {
           data_abertura?: string | null
           data_encerramento?: string | null
           data_homologacao?: string | null
+          empresa_id?: string | null
           id?: string
           modalidade?: string
           municipio?: string | null
@@ -1528,6 +1530,7 @@ export type Database = {
           data_abertura?: string | null
           data_encerramento?: string | null
           data_homologacao?: string | null
+          empresa_id?: string | null
           id?: string
           modalidade?: string
           municipio?: string | null
@@ -1546,7 +1549,15 @@ export type Database = {
           valor_estimado?: number | null
           vencedor?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "licitacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       monitoramento_editais: {
         Row: {
