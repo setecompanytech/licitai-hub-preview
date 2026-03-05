@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.capag-analysis]
 verify_jwt = false
+
+[functions.alertas-inteligentes]
+verify_jwt = false
