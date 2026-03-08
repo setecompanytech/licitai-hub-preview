@@ -289,8 +289,8 @@ ${truncated}`
   // Build AI context with modality info and generate
   const handleGerar = async () => {
     if (!activeModelo) return;
-    if (!contexto.trim()) {
-      toast.error('Descreva o contexto e fundamentação do pedido');
+    if (!contexto.trim() && fatosPeticao.length === 0) {
+      toast.error('Descreva o contexto ou anexe documentos para extração de fatos');
       return;
     }
     setGerando(true);
