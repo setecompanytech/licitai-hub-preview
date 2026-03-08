@@ -32,6 +32,9 @@ export interface PropostaDownloadProps {
     nome_fantasia?: string;
     inscricao_estadual?: string;
     inscricao_municipal?: string;
+    certificado_nome?: string | null;
+    certificado_tipo?: string | null;
+    certificado_path?: string | null;
   } | null;
   repData?: {
     nome?: string;
@@ -117,19 +120,52 @@ export default function PropostaDownload({
   empresaData, repData, bancData, itens, licitacaoData, telefone, email
 }: PropostaDownloadProps) {
 
-  const handlePDF = (orientation: 'portrait' | 'landscape' = 'portrait') => {
+  const handlePDF = async (orientation: 'portrait' | 'landscape' = 'portrait') => {
     try {
       const doc = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      const mL = 30, mR = 20, mT = 30, mB = 20;
+      const mL = 30, mR = 20, mB = 20;
       const maxW = pageWidth - mL - mR;
       const lh = 6.35;
+
+      // Load timbrado image if available
+      let timbradoImg: HTMLImageElement | null = null;
+      let timbradoAspect = 1;
+      if (timbradoUrl && /\.(png|jpe?g|webp)(\?|$)/i.test(timbradoUrl)) {
+        try {
+          timbradoImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = timbradoUrl;
+          });
+          timbradoAspect = timbradoImg.width / timbradoImg.height;
+        } catch { timbradoImg = null; }
+      }
+
+      const headerH = timbradoImg ? 22 : 0;
+      const mT = 30 + headerH;
       let y = mT;
+
+      // Function to draw timbrado header on current page
+      const drawTimbrado = () => {
+        if (!timbradoImg) return;
+        const imgW = maxW;
+        const imgH = imgW / timbradoAspect;
+        const finalH = Math.min(imgH, 20);
+        const finalW = finalH * timbradoAspect;
+        doc.addImage(timbradoImg, 'PNG', mL, 8, finalW, finalH);
+      };
+
+      // Draw on first page
+      drawTimbrado();
 
       const checkPage = (needed: number = lh * 2) => {
         if (y + needed > pageHeight - mB) {
           doc.addPage();
+          drawTimbrado();
           y = mT;
         }
       };
@@ -224,7 +260,7 @@ export default function PropostaDownload({
       }
 
       // ========== ASSINATURA ==========
-      checkPage(lh * 8);
+      checkPage(lh * 12);
       y += lh * 2;
       doc.setDrawColor(0);
       doc.setLineWidth(0.3);
@@ -245,6 +281,44 @@ export default function PropostaDownload({
       doc.text(`CPF: ${repData?.cpf || ''}`, pageWidth / 2, y, { align: 'center' });
       y += lh * 0.8;
       doc.text((repData?.cargo || '').toUpperCase(), pageWidth / 2, y, { align: 'center' });
+
+      // ========== ASSINATURA DIGITAL (Certificado) ==========
+      if (empresaData && (empresaData as any).certificado_nome) {
+        y += lh * 2;
+        checkPage(lh * 6);
+        
+        // Box de assinatura digital
+        const boxX = mL + 15;
+        const boxW = maxW - 30;
+        const boxH = lh * 4;
+        doc.setDrawColor(0, 128, 80);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(boxX, y, boxW, boxH, 2, 2, 'S');
+        
+        y += lh * 0.8;
+        doc.setFont('times', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(0, 100, 60);
+        doc.text('✓ DOCUMENTO ASSINADO DIGITALMENTE', pageWidth / 2, y + 2, { align: 'center' });
+        y += lh;
+        doc.setFont('times', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(60, 60, 60);
+        const certTipo = (empresaData as any).certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF';
+        doc.text(`Certificado: ${certTipo} — ${(empresaData as any).certificado_nome}`, pageWidth / 2, y + 2, { align: 'center' });
+        y += lh * 0.8;
+        doc.text(`Assinante: ${repData?.nome || ''} | CPF: ${repData?.cpf || ''}`, pageWidth / 2, y + 2, { align: 'center' });
+        y += lh * 0.8;
+        doc.text(`Data/Hora: ${new Date().toLocaleString('pt-BR')}`, pageWidth / 2, y + 2, { align: 'center' });
+        doc.setTextColor(0, 0, 0);
+      }
+
+      // Timbrado as footer on all pages
+      const totalPages = doc.getNumberOfPages();
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        if (p > 1) drawTimbrado();
+      }
 
       doc.save(`${getFilename(numeroLicitacao)}.pdf`);
       toast.success('PDF gerado com sucesso!');
@@ -294,16 +368,31 @@ export default function PropostaDownload({
       }
 
       // Signature
+      const certInfo = (empresaData as any)?.certificado_nome ? `
+        <div style="margin-top:24pt;border:2px solid #008050;border-radius:6pt;padding:12pt;text-align:center">
+          <p style="font-weight:bold;color:#006440;font-size:10pt;margin:0 0 4pt 0;text-indent:0">✓ DOCUMENTO ASSINADO DIGITALMENTE</p>
+          <p style="font-size:9pt;color:#444;margin:0 0 2pt 0;text-indent:0">Certificado: ${(empresaData as any)?.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF'} — ${(empresaData as any)?.certificado_nome}</p>
+          <p style="font-size:9pt;color:#444;margin:0 0 2pt 0;text-indent:0">Assinante: ${repData?.nome || ''} | CPF: ${repData?.cpf || ''}</p>
+          <p style="font-size:9pt;color:#444;margin:0;text-indent:0">Data/Hora: ${new Date().toLocaleString('pt-BR')}</p>
+        </div>
+      ` : '';
+
       const signature = `
         <div style="text-align:center;margin-top:36pt">
           <div style="width:200pt;border-bottom:2px solid #333;margin:0 auto 6pt auto"></div>
-          <p style="font-weight:bold">${(empresaData?.razao_social || '').toUpperCase()}</p>
-          <p style="font-size:10pt">CNPJ: ${empresaData?.cnpj || ''}</p>
-          <p>${(repData?.nome || '').toUpperCase()}</p>
-          <p style="font-size:10pt">CPF: ${repData?.cpf || ''}</p>
-          <p style="font-size:10pt">${(repData?.cargo || '').toUpperCase()}</p>
+          <p style="font-weight:bold;text-indent:0">${(empresaData?.razao_social || '').toUpperCase()}</p>
+          <p style="font-size:10pt;text-indent:0">CNPJ: ${empresaData?.cnpj || ''}</p>
+          <p style="text-indent:0">${(repData?.nome || '').toUpperCase()}</p>
+          <p style="font-size:10pt;text-indent:0">CPF: ${repData?.cpf || ''}</p>
+          <p style="font-size:10pt;text-indent:0">${(repData?.cargo || '').toUpperCase()}</p>
         </div>
+        ${certInfo}
       `;
+
+      // Timbrado header for Word
+      const timbradoHeader = timbradoUrl && /\.(png|jpe?g|webp)(\?|$)/i.test(timbradoUrl)
+        ? `<div style="text-align:center;margin-bottom:12pt"><img src="${timbradoUrl}" style="max-height:60pt;max-width:100%" /></div>`
+        : '';
 
       const htmlContent = `
         <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
@@ -317,6 +406,7 @@ export default function PropostaDownload({
           table { page-break-inside: avoid; }
         </style></head>
         <body>
+          ${timbradoHeader}
           ${bodyHtml}${signature}
         </body></html>
       `;

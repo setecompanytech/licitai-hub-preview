@@ -197,7 +197,7 @@ function parseMarkdownToBlocks(markdown: string): TextBlock[] {
 /**
  * Export legal document as PDF following ABNT NBR 14724 standards.
  */
-export function exportLegalPDF(
+export async function exportLegalPDF(
   content: string,
   title: string,
   metadata?: {
@@ -206,14 +206,47 @@ export function exportLegalPDF(
     edital?: string;
     modalidade?: string;
     fundamentacao?: string;
+    timbradoUrl?: string | null;
+    certificado_nome?: string | null;
+    certificado_tipo?: string | null;
+    rep_nome?: string;
+    rep_cpf?: string;
   }
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const contentWidth = getContentWidth();
   const blocks = parseMarkdownToBlocks(content);
 
-  let y = LEGAL_LAYOUT.marginTop;
-  let pageNum = 1;
+  // Load timbrado image if available
+  let timbradoImg: HTMLImageElement | null = null;
+  let timbradoAspect = 1;
+  if (metadata?.timbradoUrl && /\.(png|jpe?g|webp)(\?|$)/i.test(metadata.timbradoUrl)) {
+    try {
+      timbradoImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = metadata.timbradoUrl!;
+      });
+      timbradoAspect = timbradoImg.width / timbradoImg.height;
+    } catch { timbradoImg = null; }
+  }
+
+  const headerH = timbradoImg ? 22 : 0;
+
+  const drawTimbrado = () => {
+    if (!timbradoImg) return;
+    const imgW = contentWidth;
+    const imgH = imgW / timbradoAspect;
+    const finalH = Math.min(imgH, 20);
+    const finalW = finalH * timbradoAspect;
+    doc.addImage(timbradoImg, 'PNG', LEGAL_LAYOUT.marginLeft, 8, finalW, finalH);
+  };
+
+  drawTimbrado();
+
+  let y = LEGAL_LAYOUT.marginTop + headerH;
   let listCounter = 0;
 
   // ── Document Header ──
@@ -363,19 +396,47 @@ export function exportLegalPDF(
     }
   }
 
-  // ── Header (paginação) e Rodapé em cada página ──
+  // ── Digital Signature Block ──
+  if (metadata?.certificado_nome) {
+    y = ensureSpace(doc, y, LEGAL_LAYOUT.lineHeight * 6);
+    y += LEGAL_LAYOUT.lineHeight * 2;
+    
+    const boxX = LEGAL_LAYOUT.marginLeft + 15;
+    const boxW = contentWidth - 30;
+    const boxH = LEGAL_LAYOUT.lineHeight * 4;
+    doc.setDrawColor(0, 128, 80);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(boxX, y, boxW, boxH, 2, 2, 'S');
+    
+    y += LEGAL_LAYOUT.lineHeight * 0.8;
+    doc.setFont('times', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(0, 100, 60);
+    doc.text('✓ DOCUMENTO ASSINADO DIGITALMENTE', getPageWidth(doc) / 2, y + 2, { align: 'center' });
+    y += LEGAL_LAYOUT.lineHeight;
+    doc.setFont('times', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(60, 60, 60);
+    const certTipo = metadata.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF';
+    doc.text(`Certificado: ${certTipo} — ${metadata.certificado_nome}`, getPageWidth(doc) / 2, y + 2, { align: 'center' });
+    y += LEGAL_LAYOUT.lineHeight * 0.8;
+    doc.text(`Assinante: ${metadata.rep_nome || ''} | CPF: ${metadata.rep_cpf || ''}`, getPageWidth(doc) / 2, y + 2, { align: 'center' });
+    y += LEGAL_LAYOUT.lineHeight * 0.8;
+    doc.text(`Data/Hora: ${new Date().toLocaleString('pt-BR')}`, getPageWidth(doc) / 2, y + 2, { align: 'center' });
+    doc.setTextColor(...COLORS.text);
+  }
+
+  // ── Header (paginação), Timbrado e Rodapé em cada página ──
   const totalPages = doc.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p);
-    // ABNT: número da página no canto superior direito (a partir da 2ª página)
+    if (p > 1) drawTimbrado();
     drawPageNumber(doc, p, 2);
     
-    // Rodapé: linha fina + texto institucional DENTRO da margem inferior
     const ph = getPageHeight(doc);
     const footerLineY = ph - LEGAL_LAYOUT.marginBottom + 2;
     const footerTextY = footerLineY + 4;
 
-    // Só desenha se couber na página (segurança)
     if (footerTextY < ph - 2) {
       doc.setDrawColor(200, 200, 200);
       doc.setLineWidth(0.2);
@@ -411,6 +472,11 @@ export function exportLegalWord(
     edital?: string;
     modalidade?: string;
     fundamentacao?: string;
+    timbradoUrl?: string | null;
+    certificado_nome?: string | null;
+    certificado_tipo?: string | null;
+    rep_nome?: string;
+    rep_cpf?: string;
   }
 ) {
   const blocks = parseMarkdownToBlocks(content);
@@ -577,6 +643,11 @@ export function exportLegalWord(
 <div class="Section1">
 `;
 
+  // Timbrado header
+  if (metadata?.timbradoUrl && /\.(png|jpe?g|webp)(\?|$)/i.test(metadata.timbradoUrl)) {
+    html += `<div style="text-align:center;margin-bottom:12pt"><img src="${metadata.timbradoUrl}" style="max-height:60pt;max-width:100%" /></div>\n`;
+  }
+
   // Title
   html += `<h1>${escapeHtml(title)}</h1>\n`;
 
@@ -634,8 +705,20 @@ export function exportLegalWord(
 
   if (inList) html += `</ol>\n`;
 
+  // Digital signature block
+  if (metadata?.certificado_nome) {
+    const certTipo = metadata.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF';
+    html += `
+      <div style="margin-top:24pt;border:2px solid #008050;border-radius:6pt;padding:12pt;text-align:center">
+        <p class="no-indent" style="font-weight:bold;color:#006440;font-size:10pt;margin:0 0 4pt 0">&#10003; DOCUMENTO ASSINADO DIGITALMENTE</p>
+        <p class="no-indent" style="font-size:9pt;color:#444;margin:0 0 2pt 0">Certificado: ${certTipo} &mdash; ${escapeHtml(metadata.certificado_nome)}</p>
+        <p class="no-indent" style="font-size:9pt;color:#444;margin:0 0 2pt 0">Assinante: ${escapeHtml(metadata.rep_nome || '')} | CPF: ${escapeHtml(metadata.rep_cpf || '')}</p>
+        <p class="no-indent" style="font-size:9pt;color:#444;margin:0">Data/Hora: ${new Date().toLocaleString('pt-BR')}</p>
+      </div>\n`;
+  }
+
   // Close Section1 div (header/footer handled by Word mso-element directives)
-  html += `<div class="doc-footer">Documento gerado pela plataforma LicitaIA — ${new Date().toLocaleDateString('pt-BR')}</div>\n`;
+  html += `<div class="doc-footer">Documento gerado pela plataforma LicitaIA &mdash; ${new Date().toLocaleDateString('pt-BR')}</div>\n`;
   html += `</div><!-- /Section1 -->\n</body></html>`;
 
   // Download as .doc (Word opens HTML natively)

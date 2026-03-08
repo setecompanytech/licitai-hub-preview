@@ -1113,15 +1113,20 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
               <Button size="sm" variant="outline" onClick={copyToClipboard}>
                 <Copy className="w-3 h-3 mr-1" /> Copiar
               </Button>
-              <Button size="sm" variant="outline" className="gap-1" onClick={() => {
+              <Button size="sm" variant="outline" className="gap-1" onClick={async () => {
                 const meta = {
                   empresa: selectedEmpresa?.razao_social,
                   cnpj: selectedEmpresa?.cnpj,
                   edital: editalNum || undefined,
                   modalidade: modalidade?.nome,
                   fundamentacao: activeModelo?.fundamentacao,
+                  timbradoUrl: selectedEmpresa?.timbrado_url,
+                  certificado_nome: selectedEmpresa?.certificado_nome,
+                  certificado_tipo: selectedEmpresa?.certificado_tipo,
+                  rep_nome: selectedEmpresa?.rep_nome || undefined,
+                  rep_cpf: selectedEmpresa?.rep_cpf || undefined,
                 };
-                exportLegalPDF(resultado, activeModelo?.titulo || 'Documento Jurídico', meta);
+                await exportLegalPDF(resultado, activeModelo?.titulo || 'Documento Jurídico', meta);
                 toast.success('PDF ABNT gerado com sucesso!');
               }}>
                 <Download className="w-3 h-3" /> PDF (ABNT)
@@ -1133,6 +1138,11 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                   edital: editalNum || undefined,
                   modalidade: modalidade?.nome,
                   fundamentacao: activeModelo?.fundamentacao,
+                  timbradoUrl: selectedEmpresa?.timbrado_url,
+                  certificado_nome: selectedEmpresa?.certificado_nome,
+                  certificado_tipo: selectedEmpresa?.certificado_tipo,
+                  rep_nome: selectedEmpresa?.rep_nome || undefined,
+                  rep_cpf: selectedEmpresa?.rep_cpf || undefined,
                 };
                 exportLegalWord(resultado, activeModelo?.titulo || 'Documento Jurídico', meta);
                 toast.success('Word ABNT gerado com sucesso!');
