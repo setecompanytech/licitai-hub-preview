@@ -7,9 +7,11 @@ import QuickAccessGrid from '@/components/dashboard/QuickAccessGrid';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
-import { Eye, Send, Trophy, TrendingUp, DollarSign, Zap } from 'lucide-react';
+import { useAnalyticsData } from '@/hooks/useAnalyticsData';
+import { Eye, Send, Trophy, TrendingUp, DollarSign, Zap, XCircle, Clock, Gavel, FileCheck2 } from 'lucide-react';
 import RelatorioGerencialPDF from '@/components/relatorios/RelatorioGerencialPDF';
 import OnboardingWizard, { useOnboarding } from '@/components/onboarding/OnboardingWizard';
+import { useNavigate } from 'react-router-dom';
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(v);
@@ -17,7 +19,9 @@ const formatCurrency = (v: number) =>
 export default function Index() {
   const { empresaAtiva, todasSelecionadas } = useEmpresa();
   const { kpis, chartMensal, chartValor, loading } = useDashboardData();
+  const { kpis: analyticsKpis } = useAnalyticsData();
   const { showOnboarding, dismissOnboarding } = useOnboarding();
+  const navigate = useNavigate();
 
   const empresaLabel = todasSelecionadas
     ? 'Todas as Empresas'
@@ -38,14 +42,24 @@ export default function Index() {
         </div>
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6">
+      {/* KPI Grid — Principal */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-4">
         <StatCard label="Monitoradas" value={kpis.licitacoesMonitoradas.toString()} icon={Eye} />
         <StatCard label="Propostas" value={kpis.propostasEnviadas.toString()} icon={Send} />
         <StatCard label="Taxa de Vitória" value={`${kpis.taxaVitoria}%`} icon={Trophy} accentColor="hsl(142, 71%, 45%)" />
         <StatCard label="ROI Médio" value={`${kpis.roiMedio}%`} icon={TrendingUp} accentColor="hsl(38, 92%, 50%)" />
         <StatCard label="Valor Ganho" value={formatCurrency(kpis.valorTotalGanho)} icon={DollarSign} accentColor="hsl(210, 100%, 40%)" />
         <StatCard label="Novas Hoje" value={kpis.licitacoesHoje.toString()} icon={Zap} />
+      </div>
+
+      {/* KPI Grid — Detalhamento Processos (Realtime) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        <StatCard label="Ganhas" value={analyticsKpis.ganhas.toString()} icon={Trophy} accentColor="hsl(142, 71%, 45%)" change={`Pregões: ${analyticsKpis.pregoesGanhos} · Dispensas: ${analyticsKpis.dispensasGanhas}`} changeType="positive" />
+        <StatCard label="Perdidas" value={analyticsKpis.perdidas.toString()} icon={XCircle} accentColor="hsl(0, 72%, 51%)" />
+        <StatCard label="Em Andamento" value={analyticsKpis.emAndamento.toString()} icon={Clock} accentColor="hsl(38, 92%, 50%)" change={`${formatCurrency(analyticsKpis.valorEmDisputa)} em disputa`} changeType="neutral" />
+        <button onClick={() => navigate('/analytics')} className="text-left">
+          <StatCard label="Pregões / Dispensas" value={`${analyticsKpis.pregoes} / ${analyticsKpis.dispensas}`} icon={Gavel} accentColor="hsl(280, 60%, 50%)" change="Ver analytics completo →" changeType="neutral" />
+        </button>
       </div>
 
       {/* Acesso Rápido — Módulos */}
