@@ -35,7 +35,7 @@ export default function LandingFooter() {
           <h4 className="font-bold text-sm mb-4">Suporte</h4>
           <ul className="space-y-2.5 text-sm text-muted-foreground">
             <li><button onClick={() => navigate('/suporte')} className="hover:text-foreground transition-colors">Central de Ajuda</button></li>
-            <li><button onClick={() => navigate('/suporte')} className="hover:text-foreground transition-colors">Abrir Ticket</button></li>
+            <li><button onClick={() => navigate('/suporte')} className="hover:text-foreground transition-colors">Abrir Chamado</button></li>
             <li><button onClick={() => navigate('/ebook')} className="hover:text-foreground transition-colors">E-book Gratuito</button></li>
             <li><button onClick={() => navigate('/blog')} className="hover:text-foreground transition-colors">Blog</button></li>
           </ul>
