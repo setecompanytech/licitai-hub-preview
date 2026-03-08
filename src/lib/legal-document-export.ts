@@ -57,12 +57,16 @@ function getContentWidth() {
   return 210 - LEGAL_LAYOUT.marginLeft - LEGAL_LAYOUT.marginRight; // A4 = 210mm
 }
 
-function drawPageNumber(doc: jsPDF, pageNum: number) {
+function drawPageNumber(doc: jsPDF, pageNum: number, startFrom: number = 2) {
+  // ABNT NBR 14724: paginação no canto superior direito, fonte 10pt
+  // Primeira página é contada mas não numerada
+  if (pageNum < startFrom) return;
   const pw = getPageWidth(doc);
   doc.setFont('times', 'normal');
-  doc.setFontSize(LEGAL_LAYOUT.bodyFontSize);
+  doc.setFontSize(LEGAL_LAYOUT.footnoteSize); // 10pt conforme ABNT
   doc.setTextColor(...COLORS.text);
-  doc.text(String(pageNum), pw - LEGAL_LAYOUT.marginRight, LEGAL_LAYOUT.marginTop - 10, { align: 'right' });
+  // Posição: canto superior direito, dentro da margem superior (a 15mm do topo)
+  doc.text(String(pageNum), pw - LEGAL_LAYOUT.marginRight, 15, { align: 'right' });
 }
 
 function ensureSpace(doc: jsPDF, y: number, needed: number): number {
