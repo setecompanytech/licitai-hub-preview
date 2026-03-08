@@ -261,7 +261,8 @@ export function exportLegalPDF(
         const tLines = doc.splitTextToSize(block.content.toUpperCase(), contentWidth);
         for (const l of tLines) {
           y = ensureSpace(doc, y, LEGAL_LAYOUT.lineHeight);
-          doc.text(l, LEGAL_LAYOUT.marginLeft, y);
+          // ABNT: títulos centralizados
+          doc.text(l, getPageWidth(doc) / 2, y, { align: 'center' });
           y += LEGAL_LAYOUT.lineHeight;
         }
         y += 2;
