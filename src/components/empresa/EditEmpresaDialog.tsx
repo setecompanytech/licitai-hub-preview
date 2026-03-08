@@ -53,6 +53,7 @@ export default function EditEmpresaDialog({ empresa, open, onOpenChange, onSucce
   const [inscricaoMunicipal, setInscricaoMunicipal] = useState('');
   const [loading, setLoading] = useState(false);
   const [buscando, setBuscando] = useState(false);
+  const [timbradoUrl, setTimbradoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (empresa) {
