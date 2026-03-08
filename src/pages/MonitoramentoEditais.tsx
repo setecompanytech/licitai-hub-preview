@@ -170,18 +170,23 @@ export default function MonitoramentoEditais() {
         </div>
 
         <Tabs defaultValue="licitacoes" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="licitacoes">
               <List className="w-4 h-4 mr-1" />
               Licitações
             </TabsTrigger>
-
-
+            <TabsTrigger value="dispensa">
+              <Zap className="w-4 h-4 mr-1" />
+              Dispensa Eletrônica
+            </TabsTrigger>
             <TabsTrigger value="diarios">
               <Newspaper className="w-4 h-4 mr-1" />
               Diários Oficiais
             </TabsTrigger>
-            <TabsTrigger value="portais">Portais Monitorados</TabsTrigger>
+            <TabsTrigger value="portais">
+              <Globe className="w-4 h-4 mr-1" />
+              Portais ({portaisMonitorados.length})
+            </TabsTrigger>
             <TabsTrigger value="config">Configuração de Pesquisa</TabsTrigger>
           </TabsList>
 
