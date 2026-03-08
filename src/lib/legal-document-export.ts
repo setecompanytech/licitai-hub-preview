@@ -472,6 +472,11 @@ export function exportLegalWord(
     edital?: string;
     modalidade?: string;
     fundamentacao?: string;
+    timbradoUrl?: string | null;
+    certificado_nome?: string | null;
+    certificado_tipo?: string | null;
+    rep_nome?: string;
+    rep_cpf?: string;
   }
 ) {
   const blocks = parseMarkdownToBlocks(content);
