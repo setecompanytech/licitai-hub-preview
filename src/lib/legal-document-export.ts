@@ -73,6 +73,37 @@ function ensureSpace(doc: jsPDF, y: number, needed: number): number {
 }
 
 /**
+ * Justify a single line of text by distributing extra space between words.
+ * Last line of a paragraph is left-aligned (standard typographic rule).
+ */
+function drawJustifiedLine(doc: jsPDF, text: string, x: number, y: number, maxWidth: number, isLastLine: boolean) {
+  if (isLastLine || !text.trim()) {
+    doc.text(text, x, y);
+    return;
+  }
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length <= 1) {
+    doc.text(text, x, y);
+    return;
+  }
+  const totalTextWidth = words.reduce((sum, w) => sum + doc.getTextWidth(w), 0);
+  const totalSpace = maxWidth - totalTextWidth;
+  const spacePerGap = totalSpace / (words.length - 1);
+
+  // Avoid absurd spacing (fallback to normal if text is too short)
+  if (spacePerGap > 8) {
+    doc.text(text, x, y);
+    return;
+  }
+
+  let curX = x;
+  for (let i = 0; i < words.length; i++) {
+    doc.text(words[i], curX, y);
+    curX += doc.getTextWidth(words[i]) + spacePerGap;
+  }
+}
+
+/**
  * Parse markdown-like legal text into structured blocks for PDF rendering.
  */
 interface TextBlock {
@@ -230,7 +261,8 @@ export function exportLegalPDF(
         const tLines = doc.splitTextToSize(block.content.toUpperCase(), contentWidth);
         for (const l of tLines) {
           y = ensureSpace(doc, y, LEGAL_LAYOUT.lineHeight);
-          doc.text(l, LEGAL_LAYOUT.marginLeft, y);
+          // ABNT: títulos centralizados
+          doc.text(l, getPageWidth(doc) / 2, y, { align: 'center' });
           y += LEGAL_LAYOUT.lineHeight;
         }
         y += 2;
@@ -260,13 +292,19 @@ export function exportLegalPDF(
         doc.setFont('times', 'normal');
         doc.setFontSize(LEGAL_LAYOUT.bodyFontSize);
         doc.setTextColor(...COLORS.text);
-        // ABNT: justified, 1.25cm paragraph indent
-        const pWidth = contentWidth - LEGAL_LAYOUT.paragraphIndent + LEGAL_LAYOUT.marginLeft - LEGAL_LAYOUT.marginLeft;
-        const pLines = doc.splitTextToSize(block.content, contentWidth);
+        // ABNT: recuo 1,25cm na primeira linha; largura disponível reduzida
+        const pWidthFirst = contentWidth - LEGAL_LAYOUT.paragraphIndent;
+        const pWidthRest = contentWidth;
+        // Split using the narrower width to ensure no overflow on first line
+        const pLines = doc.splitTextToSize(block.content, pWidthFirst);
         for (let li = 0; li < pLines.length; li++) {
           y = ensureSpace(doc, y, LEGAL_LAYOUT.lineHeight);
-          const xPos = li === 0 ? LEGAL_LAYOUT.marginLeft + LEGAL_LAYOUT.paragraphIndent : LEGAL_LAYOUT.marginLeft;
-          doc.text(pLines[li], xPos, y);
+          const isFirstLine = li === 0;
+          const isLastLine = li === pLines.length - 1;
+          const xPos = isFirstLine ? LEGAL_LAYOUT.marginLeft + LEGAL_LAYOUT.paragraphIndent : LEGAL_LAYOUT.marginLeft;
+          const lineWidth = isFirstLine ? pWidthFirst : pWidthRest;
+          // ABNT: texto justificado
+          drawJustifiedLine(doc, pLines[li], xPos, y, lineWidth, isLastLine);
           y += LEGAL_LAYOUT.lineHeight;
         }
         y += 2;
@@ -280,11 +318,12 @@ export function exportLegalPDF(
         doc.setFont('times', 'italic');
         doc.setFontSize(LEGAL_LAYOUT.citationFontSize);
         doc.setTextColor(...COLORS.muted);
-        const citWidth = contentWidth - (LEGAL_LAYOUT.citationIndent - LEGAL_LAYOUT.marginLeft);
+        const citWidth = getPageWidth(doc) - LEGAL_LAYOUT.marginRight - LEGAL_LAYOUT.citationIndent;
         const cLines = doc.splitTextToSize(block.content, citWidth);
-        for (const l of cLines) {
+        for (let ci = 0; ci < cLines.length; ci++) {
           y = ensureSpace(doc, y, LEGAL_LAYOUT.citationLineHeight);
-          doc.text(l, LEGAL_LAYOUT.citationIndent, y);
+          const isLastCit = ci === cLines.length - 1;
+          drawJustifiedLine(doc, cLines[ci], LEGAL_LAYOUT.citationIndent, y, citWidth, isLastCit);
           y += LEGAL_LAYOUT.citationLineHeight;
         }
         y += 4;
@@ -301,9 +340,10 @@ export function exportLegalPDF(
         const itemText = prefix + block.content;
         const itemWidth = contentWidth - LEGAL_LAYOUT.paragraphIndent;
         const iLines = doc.splitTextToSize(itemText, itemWidth);
-        for (const l of iLines) {
+        for (let il = 0; il < iLines.length; il++) {
           y = ensureSpace(doc, y, LEGAL_LAYOUT.lineHeight);
-          doc.text(l, LEGAL_LAYOUT.marginLeft + LEGAL_LAYOUT.paragraphIndent, y);
+          const isLastItem = il === iLines.length - 1;
+          drawJustifiedLine(doc, iLines[il], LEGAL_LAYOUT.marginLeft + LEGAL_LAYOUT.paragraphIndent, y, itemWidth, isLastItem);
           y += LEGAL_LAYOUT.lineHeight;
         }
         y += 1;
