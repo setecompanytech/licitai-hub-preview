@@ -91,6 +91,128 @@ export default function ModelosTemplatesTab() {
 
   const modalidade = MODALIDADES.find(m => m.id === modalidadeId) || null;
 
+  // Handle edital upload and AI extraction
+  const handleEditalUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowedTypes = ['application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!allowedTypes.includes(file.type) && !file.name.endsWith('.txt')) {
+      toast.error('Formato inválido. Use PDF, DOC, DOCX ou TXT.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo 10MB.');
+      return;
+    }
+    setEditalUploadFile(file);
+    setEditalExtracted(false);
+    setExtractedEditalContext('');
+  };
+
+  const handleExtractEdital = async () => {
+    if (!editalUploadFile) return;
+    setExtractingEdital(true);
+
+    const text = await editalUploadFile.text();
+    const truncated = text.slice(0, 20000);
+    let content = '';
+
+    const modalidadeNames = MODALIDADES.map(m => m.id + '=' + m.nome).join(', ');
+
+    await streamAIChat({
+      messages: [{
+        role: 'user',
+        content: `Analise o Edital abaixo e extraia as informações no formato JSON:
+
+{
+  "modalidade_id": "ID da modalidade entre: ${modalidadeNames}",
+  "numero_licitacao": "número completo do pregão/licitação",
+  "orgao": "órgão licitante",
+  "objeto": "descrição do objeto",
+  "criterio_julgamento": "critério de julgamento identificado (menor preço, melhor técnica, etc)",
+  "modo_disputa": "modo de disputa (aberto, fechado, aberto e fechado)",
+  "etapa_atual": "etapa atual do processo se identificável",
+  "me_epp": "informações sobre tratamento diferenciado para ME/EPP",
+  "valor_estimado": "valor estimado se disponível",
+  "prazo_validade": "prazo de validade da proposta",
+  "resumo_edital": "resumo executivo do edital em até 200 palavras"
+}
+
+REGRAS:
+- Identifique a modalidade exata (Pregão Eletrônico, Concorrência, Concurso, Leilão, Diálogo Competitivo, Dispensa Eletrônica)
+- Se não encontrar um campo, use string vazia ""
+- Retorne APENAS o JSON válido, sem explicações
+
+TEXTO DO EDITAL:
+${truncated}`
+      }],
+      action: 'analise_edital',
+      onDelta: (chunk) => { content += chunk; },
+      onDone: () => {
+        try {
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const data = JSON.parse(jsonMatch[0]);
+
+            // Auto-fill modalidade
+            if (data.modalidade_id) {
+              const found = MODALIDADES.find(m => m.id === data.modalidade_id);
+              if (found) {
+                setModalidadeId(found.id);
+                // Try to match criteria
+                if (data.criterio_julgamento) {
+                  const criterioMatch = found.criteriosJulgamento.find(c =>
+                    c.nome.toLowerCase().includes(data.criterio_julgamento.toLowerCase()) ||
+                    data.criterio_julgamento.toLowerCase().includes(c.nome.toLowerCase())
+                  );
+                  if (criterioMatch) setCriterioFiltro(criterioMatch.id);
+                }
+              }
+            }
+
+            // Auto-fill edital number
+            if (data.numero_licitacao) setEditalNum(data.numero_licitacao);
+
+            // Build extracted context for AI generation
+            let ctx = '';
+            if (data.orgao) ctx += `Órgão: ${data.orgao}\n`;
+            if (data.objeto) ctx += `Objeto: ${data.objeto}\n`;
+            if (data.valor_estimado) ctx += `Valor estimado: ${data.valor_estimado}\n`;
+            if (data.prazo_validade) ctx += `Prazo validade: ${data.prazo_validade}\n`;
+            if (data.modo_disputa) ctx += `Modo de disputa: ${data.modo_disputa}\n`;
+            if (data.me_epp) ctx += `ME/EPP: ${data.me_epp}\n`;
+            if (data.resumo_edital) ctx += `\nResumo: ${data.resumo_edital}\n`;
+            setExtractedEditalContext(ctx);
+
+            // Pre-fill contexto if empty
+            if (!contexto && data.resumo_edital) {
+              setContexto(data.resumo_edital);
+            }
+
+            setEditalExtracted(true);
+            toast.success('Dados do edital extraídos com sucesso!');
+          } else {
+            toast.error('Não foi possível extrair dados estruturados do edital.');
+          }
+        } catch {
+          toast.error('Erro ao processar dados do edital.');
+        }
+        setExtractingEdital(false);
+      },
+      onError: (err) => {
+        toast.error(err);
+        setExtractingEdital(false);
+      },
+    });
+  };
+
+  const removeEditalUpload = () => {
+    setEditalUploadFile(null);
+    setEditalExtracted(false);
+    setExtractedEditalContext('');
+    if (editalFileRef.current) editalFileRef.current.value = '';
+  };
+
   // Load research data
   useEffect(() => {
     if (!user) return;
