@@ -74,6 +74,24 @@ export default function ModelosTemplatesTab() {
   const [editalExtracted, setEditalExtracted] = useState(false);
   const [extractedEditalContext, setExtractedEditalContext] = useState('');
 
+  // Empresa / Representante Legal
+  const { empresas } = useEmpresa();
+  const [selectedEmpresaId, setSelectedEmpresaId] = useState<string | null>(null);
+  const [incluirDadosEmpresa, setIncluirDadosEmpresa] = useState(true);
+  const [incluirRepresentante, setIncluirRepresentante] = useState(true);
+
+  const selectedEmpresa = useMemo(() => {
+    if (!selectedEmpresaId) return empresas.length === 1 ? empresas[0]?.empresa : null;
+    return empresas.find(e => e.empresa_id === selectedEmpresaId)?.empresa || null;
+  }, [selectedEmpresaId, empresas]);
+
+  // Auto-select if only one empresa
+  useEffect(() => {
+    if (empresas.length === 1 && !selectedEmpresaId) {
+      setSelectedEmpresaId(empresas[0].empresa_id);
+    }
+  }, [empresas, selectedEmpresaId]);
+
   // Research data
   const [indices, setIndices] = useState<Indice[]>([]);
   const [ccts, setCcts] = useState<CCT[]>([]);
