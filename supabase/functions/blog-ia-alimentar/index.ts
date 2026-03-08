@@ -148,10 +148,33 @@ ${tcuContext ? `\nJURISPRUDÊNCIA TCU:\n${tcuContext}` : ''}
 Retorne APENAS um JSON array com objetos contendo: titulo, resumo (max 200 chars), conteudo (artigo completo em markdown, min 800 palavras), 
 tags (array de strings), destaque (boolean), caso_fortuito (boolean), forca_maior (boolean), tcu_referencia (texto com número do acórdão se houver),
 fonte_url (URL da notícia principal), fonte_nome (nome do jornal).`;
+  } else if (categoria.categoria === 'reajustes') {
+    systemPrompt = `Você é um especialista em relações trabalhistas e contratos de serviços continuados com mão de obra (Lei 14.133/2021, IN SEGES/ME nº 5/2017).
+Analise dissídios coletivos, convenções coletivas de trabalho e reajustes salariais e seu impacto direto em contratos públicos de terceirização.`;
+    userPrompt = `Com base nas notícias abaixo, gere 2 artigos sobre reajustes salariais, dissídios coletivos e convenções coletivas 
+e seus impactos em contratos públicos de serviços continuados (vigilância, limpeza, manutenção, engenharia, TI, etc.).
+
+Aborde temas como:
+- Novos pisos salariais por categoria profissional
+- Reajustes de CCTs registradas no Mediador/MTE
+- Impacto nos custos de planilhas de formação de preços (IN SEGES/ME nº 5/2017)
+- Procedimento de repactuação (Art. 135, I, Lei 14.133/2021)
+- Índices INPC/IPCA aplicáveis aos insumos (Art. 135, II)
+- SINAPI e CUB para serviços de engenharia
+- Prazos e procedimentos para solicitar repactuação
+
+NOTÍCIAS:
+${newsContext}
+
+${tcuContext ? \`\\nJURISPRUDÊNCIA TCU:\\n\${tcuContext}\` : ''}
+
+Retorne APENAS um JSON array com objetos contendo: titulo, resumo (max 200 chars), conteudo (artigo completo em markdown, min 800 palavras), 
+tags (array de strings), destaque (boolean), caso_fortuito (boolean), forca_maior (boolean), tcu_referencia (texto com número do acórdão se houver),
+fonte_url (URL da notícia principal), fonte_nome (nome do jornal).`;
   } else {
-    systemPrompt = `Você é um consultor de licitações e contratos públicos especializado em jurisprudência do TCU e Tribunais Superiores.
-Analise decisões recentes e contextualize para fornecedores do governo.`;
-    userPrompt = `Com base nas notícias e dados do TCU abaixo, gere 2 artigos sobre jurisprudência recente 
+    systemPrompt = \`Você é um consultor de licitações e contratos públicos especializado em jurisprudência do TCU e Tribunais Superiores.
+Analise decisões recentes e contextualize para fornecedores do governo.\`;
+    userPrompt = \`Com base nas notícias e dados do TCU abaixo, gere 2 artigos sobre jurisprudência recente 
 do TCU e Tribunais Superiores aplicável a licitações e contratos públicos.
 
 Aborde temas como:
@@ -162,9 +185,9 @@ Aborde temas como:
 - Impacto prático para fornecedores
 
 NOTÍCIAS E DADOS:
-${newsContext}
+\${newsContext}
 
-${tcuContext ? `\nJURISPRUDÊNCIA TCU:\n${tcuContext}` : ''}
+\${tcuContext ? \\\`\\nJURISPRUDÊNCIA TCU:\\n\\\${tcuContext}\\\` : ''}
 
 Retorne APENAS um JSON array com objetos contendo: titulo, resumo (max 200 chars), conteudo (artigo completo em markdown, min 800 palavras), 
 tags (array de strings), destaque (boolean), caso_fortuito (boolean), forca_maior (boolean), tcu_referencia (texto com número do acórdão se houver),
