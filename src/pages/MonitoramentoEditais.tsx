@@ -195,32 +195,36 @@ export default function MonitoramentoEditais() {
             <LicitacoesTab />
           </TabsContent>
 
+          <TabsContent value="dispensa">
+            <DispensaEletronicaTab />
+          </TabsContent>
 
           <TabsContent value="diarios">
             <DiariosOficiaisTab />
           </TabsContent>
 
           <TabsContent value="portais" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {portaisMonitorados.map((portal) => (
                 <div key={portal.id} className="bg-card rounded-xl border border-border/50 p-5 shadow-sm flex flex-col">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <Globe className="w-5 h-5 text-accent" />
-                      <h3 className="font-semibold text-sm">{portal.nome}</h3>
+                      <h3 className="font-semibold text-sm">{portal.nomeAbreviado}</h3>
                     </div>
-                    <Badge
-                      variant="outline"
-                      className={
-                        portal.ativo
-                          ? "bg-success/15 text-success border-success/30"
-                          : "bg-muted text-muted-foreground border-border"
-                      }
-                    >
-                      {portal.ativo ? "Ativo" : "Inativo"}
-                    </Badge>
+                    <div className="flex gap-1">
+                      {portal.dispensaEletronica && (
+                        <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-[9px]">
+                          Dispensa
+                        </Badge>
+                      )}
+                      {portal.uf && (
+                        <Badge variant="outline" className="text-[9px]">{portal.uf}</Badge>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mb-4 truncate">{portal.url}</p>
+                  <p className="text-xs text-muted-foreground mb-2">{portal.descricao}</p>
+                  <p className="text-[10px] text-muted-foreground mb-4 truncate">{portal.url}</p>
                   <div className="mt-auto flex flex-col gap-2">
                     <div className="flex gap-2">
                       <Button
