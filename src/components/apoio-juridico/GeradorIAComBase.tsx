@@ -14,7 +14,7 @@ type DocRef = { id: string; titulo: string; tipo: string; ementa: string | null;
 type Indice = { id: string; nome: string; sigla: string; valor: number; variacao_mensal: number | null; acumulado_12m: number | null; periodo: string; fonte: string };
 type CCT = { id: string; categoria_profissional: string; piso_salarial: number | null; reajuste_percentual: number | null; indice_reajuste: string | null; vigencia_inicio: string | null; vigencia_fim: string | null; sindicato_laboral: string | null; abrangencia_uf: string | null };
 
-const TIPOS_REEQUILIBRIO = ['Reequilíbrio Econômico-Financeiro'];
+const TIPOS_REEQUILIBRIO = ['Reajuste Contratual', 'Repactuação (MO/CCT)', 'Revisão / Reequilíbrio'];
 const fmtPerc = (v: number | null) => v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—';
 
 export default function GeradorIAComBase() {
