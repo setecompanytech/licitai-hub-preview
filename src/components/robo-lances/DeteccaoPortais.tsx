@@ -15,6 +15,20 @@ const PORTAIS_CONHECIDOS = [
   { id: 'banparanet', nome: 'Banparanet (PA)' },
   { id: 'bec-sp', nome: 'BEC/SP' },
   { id: 'compras-rj', nome: 'Compras Públicas RJ' },
+  { id: 'comprasnet-ba', nome: 'ComprasNet BA' },
+  { id: 'portal-compras-ce', nome: 'Portal Compras CE' },
+  { id: 'compras-pe', nome: 'PE Integrado' },
+  { id: 'comprasnet-go', nome: 'ComprasNet GO' },
+  { id: 'compras-mg', nome: 'Compras MG' },
+  { id: 'e-compras-am', nome: 'e-Compras AM' },
+  { id: 'compras-pr', nome: 'Compras PR' },
+  { id: 'compras-rs', nome: 'Compras RS' },
+  { id: 'compras-sc', nome: 'Compras SC' },
+  { id: 'compras-df', nome: 'e-Compras DF' },
+  { id: 'bbmnet', nome: 'BBMNet' },
+  { id: 'comprasbr', nome: 'ComprasBR' },
+  { id: 'compras-me', nome: 'Compras.ME' },
+  { id: 'licitar-digital', nome: 'Licitar Digital' },
 ];
 
 type PortalStatus = {
