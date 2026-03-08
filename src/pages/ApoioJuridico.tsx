@@ -13,6 +13,7 @@ import {
 import ReequilibrioIA from '@/components/apoio-juridico/ReequilibrioIA';
 import BaseJuridicaUpload from '@/components/apoio-juridico/BaseJuridicaUpload';
 import GeradorIAComBase from '@/components/apoio-juridico/GeradorIAComBase';
+import ModelosTemplatesTab from '@/components/apoio-juridico/ModelosTemplatesTab';
 
 type Modelo = {
   id: string;
