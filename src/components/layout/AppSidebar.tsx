@@ -90,6 +90,7 @@ const navGroups: NavGroup[] = [
       { icon: ClipboardCheck, label: 'Assessoria Cadastral', path: '/assessoria-cadastral' },
       { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
       { icon: Calculator, label: 'Apoio Contábil', path: '/apoio-contabil' },
+      { icon: TrendingUp, label: 'Índices & Repactuação', path: '/indices-repactuacao' },
     ],
   },
   {

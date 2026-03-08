@@ -48,6 +48,7 @@ import LgpdPage from "./pages/LgpdPage";
 import TutorialPage from "./pages/TutorialPage";
 import NotFound from "./pages/NotFound";
 import ApiIntegracao from "./pages/ApiIntegracao";
+import IndicesRepactuacao from "./pages/IndicesRepactuacao";
 
 const queryClient = new QueryClient();
 
@@ -103,6 +104,7 @@ const App = () => (
               <Route path="/calendario" element={<ProtectedPages><Calendario /></ProtectedPages>} />
               <Route path="/tutorial" element={<ProtectedPages><TutorialPage /></ProtectedPages>} />
               <Route path="/api-integracao" element={<ProtectedPages><ApiIntegracao /></ProtectedPages>} />
+              <Route path="/indices-repactuacao" element={<ProtectedPages><IndicesRepactuacao /></ProtectedPages>} />
               <Route path="/termos-de-uso" element={<TermosDeUso />} />
               <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />
               <Route path="/lgpd" element={<LgpdPage />} />

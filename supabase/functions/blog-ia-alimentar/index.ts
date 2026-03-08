@@ -21,6 +21,11 @@ const CATEGORIAS_BUSCA = [
     categoria: 'jurisprudencia',
     tags: ['TCU', 'jurisprudência', 'contratos', 'reequilíbrio'],
   },
+  {
+    query: 'reajuste salarial dissídio coletivo convenção coletiva 2026 vigilância limpeza mão de obra terceirizada piso salarial INPC',
+    categoria: 'reajustes',
+    tags: ['reajuste', 'dissídio', 'CCT', 'mão de obra', 'piso salarial'],
+  },
 ];
 
 async function searchFirecrawl(apiKey: string, query: string): Promise<any[]> {
@@ -134,6 +139,29 @@ Fundamente juridicamente com:
 - Art. 137 da Lei 14.133/2021 (extinção do contrato)
 - Jurisprudência dos Tribunais Superiores (STJ, STF) e TCU
 - Precedentes sobre reequilíbrio econômico-financeiro
+
+NOTÍCIAS:
+${newsContext}
+
+${tcuContext ? `\nJURISPRUDÊNCIA TCU:\n${tcuContext}` : ''}
+
+Retorne APENAS um JSON array com objetos contendo: titulo, resumo (max 200 chars), conteudo (artigo completo em markdown, min 800 palavras), 
+tags (array de strings), destaque (boolean), caso_fortuito (boolean), forca_maior (boolean), tcu_referencia (texto com número do acórdão se houver),
+fonte_url (URL da notícia principal), fonte_nome (nome do jornal).`;
+  } else if (categoria.categoria === 'reajustes') {
+    systemPrompt = `Você é um especialista em relações trabalhistas e contratos de serviços continuados com mão de obra (Lei 14.133/2021, IN SEGES/ME nº 5/2017).
+Analise dissídios coletivos, convenções coletivas de trabalho e reajustes salariais e seu impacto direto em contratos públicos de terceirização.`;
+    userPrompt = `Com base nas notícias abaixo, gere 2 artigos sobre reajustes salariais, dissídios coletivos e convenções coletivas 
+e seus impactos em contratos públicos de serviços continuados (vigilância, limpeza, manutenção, engenharia, TI, etc.).
+
+Aborde temas como:
+- Novos pisos salariais por categoria profissional
+- Reajustes de CCTs registradas no Mediador/MTE
+- Impacto nos custos de planilhas de formação de preços (IN SEGES/ME nº 5/2017)
+- Procedimento de repactuação (Art. 135, I, Lei 14.133/2021)
+- Índices INPC/IPCA aplicáveis aos insumos (Art. 135, II)
+- SINAPI e CUB para serviços de engenharia
+- Prazos e procedimentos para solicitar repactuação
 
 NOTÍCIAS:
 ${newsContext}

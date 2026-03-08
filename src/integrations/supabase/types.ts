@@ -719,6 +719,72 @@ export type Database = {
         }
         Relationships: []
       }
+      convencoes_coletivas: {
+        Row: {
+          abrangencia_municipios: string[] | null
+          abrangencia_uf: string | null
+          arquivo_path: string | null
+          beneficios: Json | null
+          categoria_profissional: string
+          created_at: string
+          id: string
+          indice_reajuste: string | null
+          numero_registro_mte: string | null
+          observacoes: string | null
+          piso_salarial: number | null
+          reajuste_percentual: number | null
+          sindicato_laboral: string | null
+          sindicato_patronal: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+          vigencia_fim: string | null
+          vigencia_inicio: string | null
+        }
+        Insert: {
+          abrangencia_municipios?: string[] | null
+          abrangencia_uf?: string | null
+          arquivo_path?: string | null
+          beneficios?: Json | null
+          categoria_profissional: string
+          created_at?: string
+          id?: string
+          indice_reajuste?: string | null
+          numero_registro_mte?: string | null
+          observacoes?: string | null
+          piso_salarial?: number | null
+          reajuste_percentual?: number | null
+          sindicato_laboral?: string | null
+          sindicato_patronal?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Update: {
+          abrangencia_municipios?: string[] | null
+          abrangencia_uf?: string | null
+          arquivo_path?: string | null
+          beneficios?: Json | null
+          categoria_profissional?: string
+          created_at?: string
+          id?: string
+          indice_reajuste?: string | null
+          numero_registro_mte?: string | null
+          observacoes?: string | null
+          piso_salarial?: number | null
+          reajuste_percentual?: number | null
+          sindicato_laboral?: string | null
+          sindicato_patronal?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Relationships: []
+      }
       cotacoes_fornecedor: {
         Row: {
           arquivo_nome: string
@@ -1219,6 +1285,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      indices_economicos: {
+        Row: {
+          acumulado_12m: number | null
+          categoria: string
+          created_at: string
+          fonte: string
+          id: string
+          metadata: Json | null
+          nome: string
+          periodo: string
+          sigla: string
+          updated_at: string
+          valor: number
+          variacao_anual: number | null
+          variacao_mensal: number | null
+        }
+        Insert: {
+          acumulado_12m?: number | null
+          categoria?: string
+          created_at?: string
+          fonte?: string
+          id?: string
+          metadata?: Json | null
+          nome: string
+          periodo: string
+          sigla: string
+          updated_at?: string
+          valor: number
+          variacao_anual?: number | null
+          variacao_mensal?: number | null
+        }
+        Update: {
+          acumulado_12m?: number | null
+          categoria?: string
+          created_at?: string
+          fonte?: string
+          id?: string
+          metadata?: Json | null
+          nome?: string
+          periodo?: string
+          sigla?: string
+          updated_at?: string
+          valor?: number
+          variacao_anual?: number | null
+          variacao_mensal?: number | null
+        }
+        Relationships: []
       }
       kanban_tasks: {
         Row: {
@@ -2324,6 +2438,74 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      simulacoes_repactuacao: {
+        Row: {
+          categoria: string | null
+          created_at: string
+          data_base_original: string | null
+          data_base_reajuste: string | null
+          fundamentacao: string | null
+          id: string
+          indice_aplicado: string
+          licitacao_id: string | null
+          parecer_ia: string | null
+          percentual_reajuste: number | null
+          status: string | null
+          tipo_servico: string | null
+          titulo: string
+          updated_at: string
+          user_id: string
+          valor_original: number
+          valor_reajustado: number | null
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string
+          data_base_original?: string | null
+          data_base_reajuste?: string | null
+          fundamentacao?: string | null
+          id?: string
+          indice_aplicado?: string
+          licitacao_id?: string | null
+          parecer_ia?: string | null
+          percentual_reajuste?: number | null
+          status?: string | null
+          tipo_servico?: string | null
+          titulo: string
+          updated_at?: string
+          user_id: string
+          valor_original?: number
+          valor_reajustado?: number | null
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string
+          data_base_original?: string | null
+          data_base_reajuste?: string | null
+          fundamentacao?: string | null
+          id?: string
+          indice_aplicado?: string
+          licitacao_id?: string | null
+          parecer_ia?: string | null
+          percentual_reajuste?: number | null
+          status?: string | null
+          tipo_servico?: string | null
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+          valor_original?: number
+          valor_reajustado?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "simulacoes_repactuacao_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       supplier_scores: {
         Row: {
