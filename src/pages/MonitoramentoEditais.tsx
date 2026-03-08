@@ -22,6 +22,7 @@ import {
   FileCheck,
   Award,
   ArrowUpDown,
+  Zap,
   List,
   Newspaper,
   ExternalLink,
