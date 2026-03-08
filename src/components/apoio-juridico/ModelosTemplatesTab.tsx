@@ -409,6 +409,19 @@ ${truncated}`
       }
     }
 
+    // Attach petition facts from document upload
+    if (fatosPeticao.length > 0) {
+      fullContext += '\n\n--- FATOS/IRREGULARIDADES EXTRAÍDOS DOS DOCUMENTOS ---\n';
+      fatosPeticao.forEach((fato, idx) => {
+        fullContext += `\n${idx + 1}. [${fato.gravidade.toUpperCase()}] [${fato.categoria}] ${fato.origem === 'ia' ? '(IA)' : fato.origem === 'concorrente' ? '(Inteligência Concorrente)' : '(Manual)'}\n`;
+        fullContext += `   Descrição: ${fato.descricao}\n`;
+        fullContext += `   Fundamentação: ${fato.fundamentacao}\n`;
+      });
+      if (peticaoDocsTexto) {
+        fullContext += `\n--- INFORMAÇÕES COMPLEMENTARES DOS DOCUMENTOS ---\n${peticaoDocsTexto}\n`;
+      }
+    }
+
     // Type-specific instructions
     let instrucao = '';
     if (activeModelo.categoria === 'Reequilíbrio') {
