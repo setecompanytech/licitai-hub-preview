@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Check, ArrowRight } from 'lucide-react';
+import { Check, ArrowRight, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 
@@ -28,54 +28,58 @@ export default function PlanosSection() {
   }, []);
 
   return (
-    <section id="planos" className="py-24 px-6 bg-muted/20">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
+    <section id="planos" className="landing-section">
+      <div className="landing-container">
+        <div className="text-center mb-14">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-            <p className="text-sm font-semibold text-accent uppercase tracking-widest mb-3">Planos & Preços</p>
-            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
-              Invista no seu <span className="gradient-text">sucesso</span>
+            <span className="section-label">Planos & Preços</span>
+            <h2 className="section-title">
+              Invista no seu <span className="gradient-text">sucesso em licitações</span>
             </h2>
-            <p className="text-muted-foreground text-lg mb-8">Escolha o plano ideal para o tamanho da sua operação</p>
+            <p className="section-subtitle mx-auto">Escolha o plano ideal para o porte da sua operação</p>
 
-            <div className="inline-flex items-center gap-1 bg-card rounded-full p-1 border border-border/50">
+            <div className="inline-flex items-center gap-1 bg-muted/50 rounded-full p-1 border border-border/30 mt-8">
               <button
                 onClick={() => setAnual(false)}
-                className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${!anual ? 'bg-accent text-accent-foreground shadow-sm' : 'text-muted-foreground'}`}
+                className={`px-6 py-2.5 rounded-full text-[13px] font-semibold transition-all duration-200 ${
+                  !anual ? 'bg-accent text-accent-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
                 Mensal
               </button>
               <button
                 onClick={() => setAnual(true)}
-                className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${anual ? 'bg-accent text-accent-foreground shadow-sm' : 'text-muted-foreground'}`}
+                className={`px-6 py-2.5 rounded-full text-[13px] font-semibold transition-all duration-200 ${
+                  anual ? 'bg-accent text-accent-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
-                Anual <span className="text-xs opacity-80 ml-1">(-17%)</span>
+                Anual <span className="text-[11px] opacity-75 ml-1">(-17%)</span>
               </button>
             </div>
           </motion.div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {planos.map((p, i) => (
             <motion.div
               key={p.id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 25 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
               className={`relative bg-card rounded-2xl border p-8 flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
-                p.destaque ? 'border-accent ring-2 ring-accent/20' : 'border-border/40'
+                p.destaque ? 'border-accent ring-1 ring-accent/20 scale-[1.02]' : 'border-border/30'
               }`}
               style={p.destaque ? { boxShadow: 'var(--shadow-glow)' } : undefined}
             >
               {p.destaque && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-5 py-1 bg-accent text-accent-foreground text-xs font-extrabold rounded-full tracking-wide">
-                  MAIS POPULAR
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-5 py-1 bg-accent text-accent-foreground text-[11px] font-extrabold rounded-full tracking-wide flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3" /> MAIS POPULAR
                 </div>
               )}
               <h3 className="text-xl font-extrabold mb-1">{p.nome}</h3>
               <p className="text-sm text-muted-foreground mb-6">{p.descricao}</p>
-              <div className="mb-6">
+              <div className="mb-8">
                 <span className="text-4xl font-extrabold">
                   R$ {anual && p.preco_anual ? Math.round(p.preco_anual / 12) : p.preco_mensal}
                 </span>
@@ -93,7 +97,7 @@ export default function PlanosSection() {
                 ))}
               </ul>
               <Button
-                className={`w-full rounded-xl ${p.destaque ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}`}
+                className={`w-full rounded-xl font-semibold ${p.destaque ? 'bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg' : ''}`}
                 variant={p.destaque ? 'default' : 'outline'}
                 onClick={() => navigate('/auth')}
               >

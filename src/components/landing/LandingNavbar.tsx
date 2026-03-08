@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap, ArrowRight, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function LandingNavbar() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const links = [
     { label: 'Funcionalidades', href: '#features' },
@@ -18,23 +25,27 @@ export default function LandingNavbar() {
   ];
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-background/70 backdrop-blur-2xl border-b border-border/40">
+    <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${
+      scrolled
+        ? 'bg-background/80 backdrop-blur-2xl border-b border-border/40 shadow-sm'
+        : 'bg-transparent'
+    }`}>
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shadow-lg" style={{ boxShadow: 'var(--shadow-glow)' }}>
+        <a href="#" className="flex items-center gap-2.5 group">
+          <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shadow-lg transition-transform group-hover:scale-105" style={{ boxShadow: 'var(--shadow-glow-sm)' }}>
             <Zap className="w-5 h-5 text-accent-foreground" />
           </div>
           <span className="text-xl font-extrabold tracking-tight">
             Licit<span className="gradient-text">IA</span>
           </span>
-        </div>
+        </a>
 
-        <div className="hidden lg:flex items-center gap-1">
+        <div className="hidden lg:flex items-center gap-0.5">
           {links.map((l) => (
             <a
               key={l.href}
               href={l.href}
-              className="px-3.5 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/50"
+              className="px-3.5 py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/50"
             >
               {l.label}
             </a>
@@ -42,16 +53,16 @@ export default function LandingNavbar() {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/auth')}>
+          <Button variant="ghost" size="sm" className="text-[13px] font-semibold" onClick={() => navigate('/auth')}>
             Entrar
           </Button>
           <Button
             size="sm"
-            className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl shadow-lg"
-            style={{ boxShadow: 'var(--shadow-glow)' }}
+            className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl font-semibold text-[13px] px-5 shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5"
+            style={{ boxShadow: 'var(--shadow-glow-sm)' }}
             onClick={() => navigate('/auth')}
           >
-            Começar Grátis <ArrowRight className="w-4 h-4 ml-1" />
+            Começar Grátis <ArrowRight className="w-3.5 h-3.5 ml-1" />
           </Button>
         </div>
 
@@ -68,7 +79,7 @@ export default function LandingNavbar() {
             exit={{ height: 0, opacity: 0 }}
             className="lg:hidden border-t border-border/40 bg-background/95 backdrop-blur-2xl overflow-hidden"
           >
-            <div className="px-6 py-4 space-y-2">
+            <div className="px-6 py-4 space-y-1">
               {links.map((l) => (
                 <a
                   key={l.href}

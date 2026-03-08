@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Globe, Building2, MapPin } from 'lucide-react';
+import { Globe, MapPin, Building2 } from 'lucide-react';
 
 import comprasnetLogo from '@/assets/portais/comprasnet.png';
 import bllLogo from '@/assets/portais/bll.png';
@@ -11,42 +11,29 @@ import portalComprasLogo from '@/assets/portais/portal-compras-publicas.png';
 import licitanetLogo from '@/assets/portais/licitanet.png';
 import comprasnetBahiaLogo from '@/assets/portais/comprasnet-bahia.png';
 
-type PortalEntry = {
-  name: string;
-  logo?: string;
-  color: string;
-  glow: string;
-};
+type PortalEntry = { name: string; logo?: string; color: string };
 
 const portaisComLogo: PortalEntry[] = [
-  { name: 'PNCP', logo: comprasnetLogo, color: '#003E7E', glow: 'rgba(0,62,126,0.3)' },
-  { name: 'BLL Compras', logo: bllLogo, color: '#0D6B5E', glow: 'rgba(13,107,94,0.3)' },
-  { name: 'BEC/SP', logo: becLogo, color: '#007B9E', glow: 'rgba(0,123,158,0.3)' },
-  { name: 'BNC', logo: bncLogo, color: '#1A0A7A', glow: 'rgba(26,10,122,0.3)' },
-  { name: 'Licitações-E', logo: licitacoesELogo, color: '#F5C518', glow: 'rgba(245,197,24,0.3)' },
-  { name: 'ComprasBR', logo: comprasbrLogo, color: '#7AB929', glow: 'rgba(122,185,41,0.3)' },
-  { name: 'Portal de Compras', logo: portalComprasLogo, color: '#F5A623', glow: 'rgba(245,166,35,0.3)' },
-  { name: 'LicitaNet', logo: licitanetLogo, color: '#2563EB', glow: 'rgba(37,99,235,0.3)' },
-  { name: 'ComprasNet BA', logo: comprasnetBahiaLogo, color: '#D32F2F', glow: 'rgba(211,47,47,0.3)' },
+  { name: 'PNCP', logo: comprasnetLogo, color: '#003E7E' },
+  { name: 'BLL Compras', logo: bllLogo, color: '#0D6B5E' },
+  { name: 'BEC/SP', logo: becLogo, color: '#007B9E' },
+  { name: 'BNC', logo: bncLogo, color: '#1A0A7A' },
+  { name: 'Licitações-E', logo: licitacoesELogo, color: '#F5C518' },
+  { name: 'ComprasBR', logo: comprasbrLogo, color: '#7AB929' },
+  { name: 'Portal de Compras', logo: portalComprasLogo, color: '#F5A623' },
+  { name: 'LicitaNet', logo: licitanetLogo, color: '#2563EB' },
+  { name: 'ComprasNet BA', logo: comprasnetBahiaLogo, color: '#D32F2F' },
 ];
 
 const portaisEstaduais = [
-  { name: 'Compras MG', uf: 'MG' },
-  { name: 'Compras RJ', uf: 'RJ' },
-  { name: 'PE Integrado', uf: 'PE' },
-  { name: 'Compras CE', uf: 'CE' },
-  { name: 'ComprasNet GO', uf: 'GO' },
-  { name: 'Compras PR', uf: 'PR' },
-  { name: 'Compras RS', uf: 'RS' },
-  { name: 'Compras SC', uf: 'SC' },
-  { name: 'Banparanet', uf: 'PA' },
-  { name: 'e-Compras AM', uf: 'AM' },
-  { name: 'Compras ES', uf: 'ES' },
-  { name: 'e-Compras DF', uf: 'DF' },
-  { name: 'Compras MT', uf: 'MT' },
-  { name: 'Compras MS', uf: 'MS' },
-  { name: 'Compras TO', uf: 'TO' },
-  { name: 'Compras MA', uf: 'MA' },
+  { name: 'Compras MG', uf: 'MG' }, { name: 'Compras RJ', uf: 'RJ' },
+  { name: 'PE Integrado', uf: 'PE' }, { name: 'Compras CE', uf: 'CE' },
+  { name: 'ComprasNet GO', uf: 'GO' }, { name: 'Compras PR', uf: 'PR' },
+  { name: 'Compras RS', uf: 'RS' }, { name: 'Compras SC', uf: 'SC' },
+  { name: 'Banparanet', uf: 'PA' }, { name: 'e-Compras AM', uf: 'AM' },
+  { name: 'Compras ES', uf: 'ES' }, { name: 'e-Compras DF', uf: 'DF' },
+  { name: 'Compras MT', uf: 'MT' }, { name: 'Compras MS', uf: 'MS' },
+  { name: 'Compras TO', uf: 'TO' }, { name: 'Compras MA', uf: 'MA' },
   { name: 'ComprasNet RO', uf: 'RO' },
 ];
 
@@ -54,117 +41,77 @@ const plataformasExtras = ['BBMNet', 'Licitar Digital', 'Compras Gov.br'];
 
 const duplicated = [...portaisComLogo, ...portaisComLogo];
 
-function PortalCard({ portal }: { portal: PortalEntry }) {
-  return (
-    <motion.div
-      whileHover={{ scale: 1.08, y: -4 }}
-      whileTap={{ scale: 0.97 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-      className="group flex flex-col items-center gap-2 cursor-pointer flex-shrink-0"
-    >
-      <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-card border border-border/40 flex items-center justify-center p-3 shadow-sm overflow-hidden transition-shadow duration-300 group-hover:shadow-md">
-        <div
-          className="absolute bottom-0 left-0 right-0 h-1 transition-all duration-300 group-hover:h-1.5"
-          style={{ backgroundColor: portal.color }}
-        />
-        {portal.logo ? (
-          <img
-            src={portal.logo}
-            alt={portal.name}
-            className="max-w-full max-h-full object-contain transition-all duration-300 group-hover:brightness-110 group-hover:contrast-110"
-          />
-        ) : (
-          <Globe className="w-8 h-8 text-muted-foreground group-hover:text-accent transition-colors" />
-        )}
-      </div>
-      <span className="text-[11px] font-medium text-muted-foreground/60 transition-colors duration-300 text-center leading-tight max-w-[90px] group-hover:font-semibold">
-        <span className="group-hover:hidden">{portal.name}</span>
-        <span className="hidden group-hover:inline" style={{ color: portal.color }}>{portal.name}</span>
-      </span>
-    </motion.div>
-  );
-}
-
 export default function LogoCloudSection() {
   return (
-    <section id="portais" className="py-14 border-y border-border/40 bg-muted/20 overflow-hidden">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="text-center mb-10">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">
-            Integrado com os principais portais de licitação do Brasil
-          </p>
-          <p className="text-3xl md:text-4xl font-extrabold gradient-text">
-            31 portais conectados
-          </p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Busca automatizada via IA em portais federais, estaduais e plataformas privadas
+    <section id="portais" className="landing-section bg-muted/30 border-y border-border/30 overflow-hidden">
+      <div className="landing-container">
+        <div className="text-center mb-14">
+          <span className="section-label">Integrações</span>
+          <h2 className="section-title">
+            Conectado com <span className="gradient-text">31 portais</span> de compras
+          </h2>
+          <p className="section-subtitle mx-auto">
+            Monitoramento automatizado via IA em portais federais, estaduais e plataformas privadas de todos os 27 estados.
           </p>
         </div>
       </div>
 
-      {/* Infinite carousel */}
-      <div className="relative mb-10">
-        <div className="absolute left-0 top-0 bottom-0 w-20 md:w-32 z-10 pointer-events-none" style={{ background: 'linear-gradient(to right, hsl(var(--muted) / 0.2), transparent)' }} />
-        <div className="absolute right-0 top-0 bottom-0 w-20 md:w-32 z-10 pointer-events-none" style={{ background: 'linear-gradient(to left, hsl(var(--muted) / 0.2), transparent)' }} />
+      {/* Carousel */}
+      <div className="relative mb-14">
+        <div className="absolute left-0 top-0 bottom-0 w-24 md:w-40 z-10 pointer-events-none bg-gradient-to-r from-muted/30 to-transparent" />
+        <div className="absolute right-0 top-0 bottom-0 w-24 md:w-40 z-10 pointer-events-none bg-gradient-to-l from-muted/30 to-transparent" />
 
         <motion.div
-          className="flex gap-8 md:gap-12 py-2"
+          className="flex gap-8 md:gap-12 py-4"
           animate={{ x: ['0%', '-50%'] }}
-          transition={{ x: { duration: 35, repeat: Infinity, ease: 'linear' } }}
+          transition={{ x: { duration: 40, repeat: Infinity, ease: 'linear' } }}
           style={{ width: 'max-content' }}
         >
           {duplicated.map((portal, i) => (
-            <PortalCard key={`${portal.name}-${i}`} portal={portal} />
+            <div key={`${portal.name}-${i}`} className="flex flex-col items-center gap-2 flex-shrink-0">
+              <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-card border border-border/30 flex items-center justify-center p-3 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute bottom-0 left-0 right-0 h-[3px] transition-all group-hover:h-1" style={{ backgroundColor: portal.color }} />
+                {portal.logo ? (
+                  <img src={portal.logo} alt={portal.name} className="max-w-full max-h-full object-contain" />
+                ) : (
+                  <Globe className="w-8 h-8 text-muted-foreground" />
+                )}
+              </div>
+              <span className="text-[10px] font-medium text-muted-foreground/50 text-center max-w-[90px]">{portal.name}</span>
+            </div>
           ))}
         </motion.div>
       </div>
 
-      {/* State portals */}
-      <div className="max-w-5xl mx-auto px-6">
-        <div className="flex items-center gap-2 justify-center mb-4">
-          <MapPin className="w-4 h-4 text-accent" />
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Portais Estaduais — 17 sistemas
-          </span>
-        </div>
-        <div className="flex flex-wrap justify-center gap-2 mb-6">
-          {portaisEstaduais.map((p) => (
-            <motion.span
-              key={p.name}
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              whileHover={{ scale: 1.08 }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/40 bg-card text-[11px] font-medium text-muted-foreground hover:text-accent hover:border-accent/40 transition-colors cursor-default"
-            >
-              <span className="w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-[9px] font-bold text-accent">
-                {p.uf}
+      {/* State + Private portals */}
+      <div className="max-w-4xl mx-auto px-6 space-y-8">
+        <div>
+          <div className="flex items-center gap-2 justify-center mb-4">
+            <MapPin className="w-4 h-4 text-accent" />
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">17 Portais Estaduais</span>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2">
+            {portaisEstaduais.map((p) => (
+              <span key={p.name} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/30 bg-card text-[11px] font-medium text-muted-foreground hover:border-accent/30 hover:text-accent transition-colors">
+                <span className="w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-[9px] font-bold text-accent">{p.uf}</span>
+                {p.name}
               </span>
-              {p.name}
-            </motion.span>
-          ))}
+            ))}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 justify-center mb-3">
-          <Building2 className="w-4 h-4 text-accent" />
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            + Plataformas Privadas
-          </span>
-        </div>
-        <div className="flex flex-wrap justify-center gap-2">
-          {plataformasExtras.map((name) => (
-            <motion.span
-              key={name}
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              whileHover={{ scale: 1.08 }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-accent/20 bg-accent/5 text-[11px] font-medium text-accent cursor-default"
-            >
-              <Globe className="w-3 h-3" />
-              {name}
-            </motion.span>
-          ))}
+        <div>
+          <div className="flex items-center gap-2 justify-center mb-3">
+            <Building2 className="w-4 h-4 text-accent" />
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">+ Plataformas Privadas</span>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2">
+            {plataformasExtras.map((name) => (
+              <span key={name} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-accent/20 bg-accent/5 text-[11px] font-semibold text-accent">
+                <Globe className="w-3 h-3" /> {name}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </section>
