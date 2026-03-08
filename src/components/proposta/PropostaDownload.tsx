@@ -32,6 +32,9 @@ export interface PropostaDownloadProps {
     nome_fantasia?: string;
     inscricao_estadual?: string;
     inscricao_municipal?: string;
+    certificado_nome?: string | null;
+    certificado_tipo?: string | null;
+    certificado_path?: string | null;
   } | null;
   repData?: {
     nome?: string;
