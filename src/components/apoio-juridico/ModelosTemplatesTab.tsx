@@ -368,6 +368,11 @@ ${truncated}`
       }
     }
 
+    // Inject extracted edital context
+    if (extractedEditalContext) {
+      fullContext += `\n\n--- DADOS EXTRAÍDOS DO EDITAL ---\n${extractedEditalContext}`;
+    }
+
     fullContext += `\n\nINSTRUÇÃO: ${instrucao}\nLinguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos dos dados numéricos quando disponíveis.\n`;
 
     const prompt = `Tipo de Documento: ${activeModelo.titulo}\nCategoria: ${activeModelo.categoria}\nFundamentação Legal: ${activeModelo.fundamentacao}${modalidade ? `\nModalidade: ${modalidade.nome}` : ''}${etapaFiltro ? `\nEtapa do Processo: ${etapaFiltro}` : ''}${criterioFiltro ? `\nCritério de Julgamento: ${modalidade?.criteriosJulgamento.find(c => c.id === criterioFiltro)?.nome || ''}` : ''}\nEdital/Contrato: ${editalNum || 'Não informado'}\n\nContexto do Usuário:\n${contexto}`;
