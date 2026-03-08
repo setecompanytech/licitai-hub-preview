@@ -638,9 +638,9 @@ export function exportLegalWord(
 
   if (inList) html += `</ol>\n`;
 
-  // Footer
-  html += `<div class="footer">Documento gerado pela plataforma LicitaIA — ${new Date().toLocaleDateString('pt-BR')}</div>\n`;
-  html += `</body></html>`;
+  // Close Section1 div (header/footer handled by Word mso-element directives)
+  html += `<div class="doc-footer">Documento gerado pela plataforma LicitaIA — ${new Date().toLocaleDateString('pt-BR')}</div>\n`;
+  html += `</div><!-- /Section1 -->\n</body></html>`;
 
   // Download as .doc (Word opens HTML natively)
   const blob = new Blob(['\ufeff' + html], { type: 'application/msword;charset=utf-8' });
