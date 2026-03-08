@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
+import { exportLegalPDF, exportLegalWord } from '@/lib/legal-document-export';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -420,7 +421,68 @@ ${truncated}`
       fullContext += `\n\n--- DADOS EXTRAÍDOS DO EDITAL ---\n${extractedEditalContext}`;
     }
 
-    fullContext += `\n\nINSTRUÇÃO: ${instrucao}\nLinguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos dos dados numéricos quando disponíveis.\n`;
+    // ── ABNT Legal Writing Quality System Prompt ──
+    const abntSystemPrompt = `
+VOCÊ É UM ADVOGADO ESPECIALISTA EM DIREITO ADMINISTRATIVO E PÚBLICO, COM DOMÍNIO PLENO DA LINGUÍSTICA JURÍDICA FORENSE. SEU NÍVEL É DE PÓS-GRADUAÇÃO STRICTO SENSU (MESTRADO/DOUTORADO).
+
+REGRAS OBRIGATÓRIAS DE QUALIDADE TEXTUAL JURÍDICA (ABNT):
+
+1. ESTRUTURA TEXTUAL:
+   - Use numeração progressiva (ABNT NBR 6024:2012) para seções e subseções
+   - Títulos de seção em CAIXA ALTA e negrito
+   - Subtítulos em negrito, apenas primeira letra maiúscula
+   - Parágrafos com recuo de primeira linha (1,25cm)
+
+2. LINGUAGEM JURÍDICA:
+   - Empregue linguagem técnica, impessoal, objetiva e formal
+   - Use a terceira pessoa ou voz passiva (nunca "eu" ou "nós")
+   - Prefira período composto subordinado quando necessário à precisão
+   - Evite coloquialismos, redundâncias e prolixidade
+   - Use latinismos jurídicos consagrados quando pertinentes (data venia, ad argumentandum tantum, ex vi legis, mutatis mutandis)
+   - Aplique corretamente os pronomes de tratamento (Excelentíssimo, Ilustríssimo, Douto)
+
+3. CITAÇÕES (ABNT NBR 10520:2002):
+   - Citações diretas curtas (até 3 linhas): entre aspas duplas, no corpo do texto
+   - Citações diretas longas (mais de 3 linhas): em bloco recuado (use > para marcar), fonte menor, sem aspas
+   - Citações indiretas: parafrasear com indicação de autoria (SOBRENOME, ano)
+   - Citações de legislação: Lei nº X.XXX/XXXX, Art. XX, §Xº, inciso X, alínea "x"
+   - Citações de jurisprudência: TRIBUNAL. Tipo de decisão nº. Relator: Min./Des. Nome. Data. Publicação.
+
+4. REFERÊNCIAS DOUTRINÁRIAS:
+   - Cite doutrinadores consagrados do Direito Administrativo brasileiro: Celso Antônio Bandeira de Mello, Hely Lopes Meirelles, Maria Sylvia Zanella Di Pietro, José dos Santos Carvalho Filho, Marçal Justen Filho
+   - Para licitações especificamente: Joel de Menezes Niebuhr, Jessé Torres Pereira Junior, Jorge Ulisses Jacoby Fernandes
+   - Para citações do TCU: use Acórdão nº XXXX/XXXX - Plenário/1ª Câmara/2ª Câmara
+
+5. FUNDAMENTAÇÃO LEGAL OBRIGATÓRIA:
+   - Cite artigos, parágrafos, incisos e alíneas com precisão
+   - Hierarquia normativa: CF/88 → Leis Complementares → Leis Ordinárias → Decretos → INs
+   - Base primária: Lei 14.133/2021 (Nova Lei de Licitações)
+   - Bases complementares: LC 123/2006, Decreto 11.462/2023, IN SEGES 73/2022
+   - Referência constitucional quando aplicável: Art. 37, XXI da CF/88
+
+6. FORMATAÇÃO DO DOCUMENTO:
+   - Use "# " para título principal (centralizado)
+   - Use "## " para seções numeradas (I, II, III ou 1, 2, 3)
+   - Use "### " para subseções
+   - Use "> " para citações longas (blocos de citação)
+   - Estruture o documento com: Preâmbulo → Fatos → Fundamentos → Pedido → Encerramento
+   - Inclua qualificação completa das partes quando dados da empresa forem fornecidos
+   - Finalize com local, data e espaço para assinatura
+
+7. TERMINOLOGIA PRECISA:
+   - "licitante" (não "participante" ou "concorrente" genericamente)
+   - "Administração Pública" (com maiúsculas)
+   - "edital" ou "instrumento convocatório"
+   - "habilitação" (não "qualificação")
+   - "adjudicação" e "homologação" (distinguir corretamente)
+   - "pregoeiro(a)" para pregão; "comissão de licitação" para demais
+   - "autoridade superior" (Art. 165, §2º da Lei 14.133/2021)
+
+${instrucao}
+Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos dos dados numéricos quando disponíveis.
+`;
+
+    fullContext += `\n\n${abntSystemPrompt}`;
 
     const prompt = `Tipo de Documento: ${activeModelo.titulo}\nCategoria: ${activeModelo.categoria}\nFundamentação Legal: ${activeModelo.fundamentacao}${modalidade ? `\nModalidade: ${modalidade.nome}` : ''}${etapaFiltro ? `\nEtapa do Processo: ${etapaFiltro}` : ''}${criterioFiltro ? `\nCritério de Julgamento: ${modalidade?.criteriosJulgamento.find(c => c.id === criterioFiltro)?.nome || ''}` : ''}\nEdital/Contrato: ${editalNum || 'Não informado'}\n\nContexto do Usuário:\n${contexto}`;
 
@@ -920,25 +982,45 @@ ${truncated}`
       {/* ── Result ── */}
       {resultado && (
         <div className="bg-card rounded-xl border border-border/50 p-6 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <h3 className="text-sm font-semibold">Documento Gerado — {activeModelo?.titulo}</h3>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={copyToClipboard}>
                 <Copy className="w-3 h-3 mr-1" /> Copiar
               </Button>
-              <Button size="sm" variant="outline" onClick={() => {
-                const blob = new Blob([resultado], { type: 'text/markdown' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${activeModelo?.titulo || 'documento'}.md`;
-                a.click();
-                URL.revokeObjectURL(url);
-                toast.success('Download iniciado!');
+              <Button size="sm" variant="outline" className="gap-1" onClick={() => {
+                const meta = {
+                  empresa: selectedEmpresa?.razao_social,
+                  cnpj: selectedEmpresa?.cnpj,
+                  edital: editalNum || undefined,
+                  modalidade: modalidade?.nome,
+                  fundamentacao: activeModelo?.fundamentacao,
+                };
+                exportLegalPDF(resultado, activeModelo?.titulo || 'Documento Jurídico', meta);
+                toast.success('PDF ABNT gerado com sucesso!');
               }}>
-                <Download className="w-3 h-3 mr-1" /> Download
+                <Download className="w-3 h-3" /> PDF (ABNT)
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1" onClick={() => {
+                const meta = {
+                  empresa: selectedEmpresa?.razao_social,
+                  cnpj: selectedEmpresa?.cnpj,
+                  edital: editalNum || undefined,
+                  modalidade: modalidade?.nome,
+                  fundamentacao: activeModelo?.fundamentacao,
+                };
+                exportLegalWord(resultado, activeModelo?.titulo || 'Documento Jurídico', meta);
+                toast.success('Word ABNT gerado com sucesso!');
+              }}>
+                <Download className="w-3 h-3" /> Word (ABNT)
               </Button>
             </div>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/30 border border-border/30">
+            <Info className="w-3.5 h-3.5 text-accent shrink-0" />
+            <p className="text-[10px] text-muted-foreground">
+              Formatação ABNT NBR 14724 · Times New Roman 12pt · Entrelinhas 1,5 · Citações 10pt recuadas 4cm · Margens 3cm/2cm
+            </p>
           </div>
           <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
             <ReactMarkdown>{resultado}</ReactMarkdown>
