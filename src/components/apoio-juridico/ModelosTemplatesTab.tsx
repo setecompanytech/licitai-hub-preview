@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +16,7 @@ import {
   MessageSquare, FileWarning, Gavel, ArrowUpDown, ShieldQuestion,
   Calculator, Filter, X, TrendingUp, Users, ChevronDown, ChevronUp,
   Scale, SlidersHorizontal, ListChecks, Target, Shield, Info,
-  Landmark, Award
+  Landmark, Award, Upload, CheckCircle
 } from 'lucide-react';
 import { MODALIDADES, type ModalidadeLicitacao } from '@/data/modalidades-licitacao';
 
@@ -37,7 +37,7 @@ const modelos: Modelo[] = [
   { id: '2', titulo: 'Impugnação ao Edital', categoria: 'Impugnações', descricao: 'Contestar cláusulas restritivas ou ilegais do edital', icon: FileWarning, fundamentacao: 'Art. 164 da Lei 14.133/2021', requisitosFiltro: ['base_juridica'] },
   { id: '3', titulo: 'Recurso Administrativo', categoria: 'Recursos', descricao: 'Recurso contra decisão de habilitação ou julgamento', icon: Gavel, fundamentacao: 'Art. 165 da Lei 14.133/2021', requisitosFiltro: ['base_juridica'] },
   { id: '4', titulo: 'Contrarrazões de Recurso', categoria: 'Recursos', descricao: 'Resposta ao recurso interposto por outro licitante', icon: ArrowUpDown, fundamentacao: 'Art. 165, §3º da Lei 14.133/2021', requisitosFiltro: ['base_juridica'] },
-  { id: '5', titulo: 'Pedido de Reconsideração', categoria: 'Recursos', descricao: 'Reconsideração de penalidades aplicadas', icon: ShieldQuestion, fundamentacao: 'Art. 166 da Lei 14.133/2021', requisitosFiltro: ['base_juridica'] },
+  { id: '5', titulo: 'Pedido de Reconsideração', categoria: 'Recursos', descricao: 'Reconsideração de penalidades aplicadas', icon: ShieldQuestion, fundamentacao: 'Art. 166 da Lei 14.133/2021', requisitosFiltro: [] },
   { id: '6', titulo: 'Recurso Hierárquico', categoria: 'Recursos', descricao: 'Recurso à autoridade superior quando pedido de reconsideração indeferido', icon: ArrowUpDown, fundamentacao: 'Art. 167 da Lei 14.133/2021', requisitosFiltro: ['base_juridica'] },
   { id: '7', titulo: 'Reajuste Contratual (Índice)', categoria: 'Reequilíbrio', descricao: 'Aplicação de índice de preços previsto no contrato para recomposição inflacionária', icon: TrendingUp, fundamentacao: 'Art. 92, §3º e Art. 135, I da Lei 14.133/2021', requisitosFiltro: ['indices', 'contrato', 'base_juridica'] },
   { id: '8', titulo: 'Repactuação (MO/CCT)', categoria: 'Reequilíbrio', descricao: 'Revisão de custos de mão de obra por dissídio coletivo', icon: Users, fundamentacao: 'Art. 135, I da Lei 14.133/2021', requisitosFiltro: ['ccts', 'indices', 'contrato', 'base_juridica'] },
@@ -66,6 +66,13 @@ export default function ModelosTemplatesTab() {
   const [criterioFiltro, setCriterioFiltro] = useState<string | null>(null);
   const [showModalidadeInfo, setShowModalidadeInfo] = useState(false);
 
+  // Edital upload for auto-extraction
+  const editalFileRef = useRef<HTMLInputElement>(null);
+  const [editalUploadFile, setEditalUploadFile] = useState<File | null>(null);
+  const [extractingEdital, setExtractingEdital] = useState(false);
+  const [editalExtracted, setEditalExtracted] = useState(false);
+  const [extractedEditalContext, setExtractedEditalContext] = useState('');
+
   // Research data
   const [indices, setIndices] = useState<Indice[]>([]);
   const [ccts, setCcts] = useState<CCT[]>([]);
@@ -83,6 +90,128 @@ export default function ModelosTemplatesTab() {
   const [gerando, setGerando] = useState(false);
 
   const modalidade = MODALIDADES.find(m => m.id === modalidadeId) || null;
+
+  // Handle edital upload and AI extraction
+  const handleEditalUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowedTypes = ['application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!allowedTypes.includes(file.type) && !file.name.endsWith('.txt')) {
+      toast.error('Formato inválido. Use PDF, DOC, DOCX ou TXT.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo 10MB.');
+      return;
+    }
+    setEditalUploadFile(file);
+    setEditalExtracted(false);
+    setExtractedEditalContext('');
+  };
+
+  const handleExtractEdital = async () => {
+    if (!editalUploadFile) return;
+    setExtractingEdital(true);
+
+    const text = await editalUploadFile.text();
+    const truncated = text.slice(0, 20000);
+    let content = '';
+
+    const modalidadeNames = MODALIDADES.map(m => m.id + '=' + m.nome).join(', ');
+
+    await streamAIChat({
+      messages: [{
+        role: 'user',
+        content: `Analise o Edital abaixo e extraia as informações no formato JSON:
+
+{
+  "modalidade_id": "ID da modalidade entre: ${modalidadeNames}",
+  "numero_licitacao": "número completo do pregão/licitação",
+  "orgao": "órgão licitante",
+  "objeto": "descrição do objeto",
+  "criterio_julgamento": "critério de julgamento identificado (menor preço, melhor técnica, etc)",
+  "modo_disputa": "modo de disputa (aberto, fechado, aberto e fechado)",
+  "etapa_atual": "etapa atual do processo se identificável",
+  "me_epp": "informações sobre tratamento diferenciado para ME/EPP",
+  "valor_estimado": "valor estimado se disponível",
+  "prazo_validade": "prazo de validade da proposta",
+  "resumo_edital": "resumo executivo do edital em até 200 palavras"
+}
+
+REGRAS:
+- Identifique a modalidade exata (Pregão Eletrônico, Concorrência, Concurso, Leilão, Diálogo Competitivo, Dispensa Eletrônica)
+- Se não encontrar um campo, use string vazia ""
+- Retorne APENAS o JSON válido, sem explicações
+
+TEXTO DO EDITAL:
+${truncated}`
+      }],
+      action: 'analise_edital',
+      onDelta: (chunk) => { content += chunk; },
+      onDone: () => {
+        try {
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const data = JSON.parse(jsonMatch[0]);
+
+            // Auto-fill modalidade
+            if (data.modalidade_id) {
+              const found = MODALIDADES.find(m => m.id === data.modalidade_id);
+              if (found) {
+                setModalidadeId(found.id);
+                // Try to match criteria
+                if (data.criterio_julgamento) {
+                  const criterioMatch = found.criteriosJulgamento.find(c =>
+                    c.nome.toLowerCase().includes(data.criterio_julgamento.toLowerCase()) ||
+                    data.criterio_julgamento.toLowerCase().includes(c.nome.toLowerCase())
+                  );
+                  if (criterioMatch) setCriterioFiltro(criterioMatch.id);
+                }
+              }
+            }
+
+            // Auto-fill edital number
+            if (data.numero_licitacao) setEditalNum(data.numero_licitacao);
+
+            // Build extracted context for AI generation
+            let ctx = '';
+            if (data.orgao) ctx += `Órgão: ${data.orgao}\n`;
+            if (data.objeto) ctx += `Objeto: ${data.objeto}\n`;
+            if (data.valor_estimado) ctx += `Valor estimado: ${data.valor_estimado}\n`;
+            if (data.prazo_validade) ctx += `Prazo validade: ${data.prazo_validade}\n`;
+            if (data.modo_disputa) ctx += `Modo de disputa: ${data.modo_disputa}\n`;
+            if (data.me_epp) ctx += `ME/EPP: ${data.me_epp}\n`;
+            if (data.resumo_edital) ctx += `\nResumo: ${data.resumo_edital}\n`;
+            setExtractedEditalContext(ctx);
+
+            // Pre-fill contexto if empty
+            if (!contexto && data.resumo_edital) {
+              setContexto(data.resumo_edital);
+            }
+
+            setEditalExtracted(true);
+            toast.success('Dados do edital extraídos com sucesso!');
+          } else {
+            toast.error('Não foi possível extrair dados estruturados do edital.');
+          }
+        } catch {
+          toast.error('Erro ao processar dados do edital.');
+        }
+        setExtractingEdital(false);
+      },
+      onError: (err) => {
+        toast.error(err);
+        setExtractingEdital(false);
+      },
+    });
+  };
+
+  const removeEditalUpload = () => {
+    setEditalUploadFile(null);
+    setEditalExtracted(false);
+    setExtractedEditalContext('');
+    if (editalFileRef.current) editalFileRef.current.value = '';
+  };
 
   // Load research data
   useEffect(() => {
@@ -239,6 +368,11 @@ export default function ModelosTemplatesTab() {
       }
     }
 
+    // Inject extracted edital context
+    if (extractedEditalContext) {
+      fullContext += `\n\n--- DADOS EXTRAÍDOS DO EDITAL ---\n${extractedEditalContext}`;
+    }
+
     fullContext += `\n\nINSTRUÇÃO: ${instrucao}\nLinguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos dos dados numéricos quando disponíveis.\n`;
 
     const prompt = `Tipo de Documento: ${activeModelo.titulo}\nCategoria: ${activeModelo.categoria}\nFundamentação Legal: ${activeModelo.fundamentacao}${modalidade ? `\nModalidade: ${modalidade.nome}` : ''}${etapaFiltro ? `\nEtapa do Processo: ${etapaFiltro}` : ''}${criterioFiltro ? `\nCritério de Julgamento: ${modalidade?.criteriosJulgamento.find(c => c.id === criterioFiltro)?.nome || ''}` : ''}\nEdital/Contrato: ${editalNum || 'Não informado'}\n\nContexto do Usuário:\n${contexto}`;
@@ -272,10 +406,80 @@ export default function ModelosTemplatesTab() {
     <div className="space-y-4">
       {/* ── Modality Selector ── */}
       <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm space-y-3">
-        <div className="flex items-center gap-2 mb-2">
-          <Landmark className="w-4 h-4 text-accent" />
-          <h3 className="text-sm font-semibold">Modalidade de Licitação</h3>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Landmark className="w-4 h-4 text-accent" />
+            <h3 className="text-sm font-semibold">Modalidade de Licitação</h3>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs"
+            onClick={() => editalFileRef.current?.click()}
+            disabled={extractingEdital}
+          >
+            <Upload className="w-3.5 h-3.5" />
+            Upload Edital (IA)
+          </Button>
+          <input
+            ref={editalFileRef}
+            type="file"
+            accept=".pdf,.doc,.docx,.txt"
+            className="hidden"
+            onChange={handleEditalUpload}
+          />
         </div>
+
+        {/* Edital Upload Status */}
+        {editalUploadFile && (
+          <div className="bg-muted/30 rounded-lg p-3 border border-border/50 space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+                <FileText className="w-4 h-4 text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold truncate">{editalUploadFile.name}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {(editalUploadFile.size / 1024).toFixed(0)} KB
+                  {editalExtracted && (
+                    <Badge className="ml-2 bg-accent/10 text-accent border-accent/20 text-[9px]">
+                      <CheckCircle className="w-2.5 h-2.5 mr-0.5" /> Extraído
+                    </Badge>
+                  )}
+                </p>
+              </div>
+              <div className="flex gap-1.5 shrink-0">
+                {!editalExtracted && (
+                  <Button size="sm" onClick={handleExtractEdital} disabled={extractingEdital} className="h-7 text-xs bg-accent hover:bg-accent/90 text-accent-foreground">
+                    {extractingEdital ? (
+                      <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Extraindo...</>
+                    ) : (
+                      <><Sparkles className="w-3 h-3 mr-1" /> Extrair</>
+                    )}
+                  </Button>
+                )}
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={removeEditalUpload}>
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+            {extractingEdital && (
+              <div className="flex items-center gap-2 text-[10px] text-accent animate-pulse">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Analisando edital com IA para identificar modalidade, critérios e etapas...
+              </div>
+            )}
+            {editalExtracted && (
+              <div className="flex items-center gap-2 p-2 bg-accent/5 border border-accent/20 rounded-md">
+                <CheckCircle className="w-3.5 h-3.5 text-accent shrink-0" />
+                <p className="text-[10px] text-accent">
+                  Modalidade, critério de julgamento e dados do edital identificados automaticamente!
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Modalidade</label>
