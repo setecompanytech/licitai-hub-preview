@@ -291,13 +291,19 @@ export function exportLegalPDF(
         doc.setFont('times', 'normal');
         doc.setFontSize(LEGAL_LAYOUT.bodyFontSize);
         doc.setTextColor(...COLORS.text);
-        // ABNT: justified, 1.25cm paragraph indent
-        const pWidth = contentWidth - LEGAL_LAYOUT.paragraphIndent + LEGAL_LAYOUT.marginLeft - LEGAL_LAYOUT.marginLeft;
-        const pLines = doc.splitTextToSize(block.content, contentWidth);
+        // ABNT: recuo 1,25cm na primeira linha; largura disponível reduzida
+        const pWidthFirst = contentWidth - LEGAL_LAYOUT.paragraphIndent;
+        const pWidthRest = contentWidth;
+        // Split using the narrower width to ensure no overflow on first line
+        const pLines = doc.splitTextToSize(block.content, pWidthFirst);
         for (let li = 0; li < pLines.length; li++) {
           y = ensureSpace(doc, y, LEGAL_LAYOUT.lineHeight);
-          const xPos = li === 0 ? LEGAL_LAYOUT.marginLeft + LEGAL_LAYOUT.paragraphIndent : LEGAL_LAYOUT.marginLeft;
-          doc.text(pLines[li], xPos, y);
+          const isFirstLine = li === 0;
+          const isLastLine = li === pLines.length - 1;
+          const xPos = isFirstLine ? LEGAL_LAYOUT.marginLeft + LEGAL_LAYOUT.paragraphIndent : LEGAL_LAYOUT.marginLeft;
+          const lineWidth = isFirstLine ? pWidthFirst : pWidthRest;
+          // ABNT: texto justificado
+          drawJustifiedLine(doc, pLines[li], xPos, y, lineWidth, isLastLine);
           y += LEGAL_LAYOUT.lineHeight;
         }
         y += 2;
