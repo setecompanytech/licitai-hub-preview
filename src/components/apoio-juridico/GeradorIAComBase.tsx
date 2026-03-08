@@ -6,15 +6,18 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Sparkles, Loader2, BookOpen, Copy, TrendingUp, Users } from 'lucide-react';
+import { Sparkles, Loader2, BookOpen, Copy, TrendingUp, Download, FileText } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
+import IrregularidadesExtractor, { type Irregularidade } from './IrregularidadesExtractor';
+import { exportToPDF, exportToWord } from '@/lib/legal-document-export';
 
 type DocRef = { id: string; titulo: string; tipo: string; ementa: string | null; texto_integral: string | null };
 type Indice = { id: string; nome: string; sigla: string; valor: number; variacao_mensal: number | null; acumulado_12m: number | null; periodo: string; fonte: string };
 type CCT = { id: string; categoria_profissional: string; piso_salarial: number | null; reajuste_percentual: number | null; indice_reajuste: string | null; vigencia_inicio: string | null; vigencia_fim: string | null; sindicato_laboral: string | null; abrangencia_uf: string | null };
 
 const TIPOS_REEQUILIBRIO = ['Reajuste Contratual', 'Repactuação (MO/CCT)', 'Revisão / Reequilíbrio'];
+const TIPOS_COM_ANALISE_EDITAL = ['Impugnação ao Edital', 'Recurso Administrativo', 'Contrarrazões', 'Pedido de Esclarecimento', 'Pedido de Reconsideração'];
 const fmtPerc = (v: number | null) => v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—';
 
 export default function GeradorIAComBase() {
@@ -27,11 +30,17 @@ export default function GeradorIAComBase() {
   const [docsBase, setDocsBase] = useState<DocRef[]>([]);
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
 
+  // 3-step flow state
+  const [showExtractor, setShowExtractor] = useState(false);
+  const [irregularidades, setIrregularidades] = useState<Irregularidade[]>([]);
+  const [editalTexto, setEditalTexto] = useState('');
+
   // Indices & CCTs for reequilíbrio
   const [indices, setIndices] = useState<Indice[]>([]);
   const [ccts, setCcts] = useState<CCT[]>([]);
   const [loadingIndices, setLoadingIndices] = useState(false);
   const isReequilibrio = TIPOS_REEQUILIBRIO.includes(tipoDoc);
+  const isAnaliseEdital = TIPOS_COM_ANALISE_EDITAL.includes(tipoDoc);
 
   useEffect(() => {
     if (!user) return;
@@ -45,7 +54,6 @@ export default function GeradorIAComBase() {
       });
   }, [user]);
 
-  // Auto-load indices & CCTs when reequilíbrio is selected
   useEffect(() => {
     if (isReequilibrio && indices.length === 0) {
       setLoadingIndices(true);
@@ -60,14 +68,46 @@ export default function GeradorIAComBase() {
     }
   }, [isReequilibrio]);
 
+  // Reset extractor state when changing doc type
+  useEffect(() => {
+    setShowExtractor(false);
+    setIrregularidades([]);
+    setEditalTexto('');
+    setResultado('');
+  }, [tipoDoc]);
+
   const toggleDoc = (id: string) => {
     setSelectedDocs(prev =>
       prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]
     );
   };
 
+  const handleIrregularidadesFinish = (selected: Irregularidade[], textoEdital: string, numEdital: string) => {
+    setIrregularidades(selected);
+    setEditalTexto(textoEdital);
+    setEditalNum(numEdital);
+    setShowExtractor(false);
+    toast.success(`${selected.length} irregularidade(s) prontas para geração do documento.`);
+  };
+
+  const buildIrregularidadesContext = (): string => {
+    if (irregularidades.length === 0) return '';
+    let ctx = '\n\n--- IRREGULARIDADES IDENTIFICADAS NO EDITAL ---\n';
+    irregularidades.forEach((irr, idx) => {
+      ctx += `\n${idx + 1}. [${irr.gravidade.toUpperCase()}] ${irr.origem === 'ia' ? '(IA)' : '(Manual)'}\n`;
+      ctx += `   Descrição: ${irr.descricao}\n`;
+      ctx += `   Fundamentação: ${irr.fundamentacao}\n`;
+      if (irr.artigos.length > 0) ctx += `   Artigos: ${irr.artigos.join(', ')}\n`;
+    });
+    return ctx;
+  };
+
   const handleGerar = async () => {
-    if (!contexto) {
+    if (isAnaliseEdital && irregularidades.length === 0 && !contexto) {
+      toast.error('Analise o edital primeiro ou descreva o contexto manualmente.');
+      return;
+    }
+    if (!isAnaliseEdital && !contexto) {
       toast.error('Descreva o contexto e fundamentação');
       return;
     }
@@ -86,6 +126,9 @@ export default function GeradorIAComBase() {
       }
     }
 
+    // Build irregularidades context
+    const irregContext = buildIrregularidadesContext();
+
     // Build indices/CCT context for reequilíbrio types
     let indicesContext = '';
     if (isReequilibrio && (indices.length > 0 || ccts.length > 0)) {
@@ -103,7 +146,6 @@ export default function GeradorIAComBase() {
         }
       }
 
-      // Type-specific instructions
       if (tipoDoc === 'Reajuste Contratual') {
         indicesContext += '\nINSTRUÇÃO: Gere pedido de REAJUSTE por índice contratual (Art. 92, §3º e Art. 135, I da Lei 14.133/2021). Automático, anual, por apostilamento. Demonstre cálculo com o índice selecionado.\n';
       } else if (tipoDoc === 'Repactuação (MO/CCT)') {
@@ -114,12 +156,33 @@ export default function GeradorIAComBase() {
       indicesContext += 'Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos dos dados numéricos.\n';
     }
 
-    const prompt = `Tipo: ${tipoDoc}\nEdital: ${editalNum}\nContexto: ${contexto}${baseContext}${indicesContext}`;
+    // Special prompt for edital analysis types with irregularidades
+    let specificInstructions = '';
+    if (isAnaliseEdital && irregularidades.length > 0) {
+      specificInstructions = `\n\nINSTRUÇÃO ESPECÍFICA: Gere um documento de "${tipoDoc}" completo e profissional com base nas ${irregularidades.length} irregularidades identificadas abaixo. 
+Para CADA irregularidade:
+1. Descreva os fatos de forma clara e objetiva
+2. Apresente a fundamentação jurídica completa (Lei 14.133/2021, jurisprudência TCU)
+3. Demonstre o prejuízo à competitividade ou à legalidade
+4. Formule o pedido específico
+
+O documento deve seguir a estrutura formal:
+- Endereçamento ao pregoeiro/comissão
+- Qualificação do impugnante/recorrente
+- Dos Fatos (para cada irregularidade)
+- Do Direito (fundamentação jurídica consolidada)
+- Dos Pedidos (específicos para cada irregularidade)
+- Fecho e assinatura
+
+Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parágrafos da Lei 14.133/2021.\n`;
+    }
+
+    const prompt = `Tipo: ${tipoDoc}\nEdital: ${editalNum}\n${contexto ? `Contexto adicional: ${contexto}` : ''}${irregContext}${specificInstructions}${baseContext}${indicesContext}`;
 
     await streamAIChat({
       messages: [{ role: 'user', content: prompt }],
       action: 'gerador_juridico',
-      context: baseContext + indicesContext,
+      context: baseContext + indicesContext + irregContext,
       onDelta: (text) => setResultado(prev => prev + text),
       onDone: () => setGerando(false),
       onError: (err) => {
@@ -142,6 +205,7 @@ export default function GeradorIAComBase() {
           <h3 className="text-sm font-semibold">Gerador de Documentos com IA</h3>
         </div>
 
+        {/* Doc type selector */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs text-muted-foreground">Tipo de Documento</label>
@@ -160,13 +224,68 @@ export default function GeradorIAComBase() {
               <option>Revisão / Reequilíbrio</option>
             </select>
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Nº do Edital / Contrato</label>
-            <Input value={editalNum} onChange={e => setEditalNum(e.target.value)} placeholder="PE-001/2026 ou CT-001/2026" className="mt-1" />
-          </div>
+          {!isAnaliseEdital && (
+            <div>
+              <label className="text-xs text-muted-foreground">Nº do Edital / Contrato</label>
+              <Input value={editalNum} onChange={e => setEditalNum(e.target.value)} placeholder="PE-001/2026 ou CT-001/2026" className="mt-1" />
+            </div>
+          )}
         </div>
 
-        {/* Auto-loaded indices/CCTs indicator */}
+        {/* 3-step flow for edital analysis types */}
+        {isAnaliseEdital && (
+          <>
+            {showExtractor ? (
+              <IrregularidadesExtractor
+                onFinish={handleIrregularidadesFinish}
+                editalNum={editalNum}
+                setEditalNum={setEditalNum}
+              />
+            ) : (
+              <>
+                {irregularidades.length > 0 ? (
+                  <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-accent text-accent-foreground text-xs font-bold">3</div>
+                        <h4 className="text-sm font-semibold">Etapa 3 — Geração do Documento</h4>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => setShowExtractor(true)} className="text-xs text-accent">
+                        Reanalisar edital
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {irregularidades.map((irr, idx) => (
+                        <Badge
+                          key={irr.id}
+                          variant="outline"
+                          className={`text-[10px] ${irr.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : irr.gravidade === 'media' ? 'border-yellow-500/40 text-yellow-700 dark:text-yellow-400' : 'border-blue-500/40 text-blue-700 dark:text-blue-400'}`}
+                        >
+                          {idx + 1}. {irr.descricao.slice(0, 50)}{irr.descricao.length > 50 ? '...' : ''}
+                          {irr.origem === 'manual' && ' ✏️'}
+                        </Badge>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {irregularidades.length} irregularidade(s) selecionada(s) • Edital: {editalNum || 'N/I'}
+                    </p>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowExtractor(true)}
+                    className="w-full border-dashed border-2 py-6 hover:border-accent/50 hover:bg-accent/5"
+                  >
+                    <FileText className="w-5 h-5 mr-2 text-accent" />
+                    <span className="text-sm">Analisar edital e extrair irregularidades</span>
+                  </Button>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {/* Reequilibrio indices */}
         {isReequilibrio && (
           <div className="bg-accent/10 border border-accent/20 rounded-lg p-3 space-y-2">
             <div className="flex items-center gap-2">
@@ -198,21 +317,31 @@ export default function GeradorIAComBase() {
           </div>
         )}
 
-        <div>
-          <label className="text-xs text-muted-foreground">Fundamentação / Contexto</label>
-          <Textarea
-            value={contexto}
-            onChange={e => setContexto(e.target.value)}
-            placeholder={isReequilibrio
-              ? "Descreva o contrato, itens afetados, valores originais e atuais, e impacto financeiro..."
-              : "Descreva os fatos, a cláusula contestada e os fundamentos jurídicos..."
-            }
-            className="mt-1 min-h-[120px]"
-          />
-        </div>
+        {/* Context field - always shown but optional when irregularidades exist */}
+        {!showExtractor && (
+          <div>
+            <label className="text-xs text-muted-foreground">
+              {isAnaliseEdital && irregularidades.length > 0
+                ? 'Contexto adicional (opcional — complementa as irregularidades)'
+                : 'Fundamentação / Contexto'
+              }
+            </label>
+            <Textarea
+              value={contexto}
+              onChange={e => setContexto(e.target.value)}
+              placeholder={isReequilibrio
+                ? "Descreva o contrato, itens afetados, valores originais e atuais, e impacto financeiro..."
+                : isAnaliseEdital && irregularidades.length > 0
+                ? "Adicione contexto extra, como dados da empresa, fatos relevantes ou observações complementares..."
+                : "Descreva os fatos, a cláusula contestada e os fundamentos jurídicos..."
+              }
+              className="mt-1 min-h-[100px]"
+            />
+          </div>
+        )}
 
         {/* Document selection */}
-        {docsBase.length > 0 && (
+        {!showExtractor && docsBase.length > 0 && (
           <div>
             <label className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
               <BookOpen className="w-3 h-3" />
@@ -233,10 +362,12 @@ export default function GeradorIAComBase() {
           </div>
         )}
 
-        <Button onClick={handleGerar} disabled={gerando} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-          {gerando ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1" />}
-          Gerar Documento
-        </Button>
+        {!showExtractor && (
+          <Button onClick={handleGerar} disabled={gerando} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+            {gerando ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1" />}
+            Gerar Documento
+          </Button>
+        )}
       </div>
 
       {/* Result */}
@@ -247,6 +378,12 @@ export default function GeradorIAComBase() {
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={copyToClipboard}>
                 <Copy className="w-3 h-3 mr-1" /> Copiar
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => exportToPDF(resultado, tipoDoc)}>
+                <Download className="w-3 h-3 mr-1" /> PDF
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => exportToWord(resultado, tipoDoc)}>
+                <Download className="w-3 h-3 mr-1" /> Word
               </Button>
             </div>
           </div>
