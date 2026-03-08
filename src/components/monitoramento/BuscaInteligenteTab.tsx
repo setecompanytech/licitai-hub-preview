@@ -286,25 +286,50 @@ export default function BuscaInteligenteTab() {
 
             <div>
               <label className="text-xs font-medium mb-2 block">Portais de busca</label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-                {PORTAIS_OPCOES.map(p => (
-                  <label
-                    key={p.id}
-                    className={`flex items-center gap-1.5 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
-                      portaisSelecionados.includes(p.id)
-                        ? 'bg-accent/10 border-accent/40 text-accent'
-                        : 'bg-muted/30 border-border/30 hover:bg-muted/50'
-                    }`}
-                  >
-                    <Checkbox
-                      checked={portaisSelecionados.includes(p.id)}
-                      onCheckedChange={() => togglePortal(p.id)}
-                      className="h-3.5 w-3.5"
-                    />
-                    <span className="truncate">{p.label}</span>
-                  </label>
-                ))}
-              </div>
+              {(['federal', 'plataforma', 'estadual'] as const).map(group => {
+                const groupPortais = PORTAIS_OPCOES.filter(p => p.group === group);
+                const groupLabel = group === 'federal' ? '🏛️ Federais' : group === 'plataforma' ? '🌐 Plataformas' : '📍 Estaduais';
+                const allSelected = groupPortais.every(p => portaisSelecionados.includes(p.id));
+                const toggleGroup = () => {
+                  if (allSelected) {
+                    setPortaisSelecionados(prev => prev.filter(id => !groupPortais.some(p => p.id === id)));
+                  } else {
+                    setPortaisSelecionados(prev => [...new Set([...prev, ...groupPortais.map(p => p.id)])]);
+                  }
+                };
+                return (
+                  <div key={group} className="mb-2">
+                    <button
+                      onClick={toggleGroup}
+                      className="text-[10px] font-semibold text-muted-foreground mb-1 flex items-center gap-1 hover:text-foreground transition-colors"
+                    >
+                      {groupLabel}
+                      <span className="text-[9px] text-muted-foreground/60">
+                        ({groupPortais.filter(p => portaisSelecionados.includes(p.id)).length}/{groupPortais.length})
+                      </span>
+                    </button>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
+                      {groupPortais.map(p => (
+                        <label
+                          key={p.id}
+                          className={`flex items-center gap-1.5 p-1.5 rounded-lg border text-[11px] cursor-pointer transition-colors ${
+                            portaisSelecionados.includes(p.id)
+                              ? 'bg-accent/10 border-accent/40 text-accent'
+                              : 'bg-muted/30 border-border/30 hover:bg-muted/50'
+                          }`}
+                        >
+                          <Checkbox
+                            checked={portaisSelecionados.includes(p.id)}
+                            onCheckedChange={() => togglePortal(p.id)}
+                            className="h-3 w-3"
+                          />
+                          <span className="truncate">{p.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
               <div className="flex gap-3 mt-1">
                 <Button
                   variant="link"
