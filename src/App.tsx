@@ -48,6 +48,7 @@ import LgpdPage from "./pages/LgpdPage";
 import TutorialPage from "./pages/TutorialPage";
 import NotFound from "./pages/NotFound";
 import ApiIntegracao from "./pages/ApiIntegracao";
+import IndicesRepactuacao from "./pages/IndicesRepactuacao";
 
 const queryClient = new QueryClient();
 
