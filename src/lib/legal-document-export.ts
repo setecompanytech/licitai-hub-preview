@@ -149,7 +149,6 @@ function parseMarkdownToBlocks(markdown: string): TextBlock[] {
     // Regular paragraph
     else {
       blocks.push({ type: 'paragraph', content: stripMarkdown(trimmed) });
-      blocks.push({ type: 'paragraph', content: cleaned });
     }
   }
 
