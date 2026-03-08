@@ -379,14 +379,26 @@ IMPORTANTE: Utilize linguagem técnica, objetiva e impessoal, conforme padrão a
         </div>
 
         {/* Search */}
-        <div className="relative max-w-md mt-3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar índice, CCT ou categoria..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex items-center gap-2 mt-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar índice, CCT ou categoria..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          {searchTerm && (
+            <Button size="sm" variant="ghost" onClick={() => setSearchTerm('')}>
+              Limpar
+            </Button>
+          )}
+          <Badge variant="outline" className="text-[10px] whitespace-nowrap">
+            {mecanismo === 'repactuacao'
+              ? `${filteredIndices.length} índices · ${filteredCCTs.length} CCTs`
+              : `${filteredIndices.length} índices`}
+          </Badge>
         </div>
 
         {loadingData ? (
