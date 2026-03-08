@@ -1,54 +1,15 @@
 import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Scale, FileText, Download, Copy, Sparkles, Search,
-  BookOpen, Gavel, FileWarning, MessageSquare, ShieldQuestion,
-  ArrowUpDown, Calculator
-} from 'lucide-react';
+import { Scale, BookOpen } from 'lucide-react';
 import ReequilibrioIA from '@/components/apoio-juridico/ReequilibrioIA';
 import BaseJuridicaUpload from '@/components/apoio-juridico/BaseJuridicaUpload';
 import GeradorIAComBase from '@/components/apoio-juridico/GeradorIAComBase';
-
-type Modelo = {
-  id: string;
-  titulo: string;
-  categoria: string;
-  descricao: string;
-  icon: typeof FileText;
-  fundamentacao: string;
-};
-
-const modelos: Modelo[] = [
-  { id: '1', titulo: 'Pedido de Esclarecimento', categoria: 'Esclarecimentos', descricao: 'Solicitar esclarecimentos sobre termos ambíguos do edital', icon: MessageSquare, fundamentacao: 'Art. 164 da Lei 14.133/2021' },
-  { id: '2', titulo: 'Impugnação ao Edital', categoria: 'Impugnações', descricao: 'Contestar cláusulas restritivas ou ilegais do edital', icon: FileWarning, fundamentacao: 'Art. 164 da Lei 14.133/2021' },
-  { id: '3', titulo: 'Recurso Administrativo', categoria: 'Recursos', descricao: 'Recurso contra decisão de habilitação ou julgamento', icon: Gavel, fundamentacao: 'Art. 165 da Lei 14.133/2021' },
-  { id: '4', titulo: 'Contrarrazões de Recurso', categoria: 'Recursos', descricao: 'Resposta ao recurso interposto por outro licitante', icon: ArrowUpDown, fundamentacao: 'Art. 165, §3º da Lei 14.133/2021' },
-  { id: '5', titulo: 'Pedido de Reconsideração', categoria: 'Recursos', descricao: 'Reconsideração de penalidades aplicadas', icon: ShieldQuestion, fundamentacao: 'Art. 166 da Lei 14.133/2021' },
-  { id: '6', titulo: 'Recurso Hierárquico', categoria: 'Recursos', descricao: 'Recurso à autoridade superior quando pedido de reconsideração indeferido', icon: ArrowUpDown, fundamentacao: 'Art. 167 da Lei 14.133/2021' },
-  { id: '7', titulo: 'Reequilíbrio Econômico-Financeiro', categoria: 'Contratos', descricao: 'Solicitação de reequilíbrio por fatos supervenientes', icon: Calculator, fundamentacao: 'Art. 124, II, d da Lei 14.133/2021' },
-  { id: '8', titulo: 'Planilha de Composição de Custos', categoria: 'Propostas', descricao: 'Modelo de planilha analítica de custos e formação de preços', icon: Calculator, fundamentacao: 'Art. 58 da Lei 14.133/2021' },
-  { id: '9', titulo: 'Declaração de ME/EPP', categoria: 'Declarações', descricao: 'Declaração de enquadramento como microempresa ou EPP', icon: FileText, fundamentacao: 'LC 123/2006, Art. 3º' },
-  { id: '10', titulo: 'Declaração de Inexistência de Fato Impeditivo', categoria: 'Declarações', descricao: 'Declaração de que não existem fatos impeditivos à habilitação', icon: FileText, fundamentacao: 'Art. 63, §1º da Lei 14.133/2021' },
-  { id: '11', titulo: 'Declaração de Não Emprego de Menor', categoria: 'Declarações', descricao: 'Cumprimento ao disposto no Art. 7º, XXXIII da CF', icon: FileText, fundamentacao: 'Art. 68, VI da Lei 14.133/2021' },
-  { id: '12', titulo: 'Declaração de Reserva de Cargos (PCD)', categoria: 'Declarações', descricao: 'Cumprimento da reserva de cargos para PCD e reabilitados', icon: FileText, fundamentacao: 'Art. 63, IV da Lei 14.133/2021' },
-];
-
-const categorias = [...new Set(modelos.map((m) => m.categoria))];
+import ModelosTemplatesTab from '@/components/apoio-juridico/ModelosTemplatesTab';
 
 export default function ApoioJuridico() {
-  const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('modelos');
-
-  const filteredModelos = modelos.filter(
-    (m) =>
-      m.titulo.toLowerCase().includes(search.toLowerCase()) ||
-      m.categoria.toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
     <AppLayout>
@@ -72,79 +33,22 @@ export default function ApoioJuridico() {
             <TabsTrigger value="base-juridica">Base Jurídica IA</TabsTrigger>
           </TabsList>
 
-          {/* Modelos */}
           <TabsContent value="modelos" className="space-y-4">
-            <div className="relative w-full max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar modelo ou categoria..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-
-            {categorias.map((cat) => {
-              const items = filteredModelos.filter((m) => m.categoria === cat);
-              if (items.length === 0) return null;
-              return (
-                <div key={cat}>
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-1">
-                    <BookOpen className="w-4 h-4" /> {cat}
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {items.map((m) => (
-                      <div
-                        key={m.id}
-                        className="bg-card rounded-xl border border-border/50 p-4 shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
-                            <m.icon className="w-4 h-4 text-accent" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm">{m.titulo}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{m.descricao}</p>
-                            <Badge variant="outline" className="mt-2 text-[10px]">
-                              {m.fundamentacao}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 mt-3">
-                          <Button size="sm" variant="outline" className="flex-1">
-                            <Download className="w-3 h-3 mr-1" /> Baixar
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <Copy className="w-3 h-3" />
-                          </Button>
-                          <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                            <Sparkles className="w-3 h-3 mr-1" /> Gerar com IA
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+            <ModelosTemplatesTab />
           </TabsContent>
 
-          {/* Reequilíbrio IA */}
           <TabsContent value="reequilibrio">
             <ReequilibrioIA />
           </TabsContent>
 
-          {/* Gerador IA */}
           <TabsContent value="gerador" className="space-y-4">
             <GeradorIAComBase />
           </TabsContent>
 
-          {/* Base Jurídica */}
           <TabsContent value="base-juridica">
             <BaseJuridicaUpload />
           </TabsContent>
 
-          {/* Legislação */}
           <TabsContent value="legislacao">
             <div className="bg-card rounded-xl border border-border/50 p-6 shadow-sm">
               <h3 className="text-sm font-semibold mb-4">Referências Legais</h3>
