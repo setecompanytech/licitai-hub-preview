@@ -81,6 +81,17 @@ interface TextBlock {
   level?: number;
 }
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/_(.+?)_/g, '$1')
+    .replace(/\*{2,}/g, '')  // leftover ** markers
+    .replace(/`(.+?)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'); // links
+}
+
 function parseMarkdownToBlocks(markdown: string): TextBlock[] {
   const lines = markdown.split('\n');
   const blocks: TextBlock[] = [];
