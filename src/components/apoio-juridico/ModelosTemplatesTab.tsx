@@ -17,7 +17,7 @@ import {
   MessageSquare, FileWarning, Gavel, ArrowUpDown, ShieldQuestion,
   Calculator, Filter, X, TrendingUp, Users, ChevronDown, ChevronUp,
   Scale, SlidersHorizontal, ListChecks, Target, Shield, Info,
-  Landmark, Award, Upload, CheckCircle
+  Landmark, Award, Upload, CheckCircle, Building2, User
 } from 'lucide-react';
 import { MODALIDADES, type ModalidadeLicitacao } from '@/data/modalidades-licitacao';
 
