@@ -1,7 +1,7 @@
 import AppLayout from '@/components/layout/AppLayout';
 import AnalyticsKpiCards from '@/components/dashboard/AnalyticsKpiCards';
 import { useAnalyticsData } from '@/hooks/useAnalyticsData';
-import { EmpresaSelector } from '@/components/empresa/EmpresaSelector';
+import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import { Badge } from '@/components/ui/badge';
 import { Activity, Wifi } from 'lucide-react';
 import {
