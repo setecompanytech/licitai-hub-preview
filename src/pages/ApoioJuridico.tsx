@@ -75,59 +75,7 @@ export default function ApoioJuridico() {
 
           {/* Modelos */}
           <TabsContent value="modelos" className="space-y-4">
-            <div className="relative w-full max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar modelo ou categoria..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-
-            {categorias.map((cat) => {
-              const items = filteredModelos.filter((m) => m.categoria === cat);
-              if (items.length === 0) return null;
-              return (
-                <div key={cat}>
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-1">
-                    <BookOpen className="w-4 h-4" /> {cat}
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {items.map((m) => (
-                      <div
-                        key={m.id}
-                        className="bg-card rounded-xl border border-border/50 p-4 shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
-                            <m.icon className="w-4 h-4 text-accent" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm">{m.titulo}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{m.descricao}</p>
-                            <Badge variant="outline" className="mt-2 text-[10px]">
-                              {m.fundamentacao}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 mt-3">
-                          <Button size="sm" variant="outline" className="flex-1">
-                            <Download className="w-3 h-3 mr-1" /> Baixar
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <Copy className="w-3 h-3" />
-                          </Button>
-                          <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                            <Sparkles className="w-3 h-3 mr-1" /> Gerar com IA
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+            <ModelosTemplatesTab />
           </TabsContent>
 
           {/* Reequilíbrio IA */}
