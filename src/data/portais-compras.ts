@@ -456,7 +456,7 @@ export const PORTAIS_ESTADUAIS: PortalCompras[] = [
     id: 'compras-sc',
     nome: 'Compras SC',
     nomeAbreviado: 'Compras SC',
-    url: 'https://portaldecompras.sc.gov.br/',
+    url: 'https://compras.sc.gov.br/',
     uf: 'SC',
     categoria: 'estadual',
     tipo: 'ambos',
