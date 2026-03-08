@@ -26,9 +26,8 @@ export default function ApoioJuridico() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
-            <TabsTrigger value="modelos">Modelos e Templates</TabsTrigger>
+            <TabsTrigger value="modelos">Modelos e Templates + Gerador IA</TabsTrigger>
             <TabsTrigger value="reequilibrio">Reequilíbrio IA</TabsTrigger>
-            <TabsTrigger value="gerador">Gerador IA</TabsTrigger>
             <TabsTrigger value="legislacao">Legislação</TabsTrigger>
             <TabsTrigger value="base-juridica">Base Jurídica IA</TabsTrigger>
           </TabsList>
@@ -41,9 +40,8 @@ export default function ApoioJuridico() {
             <ReequilibrioIA />
           </TabsContent>
 
-          <TabsContent value="gerador" className="space-y-4">
-            <GeradorIAComBase />
-          </TabsContent>
+
+
 
           <TabsContent value="base-juridica">
             <BaseJuridicaUpload />
