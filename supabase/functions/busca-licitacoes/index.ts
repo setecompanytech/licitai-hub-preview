@@ -240,9 +240,83 @@ serve(async (req) => {
       }
     }
 
-    // Para os demais portais, gerar dados de demonstração
+    // Para os demais portais, tentar Firecrawl primeiro, fallback para dados simulados
+    const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
     for (const pid of portaisParaBuscar) {
       if (pid === "pncp") continue;
+      if (FIRECRAWL_API_KEY) {
+        try {
+          const portalInfo = PORTAIS_INFO[pid];
+          if (!portalInfo) {
+            allItems.push(...gerarDadosPorPortal(pid, query || "", uf || "", modalidade || "", dataInicio, dataFim));
+            continue;
+          }
+          const host = new URL(portalInfo.url).hostname;
+          const searchQuery = `${query || "licitação"} edital site:${host}`;
+          console.log(`Firecrawl search for ${portalInfo.nome}: ${searchQuery}`);
+
+          const fcResp = await fetch("https://api.firecrawl.dev/v1/search", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              query: searchQuery,
+              limit: 8,
+              lang: "pt",
+              country: "br",
+              scrapeOptions: { formats: ["markdown"] },
+            }),
+          });
+
+          if (fcResp.ok) {
+            const fcData = await fcResp.json();
+            const fcResults = fcData.data || [];
+            for (const r of fcResults) {
+              const title = r.title || "";
+              const description = r.description || "";
+              const rUrl = r.url || "";
+              const markdown = r.markdown || "";
+
+              let valor: number | null = null;
+              const valorMatch = (markdown + description).match(/R\$\s*([\d.,]+)/);
+              if (valorMatch) {
+                valor = parseFloat(valorMatch[1].replace(/\./g, "").replace(",", "."));
+                if (isNaN(valor)) valor = null;
+              }
+
+              let mod = modalidade || "Pregão Eletrônico";
+              if (/concorrência/i.test(title + description)) mod = "Concorrência";
+              else if (/dispensa/i.test(title + description)) mod = "Dispensa";
+              else if (/inexigibilidade/i.test(title + description)) mod = "Inexigibilidade";
+
+              allItems.push({
+                numero: "",
+                orgao: portalInfo.nome,
+                objeto: (title || description).substring(0, 500),
+                modalidade: mod,
+                status: "Publicado",
+                valor_estimado: valor,
+                uf: uf || null,
+                municipio: null,
+                data_abertura: null,
+                portal: portalInfo.nome,
+                url: rUrl,
+                pncpNumero: null,
+                cnpjOrgao: null,
+                isMock: false,
+              });
+            }
+            if (fcResults.length > 0) continue;
+          } else {
+            await fcResp.text();
+          }
+        } catch (e) {
+          console.error(`Firecrawl ${pid} error:`, e);
+        }
+      }
+      // Fallback to mock data
       allItems.push(...gerarDadosPorPortal(pid, query || "", uf || "", modalidade || "", dataInicio, dataFim));
     }
 
