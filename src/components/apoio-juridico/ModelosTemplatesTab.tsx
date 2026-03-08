@@ -279,6 +279,34 @@ ${truncated}`
 
     let fullContext = '';
 
+    // Inject empresa and representative data
+    if (selectedEmpresa) {
+      if (incluirDadosEmpresa) {
+        fullContext += `\n--- DADOS DA EMPRESA (LICITANTE/PETICIONANTE) ---\n`;
+        fullContext += `Razão Social: ${selectedEmpresa.razao_social}\n`;
+        if (selectedEmpresa.nome_fantasia) fullContext += `Nome Fantasia: ${selectedEmpresa.nome_fantasia}\n`;
+        fullContext += `CNPJ: ${selectedEmpresa.cnpj}\n`;
+        if (selectedEmpresa.endereco) fullContext += `Endereço: ${selectedEmpresa.endereco}${selectedEmpresa.complemento ? `, ${selectedEmpresa.complemento}` : ''}${selectedEmpresa.bairro ? `, ${selectedEmpresa.bairro}` : ''}\n`;
+        if (selectedEmpresa.municipio) fullContext += `Município/UF: ${selectedEmpresa.municipio}/${selectedEmpresa.uf || ''}\n`;
+        if (selectedEmpresa.cep) fullContext += `CEP: ${selectedEmpresa.cep}\n`;
+        if (selectedEmpresa.inscricao_estadual) fullContext += `Inscrição Estadual: ${selectedEmpresa.inscricao_estadual}\n`;
+        if (selectedEmpresa.inscricao_municipal) fullContext += `Inscrição Municipal: ${selectedEmpresa.inscricao_municipal}\n`;
+        if (selectedEmpresa.telefone) fullContext += `Telefone: ${selectedEmpresa.telefone}\n`;
+        if (selectedEmpresa.email) fullContext += `E-mail: ${selectedEmpresa.email}\n`;
+        if (selectedEmpresa.regime_tributario) fullContext += `Regime Tributário: ${selectedEmpresa.regime_tributario}\n`;
+        if (selectedEmpresa.cnae_principal) fullContext += `CNAE Principal: ${selectedEmpresa.cnae_principal}\n`;
+      }
+      if (incluirRepresentante && selectedEmpresa.rep_nome) {
+        fullContext += `\n--- REPRESENTANTE LEGAL ---\n`;
+        fullContext += `Nome: ${selectedEmpresa.rep_nome}\n`;
+        if (selectedEmpresa.rep_cpf) fullContext += `CPF: ${selectedEmpresa.rep_cpf}\n`;
+        if (selectedEmpresa.rep_rg) fullContext += `RG: ${selectedEmpresa.rep_rg}${selectedEmpresa.rep_orgao_expedidor ? ` (${selectedEmpresa.rep_orgao_expedidor})` : ''}\n`;
+        if (selectedEmpresa.rep_cargo) fullContext += `Cargo: ${selectedEmpresa.rep_cargo}\n`;
+        if (selectedEmpresa.rep_naturalidade) fullContext += `Naturalidade: ${selectedEmpresa.rep_naturalidade}\n`;
+        if (selectedEmpresa.rep_nacionalidade) fullContext += `Nacionalidade: ${selectedEmpresa.rep_nacionalidade}\n`;
+      }
+    }
+
     // Inject modality context
     if (modalidade) {
       fullContext += `\n\n--- MODALIDADE DE LICITAÇÃO ---\n`;
