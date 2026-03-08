@@ -746,6 +746,7 @@ ${truncated}`
               {modalidade && <Badge variant="secondary" className="text-[10px]">📋 {modalidade.nome}</Badge>}
               {etapaFiltro && <Badge variant="secondary" className="text-[10px]">📌 {etapaFiltro}</Badge>}
               {criterioFiltro && <Badge variant="secondary" className="text-[10px]">🎯 {modalidade?.criteriosJulgamento.find(c => c.id === criterioFiltro)?.nome}</Badge>}
+              {selectedEmpresa && <Badge variant="secondary" className="text-[10px]">🏢 {selectedEmpresa.razao_social.slice(0, 30)}</Badge>}
             </div>
             <Button variant="ghost" size="sm" onClick={resetGeneration}>
               <X className="w-4 h-4" />
