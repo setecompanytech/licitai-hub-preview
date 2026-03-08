@@ -1,7 +1,13 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, MessageCircle, Zap } from 'lucide-react';
+import { ArrowRight, MessageCircle, Zap, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
+
+const ctaBenefits = [
+  'Acesso a 31 portais de licitação',
+  'Assistente IA incluso em todos os planos',
+  'Sem necessidade de cartão de crédito',
+];
 
 export default function CtaSection() {
   const navigate = useNavigate();
@@ -24,11 +30,21 @@ export default function CtaSection() {
             <Zap className="w-8 h-8 text-accent" />
           </div>
           <h2 className="text-3xl md:text-5xl font-extrabold text-primary-foreground mb-4 tracking-tight">
-            Pronto para dominar o mercado?
+            Comece a gerenciar suas licitações
           </h2>
-          <p className="text-lg text-primary-foreground/60 mb-10 max-w-2xl mx-auto">
-            Junte-se a centenas de empresas que já estão usando IA para vencer licitações públicas. Comece grátis em menos de 2 minutos.
+          <p className="text-lg text-primary-foreground/60 mb-8 max-w-2xl mx-auto">
+            Crie sua conta e explore as funcionalidades da plataforma. Configure seus filtros de busca e comece a monitorar editais em minutos.
           </p>
+
+          <ul className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
+            {ctaBenefits.map((b) => (
+              <li key={b} className="flex items-center gap-2 text-sm text-primary-foreground/70">
+                <CheckCircle2 className="w-4 h-4 text-accent flex-shrink-0" />
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
               size="lg"
@@ -36,7 +52,7 @@ export default function CtaSection() {
               style={{ boxShadow: 'var(--shadow-glow)' }}
               onClick={() => navigate('/auth')}
             >
-              Criar Conta Grátis <ArrowRight className="w-5 h-5 ml-1" />
+              Criar Conta Gratuita <ArrowRight className="w-5 h-5 ml-1" />
             </Button>
             <Button
               size="lg"
@@ -44,7 +60,7 @@ export default function CtaSection() {
               className="text-base px-8 py-6 rounded-xl border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10"
               onClick={() => navigate('/suporte')}
             >
-              <MessageCircle className="w-4 h-4 mr-2" /> Falar com Especialista
+              <MessageCircle className="w-4 h-4 mr-2" /> Falar com Suporte
             </Button>
           </div>
         </div>
