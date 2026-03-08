@@ -81,6 +81,17 @@ interface TextBlock {
   level?: number;
 }
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/_(.+?)_/g, '$1')
+    .replace(/\*{2,}/g, '')  // leftover ** markers
+    .replace(/`(.+?)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'); // links
+}
+
 function parseMarkdownToBlocks(markdown: string): TextBlock[] {
   const lines = markdown.split('\n');
   const blocks: TextBlock[] = [];
@@ -93,7 +104,7 @@ function parseMarkdownToBlocks(markdown: string): TextBlock[] {
 
     if (!trimmed) {
       if (inCitation && citationBuffer) {
-        blocks.push({ type: 'citation', content: citationBuffer.trim() });
+        blocks.push({ type: 'citation', content: stripMarkdown(citationBuffer.trim()) });
         citationBuffer = '';
         inCitation = false;
       }
@@ -108,20 +119,20 @@ function parseMarkdownToBlocks(markdown: string): TextBlock[] {
     }
 
     if (inCitation && citationBuffer) {
-      blocks.push({ type: 'citation', content: citationBuffer.trim() });
+      blocks.push({ type: 'citation', content: stripMarkdown(citationBuffer.trim()) });
       citationBuffer = '';
       inCitation = false;
     }
 
     // Headers
     if (trimmed.startsWith('# ')) {
-      blocks.push({ type: 'title', content: trimmed.replace(/^#\s+/, ''), level: 1 });
+      blocks.push({ type: 'title', content: stripMarkdown(trimmed.replace(/^#\s+/, '')), level: 1 });
     } else if (trimmed.startsWith('## ')) {
-      blocks.push({ type: 'title', content: trimmed.replace(/^##\s+/, ''), level: 2 });
+      blocks.push({ type: 'title', content: stripMarkdown(trimmed.replace(/^##\s+/, '')), level: 2 });
     } else if (trimmed.startsWith('### ')) {
-      blocks.push({ type: 'subtitle', content: trimmed.replace(/^###\s+/, ''), level: 3 });
+      blocks.push({ type: 'subtitle', content: stripMarkdown(trimmed.replace(/^###\s+/, '')), level: 3 });
     } else if (trimmed.startsWith('#### ')) {
-      blocks.push({ type: 'subtitle', content: trimmed.replace(/^####\s+/, ''), level: 4 });
+      blocks.push({ type: 'subtitle', content: stripMarkdown(trimmed.replace(/^####\s+/, '')), level: 4 });
     }
     // Horizontal rules / separators
     else if (/^[-_*]{3,}$/.test(trimmed)) {
@@ -129,7 +140,7 @@ function parseMarkdownToBlocks(markdown: string): TextBlock[] {
     }
     // List items
     else if (/^[-•*]\s/.test(trimmed) || /^\d+[.)]\s/.test(trimmed)) {
-      blocks.push({ type: 'list-item', content: trimmed.replace(/^[-•*]\s/, '').replace(/^\d+[.)]\s/, '') });
+      blocks.push({ type: 'list-item', content: stripMarkdown(trimmed.replace(/^[-•*]\s/, '').replace(/^\d+[.)]\s/, '')) });
     }
     // Signature block detection
     else if (trimmed.startsWith('___') || trimmed.startsWith('---') && lines[i + 1]?.trim()) {
@@ -137,17 +148,12 @@ function parseMarkdownToBlocks(markdown: string): TextBlock[] {
     }
     // Regular paragraph
     else {
-      // Strip basic markdown bold/italic for PDF
-      const cleaned = trimmed
-        .replace(/\*\*(.+?)\*\*/g, '$1')
-        .replace(/\*(.+?)\*/g, '$1')
-        .replace(/_(.+?)_/g, '$1');
-      blocks.push({ type: 'paragraph', content: cleaned });
+      blocks.push({ type: 'paragraph', content: stripMarkdown(trimmed) });
     }
   }
 
   if (inCitation && citationBuffer) {
-    blocks.push({ type: 'citation', content: citationBuffer.trim() });
+    blocks.push({ type: 'citation', content: stripMarkdown(citationBuffer.trim()) });
   }
 
   return blocks;
