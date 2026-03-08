@@ -138,7 +138,7 @@ export default function MonitoramentoEditais() {
           <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
-                Pesquisando em {portaisMonitorados.filter((p) => p.ativo).length} portais...
+                Pesquisando em {portaisMonitorados.length} portais...
               </span>
               <span className="font-medium">{Math.min(100, Math.round(progresso))}%</span>
             </div>
