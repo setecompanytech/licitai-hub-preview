@@ -536,10 +536,28 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
               <Button size="sm" variant="outline" onClick={copyToClipboard}>
                 <Copy className="w-3 h-3 mr-1" /> Copiar
               </Button>
-              <Button size="sm" variant="outline" onClick={() => exportLegalPDF(resultado, tipoDoc)}>
+              <Button size="sm" variant="outline" onClick={async () => {
+                const meta = {
+                  timbradoUrl: activeEmpresa?.timbrado_url,
+                  certificado_nome: activeEmpresa?.certificado_nome,
+                  certificado_tipo: activeEmpresa?.certificado_tipo,
+                  rep_nome: activeEmpresa?.rep_nome || undefined,
+                  rep_cpf: activeEmpresa?.rep_cpf || undefined,
+                };
+                await exportLegalPDF(resultado, tipoDoc, meta);
+              }}>
                 <Download className="w-3 h-3 mr-1" /> PDF
               </Button>
-              <Button size="sm" variant="outline" onClick={() => exportLegalWord(resultado, tipoDoc)}>
+              <Button size="sm" variant="outline" onClick={() => {
+                const meta = {
+                  timbradoUrl: activeEmpresa?.timbrado_url,
+                  certificado_nome: activeEmpresa?.certificado_nome,
+                  certificado_tipo: activeEmpresa?.certificado_tipo,
+                  rep_nome: activeEmpresa?.rep_nome || undefined,
+                  rep_cpf: activeEmpresa?.rep_cpf || undefined,
+                };
+                exportLegalWord(resultado, tipoDoc, meta);
+              }}>
                 <Download className="w-3 h-3 mr-1" /> Word
               </Button>
             </div>
