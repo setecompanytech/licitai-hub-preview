@@ -14,8 +14,9 @@ import ReactMarkdown from 'react-markdown';
 import {
   TrendingUp, TrendingDown, RefreshCw, Calculator, FileText, Scale, Building2,
   HardHat, Users, DollarSign, Percent, CalendarDays, AlertTriangle, Sparkles,
-  Plus, Search, Clock, ArrowUpRight, ArrowDownRight, Minus, Info, Save, Loader2
+  Plus, Search, Clock, ArrowUpRight, ArrowDownRight, Minus, Info, Save, Loader2, ArrowRight
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 type Indice = {
