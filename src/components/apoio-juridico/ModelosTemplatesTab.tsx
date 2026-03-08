@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
+import DocumentosPeticaoUploader, { type FatoPeticao } from './DocumentosPeticaoUploader';
 import { exportLegalPDF, exportLegalWord } from '@/lib/legal-document-export';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
