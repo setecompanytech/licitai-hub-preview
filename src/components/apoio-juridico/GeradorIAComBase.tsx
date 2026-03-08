@@ -146,7 +146,9 @@ export default function GeradorIAComBase() {
               <option>Contrarrazões</option>
               <option>Pedido de Esclarecimento</option>
               <option>Pedido de Reconsideração</option>
-              <option>Reequilíbrio Econômico-Financeiro</option>
+              <option>Reajuste Contratual</option>
+              <option>Repactuação (MO/CCT)</option>
+              <option>Revisão / Reequilíbrio</option>
             </select>
           </div>
           <div>
