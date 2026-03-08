@@ -426,17 +426,57 @@ export function exportLegalWord(
 <head>
 <meta charset="utf-8">
 <meta name="generator" content="LicitaIA">
+<!--[if gte mso 9]>
+<xml>
+  <w:WordDocument>
+    <w:View>Print</w:View>
+    <w:Zoom>100</w:Zoom>
+    <w:DoNotOptimizeForBrowser/>
+  </w:WordDocument>
+</xml>
+<![endif]-->
 <style>
+  /* ABNT NBR 14724: margens sup/esq 3cm, inf/dir 2cm */
   @page {
     size: A4;
-    margin: 3cm 2cm 2cm 3cm; /* ABNT: sup 3cm, inf 2cm, esq 3cm, dir 2cm */
+    margin: 3cm 2cm 2.5cm 3cm;
+    mso-header-margin: 1.5cm;
+    mso-footer-margin: 1cm;
+    mso-page-numbers: true;
+  }
+  /* Cabeçalho: número da página no canto superior direito */
+  @page Section1 {
+    mso-header: h1;
+    mso-footer: f1;
+  }
+  div.Section1 { page: Section1; }
+  /* Header style - página no canto superior direito (ABNT) */
+  div.header {
+    text-align: right;
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 10pt;
+    color: #141414;
+    border: none;
+    mso-element: header;
+    margin-bottom: 0;
+  }
+  /* Footer style */
+  div.footer-section {
+    text-align: center;
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 8pt;
+    color: #999;
+    font-style: italic;
+    border-top: 0.5pt solid #ddd;
+    padding-top: 4pt;
+    mso-element: footer;
   }
   body {
     font-family: 'Times New Roman', Times, serif;
     font-size: 12pt;
-    line-height: 1.5; /* ABNT: 1,5 entrelinhas */
+    line-height: 1.5;
     color: #141414;
-    text-align: justify; /* ABNT: alinhamento justificado */
+    text-align: justify;
     margin: 0;
     padding: 0;
   }
@@ -453,6 +493,7 @@ export function exportLegalWord(
     font-size: 12pt;
     font-weight: bold;
     text-transform: uppercase;
+    text-align: center;
     margin-top: 18pt;
     margin-bottom: 6pt;
     line-height: 1.5;
@@ -465,7 +506,7 @@ export function exportLegalWord(
     line-height: 1.5;
   }
   p {
-    text-indent: 1.25cm; /* ABNT: recuo de parágrafo */
+    text-indent: 1.25cm;
     margin-top: 0;
     margin-bottom: 6pt;
     text-align: justify;
@@ -484,12 +525,12 @@ export function exportLegalWord(
   }
   /* ABNT NBR 10520: citação longa */
   blockquote {
-    margin-left: 4cm; /* Recuo 4cm */
+    margin-left: 4cm;
     margin-right: 0;
     margin-top: 6pt;
     margin-bottom: 6pt;
-    font-size: 10pt; /* Fonte menor */
-    line-height: 1.0; /* Espaçamento simples */
+    font-size: 10pt;
+    line-height: 1.0;
     font-style: italic;
     color: #555;
     text-align: justify;
@@ -513,7 +554,7 @@ export function exportLegalWord(
     border-top: 1px solid #aaa;
     margin: 8pt 0 12pt 0;
   }
-  .footer {
+  .doc-footer {
     text-align: center;
     font-size: 8pt;
     color: #999;
@@ -525,6 +566,19 @@ export function exportLegalWord(
 </style>
 </head>
 <body>
+<!-- Word Header: página no canto superior direito -->
+<div style="mso-element:header" id="h1">
+  <p style="text-align:right;font-size:10pt;font-family:'Times New Roman';margin:0;border:none;">
+    <span style="mso-field-code:'PAGE'"><!--[if supportFields]><span style="mso-element:field-begin"></span> PAGE <span style="mso-element:field-end"></span><![endif]--></span>
+  </p>
+</div>
+<!-- Word Footer: texto institucional centralizado -->
+<div style="mso-element:footer" id="f1">
+  <p style="text-align:center;font-size:8pt;font-family:'Times New Roman';font-style:italic;color:#999;border-top:0.5pt solid #ddd;padding-top:4pt;margin:0;">
+    Documento gerado pela plataforma LicitaIA — ${new Date().toLocaleDateString('pt-BR')} — Página <span style="mso-field-code:'PAGE'"><!--[if supportFields]><span style="mso-element:field-begin"></span> PAGE <span style="mso-element:field-end"></span><![endif]--></span> de <span style="mso-field-code:'NUMPAGES'"><!--[if supportFields]><span style="mso-element:field-begin"></span> NUMPAGES <span style="mso-element:field-end"></span><![endif]--></span>
+  </p>
+</div>
+<div class="Section1">
 `;
 
   // Title
