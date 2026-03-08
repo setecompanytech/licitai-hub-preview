@@ -2,7 +2,7 @@ import { Search, Bot, Zap, Shield, Users, BarChart3, FileText, Bell, Scale, Tren
 import { motion } from 'framer-motion';
 
 const features = [
-  { icon: Search, title: 'Monitoramento 24/7', desc: 'IA rastreia Compras.gov.br, PNCP e BEC/SP em tempo real, filtrando por CNAE e palavras-chave.' },
+  { icon: Search, title: 'Monitoramento 24/7', desc: 'IA rastreia 31 portais — PNCP, BLL, BNC, BEC/SP e 17 estaduais — em tempo real, filtrando por CNAE e palavras-chave.' },
   { icon: Bot, title: 'Assistente IA Jurídico', desc: 'Tire dúvidas, gere impugnações, recursos e análises com IA treinada na Lei 14.133/2021.' },
   { icon: Zap, title: 'Robô de Lances', desc: 'Configure estratégias automáticas de decremento e deixe o robô competir por você nos pregões.' },
   { icon: FileText, title: 'Propostas ABNT', desc: 'Gere propostas técnicas e comerciais formatadas automaticamente com selo ABNT.' },
