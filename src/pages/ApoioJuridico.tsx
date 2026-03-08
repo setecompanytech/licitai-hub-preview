@@ -40,9 +40,8 @@ export default function ApoioJuridico() {
             <ReequilibrioIA />
           </TabsContent>
 
-          <TabsContent value="gerador" className="space-y-4">
-            <GeradorIAComBase />
-          </TabsContent>
+
+
 
           <TabsContent value="base-juridica">
             <BaseJuridicaUpload />
