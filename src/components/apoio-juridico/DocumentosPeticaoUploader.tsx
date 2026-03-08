@@ -160,6 +160,119 @@ REGRAS:
 - Verifique proporcionalidade de eventual sanção`,
     categorias: ['Erro de fato', 'Erro de direito', 'Fato novo', 'Desproporcionalidade', 'Cerceamento', 'Processo legal', 'Motivação', 'Diligência', 'Desconsideração', 'Jurisprudência'],
   },
+  'Recurso Hierárquico': {
+    label: 'Recurso Hierárquico',
+    uploadLabel: 'Decisão do Pedido de Reconsideração Indeferido + Edital',
+    uploadDesc: 'Anexe a decisão que indeferiu o pedido de reconsideração, o edital e demais peças processuais relevantes para fundamentar o recurso à autoridade superior.',
+    uploadPlaceholder: 'Cole aqui o texto da decisão que indeferiu o pedido de reconsideração, a decisão originária e/ou outros documentos relevantes...',
+    aiPrompt: `Você é um advogado especialista em licitações públicas (Lei 14.133/2021).
+
+Analise a DECISÃO QUE INDEFERIU O PEDIDO DE RECONSIDERAÇÃO e demais documentos abaixo, e extraia TODOS os fatos e fundamentos relevantes para um RECURSO HIERÁRQUICO à autoridade superior.
+
+Para cada fato, retorne um JSON array (SEM markdown, APENAS JSON):
+[
+  {
+    "descricao": "Fato ou fundamento para o recurso hierárquico",
+    "fundamentacao": "Fundamentação legal (Lei 14.133/2021, Art. 167, jurisprudência TCU)",
+    "gravidade": "alta|media|baixa",
+    "categoria": "categoria do fato"
+  }
+]
+
+CATEGORIAS DE ANÁLISE:
+1. Manutenção indevida da decisão originária
+2. Erro na apreciação do pedido de reconsideração
+3. Fato novo não considerado
+4. Desproporcionalidade da sanção mantida
+5. Cerceamento de defesa na instância inferior
+6. Inobservância do devido processo legal
+7. Vício de motivação na decisão recorrida
+8. Divergência com jurisprudência TCU/Tribunais
+9. Ilegalidade na decisão originária não corrigida
+10. Ausência de fundamentação adequada
+
+REGRAS:
+- Identifique as falhas da decisão que indeferiu a reconsideração
+- Aponte vícios que persistem desde a decisão originária
+- Demonstre que a autoridade inferior não apreciou corretamente os argumentos
+- Verifique se houve inovação ou fato novo desconsiderado`,
+    categorias: ['Manutenção indevida', 'Erro de apreciação', 'Fato novo', 'Desproporcionalidade', 'Cerceamento', 'Processo legal', 'Motivação', 'Jurisprudência', 'Ilegalidade', 'Fundamentação'],
+  },
+  'Impugnação ao Edital': {
+    label: 'Impugnação ao Edital',
+    uploadLabel: 'Edital / Instrumento Convocatório',
+    uploadDesc: 'Anexe o edital ou instrumento convocatório completo para que a IA identifique cláusulas restritivas, desproporcionais ou ilegais que fundamentem a impugnação.',
+    uploadPlaceholder: 'Cole aqui o texto do edital ou instrumento convocatório...',
+    aiPrompt: `Você é um advogado especialista em licitações públicas (Lei 14.133/2021).
+
+Analise o EDITAL / INSTRUMENTO CONVOCATÓRIO abaixo e extraia TODAS as irregularidades, cláusulas restritivas, desproporcionais ou ilegais que possam fundamentar uma IMPUGNAÇÃO AO EDITAL.
+
+Para cada irregularidade, retorne um JSON array (SEM markdown, APENAS JSON):
+[
+  {
+    "descricao": "Descrição detalhada da irregularidade ou cláusula restritiva identificada",
+    "fundamentacao": "Fundamentação legal (Lei 14.133/2021, jurisprudência TCU, doutrina)",
+    "gravidade": "alta|media|baixa",
+    "categoria": "categoria da irregularidade"
+  }
+]
+
+CATEGORIAS DE ANÁLISE:
+1. Restrição indevida à competitividade (Art. 9º)
+2. Exigência de habilitação desproporcional (Art. 62-70)
+3. Descrição direcionada do objeto (Art. 40-47)
+4. Prazo inadequado (Art. 55)
+5. Critério de julgamento inadequado (Art. 33-39)
+6. Exigência de qualificação técnica excessiva (Art. 67)
+7. Exigência econômico-financeira desproporcional (Art. 69)
+8. Ausência de tratamento diferenciado ME/EPP (LC 123/2006)
+9. Vício na fase interna / planejamento (Art. 18-27)
+10. Cláusula contratual abusiva (Art. 89-92)
+11. Irregularidade no modo de disputa (Art. 56)
+12. Exigência de amostra/demonstração irregular (Art. 17, §3º)
+
+REGRAS:
+- Identifique CADA cláusula ou exigência irregular
+- Cite o artigo/inciso específico da Lei 14.133/2021 violado
+- Referencie Súmulas do TCU quando aplicável (247, 248, 269, etc.)
+- Classifique gravidade: "alta" = restrição direta à competitividade`,
+    categorias: ['Restrição competitividade', 'Habilitação desproporcional', 'Direcionamento', 'Prazo inadequado', 'Critério julgamento', 'Qualificação técnica', 'Econômico-financeira', 'ME/EPP', 'Planejamento', 'Cláusula abusiva', 'Modo disputa', 'Amostra/demonstração'],
+  },
+  'Pedido de Esclarecimento': {
+    label: 'Pedido de Esclarecimento',
+    uploadLabel: 'Edital / Instrumento Convocatório',
+    uploadDesc: 'Anexe o edital para que a IA identifique termos ambíguos, contradições ou pontos obscuros que justifiquem pedido de esclarecimento.',
+    uploadPlaceholder: 'Cole aqui o texto do edital ou instrumento convocatório...',
+    aiPrompt: `Você é um advogado especialista em licitações públicas (Lei 14.133/2021).
+
+Analise o EDITAL abaixo e identifique TODOS os pontos que necessitam de esclarecimento — termos ambíguos, contradições, omissões ou cláusulas que possam gerar interpretações divergentes.
+
+Para cada ponto, retorne um JSON array (SEM markdown, APENAS JSON):
+[
+  {
+    "descricao": "Descrição do ponto que necessita esclarecimento",
+    "fundamentacao": "Fundamentação legal e justificativa para o pedido (Art. 164 da Lei 14.133/2021)",
+    "gravidade": "alta|media|baixa",
+    "categoria": "categoria do ponto"
+  }
+]
+
+CATEGORIAS DE ANÁLISE:
+1. Ambiguidade na descrição do objeto
+2. Contradição entre cláusulas
+3. Omissão de informação essencial
+4. Critério de julgamento impreciso
+5. Exigência de habilitação obscura
+6. Prazo ou condição indefinida
+7. Especificação técnica vaga
+8. Condição contratual ambígua
+
+REGRAS:
+- Identifique CADA ponto de ambiguidade ou obscuridade
+- Formule a pergunta de esclarecimento implícita
+- Classifique gravidade: "alta" = pode inviabilizar participação`,
+    categorias: ['Ambiguidade objeto', 'Contradição', 'Omissão', 'Critério impreciso', 'Habilitação obscura', 'Prazo indefinido', 'Especificação vaga', 'Cláusula ambígua'],
+  },
 };
 
 const GRAVIDADE_COLORS: Record<string, string> = {
