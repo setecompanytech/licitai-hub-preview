@@ -752,6 +752,97 @@ ${truncated}`
             </Button>
           </div>
 
+          {/* Empresa & Representante Legal Selector */}
+          <div className="bg-muted/30 rounded-lg border border-border/50 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-accent" />
+              <h4 className="text-xs font-semibold">Dados Cadastrais da Empresa</h4>
+            </div>
+
+            {empresas.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">
+                Nenhuma empresa cadastrada. Acesse Configurações → Empresas para cadastrar.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Empresa</label>
+                    <Select value={selectedEmpresaId || ''} onValueChange={v => setSelectedEmpresaId(v || null)}>
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue placeholder="Selecione a empresa..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {empresas.map(e => (
+                          <SelectItem key={e.empresa_id} value={e.empresa_id} className="text-xs">
+                            {e.empresa.razao_social} ({e.empresa.cnpj})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end gap-4">
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={incluirDadosEmpresa}
+                        onChange={e => setIncluirDadosEmpresa(e.target.checked)}
+                        className="rounded border-border"
+                      />
+                      <Building2 className="w-3 h-3 text-muted-foreground" />
+                      Dados da Empresa
+                    </label>
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={incluirRepresentante}
+                        onChange={e => setIncluirRepresentante(e.target.checked)}
+                        className="rounded border-border"
+                      />
+                      <User className="w-3 h-3 text-muted-foreground" />
+                      Representante Legal
+                    </label>
+                  </div>
+                </div>
+
+                {selectedEmpresa && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] text-muted-foreground bg-background/50 rounded-md p-3 border border-border/30">
+                    {incluirDadosEmpresa && (
+                      <div className="space-y-0.5">
+                        <p className="font-semibold text-foreground text-xs flex items-center gap-1"><Building2 className="w-3 h-3 text-accent" /> Empresa</p>
+                        <p><strong>Razão Social:</strong> {selectedEmpresa.razao_social}</p>
+                        <p><strong>CNPJ:</strong> {selectedEmpresa.cnpj}</p>
+                        {selectedEmpresa.endereco && <p><strong>Endereço:</strong> {selectedEmpresa.endereco}{selectedEmpresa.bairro ? `, ${selectedEmpresa.bairro}` : ''}</p>}
+                        {selectedEmpresa.municipio && <p><strong>Cidade/UF:</strong> {selectedEmpresa.municipio}/{selectedEmpresa.uf}</p>}
+                        {selectedEmpresa.cep && <p><strong>CEP:</strong> {selectedEmpresa.cep}</p>}
+                        {selectedEmpresa.inscricao_estadual && <p><strong>IE:</strong> {selectedEmpresa.inscricao_estadual}</p>}
+                        {selectedEmpresa.telefone && <p><strong>Fone:</strong> {selectedEmpresa.telefone}</p>}
+                        {selectedEmpresa.email && <p><strong>E-mail:</strong> {selectedEmpresa.email}</p>}
+                      </div>
+                    )}
+                    {incluirRepresentante && (
+                      <div className="space-y-0.5">
+                        <p className="font-semibold text-foreground text-xs flex items-center gap-1"><User className="w-3 h-3 text-accent" /> Representante Legal</p>
+                        {selectedEmpresa.rep_nome ? (
+                          <>
+                            <p><strong>Nome:</strong> {selectedEmpresa.rep_nome}</p>
+                            {selectedEmpresa.rep_cpf && <p><strong>CPF:</strong> {selectedEmpresa.rep_cpf}</p>}
+                            {selectedEmpresa.rep_rg && <p><strong>RG:</strong> {selectedEmpresa.rep_rg}{selectedEmpresa.rep_orgao_expedidor ? ` (${selectedEmpresa.rep_orgao_expedidor})` : ''}</p>}
+                            {selectedEmpresa.rep_cargo && <p><strong>Cargo:</strong> {selectedEmpresa.rep_cargo}</p>}
+                            {selectedEmpresa.rep_naturalidade && <p><strong>Naturalidade:</strong> {selectedEmpresa.rep_naturalidade}</p>}
+                            {selectedEmpresa.rep_nacionalidade && <p><strong>Nacionalidade:</strong> {selectedEmpresa.rep_nacionalidade}</p>}
+                          </>
+                        ) : (
+                          <p className="italic text-destructive">Representante não cadastrado. Acesse Configurações → Empresa.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-muted-foreground">Nº do Edital / Contrato</label>
