@@ -493,7 +493,7 @@ export function exportLegalWord(
     font-size: 12pt;
     font-weight: bold;
     text-transform: uppercase;
-    text-align: center;
+    text-align: left;
     margin-top: 18pt;
     margin-bottom: 6pt;
     line-height: 1.5;
