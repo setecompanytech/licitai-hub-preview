@@ -110,6 +110,23 @@ export default function ModelosTemplatesTab() {
   const [resultado, setResultado] = useState('');
   const [gerando, setGerando] = useState(false);
 
+  // Petition upload state
+  const [showPeticaoUploader, setShowPeticaoUploader] = useState(false);
+  const [fatosPeticao, setFatosPeticao] = useState<FatoPeticao[]>([]);
+  const [peticaoDocsTexto, setPeticaoDocsTexto] = useState('');
+
+  // Map model titles to PETICAO_CONFIG keys
+  const MODELO_PETICAO_MAP: Record<string, string> = {
+    'Pedido de Esclarecimento': 'Pedido de Esclarecimento',
+    'Impugnação ao Edital': 'Impugnação ao Edital',
+    'Recurso Administrativo': 'Recurso Administrativo',
+    'Contrarrazões de Recurso': 'Contrarrazões',
+    'Pedido de Reconsideração': 'Pedido de Reconsideração',
+    'Recurso Hierárquico': 'Recurso Hierárquico',
+  };
+  const peticaoConfigKey = activeModelo ? MODELO_PETICAO_MAP[activeModelo.titulo] : null;
+  const isPeticaoType = !!peticaoConfigKey;
+
   const modalidade = MODALIDADES.find(m => m.id === modalidadeId) || null;
 
   // Handle edital upload and AI extraction
