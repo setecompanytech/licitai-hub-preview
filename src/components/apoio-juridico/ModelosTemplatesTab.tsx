@@ -568,7 +568,7 @@ ${truncated}`
                     <SelectValue placeholder="Todos os critérios" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="" className="text-xs">Todos os critérios</SelectItem>
+                    <SelectItem value="__all__" className="text-xs">Todos os critérios</SelectItem>
                     {modalidade.criteriosJulgamento.map(c => (
                       <SelectItem key={c.id} value={c.id} className="text-xs">
                         {c.nome} {c.obrigatorio ? '(obrigatório)' : ''}
