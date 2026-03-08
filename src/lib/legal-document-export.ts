@@ -317,11 +317,12 @@ export function exportLegalPDF(
         doc.setFont('times', 'italic');
         doc.setFontSize(LEGAL_LAYOUT.citationFontSize);
         doc.setTextColor(...COLORS.muted);
-        const citWidth = contentWidth - (LEGAL_LAYOUT.citationIndent - LEGAL_LAYOUT.marginLeft);
+        const citWidth = getPageWidth(doc) - LEGAL_LAYOUT.marginRight - LEGAL_LAYOUT.citationIndent;
         const cLines = doc.splitTextToSize(block.content, citWidth);
-        for (const l of cLines) {
+        for (let ci = 0; ci < cLines.length; ci++) {
           y = ensureSpace(doc, y, LEGAL_LAYOUT.citationLineHeight);
-          doc.text(l, LEGAL_LAYOUT.citationIndent, y);
+          const isLastCit = ci === cLines.length - 1;
+          drawJustifiedLine(doc, cLines[ci], LEGAL_LAYOUT.citationIndent, y, citWidth, isLastCit);
           y += LEGAL_LAYOUT.citationLineHeight;
         }
         y += 4;
@@ -338,9 +339,10 @@ export function exportLegalPDF(
         const itemText = prefix + block.content;
         const itemWidth = contentWidth - LEGAL_LAYOUT.paragraphIndent;
         const iLines = doc.splitTextToSize(itemText, itemWidth);
-        for (const l of iLines) {
+        for (let il = 0; il < iLines.length; il++) {
           y = ensureSpace(doc, y, LEGAL_LAYOUT.lineHeight);
-          doc.text(l, LEGAL_LAYOUT.marginLeft + LEGAL_LAYOUT.paragraphIndent, y);
+          const isLastItem = il === iLines.length - 1;
+          drawJustifiedLine(doc, iLines[il], LEGAL_LAYOUT.marginLeft + LEGAL_LAYOUT.paragraphIndent, y, itemWidth, isLastItem);
           y += LEGAL_LAYOUT.lineHeight;
         }
         y += 1;
