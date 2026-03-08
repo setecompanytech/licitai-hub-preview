@@ -423,7 +423,7 @@ export default function ModelosTemplatesTab() {
                         setSelectedDocs([]);
                       }}
                     >
-                      <Sparkles className="w-3 h-3 mr-1" /> Gerar com IA
+                      <FileText className="w-3 h-3 mr-1" /> Gerar Documento
                     </Button>
                   </div>
                 </div>
