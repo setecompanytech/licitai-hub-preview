@@ -365,16 +365,31 @@ export default function PropostaDownload({
       }
 
       // Signature
+      const certInfo = (empresaData as any)?.certificado_nome ? `
+        <div style="margin-top:24pt;border:2px solid #008050;border-radius:6pt;padding:12pt;text-align:center">
+          <p style="font-weight:bold;color:#006440;font-size:10pt;margin:0 0 4pt 0;text-indent:0">✓ DOCUMENTO ASSINADO DIGITALMENTE</p>
+          <p style="font-size:9pt;color:#444;margin:0 0 2pt 0;text-indent:0">Certificado: ${(empresaData as any)?.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF'} — ${(empresaData as any)?.certificado_nome}</p>
+          <p style="font-size:9pt;color:#444;margin:0 0 2pt 0;text-indent:0">Assinante: ${repData?.nome || ''} | CPF: ${repData?.cpf || ''}</p>
+          <p style="font-size:9pt;color:#444;margin:0;text-indent:0">Data/Hora: ${new Date().toLocaleString('pt-BR')}</p>
+        </div>
+      ` : '';
+
       const signature = `
         <div style="text-align:center;margin-top:36pt">
           <div style="width:200pt;border-bottom:2px solid #333;margin:0 auto 6pt auto"></div>
-          <p style="font-weight:bold">${(empresaData?.razao_social || '').toUpperCase()}</p>
-          <p style="font-size:10pt">CNPJ: ${empresaData?.cnpj || ''}</p>
-          <p>${(repData?.nome || '').toUpperCase()}</p>
-          <p style="font-size:10pt">CPF: ${repData?.cpf || ''}</p>
-          <p style="font-size:10pt">${(repData?.cargo || '').toUpperCase()}</p>
+          <p style="font-weight:bold;text-indent:0">${(empresaData?.razao_social || '').toUpperCase()}</p>
+          <p style="font-size:10pt;text-indent:0">CNPJ: ${empresaData?.cnpj || ''}</p>
+          <p style="text-indent:0">${(repData?.nome || '').toUpperCase()}</p>
+          <p style="font-size:10pt;text-indent:0">CPF: ${repData?.cpf || ''}</p>
+          <p style="font-size:10pt;text-indent:0">${(repData?.cargo || '').toUpperCase()}</p>
         </div>
+        ${certInfo}
       `;
+
+      // Timbrado header for Word
+      const timbradoHeader = timbradoUrl && /\.(png|jpe?g|webp)(\?|$)/i.test(timbradoUrl)
+        ? `<div style="text-align:center;margin-bottom:12pt"><img src="${timbradoUrl}" style="max-height:60pt;max-width:100%" /></div>`
+        : '';
 
       const htmlContent = `
         <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
@@ -388,6 +403,7 @@ export default function PropostaDownload({
           table { page-break-inside: avoid; }
         </style></head>
         <body>
+          ${timbradoHeader}
           ${bodyHtml}${signature}
         </body></html>
       `;
