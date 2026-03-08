@@ -10,7 +10,7 @@ import { Sparkles, Loader2, BookOpen, Copy, TrendingUp, Download, FileText } fro
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
 import IrregularidadesExtractor, { type Irregularidade } from './IrregularidadesExtractor';
-import { exportToPDF, exportToWord } from '@/lib/legal-document-export';
+import { exportLegalPDF, exportLegalWord } from '@/lib/legal-document-export';
 
 type DocRef = { id: string; titulo: string; tipo: string; ementa: string | null; texto_integral: string | null };
 type Indice = { id: string; nome: string; sigla: string; valor: number; variacao_mensal: number | null; acumulado_12m: number | null; periodo: string; fonte: string };
