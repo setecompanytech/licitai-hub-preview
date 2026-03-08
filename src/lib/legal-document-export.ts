@@ -104,7 +104,7 @@ function parseMarkdownToBlocks(markdown: string): TextBlock[] {
 
     if (!trimmed) {
       if (inCitation && citationBuffer) {
-        blocks.push({ type: 'citation', content: citationBuffer.trim() });
+        blocks.push({ type: 'citation', content: stripMarkdown(citationBuffer.trim()) });
         citationBuffer = '';
         inCitation = false;
       }
