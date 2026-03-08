@@ -432,10 +432,16 @@ ${truncated}`
       } else if (activeModelo.id === '9') {
         instrucao = 'Gere pedido de REVISÃO/REEQUILÍBRIO STRICTO SENSU (Art. 124, II, "d" da Lei 14.133/2021). Aplique Teoria da Imprevisão. Demonstre nexo causal e onerosidade excessiva.';
       }
+    } else if (activeModelo.categoria === 'Recursos' && fatosPeticao.length > 0) {
+      instrucao = `Gere ${activeModelo.titulo} COMPLETO com base nos ${fatosPeticao.length} fatos jurídicos extraídos dos documentos anexados. Para CADA fato: 1) Descreva objetivamente; 2) Apresente fundamentação jurídica (Lei 14.133/2021, TCU); 3) Formule o pedido específico. Estruture com: I) Endereçamento; II) Qualificação; III) Tempestividade (${activeModelo.fundamentacao}); IV) Dos Fatos; V) Do Direito; VI) Dos Pedidos; VII) Fecho. Linguagem técnica, objetiva e impessoal.`;
     } else if (activeModelo.categoria === 'Recursos') {
       instrucao = `Gere ${activeModelo.titulo} com fundamentação na ${activeModelo.fundamentacao}. Estruture com: I) Tempestividade; II) Fatos; III) Fundamentos jurídicos; IV) Pedido. Linguagem técnica, objetiva e impessoal.`;
-    } else if (activeModelo.categoria === 'Impugnações') {
-      instrucao = `Gere Impugnação ao Edital com fundamentação no ${activeModelo.fundamentacao}. Estruture com: I) Legitimidade; II) Tempestividade; III) Cláusulas impugnadas; IV) Fundamentação legal; V) Pedido.`;
+    } else if (activeModelo.categoria === 'Impugnações' || activeModelo.categoria === 'Esclarecimentos') {
+      if (fatosPeticao.length > 0) {
+        instrucao = `Gere ${activeModelo.titulo} COMPLETO com base nas ${fatosPeticao.length} irregularidades/pontos extraídos do edital. Para CADA irregularidade: 1) Descreva o vício/ponto; 2) Cite artigo violado; 3) Demonstre prejuízo; 4) Formule pedido específico. Estruture com: I) Endereçamento; II) Qualificação; III) Tempestividade (${activeModelo.fundamentacao}); IV) Das Irregularidades/Pontos; V) Do Direito; VI) Dos Pedidos; VII) Fecho.`;
+      } else {
+        instrucao = `Gere ${activeModelo.titulo} com fundamentação no ${activeModelo.fundamentacao}. Estruture com: I) Legitimidade; II) Tempestividade; III) Cláusulas impugnadas; IV) Fundamentação legal; V) Pedido.`;
+      }
     } else {
       instrucao = `Gere ${activeModelo.titulo} conforme ${activeModelo.fundamentacao}. Formato técnico-jurídico, linguagem impessoal e objetiva.`;
     }
