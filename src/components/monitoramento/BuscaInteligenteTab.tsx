@@ -43,16 +43,38 @@ type ChatMessage = {
 };
 
 const PORTAIS_OPCOES = [
-  { id: 'pncp', label: 'PNCP (API oficial)' },
-  { id: 'bnc', label: 'BNC' },
-  { id: 'becsp', label: 'BEC/SP' },
-  { id: 'comprasrj', label: 'Compras RJ' },
-  { id: 'licitacoese', label: 'Licitações-e (BB)' },
-  { id: 'banparanet', label: 'Banparanet PA' },
-  { id: 'comprasnet', label: 'Compras Governamentais' },
-  { id: 'licitanet', label: 'Licitanet' },
-  { id: 'bll', label: 'BLL Compras' },
-  { id: 'portalcompras', label: 'Portal de Compras Públicas' },
+  // Federais / API
+  { id: 'pncp', label: 'PNCP (API oficial)', group: 'federal' },
+  { id: 'comprasnet', label: 'Compras Governamentais', group: 'federal' },
+  // Plataformas nacionais
+  { id: 'bll', label: 'BLL Compras', group: 'plataforma' },
+  { id: 'bnc', label: 'BNC', group: 'plataforma' },
+  { id: 'licitacoese', label: 'Licitações-e (BB)', group: 'plataforma' },
+  { id: 'portalcompras', label: 'Portal de Compras Públicas', group: 'plataforma' },
+  { id: 'licitanet', label: 'Licitanet', group: 'plataforma' },
+  { id: 'bbmnet', label: 'BBMNet', group: 'plataforma' },
+  { id: 'comprasbr', label: 'ComprasBR', group: 'plataforma' },
+  { id: 'licitardigital', label: 'Licitar Digital', group: 'plataforma' },
+  // Estaduais
+  { id: 'becsp', label: 'BEC/SP', group: 'estadual' },
+  { id: 'comprasrj', label: 'Compras RJ', group: 'estadual' },
+  { id: 'comprasmg', label: 'Compras MG', group: 'estadual' },
+  { id: 'comprasba', label: 'ComprasNet BA', group: 'estadual' },
+  { id: 'comprasce', label: 'Compras CE', group: 'estadual' },
+  { id: 'compraspe', label: 'PE Integrado', group: 'estadual' },
+  { id: 'comprasgo', label: 'ComprasNet GO', group: 'estadual' },
+  { id: 'compraspr', label: 'Compras PR', group: 'estadual' },
+  { id: 'comprasrs', label: 'Compras RS', group: 'estadual' },
+  { id: 'comprassc', label: 'Compras SC', group: 'estadual' },
+  { id: 'banparanet', label: 'Banparanet PA', group: 'estadual' },
+  { id: 'comprasam', label: 'e-Compras AM', group: 'estadual' },
+  { id: 'comprases', label: 'Compras ES', group: 'estadual' },
+  { id: 'comprasdf', label: 'e-Compras DF', group: 'estadual' },
+  { id: 'comprasmt', label: 'Compras MT', group: 'estadual' },
+  { id: 'comprasms', label: 'Compras MS', group: 'estadual' },
+  { id: 'comprasto', label: 'Compras TO', group: 'estadual' },
+  { id: 'comprasma', label: 'Compras MA', group: 'estadual' },
+  { id: 'comprasro', label: 'ComprasNet RO', group: 'estadual' },
 ];
 
 const UFS = [
