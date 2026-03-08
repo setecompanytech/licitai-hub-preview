@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ChevronRight, ArrowRight, HelpCircle } from 'lucide-react';
+import { ChevronDown, ArrowRight, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 
-type FaqItem = { id: string; pergunta: string; resposta: string; };
+type FaqItem = { id: string; pergunta: string; resposta: string };
 
 export default function FaqSection() {
   const navigate = useNavigate();
@@ -19,30 +19,32 @@ export default function FaqSection() {
   }, []);
 
   return (
-    <section id="faq" className="py-24 px-6">
-      <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-12">
+    <section id="faq" className="landing-section bg-muted/20">
+      <div className="max-w-3xl mx-auto px-6">
+        <div className="text-center mb-14">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-            <p className="text-sm font-semibold text-accent uppercase tracking-widest mb-3">FAQ</p>
-            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Perguntas Frequentes</h2>
+            <span className="section-label">FAQ</span>
+            <h2 className="section-title">Perguntas Frequentes</h2>
+            <p className="section-subtitle mx-auto">Tire suas dúvidas sobre a plataforma</p>
           </motion.div>
         </div>
 
         <div className="space-y-3">
-          {faqs.map((faq) => (
+          {faqs.map((faq, i) => (
             <motion.div
               key={faq.id}
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="bg-card rounded-xl border border-border/40 overflow-hidden"
+              transition={{ delay: i * 0.05 }}
+              className="bg-card rounded-xl border border-border/30 overflow-hidden"
             >
               <button
                 onClick={() => setOpenFaq(openFaq === faq.id ? null : faq.id)}
                 className="w-full flex items-center justify-between p-5 text-left group"
               >
-                <span className="font-semibold pr-4 group-hover:text-accent transition-colors">{faq.pergunta}</span>
-                <ChevronRight className={`w-5 h-5 text-muted-foreground flex-shrink-0 transition-transform duration-300 ${openFaq === faq.id ? 'rotate-90' : ''}`} />
+                <span className="font-semibold text-[15px] pr-4 group-hover:text-accent transition-colors">{faq.pergunta}</span>
+                <ChevronDown className={`w-5 h-5 text-muted-foreground flex-shrink-0 transition-transform duration-300 ${openFaq === faq.id ? 'rotate-180' : ''}`} />
               </button>
               <AnimatePresence>
                 {openFaq === faq.id && (
@@ -53,7 +55,7 @@ export default function FaqSection() {
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-5 pb-5 text-sm text-muted-foreground leading-relaxed border-t border-border/30 pt-4">
+                    <div className="px-5 pb-5 text-sm text-muted-foreground leading-relaxed border-t border-border/20 pt-4">
                       {faq.resposta}
                     </div>
                   </motion.div>
@@ -63,8 +65,8 @@ export default function FaqSection() {
           ))}
         </div>
 
-        <div className="text-center mt-8">
-          <Button variant="outline" className="rounded-xl" onClick={() => navigate('/faq')}>
+        <div className="text-center mt-10">
+          <Button variant="outline" className="rounded-xl text-[13px] font-semibold" onClick={() => navigate('/faq')}>
             <HelpCircle className="w-4 h-4 mr-2" /> Ver todas as perguntas <ArrowRight className="w-4 h-4 ml-1" />
           </Button>
         </div>
