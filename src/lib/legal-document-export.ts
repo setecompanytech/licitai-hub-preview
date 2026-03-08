@@ -367,27 +367,34 @@ export function exportLegalPDF(
     }
   }
 
-  // ── Footer on each page ──
+  // ── Header (paginação) e Rodapé em cada página ──
   const totalPages = doc.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p);
-    drawPageNumber(doc, p);
+    // ABNT: número da página no canto superior direito (a partir da 2ª página)
+    drawPageNumber(doc, p, 2);
     
-    // Footer line
+    // Rodapé: linha fina + texto institucional DENTRO da margem inferior
     const ph = getPageHeight(doc);
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.2);
-    doc.line(LEGAL_LAYOUT.marginLeft, ph - LEGAL_LAYOUT.marginBottom + 5, getPageWidth(doc) - LEGAL_LAYOUT.marginRight, ph - LEGAL_LAYOUT.marginBottom + 5);
-    
-    doc.setFont('times', 'italic');
-    doc.setFontSize(8);
-    doc.setTextColor(...COLORS.muted);
-    doc.text(
-      `Documento gerado pela plataforma LicitaIA — ${new Date().toLocaleDateString('pt-BR')}`,
-      getPageWidth(doc) / 2,
-      ph - LEGAL_LAYOUT.marginBottom + 10,
-      { align: 'center' }
-    );
+    const footerLineY = ph - LEGAL_LAYOUT.marginBottom + 2;
+    const footerTextY = footerLineY + 4;
+
+    // Só desenha se couber na página (segurança)
+    if (footerTextY < ph - 2) {
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.2);
+      doc.line(LEGAL_LAYOUT.marginLeft, footerLineY, getPageWidth(doc) - LEGAL_LAYOUT.marginRight, footerLineY);
+      
+      doc.setFont('times', 'italic');
+      doc.setFontSize(8);
+      doc.setTextColor(...COLORS.muted);
+      doc.text(
+        `Documento gerado pela plataforma LicitaIA — ${new Date().toLocaleDateString('pt-BR')} — Página ${p} de ${totalPages}`,
+        getPageWidth(doc) / 2,
+        footerTextY,
+        { align: 'center' }
+      );
+    }
   }
 
   const safeName = title.replace(/[^a-zA-Z0-9À-ÿ\s-]/g, '').replace(/\s+/g, '-').slice(0, 60);
