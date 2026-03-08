@@ -97,6 +97,7 @@ REGRAS:
 - Quando o prompt pedir JSON, retorne APENAS o JSON sem markdown
 - Seja exaustivo na identificação de fatos e fundamentos
 - CADA fato deve ter fundamentação jurídica ESPECÍFICA (artigo, inciso, parágrafo)
+- NÃO use linhas horizontais (---) como separadores — use apenas ## e ### para seções
 - Classifique gravidade: alta = argumento forte/ilegalidade clara; média = vício relevante; baixa = questão menor
 - Responda SEMPRE em português brasileiro`,
 
