@@ -270,6 +270,18 @@ ${truncated}`
 
   const activeModelo = modelos.find(m => m.id === activeModeloId);
 
+  // Map model titles to PETICAO_CONFIG keys for petition upload
+  const MODELO_PETICAO_MAP: Record<string, string> = {
+    'Pedido de Esclarecimento': 'Pedido de Esclarecimento',
+    'Impugnação ao Edital': 'Impugnação ao Edital',
+    'Recurso Administrativo': 'Recurso Administrativo',
+    'Contrarrazões de Recurso': 'Contrarrazões',
+    'Pedido de Reconsideração': 'Pedido de Reconsideração',
+    'Recurso Hierárquico': 'Recurso Hierárquico',
+  };
+  const peticaoConfigKey = activeModelo ? MODELO_PETICAO_MAP[activeModelo.titulo] : null;
+  const isPeticaoType = !!peticaoConfigKey;
+
   const toggle = (list: string[], id: string, setter: (v: string[]) => void) => {
     setter(list.includes(id) ? list.filter(x => x !== id) : [...list, id]);
   };
