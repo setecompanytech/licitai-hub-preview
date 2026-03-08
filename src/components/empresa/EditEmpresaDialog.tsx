@@ -254,6 +254,17 @@ export default function EditEmpresaDialog({ empresa, open, onOpenChange, onSucce
               <Input value={inscricaoMunicipal} onChange={e => setInscricaoMunicipal(e.target.value)} className="mt-1" />
             </div>
           </div>
+
+          <Separator className="my-2" />
+
+          <TimbradoUploader
+            empresaId={empresa?.id}
+            timbradoUrl={timbradoUrl}
+            setTimbradoUrl={setTimbradoUrl}
+          />
+
+          <Separator className="my-2" />
+
           <Button type="submit" disabled={loading || !regimeTributario} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
             Salvar Alterações
