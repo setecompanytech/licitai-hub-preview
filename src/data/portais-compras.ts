@@ -70,7 +70,7 @@ export const PORTAIS_ESTADUAIS: PortalCompras[] = [
     id: 'e-compras-am',
     nome: 'e-Compras Amazonas',
     nomeAbreviado: 'e-Compras AM',
-    url: 'https://sistemas.sefaz.am.gov.br/e-compras/',
+    url: 'https://www.e-compras.am.gov.br/publico/',
     uf: 'AM',
     categoria: 'estadual',
     tipo: 'ambos',
