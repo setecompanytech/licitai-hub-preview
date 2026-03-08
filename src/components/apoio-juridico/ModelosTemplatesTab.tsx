@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +16,7 @@ import {
   MessageSquare, FileWarning, Gavel, ArrowUpDown, ShieldQuestion,
   Calculator, Filter, X, TrendingUp, Users, ChevronDown, ChevronUp,
   Scale, SlidersHorizontal, ListChecks, Target, Shield, Info,
-  Landmark, Award
+  Landmark, Award, Upload, CheckCircle
 } from 'lucide-react';
 import { MODALIDADES, type ModalidadeLicitacao } from '@/data/modalidades-licitacao';
 
@@ -37,7 +37,7 @@ const modelos: Modelo[] = [
   { id: '2', titulo: 'Impugnação ao Edital', categoria: 'Impugnações', descricao: 'Contestar cláusulas restritivas ou ilegais do edital', icon: FileWarning, fundamentacao: 'Art. 164 da Lei 14.133/2021', requisitosFiltro: ['base_juridica'] },
   { id: '3', titulo: 'Recurso Administrativo', categoria: 'Recursos', descricao: 'Recurso contra decisão de habilitação ou julgamento', icon: Gavel, fundamentacao: 'Art. 165 da Lei 14.133/2021', requisitosFiltro: ['base_juridica'] },
   { id: '4', titulo: 'Contrarrazões de Recurso', categoria: 'Recursos', descricao: 'Resposta ao recurso interposto por outro licitante', icon: ArrowUpDown, fundamentacao: 'Art. 165, §3º da Lei 14.133/2021', requisitosFiltro: ['base_juridica'] },
-  { id: '5', titulo: 'Pedido de Reconsideração', categoria: 'Recursos', descricao: 'Reconsideração de penalidades aplicadas', icon: ShieldQuestion, fundamentacao: 'Art. 166 da Lei 14.133/2021', requisitosFiltro: ['base_juridica'] },
+  { id: '5', titulo: 'Pedido de Reconsideração', categoria: 'Recursos', descricao: 'Reconsideração de penalidades aplicadas', icon: ShieldQuestion, fundamentacao: 'Art. 166 da Lei 14.133/2021', requisitosFiltro: [] },
   { id: '6', titulo: 'Recurso Hierárquico', categoria: 'Recursos', descricao: 'Recurso à autoridade superior quando pedido de reconsideração indeferido', icon: ArrowUpDown, fundamentacao: 'Art. 167 da Lei 14.133/2021', requisitosFiltro: ['base_juridica'] },
   { id: '7', titulo: 'Reajuste Contratual (Índice)', categoria: 'Reequilíbrio', descricao: 'Aplicação de índice de preços previsto no contrato para recomposição inflacionária', icon: TrendingUp, fundamentacao: 'Art. 92, §3º e Art. 135, I da Lei 14.133/2021', requisitosFiltro: ['indices', 'contrato', 'base_juridica'] },
   { id: '8', titulo: 'Repactuação (MO/CCT)', categoria: 'Reequilíbrio', descricao: 'Revisão de custos de mão de obra por dissídio coletivo', icon: Users, fundamentacao: 'Art. 135, I da Lei 14.133/2021', requisitosFiltro: ['ccts', 'indices', 'contrato', 'base_juridica'] },
@@ -65,6 +65,13 @@ export default function ModelosTemplatesTab() {
   const [etapaFiltro, setEtapaFiltro] = useState<string | null>(null);
   const [criterioFiltro, setCriterioFiltro] = useState<string | null>(null);
   const [showModalidadeInfo, setShowModalidadeInfo] = useState(false);
+
+  // Edital upload for auto-extraction
+  const editalFileRef = useRef<HTMLInputElement>(null);
+  const [editalUploadFile, setEditalUploadFile] = useState<File | null>(null);
+  const [extractingEdital, setExtractingEdital] = useState(false);
+  const [editalExtracted, setEditalExtracted] = useState(false);
+  const [extractedEditalContext, setExtractedEditalContext] = useState('');
 
   // Research data
   const [indices, setIndices] = useState<Indice[]>([]);
