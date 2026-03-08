@@ -10,6 +10,7 @@ import { Sparkles, Loader2, BookOpen, Copy, TrendingUp, Download, FileText } fro
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
 import IrregularidadesExtractor, { type Irregularidade } from './IrregularidadesExtractor';
+import DocumentosPeticaoUploader, { type FatoPeticao } from './DocumentosPeticaoUploader';
 import { exportLegalPDF, exportLegalWord } from '@/lib/legal-document-export';
 
 type DocRef = { id: string; titulo: string; tipo: string; ementa: string | null; texto_integral: string | null };
@@ -17,7 +18,8 @@ type Indice = { id: string; nome: string; sigla: string; valor: number; variacao
 type CCT = { id: string; categoria_profissional: string; piso_salarial: number | null; reajuste_percentual: number | null; indice_reajuste: string | null; vigencia_inicio: string | null; vigencia_fim: string | null; sindicato_laboral: string | null; abrangencia_uf: string | null };
 
 const TIPOS_REEQUILIBRIO = ['Reajuste Contratual', 'Repactuação (MO/CCT)', 'Revisão / Reequilíbrio'];
-const TIPOS_COM_ANALISE_EDITAL = ['Impugnação ao Edital', 'Recurso Administrativo', 'Contrarrazões', 'Pedido de Esclarecimento', 'Pedido de Reconsideração'];
+const TIPOS_COM_ANALISE_EDITAL = ['Impugnação ao Edital', 'Pedido de Esclarecimento'];
+const TIPOS_COM_UPLOAD_DOCS = ['Recurso Administrativo', 'Contrarrazões', 'Pedido de Reconsideração'];
 const fmtPerc = (v: number | null) => v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—';
 
 export default function GeradorIAComBase() {
@@ -30,10 +32,15 @@ export default function GeradorIAComBase() {
   const [docsBase, setDocsBase] = useState<DocRef[]>([]);
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
 
-  // 3-step flow state
+  // Irregularidades flow (Impugnação/Esclarecimento)
   const [showExtractor, setShowExtractor] = useState(false);
   const [irregularidades, setIrregularidades] = useState<Irregularidade[]>([]);
   const [editalTexto, setEditalTexto] = useState('');
+
+  // Fatos peticao flow (Recurso/Contrarrazões/Reconsideração)
+  const [showPeticaoUploader, setShowPeticaoUploader] = useState(false);
+  const [fatosPeticao, setFatosPeticao] = useState<FatoPeticao[]>([]);
+  const [docsTexto, setDocsTexto] = useState('');
 
   // Indices & CCTs for reequilíbrio
   const [indices, setIndices] = useState<Indice[]>([]);
@@ -41,6 +48,7 @@ export default function GeradorIAComBase() {
   const [loadingIndices, setLoadingIndices] = useState(false);
   const isReequilibrio = TIPOS_REEQUILIBRIO.includes(tipoDoc);
   const isAnaliseEdital = TIPOS_COM_ANALISE_EDITAL.includes(tipoDoc);
+  const isUploadDocs = TIPOS_COM_UPLOAD_DOCS.includes(tipoDoc);
 
   useEffect(() => {
     if (!user) return;
@@ -68,26 +76,37 @@ export default function GeradorIAComBase() {
     }
   }, [isReequilibrio]);
 
-  // Reset extractor state when changing doc type
+  // Reset state when changing doc type
   useEffect(() => {
     setShowExtractor(false);
+    setShowPeticaoUploader(false);
     setIrregularidades([]);
+    setFatosPeticao([]);
     setEditalTexto('');
+    setDocsTexto('');
     setResultado('');
   }, [tipoDoc]);
 
   const toggleDoc = (id: string) => {
-    setSelectedDocs(prev =>
-      prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]
-    );
+    setSelectedDocs(prev => prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]);
   };
 
+  // ── Irregularidades handlers (Impugnação/Esclarecimento) ──
   const handleIrregularidadesFinish = (selected: Irregularidade[], textoEdital: string, numEdital: string) => {
     setIrregularidades(selected);
     setEditalTexto(textoEdital);
     setEditalNum(numEdital);
     setShowExtractor(false);
     toast.success(`${selected.length} irregularidade(s) prontas para geração do documento.`);
+  };
+
+  // ── Fatos peticao handlers (Recurso/Contrarrazões/Reconsideração) ──
+  const handleFatosPeticaoFinish = (fatos: FatoPeticao[], documentosTexto: string, numEdital: string) => {
+    setFatosPeticao(fatos);
+    setDocsTexto(documentosTexto);
+    setEditalNum(numEdital);
+    setShowPeticaoUploader(false);
+    toast.success(`${fatos.length} fato(s) jurídico(s) prontos para geração do documento.`);
   };
 
   const buildIrregularidadesContext = (): string => {
@@ -102,19 +121,87 @@ export default function GeradorIAComBase() {
     return ctx;
   };
 
+  const buildFatosContext = (): string => {
+    if (fatosPeticao.length === 0) return '';
+    let ctx = '\n\n--- FATOS JURÍDICOS EXTRAÍDOS DOS DOCUMENTOS ---\n';
+    fatosPeticao.forEach((fato, idx) => {
+      ctx += `\n${idx + 1}. [${fato.gravidade.toUpperCase()}] [${fato.categoria}] ${fato.origem === 'ia' ? '(IA)' : fato.origem === 'concorrente' ? '(Inteligência Concorrente)' : '(Manual)'}\n`;
+      ctx += `   Descrição: ${fato.descricao}\n`;
+      ctx += `   Fundamentação: ${fato.fundamentacao}\n`;
+    });
+    if (docsTexto) {
+      ctx += `\n--- INFORMAÇÕES COMPLEMENTARES ---\n${docsTexto}\n`;
+    }
+    return ctx;
+  };
+
+  const buildPeticaoInstructions = (): string => {
+    if (tipoDoc === 'Recurso Administrativo') {
+      return `\n\nINSTRUÇÃO ESPECÍFICA: Gere um RECURSO ADMINISTRATIVO completo e profissional com base nos ${fatosPeticao.length} fatos jurídicos identificados.
+O documento deve seguir a estrutura formal:
+- Endereçamento à autoridade competente (Pregoeiro/CPL)
+- Qualificação do recorrente
+- Da Tempestividade (Art. 165, §1º da Lei 14.133/2021)
+- Dos Fatos (para cada fato, descrição clara e objetiva)
+- Do Direito (fundamentação jurídica consolidada com Lei 14.133/2021 e jurisprudência TCU)
+- Da Irregularidade na Habilitação/Proposta do Concorrente (quando aplicável)
+- Dos Pedidos (específicos e fundamentados)
+- Dos Documentos Anexos
+- Fecho e assinatura
+
+Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parágrafos da Lei 14.133/2021.\n`;
+    }
+    if (tipoDoc === 'Contrarrazões') {
+      return `\n\nINSTRUÇÃO ESPECÍFICA: Gere CONTRARRAZÕES AO RECURSO ADMINISTRATIVO completas e profissionais, rebatendo os ${fatosPeticao.length} argumentos/fatos identificados no recurso do concorrente.
+O documento deve seguir a estrutura formal:
+- Endereçamento à autoridade competente
+- Qualificação do contrarrazoante
+- Da Tempestividade
+- Dos Fatos (síntese do recurso do concorrente)
+- Da Refutação dos Argumentos (para CADA argumento do recorrente, apresentar contra-argumentação fundamentada)
+- Da Regularidade da Habilitação/Proposta do Contrarrazoante
+- Da Improcedência do Recurso
+- Dos Pedidos (manutenção da decisão recorrida, não provimento do recurso)
+- Fecho e assinatura
+
+Linguagem técnica, formal, objetiva e impessoal. Rebata CADA argumento do recurso com fundamentação na Lei 14.133/2021 e jurisprudência TCU.\n`;
+    }
+    if (tipoDoc === 'Pedido de Reconsideração') {
+      return `\n\nINSTRUÇÃO ESPECÍFICA: Gere um PEDIDO DE RECONSIDERAÇÃO completo e profissional com base nos ${fatosPeticao.length} fatos identificados na decisão impugnada.
+O documento deve seguir a estrutura formal:
+- Endereçamento à autoridade que proferiu a decisão
+- Qualificação do requerente
+- Do Cabimento (Art. 165, §2º da Lei 14.133/2021)
+- Da Decisão Recorrida (síntese)
+- Dos Fatos Novos e/ou Erros Identificados (para cada fato)
+- Do Direito (fundamentação jurídica)
+- Da Desproporcionalidade (quando aplicável)
+- Dos Pedidos (reconsideração da decisão, com especificação)
+- Fecho e assinatura
+
+Linguagem técnica, formal, objetiva e impessoal.\n`;
+    }
+    return '';
+  };
+
   const handleGerar = async () => {
+    // Validate inputs based on type
     if (isAnaliseEdital && irregularidades.length === 0 && !contexto) {
       toast.error('Analise o edital primeiro ou descreva o contexto manualmente.');
       return;
     }
-    if (!isAnaliseEdital && !contexto) {
+    if (isUploadDocs && fatosPeticao.length === 0 && !contexto) {
+      toast.error('Anexe documentos e extraia os fatos jurídicos, ou descreva o contexto manualmente.');
+      return;
+    }
+    if (!isAnaliseEdital && !isUploadDocs && !contexto) {
       toast.error('Descreva o contexto e fundamentação');
       return;
     }
     setGerando(true);
     setResultado('');
 
-    // Build context from selected documents
+    // Build context from selected base juridica documents
     let baseContext = '';
     if (selectedDocs.length > 0) {
       const selected = docsBase.filter(d => selectedDocs.includes(d.id));
@@ -126,8 +213,8 @@ export default function GeradorIAComBase() {
       }
     }
 
-    // Build irregularidades context
     const irregContext = buildIrregularidadesContext();
+    const fatosContext = buildFatosContext();
 
     // Build indices/CCT context for reequilíbrio types
     let indicesContext = '';
@@ -145,7 +232,6 @@ export default function GeradorIAComBase() {
           indicesContext += `- ${c.categoria_profissional}: Piso ${c.piso_salarial ? `R$ ${c.piso_salarial}` : 'N/I'}, Reajuste ${c.reajuste_percentual ? `${c.reajuste_percentual}%` : 'N/I'}, Índice ${c.indice_reajuste || 'N/I'}, Vigência ${c.vigencia_inicio || '?'} a ${c.vigencia_fim || '?'}, UF: ${c.abrangencia_uf || 'N/I'}\n`;
         }
       }
-
       if (tipoDoc === 'Reajuste Contratual') {
         indicesContext += '\nINSTRUÇÃO: Gere pedido de REAJUSTE por índice contratual (Art. 92, §3º e Art. 135, I da Lei 14.133/2021). Automático, anual, por apostilamento. Demonstre cálculo com o índice selecionado.\n';
       } else if (tipoDoc === 'Repactuação (MO/CCT)') {
@@ -156,7 +242,7 @@ export default function GeradorIAComBase() {
       indicesContext += 'Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos dos dados numéricos.\n';
     }
 
-    // Special prompt for edital analysis types with irregularidades
+    // Specific instructions for edital analysis types
     let specificInstructions = '';
     if (isAnaliseEdital && irregularidades.length > 0) {
       specificInstructions = `\n\nINSTRUÇÃO ESPECÍFICA: Gere um documento de "${tipoDoc}" completo e profissional com base nas ${irregularidades.length} irregularidades identificadas abaixo. 
@@ -177,12 +263,17 @@ O documento deve seguir a estrutura formal:
 Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parágrafos da Lei 14.133/2021.\n`;
     }
 
-    const prompt = `Tipo: ${tipoDoc}\nEdital: ${editalNum}\n${contexto ? `Contexto adicional: ${contexto}` : ''}${irregContext}${specificInstructions}${baseContext}${indicesContext}`;
+    // Instructions for petition types with document upload
+    if (isUploadDocs && fatosPeticao.length > 0) {
+      specificInstructions = buildPeticaoInstructions();
+    }
+
+    const prompt = `Tipo: ${tipoDoc}\nEdital: ${editalNum}\n${contexto ? `Contexto adicional: ${contexto}` : ''}${irregContext}${fatosContext}${specificInstructions}${baseContext}${indicesContext}`;
 
     await streamAIChat({
       messages: [{ role: 'user', content: prompt }],
       action: 'gerador_juridico',
-      context: baseContext + indicesContext + irregContext,
+      context: baseContext + indicesContext + irregContext + fatosContext,
       onDelta: (text) => setResultado(prev => prev + text),
       onDone: () => setGerando(false),
       onError: (err) => {
@@ -196,6 +287,8 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
     navigator.clipboard.writeText(resultado);
     toast.success('Copiado!');
   };
+
+  const isShowingUploader = showExtractor || showPeticaoUploader;
 
   return (
     <div className="space-y-4">
@@ -215,16 +308,16 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
               className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
               <option>Impugnação ao Edital</option>
+              <option>Pedido de Esclarecimento</option>
               <option>Recurso Administrativo</option>
               <option>Contrarrazões</option>
-              <option>Pedido de Esclarecimento</option>
               <option>Pedido de Reconsideração</option>
               <option>Reajuste Contratual</option>
               <option>Repactuação (MO/CCT)</option>
               <option>Revisão / Reequilíbrio</option>
             </select>
           </div>
-          {!isAnaliseEdital && (
+          {!isAnaliseEdital && !isUploadDocs && (
             <div>
               <label className="text-xs text-muted-foreground">Nº do Edital / Contrato</label>
               <Input value={editalNum} onChange={e => setEditalNum(e.target.value)} placeholder="PE-001/2026 ou CT-001/2026" className="mt-1" />
@@ -232,7 +325,7 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
           )}
         </div>
 
-        {/* 3-step flow for edital analysis types */}
+        {/* ── Irregularidades flow (Impugnação/Esclarecimento) ── */}
         {isAnaliseEdital && (
           <>
             {showExtractor ? (
@@ -285,6 +378,65 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
           </>
         )}
 
+        {/* ── Document upload flow (Recurso/Contrarrazões/Reconsideração) ── */}
+        {isUploadDocs && (
+          <>
+            {showPeticaoUploader ? (
+              <DocumentosPeticaoUploader
+                tipoDoc={tipoDoc}
+                onFinish={handleFatosPeticaoFinish}
+                editalNum={editalNum}
+                setEditalNum={setEditalNum}
+              />
+            ) : (
+              <>
+                {fatosPeticao.length > 0 ? (
+                  <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-accent text-accent-foreground text-xs font-bold">3</div>
+                        <h4 className="text-sm font-semibold">Etapa 3 — Geração do {tipoDoc}</h4>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => setShowPeticaoUploader(true)} className="text-xs text-accent">
+                        Reanalisar documentos
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {fatosPeticao.map((fato, idx) => (
+                        <Badge
+                          key={fato.id}
+                          variant="outline"
+                          className={`text-[10px] ${fato.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : fato.gravidade === 'media' ? 'border-yellow-500/40 text-yellow-700 dark:text-yellow-400' : 'border-blue-500/40 text-blue-700 dark:text-blue-400'}`}
+                        >
+                          {idx + 1}. {fato.descricao.slice(0, 50)}{fato.descricao.length > 50 ? '...' : ''}
+                          {fato.origem === 'manual' && ' ✏️'}
+                          {fato.origem === 'concorrente' && ' 🏢'}
+                        </Badge>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {fatosPeticao.length} fato(s) jurídico(s) selecionado(s) • Edital: {editalNum || 'N/I'}
+                    </p>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowPeticaoUploader(true)}
+                    className="w-full border-dashed border-2 py-6 hover:border-accent/50 hover:bg-accent/5"
+                  >
+                    <FileText className="w-5 h-5 mr-2 text-accent" />
+                    <span className="text-sm">
+                      {tipoDoc === 'Recurso Administrativo' && 'Anexar decisão da CPL e extrair fatos'}
+                      {tipoDoc === 'Contrarrazões' && 'Anexar recurso do concorrente e extrair argumentos'}
+                      {tipoDoc === 'Pedido de Reconsideração' && 'Anexar decisão administrativa e extrair fatos'}
+                    </span>
+                  </Button>
+                )}
+              </>
+            )}
+          </>
+        )}
+
         {/* Reequilibrio indices */}
         {isReequilibrio && (
           <div className="bg-accent/10 border border-accent/20 rounded-lg p-3 space-y-2">
@@ -317,12 +469,12 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
           </div>
         )}
 
-        {/* Context field - always shown but optional when irregularidades exist */}
-        {!showExtractor && (
+        {/* Context field */}
+        {!isShowingUploader && (
           <div>
             <label className="text-xs text-muted-foreground">
-              {isAnaliseEdital && irregularidades.length > 0
-                ? 'Contexto adicional (opcional — complementa as irregularidades)'
+              {(isAnaliseEdital && irregularidades.length > 0) || (isUploadDocs && fatosPeticao.length > 0)
+                ? 'Contexto adicional (opcional — complementa os fatos extraídos)'
                 : 'Fundamentação / Contexto'
               }
             </label>
@@ -331,8 +483,10 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
               onChange={e => setContexto(e.target.value)}
               placeholder={isReequilibrio
                 ? "Descreva o contrato, itens afetados, valores originais e atuais, e impacto financeiro..."
-                : isAnaliseEdital && irregularidades.length > 0
+                : (isAnaliseEdital && irregularidades.length > 0) || (isUploadDocs && fatosPeticao.length > 0)
                 ? "Adicione contexto extra, como dados da empresa, fatos relevantes ou observações complementares..."
+                : isUploadDocs
+                ? "Descreva os fatos, a decisão contestada e os fundamentos jurídicos para a peça..."
                 : "Descreva os fatos, a cláusula contestada e os fundamentos jurídicos..."
               }
               className="mt-1 min-h-[100px]"
@@ -341,7 +495,7 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
         )}
 
         {/* Document selection */}
-        {!showExtractor && docsBase.length > 0 && (
+        {!isShowingUploader && docsBase.length > 0 && (
           <div>
             <label className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
               <BookOpen className="w-3 h-3" />
@@ -362,7 +516,7 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
           </div>
         )}
 
-        {!showExtractor && (
+        {!isShowingUploader && (
           <Button onClick={handleGerar} disabled={gerando} className="bg-accent hover:bg-accent/90 text-accent-foreground">
             {gerando ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1" />}
             Gerar Documento
