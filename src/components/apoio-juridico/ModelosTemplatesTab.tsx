@@ -456,6 +456,16 @@ ${truncated}`
       } else {
         instrucao = `Gere ${activeModelo.titulo} com fundamentação no ${activeModelo.fundamentacao}. Estruture com: I) Legitimidade; II) Tempestividade; III) Cláusulas impugnadas; IV) Fundamentação legal; V) Pedido.`;
       }
+    } else if (activeModelo.categoria === 'Defesas') {
+      instrucao = `Gere ${activeModelo.titulo} COMPLETO (${activeModelo.fundamentacao}). Estruture com: I) Endereçamento à autoridade competente; II) Qualificação do defendente; III) Da Tempestividade; IV) Dos Fatos (narrativa cronológica); V) Das Razões de Defesa (fundamentação jurídica, princípios do contraditório e ampla defesa); VI) Da Desproporcionalidade da Penalidade (se aplicável); VII) Dos Pedidos; VIII) Fecho. Linguagem técnica, objetiva e impessoal.`;
+    } else if (activeModelo.categoria === 'Representações') {
+      instrucao = `Gere ${activeModelo.titulo} COMPLETO (${activeModelo.fundamentacao}). Estruture com: I) Endereçamento ao Tribunal de Contas competente; II) Qualificação do representante; III) Da Legitimidade; IV) Dos Fatos (descrição detalhada das irregularidades); V) Das Violações Legais (fundamentação na Lei 14.133/2021 e jurisprudência do TCU); VI) Das Provas; VII) Dos Pedidos (medidas cautelares, se cabíveis); VIII) Fecho.`;
+    } else if (activeModelo.categoria === 'Contratos') {
+      instrucao = `Gere ${activeModelo.titulo} COMPLETO (${activeModelo.fundamentacao}). Estruture com: I) Endereçamento; II) Qualificação; III) Do Contrato Original (dados, objeto, vigência); IV) Da Necessidade de Alteração (justificativa técnica e legal); V) Da Fundamentação Legal (Arts. 124-125 da Lei 14.133/2021, limites quantitativos e qualitativos); VI) Da Manutenção do Equilíbrio Econômico-Financeiro; VII) Dos Pedidos; VIII) Fecho.`;
+    } else if (activeModelo.categoria === 'Judicial') {
+      instrucao = `Gere ${activeModelo.titulo} COMPLETO (${activeModelo.fundamentacao}). Estruture com: I) Endereçamento ao Juízo competente; II) Qualificação do impetrante e da autoridade coatora; III) Do Cabimento do Mandado de Segurança (direito líquido e certo); IV) Da Tempestividade (prazo de 120 dias); V) Dos Fatos; VI) Do Direito (ilegalidade ou abuso de poder); VII) Do Pedido Liminar (fumus boni iuris e periculum in mora); VIII) Dos Pedidos Finais; IX) Fecho. Inclua pedido de notificação da autoridade e oitiva do MP.`;
+    } else if (activeModelo.categoria === 'Pareceres') {
+      instrucao = `Gere ${activeModelo.titulo} COMPLETO (${activeModelo.fundamentacao}). Estruture com: I) Identificação (número, data, processo); II) Do Objeto da Consulta; III) Dos Fatos; IV) Da Análise Jurídica (fundamentação detalhada na Lei 14.133/2021, doutrina e jurisprudência); V) Da Conclusão; VI) Da Recomendação. Linguagem técnica, impessoal e analítica.`;
     } else {
       instrucao = `Gere ${activeModelo.titulo} conforme ${activeModelo.fundamentacao}. Formato técnico-jurídico, linguagem impessoal e objetiva.`;
     }
