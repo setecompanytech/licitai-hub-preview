@@ -705,8 +705,20 @@ export function exportLegalWord(
 
   if (inList) html += `</ol>\n`;
 
+  // Digital signature block
+  if (metadata?.certificado_nome) {
+    const certTipo = metadata.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF';
+    html += `
+      <div style="margin-top:24pt;border:2px solid #008050;border-radius:6pt;padding:12pt;text-align:center">
+        <p class="no-indent" style="font-weight:bold;color:#006440;font-size:10pt;margin:0 0 4pt 0">&#10003; DOCUMENTO ASSINADO DIGITALMENTE</p>
+        <p class="no-indent" style="font-size:9pt;color:#444;margin:0 0 2pt 0">Certificado: ${certTipo} &mdash; ${escapeHtml(metadata.certificado_nome)}</p>
+        <p class="no-indent" style="font-size:9pt;color:#444;margin:0 0 2pt 0">Assinante: ${escapeHtml(metadata.rep_nome || '')} | CPF: ${escapeHtml(metadata.rep_cpf || '')}</p>
+        <p class="no-indent" style="font-size:9pt;color:#444;margin:0">Data/Hora: ${new Date().toLocaleString('pt-BR')}</p>
+      </div>\n`;
+  }
+
   // Close Section1 div (header/footer handled by Word mso-element directives)
-  html += `<div class="doc-footer">Documento gerado pela plataforma LicitaIA — ${new Date().toLocaleDateString('pt-BR')}</div>\n`;
+  html += `<div class="doc-footer">Documento gerado pela plataforma LicitaIA &mdash; ${new Date().toLocaleDateString('pt-BR')}</div>\n`;
   html += `</div><!-- /Section1 -->\n</body></html>`;
 
   // Download as .doc (Word opens HTML natively)
