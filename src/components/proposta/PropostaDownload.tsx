@@ -257,7 +257,7 @@ export default function PropostaDownload({
       }
 
       // ========== ASSINATURA ==========
-      checkPage(lh * 8);
+      checkPage(lh * 12);
       y += lh * 2;
       doc.setDrawColor(0);
       doc.setLineWidth(0.3);
@@ -278,6 +278,44 @@ export default function PropostaDownload({
       doc.text(`CPF: ${repData?.cpf || ''}`, pageWidth / 2, y, { align: 'center' });
       y += lh * 0.8;
       doc.text((repData?.cargo || '').toUpperCase(), pageWidth / 2, y, { align: 'center' });
+
+      // ========== ASSINATURA DIGITAL (Certificado) ==========
+      if (empresaData && (empresaData as any).certificado_nome) {
+        y += lh * 2;
+        checkPage(lh * 6);
+        
+        // Box de assinatura digital
+        const boxX = mL + 15;
+        const boxW = maxW - 30;
+        const boxH = lh * 4;
+        doc.setDrawColor(0, 128, 80);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(boxX, y, boxW, boxH, 2, 2, 'S');
+        
+        y += lh * 0.8;
+        doc.setFont('times', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(0, 100, 60);
+        doc.text('✓ DOCUMENTO ASSINADO DIGITALMENTE', pageWidth / 2, y + 2, { align: 'center' });
+        y += lh;
+        doc.setFont('times', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(60, 60, 60);
+        const certTipo = (empresaData as any).certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF';
+        doc.text(`Certificado: ${certTipo} — ${(empresaData as any).certificado_nome}`, pageWidth / 2, y + 2, { align: 'center' });
+        y += lh * 0.8;
+        doc.text(`Assinante: ${repData?.nome || ''} | CPF: ${repData?.cpf || ''}`, pageWidth / 2, y + 2, { align: 'center' });
+        y += lh * 0.8;
+        doc.text(`Data/Hora: ${new Date().toLocaleString('pt-BR')}`, pageWidth / 2, y + 2, { align: 'center' });
+        doc.setTextColor(0, 0, 0);
+      }
+
+      // Timbrado as footer on all pages
+      const totalPages = doc.getNumberOfPages();
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        if (p > 1) drawTimbrado();
+      }
 
       doc.save(`${getFilename(numeroLicitacao)}.pdf`);
       toast.success('PDF gerado com sucesso!');
