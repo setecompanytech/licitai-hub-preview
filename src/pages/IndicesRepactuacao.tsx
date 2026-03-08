@@ -14,8 +14,9 @@ import ReactMarkdown from 'react-markdown';
 import {
   TrendingUp, TrendingDown, RefreshCw, Calculator, FileText, Scale, Building2,
   HardHat, Users, DollarSign, Percent, CalendarDays, AlertTriangle, Sparkles,
-  Plus, Search, Clock, ArrowUpRight, ArrowDownRight, Minus, Info, Save, Loader2
+  Plus, Search, Clock, ArrowUpRight, ArrowDownRight, Minus, Info, Save, Loader2, ArrowRight
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 type Indice = {
@@ -49,6 +50,7 @@ const categoriaLabels: Record<string, string> = {
 
 export default function IndicesRepactuacao() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState('indices');
   const [indices, setIndices] = useState<Indice[]>([]);
   const [ccts, setCcts] = useState<CCT[]>([]);
@@ -479,6 +481,21 @@ export default function IndicesRepactuacao() {
                 </Card>
               </div>
             )}
+
+            <Card className="p-4 bg-accent/5 border-accent/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Scale className="w-4 h-4 text-accent" />
+                  <div>
+                    <p className="text-sm font-semibold">Gerar Pedido de Reequilíbrio Formal</p>
+                    <p className="text-xs text-muted-foreground">Vá ao Apoio Jurídico para gerar documentos completos com estes índices e CCTs como fundamentação</p>
+                  </div>
+                </div>
+                <Button size="sm" onClick={() => navigate('/apoio-juridico')} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                  Apoio Jurídico <ArrowRight className="w-3 h-3 ml-1" />
+                </Button>
+              </div>
+            </Card>
 
             <Card className="p-4 bg-muted/30 border-dashed">
               <div className="flex items-start gap-2">
