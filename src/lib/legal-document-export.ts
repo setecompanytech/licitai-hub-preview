@@ -265,8 +265,8 @@ export function exportLegalPDF(
         const tLines = doc.splitTextToSize(block.content.toUpperCase(), contentWidth);
         for (const l of tLines) {
           y = ensureSpace(doc, y, LEGAL_LAYOUT.lineHeight);
-          // ABNT: títulos centralizados
-          doc.text(l, getPageWidth(doc) / 2, y, { align: 'center' });
+          // Títulos alinhados à esquerda (margem esquerda)
+          doc.text(l, LEGAL_LAYOUT.marginLeft, y);
           y += LEGAL_LAYOUT.lineHeight;
         }
         y += 2;
@@ -483,7 +483,7 @@ export function exportLegalWord(
   h1 {
     font-size: 14pt;
     font-weight: bold;
-    text-align: center;
+    text-align: left;
     text-transform: uppercase;
     margin-top: 0;
     margin-bottom: 12pt;
@@ -493,7 +493,7 @@ export function exportLegalWord(
     font-size: 12pt;
     font-weight: bold;
     text-transform: uppercase;
-    text-align: center;
+    text-align: left;
     margin-top: 18pt;
     margin-bottom: 6pt;
     line-height: 1.5;
