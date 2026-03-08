@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
+import DocumentosPeticaoUploader, { type FatoPeticao } from './DocumentosPeticaoUploader';
 import { exportLegalPDF, exportLegalWord } from '@/lib/legal-document-export';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -108,6 +109,11 @@ export default function ModelosTemplatesTab() {
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
   const [resultado, setResultado] = useState('');
   const [gerando, setGerando] = useState(false);
+
+  // Petition upload state
+  const [showPeticaoUploader, setShowPeticaoUploader] = useState(false);
+  const [fatosPeticao, setFatosPeticao] = useState<FatoPeticao[]>([]);
+  const [peticaoDocsTexto, setPeticaoDocsTexto] = useState('');
 
   const modalidade = MODALIDADES.find(m => m.id === modalidadeId) || null;
 
@@ -264,6 +270,18 @@ ${truncated}`
 
   const activeModelo = modelos.find(m => m.id === activeModeloId);
 
+  // Map model titles to PETICAO_CONFIG keys for petition upload
+  const MODELO_PETICAO_MAP: Record<string, string> = {
+    'Pedido de Esclarecimento': 'Pedido de Esclarecimento',
+    'Impugnação ao Edital': 'Impugnação ao Edital',
+    'Recurso Administrativo': 'Recurso Administrativo',
+    'Contrarrazões de Recurso': 'Contrarrazões',
+    'Pedido de Reconsideração': 'Pedido de Reconsideração',
+    'Recurso Hierárquico': 'Recurso Hierárquico',
+  };
+  const peticaoConfigKey = activeModelo ? MODELO_PETICAO_MAP[activeModelo.titulo] : null;
+  const isPeticaoType = !!peticaoConfigKey;
+
   const toggle = (list: string[], id: string, setter: (v: string[]) => void) => {
     setter(list.includes(id) ? list.filter(x => x !== id) : [...list, id]);
   };
@@ -271,8 +289,8 @@ ${truncated}`
   // Build AI context with modality info and generate
   const handleGerar = async () => {
     if (!activeModelo) return;
-    if (!contexto.trim()) {
-      toast.error('Descreva o contexto e fundamentação do pedido');
+    if (!contexto.trim() && fatosPeticao.length === 0) {
+      toast.error('Descreva o contexto ou anexe documentos para extração de fatos');
       return;
     }
     setGerando(true);
@@ -391,6 +409,19 @@ ${truncated}`
       }
     }
 
+    // Attach petition facts from document upload
+    if (fatosPeticao.length > 0) {
+      fullContext += '\n\n--- FATOS/IRREGULARIDADES EXTRAÍDOS DOS DOCUMENTOS ---\n';
+      fatosPeticao.forEach((fato, idx) => {
+        fullContext += `\n${idx + 1}. [${fato.gravidade.toUpperCase()}] [${fato.categoria}] ${fato.origem === 'ia' ? '(IA)' : fato.origem === 'concorrente' ? '(Inteligência Concorrente)' : '(Manual)'}\n`;
+        fullContext += `   Descrição: ${fato.descricao}\n`;
+        fullContext += `   Fundamentação: ${fato.fundamentacao}\n`;
+      });
+      if (peticaoDocsTexto) {
+        fullContext += `\n--- INFORMAÇÕES COMPLEMENTARES DOS DOCUMENTOS ---\n${peticaoDocsTexto}\n`;
+      }
+    }
+
     // Type-specific instructions
     let instrucao = '';
     if (activeModelo.categoria === 'Reequilíbrio') {
@@ -401,10 +432,16 @@ ${truncated}`
       } else if (activeModelo.id === '9') {
         instrucao = 'Gere pedido de REVISÃO/REEQUILÍBRIO STRICTO SENSU (Art. 124, II, "d" da Lei 14.133/2021). Aplique Teoria da Imprevisão. Demonstre nexo causal e onerosidade excessiva.';
       }
+    } else if (activeModelo.categoria === 'Recursos' && fatosPeticao.length > 0) {
+      instrucao = `Gere ${activeModelo.titulo} COMPLETO com base nos ${fatosPeticao.length} fatos jurídicos extraídos dos documentos anexados. Para CADA fato: 1) Descreva objetivamente; 2) Apresente fundamentação jurídica (Lei 14.133/2021, TCU); 3) Formule o pedido específico. Estruture com: I) Endereçamento; II) Qualificação; III) Tempestividade (${activeModelo.fundamentacao}); IV) Dos Fatos; V) Do Direito; VI) Dos Pedidos; VII) Fecho. Linguagem técnica, objetiva e impessoal.`;
     } else if (activeModelo.categoria === 'Recursos') {
       instrucao = `Gere ${activeModelo.titulo} com fundamentação na ${activeModelo.fundamentacao}. Estruture com: I) Tempestividade; II) Fatos; III) Fundamentos jurídicos; IV) Pedido. Linguagem técnica, objetiva e impessoal.`;
-    } else if (activeModelo.categoria === 'Impugnações') {
-      instrucao = `Gere Impugnação ao Edital com fundamentação no ${activeModelo.fundamentacao}. Estruture com: I) Legitimidade; II) Tempestividade; III) Cláusulas impugnadas; IV) Fundamentação legal; V) Pedido.`;
+    } else if (activeModelo.categoria === 'Impugnações' || activeModelo.categoria === 'Esclarecimentos') {
+      if (fatosPeticao.length > 0) {
+        instrucao = `Gere ${activeModelo.titulo} COMPLETO com base nas ${fatosPeticao.length} irregularidades/pontos extraídos do edital. Para CADA irregularidade: 1) Descreva o vício/ponto; 2) Cite artigo violado; 3) Demonstre prejuízo; 4) Formule pedido específico. Estruture com: I) Endereçamento; II) Qualificação; III) Tempestividade (${activeModelo.fundamentacao}); IV) Das Irregularidades/Pontos; V) Do Direito; VI) Dos Pedidos; VII) Fecho.`;
+      } else {
+        instrucao = `Gere ${activeModelo.titulo} com fundamentação no ${activeModelo.fundamentacao}. Estruture com: I) Legitimidade; II) Tempestividade; III) Cláusulas impugnadas; IV) Fundamentação legal; V) Pedido.`;
+      }
     } else {
       instrucao = `Gere ${activeModelo.titulo} conforme ${activeModelo.fundamentacao}. Formato técnico-jurídico, linguagem impessoal e objetiva.`;
     }
@@ -509,6 +546,17 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
     setSelectedCCTs([]);
     setSelectedDocs([]);
     setResultado('');
+    setShowPeticaoUploader(false);
+    setFatosPeticao([]);
+    setPeticaoDocsTexto('');
+  };
+
+  const handlePeticaoFinish = (fatos: FatoPeticao[], documentosTexto: string, numEdital: string) => {
+    setFatosPeticao(fatos);
+    setPeticaoDocsTexto(documentosTexto);
+    setEditalNum(numEdital);
+    setShowPeticaoUploader(false);
+    toast.success(`${fatos.length} fato(s)/irregularidade(s) extraído(s) para geração do documento.`);
   };
 
   return (
@@ -913,8 +961,61 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
             </div>
           </div>
 
+          {/* ── Petition Document Upload (Recursos, Impugnações, Esclarecimentos) ── */}
+          {isPeticaoType && (
+            <>
+              {showPeticaoUploader ? (
+                <DocumentosPeticaoUploader
+                  tipoDoc={peticaoConfigKey!}
+                  onFinish={handlePeticaoFinish}
+                  editalNum={editalNum}
+                  setEditalNum={setEditalNum}
+                />
+              ) : (
+                <>
+                  {fatosPeticao.length > 0 ? (
+                    <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-accent" />
+                          <h4 className="text-xs font-semibold">{fatosPeticao.length} fato(s)/irregularidade(s) extraído(s) dos documentos</h4>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => setShowPeticaoUploader(true)} className="text-xs text-accent">
+                          Reanalisar documentos
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {fatosPeticao.map((fato, idx) => (
+                          <Badge
+                            key={fato.id}
+                            variant="outline"
+                            className={`text-[10px] ${fato.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : fato.gravidade === 'media' ? 'border-yellow-500/40 text-yellow-700 dark:text-yellow-400' : 'border-blue-500/40 text-blue-700 dark:text-blue-400'}`}
+                          >
+                            {idx + 1}. {fato.descricao.slice(0, 50)}{fato.descricao.length > 50 ? '...' : ''}
+                            {fato.origem === 'manual' && ' ✏️'}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full border-dashed border-accent/30 text-accent hover:bg-accent/5 gap-2"
+                      onClick={() => setShowPeticaoUploader(true)}
+                    >
+                      <Upload className="w-4 h-4" />
+                      Anexar Peças Jurídicas para Extração de Fatos com IA
+                    </Button>
+                  )}
+                </>
+              )}
+            </>
+          )}
+
           <div>
-            <label className="text-xs text-muted-foreground">Contexto / Fatos / Fundamentação</label>
+            <label className="text-xs text-muted-foreground">
+              {isPeticaoType && fatosPeticao.length > 0 ? 'Contexto Adicional (opcional)' : 'Contexto / Fatos / Fundamentação'}
+            </label>
             <Textarea
               value={contexto}
               onChange={e => setContexto(e.target.value)}
