@@ -546,12 +546,12 @@ ${truncated}`
             <>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Etapa do Processo</label>
-                <Select value={etapaFiltro || ''} onValueChange={v => setEtapaFiltro(v || null)}>
+                <Select value={etapaFiltro || '__all__'} onValueChange={v => setEtapaFiltro(v === '__all__' ? null : v)}>
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue placeholder="Todas as etapas" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="" className="text-xs">Todas as etapas</SelectItem>
+                    <SelectItem value="__all__" className="text-xs">Todas as etapas</SelectItem>
                     {modalidade.etapas.map(e => (
                       <SelectItem key={e.nome} value={e.nome} className="text-xs">
                         {e.ordem}. {e.nome}
@@ -563,12 +563,12 @@ ${truncated}`
 
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Critério de Julgamento</label>
-                <Select value={criterioFiltro || ''} onValueChange={v => setCriterioFiltro(v || null)}>
+                <Select value={criterioFiltro || '__all__'} onValueChange={v => setCriterioFiltro(v === '__all__' ? null : v)}>
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue placeholder="Todos os critérios" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="" className="text-xs">Todos os critérios</SelectItem>
+                    <SelectItem value="__all__" className="text-xs">Todos os critérios</SelectItem>
                     {modalidade.criteriosJulgamento.map(c => (
                       <SelectItem key={c.id} value={c.id} className="text-xs">
                         {c.nome} {c.obrigatorio ? '(obrigatório)' : ''}
