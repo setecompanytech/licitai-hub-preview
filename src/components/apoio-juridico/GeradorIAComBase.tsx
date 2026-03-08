@@ -14,7 +14,7 @@ type DocRef = { id: string; titulo: string; tipo: string; ementa: string | null;
 type Indice = { id: string; nome: string; sigla: string; valor: number; variacao_mensal: number | null; acumulado_12m: number | null; periodo: string; fonte: string };
 type CCT = { id: string; categoria_profissional: string; piso_salarial: number | null; reajuste_percentual: number | null; indice_reajuste: string | null; vigencia_inicio: string | null; vigencia_fim: string | null; sindicato_laboral: string | null; abrangencia_uf: string | null };
 
-const TIPOS_REEQUILIBRIO = ['Reequilíbrio Econômico-Financeiro'];
+const TIPOS_REEQUILIBRIO = ['Reajuste Contratual', 'Repactuação (MO/CCT)', 'Revisão / Reequilíbrio'];
 const fmtPerc = (v: number | null) => v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—';
 
 export default function GeradorIAComBase() {
@@ -86,7 +86,7 @@ export default function GeradorIAComBase() {
       }
     }
 
-    // Build indices/CCT context for reequilíbrio
+    // Build indices/CCT context for reequilíbrio types
     let indicesContext = '';
     if (isReequilibrio && (indices.length > 0 || ccts.length > 0)) {
       indicesContext = '\n\n--- DADOS ECONÔMICOS ATUALIZADOS (FONTE OFICIAL) ---\n';
@@ -102,7 +102,16 @@ export default function GeradorIAComBase() {
           indicesContext += `- ${c.categoria_profissional}: Piso ${c.piso_salarial ? `R$ ${c.piso_salarial}` : 'N/I'}, Reajuste ${c.reajuste_percentual ? `${c.reajuste_percentual}%` : 'N/I'}, Índice ${c.indice_reajuste || 'N/I'}, Vigência ${c.vigencia_inicio || '?'} a ${c.vigencia_fim || '?'}, UF: ${c.abrangencia_uf || 'N/I'}\n`;
         }
       }
-      indicesContext += '\nINSTRUÇÃO: Utilize estes dados numéricos oficiais para fundamentar o documento. Cite as fontes e períodos. Linguagem técnica, objetiva, impessoal e auditável.\n';
+
+      // Type-specific instructions
+      if (tipoDoc === 'Reajuste Contratual') {
+        indicesContext += '\nINSTRUÇÃO: Gere pedido de REAJUSTE por índice contratual (Art. 92, §3º e Art. 135, I da Lei 14.133/2021). Automático, anual, por apostilamento. Demonstre cálculo com o índice selecionado.\n';
+      } else if (tipoDoc === 'Repactuação (MO/CCT)') {
+        indicesContext += '\nINSTRUÇÃO: Gere pedido de REPACTUAÇÃO por dissídio/CCT (Art. 135, I da Lei 14.133/2021). Exclusivo para serviços com dedicação exclusiva de MO. Demonstre variação via planilha de custos (antes/depois). Não automático, respeita anualidade.\n';
+      } else {
+        indicesContext += '\nINSTRUÇÃO: Gere pedido de REVISÃO/REEQUILÍBRIO STRICTO SENSU (Art. 124, II, "d" da Lei 14.133/2021). Aplique Teoria da Imprevisão. Pode ocorrer a qualquer tempo. Demonstre nexo causal e onerosidade excessiva.\n';
+      }
+      indicesContext += 'Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos dos dados numéricos.\n';
     }
 
     const prompt = `Tipo: ${tipoDoc}\nEdital: ${editalNum}\nContexto: ${contexto}${baseContext}${indicesContext}`;
@@ -146,7 +155,9 @@ export default function GeradorIAComBase() {
               <option>Contrarrazões</option>
               <option>Pedido de Esclarecimento</option>
               <option>Pedido de Reconsideração</option>
-              <option>Reequilíbrio Econômico-Financeiro</option>
+              <option>Reajuste Contratual</option>
+              <option>Repactuação (MO/CCT)</option>
+              <option>Revisão / Reequilíbrio</option>
             </select>
           </div>
           <div>
