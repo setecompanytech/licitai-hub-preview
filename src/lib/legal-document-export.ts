@@ -355,12 +355,8 @@ export function exportLegalPDF(
       }
 
       case 'separator': {
-        y = ensureSpace(doc, y, 10);
-        y += 4;
-        doc.setDrawColor(...COLORS.muted);
-        doc.setLineWidth(0.3);
-        const midX = getPageWidth(doc) / 2;
-        doc.line(midX - 30, y, midX + 30, y);
+        // ABNT: separadores são apenas espaçamento vertical, sem linhas decorativas
+        y = ensureSpace(doc, y, 8);
         y += 6;
         break;
       }
