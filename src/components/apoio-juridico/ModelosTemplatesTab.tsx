@@ -50,6 +50,16 @@ const modelos: Modelo[] = [
   { id: '12', titulo: 'Declaração de Inexistência de Fato Impeditivo', categoria: 'Declarações', descricao: 'Declaração de que não existem fatos impeditivos à habilitação', icon: FileText, fundamentacao: 'Art. 63, §1º da Lei 14.133/2021', requisitosFiltro: [] },
   { id: '13', titulo: 'Declaração de Não Emprego de Menor', categoria: 'Declarações', descricao: 'Cumprimento ao disposto no Art. 7º, XXXIII da CF', icon: FileText, fundamentacao: 'Art. 68, VI da Lei 14.133/2021', requisitosFiltro: [] },
   { id: '14', titulo: 'Declaração de Reserva de Cargos (PCD)', categoria: 'Declarações', descricao: 'Cumprimento da reserva de cargos para PCD e reabilitados', icon: FileText, fundamentacao: 'Art. 63, IV da Lei 14.133/2021', requisitosFiltro: [] },
+  { id: '15', titulo: 'Declaração de Idoneidade', categoria: 'Declarações', descricao: 'Declaração de que não foi declarada inidônea por nenhum órgão público', icon: Shield, fundamentacao: 'Art. 156, §§ 4º e 5º da Lei 14.133/2021', requisitosFiltro: [] },
+  { id: '16', titulo: 'Declaração de Nepotismo', categoria: 'Declarações', descricao: 'Declaração de inexistência de vínculo familiar com agentes públicos do órgão licitante', icon: Users, fundamentacao: 'Súmula Vinculante 13/STF + Art. 14, IV da Lei 14.133/2021', requisitosFiltro: [] },
+  { id: '17', titulo: 'Declaração de Elaboração Independente de Proposta', categoria: 'Declarações', descricao: 'Declaração anticolusão garantindo elaboração independente da proposta', icon: FileText, fundamentacao: 'Art. 63 da Lei 14.133/2021 + IN 2/2009 MPOG', requisitosFiltro: [] },
+  { id: '18', titulo: 'Declaração de Responsabilidade (Lei Anticorrupção)', categoria: 'Declarações', descricao: 'Compromisso de cumprimento da legislação anticorrupção e compliance', icon: Shield, fundamentacao: 'Lei 12.846/2013, Art. 5º + Art. 156 da Lei 14.133/2021', requisitosFiltro: [] },
+  { id: '19', titulo: 'Defesa Prévia (Sanções Administrativas)', categoria: 'Defesas', descricao: 'Defesa prévia em procedimento de aplicação de penalidades administrativas', icon: Scale, fundamentacao: 'Art. 157, §1º da Lei 14.133/2021', requisitosFiltro: ['base_juridica', 'contrato'] },
+  { id: '20', titulo: 'Representação ao Tribunal de Contas', categoria: 'Representações', descricao: 'Representação ao TCU/TCE para denúncia de irregularidades em licitação', icon: Landmark, fundamentacao: 'Arts. 170-171 da Lei 14.133/2021', requisitosFiltro: ['base_juridica'] },
+  { id: '21', titulo: 'Pedido de Aditivo Contratual', categoria: 'Contratos', descricao: 'Solicitação de alteração contratual (quantitativa, qualitativa ou de prazo)', icon: FileText, fundamentacao: 'Arts. 124-125 da Lei 14.133/2021', requisitosFiltro: ['contrato', 'base_juridica'] },
+  { id: '22', titulo: 'Mandado de Segurança Licitatório', categoria: 'Judicial', descricao: 'Remédio constitucional contra ato ilegal ou abusivo de autoridade em licitação', icon: Gavel, fundamentacao: 'CF/88, Art. 5º, LXIX + Lei 12.016/2009', requisitosFiltro: ['base_juridica'] },
+  { id: '23', titulo: 'Parecer Jurídico', categoria: 'Pareceres', descricao: 'Análise técnico-jurídica sobre questões do processo licitatório ou contratual', icon: BookOpen, fundamentacao: 'Art. 53, §4º da Lei 14.133/2021', requisitosFiltro: ['base_juridica'] },
+  { id: '24', titulo: 'Declaração de Acessibilidade', categoria: 'Declarações', descricao: 'Declaração de cumprimento das normas de acessibilidade para PcD', icon: FileText, fundamentacao: 'Art. 63, §1º, III da Lei 14.133/2021 + Lei 13.146/2015', requisitosFiltro: [] },
 ];
 
 const categorias = [...new Set(modelos.map(m => m.categoria))];
@@ -278,6 +288,10 @@ ${truncated}`
     'Contrarrazões de Recurso': 'Contrarrazões',
     'Pedido de Reconsideração': 'Pedido de Reconsideração',
     'Recurso Hierárquico': 'Recurso Hierárquico',
+    'Defesa Prévia (Sanções Administrativas)': 'Defesa Prévia',
+    'Representação ao Tribunal de Contas': 'Representação ao TCU',
+    'Mandado de Segurança Licitatório': 'Mandado de Segurança',
+    'Parecer Jurídico': 'Parecer Jurídico',
   };
   const peticaoConfigKey = activeModelo ? MODELO_PETICAO_MAP[activeModelo.titulo] : null;
   const isPeticaoType = !!peticaoConfigKey;
@@ -442,6 +456,16 @@ ${truncated}`
       } else {
         instrucao = `Gere ${activeModelo.titulo} com fundamentação no ${activeModelo.fundamentacao}. Estruture com: I) Legitimidade; II) Tempestividade; III) Cláusulas impugnadas; IV) Fundamentação legal; V) Pedido.`;
       }
+    } else if (activeModelo.categoria === 'Defesas') {
+      instrucao = `Gere ${activeModelo.titulo} COMPLETO (${activeModelo.fundamentacao}). Estruture com: I) Endereçamento à autoridade competente; II) Qualificação do defendente; III) Da Tempestividade; IV) Dos Fatos (narrativa cronológica); V) Das Razões de Defesa (fundamentação jurídica, princípios do contraditório e ampla defesa); VI) Da Desproporcionalidade da Penalidade (se aplicável); VII) Dos Pedidos; VIII) Fecho. Linguagem técnica, objetiva e impessoal.`;
+    } else if (activeModelo.categoria === 'Representações') {
+      instrucao = `Gere ${activeModelo.titulo} COMPLETO (${activeModelo.fundamentacao}). Estruture com: I) Endereçamento ao Tribunal de Contas competente; II) Qualificação do representante; III) Da Legitimidade; IV) Dos Fatos (descrição detalhada das irregularidades); V) Das Violações Legais (fundamentação na Lei 14.133/2021 e jurisprudência do TCU); VI) Das Provas; VII) Dos Pedidos (medidas cautelares, se cabíveis); VIII) Fecho.`;
+    } else if (activeModelo.categoria === 'Contratos') {
+      instrucao = `Gere ${activeModelo.titulo} COMPLETO (${activeModelo.fundamentacao}). Estruture com: I) Endereçamento; II) Qualificação; III) Do Contrato Original (dados, objeto, vigência); IV) Da Necessidade de Alteração (justificativa técnica e legal); V) Da Fundamentação Legal (Arts. 124-125 da Lei 14.133/2021, limites quantitativos e qualitativos); VI) Da Manutenção do Equilíbrio Econômico-Financeiro; VII) Dos Pedidos; VIII) Fecho.`;
+    } else if (activeModelo.categoria === 'Judicial') {
+      instrucao = `Gere ${activeModelo.titulo} COMPLETO (${activeModelo.fundamentacao}). Estruture com: I) Endereçamento ao Juízo competente; II) Qualificação do impetrante e da autoridade coatora; III) Do Cabimento do Mandado de Segurança (direito líquido e certo); IV) Da Tempestividade (prazo de 120 dias); V) Dos Fatos; VI) Do Direito (ilegalidade ou abuso de poder); VII) Do Pedido Liminar (fumus boni iuris e periculum in mora); VIII) Dos Pedidos Finais; IX) Fecho. Inclua pedido de notificação da autoridade e oitiva do MP.`;
+    } else if (activeModelo.categoria === 'Pareceres') {
+      instrucao = `Gere ${activeModelo.titulo} COMPLETO (${activeModelo.fundamentacao}). Estruture com: I) Identificação (número, data, processo); II) Do Objeto da Consulta; III) Dos Fatos; IV) Da Análise Jurídica (fundamentação detalhada na Lei 14.133/2021, doutrina e jurisprudência); V) Da Conclusão; VI) Da Recomendação. Linguagem técnica, impessoal e analítica.`;
     } else {
       instrucao = `Gere ${activeModelo.titulo} conforme ${activeModelo.fundamentacao}. Formato técnico-jurídico, linguagem impessoal e objetiva.`;
     }
