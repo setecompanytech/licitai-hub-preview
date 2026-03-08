@@ -527,6 +527,17 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
     setSelectedCCTs([]);
     setSelectedDocs([]);
     setResultado('');
+    setShowPeticaoUploader(false);
+    setFatosPeticao([]);
+    setPeticaoDocsTexto('');
+  };
+
+  const handlePeticaoFinish = (fatos: FatoPeticao[], documentosTexto: string, numEdital: string) => {
+    setFatosPeticao(fatos);
+    setPeticaoDocsTexto(documentosTexto);
+    setEditalNum(numEdital);
+    setShowPeticaoUploader(false);
+    toast.success(`${fatos.length} fato(s)/irregularidade(s) extraído(s) para geração do documento.`);
   };
 
   return (
