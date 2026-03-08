@@ -563,7 +563,7 @@ ${truncated}`
 
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Critério de Julgamento</label>
-                <Select value={criterioFiltro || ''} onValueChange={v => setCriterioFiltro(v || null)}>
+                <Select value={criterioFiltro || '__all__'} onValueChange={v => setCriterioFiltro(v === '__all__' ? null : v)}>
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue placeholder="Todos os critérios" />
                   </SelectTrigger>
