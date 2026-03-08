@@ -16,6 +16,31 @@ const PORTAIS_INFO: Record<string, { nome: string; url: string }> = {
   banrisul: { nome: "Banrisul (RS)", url: "https://ww2.banrisul.com.br/bob/link/bobw00hn_ComprasEletronicas.aspx" },
   comprasrs: { nome: "Compras RS", url: "https://compras.rs.gov.br" },
   procergs: { nome: "PROCERGS (RS)", url: "https://pregaobanrisul.com.br" },
+  licitanet: { nome: "Licitanet", url: "https://www.licitanet.com.br" },
+  bll: { nome: "BLL Compras", url: "https://bll.org.br" },
+  portalcompras: { nome: "Portal de Compras Públicas", url: "https://www.portaldecompraspublicas.com.br" },
+  // Novos portais estaduais
+  "comprasnet-ba": { nome: "ComprasNet Bahia", url: "https://www.comprasnet.ba.gov.br" },
+  "portal-compras-ce": { nome: "Portal Compras Ceará", url: "https://www.portalcompras.ce.gov.br" },
+  "compras-pe": { nome: "PE Integrado", url: "https://peintegrado.pe.gov.br" },
+  "comprasnet-go": { nome: "ComprasNet Goiás", url: "https://www.comprasnet.go.gov.br" },
+  "compras-mg": { nome: "Compras MG", url: "https://compras.mg.gov.br" },
+  "e-compras-am": { nome: "e-Compras Amazonas", url: "https://sistemas.sefaz.am.gov.br/e-compras" },
+  "compras-pr": { nome: "Compras Paraná", url: "https://www.comprasparana.pr.gov.br" },
+  "compras-sc": { nome: "Compras SC", url: "https://portaldecompras.sc.gov.br" },
+  "compras-df": { nome: "e-Compras DF", url: "https://www.compras.df.gov.br" },
+  "compras-es": { nome: "Compras ES", url: "https://compras.es.gov.br" },
+  "compras-mt": { nome: "Compras MT", url: "https://aquisicoes.sad.mt.gov.br" },
+  "compras-ms": { nome: "Compras MS", url: "https://www.centraldecompras.ms.gov.br" },
+  "compras-ma": { nome: "Compras Maranhão", url: "https://www.compras.ma.gov.br" },
+  "compras-to": { nome: "Compras Tocantins", url: "https://www.sgc.to.gov.br" },
+  "comprasnet-ro": { nome: "ComprasNet Rondônia", url: "https://comprasnet.sistemas.ro.gov.br" },
+  // Novas plataformas
+  bbmnet: { nome: "BBMNet", url: "https://www.bbmnet.com.br" },
+  comprasbr: { nome: "ComprasBR", url: "https://comprasbr.com.br" },
+  "compras-me": { nome: "Compras.ME", url: "https://compras.me" },
+  "licitar-digital": { nome: "Licitar Digital", url: "https://licitardigital.com.br" },
+  "lance-eletronico": { nome: "Lance Eletrônico", url: "https://www.lanceeletronico.com.br" },
 };
 
 // PNCP modalidade codes

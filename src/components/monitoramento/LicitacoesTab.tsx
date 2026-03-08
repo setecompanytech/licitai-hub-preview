@@ -61,6 +61,23 @@ const PORTAIS = [
   { id: 'banrisul', nome: 'Banrisul (RS)', shortName: 'Banrisul' },
   { id: 'comprasrs', nome: 'Compras RS', shortName: 'Compras RS' },
   { id: 'procergs', nome: 'PROCERGS (RS)', shortName: 'PROCERGS' },
+  // Novos portais estaduais
+  { id: 'comprasnet-ba', nome: 'ComprasNet Bahia', shortName: 'Compras BA' },
+  { id: 'portal-compras-ce', nome: 'Portal Compras Ceará', shortName: 'Compras CE' },
+  { id: 'compras-pe', nome: 'PE Integrado', shortName: 'PE Integrado' },
+  { id: 'comprasnet-go', nome: 'ComprasNet Goiás', shortName: 'Compras GO' },
+  { id: 'compras-mg', nome: 'Compras MG', shortName: 'Compras MG' },
+  { id: 'e-compras-am', nome: 'e-Compras Amazonas', shortName: 'e-Compras AM' },
+  { id: 'compras-pr', nome: 'Compras Paraná', shortName: 'Compras PR' },
+  { id: 'compras-sc', nome: 'Compras SC', shortName: 'Compras SC' },
+  { id: 'compras-df', nome: 'e-Compras DF', shortName: 'e-Compras DF' },
+  { id: 'compras-es', nome: 'Compras ES', shortName: 'Compras ES' },
+  // Novas plataformas
+  { id: 'bbmnet', nome: 'BBMNet Licitações', shortName: 'BBMNet' },
+  { id: 'comprasbr', nome: 'ComprasBR', shortName: 'ComprasBR' },
+  { id: 'compras-me', nome: 'Compras.ME', shortName: 'Compras.ME' },
+  { id: 'licitar-digital', nome: 'Licitar Digital', shortName: 'Licitar Digital' },
+  { id: 'lance-eletronico', nome: 'Lance Eletrônico', shortName: 'Lance Elet.' },
 ];
 
 const regioes: Record<string, string[]> = {
