@@ -379,10 +379,10 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
               <Button size="sm" variant="outline" onClick={copyToClipboard}>
                 <Copy className="w-3 h-3 mr-1" /> Copiar
               </Button>
-              <Button size="sm" variant="outline" onClick={() => exportToPDF(resultado, tipoDoc)}>
+              <Button size="sm" variant="outline" onClick={() => exportLegalPDF(resultado, tipoDoc)}>
                 <Download className="w-3 h-3 mr-1" /> PDF
               </Button>
-              <Button size="sm" variant="outline" onClick={() => exportToWord(resultado, tipoDoc)}>
+              <Button size="sm" variant="outline" onClick={() => exportLegalWord(resultado, tipoDoc)}>
                 <Download className="w-3 h-3 mr-1" /> Word
               </Button>
             </div>
