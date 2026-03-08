@@ -961,8 +961,61 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
             </div>
           </div>
 
+          {/* ── Petition Document Upload (Recursos, Impugnações, Esclarecimentos) ── */}
+          {isPeticaoType && (
+            <>
+              {showPeticaoUploader ? (
+                <DocumentosPeticaoUploader
+                  tipoDoc={peticaoConfigKey!}
+                  onFinish={handlePeticaoFinish}
+                  editalNum={editalNum}
+                  setEditalNum={setEditalNum}
+                />
+              ) : (
+                <>
+                  {fatosPeticao.length > 0 ? (
+                    <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-accent" />
+                          <h4 className="text-xs font-semibold">{fatosPeticao.length} fato(s)/irregularidade(s) extraído(s) dos documentos</h4>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => setShowPeticaoUploader(true)} className="text-xs text-accent">
+                          Reanalisar documentos
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {fatosPeticao.map((fato, idx) => (
+                          <Badge
+                            key={fato.id}
+                            variant="outline"
+                            className={`text-[10px] ${fato.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : fato.gravidade === 'media' ? 'border-yellow-500/40 text-yellow-700 dark:text-yellow-400' : 'border-blue-500/40 text-blue-700 dark:text-blue-400'}`}
+                          >
+                            {idx + 1}. {fato.descricao.slice(0, 50)}{fato.descricao.length > 50 ? '...' : ''}
+                            {fato.origem === 'manual' && ' ✏️'}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full border-dashed border-accent/30 text-accent hover:bg-accent/5 gap-2"
+                      onClick={() => setShowPeticaoUploader(true)}
+                    >
+                      <Upload className="w-4 h-4" />
+                      Anexar Peças Jurídicas para Extração de Fatos com IA
+                    </Button>
+                  )}
+                </>
+              )}
+            </>
+          )}
+
           <div>
-            <label className="text-xs text-muted-foreground">Contexto / Fatos / Fundamentação</label>
+            <label className="text-xs text-muted-foreground">
+              {isPeticaoType && fatosPeticao.length > 0 ? 'Contexto Adicional (opcional)' : 'Contexto / Fatos / Fundamentação'}
+            </label>
             <Textarea
               value={contexto}
               onChange={e => setContexto(e.target.value)}
