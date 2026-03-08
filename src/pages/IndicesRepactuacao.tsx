@@ -50,6 +50,7 @@ const categoriaLabels: Record<string, string> = {
 
 export default function IndicesRepactuacao() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState('indices');
   const [indices, setIndices] = useState<Indice[]>([]);
   const [ccts, setCcts] = useState<CCT[]>([]);
