@@ -40,6 +40,7 @@ const categorias = [
   { id: 'como-licitar', label: 'Como Licitar', icon: Lightbulb },
   { id: 'legislacao', label: 'Legislação', icon: Scale },
   { id: 'mercado', label: 'Mercado', icon: TrendingUp },
+  { id: 'reajustes', label: 'Reajustes & CCTs', icon: TrendingUp },
 ];
 
 export default function Blog() {

@@ -21,6 +21,11 @@ const CATEGORIAS_BUSCA = [
     categoria: 'jurisprudencia',
     tags: ['TCU', 'jurisprudência', 'contratos', 'reequilíbrio'],
   },
+  {
+    query: 'reajuste salarial dissídio coletivo convenção coletiva 2026 vigilância limpeza mão de obra terceirizada piso salarial INPC',
+    categoria: 'reajustes',
+    tags: ['reajuste', 'dissídio', 'CCT', 'mão de obra', 'piso salarial'],
+  },
 ];
 
 async function searchFirecrawl(apiKey: string, query: string): Promise<any[]> {
