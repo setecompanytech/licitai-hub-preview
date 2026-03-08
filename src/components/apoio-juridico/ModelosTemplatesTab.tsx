@@ -551,7 +551,7 @@ ${truncated}`
                     <SelectValue placeholder="Todas as etapas" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="" className="text-xs">Todas as etapas</SelectItem>
+                    <SelectItem value="__all__" className="text-xs">Todas as etapas</SelectItem>
                     {modalidade.etapas.map(e => (
                       <SelectItem key={e.nome} value={e.nome} className="text-xs">
                         {e.ordem}. {e.nome}
