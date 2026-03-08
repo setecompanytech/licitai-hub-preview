@@ -546,7 +546,7 @@ ${truncated}`
             <>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Etapa do Processo</label>
-                <Select value={etapaFiltro || ''} onValueChange={v => setEtapaFiltro(v || null)}>
+                <Select value={etapaFiltro || '__all__'} onValueChange={v => setEtapaFiltro(v === '__all__' ? null : v)}>
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue placeholder="Todas as etapas" />
                   </SelectTrigger>
