@@ -27,7 +27,6 @@ const PORTAIS_CONHECIDOS = [
   { id: 'compras-df', nome: 'e-Compras DF' },
   { id: 'bbmnet', nome: 'BBMNet' },
   { id: 'comprasbr', nome: 'ComprasBR' },
-  { id: 'compras-me', nome: 'Compras.ME' },
   { id: 'licitar-digital', nome: 'Licitar Digital' },
 ];
 
