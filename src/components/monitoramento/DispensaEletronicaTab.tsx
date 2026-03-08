@@ -141,10 +141,18 @@ export default function DispensaEletronicaTab() {
       <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 flex items-start gap-3">
         <Info className="w-5 h-5 text-accent mt-0.5 shrink-0" />
         <div className="space-y-1">
-          <h3 className="text-sm font-semibold">Dispensa Eletrônica — Lei 14.133/2021</h3>
+          <h3 className="text-sm font-semibold">Dispensa Eletrônica — Lei 14.133/2021 (Valores 2026)</h3>
           <p className="text-xs text-muted-foreground leading-relaxed">
             A dispensa de licitação na forma eletrônica é obrigatória para contratações diretas até
-            os limites legais (R$ 59.906,02 para bens/serviços e R$ 119.812,03 para obras/serviços de engenharia — valores atualizados pelo Decreto 12.343/2024).
+            os limites legais atualizados pelo <strong>Decreto nº 12.807/2025</strong>, vigentes desde 1º/jan/2026:
+          </p>
+          <ul className="text-xs text-muted-foreground leading-relaxed list-disc list-inside mt-1 space-y-0.5">
+            <li><strong>R$ 65.492,11</strong> — Compras e outros serviços (art. 75, II)</li>
+            <li><strong>R$ 130.984,20</strong> — Obras e serviços de engenharia (art. 75, I)</li>
+            <li><strong>R$ 10.478,74</strong> — Manutenção de veículos e peças (art. 75, §7º)</li>
+            <li><strong>R$ 13.098,41</strong> — Contrato verbal / entrega imediata (art. 95, §2º)</li>
+          </ul>
+          <p className="text-xs text-muted-foreground leading-relaxed mt-1">
             Desde setembro/2025, todas as dispensas com disputa no Governo Federal ocorrem exclusivamente no <strong>Novo DC (Compras.gov.br)</strong>.
             Cada estado e plataforma homologada também opera sua própria dispensa eletrônica.
           </p>
