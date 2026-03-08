@@ -406,10 +406,80 @@ ${truncated}`
     <div className="space-y-4">
       {/* ── Modality Selector ── */}
       <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm space-y-3">
-        <div className="flex items-center gap-2 mb-2">
-          <Landmark className="w-4 h-4 text-accent" />
-          <h3 className="text-sm font-semibold">Modalidade de Licitação</h3>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Landmark className="w-4 h-4 text-accent" />
+            <h3 className="text-sm font-semibold">Modalidade de Licitação</h3>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs"
+            onClick={() => editalFileRef.current?.click()}
+            disabled={extractingEdital}
+          >
+            <Upload className="w-3.5 h-3.5" />
+            Upload Edital (IA)
+          </Button>
+          <input
+            ref={editalFileRef}
+            type="file"
+            accept=".pdf,.doc,.docx,.txt"
+            className="hidden"
+            onChange={handleEditalUpload}
+          />
         </div>
+
+        {/* Edital Upload Status */}
+        {editalUploadFile && (
+          <div className="bg-muted/30 rounded-lg p-3 border border-border/50 space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+                <FileText className="w-4 h-4 text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold truncate">{editalUploadFile.name}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {(editalUploadFile.size / 1024).toFixed(0)} KB
+                  {editalExtracted && (
+                    <Badge className="ml-2 bg-accent/10 text-accent border-accent/20 text-[9px]">
+                      <CheckCircle className="w-2.5 h-2.5 mr-0.5" /> Extraído
+                    </Badge>
+                  )}
+                </p>
+              </div>
+              <div className="flex gap-1.5 shrink-0">
+                {!editalExtracted && (
+                  <Button size="sm" onClick={handleExtractEdital} disabled={extractingEdital} className="h-7 text-xs bg-accent hover:bg-accent/90 text-accent-foreground">
+                    {extractingEdital ? (
+                      <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Extraindo...</>
+                    ) : (
+                      <><Sparkles className="w-3 h-3 mr-1" /> Extrair</>
+                    )}
+                  </Button>
+                )}
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={removeEditalUpload}>
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+            {extractingEdital && (
+              <div className="flex items-center gap-2 text-[10px] text-accent animate-pulse">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Analisando edital com IA para identificar modalidade, critérios e etapas...
+              </div>
+            )}
+            {editalExtracted && (
+              <div className="flex items-center gap-2 p-2 bg-accent/5 border border-accent/20 rounded-md">
+                <CheckCircle className="w-3.5 h-3.5 text-accent shrink-0" />
+                <p className="text-[10px] text-accent">
+                  Modalidade, critério de julgamento e dados do edital identificados automaticamente!
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Modalidade</label>
