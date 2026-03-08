@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +17,7 @@ import {
   MessageSquare, FileWarning, Gavel, ArrowUpDown, ShieldQuestion,
   Calculator, Filter, X, TrendingUp, Users, ChevronDown, ChevronUp,
   Scale, SlidersHorizontal, ListChecks, Target, Shield, Info,
-  Landmark, Award, Upload, CheckCircle
+  Landmark, Award, Upload, CheckCircle, Building2, User
 } from 'lucide-react';
 import { MODALIDADES, type ModalidadeLicitacao } from '@/data/modalidades-licitacao';
 
@@ -72,6 +73,24 @@ export default function ModelosTemplatesTab() {
   const [extractingEdital, setExtractingEdital] = useState(false);
   const [editalExtracted, setEditalExtracted] = useState(false);
   const [extractedEditalContext, setExtractedEditalContext] = useState('');
+
+  // Empresa / Representante Legal
+  const { empresas } = useEmpresa();
+  const [selectedEmpresaId, setSelectedEmpresaId] = useState<string | null>(null);
+  const [incluirDadosEmpresa, setIncluirDadosEmpresa] = useState(true);
+  const [incluirRepresentante, setIncluirRepresentante] = useState(true);
+
+  const selectedEmpresa = useMemo(() => {
+    if (!selectedEmpresaId) return empresas.length === 1 ? empresas[0]?.empresa : null;
+    return empresas.find(e => e.empresa_id === selectedEmpresaId)?.empresa || null;
+  }, [selectedEmpresaId, empresas]);
+
+  // Auto-select if only one empresa
+  useEffect(() => {
+    if (empresas.length === 1 && !selectedEmpresaId) {
+      setSelectedEmpresaId(empresas[0].empresa_id);
+    }
+  }, [empresas, selectedEmpresaId]);
 
   // Research data
   const [indices, setIndices] = useState<Indice[]>([]);
@@ -259,6 +278,34 @@ ${truncated}`
     setResultado('');
 
     let fullContext = '';
+
+    // Inject empresa and representative data
+    if (selectedEmpresa) {
+      if (incluirDadosEmpresa) {
+        fullContext += `\n--- DADOS DA EMPRESA (LICITANTE/PETICIONANTE) ---\n`;
+        fullContext += `Razão Social: ${selectedEmpresa.razao_social}\n`;
+        if (selectedEmpresa.nome_fantasia) fullContext += `Nome Fantasia: ${selectedEmpresa.nome_fantasia}\n`;
+        fullContext += `CNPJ: ${selectedEmpresa.cnpj}\n`;
+        if (selectedEmpresa.endereco) fullContext += `Endereço: ${selectedEmpresa.endereco}${selectedEmpresa.complemento ? `, ${selectedEmpresa.complemento}` : ''}${selectedEmpresa.bairro ? `, ${selectedEmpresa.bairro}` : ''}\n`;
+        if (selectedEmpresa.municipio) fullContext += `Município/UF: ${selectedEmpresa.municipio}/${selectedEmpresa.uf || ''}\n`;
+        if (selectedEmpresa.cep) fullContext += `CEP: ${selectedEmpresa.cep}\n`;
+        if (selectedEmpresa.inscricao_estadual) fullContext += `Inscrição Estadual: ${selectedEmpresa.inscricao_estadual}\n`;
+        if (selectedEmpresa.inscricao_municipal) fullContext += `Inscrição Municipal: ${selectedEmpresa.inscricao_municipal}\n`;
+        if (selectedEmpresa.telefone) fullContext += `Telefone: ${selectedEmpresa.telefone}\n`;
+        if (selectedEmpresa.email) fullContext += `E-mail: ${selectedEmpresa.email}\n`;
+        if (selectedEmpresa.regime_tributario) fullContext += `Regime Tributário: ${selectedEmpresa.regime_tributario}\n`;
+        if (selectedEmpresa.cnae_principal) fullContext += `CNAE Principal: ${selectedEmpresa.cnae_principal}\n`;
+      }
+      if (incluirRepresentante && selectedEmpresa.rep_nome) {
+        fullContext += `\n--- REPRESENTANTE LEGAL ---\n`;
+        fullContext += `Nome: ${selectedEmpresa.rep_nome}\n`;
+        if (selectedEmpresa.rep_cpf) fullContext += `CPF: ${selectedEmpresa.rep_cpf}\n`;
+        if (selectedEmpresa.rep_rg) fullContext += `RG: ${selectedEmpresa.rep_rg}${selectedEmpresa.rep_orgao_expedidor ? ` (${selectedEmpresa.rep_orgao_expedidor})` : ''}\n`;
+        if (selectedEmpresa.rep_cargo) fullContext += `Cargo: ${selectedEmpresa.rep_cargo}\n`;
+        if (selectedEmpresa.rep_naturalidade) fullContext += `Naturalidade: ${selectedEmpresa.rep_naturalidade}\n`;
+        if (selectedEmpresa.rep_nacionalidade) fullContext += `Nacionalidade: ${selectedEmpresa.rep_nacionalidade}\n`;
+      }
+    }
 
     // Inject modality context
     if (modalidade) {
@@ -699,10 +746,102 @@ ${truncated}`
               {modalidade && <Badge variant="secondary" className="text-[10px]">📋 {modalidade.nome}</Badge>}
               {etapaFiltro && <Badge variant="secondary" className="text-[10px]">📌 {etapaFiltro}</Badge>}
               {criterioFiltro && <Badge variant="secondary" className="text-[10px]">🎯 {modalidade?.criteriosJulgamento.find(c => c.id === criterioFiltro)?.nome}</Badge>}
+              {selectedEmpresa && <Badge variant="secondary" className="text-[10px]">🏢 {selectedEmpresa.razao_social.slice(0, 30)}</Badge>}
             </div>
             <Button variant="ghost" size="sm" onClick={resetGeneration}>
               <X className="w-4 h-4" />
             </Button>
+          </div>
+
+          {/* Empresa & Representante Legal Selector */}
+          <div className="bg-muted/30 rounded-lg border border-border/50 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-accent" />
+              <h4 className="text-xs font-semibold">Dados Cadastrais da Empresa</h4>
+            </div>
+
+            {empresas.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">
+                Nenhuma empresa cadastrada. Acesse Configurações → Empresas para cadastrar.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Empresa</label>
+                    <Select value={selectedEmpresaId || ''} onValueChange={v => setSelectedEmpresaId(v || null)}>
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue placeholder="Selecione a empresa..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {empresas.map(e => (
+                          <SelectItem key={e.empresa_id} value={e.empresa_id} className="text-xs">
+                            {e.empresa.razao_social} ({e.empresa.cnpj})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end gap-4">
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={incluirDadosEmpresa}
+                        onChange={e => setIncluirDadosEmpresa(e.target.checked)}
+                        className="rounded border-border"
+                      />
+                      <Building2 className="w-3 h-3 text-muted-foreground" />
+                      Dados da Empresa
+                    </label>
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={incluirRepresentante}
+                        onChange={e => setIncluirRepresentante(e.target.checked)}
+                        className="rounded border-border"
+                      />
+                      <User className="w-3 h-3 text-muted-foreground" />
+                      Representante Legal
+                    </label>
+                  </div>
+                </div>
+
+                {selectedEmpresa && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] text-muted-foreground bg-background/50 rounded-md p-3 border border-border/30">
+                    {incluirDadosEmpresa && (
+                      <div className="space-y-0.5">
+                        <p className="font-semibold text-foreground text-xs flex items-center gap-1"><Building2 className="w-3 h-3 text-accent" /> Empresa</p>
+                        <p><strong>Razão Social:</strong> {selectedEmpresa.razao_social}</p>
+                        <p><strong>CNPJ:</strong> {selectedEmpresa.cnpj}</p>
+                        {selectedEmpresa.endereco && <p><strong>Endereço:</strong> {selectedEmpresa.endereco}{selectedEmpresa.bairro ? `, ${selectedEmpresa.bairro}` : ''}</p>}
+                        {selectedEmpresa.municipio && <p><strong>Cidade/UF:</strong> {selectedEmpresa.municipio}/{selectedEmpresa.uf}</p>}
+                        {selectedEmpresa.cep && <p><strong>CEP:</strong> {selectedEmpresa.cep}</p>}
+                        {selectedEmpresa.inscricao_estadual && <p><strong>IE:</strong> {selectedEmpresa.inscricao_estadual}</p>}
+                        {selectedEmpresa.telefone && <p><strong>Fone:</strong> {selectedEmpresa.telefone}</p>}
+                        {selectedEmpresa.email && <p><strong>E-mail:</strong> {selectedEmpresa.email}</p>}
+                      </div>
+                    )}
+                    {incluirRepresentante && (
+                      <div className="space-y-0.5">
+                        <p className="font-semibold text-foreground text-xs flex items-center gap-1"><User className="w-3 h-3 text-accent" /> Representante Legal</p>
+                        {selectedEmpresa.rep_nome ? (
+                          <>
+                            <p><strong>Nome:</strong> {selectedEmpresa.rep_nome}</p>
+                            {selectedEmpresa.rep_cpf && <p><strong>CPF:</strong> {selectedEmpresa.rep_cpf}</p>}
+                            {selectedEmpresa.rep_rg && <p><strong>RG:</strong> {selectedEmpresa.rep_rg}{selectedEmpresa.rep_orgao_expedidor ? ` (${selectedEmpresa.rep_orgao_expedidor})` : ''}</p>}
+                            {selectedEmpresa.rep_cargo && <p><strong>Cargo:</strong> {selectedEmpresa.rep_cargo}</p>}
+                            {selectedEmpresa.rep_naturalidade && <p><strong>Naturalidade:</strong> {selectedEmpresa.rep_naturalidade}</p>}
+                            {selectedEmpresa.rep_nacionalidade && <p><strong>Nacionalidade:</strong> {selectedEmpresa.rep_nacionalidade}</p>}
+                          </>
+                        ) : (
+                          <p className="italic text-destructive">Representante não cadastrado. Acesse Configurações → Empresa.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
