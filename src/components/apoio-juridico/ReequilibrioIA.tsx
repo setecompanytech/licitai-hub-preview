@@ -389,6 +389,9 @@ IMPORTANTE: Utilize linguagem técnica, objetiva e impessoal, conforme padrão a
               className="pl-9"
             />
           </div>
+          <Button size="sm" variant="default" onClick={() => {}}>
+            <Search className="w-3 h-3 mr-1" /> Pesquisar
+          </Button>
           {searchTerm && (
             <Button size="sm" variant="ghost" onClick={() => setSearchTerm('')}>
               Limpar
