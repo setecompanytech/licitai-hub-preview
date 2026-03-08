@@ -34,6 +34,37 @@ const PORTAL_HOMEPAGES = new Set([
   "https://www.portaldecompraspublicas.com.br/",
   "https://pncp.gov.br",
   "https://pncp.gov.br/",
+  // Estaduais
+  "https://www.comprasnet.ba.gov.br",
+  "https://www.comprasnet.ba.gov.br/",
+  "https://www.portalcompras.ce.gov.br",
+  "https://www.portalcompras.ce.gov.br/",
+  "https://peintegrado.pe.gov.br",
+  "https://peintegrado.pe.gov.br/",
+  "https://compras.mg.gov.br",
+  "https://compras.mg.gov.br/",
+  "https://www.comprasnet.go.gov.br",
+  "https://www.comprasnet.go.gov.br/",
+  "https://www.comprasparana.pr.gov.br",
+  "https://www.comprasparana.pr.gov.br/",
+  "https://compras.rs.gov.br",
+  "https://compras.rs.gov.br/",
+  "https://portaldecompras.sc.gov.br",
+  "https://portaldecompras.sc.gov.br/",
+  "https://compras.es.gov.br",
+  "https://compras.es.gov.br/",
+  "https://www.compras.df.gov.br",
+  "https://www.compras.df.gov.br/",
+  "https://aquisicoes.sad.mt.gov.br",
+  "https://aquisicoes.sad.mt.gov.br/",
+  "https://www.centraldecompras.ms.gov.br",
+  "https://www.centraldecompras.ms.gov.br/",
+  "https://www.bbmnet.com.br",
+  "https://www.bbmnet.com.br/",
+  "https://comprasbr.com.br",
+  "https://comprasbr.com.br/",
+  "https://licitar.digital",
+  "https://licitar.digital/",
 ]);
 
 function isGenericPortalUrl(url: string): boolean {
@@ -50,40 +81,11 @@ function isGenericPortalUrl(url: string): boolean {
 }
 
 const PORTAIS_SCRAPE: Record<string, { nome: string; searchUrl: (q: string) => string; searchHost: string }> = {
+  // ── Plataformas nacionais ──
   bnc: {
     nome: "BNC - Bolsa Nacional de Compras",
     searchUrl: (q) => `https://bnc.org.br/sistema/licitacoes?q=${encodeURIComponent(q)}`,
     searchHost: "bnc.org.br",
-  },
-  becsp: {
-    nome: "BEC/SP",
-    searchUrl: (q) => `https://www.bec.sp.gov.br/BECSP/Aspx/PregaoEletronicoConsulta.aspx`,
-    searchHost: "bec.sp.gov.br",
-  },
-  comprasrj: {
-    nome: "Compras Públicas RJ",
-    searchUrl: (q) => `https://www.compras.rj.gov.br/Portal-Licitacao/Busca`,
-    searchHost: "compras.rj.gov.br",
-  },
-  licitacoese: {
-    nome: "Licitações-e (BB)",
-    searchUrl: (q) => `https://licitacoes-e2.bb.com.br/aop-inter-estatico/`,
-    searchHost: "licitacoes-e2.bb.com.br",
-  },
-  banparanet: {
-    nome: "Banparanet PA",
-    searchUrl: (q) => `https://cotacao.banpara.b.br/portal/Mural.aspx`,
-    searchHost: "cotacao.banpara.b.br",
-  },
-  comprasnet: {
-    nome: "Compras Governamentais",
-    searchUrl: (q) => `https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras`,
-    searchHost: "cnetmobile.estaleiro.serpro.gov.br",
-  },
-  licitanet: {
-    nome: "Licitanet",
-    searchUrl: (q) => `https://www.licitanet.com.br/licitacoes?q=${encodeURIComponent(q)}`,
-    searchHost: "licitanet.com.br",
   },
   bll: {
     nome: "BLL Compras",
@@ -94,6 +96,132 @@ const PORTAIS_SCRAPE: Record<string, { nome: string; searchUrl: (q: string) => s
     nome: "Portal de Compras Públicas",
     searchUrl: (q) => `https://www.portaldecompraspublicas.com.br/processos?q=${encodeURIComponent(q)}`,
     searchHost: "portaldecompraspublicas.com.br",
+  },
+  licitanet: {
+    nome: "Licitanet",
+    searchUrl: (q) => `https://www.licitanet.com.br/licitacoes?q=${encodeURIComponent(q)}`,
+    searchHost: "licitanet.com.br",
+  },
+  licitacoese: {
+    nome: "Licitações-e (BB)",
+    searchUrl: (q) => `https://licitacoes-e2.bb.com.br/aop-inter-estatico/`,
+    searchHost: "licitacoes-e2.bb.com.br",
+  },
+  comprasnet: {
+    nome: "Compras Governamentais",
+    searchUrl: (q) => `https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras`,
+    searchHost: "cnetmobile.estaleiro.serpro.gov.br",
+  },
+  bbmnet: {
+    nome: "BBMNet Licitações",
+    searchUrl: (q) => `https://www.bbmnet.com.br/licitacoes?q=${encodeURIComponent(q)}`,
+    searchHost: "bbmnet.com.br",
+  },
+  comprasbr: {
+    nome: "ComprasBR",
+    searchUrl: (q) => `https://comprasbr.com.br/licitacoes?q=${encodeURIComponent(q)}`,
+    searchHost: "comprasbr.com.br",
+  },
+  licitardigital: {
+    nome: "Licitar Digital",
+    searchUrl: (q) => `https://licitar.digital/licitacoes?q=${encodeURIComponent(q)}`,
+    searchHost: "licitar.digital",
+  },
+  // ── Portais estaduais ──
+  becsp: {
+    nome: "BEC/SP",
+    searchUrl: (q) => `https://www.bec.sp.gov.br/BECSP/Aspx/PregaoEletronicoConsulta.aspx`,
+    searchHost: "bec.sp.gov.br",
+  },
+  comprasrj: {
+    nome: "Compras Públicas RJ",
+    searchUrl: (q) => `https://www.compras.rj.gov.br/Portal-Licitacao/Busca`,
+    searchHost: "compras.rj.gov.br",
+  },
+  banparanet: {
+    nome: "Banparanet PA",
+    searchUrl: (q) => `https://cotacao.banpara.b.br/portal/Mural.aspx`,
+    searchHost: "cotacao.banpara.b.br",
+  },
+  comprasba: {
+    nome: "ComprasNet Bahia",
+    searchUrl: (q) => `https://www.comprasnet.ba.gov.br/`,
+    searchHost: "comprasnet.ba.gov.br",
+  },
+  comprasce: {
+    nome: "Portal Compras Ceará",
+    searchUrl: (q) => `https://www.portalcompras.ce.gov.br/`,
+    searchHost: "portalcompras.ce.gov.br",
+  },
+  compraspe: {
+    nome: "PE Integrado",
+    searchUrl: (q) => `https://peintegrado.pe.gov.br/`,
+    searchHost: "peintegrado.pe.gov.br",
+  },
+  comprasmg: {
+    nome: "Compras MG",
+    searchUrl: (q) => `https://compras.mg.gov.br/`,
+    searchHost: "compras.mg.gov.br",
+  },
+  comprasgo: {
+    nome: "ComprasNet Goiás",
+    searchUrl: (q) => `https://www.comprasnet.go.gov.br/`,
+    searchHost: "comprasnet.go.gov.br",
+  },
+  compraspr: {
+    nome: "Compras Paraná",
+    searchUrl: (q) => `https://www.comprasparana.pr.gov.br/`,
+    searchHost: "comprasparana.pr.gov.br",
+  },
+  comprasrs: {
+    nome: "Compras RS",
+    searchUrl: (q) => `https://compras.rs.gov.br/`,
+    searchHost: "compras.rs.gov.br",
+  },
+  comprassc: {
+    nome: "Compras SC",
+    searchUrl: (q) => `https://portaldecompras.sc.gov.br/`,
+    searchHost: "portaldecompras.sc.gov.br",
+  },
+  comprasam: {
+    nome: "e-Compras Amazonas",
+    searchUrl: (q) => `https://sistemas.sefaz.am.gov.br/e-compras/`,
+    searchHost: "e-compras.am.gov.br",
+  },
+  comprases: {
+    nome: "Compras ES",
+    searchUrl: (q) => `https://compras.es.gov.br/`,
+    searchHost: "compras.es.gov.br",
+  },
+  comprasdf: {
+    nome: "e-Compras DF",
+    searchUrl: (q) => `https://www.compras.df.gov.br/`,
+    searchHost: "compras.df.gov.br",
+  },
+  comprasmt: {
+    nome: "Compras MT",
+    searchUrl: (q) => `https://aquisicoes.sad.mt.gov.br/`,
+    searchHost: "aquisicoes.sad.mt.gov.br",
+  },
+  comprasms: {
+    nome: "Compras MS",
+    searchUrl: (q) => `https://www.centraldecompras.ms.gov.br/`,
+    searchHost: "centraldecompras.ms.gov.br",
+  },
+  comprasto: {
+    nome: "Compras Tocantins",
+    searchUrl: (q) => `https://www.sgc.to.gov.br/`,
+    searchHost: "sgc.to.gov.br",
+  },
+  comprasma: {
+    nome: "Compras Maranhão",
+    searchUrl: (q) => `https://www.compras.ma.gov.br/`,
+    searchHost: "compras.ma.gov.br",
+  },
+  comprasro: {
+    nome: "ComprasNet Rondônia",
+    searchUrl: (q) => `https://comprasnet.sistemas.ro.gov.br/`,
+    searchHost: "comprasnet.sistemas.ro.gov.br",
   },
 };
 
