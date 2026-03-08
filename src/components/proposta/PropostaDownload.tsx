@@ -117,19 +117,52 @@ export default function PropostaDownload({
   empresaData, repData, bancData, itens, licitacaoData, telefone, email
 }: PropostaDownloadProps) {
 
-  const handlePDF = (orientation: 'portrait' | 'landscape' = 'portrait') => {
+  const handlePDF = async (orientation: 'portrait' | 'landscape' = 'portrait') => {
     try {
       const doc = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      const mL = 30, mR = 20, mT = 30, mB = 20;
+      const mL = 30, mR = 20, mB = 20;
       const maxW = pageWidth - mL - mR;
       const lh = 6.35;
+
+      // Load timbrado image if available
+      let timbradoImg: HTMLImageElement | null = null;
+      let timbradoAspect = 1;
+      if (timbradoUrl && /\.(png|jpe?g|webp)(\?|$)/i.test(timbradoUrl)) {
+        try {
+          timbradoImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = timbradoUrl;
+          });
+          timbradoAspect = timbradoImg.width / timbradoImg.height;
+        } catch { timbradoImg = null; }
+      }
+
+      const headerH = timbradoImg ? 22 : 0;
+      const mT = 30 + headerH;
       let y = mT;
+
+      // Function to draw timbrado header on current page
+      const drawTimbrado = () => {
+        if (!timbradoImg) return;
+        const imgW = maxW;
+        const imgH = imgW / timbradoAspect;
+        const finalH = Math.min(imgH, 20);
+        const finalW = finalH * timbradoAspect;
+        doc.addImage(timbradoImg, 'PNG', mL, 8, finalW, finalH);
+      };
+
+      // Draw on first page
+      drawTimbrado();
 
       const checkPage = (needed: number = lh * 2) => {
         if (y + needed > pageHeight - mB) {
           doc.addPage();
+          drawTimbrado();
           y = mT;
         }
       };
