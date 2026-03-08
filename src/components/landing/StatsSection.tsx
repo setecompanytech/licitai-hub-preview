@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
 
 const stats = [
-  { value: '10.000+', label: 'Editais monitorados/mês', desc: 'Cobertura nacional' },
-  { value: '98.7%', label: 'Uptime garantido', desc: 'SLA empresarial' },
+  { value: '31', label: 'Portais integrados', desc: 'Busca automatizada via IA' },
+  { value: '27', label: 'Estados cobertos', desc: 'Cobertura nacional completa' },
   { value: '3x', label: 'Mais vitórias em média', desc: 'vs. processo manual' },
   { value: '500+', label: 'Empresas confiam', desc: 'De todos os portes' },
 ];
