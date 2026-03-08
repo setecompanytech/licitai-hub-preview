@@ -73,6 +73,37 @@ function ensureSpace(doc: jsPDF, y: number, needed: number): number {
 }
 
 /**
+ * Justify a single line of text by distributing extra space between words.
+ * Last line of a paragraph is left-aligned (standard typographic rule).
+ */
+function drawJustifiedLine(doc: jsPDF, text: string, x: number, y: number, maxWidth: number, isLastLine: boolean) {
+  if (isLastLine || !text.trim()) {
+    doc.text(text, x, y);
+    return;
+  }
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length <= 1) {
+    doc.text(text, x, y);
+    return;
+  }
+  const totalTextWidth = words.reduce((sum, w) => sum + doc.getTextWidth(w), 0);
+  const totalSpace = maxWidth - totalTextWidth;
+  const spacePerGap = totalSpace / (words.length - 1);
+
+  // Avoid absurd spacing (fallback to normal if text is too short)
+  if (spacePerGap > 8) {
+    doc.text(text, x, y);
+    return;
+  }
+
+  let curX = x;
+  for (let i = 0; i < words.length; i++) {
+    doc.text(words[i], curX, y);
+    curX += doc.getTextWidth(words[i]) + spacePerGap;
+  }
+}
+
+/**
  * Parse markdown-like legal text into structured blocks for PDF rendering.
  */
 interface TextBlock {
