@@ -197,7 +197,7 @@ function parseMarkdownToBlocks(markdown: string): TextBlock[] {
 /**
  * Export legal document as PDF following ABNT NBR 14724 standards.
  */
-export function exportLegalPDF(
+export async function exportLegalPDF(
   content: string,
   title: string,
   metadata?: {
@@ -206,14 +206,47 @@ export function exportLegalPDF(
     edital?: string;
     modalidade?: string;
     fundamentacao?: string;
+    timbradoUrl?: string | null;
+    certificado_nome?: string | null;
+    certificado_tipo?: string | null;
+    rep_nome?: string;
+    rep_cpf?: string;
   }
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const contentWidth = getContentWidth();
   const blocks = parseMarkdownToBlocks(content);
 
-  let y = LEGAL_LAYOUT.marginTop;
-  let pageNum = 1;
+  // Load timbrado image if available
+  let timbradoImg: HTMLImageElement | null = null;
+  let timbradoAspect = 1;
+  if (metadata?.timbradoUrl && /\.(png|jpe?g|webp)(\?|$)/i.test(metadata.timbradoUrl)) {
+    try {
+      timbradoImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = metadata.timbradoUrl!;
+      });
+      timbradoAspect = timbradoImg.width / timbradoImg.height;
+    } catch { timbradoImg = null; }
+  }
+
+  const headerH = timbradoImg ? 22 : 0;
+
+  const drawTimbrado = () => {
+    if (!timbradoImg) return;
+    const imgW = contentWidth;
+    const imgH = imgW / timbradoAspect;
+    const finalH = Math.min(imgH, 20);
+    const finalW = finalH * timbradoAspect;
+    doc.addImage(timbradoImg, 'PNG', LEGAL_LAYOUT.marginLeft, 8, finalW, finalH);
+  };
+
+  drawTimbrado();
+
+  let y = LEGAL_LAYOUT.marginTop + headerH;
   let listCounter = 0;
 
   // ── Document Header ──
