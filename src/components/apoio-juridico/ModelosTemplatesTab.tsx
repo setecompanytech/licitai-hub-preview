@@ -288,6 +288,10 @@ ${truncated}`
     'Contrarrazões de Recurso': 'Contrarrazões',
     'Pedido de Reconsideração': 'Pedido de Reconsideração',
     'Recurso Hierárquico': 'Recurso Hierárquico',
+    'Defesa Prévia (Sanções Administrativas)': 'Defesa Prévia',
+    'Representação ao Tribunal de Contas': 'Representação ao TCU',
+    'Mandado de Segurança Licitatório': 'Mandado de Segurança',
+    'Parecer Jurídico': 'Parecer Jurídico',
   };
   const peticaoConfigKey = activeModelo ? MODELO_PETICAO_MAP[activeModelo.titulo] : null;
   const isPeticaoType = !!peticaoConfigKey;
