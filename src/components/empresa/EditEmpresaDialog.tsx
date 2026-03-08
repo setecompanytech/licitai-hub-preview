@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, Save, Search } from 'lucide-react';
+import TimbradoUploader from '@/components/proposta/TimbradoUploader';
+import { Separator } from '@/components/ui/separator';
 
 type Empresa = {
   id: string;
