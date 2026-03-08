@@ -64,7 +64,8 @@ REGRAS:
 - Seja rigoroso, minucioso e exaustivo na análise
 - Identifique irregularidades REAIS e FUNDAMENTADAS — não genéricas
 - Quando o prompt pedir JSON, retorne APENAS o JSON sem markdown
-- Quando gerar documento, use linguagem jurídica formal, técnica, objetiva e impessoal
+- Quando gerar documento, use linguagem jurídica formal conforme Manual de Redação Jurídica do STF
+- NÃO use linhas horizontais (---) como separadores — use apenas ## e ### para seções
 - SEMPRE cite artigos completos (artigo, inciso, parágrafo, alínea) da legislação
 - Responda SEMPRE em português brasileiro`,
 
