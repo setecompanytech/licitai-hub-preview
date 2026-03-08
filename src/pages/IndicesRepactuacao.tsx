@@ -481,6 +481,21 @@ export default function IndicesRepactuacao() {
               </div>
             )}
 
+            <Card className="p-4 bg-accent/5 border-accent/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Scale className="w-4 h-4 text-accent" />
+                  <div>
+                    <p className="text-sm font-semibold">Gerar Pedido de Reequilíbrio Formal</p>
+                    <p className="text-xs text-muted-foreground">Vá ao Apoio Jurídico para gerar documentos completos com estes índices e CCTs como fundamentação</p>
+                  </div>
+                </div>
+                <Button size="sm" onClick={() => navigate('/apoio-juridico')} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                  Apoio Jurídico <ArrowRight className="w-3 h-3 ml-1" />
+                </Button>
+              </div>
+            </Card>
+
             <Card className="p-4 bg-muted/30 border-dashed">
               <div className="flex items-start gap-2">
                 <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
