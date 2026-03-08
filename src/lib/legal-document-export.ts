@@ -396,19 +396,47 @@ export async function exportLegalPDF(
     }
   }
 
-  // ── Header (paginação) e Rodapé em cada página ──
+  // ── Digital Signature Block ──
+  if (metadata?.certificado_nome) {
+    y = ensureSpace(doc, y, LEGAL_LAYOUT.lineHeight * 6);
+    y += LEGAL_LAYOUT.lineHeight * 2;
+    
+    const boxX = LEGAL_LAYOUT.marginLeft + 15;
+    const boxW = contentWidth - 30;
+    const boxH = LEGAL_LAYOUT.lineHeight * 4;
+    doc.setDrawColor(0, 128, 80);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(boxX, y, boxW, boxH, 2, 2, 'S');
+    
+    y += LEGAL_LAYOUT.lineHeight * 0.8;
+    doc.setFont('times', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(0, 100, 60);
+    doc.text('✓ DOCUMENTO ASSINADO DIGITALMENTE', getPageWidth(doc) / 2, y + 2, { align: 'center' });
+    y += LEGAL_LAYOUT.lineHeight;
+    doc.setFont('times', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(60, 60, 60);
+    const certTipo = metadata.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF';
+    doc.text(`Certificado: ${certTipo} — ${metadata.certificado_nome}`, getPageWidth(doc) / 2, y + 2, { align: 'center' });
+    y += LEGAL_LAYOUT.lineHeight * 0.8;
+    doc.text(`Assinante: ${metadata.rep_nome || ''} | CPF: ${metadata.rep_cpf || ''}`, getPageWidth(doc) / 2, y + 2, { align: 'center' });
+    y += LEGAL_LAYOUT.lineHeight * 0.8;
+    doc.text(`Data/Hora: ${new Date().toLocaleString('pt-BR')}`, getPageWidth(doc) / 2, y + 2, { align: 'center' });
+    doc.setTextColor(...COLORS.text);
+  }
+
+  // ── Header (paginação), Timbrado e Rodapé em cada página ──
   const totalPages = doc.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p);
-    // ABNT: número da página no canto superior direito (a partir da 2ª página)
+    if (p > 1) drawTimbrado();
     drawPageNumber(doc, p, 2);
     
-    // Rodapé: linha fina + texto institucional DENTRO da margem inferior
     const ph = getPageHeight(doc);
     const footerLineY = ph - LEGAL_LAYOUT.marginBottom + 2;
     const footerTextY = footerLineY + 4;
 
-    // Só desenha se couber na página (segurança)
     if (footerTextY < ph - 2) {
       doc.setDrawColor(200, 200, 200);
       doc.setLineWidth(0.2);
