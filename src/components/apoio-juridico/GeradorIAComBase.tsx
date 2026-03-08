@@ -6,11 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Sparkles, Loader2, BookOpen, Copy, Download } from 'lucide-react';
+import { Sparkles, Loader2, BookOpen, Copy, TrendingUp, Users } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
 
 type DocRef = { id: string; titulo: string; tipo: string; ementa: string | null; texto_integral: string | null };
+type Indice = { id: string; nome: string; sigla: string; valor: number; variacao_mensal: number | null; acumulado_12m: number | null; periodo: string; fonte: string };
+type CCT = { id: string; categoria_profissional: string; piso_salarial: number | null; reajuste_percentual: number | null; indice_reajuste: string | null; vigencia_inicio: string | null; vigencia_fim: string | null; sindicato_laboral: string | null; abrangencia_uf: string | null };
+
+const TIPOS_REEQUILIBRIO = ['Reequilíbrio Econômico-Financeiro'];
+const fmtPerc = (v: number | null) => v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—';
 
 export default function GeradorIAComBase() {
   const { user } = useAuth();
@@ -21,6 +26,12 @@ export default function GeradorIAComBase() {
   const [gerando, setGerando] = useState(false);
   const [docsBase, setDocsBase] = useState<DocRef[]>([]);
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
+
+  // Indices & CCTs for reequilíbrio
+  const [indices, setIndices] = useState<Indice[]>([]);
+  const [ccts, setCcts] = useState<CCT[]>([]);
+  const [loadingIndices, setLoadingIndices] = useState(false);
+  const isReequilibrio = TIPOS_REEQUILIBRIO.includes(tipoDoc);
 
   useEffect(() => {
     if (!user) return;
@@ -33,6 +44,21 @@ export default function GeradorIAComBase() {
         if (data) setDocsBase(data as DocRef[]);
       });
   }, [user]);
+
+  // Auto-load indices & CCTs when reequilíbrio is selected
+  useEffect(() => {
+    if (isReequilibrio && indices.length === 0) {
+      setLoadingIndices(true);
+      Promise.all([
+        supabase.from('indices_economicos').select('id, nome, sigla, valor, variacao_mensal, acumulado_12m, periodo, fonte').order('sigla'),
+        supabase.from('convencoes_coletivas').select('id, categoria_profissional, piso_salarial, reajuste_percentual, indice_reajuste, vigencia_inicio, vigencia_fim, sindicato_laboral, abrangencia_uf').eq('status', 'vigente'),
+      ]).then(([indRes, cctRes]) => {
+        setIndices((indRes.data as Indice[]) || []);
+        setCcts((cctRes.data as CCT[]) || []);
+        setLoadingIndices(false);
+      });
+    }
+  }, [isReequilibrio]);
 
   const toggleDoc = (id: string) => {
     setSelectedDocs(prev =>
@@ -60,12 +86,31 @@ export default function GeradorIAComBase() {
       }
     }
 
-    const prompt = `Tipo: ${tipoDoc}\nEdital: ${editalNum}\nContexto: ${contexto}${baseContext}`;
+    // Build indices/CCT context for reequilíbrio
+    let indicesContext = '';
+    if (isReequilibrio && (indices.length > 0 || ccts.length > 0)) {
+      indicesContext = '\n\n--- DADOS ECONÔMICOS ATUALIZADOS (FONTE OFICIAL) ---\n';
+      if (indices.length > 0) {
+        indicesContext += '\nÍNDICES ECONÔMICOS:\n';
+        for (const i of indices) {
+          indicesContext += `- ${i.sigla} (${i.nome}): Valor ${i.valor}, Variação mensal ${fmtPerc(i.variacao_mensal)}, Acumulado 12m ${fmtPerc(i.acumulado_12m)}, Período: ${i.periodo}, Fonte: ${i.fonte}\n`;
+        }
+      }
+      if (ccts.length > 0) {
+        indicesContext += '\nCONVENÇÕES COLETIVAS VIGENTES:\n';
+        for (const c of ccts) {
+          indicesContext += `- ${c.categoria_profissional}: Piso ${c.piso_salarial ? `R$ ${c.piso_salarial}` : 'N/I'}, Reajuste ${c.reajuste_percentual ? `${c.reajuste_percentual}%` : 'N/I'}, Índice ${c.indice_reajuste || 'N/I'}, Vigência ${c.vigencia_inicio || '?'} a ${c.vigencia_fim || '?'}, UF: ${c.abrangencia_uf || 'N/I'}\n`;
+        }
+      }
+      indicesContext += '\nINSTRUÇÃO: Utilize estes dados numéricos oficiais para fundamentar o documento. Cite as fontes e períodos. Linguagem técnica, objetiva, impessoal e auditável.\n';
+    }
+
+    const prompt = `Tipo: ${tipoDoc}\nEdital: ${editalNum}\nContexto: ${contexto}${baseContext}${indicesContext}`;
 
     await streamAIChat({
       messages: [{ role: 'user', content: prompt }],
       action: 'gerador_juridico',
-      context: baseContext,
+      context: baseContext + indicesContext,
       onDelta: (text) => setResultado(prev => prev + text),
       onDone: () => setGerando(false),
       onError: (err) => {
@@ -105,17 +150,52 @@ export default function GeradorIAComBase() {
             </select>
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">Nº do Edital</label>
-            <Input value={editalNum} onChange={e => setEditalNum(e.target.value)} placeholder="PE-001/2026" className="mt-1" />
+            <label className="text-xs text-muted-foreground">Nº do Edital / Contrato</label>
+            <Input value={editalNum} onChange={e => setEditalNum(e.target.value)} placeholder="PE-001/2026 ou CT-001/2026" className="mt-1" />
           </div>
         </div>
+
+        {/* Auto-loaded indices/CCTs indicator */}
+        {isReequilibrio && (
+          <div className="bg-accent/10 border border-accent/20 rounded-lg p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-accent" />
+              <span className="text-xs font-semibold text-foreground">Dados econômicos sincronizados automaticamente</span>
+            </div>
+            {loadingIndices ? (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" /> Carregando índices e CCTs...
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-1">
+                {indices.slice(0, 6).map(i => (
+                  <Badge key={i.id} variant="outline" className="text-[10px]">
+                    📊 {i.sigla}: {fmtPerc(i.acumulado_12m)} (12m)
+                  </Badge>
+                ))}
+                {indices.length > 6 && <Badge variant="outline" className="text-[10px]">+{indices.length - 6} índices</Badge>}
+                {ccts.map(c => (
+                  <Badge key={c.id} variant="outline" className="text-[10px]">
+                    👷 {c.categoria_profissional}: {c.reajuste_percentual ? `+${c.reajuste_percentual}%` : 'N/I'}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <p className="text-[10px] text-muted-foreground">
+              Estes dados serão injetados automaticamente como contexto para a IA gerar o documento com fundamentação numérica.
+            </p>
+          </div>
+        )}
 
         <div>
           <label className="text-xs text-muted-foreground">Fundamentação / Contexto</label>
           <Textarea
             value={contexto}
             onChange={e => setContexto(e.target.value)}
-            placeholder="Descreva os fatos, a cláusula contestada e os fundamentos jurídicos..."
+            placeholder={isReequilibrio
+              ? "Descreva o contrato, itens afetados, valores originais e atuais, e impacto financeiro..."
+              : "Descreva os fatos, a cláusula contestada e os fundamentos jurídicos..."
+            }
             className="mt-1 min-h-[120px]"
           />
         </div>
