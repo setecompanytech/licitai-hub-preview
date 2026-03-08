@@ -18,7 +18,6 @@ type PortalEntry = {
   glow: string;
 };
 
-// Portais com logo real (carrossel principal)
 const portaisComLogo: PortalEntry[] = [
   { name: 'PNCP', logo: comprasnetLogo, color: '#003E7E', glow: 'rgba(0,62,126,0.3)' },
   { name: 'BLL Compras', logo: bllLogo, color: '#0D6B5E', glow: 'rgba(13,107,94,0.3)' },
@@ -31,7 +30,6 @@ const portaisComLogo: PortalEntry[] = [
   { name: 'ComprasNet BA', logo: comprasnetBahiaLogo, color: '#D32F2F', glow: 'rgba(211,47,47,0.3)' },
 ];
 
-// Todos os portais estaduais + plataformas sem logo (badges)
 const portaisEstaduais = [
   { name: 'Compras MG', uf: 'MG' },
   { name: 'Compras RJ', uf: 'RJ' },
@@ -52,21 +50,19 @@ const portaisEstaduais = [
   { name: 'ComprasNet RO', uf: 'RO' },
 ];
 
-const plataformasExtras = [
-  'BBMNet', 'Licitar Digital', 'Compras Gov.br',
-];
+const plataformasExtras = ['BBMNet', 'Licitar Digital', 'Compras Gov.br'];
 
 const duplicated = [...portaisComLogo, ...portaisComLogo];
 
 function PortalCard({ portal }: { portal: PortalEntry }) {
   return (
     <motion.div
-      whileHover={{ scale: 1.12, y: -6, boxShadow: `0 12px 28px -4px ${portal.glow}, 0 0 0 2px ${portal.color}40` }}
+      whileHover={{ scale: 1.08, y: -4 }}
       whileTap={{ scale: 0.97 }}
       transition={{ type: 'spring', stiffness: 400, damping: 17 }}
       className="group flex flex-col items-center gap-2 cursor-pointer flex-shrink-0"
     >
-      <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-card border border-border/40 flex items-center justify-center p-3 shadow-sm overflow-hidden">
+      <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-card border border-border/40 flex items-center justify-center p-3 shadow-sm overflow-hidden transition-shadow duration-300 group-hover:shadow-md">
         <div
           className="absolute bottom-0 left-0 right-0 h-1 transition-all duration-300 group-hover:h-1.5"
           style={{ backgroundColor: portal.color }}
@@ -91,7 +87,7 @@ function PortalCard({ portal }: { portal: PortalEntry }) {
 
 export default function LogoCloudSection() {
   return (
-    <section className="py-14 border-y border-border/40 bg-muted/20 overflow-hidden">
+    <section id="portais" className="py-14 border-y border-border/40 bg-muted/20 overflow-hidden">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">
@@ -101,12 +97,12 @@ export default function LogoCloudSection() {
             31 portais conectados
           </p>
           <p className="text-sm text-muted-foreground mt-1">
-            Cobertura nacional com busca automatizada via IA em todos os 27 estados
+            Busca automatizada via IA em portais federais, estaduais e plataformas privadas
           </p>
         </div>
       </div>
 
-      {/* Infinite carousel — portais com logo */}
+      {/* Infinite carousel */}
       <div className="relative mb-10">
         <div className="absolute left-0 top-0 bottom-0 w-20 md:w-32 z-10 pointer-events-none" style={{ background: 'linear-gradient(to right, hsl(var(--muted) / 0.2), transparent)' }} />
         <div className="absolute right-0 top-0 bottom-0 w-20 md:w-32 z-10 pointer-events-none" style={{ background: 'linear-gradient(to left, hsl(var(--muted) / 0.2), transparent)' }} />
@@ -123,12 +119,12 @@ export default function LogoCloudSection() {
         </motion.div>
       </div>
 
-      {/* Portais estaduais — badges grid */}
+      {/* State portals */}
       <div className="max-w-5xl mx-auto px-6">
         <div className="flex items-center gap-2 justify-center mb-4">
           <MapPin className="w-4 h-4 text-accent" />
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Portais Estaduais
+            Portais Estaduais — 17 sistemas
           </span>
         </div>
         <div className="flex flex-wrap justify-center gap-2 mb-6">
@@ -152,7 +148,7 @@ export default function LogoCloudSection() {
         <div className="flex items-center gap-2 justify-center mb-3">
           <Building2 className="w-4 h-4 text-accent" />
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            + Plataformas
+            + Plataformas Privadas
           </span>
         </div>
         <div className="flex flex-wrap justify-center gap-2">

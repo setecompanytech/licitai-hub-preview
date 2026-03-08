@@ -10,6 +10,7 @@ export default function LandingNavbar() {
 
   const links = [
     { label: 'Funcionalidades', href: '#features' },
+    { label: 'Portais', href: '#portais' },
     { label: 'Treinamentos', href: '#treinamentos' },
     { label: 'Planos', href: '#planos' },
     { label: 'Depoimentos', href: '#depoimentos' },
