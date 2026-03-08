@@ -25,8 +25,8 @@ const fmtPerc = (v: number | null) => v != null ? `${v >= 0 ? '+' : ''}${v.toFix
 
 export default function GeradorIAComBase() {
   const { user } = useAuth();
-  const { empresas, empresaSelecionada } = useEmpresa();
-  const activeEmpresa = empresaSelecionada ? empresas.find(e => e.empresa_id === empresaSelecionada)?.empresa : empresas[0]?.empresa;
+  const { empresas, empresaAtiva } = useEmpresa();
+  const activeEmpresa = empresaAtiva || empresas[0]?.empresa;
   const [tipoDoc, setTipoDoc] = useState('Impugnação ao Edital');
   const [editalNum, setEditalNum] = useState('');
   const [contexto, setContexto] = useState('');
