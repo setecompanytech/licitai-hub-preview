@@ -9,11 +9,16 @@ import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
   Search, BookOpen, FileText, Download, Copy, Sparkles, Loader2,
   MessageSquare, FileWarning, Gavel, ArrowUpDown, ShieldQuestion,
   Calculator, Filter, X, TrendingUp, Users, ChevronDown, ChevronUp,
-  Scale, SlidersHorizontal
+  Scale, SlidersHorizontal, ListChecks, Target, Shield, Info,
+  Landmark, Award
 } from 'lucide-react';
+import { MODALIDADES, type ModalidadeLicitacao } from '@/data/modalidades-licitacao';
 
 /* ── Types ── */
 type Modelo = {
@@ -55,6 +60,12 @@ export default function ModelosTemplatesTab() {
   const [catFilter, setCatFilter] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
+  // Modality filter
+  const [modalidadeId, setModalidadeId] = useState<string | null>(null);
+  const [etapaFiltro, setEtapaFiltro] = useState<string | null>(null);
+  const [criterioFiltro, setCriterioFiltro] = useState<string | null>(null);
+  const [showModalidadeInfo, setShowModalidadeInfo] = useState(false);
+
   // Research data
   const [indices, setIndices] = useState<Indice[]>([]);
   const [ccts, setCcts] = useState<CCT[]>([]);
@@ -71,7 +82,9 @@ export default function ModelosTemplatesTab() {
   const [resultado, setResultado] = useState('');
   const [gerando, setGerando] = useState(false);
 
-  // Load all research data on mount
+  const modalidade = MODALIDADES.find(m => m.id === modalidadeId) || null;
+
+  // Load research data
   useEffect(() => {
     if (!user) return;
     setLoadingData(true);
@@ -102,12 +115,11 @@ export default function ModelosTemplatesTab() {
 
   const activeModelo = modelos.find(m => m.id === activeModeloId);
 
-  // Toggle helpers
   const toggle = (list: string[], id: string, setter: (v: string[]) => void) => {
     setter(list.includes(id) ? list.filter(x => x !== id) : [...list, id]);
   };
 
-  // Build AI context and generate
+  // Build AI context with modality info and generate
   const handleGerar = async () => {
     if (!activeModelo) return;
     if (!contexto.trim()) {
@@ -118,6 +130,63 @@ export default function ModelosTemplatesTab() {
     setResultado('');
 
     let fullContext = '';
+
+    // Inject modality context
+    if (modalidade) {
+      fullContext += `\n\n--- MODALIDADE DE LICITAÇÃO ---\n`;
+      fullContext += `Modalidade: ${modalidade.nome}\n`;
+      fullContext += `Fundamentação: ${modalidade.fundamentacao}\n`;
+      fullContext += `Objeto aplicável: ${modalidade.objetoAplicavel}\n`;
+      fullContext += `Forma de realização: ${modalidade.formaRealizacao}\n`;
+      fullContext += `Prazos mínimos: ${modalidade.prazosMinimos}\n`;
+
+      // Inject specific stage if selected
+      if (etapaFiltro) {
+        const etapa = modalidade.etapas.find(e => e.nome === etapaFiltro);
+        if (etapa) {
+          fullContext += `\nETAPA DO PROCESSO: ${etapa.nome}\n`;
+          fullContext += `Descrição: ${etapa.descricao}\n`;
+          fullContext += `Fundamentação: ${etapa.fundamentacao}\n`;
+        }
+      } else {
+        fullContext += `\nETAPAS DO PROCESSO:\n`;
+        modalidade.etapas.forEach(e => {
+          fullContext += `${e.ordem}. ${e.nome}: ${e.descricao} (${e.fundamentacao})\n`;
+        });
+      }
+
+      // Inject judgment criteria
+      if (criterioFiltro) {
+        const criterio = modalidade.criteriosJulgamento.find(c => c.id === criterioFiltro);
+        if (criterio) {
+          fullContext += `\nCRITÉRIO DE JULGAMENTO: ${criterio.nome} (${criterio.fundamentacao})\n`;
+          fullContext += `${criterio.descricao}\n`;
+        }
+      } else {
+        fullContext += `\nCRITÉRIOS DE JULGAMENTO APLICÁVEIS:\n`;
+        modalidade.criteriosJulgamento.forEach(c => {
+          fullContext += `- ${c.nome} (${c.fundamentacao}): ${c.descricao}${c.obrigatorio ? ' [OBRIGATÓRIO]' : ''}\n`;
+        });
+      }
+
+      // Inject dispute modes
+      fullContext += `\nMODOS DE DISPUTA:\n`;
+      modalidade.modosDisputa.forEach(m => {
+        fullContext += `- ${m.nome} (${m.fundamentacao}): ${m.descricao}${m.padrao ? ' [PADRÃO]' : ''}\n`;
+      });
+
+      // Inject ME/EPP preferences
+      fullContext += `\nPREFERÊNCIA ME/EPP:\n`;
+      fullContext += `Aplicável: ${modalidade.preferenciaMeEpp.aplicavel ? 'SIM' : 'NÃO'}\n`;
+      fullContext += `${modalidade.preferenciaMeEpp.descricao}\n`;
+      fullContext += `Fundamentação: ${modalidade.preferenciaMeEpp.fundamentacao}\n`;
+      if (modalidade.preferenciaMeEpp.beneficios.length > 0) {
+        fullContext += `Benefícios:\n`;
+        modalidade.preferenciaMeEpp.beneficios.forEach(b => {
+          fullContext += `  • ${b}\n`;
+        });
+      }
+    }
 
     // Attach selected indices
     if (selectedIndices.length > 0) {
@@ -163,9 +232,16 @@ export default function ModelosTemplatesTab() {
       instrucao = `Gere ${activeModelo.titulo} conforme ${activeModelo.fundamentacao}. Formato técnico-jurídico, linguagem impessoal e objetiva.`;
     }
 
+    if (modalidade) {
+      instrucao += ` IMPORTANTE: O documento refere-se à modalidade ${modalidade.nome} (${modalidade.fundamentacao}). Adeque toda a linguagem, prazos, procedimentos e fundamentação à modalidade indicada.`;
+      if (etapaFiltro) {
+        instrucao += ` O documento está relacionado à etapa: "${etapaFiltro}". Foque nos procedimentos e fundamentações desta etapa específica.`;
+      }
+    }
+
     fullContext += `\n\nINSTRUÇÃO: ${instrucao}\nLinguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos dos dados numéricos quando disponíveis.\n`;
 
-    const prompt = `Tipo de Documento: ${activeModelo.titulo}\nCategoria: ${activeModelo.categoria}\nFundamentação Legal: ${activeModelo.fundamentacao}\nEdital/Contrato: ${editalNum || 'Não informado'}\n\nContexto do Usuário:\n${contexto}`;
+    const prompt = `Tipo de Documento: ${activeModelo.titulo}\nCategoria: ${activeModelo.categoria}\nFundamentação Legal: ${activeModelo.fundamentacao}${modalidade ? `\nModalidade: ${modalidade.nome}` : ''}${etapaFiltro ? `\nEtapa do Processo: ${etapaFiltro}` : ''}${criterioFiltro ? `\nCritério de Julgamento: ${modalidade?.criteriosJulgamento.find(c => c.id === criterioFiltro)?.nome || ''}` : ''}\nEdital/Contrato: ${editalNum || 'Não informado'}\n\nContexto do Usuário:\n${contexto}`;
 
     await streamAIChat({
       messages: [{ role: 'user', content: prompt }],
@@ -194,7 +270,161 @@ export default function ModelosTemplatesTab() {
 
   return (
     <div className="space-y-4">
-      {/* ── Search & Filters Bar ── */}
+      {/* ── Modality Selector ── */}
+      <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm space-y-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Landmark className="w-4 h-4 text-accent" />
+          <h3 className="text-sm font-semibold">Modalidade de Licitação</h3>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Modalidade</label>
+            <Select value={modalidadeId || ''} onValueChange={v => { setModalidadeId(v || null); setEtapaFiltro(null); setCriterioFiltro(null); }}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Selecione a modalidade..." />
+              </SelectTrigger>
+              <SelectContent>
+                {MODALIDADES.map(m => (
+                  <SelectItem key={m.id} value={m.id} className="text-xs">{m.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {modalidade && (
+            <>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Etapa do Processo</label>
+                <Select value={etapaFiltro || ''} onValueChange={v => setEtapaFiltro(v || null)}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Todas as etapas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="" className="text-xs">Todas as etapas</SelectItem>
+                    {modalidade.etapas.map(e => (
+                      <SelectItem key={e.nome} value={e.nome} className="text-xs">
+                        {e.ordem}. {e.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Critério de Julgamento</label>
+                <Select value={criterioFiltro || ''} onValueChange={v => setCriterioFiltro(v || null)}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Todos os critérios" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="" className="text-xs">Todos os critérios</SelectItem>
+                    {modalidade.criteriosJulgamento.map(c => (
+                      <SelectItem key={c.id} value={c.id} className="text-xs">
+                        {c.nome} {c.obrigatorio ? '(obrigatório)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+        </div>
+
+        {modalidade && (
+          <div className="pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs gap-1 text-muted-foreground"
+              onClick={() => setShowModalidadeInfo(!showModalidadeInfo)}
+            >
+              <Info className="w-3 h-3" />
+              {showModalidadeInfo ? 'Ocultar detalhes' : 'Ver detalhes da modalidade'}
+              {showModalidadeInfo ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </Button>
+
+            {showModalidadeInfo && (
+              <div className="mt-3 p-4 rounded-lg bg-muted/30 space-y-3 text-xs">
+                <div>
+                  <p className="font-semibold text-foreground">{modalidade.nome}</p>
+                  <p className="text-muted-foreground mt-1">{modalidade.descricao}</p>
+                  <Badge variant="outline" className="text-[10px] mt-1">{modalidade.fundamentacao}</Badge>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* Etapas */}
+                  <div className="space-y-1.5">
+                    <p className="font-semibold flex items-center gap-1"><ListChecks className="w-3 h-3 text-accent" /> Etapas do Processo</p>
+                    <div className="space-y-1">
+                      {modalidade.etapas.map(e => (
+                        <div key={e.ordem} className={`flex items-start gap-2 p-1.5 rounded ${etapaFiltro === e.nome ? 'bg-accent/10 border border-accent/30' : ''}`}>
+                          <span className="w-5 h-5 rounded-full bg-accent/20 text-accent flex items-center justify-center flex-shrink-0 text-[10px] font-bold">{e.ordem}</span>
+                          <div>
+                            <p className="font-medium">{e.nome}</p>
+                            <p className="text-muted-foreground text-[10px]">{e.descricao}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {/* Critérios */}
+                    <div className="space-y-1.5">
+                      <p className="font-semibold flex items-center gap-1"><Target className="w-3 h-3 text-accent" /> Critérios de Julgamento</p>
+                      {modalidade.criteriosJulgamento.map(c => (
+                        <div key={c.id} className={`p-1.5 rounded ${criterioFiltro === c.id ? 'bg-accent/10 border border-accent/30' : ''}`}>
+                          <p className="font-medium">{c.nome} <span className="text-muted-foreground">({c.fundamentacao})</span></p>
+                          <p className="text-muted-foreground text-[10px]">{c.descricao}</p>
+                          {c.obrigatorio && <Badge variant="default" className="text-[9px] mt-0.5">Obrigatório</Badge>}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Modos de Disputa */}
+                    <div className="space-y-1.5">
+                      <p className="font-semibold flex items-center gap-1"><Award className="w-3 h-3 text-accent" /> Modos de Disputa</p>
+                      {modalidade.modosDisputa.map(m => (
+                        <div key={m.id} className="p-1.5 rounded">
+                          <p className="font-medium">{m.nome} <span className="text-muted-foreground">({m.fundamentacao})</span></p>
+                          <p className="text-muted-foreground text-[10px]">{m.descricao}</p>
+                          {m.padrao && <Badge variant="secondary" className="text-[9px] mt-0.5">Padrão</Badge>}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* ME/EPP */}
+                    <div className="space-y-1.5">
+                      <p className="font-semibold flex items-center gap-1"><Shield className="w-3 h-3 text-accent" /> Preferência ME/EPP</p>
+                      <Badge variant={modalidade.preferenciaMeEpp.aplicavel ? 'default' : 'secondary'} className="text-[10px]">
+                        {modalidade.preferenciaMeEpp.aplicavel ? '✅ Aplicável' : '❌ Não aplicável'}
+                      </Badge>
+                      <p className="text-muted-foreground">{modalidade.preferenciaMeEpp.descricao}</p>
+                      {modalidade.preferenciaMeEpp.beneficios.length > 0 && (
+                        <ul className="space-y-0.5 ml-2">
+                          {modalidade.preferenciaMeEpp.beneficios.map((b, i) => (
+                            <li key={i} className="text-muted-foreground text-[10px]">• {b}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-1 border-t border-border/30">
+                  <span className="text-muted-foreground"><strong>Realização:</strong> {modalidade.formaRealizacao}</span>
+                  <span className="text-muted-foreground"><strong>Prazos mínimos:</strong> {modalidade.prazosMinimos}</span>
+                </div>
+                {modalidade.observacoes && (
+                  <p className="text-muted-foreground italic">{modalidade.observacoes}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Search & Category Filters ── */}
       <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
@@ -258,10 +488,13 @@ export default function ModelosTemplatesTab() {
       {activeModelo && (
         <div className="bg-card rounded-xl border-2 border-accent/30 p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Sparkles className="w-5 h-5 text-accent" />
               <h3 className="text-sm font-semibold">Gerar: {activeModelo.titulo}</h3>
               <Badge variant="outline" className="text-[10px]">{activeModelo.fundamentacao}</Badge>
+              {modalidade && <Badge variant="secondary" className="text-[10px]">📋 {modalidade.nome}</Badge>}
+              {etapaFiltro && <Badge variant="secondary" className="text-[10px]">📌 {etapaFiltro}</Badge>}
+              {criterioFiltro && <Badge variant="secondary" className="text-[10px]">🎯 {modalidade?.criteriosJulgamento.find(c => c.id === criterioFiltro)?.nome}</Badge>}
             </div>
             <Button variant="ghost" size="sm" onClick={resetGeneration}>
               <X className="w-4 h-4" />
@@ -291,7 +524,7 @@ export default function ModelosTemplatesTab() {
             />
           </div>
 
-          {/* ── Dynamic data selectors based on model requirements ── */}
+          {/* Dynamic data selectors */}
           {activeModelo.requisitosFiltro.includes('indices') && (
             <DataSelector
               label="Índices Econômicos"
