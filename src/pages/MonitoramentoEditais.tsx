@@ -31,6 +31,8 @@ import {
 import LicitacoesTab from "@/components/monitoramento/LicitacoesTab";
 import DiariosOficiaisTab from "@/components/monitoramento/DiariosOficiaisTab";
 import ConfiguracaoPesquisaTab from "@/components/monitoramento/ConfiguracaoPesquisaTab";
+import DispensaEletronicaTab from "@/components/monitoramento/DispensaEletronicaTab";
+import { TODOS_PORTAIS } from "@/data/portais-compras";
 
 
 
