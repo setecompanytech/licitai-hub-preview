@@ -483,7 +483,7 @@ export function exportLegalWord(
   h1 {
     font-size: 14pt;
     font-weight: bold;
-    text-align: center;
+    text-align: left;
     text-transform: uppercase;
     margin-top: 0;
     margin-bottom: 12pt;
