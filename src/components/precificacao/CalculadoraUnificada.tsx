@@ -24,6 +24,7 @@ import { valorPorExtenso } from '@/lib/numero-extenso';
 import { toast } from 'sonner';
 import ComposicaoResultado from './ComposicaoResultado';
 import ServicoMDOCalculadora from './ServicoMDOCalculadora';
+import ServicoEngenhariaCalculadora from './ServicoEngenhariaCalculadora';
 import {
   ANEXOS_SIMPLES, getAnexoById,
   calcularSimplesNacional, getPartilhaSimplesReal, formatCurrencyShort,
@@ -142,7 +143,7 @@ export default function CalculadoraUnificada() {
   const ufEmpresa = empresaAtiva?.uf || '';
 
   // 2 tabs: produto_bdi (unified) and servico_mdo (labor services IN 5/2017)
-  const [calcTab, setCalcTab] = useState<'produto_bdi' | 'servico_mdo'>('produto_bdi');
+  const [calcTab, setCalcTab] = useState<'produto_bdi' | 'servico_engenharia' | 'servico_mdo'>('produto_bdi');
 
   // ── Shared state ──
   const [receitaBruta, setReceitaBruta] = useState('');
@@ -376,12 +377,15 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
         {/* 2 Calculator Tabs */}
         <div className="mt-4">
           <Tabs value={calcTab} onValueChange={(v) => setCalcTab(v as any)}>
-            <TabsList className="w-full grid grid-cols-2">
+            <TabsList className="w-full grid grid-cols-3">
               <TabsTrigger value="produto_bdi" className="gap-1.5 text-xs">
-                <Package className="w-3.5 h-3.5" /> Produtos e Composição BDI
+                <Package className="w-3.5 h-3.5" /> Produtos / BDI
+              </TabsTrigger>
+              <TabsTrigger value="servico_engenharia" className="gap-1.5 text-xs">
+                <HardHat className="w-3.5 h-3.5" /> Engenharia / BDI
               </TabsTrigger>
               <TabsTrigger value="servico_mdo" className="gap-1.5 text-xs">
-                <Users className="w-3.5 h-3.5" /> Serviços com Mão de Obra
+                <Users className="w-3.5 h-3.5" /> Mão de Obra (IN 5)
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -408,12 +412,17 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
         <div className="mt-3 bg-muted/30 rounded-lg p-3">
           {calcTab === 'produto_bdi' && (
             <p className="text-xs text-muted-foreground">
-              <strong className="text-foreground">Produtos e Composição BDI:</strong> Calcule custo, margem, impostos, frete e BDI para produtos/mercadorias. Ative a opção "Composição BDI" para gerar planilha detalhada de composição de custos conforme Lei 14.133/2021.
+              <strong className="text-foreground">Fornecimento de Produtos:</strong> Calcule custo, margem, impostos, frete e BDI para produtos/mercadorias. Ative "Composição BDI" para planilha detalhada conforme Lei 14.133/2021.
+            </p>
+          )}
+          {calcTab === 'servico_engenharia' && (
+            <p className="text-xs text-muted-foreground">
+              <strong className="text-foreground">Serviços de Engenharia:</strong> Composição de BDI conforme Acórdão TCU 2622/2013 com encargos sociais, tributos "por dentro" e fórmula oficial. Para obras e serviços comuns de engenharia.
             </p>
           )}
           {calcTab === 'servico_mdo' && (
             <p className="text-xs text-muted-foreground">
-              <strong className="text-foreground">Serviços com Dedicação de Mão de Obra:</strong> Planilha de Custos e Formação de Preços conforme Anexo VII-D da IN nº 5/2017 (SEGES/MP). Estrutura completa com os 6 módulos obrigatórios para serviços continuados com dedicação exclusiva de mão de obra.
+              <strong className="text-foreground">Mão de Obra Contínua:</strong> Planilha de Custos conforme Anexo VII-D da IN nº 5/2017 (SEGES/MP). Estrutura com os 6 módulos obrigatórios para serviços continuados com dedicação exclusiva de mão de obra.
             </p>
           )}
         </div>
@@ -707,7 +716,18 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
         </>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* ── TAB: SERVIÇOS DE ENGENHARIA ── */}
+      {calcTab === 'servico_engenharia' && (
+        <ServicoEngenhariaCalculadora
+          regimeLabel={regimeLabel}
+          regime={regime}
+          ufCalculo={ufCalculo}
+          ufNome={ufInfo?.nome || ''}
+          licitacaoNumero={licitacaoNumero}
+          licitacaoOrgao={licitacaoOrgao}
+        />
+      )}
+
       {/* ── TAB: SERVIÇOS COM MÃO DE OBRA ── */}
       {calcTab === 'servico_mdo' && (
         <ServicoMDOCalculadora
