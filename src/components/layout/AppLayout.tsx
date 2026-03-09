@@ -95,16 +95,28 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1 sm:gap-2">
             {!isMobile && <EmpresaSelector />}
+            {!isMobile && (
+              <button
+                className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+                title="Busca global (Ctrl+K)"
+              >
+                <Search className="w-5 h-5" />
+              </button>
+            )}
+            <ThemeToggle />
             <button
               className="relative p-2 rounded-lg hover:bg-muted transition-colors"
               onClick={() => setNotifOpen(!notifOpen)}
             >
               <Bell className="w-5 h-5 text-muted-foreground" />
-              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
-                6
-              </span>
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </button>
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-semibold">
               {initials}
