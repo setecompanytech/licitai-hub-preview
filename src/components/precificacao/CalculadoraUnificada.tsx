@@ -24,6 +24,7 @@ import { valorPorExtenso } from '@/lib/numero-extenso';
 import { toast } from 'sonner';
 import ComposicaoResultado from './ComposicaoResultado';
 import ServicoMDOCalculadora from './ServicoMDOCalculadora';
+import ServicoEngenhariaCalculadora from './ServicoEngenhariaCalculadora';
 import {
   ANEXOS_SIMPLES, getAnexoById,
   calcularSimplesNacional, getPartilhaSimplesReal, formatCurrencyShort,
