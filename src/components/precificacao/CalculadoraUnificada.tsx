@@ -24,8 +24,15 @@ import { streamAIChat } from '@/lib/ai-stream';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import { toast } from 'sonner';
 import ComposicaoResultado from './ComposicaoResultado';
+import ComposicaoDeterministica from './ComposicaoDeterministica';
 import ServicoMDOCalculadora from './ServicoMDOCalculadora';
 import ServicoEngenhariaCalculadora from './ServicoEngenhariaCalculadora';
+import {
+  calcularComposicao,
+  type ComposicaoResult,
+  type ComposicaoItemInput,
+  type ComposicaoParametros,
+} from '@/lib/composicao-engine';
 import AnaliseRegimeTributario from './AnaliseRegimeTributario';
 import {
   ANEXOS_SIMPLES, getAnexoById,
@@ -211,6 +218,7 @@ export default function CalculadoraUnificada() {
   const [iaResult, setIaResult] = useState('');
   const [loading, setLoading] = useState(false);
   const [enviarProposta, setEnviarProposta] = useState(false);
+  const [composicaoResult, setComposicaoResult] = useState<ComposicaoResult | null>(null);
 
   // (Serviços MDO state moved to ServicoMDOCalculadora component)
 
@@ -348,7 +356,37 @@ export default function CalculadoraUnificada() {
     }
   };
 
-  // ── Composição BDI via IA ──
+  // ── Composição Determinística ──
+  const gerarComposicaoDeterministica = () => {
+    const validItens = itens.filter(i => i.descricao.trim() && i.custoUnitario.trim());
+    if (validItens.length === 0) { toast.error('Informe pelo menos um item.'); return; }
+
+    const inputs: ComposicaoItemInput[] = validItens.map(item => ({
+      descricao: item.descricao,
+      quantidade: parseFloat(item.quantidade) || 1,
+      unidade: item.unidade,
+      custoUnitario: parseCurrencyInput(item.custoUnitario),
+    }));
+
+    const params: ComposicaoParametros = {
+      regime: regime as 'simples_nacional' | 'lucro_presumido' | 'lucro_real',
+      uf: ufCalculo,
+      icmsInterno: icmsUF,
+      issRate: ufInfo?.iss_max || 5,
+      atividade,
+      margemLucroPerc: parseFloat(margemLucro) || 15,
+      fretePerc: parseFloat(frete) || 0,
+      despesasAdmPerc: parseFloat(despesasAdmin) || 0,
+      rbt12: parseCurrencyInput(rbt12) || undefined,
+      anexoId: anexoSelecionado,
+    };
+
+    const result = calcularComposicao(inputs, params);
+    setComposicaoResult(result);
+    toast.success('Composição de custo calculada com sucesso!');
+  };
+
+  // ── Composição BDI via IA (enrichment) ──
   const gerarComposicaoBDI = async () => {
     const validItens = itens.filter(i => i.descricao.trim() && i.custoUnitario.trim());
     if (validItens.length === 0) { toast.error('Informe pelo menos um item.'); return; }
@@ -372,12 +410,11 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
         messages: [{ role: 'user', content: prompt }],
         action: 'composicao_custo',
         onDelta: (d) => setIaResult(prev => prev + d),
-        onDone: () => { setLoading(false); toast.success('Composição BDI gerada!'); },
+        onDone: () => { setLoading(false); toast.success('Composição BDI gerada pela IA!'); },
         onError: (err) => { toast.error('Erro: ' + err); setLoading(false); },
       });
     } catch { setLoading(false); toast.error('Erro ao conectar com a IA.'); }
   };
-
   // ── Item management ──
   const addItemRow = () => setItens(prev => [...prev, { descricao: '', quantidade: '1', unidade: 'UN', custoUnitario: '', ncm: '' }]);
   const updateItem = (i: number, field: keyof ItemCusto, value: string) => setItens(prev => prev.map((item, idx) => idx === i ? { ...item, [field]: value } : item));
@@ -937,17 +974,33 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
           />
 
           {usarBDI ? (
-            <Button onClick={gerarComposicaoBDI} disabled={loading} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12" size="lg">
-              {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Sparkles className="w-5 h-5 mr-2" />}
-              Gerar Composição BDI com IA Contábil
-            </Button>
+            <div className="space-y-3">
+              <Button onClick={gerarComposicaoDeterministica} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12" size="lg">
+                <Calculator className="w-5 h-5 mr-2" />
+                Calcular Composição de Custo (Motor Determinístico)
+              </Button>
+              <Button onClick={gerarComposicaoBDI} disabled={loading} variant="outline" className="w-full h-10" size="lg">
+                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                Gerar Composição via IA Contábil (alternativo)
+              </Button>
+            </div>
           ) : (
             <Button onClick={calcular} disabled={!receitaBruta} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12" size="lg">
               <Calculator className="w-5 h-5 mr-2" /> Calcular Preço do Produto
             </Button>
           )}
 
-          {iaResult && <ComposicaoResultado iaResult={iaResult} regimeLabel={regimeLabel} ufCalculo={ufCalculo} ufNome={ufInfo?.nome || ''} />}
+          {composicaoResult && (
+            <ComposicaoDeterministica
+              result={composicaoResult}
+              onResultChange={setComposicaoResult}
+              regimeLabel={regimeLabel}
+              ufCalculo={ufCalculo}
+              ufNome={ufInfo?.nome || ''}
+            />
+          )}
+
+          {iaResult && !composicaoResult && <ComposicaoResultado iaResult={iaResult} regimeLabel={regimeLabel} ufCalculo={ufCalculo} ufNome={ufInfo?.nome || ''} />}
         </>
       )}
 
