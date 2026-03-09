@@ -267,7 +267,7 @@ h2{font-size:12pt;margin-top:16px}
     html += `</table>`;
   }
 
-  html += `<div class="parecer"><strong>Parecer: ${parecer.viabilidade || 'N/A'}</strong> | Margem Líquida: ${(parecer.margemLiquida ?? 0).toFixed(2)}%<br/>${parecer.observacoes || ''}</div>`;
+  html += `<div class="parecer"><strong>Parecer: ${parecer.viabilidade || 'N/A'}</strong> | Margem Líquida: ${Number(parecer.margemLiquida || 0).toFixed(2)}%<br/>${parecer.observacoes || ''}</div>`;
   html += `</body></html>`;
 
   const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
