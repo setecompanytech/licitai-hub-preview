@@ -301,7 +301,7 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
                 {viabilidadeIcon}
                 <span className="text-xs font-bold">Parecer: {parecer.viabilidade}</span>
                 <span className="text-[10px] ml-auto font-mono">
-                  Margem Líquida: {(parecer.margemLiquida ?? 0).toFixed(2).replace('.', ',')}%
+                  Margem Líquida: {Number(parecer.margemLiquida || 0).toFixed(2).replace('.', ',')}%
                 </span>
               </div>
               {parecer.alertaInexequibilidade && (

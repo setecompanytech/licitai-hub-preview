@@ -646,7 +646,7 @@ export default function ServicoMDOCalculadora({ regimeLabel, regime, ufCalculo, 
               <div className={`rounded-xl p-4 text-xs space-y-1 ${result.parecer.viabilidade === 'VIÁVEL' ? 'bg-green-500/10 border border-green-500/20' : 'bg-yellow-500/10 border border-yellow-500/20'}`}>
                 <div className="flex items-center gap-2">
                   <span className="font-bold">{result.parecer.viabilidade}</span>
-                  <span className="text-muted-foreground">— Margem Líquida: {result.parecer.margemLiquida.toFixed(2)}%</span>
+                  <span className="text-muted-foreground">— Margem Líquida: {Number(result.parecer.margemLiquida || 0).toFixed(2)}%</span>
                   {result.parecer.alertaInexequibilidade && <Badge variant="destructive" className="text-[8px]">⚠ Risco de Inexequibilidade</Badge>}
                 </div>
                 <p>{result.parecer.observacoes}</p>
