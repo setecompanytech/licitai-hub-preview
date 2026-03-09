@@ -17,7 +17,8 @@ import {
 } from '@/components/ui/table';
 import {
   Calculator, Bot, Loader2, FileText, Plus, Download, ExternalLink, MapPin, Building2,
-  ShieldCheck, Sparkles, TrendingUp, Info, BookOpen, Package, Wrench, HardHat, Save, Users
+  ShieldCheck, Sparkles, TrendingUp, Info, BookOpen, Package, Wrench, HardHat, Save, Users,
+  Lightbulb, ArrowRight,
 } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import { valorPorExtenso } from '@/lib/numero-extenso';
@@ -141,9 +142,52 @@ export default function CalculadoraUnificada() {
   const regime = empresaAtiva?.regime_tributario || '';
   const config = REGIMES[regime];
   const ufEmpresa = empresaAtiva?.uf || '';
+  const cnae = empresaAtiva?.cnae_principal || '';
 
-  // 2 tabs: produto_bdi (unified) and servico_mdo (labor services IN 5/2017)
-  const [calcTab, setCalcTab] = useState<'produto_bdi' | 'servico_engenharia' | 'servico_mdo'>('produto_bdi');
+  // ── Auto-detection logic based on CNAE + regime ──
+  const detectTipoCalculo = (): { tipo: 'produto_bdi' | 'servico_engenharia' | 'servico_mdo'; motivo: string } => {
+    const cnaePrefix = cnae.substring(0, 2);
+    const cnaeGroup = cnae.substring(0, 4);
+    // Engenharia / Construção: CNAE 41-43
+    if (['41', '42', '43'].includes(cnaePrefix)) {
+      return { tipo: 'servico_engenharia', motivo: `CNAE ${cnae} indica atividade de construção/engenharia` };
+    }
+    // Serviços de limpeza, vigilância, manutenção predial: CNAE 81
+    if (cnaePrefix === '81') {
+      return { tipo: 'servico_mdo', motivo: `CNAE ${cnae} indica serviço com dedicação exclusiva de mão de obra` };
+    }
+    // Vigilância: CNAE 80
+    if (cnaePrefix === '80') {
+      return { tipo: 'servico_mdo', motivo: `CNAE ${cnae} indica serviço de vigilância/segurança (MDO contínua)` };
+    }
+    // Serviços administrativos terceirizados: CNAE 82
+    if (cnaePrefix === '82') {
+      return { tipo: 'servico_mdo', motivo: `CNAE ${cnae} indica serviço administrativo terceirizado` };
+    }
+    // TI / Consultoria: CNAE 62, 63
+    if (['62', '63'].includes(cnaePrefix)) {
+      return { tipo: 'servico_engenharia', motivo: `CNAE ${cnae} indica serviço de TI/consultoria (BDI de serviços comuns)` };
+    }
+    // Comércio: CNAE 45-47
+    if (['45', '46', '47'].includes(cnaePrefix)) {
+      return { tipo: 'produto_bdi', motivo: `CNAE ${cnae} indica atividade comercial (fornecimento de produtos)` };
+    }
+    // Indústria: CNAE 10-33
+    const prefixNum = parseInt(cnaePrefix, 10);
+    if (prefixNum >= 10 && prefixNum <= 33) {
+      return { tipo: 'produto_bdi', motivo: `CNAE ${cnae} indica atividade industrial (fornecimento de produtos)` };
+    }
+    // Default: produtos
+    return { tipo: 'produto_bdi', motivo: 'Tipo padrão — selecione manualmente conforme o objeto da licitação' };
+  };
+
+  const deteccao = cnae ? detectTipoCalculo() : null;
+
+  // 3 tabs: produto_bdi, servico_engenharia, servico_mdo
+  const [calcTab, setCalcTab] = useState<'produto_bdi' | 'servico_engenharia' | 'servico_mdo'>(
+    deteccao?.tipo || 'produto_bdi'
+  );
+  const [usouSugestao, setUsouSugestao] = useState(deteccao ? calcTab === deteccao.tipo : false);
 
   // ── Shared state ──
   const [receitaBruta, setReceitaBruta] = useState('');
@@ -376,7 +420,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
 
         {/* 2 Calculator Tabs */}
         <div className="mt-4">
-          <Tabs value={calcTab} onValueChange={(v) => setCalcTab(v as any)}>
+          <Tabs value={calcTab} onValueChange={(v) => { setCalcTab(v as any); setUsouSugestao(false); }}>
             <TabsList className="w-full grid grid-cols-3">
               <TabsTrigger value="produto_bdi" className="gap-1.5 text-xs">
                 <Package className="w-3.5 h-3.5" /> Produtos / BDI
@@ -391,6 +435,34 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
           </Tabs>
         </div>
 
+        {/* ── Auto-detection recommendation banner ── */}
+        {deteccao && calcTab !== deteccao.tipo && (
+          <div className="mt-3 bg-accent/10 border border-accent/30 rounded-lg p-3 flex items-start gap-2">
+            <Lightbulb className="w-4 h-4 text-accent mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-xs text-foreground font-medium">Sugestão automática com base no CNAE da empresa</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{deteccao.motivo}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 text-[10px] h-7 gap-1 border-accent/30 text-accent hover:bg-accent/10"
+              onClick={() => { setCalcTab(deteccao.tipo); setUsouSugestao(true); }}
+            >
+              Aplicar <ArrowRight className="w-3 h-3" />
+            </Button>
+          </div>
+        )}
+        {deteccao && calcTab === deteccao.tipo && usouSugestao && (
+          <div className="mt-3 bg-accent/10 border border-accent/30 rounded-lg p-2 flex items-center gap-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-accent shrink-0" />
+            <p className="text-[10px] text-muted-foreground">
+              Tipo selecionado automaticamente: <strong className="text-foreground">{deteccao.motivo}</strong>
+            </p>
+          </div>
+        )}
+
+        {/* ── Regime filter badges ── */}
         <div className="flex flex-wrap gap-2 mt-3">
           <Badge className="bg-accent/10 text-accent border-accent/20">
             <Building2 className="w-3 h-3 mr-1" /> {regimeLabel}
@@ -398,6 +470,11 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
           <Badge className="bg-primary/10 text-primary border-primary/20">
             <MapPin className="w-3 h-3 mr-1" /> {ufCalculo} — ICMS {icmsUF}%
           </Badge>
+          {cnae && (
+            <Badge className="bg-secondary/50 text-secondary-foreground border-border/30">
+              CNAE: {cnae}
+            </Badge>
+          )}
           {regime === 'simples_nacional' && (
             <Badge className="bg-secondary/50 text-secondary-foreground border-border/30">
               <BookOpen className="w-3 h-3 mr-1" /> {anexoAtual.nome}
