@@ -59,11 +59,13 @@ export default function PropostaTecnica() {
   const { empresaAtiva } = useEmpresa();
   const { user } = useAuth();
   const { pendingItems, clearPending, hasPending } = usePropostaCart();
+  const isMobile = useIsMobile();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [proposal, setProposal] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showPreview, setShowPreview] = useState(!isMobile);
   const resultRef = useRef<HTMLDivElement>(null);
 
   // Timbrado / Marca d'água
