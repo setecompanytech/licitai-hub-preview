@@ -377,12 +377,15 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
         {/* 2 Calculator Tabs */}
         <div className="mt-4">
           <Tabs value={calcTab} onValueChange={(v) => setCalcTab(v as any)}>
-            <TabsList className="w-full grid grid-cols-2">
+            <TabsList className="w-full grid grid-cols-3">
               <TabsTrigger value="produto_bdi" className="gap-1.5 text-xs">
-                <Package className="w-3.5 h-3.5" /> Produtos e Composição BDI
+                <Package className="w-3.5 h-3.5" /> Produtos / BDI
+              </TabsTrigger>
+              <TabsTrigger value="servico_engenharia" className="gap-1.5 text-xs">
+                <HardHat className="w-3.5 h-3.5" /> Engenharia / BDI
               </TabsTrigger>
               <TabsTrigger value="servico_mdo" className="gap-1.5 text-xs">
-                <Users className="w-3.5 h-3.5" /> Serviços com Mão de Obra
+                <Users className="w-3.5 h-3.5" /> Mão de Obra (IN 5)
               </TabsTrigger>
             </TabsList>
           </Tabs>
