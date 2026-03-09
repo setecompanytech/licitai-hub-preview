@@ -134,6 +134,7 @@ type ItemCusto = {
   quantidade: string;
   unidade: string;
   custoUnitario: string;
+  ncm: string;
 };
 
 export default function CalculadoraUnificada() {
