@@ -12,7 +12,8 @@ import {
   FileText, Sparkles, Loader2, Copy, CheckCircle, Settings2,
   ChevronRight, ChevronLeft, Building2, User, Receipt, Scale,
   ShieldCheck, Stamp, Send, Calendar, MapPin, Clock, CreditCard,
-  FileSignature, Upload as UploadIcon, Eye, AlertCircle, Banknote
+  FileSignature, Upload as UploadIcon, Eye, AlertCircle, Banknote,
+  PanelRightOpen, PanelRightClose
 } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -26,9 +27,11 @@ import TimbradoUploader from '@/components/proposta/TimbradoUploader';
 import EnvioProposta from '@/components/proposta/EnvioProposta';
 import PropostaDownload from '@/components/proposta/PropostaDownload';
 import PropostaRenderer from '@/components/proposta/PropostaRenderer';
+import PropostaLivePreview from '@/components/proposta/PropostaLivePreview';
 import DadosEmpresaUploader, { type ExtractedEmpresaData } from '@/components/proposta/DadosEmpresaUploader';
 import BancoSelector from '@/components/proposta/BancoSelector';
 import ImportarDoCatalogo from '@/components/proposta/ImportarDoCatalogo';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const STEPS = [
   { id: 1, label: 'Edital', icon: FileText, desc: 'Upload e extração IA' },
@@ -56,11 +59,13 @@ export default function PropostaTecnica() {
   const { empresaAtiva } = useEmpresa();
   const { user } = useAuth();
   const { pendingItems, clearPending, hasPending } = usePropostaCart();
+  const isMobile = useIsMobile();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [proposal, setProposal] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showPreview, setShowPreview] = useState(!isMobile);
   const resultRef = useRef<HTMLDivElement>(null);
 
   // Timbrado / Marca d'água
@@ -315,19 +320,42 @@ export default function PropostaTecnica() {
   const totalItens = itens.filter(i => i.descricao.trim()).length;
   const valorGlobal = itens.reduce((s, i) => s + (parseFloat(i.valorTotal.replace(',', '.')) || 0), 0);
 
+  const declaracoesAtivasLabels = DECLARACOES_PADRAO
+    .filter(d => declaracoes[d.key])
+    .map(d => d.label)
+    .concat(declaracoesCustom.filter(d => d.trim()));
+
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="space-y-4">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <FileText className="w-6 h-6 text-accent" />
-            Proposta Comercial
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Montagem assistida por IA · Modelo conforme Lei 14.133/2021 e ABNT NBR 14724
-          </p>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              <FileText className="w-6 h-6 text-accent" />
+              Proposta Comercial
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Montagem assistida por IA · Modelo conforme Lei 14.133/2021 e ABNT NBR 14724
+            </p>
+          </div>
+          {!isMobile && (
+            <Button
+              variant={showPreview ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setShowPreview(!showPreview)}
+              className="gap-2"
+            >
+              {showPreview ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+              {showPreview ? 'Ocultar Preview' : 'Mostrar Preview'}
+            </Button>
+          )}
         </div>
+
+        {/* Split-screen layout */}
+        <div className={`flex gap-4 ${showPreview && !isMobile ? '' : ''}`}>
+          {/* Left: Form */}
+          <div className={`${showPreview && !isMobile ? 'w-1/2 min-w-0' : 'w-full max-w-6xl mx-auto'} space-y-4`}>
 
         {/* Stepper */}
         <div className="bg-card rounded-xl border border-border/50 shadow-sm p-3">
@@ -1016,6 +1044,58 @@ export default function PropostaTecnica() {
             </div>
           </div>
         )}
+          </div>{/* End left panel */}
+
+          {/* Right: Live Preview */}
+          {showPreview && !isMobile && (
+            <div className="w-1/2 min-w-0">
+              <div className="sticky top-20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Eye className="w-4 h-4 text-accent" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Preview em Tempo Real</span>
+                </div>
+                <div className="max-h-[calc(100vh-120px)] overflow-y-auto rounded-xl border border-border/50 shadow-sm scrollbar-thin">
+                  <PropostaLivePreview
+                    empresa={empresaAtiva}
+                    telefone={telefone}
+                    email={email}
+                    inscEstadual={inscEstadual}
+                    inscMunicipal={inscMunicipal}
+                    repNome={repNome}
+                    repCpf={repCpf}
+                    repRg={repRg}
+                    repOrgaoExp={repOrgaoExp}
+                    repCargo={repCargo}
+                    repNaturalidade={repNaturalidade}
+                    repNacionalidade={repNacionalidade}
+                    repEstadoCivil={repEstadoCivil}
+                    repEndereco={repEndereco}
+                    numeroLicitacao={numeroLicitacao}
+                    orgao={orgao}
+                    modalidade={modalidade}
+                    objeto={objeto}
+                    valorEstimado={valorEstimado}
+                    prazoValidade={prazoValidade}
+                    prazoPagamento={prazoPagamento}
+                    prazoEntrega={prazoEntrega}
+                    localEntrega={localEntrega}
+                    itens={itens}
+                    declaracoesAtivas={declaracoesAtivasLabels}
+                    banco={banco}
+                    agencia={agencia}
+                    conta={conta}
+                    tipoConta={tipoConta}
+                    pix={pix}
+                    fontFamily={fontFamily}
+                    fontSize={fontSize}
+                    timbradoUrl={timbradoUrl}
+                    usarMarcaDagua={usarMarcaDagua}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>{/* End split-screen */}
       </div>
     </AppLayout>
   );
