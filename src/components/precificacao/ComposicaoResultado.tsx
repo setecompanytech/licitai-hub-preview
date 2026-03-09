@@ -113,7 +113,9 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
     );
   }
 
-  const { itens, resumo, parecer } = parsed;
+  const itens = parsed.itens || [];
+  const resumo = parsed.resumo || { custoTotalMateriais: 0, totalTributos: 0, tributosPorImposto: [], bdiTotal: 0, bdiPercentual: 0, freteTotal: 0, despesasAdm: 0, margemLucro: 0, precoTotalFormado: 0, precoExtenso: '' };
+  const parecer = parsed.parecer || { viabilidade: 'N/A', margemLiquida: 0, alertaInexequibilidade: false, observacoes: '' };
 
   const viabilidadeIcon = parecer.viabilidade === 'VIÁVEL'
     ? <CheckCircle className="w-4 h-4 text-accent" />
@@ -166,7 +168,7 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {item.componentes.map((comp, ci) => (
+                  {(item.componentes || []).map((comp, ci) => (
                     <TableRow key={ci} className="hover:bg-muted/30">
                       <TableCell className="text-[11px] py-2 font-medium">{comp.componente}</TableCell>
                       <TableCell className="text-[11px] py-2 text-right font-mono">
@@ -237,7 +239,7 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
                   <TableCell className="text-[11px] py-2 text-right font-mono text-destructive font-semibold">{fmt(resumo.totalTributos)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="text-[11px] py-2">BDI ({resumo.bdiPercentual.toFixed(2).replace('.', ',')}%)</TableCell>
+                  <TableCell className="text-[11px] py-2">BDI ({(resumo.bdiPercentual ?? 0).toFixed(2).replace('.', ',')}%)</TableCell>
                   <TableCell className="text-[11px] py-2 text-right font-mono">{fmt(resumo.bdiTotal)}</TableCell>
                 </TableRow>
                 <TableRow>
@@ -273,7 +275,7 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {resumo.tributosPorImposto.map((t, i) => (
+                  {(resumo.tributosPorImposto || []).map((t, i) => (
                     <TableRow key={i}>
                       <TableCell className="text-[11px] py-2 font-medium">{t.imposto}</TableCell>
                       <TableCell className="text-[11px] py-2 text-right font-mono">{fmtPct(t.aliquota)}</TableCell>
@@ -296,7 +298,7 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
                 {viabilidadeIcon}
                 <span className="text-xs font-bold">Parecer: {parecer.viabilidade}</span>
                 <span className="text-[10px] ml-auto font-mono">
-                  Margem Líquida: {parecer.margemLiquida.toFixed(2).replace('.', ',')}%
+                  Margem Líquida: {(parecer.margemLiquida ?? 0).toFixed(2).replace('.', ',')}%
                 </span>
               </div>
               {parecer.alertaInexequibilidade && (
