@@ -785,26 +785,28 @@ export function exportLegalWord(
   if (inList) html += `</ol>\n`;
 
   // ── Bloco de assinatura do representante ──
-  if (metadata?.rep_nome) {
+  if (metadata?.empresa || metadata?.rep_nome) {
     html += `
       <div class="signature-block">
         <div style="width:200pt;border-bottom:2px solid #333;margin:0 auto 6pt auto"></div>
-        <p style="font-weight:bold;font-size:12pt">${escapeHtml((metadata.empresa || '').toUpperCase())}</p>
-        ${metadata.cnpj ? `<p style="font-size:10pt">CNPJ: ${escapeHtml(metadata.cnpj)}</p>` : ''}
-        <p>${escapeHtml((metadata.rep_nome || '').toUpperCase())}</p>
-        ${metadata.rep_cpf ? `<p style="font-size:10pt">CPF: ${escapeHtml(metadata.rep_cpf)}</p>` : ''}
+        ${metadata?.empresa ? `<p style="font-weight:bold;font-size:12pt">${escapeHtml(metadata.empresa.toUpperCase())}</p>` : ''}
+        ${metadata?.cnpj ? `<p style="font-size:10pt">CNPJ: ${escapeHtml(metadata.cnpj)}</p>` : ''}
+        ${metadata?.rep_nome ? `<p>${escapeHtml(metadata.rep_nome.toUpperCase())}</p>` : ''}
+        ${metadata?.rep_cpf ? `<p style="font-size:10pt">CPF: ${escapeHtml(metadata.rep_cpf)}</p>` : ''}
+        ${metadata?.rep_cargo ? `<p style="font-size:10pt">${escapeHtml(metadata.rep_cargo)}</p>` : ''}
       </div>\n`;
   }
 
   // ── Digital signature block ──
   if (metadata?.certificado_nome) {
-    const certTipo = metadata.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF';
+    const certTipo = metadata.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : metadata.certificado_tipo === 'e-cpf' ? 'e-CPF' : 'Certificado Digital';
+    const assinante = metadata.rep_nome || metadata.empresa || '';
     html += `
-      <div class="digital-sig-box">
-        <p style="font-weight:bold;color:#006440;font-size:10pt">&#10003; DOCUMENTO ASSINADO DIGITALMENTE</p>
-        <p style="font-size:9pt;color:#444">Certificado: ${certTipo} &mdash; ${escapeHtml(metadata.certificado_nome)}</p>
-        <p style="font-size:9pt;color:#444">Assinante: ${escapeHtml(metadata.rep_nome || '')} | CPF: ${escapeHtml(metadata.rep_cpf || '')}</p>
-        <p style="font-size:9pt;color:#444">Data/Hora: ${new Date().toLocaleString('pt-BR')}</p>
+      <div class="digital-sig-box" style="background-color:#f0fff5">
+        <p style="font-weight:bold;color:#006440;font-size:10pt">DOCUMENTO ASSINADO DIGITALMENTE</p>
+        <p style="font-size:9pt;color:#444">Tipo: ${certTipo} &mdash; ${escapeHtml(metadata.certificado_nome)}</p>
+        <p style="font-size:9pt;color:#444">Assinante: ${escapeHtml(assinante)}${metadata.rep_cpf ? ` | CPF: ${escapeHtml(metadata.rep_cpf)}` : ''}</p>
+        <p style="font-size:8pt;color:#666">Data/Hora: ${new Date().toLocaleString('pt-BR')} &mdash; Validação via ICP-Brasil</p>
       </div>\n`;
   }
 
