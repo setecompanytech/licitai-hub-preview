@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.alertas-inteligentes]
 verify_jwt = false
+
+[functions.consulta-ncm]
+verify_jwt = false
