@@ -320,18 +320,36 @@ export default function PropostaTecnica() {
   const totalItens = itens.filter(i => i.descricao.trim()).length;
   const valorGlobal = itens.reduce((s, i) => s + (parseFloat(i.valorTotal.replace(',', '.')) || 0), 0);
 
+  const declaracoesAtivasLabels = DECLARACOES_PADRAO
+    .filter(d => declaracoes[d.key])
+    .map(d => d.label)
+    .concat(declaracoesCustom.filter(d => d.trim()));
+
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="space-y-4">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <FileText className="w-6 h-6 text-accent" />
-            Proposta Comercial
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Montagem assistida por IA · Modelo conforme Lei 14.133/2021 e ABNT NBR 14724
-          </p>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              <FileText className="w-6 h-6 text-accent" />
+              Proposta Comercial
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Montagem assistida por IA · Modelo conforme Lei 14.133/2021 e ABNT NBR 14724
+            </p>
+          </div>
+          {!isMobile && (
+            <Button
+              variant={showPreview ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setShowPreview(!showPreview)}
+              className="gap-2"
+            >
+              {showPreview ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+              {showPreview ? 'Ocultar Preview' : 'Mostrar Preview'}
+            </Button>
+          )}
         </div>
 
         {/* Stepper */}
