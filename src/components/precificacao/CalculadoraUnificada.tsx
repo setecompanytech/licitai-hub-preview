@@ -356,7 +356,37 @@ export default function CalculadoraUnificada() {
     }
   };
 
-  // ── Composição BDI via IA ──
+  // ── Composição Determinística ──
+  const gerarComposicaoDeterministica = () => {
+    const validItens = itens.filter(i => i.descricao.trim() && i.custoUnitario.trim());
+    if (validItens.length === 0) { toast.error('Informe pelo menos um item.'); return; }
+
+    const inputs: ComposicaoItemInput[] = validItens.map(item => ({
+      descricao: item.descricao,
+      quantidade: parseFloat(item.quantidade) || 1,
+      unidade: item.unidade,
+      custoUnitario: parseCurrencyInput(item.custoUnitario),
+    }));
+
+    const params: ComposicaoParametros = {
+      regime: regime as 'simples_nacional' | 'lucro_presumido' | 'lucro_real',
+      uf: ufCalculo,
+      icmsInterno: icmsUF,
+      issRate: ufInfo?.iss_max || 5,
+      atividade,
+      margemLucroPerc: parseFloat(margemLucro) || 15,
+      fretePerc: parseFloat(frete) || 0,
+      despesasAdmPerc: parseFloat(despesasAdmin) || 0,
+      rbt12: parseCurrencyInput(rbt12) || undefined,
+      anexoId: anexoSelecionado,
+    };
+
+    const result = calcularComposicao(inputs, params);
+    setComposicaoResult(result);
+    toast.success('Composição de custo calculada com sucesso!');
+  };
+
+  // ── Composição BDI via IA (enrichment) ──
   const gerarComposicaoBDI = async () => {
     const validItens = itens.filter(i => i.descricao.trim() && i.custoUnitario.trim());
     if (validItens.length === 0) { toast.error('Informe pelo menos um item.'); return; }
@@ -380,16 +410,11 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
         messages: [{ role: 'user', content: prompt }],
         action: 'composicao_custo',
         onDelta: (d) => setIaResult(prev => prev + d),
-        onDone: () => { setLoading(false); toast.success('Composição BDI gerada!'); },
+        onDone: () => { setLoading(false); toast.success('Composição BDI gerada pela IA!'); },
         onError: (err) => { toast.error('Erro: ' + err); setLoading(false); },
       });
     } catch { setLoading(false); toast.error('Erro ao conectar com a IA.'); }
   };
-
-  // ── Item management ──
-  const addItemRow = () => setItens(prev => [...prev, { descricao: '', quantidade: '1', unidade: 'UN', custoUnitario: '', ncm: '' }]);
-  const updateItem = (i: number, field: keyof ItemCusto, value: string) => setItens(prev => prev.map((item, idx) => idx === i ? { ...item, [field]: value } : item));
-  const removeItem = (i: number) => { if (itens.length > 1) setItens(prev => prev.filter((_, idx) => idx !== i)); };
 
   const enviarParaProposta = () => {
     const validItens = itens.filter(i => i.descricao.trim() && i.custoUnitario.trim());
