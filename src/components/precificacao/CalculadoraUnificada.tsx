@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import ComposicaoResultado from './ComposicaoResultado';
 import ServicoMDOCalculadora from './ServicoMDOCalculadora';
 import ServicoEngenhariaCalculadora from './ServicoEngenhariaCalculadora';
+import AnaliseRegimeTributario from './AnaliseRegimeTributario';
 import {
   ANEXOS_SIMPLES, getAnexoById,
   calcularSimplesNacional, getPartilhaSimplesReal, formatCurrencyShort,
@@ -133,6 +134,7 @@ type ItemCusto = {
   quantidade: string;
   unidade: string;
   custoUnitario: string;
+  ncm: string;
 };
 
 export default function CalculadoraUnificada() {
@@ -204,7 +206,7 @@ export default function CalculadoraUnificada() {
   const [despesasAdmin, setDespesasAdmin] = useState('');
   const [usarBDI, setUsarBDI] = useState(false);
   const [itens, setItens] = useState<ItemCusto[]>([
-    { descricao: '', quantidade: '1', unidade: 'UN', custoUnitario: '' },
+    { descricao: '', quantidade: '1', unidade: 'UN', custoUnitario: '', ncm: '' },
   ]);
   const [iaResult, setIaResult] = useState('');
   const [loading, setLoading] = useState(false);
@@ -325,7 +327,7 @@ export default function CalculadoraUnificada() {
     const itensTexto = validItens.map((item, idx) => {
       const custo = parseCurrencyInput(item.custoUnitario);
       const qtd = parseFloat(item.quantidade) || 1;
-      return `Item ${idx + 1}: ${item.descricao} | Qtd: ${qtd} ${item.unidade} | Custo Unitário: R$ ${custo.toFixed(2)}`;
+      return `Item ${idx + 1}: ${item.descricao}${item.ncm ? ` (NCM: ${item.ncm})` : ''} | Qtd: ${qtd} ${item.unidade} | Custo Unitário: R$ ${custo.toFixed(2)}`;
     }).join('\n');
     const freteVal = parseFloat(frete) || 0;
     const despAdm = parseFloat(despesasAdmin) || 0;
@@ -347,7 +349,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
   };
 
   // ── Item management ──
-  const addItemRow = () => setItens(prev => [...prev, { descricao: '', quantidade: '1', unidade: 'UN', custoUnitario: '' }]);
+  const addItemRow = () => setItens(prev => [...prev, { descricao: '', quantidade: '1', unidade: 'UN', custoUnitario: '', ncm: '' }]);
   const updateItem = (i: number, field: keyof ItemCusto, value: string) => setItens(prev => prev.map((item, idx) => idx === i ? { ...item, [field]: value } : item));
   const removeItem = (i: number) => { if (itens.length > 1) setItens(prev => prev.filter((_, idx) => idx !== i)); };
 
@@ -722,11 +724,15 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
             </div>
             {itens.map((item, idx) => (
               <div key={idx} className="grid grid-cols-12 gap-2 items-end">
-                <div className="col-span-5">
+                <div className="col-span-4">
                   <Label className="text-[10px]">Descrição *</Label>
                   <Input value={item.descricao} onChange={e => updateItem(idx, 'descricao', e.target.value)} placeholder="Ex: Notebook Dell Inspiron 15" className="mt-0.5" />
                 </div>
                 <div className="col-span-2">
+                  <Label className="text-[10px]">NCM</Label>
+                  <Input value={item.ncm} onChange={e => updateItem(idx, 'ncm', e.target.value)} placeholder="0000.00.00" className="mt-0.5" />
+                </div>
+                <div className="col-span-1">
                   <Label className="text-[10px]">Qtd</Label>
                   <Input value={item.quantidade} onChange={e => updateItem(idx, 'quantidade', e.target.value)} placeholder="1" className="mt-0.5" />
                 </div>
@@ -777,6 +783,15 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
               </Button>
             </div>
           </div>
+
+          {/* ── Análise de Regime Tributário ── */}
+          <AnaliseRegimeTributario
+            ufCalculo={ufCalculo}
+            ufNome={ufInfo?.nome || ''}
+            regime={regime}
+            regimeLabel={regimeLabel}
+            itens={itens.map(i => ({ descricao: i.descricao, ncm: i.ncm }))}
+          />
 
           {usarBDI ? (
             <Button onClick={gerarComposicaoBDI} disabled={loading} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12" size="lg">
