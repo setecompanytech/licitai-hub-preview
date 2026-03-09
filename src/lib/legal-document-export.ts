@@ -190,26 +190,31 @@ export async function exportLegalPDF(
     certificado_tipo?: string | null;
     rep_nome?: string;
     rep_cpf?: string;
+    rep_cargo?: string;
   }
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const contentWidth = getContentWidth();
   const blocks = parseMarkdownToBlocks(content);
 
-  // Load timbrado image if available
+  // Load timbrado image if available — supports direct URLs and Supabase storage paths
   let timbradoImg: HTMLImageElement | null = null;
   let timbradoAspect = 1;
-  if (metadata?.timbradoUrl && /\.(png|jpe?g|webp)(\?|$)/i.test(metadata.timbradoUrl)) {
+  const timbradoSrc = metadata?.timbradoUrl || null;
+  if (timbradoSrc) {
     try {
       timbradoImg = await new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = metadata.timbradoUrl!;
+        img.onerror = () => reject(new Error('Timbrado load failed'));
+        img.src = timbradoSrc;
       });
       timbradoAspect = timbradoImg.width / timbradoImg.height;
-    } catch { timbradoImg = null; }
+    } catch {
+      console.warn('Não foi possível carregar o timbrado:', timbradoSrc);
+      timbradoImg = null;
+    }
   }
 
   // Header height accounts for timbrado image space
@@ -410,9 +415,16 @@ export async function exportLegalPDF(
     }
   }
 
-  // ── Assinatura do Representante Legal ──
-  if (metadata?.rep_nome) {
-    ensureSpace(LEGAL_LAYOUT.lineHeight * 8);
+  // ── Assinatura do Representante Legal + Certificado Digital ──
+  // Calculate total space needed for signature + digital cert together
+  const hasSignature = !!(metadata?.empresa || metadata?.rep_nome);
+  const hasDigitalCert = !!metadata?.certificado_nome;
+  const signatureLines = hasSignature ? 8 : 0;
+  const certLines = hasDigitalCert ? 7 : 0;
+  const totalSignatureSpace = (signatureLines + certLines) * LEGAL_LAYOUT.lineHeight;
+
+  if (hasSignature) {
+    ensureSpace(totalSignatureSpace);
     y += LEGAL_LAYOUT.lineHeight * 3;
 
     // Linha de assinatura
@@ -422,52 +434,78 @@ export async function exportLegalPDF(
     doc.line(sigX, y, sigX + 80, y);
     y += LEGAL_LAYOUT.lineHeight;
 
+    // Nome da empresa
     doc.setFont('times', 'bold');
     doc.setFontSize(LEGAL_LAYOUT.bodyFontSize);
     doc.setTextColor(...COLORS.text);
-    doc.text((metadata.empresa || '').toUpperCase(), getPageWidth(doc) / 2, y, { align: 'center' });
-    y += LEGAL_LAYOUT.lineHeight * 0.8;
+    if (metadata?.empresa) {
+      doc.text(metadata.empresa.toUpperCase(), getPageWidth(doc) / 2, y, { align: 'center' });
+      y += LEGAL_LAYOUT.lineHeight * 0.8;
+    }
     doc.setFont('times', 'normal');
     doc.setFontSize(10);
-    if (metadata.cnpj) {
+    if (metadata?.cnpj) {
       doc.text(`CNPJ: ${metadata.cnpj}`, getPageWidth(doc) / 2, y, { align: 'center' });
       y += LEGAL_LAYOUT.lineHeight;
     }
-    doc.text((metadata.rep_nome || '').toUpperCase(), getPageWidth(doc) / 2, y, { align: 'center' });
-    y += LEGAL_LAYOUT.lineHeight * 0.8;
-    if (metadata.rep_cpf) {
+    if (metadata?.rep_nome) {
+      doc.text(metadata.rep_nome.toUpperCase(), getPageWidth(doc) / 2, y, { align: 'center' });
+      y += LEGAL_LAYOUT.lineHeight * 0.8;
+    }
+    if (metadata?.rep_cpf) {
       doc.text(`CPF: ${metadata.rep_cpf}`, getPageWidth(doc) / 2, y, { align: 'center' });
+      y += LEGAL_LAYOUT.lineHeight * 0.8;
+    }
+    if (metadata?.rep_cargo) {
+      doc.text(metadata.rep_cargo, getPageWidth(doc) / 2, y, { align: 'center' });
       y += LEGAL_LAYOUT.lineHeight;
     }
   }
 
-  // ── Digital Signature Block ──
-  if (metadata?.certificado_nome) {
-    ensureSpace(LEGAL_LAYOUT.lineHeight * 6);
-    y += LEGAL_LAYOUT.lineHeight * 2;
+  // ── Digital Signature Block — always rendered when certificate is configured ──
+  if (hasDigitalCert) {
+    if (!hasSignature) ensureSpace(totalSignatureSpace);
+    y += LEGAL_LAYOUT.lineHeight * 1.5;
     
-    const boxX = LEGAL_LAYOUT.marginLeft + 15;
-    const boxW = contentWidth - 30;
-    const boxH = LEGAL_LAYOUT.lineHeight * 4.5;
+    const boxX = LEGAL_LAYOUT.marginLeft + 10;
+    const boxW = contentWidth - 20;
+    const boxH = LEGAL_LAYOUT.lineHeight * 5;
+    
+    // Green border box
     doc.setDrawColor(0, 128, 80);
-    doc.setLineWidth(0.7);
-    doc.roundedRect(boxX, y, boxW, boxH, 2, 2, 'S');
+    doc.setLineWidth(0.8);
+    doc.roundedRect(boxX, y, boxW, boxH, 3, 3, 'S');
     
-    y += LEGAL_LAYOUT.lineHeight * 0.8;
+    // Light green background
+    doc.setFillColor(240, 255, 245);
+    doc.roundedRect(boxX + 0.4, y + 0.4, boxW - 0.8, boxH - 0.8, 2.6, 2.6, 'F');
+    
+    const centerX = getPageWidth(doc) / 2;
+    let certY = y + LEGAL_LAYOUT.lineHeight;
+    
     doc.setFont('times', 'bold');
-    doc.setFontSize(9);
+    doc.setFontSize(10);
     doc.setTextColor(0, 100, 60);
-    doc.text('✓ DOCUMENTO ASSINADO DIGITALMENTE', getPageWidth(doc) / 2, y + 2, { align: 'center' });
-    y += LEGAL_LAYOUT.lineHeight;
+    doc.text('DOCUMENTO ASSINADO DIGITALMENTE', centerX, certY, { align: 'center' });
+    certY += LEGAL_LAYOUT.lineHeight * 0.9;
+    
     doc.setFont('times', 'normal');
     doc.setFontSize(8);
-    doc.setTextColor(60, 60, 60);
-    const certTipo = metadata.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF';
-    doc.text(`Certificado: ${certTipo} — ${metadata.certificado_nome}`, getPageWidth(doc) / 2, y + 2, { align: 'center' });
-    y += LEGAL_LAYOUT.lineHeight * 0.8;
-    doc.text(`Assinante: ${metadata.rep_nome || ''} | CPF: ${metadata.rep_cpf || ''}`, getPageWidth(doc) / 2, y + 2, { align: 'center' });
-    y += LEGAL_LAYOUT.lineHeight * 0.8;
-    doc.text(`Data/Hora: ${new Date().toLocaleString('pt-BR')}`, getPageWidth(doc) / 2, y + 2, { align: 'center' });
+    doc.setTextColor(40, 40, 40);
+    const certTipo = metadata!.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : metadata!.certificado_tipo === 'e-cpf' ? 'e-CPF' : 'Certificado Digital';
+    doc.text(`Tipo: ${certTipo} — ${metadata!.certificado_nome}`, centerX, certY, { align: 'center' });
+    certY += LEGAL_LAYOUT.lineHeight * 0.8;
+    
+    const assinante = metadata?.rep_nome || metadata?.empresa || '';
+    const cpfInfo = metadata?.rep_cpf ? ` | CPF: ${metadata.rep_cpf}` : '';
+    doc.text(`Assinante: ${assinante}${cpfInfo}`, centerX, certY, { align: 'center' });
+    certY += LEGAL_LAYOUT.lineHeight * 0.8;
+    
+    doc.setFontSize(7);
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Data/Hora da Assinatura: ${new Date().toLocaleString('pt-BR')} — Validação via ICP-Brasil`, centerX, certY, { align: 'center' });
+    
+    y += boxH + LEGAL_LAYOUT.lineHeight;
     doc.setTextColor(...COLORS.text);
   }
 
@@ -501,6 +539,7 @@ export function exportLegalWord(
     certificado_tipo?: string | null;
     rep_nome?: string;
     rep_cpf?: string;
+    rep_cargo?: string;
   }
 ) {
   const blocks = parseMarkdownToBlocks(content);
@@ -685,8 +724,8 @@ export function exportLegalWord(
 <div class="Section1">
 `;
 
-  // Timbrado header
-  if (metadata?.timbradoUrl && /\.(png|jpe?g|webp)(\?|$)/i.test(metadata.timbradoUrl)) {
+  // Timbrado header — accepts any image URL (Supabase storage or direct)
+  if (metadata?.timbradoUrl) {
     html += `<div style="text-align:center;margin-bottom:12pt"><img src="${metadata.timbradoUrl}" style="max-height:60pt;max-width:100%" /></div>\n`;
   }
 
@@ -748,26 +787,28 @@ export function exportLegalWord(
   if (inList) html += `</ol>\n`;
 
   // ── Bloco de assinatura do representante ──
-  if (metadata?.rep_nome) {
+  if (metadata?.empresa || metadata?.rep_nome) {
     html += `
       <div class="signature-block">
         <div style="width:200pt;border-bottom:2px solid #333;margin:0 auto 6pt auto"></div>
-        <p style="font-weight:bold;font-size:12pt">${escapeHtml((metadata.empresa || '').toUpperCase())}</p>
-        ${metadata.cnpj ? `<p style="font-size:10pt">CNPJ: ${escapeHtml(metadata.cnpj)}</p>` : ''}
-        <p>${escapeHtml((metadata.rep_nome || '').toUpperCase())}</p>
-        ${metadata.rep_cpf ? `<p style="font-size:10pt">CPF: ${escapeHtml(metadata.rep_cpf)}</p>` : ''}
+        ${metadata?.empresa ? `<p style="font-weight:bold;font-size:12pt">${escapeHtml(metadata.empresa.toUpperCase())}</p>` : ''}
+        ${metadata?.cnpj ? `<p style="font-size:10pt">CNPJ: ${escapeHtml(metadata.cnpj)}</p>` : ''}
+        ${metadata?.rep_nome ? `<p>${escapeHtml(metadata.rep_nome.toUpperCase())}</p>` : ''}
+        ${metadata?.rep_cpf ? `<p style="font-size:10pt">CPF: ${escapeHtml(metadata.rep_cpf)}</p>` : ''}
+        ${metadata?.rep_cargo ? `<p style="font-size:10pt">${escapeHtml(metadata.rep_cargo)}</p>` : ''}
       </div>\n`;
   }
 
   // ── Digital signature block ──
   if (metadata?.certificado_nome) {
-    const certTipo = metadata.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF';
+    const certTipo = metadata.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : metadata.certificado_tipo === 'e-cpf' ? 'e-CPF' : 'Certificado Digital';
+    const assinante = metadata.rep_nome || metadata.empresa || '';
     html += `
-      <div class="digital-sig-box">
-        <p style="font-weight:bold;color:#006440;font-size:10pt">&#10003; DOCUMENTO ASSINADO DIGITALMENTE</p>
-        <p style="font-size:9pt;color:#444">Certificado: ${certTipo} &mdash; ${escapeHtml(metadata.certificado_nome)}</p>
-        <p style="font-size:9pt;color:#444">Assinante: ${escapeHtml(metadata.rep_nome || '')} | CPF: ${escapeHtml(metadata.rep_cpf || '')}</p>
-        <p style="font-size:9pt;color:#444">Data/Hora: ${new Date().toLocaleString('pt-BR')}</p>
+      <div class="digital-sig-box" style="background-color:#f0fff5">
+        <p style="font-weight:bold;color:#006440;font-size:10pt">DOCUMENTO ASSINADO DIGITALMENTE</p>
+        <p style="font-size:9pt;color:#444">Tipo: ${certTipo} &mdash; ${escapeHtml(metadata.certificado_nome)}</p>
+        <p style="font-size:9pt;color:#444">Assinante: ${escapeHtml(assinante)}${metadata.rep_cpf ? ` | CPF: ${escapeHtml(metadata.rep_cpf)}` : ''}</p>
+        <p style="font-size:8pt;color:#666">Data/Hora: ${new Date().toLocaleString('pt-BR')} &mdash; Validação via ICP-Brasil</p>
       </div>\n`;
   }
 
