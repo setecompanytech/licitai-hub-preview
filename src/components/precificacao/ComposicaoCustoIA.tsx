@@ -5,16 +5,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import {
-  Calculator, Bot, Loader2, FileText, Plus, Download, ExternalLink, MapPin, Building2, ShieldCheck, Sparkles
+  Calculator, FileText, Plus, MapPin, Building2, ShieldCheck, Sparkles, Loader2,
 } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import { toast } from 'sonner';
 import ComposicaoResultado from './ComposicaoResultado';
+import ComposicaoDeterministica from './ComposicaoDeterministica';
+import {
+  calcularComposicao,
+  type ComposicaoResult,
+  type ComposicaoItemInput,
+  type ComposicaoParametros,
+} from '@/lib/composicao-engine';
 
 const UF_ICMS: Record<string, { nome: string; icms_interno: number; iss_min: number; iss_max: number }> = {
   AC: { nome: 'Acre', icms_interno: 19, iss_min: 2, iss_max: 5 },
@@ -52,8 +58,19 @@ const REGIMES_LABEL: Record<string, string> = {
   lucro_real: 'Lucro Real',
 };
 
-const formatCurrency = (v: number) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const formatCurrencyInput = (raw: string): string => {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+  const num = parseInt(digits, 10) / 100;
+  if (num <= 0) return '';
+  return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const parseCurrencyInput = (formatted: string): number => {
+  const digits = formatted.replace(/\D/g, '');
+  if (!digits) return 0;
+  return parseInt(digits, 10) / 100;
+};
 
 type ItemCusto = {
   descricao: string;
@@ -79,6 +96,7 @@ export default function ComposicaoCustoIA() {
     { descricao: '', quantidade: '1', unidade: 'UN', custoUnitario: '' },
   ]);
 
+  const [composicaoResult, setComposicaoResult] = useState<ComposicaoResult | null>(null);
   const [iaResult, setIaResult] = useState('');
   const [loading, setLoading] = useState(false);
   const [enviarProposta, setEnviarProposta] = useState(false);
@@ -112,18 +130,52 @@ export default function ComposicaoCustoIA() {
     setItens(prev => prev.filter((_, i) => i !== index));
   };
 
-  const gerarComposicao = async () => {
+  // ── Motor Determinístico ──
+  const gerarComposicaoDeterministica = () => {
     const validItens = itens.filter(i => i.descricao.trim() && i.custoUnitario.trim());
     if (validItens.length === 0) {
       toast.error('Informe pelo menos um item com descrição e custo unitário.');
       return;
     }
 
+    const inputs: ComposicaoItemInput[] = validItens.map(item => ({
+      descricao: item.descricao,
+      quantidade: parseFloat(item.quantidade) || 1,
+      unidade: item.unidade,
+      custoUnitario: parseCurrencyInput(item.custoUnitario),
+    }));
+
+    const params: ComposicaoParametros = {
+      regime: regime as 'simples_nacional' | 'lucro_presumido' | 'lucro_real',
+      uf: ufCalculo,
+      icmsInterno: ufInfo?.icms_interno || 18,
+      issRate: ufInfo?.iss_max || 5,
+      atividade,
+      margemLucroPerc: parseFloat(margemLucro) || 15,
+      fretePerc: parseFloat(frete) || 0,
+      despesasAdmPerc: parseFloat(despesasAdmin) || 0,
+      rbt12: parseCurrencyInput(rbt12) || undefined,
+    };
+
+    const result = calcularComposicao(inputs, params);
+    setComposicaoResult(result);
+    setIaResult('');
+    toast.success('Composição de custo calculada!');
+  };
+
+  // ── IA (alternativo) ──
+  const gerarComposicaoIA = async () => {
+    const validItens = itens.filter(i => i.descricao.trim() && i.custoUnitario.trim());
+    if (validItens.length === 0) {
+      toast.error('Informe pelo menos um item com descrição e custo unitário.');
+      return;
+    }
     setLoading(true);
     setIaResult('');
+    setComposicaoResult(null);
 
     const itensTexto = validItens.map((item, idx) => {
-      const custo = parseFloat(item.custoUnitario.replace(',', '.')) || 0;
+      const custo = parseCurrencyInput(item.custoUnitario);
       const qtd = parseFloat(item.quantidade) || 1;
       return `Item ${idx + 1}: ${item.descricao} | Qtd: ${qtd} ${item.unidade} | Custo Unitário: R$ ${custo.toFixed(2)}`;
     }).join('\n');
@@ -131,90 +183,16 @@ export default function ComposicaoCustoIA() {
     const freteVal = parseFloat(frete) || 0;
     const despAdm = parseFloat(despesasAdmin) || 0;
     const margem = parseFloat(margemLucro) || 15;
-    const rbt = parseFloat(rbt12.replace(/\D/g, '')) / 100 || 0;
 
-    const prompt = `Gere a PLANILHA DE COMPOSIÇÃO DE CUSTO E FORMAÇÃO DE PREÇO conforme Lei nº 14.133/2021.
-
-DADOS DA EMPRESA:
-- Regime Tributário: ${regimeLabel}
-- UF: ${ufCalculo} (${ufInfo?.nome || ''})
-- ICMS interno: ${ufInfo?.icms_interno || 18}%
-- ISS municipal: ${ufInfo?.iss_min || 2}% a ${ufInfo?.iss_max || 5}%
-- Atividade: ${atividade}
-${regime === 'simples_nacional' && rbt > 0 ? `- RBT12: R$ ${rbt.toFixed(2)}` : ''}
-- Margem de lucro: ${margem}%
-- Frete: ${freteVal}%
-- Despesas administrativas: ${despAdm}%
-
-ITENS:
-${itensTexto}
-
-INSTRUÇÕES OBRIGATÓRIAS DE FORMATO:
-Responda EXCLUSIVAMENTE no formato JSON abaixo. Não inclua texto fora do JSON. Não use markdown.
-
-{
-  "itens": [
-    {
-      "descricao": "Nome do item",
-      "quantidade": 1,
-      "unidade": "UN",
-      "componentes": [
-        { "componente": "Custo Direto do Material", "baseCalculo": 0.00, "aliquota": null, "valor": 0.00 },
-        { "componente": "ICMS (${ufInfo?.icms_interno || 18}%)", "baseCalculo": 0.00, "aliquota": ${ufInfo?.icms_interno || 18}, "valor": 0.00 },
-        { "componente": "Frete (${freteVal}%)", "baseCalculo": 0.00, "aliquota": ${freteVal}, "valor": 0.00 },
-        { "componente": "Despesas Administrativas (${despAdm}%)", "baseCalculo": 0.00, "aliquota": ${despAdm}, "valor": 0.00 },
-        { "componente": "BDI", "baseCalculo": 0.00, "aliquota": 0.00, "valor": 0.00 },
-        { "componente": "Margem de Lucro (${margem}%)", "baseCalculo": 0.00, "aliquota": ${margem}, "valor": 0.00 }
-      ],
-      "custoUnitario": 0.00,
-      "precoUnitarioFormado": 0.00,
-      "precoTotal": 0.00
-    }
-  ],
-  "resumo": {
-    "custoTotalMateriais": 0.00,
-    "totalTributos": 0.00,
-    "tributosPorImposto": [
-      { "imposto": "ICMS", "aliquota": ${ufInfo?.icms_interno || 18}, "valor": 0.00 }
-    ],
-    "bdiTotal": 0.00,
-    "bdiPercentual": 0.00,
-    "fretePercentual": ${freteVal},
-    "freteTotal": 0.00,
-    "despesasAdmPercentual": ${despAdm},
-    "despesasAdm": 0.00,
-    "margemLucro": 0.00,
-    "precoTotalFormado": 0.00,
-    "precoExtenso": "texto por extenso"
-  },
-  "parecer": {
-    "viabilidade": "VIÁVEL ou ATENÇÃO ou INVIÁVEL",
-    "margemLiquida": 0.00,
-    "alertaInexequibilidade": false,
-    "observacoes": "Texto curto sobre a viabilidade."
-  }
-}
-
-REGRAS:
-1. Detalhe TODOS os componentes de custo com alíquotas REAIS conforme regime ${regimeLabel} e UF ${ufCalculo}.
-2. Calcule o BDI consolidado incluindo tributos + despesas + margem.
-3. Se margem líquida < 5%, marque alertaInexequibilidade=true (Art. 59, Lei 14.133/21).
-4. Todos os valores monetários devem ter 2 casas decimais.
-5. Responda APENAS o JSON, sem blocos de código, sem markdown.`;
+    const prompt = `Gere a PLANILHA DE COMPOSIÇÃO DE CUSTO conforme Lei 14.133/2021. Regime: ${regimeLabel}, UF: ${ufCalculo}, ICMS: ${ufInfo?.icms_interno || 18}%, Atividade: ${atividade}, Margem: ${margem}%, Frete: ${freteVal}%, Desp.Adm: ${despAdm}%\nITENS:\n${itensTexto}\nResponda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,componentes[{componente,baseCalculo,aliquota,valor}],custoUnitario,precoUnitarioFormado,precoTotal}], resumo{custoTotalMateriais,totalTributos,bdiTotal,bdiPercentual,freteTotal,despesasAdm,margemLucro,precoTotalFormado,precoExtenso,tributosPorImposto[{imposto,aliquota,valor}]}, parecer{viabilidade,margemLiquida,alertaInexequibilidade,observacoes}`;
 
     try {
       await streamAIChat({
         messages: [{ role: 'user', content: prompt }],
         action: 'composicao_custo',
         onDelta: (d) => setIaResult(prev => prev + d),
-        onDone: () => {
-          setLoading(false);
-          toast.success('Composição de custo gerada com sucesso!');
-        },
-        onError: (err) => {
-          toast.error('Erro: ' + err);
-          setLoading(false);
-        },
+        onDone: () => { setLoading(false); toast.success('Composição gerada pela IA!'); },
+        onError: (err) => { toast.error('Erro: ' + err); setLoading(false); },
       });
     } catch {
       setLoading(false);
@@ -222,37 +200,23 @@ REGRAS:
     }
   };
 
-  const enviarParaProposta = () => {
+  const enviarParaProposta2 = () => {
     const validItens = itens.filter(i => i.descricao.trim() && i.custoUnitario.trim());
-    if (validItens.length === 0) {
-      toast.error('Nenhum item válido para enviar.');
-      return;
-    }
-
+    if (validItens.length === 0) { toast.error('Nenhum item válido para enviar.'); return; }
     validItens.forEach((item, idx) => {
-      const custo = parseFloat(item.custoUnitario.replace(',', '.')) || 0;
+      const custo = parseCurrencyInput(item.custoUnitario);
       const qtd = parseFloat(item.quantidade) || 1;
-      // Apply a rough markup based on regime for proposta price
       const margem = parseFloat(margemLucro) || 15;
       const markup = 1 + margem / 100;
       const precoUnit = custo * markup;
       const total = precoUnit * qtd;
-
       addItem({
-        item: String(idx + 1),
-        descricao: item.descricao,
-        quantidade: String(qtd),
-        unidade: item.unidade,
-        marca: '',
-        fabricante: '',
-        modelo: '',
-        valorUnitario: precoUnit.toFixed(2).replace('.', ','),
-        valorUnitarioExtenso: valorPorExtenso(precoUnit),
-        valorTotal: total.toFixed(2).replace('.', ','),
-        valorTotalExtenso: valorPorExtenso(total),
+        item: String(idx + 1), descricao: item.descricao, quantidade: String(qtd), unidade: item.unidade,
+        marca: '', fabricante: '', modelo: '',
+        valorUnitario: precoUnit.toFixed(2).replace('.', ','), valorUnitarioExtenso: valorPorExtenso(precoUnit),
+        valorTotal: total.toFixed(2).replace('.', ','), valorTotalExtenso: valorPorExtenso(total),
       });
     });
-
     toast.success(`${validItens.length} item(ns) enviado(s) para a Proposta Comercial!`);
   };
 
@@ -268,14 +232,12 @@ REGRAS:
             </h3>
           </div>
           <Badge variant="outline" className="text-[10px]">
-            <ShieldCheck className="w-3 h-3 mr-1" /> IA Contábil
+            <ShieldCheck className="w-3 h-3 mr-1" /> Motor Determinístico
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
-          Gere a composição de custo e formação de preço exigida pela Nova Lei de Licitações, com cálculos tributários reais por regime e UF.
+          Gere a composição de custo e formação de preço com cálculos tributários determinísticos por regime e UF. Edite o preço final manualmente e o sistema recalcula a margem automaticamente.
         </p>
-
-        {/* Regime + UF Info */}
         <div className="flex flex-wrap gap-2 mt-3">
           <Badge className="bg-accent/10 text-accent border-accent/20">
             <Building2 className="w-3 h-3 mr-1" /> {regimeLabel}
@@ -284,9 +246,7 @@ REGRAS:
             <MapPin className="w-3 h-3 mr-1" /> {ufCalculo} — ICMS {ufInfo?.icms_interno || 18}%
           </Badge>
           {empresaAtiva && (
-            <Badge variant="outline" className="text-[10px]">
-              {empresaAtiva.razao_social}
-            </Badge>
+            <Badge variant="outline" className="text-[10px]">{empresaAtiva.razao_social}</Badge>
           )}
         </div>
       </div>
@@ -294,22 +254,16 @@ REGRAS:
       {/* Configuration */}
       <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
         <h4 className="text-sm font-semibold flex items-center gap-2">
-          <Calculator className="w-4 h-4 text-accent" />
-          Parâmetros do Cálculo
+          <Calculator className="w-4 h-4 text-accent" /> Parâmetros do Cálculo
         </h4>
-
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
             <Label className="text-xs">UF para Cálculo *</Label>
             <Select value={ufCalculo} onValueChange={setUfCalculo}>
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {Object.entries(UF_ICMS).sort((a, b) => a[1].nome.localeCompare(b[1].nome)).map(([uf, info]) => (
-                  <SelectItem key={uf} value={uf}>
-                    {uf} — {info.nome} (ICMS {info.icms_interno}%)
-                  </SelectItem>
+                  <SelectItem key={uf} value={uf}>{uf} — {info.nome} (ICMS {info.icms_interno}%)</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -317,9 +271,7 @@ REGRAS:
           <div>
             <Label className="text-xs">Atividade Principal</Label>
             <Select value={atividade} onValueChange={(v: any) => setAtividade(v)}>
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="comercio">Comércio</SelectItem>
                 <SelectItem value="servicos">Serviços</SelectItem>
@@ -329,57 +281,23 @@ REGRAS:
           </div>
           <div>
             <Label className="text-xs">Margem de Lucro (%)</Label>
-            <Input
-              type="number"
-              value={margemLucro}
-              onChange={e => setMargemLucro(e.target.value)}
-              placeholder="15"
-              className="mt-1"
-              min={0}
-              max={100}
-            />
+            <Input type="number" value={margemLucro} onChange={e => setMargemLucro(e.target.value)} placeholder="15" className="mt-1" min={0} max={100} />
           </div>
           {regime === 'simples_nacional' && (
             <div>
               <Label className="text-xs">RBT12 (Faturamento 12m)</Label>
-              <Input
-                value={rbt12}
-                onChange={e => {
-                  const v = e.target.value.replace(/\D/g, '');
-                  const num = parseInt(v || '0') / 100;
-                  setRbt12(num > 0 ? num.toFixed(2).replace('.', ',') : '');
-                }}
-                placeholder="R$ 0,00"
-                className="mt-1"
-              />
+              <Input value={rbt12} onChange={e => setRbt12(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-1" />
             </div>
           )}
         </div>
-
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label className="text-xs">Frete Estimado (%)</Label>
-            <Input
-              type="number"
-              value={frete}
-              onChange={e => setFrete(e.target.value)}
-              placeholder="0"
-              className="mt-1"
-              min={0}
-              max={100}
-            />
+            <Input type="number" value={frete} onChange={e => setFrete(e.target.value)} placeholder="0" className="mt-1" min={0} max={100} />
           </div>
           <div>
             <Label className="text-xs">Despesas Administrativas (%)</Label>
-            <Input
-              type="number"
-              value={despesasAdmin}
-              onChange={e => setDespesasAdmin(e.target.value)}
-              placeholder="0"
-              className="mt-1"
-              min={0}
-              max={100}
-            />
+            <Input type="number" value={despesasAdmin} onChange={e => setDespesasAdmin(e.target.value)} placeholder="0" className="mt-1" min={0} max={100} />
           </div>
         </div>
       </div>
@@ -392,33 +310,20 @@ REGRAS:
             <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Item
           </Button>
         </div>
-
         {itens.map((item, idx) => (
           <div key={idx} className="grid grid-cols-12 gap-2 items-end">
             <div className="col-span-5">
               <Label className="text-[10px]">Descrição *</Label>
-              <Input
-                value={item.descricao}
-                onChange={e => updateItem(idx, 'descricao', e.target.value)}
-                placeholder="Ex: Notebook Dell Inspiron 15"
-                className="mt-0.5"
-              />
+              <Input value={item.descricao} onChange={e => updateItem(idx, 'descricao', e.target.value)} placeholder="Ex: Notebook Dell Inspiron 15" className="mt-0.5" />
             </div>
             <div className="col-span-2">
               <Label className="text-[10px]">Qtd</Label>
-              <Input
-                value={item.quantidade}
-                onChange={e => updateItem(idx, 'quantidade', e.target.value)}
-                placeholder="1"
-                className="mt-0.5"
-              />
+              <Input value={item.quantidade} onChange={e => updateItem(idx, 'quantidade', e.target.value)} placeholder="1" className="mt-0.5" />
             </div>
             <div className="col-span-2">
               <Label className="text-[10px]">Unidade</Label>
               <Select value={item.unidade} onValueChange={v => updateItem(idx, 'unidade', v)}>
-                <SelectTrigger className="mt-0.5">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="mt-0.5"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {['UN', 'KG', 'M', 'M²', 'M³', 'L', 'CX', 'PCT', 'PAR', 'JG', 'GL', 'SC', 'TB', 'RL', 'FD', 'BL'].map(u => (
                     <SelectItem key={u} value={u}>{u}</SelectItem>
@@ -428,61 +333,59 @@ REGRAS:
             </div>
             <div className="col-span-2">
               <Label className="text-[10px]">Custo Unit. (R$) *</Label>
-              <Input
-                value={item.custoUnitario}
-                onChange={e => updateItem(idx, 'custoUnitario', e.target.value)}
-                placeholder="0,00"
-                className="mt-0.5"
-              />
+              <Input value={item.custoUnitario} onChange={e => updateItem(idx, 'custoUnitario', formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-0.5" />
             </div>
             <div className="col-span-1">
               {itens.length > 1 && (
-                <Button variant="ghost" size="sm" onClick={() => removeItem(idx)} className="text-destructive h-8 w-8 p-0">
-                  ×
-                </Button>
+                <Button variant="ghost" size="sm" onClick={() => removeItem(idx)} className="text-destructive h-8 w-8 p-0">×</Button>
               )}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Optional: Send to Proposta */}
+      {/* Send to Proposta */}
       <div className="bg-card rounded-xl border border-border/50 p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Switch checked={enviarProposta} onCheckedChange={setEnviarProposta} />
             <div>
               <p className="text-sm font-medium">Integrar à Proposta Comercial</p>
-              <p className="text-[10px] text-muted-foreground">
-                Opcional — os itens serão enviados à Planilha de Preços da proposta na finalização
-              </p>
+              <p className="text-[10px] text-muted-foreground">Os itens serão enviados à Planilha de Preços</p>
             </div>
           </div>
           {enviarProposta && (
-            <Button variant="outline" size="sm" onClick={enviarParaProposta}>
+            <Button variant="outline" size="sm" onClick={enviarParaProposta2}>
               <FileText className="w-3.5 h-3.5 mr-1" /> Enviar à Proposta
             </Button>
           )}
         </div>
       </div>
 
-      {/* Generate */}
-      <Button
-        onClick={gerarComposicao}
-        disabled={loading}
-        className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12"
-        size="lg"
-      >
-        {loading ? (
-          <Loader2 className="w-5 h-5 animate-spin mr-2" />
-        ) : (
-          <Sparkles className="w-5 h-5 mr-2" />
-        )}
-        Gerar Composição de Custo com IA Contábil
-      </Button>
+      {/* Generate Buttons */}
+      <div className="space-y-3">
+        <Button onClick={gerarComposicaoDeterministica} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12" size="lg">
+          <Calculator className="w-5 h-5 mr-2" />
+          Calcular Composição de Custo (Motor Determinístico)
+        </Button>
+        <Button onClick={gerarComposicaoIA} disabled={loading} variant="outline" className="w-full h-10" size="lg">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+          Gerar via IA Contábil (alternativo)
+        </Button>
+      </div>
 
-      {/* Result */}
-      {iaResult && (
+      {/* Results */}
+      {composicaoResult && (
+        <ComposicaoDeterministica
+          result={composicaoResult}
+          onResultChange={setComposicaoResult}
+          regimeLabel={regimeLabel}
+          ufCalculo={ufCalculo}
+          ufNome={ufInfo?.nome || ''}
+        />
+      )}
+
+      {iaResult && !composicaoResult && (
         <ComposicaoResultado iaResult={iaResult} regimeLabel={regimeLabel} ufCalculo={ufCalculo} ufNome={ufInfo?.nome || ''} />
       )}
     </div>
