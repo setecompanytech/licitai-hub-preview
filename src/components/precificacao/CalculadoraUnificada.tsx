@@ -974,17 +974,33 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
           />
 
           {usarBDI ? (
-            <Button onClick={gerarComposicaoBDI} disabled={loading} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12" size="lg">
-              {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Sparkles className="w-5 h-5 mr-2" />}
-              Gerar Composição BDI com IA Contábil
-            </Button>
+            <div className="space-y-3">
+              <Button onClick={gerarComposicaoDeterministica} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12" size="lg">
+                <Calculator className="w-5 h-5 mr-2" />
+                Calcular Composição de Custo (Motor Determinístico)
+              </Button>
+              <Button onClick={gerarComposicaoBDI} disabled={loading} variant="outline" className="w-full h-10" size="lg">
+                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                Gerar Composição via IA Contábil (alternativo)
+              </Button>
+            </div>
           ) : (
             <Button onClick={calcular} disabled={!receitaBruta} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12" size="lg">
               <Calculator className="w-5 h-5 mr-2" /> Calcular Preço do Produto
             </Button>
           )}
 
-          {iaResult && <ComposicaoResultado iaResult={iaResult} regimeLabel={regimeLabel} ufCalculo={ufCalculo} ufNome={ufInfo?.nome || ''} />}
+          {composicaoResult && (
+            <ComposicaoDeterministica
+              result={composicaoResult}
+              onResultChange={setComposicaoResult}
+              regimeLabel={regimeLabel}
+              ufCalculo={ufCalculo}
+              ufNome={ufInfo?.nome || ''}
+            />
+          )}
+
+          {iaResult && !composicaoResult && <ComposicaoResultado iaResult={iaResult} regimeLabel={regimeLabel} ufCalculo={ufCalculo} ufNome={ufInfo?.nome || ''} />}
         </>
       )}
 
