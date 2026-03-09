@@ -130,23 +130,20 @@ export default function CalculadoraTributaria() {
     if (regime === 'simples_nacional') {
       const faturamento12 = parseCurrencyInput(rbt12) || receita * 12;
       const simples = calcularSimplesNacional(faturamento12);
+      const totalTributos = simples.valorDAS;
+      const lucroBruto = receita - totalTributos;
+      const lucroLiquido = lucroBruto;
+      const margemLiquidaPct = receita > 0 ? (lucroLiquido / receita) * 100 : 0;
+
       setResultado({
-        regime: 'simples_nacional',
-        receita,
-        rbt12: faturamento12,
-        aliquotaEfetiva: simples.aliquotaEfetiva,
-        valorDAS: simples.valorDAS,
-        faixa: simples.faixa,
-        tributos: [
-          { nome: 'DAS (Unificado)', valor: simples.valorDAS, aliquota: simples.aliquotaEfetiva },
-        ],
-        totalTributos: simples.valorDAS,
+        regime: 'simples_nacional', receita, rbt12: faturamento12,
+        aliquotaEfetiva: simples.aliquotaEfetiva, valorDAS: simples.valorDAS, faixa: simples.faixa,
+        tributos: [{ nome: 'DAS (Unificado)', valor: simples.valorDAS, aliquota: simples.aliquotaEfetiva }],
+        totalTributos, lucroBruto, lucroLiquido, margemLiquidaPct,
       });
     } else {
       const margem = parseFloat(margemLucro) / 100 || 0.2;
       const lucro = receita * margem;
-
-      // Base de presunção
       const basePresuncaoIRPJ = atividade === 'servicos' ? 0.32 : 0.08;
       const basePresuncaoCSLL = atividade === 'servicos' ? 0.32 : 0.12;
 
@@ -159,42 +156,30 @@ export default function CalculadoraTributaria() {
             if (base > 60000 / 3) valor += Math.max(0, base - 20000) * 0.1;
           } else if (t.nome === 'CSLL') {
             valor = receita * basePresuncaoCSLL * (t.aliquota / 100);
-          } else if (t.nome === 'ISS' && atividade !== 'servicos') {
-            valor = 0;
-          } else if (t.nome === 'ICMS' && atividade === 'servicos') {
-            valor = 0;
-          } else {
-            valor = receita * (t.aliquota / 100);
-          }
+          } else if (t.nome === 'ISS' && atividade !== 'servicos') valor = 0;
+          else if (t.nome === 'ICMS' && atividade === 'servicos') valor = 0;
+          else valor = receita * (t.aliquota / 100);
         } else {
-          // Lucro Real
           if (t.base === 'lucro') {
             valor = lucro * (t.aliquota / 100);
-            if (t.nome === 'IRPJ' && lucro > 20000) {
-              valor += (lucro - 20000) * 0.1;
-            }
-          } else if (t.nome === 'ISS' && atividade !== 'servicos') {
-            valor = 0;
-          } else if (t.nome === 'ICMS' && atividade === 'servicos') {
-            valor = 0;
-          } else {
-            valor = receita * (t.aliquota / 100);
-          }
+            if (t.nome === 'IRPJ' && lucro > 20000) valor += (lucro - 20000) * 0.1;
+          } else if (t.nome === 'ISS' && atividade !== 'servicos') valor = 0;
+          else if (t.nome === 'ICMS' && atividade === 'servicos') valor = 0;
+          else valor = receita * (t.aliquota / 100);
         }
         return { nome: t.nome, valor, aliquota: t.aliquota, info: t.info };
       });
 
       const totalTributos = tributos.reduce((s, t) => s + t.valor, 0);
       const cargaEfetiva = (totalTributos / receita) * 100;
+      const lucroBruto = receita - totalTributos;
+      const lucroLiquido = lucroBruto;
+      const margemLiquidaPct = receita > 0 ? (lucroLiquido / receita) * 100 : 0;
 
       setResultado({
-        regime,
-        receita,
-        lucro,
-        margem: margem * 100,
-        tributos: tributos.filter(t => t.valor > 0),
-        totalTributos,
-        cargaEfetiva,
+        regime, receita, lucro, margem: margem * 100,
+        tributos: tributos.filter(t => t.valor > 0), totalTributos, cargaEfetiva,
+        lucroBruto, lucroLiquido, margemLiquidaPct,
       });
     }
   };
