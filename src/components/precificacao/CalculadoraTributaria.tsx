@@ -286,7 +286,7 @@ export default function CalculadoraTributaria() {
         <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-5 h-5 text-accent" />
-            <h4 className="font-semibold text-sm">Resultado da Simulação</h4>
+            <h4 className="font-semibold text-sm">Resultado da Simulação — Tributos & Lucro</h4>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
@@ -294,7 +294,7 @@ export default function CalculadoraTributaria() {
               <p className="text-[10px] text-muted-foreground">Receita Bruta</p>
               <p className="text-sm font-bold">{formatCurrency(resultado.receita)}</p>
             </div>
-            <div className="bg-muted/30 rounded-lg p-3 text-center">
+            <div className="bg-destructive/10 rounded-lg p-3 text-center border border-destructive/20">
               <p className="text-[10px] text-muted-foreground">Total Tributos</p>
               <p className="text-sm font-bold text-destructive">{formatCurrency(resultado.totalTributos)}</p>
             </div>
@@ -304,6 +304,30 @@ export default function CalculadoraTributaria() {
                 {regime === 'simples_nacional'
                   ? `${resultado.aliquotaEfetiva.toFixed(2)}%`
                   : `${resultado.cargaEfetiva.toFixed(2)}%`}
+              </p>
+            </div>
+          </div>
+
+          {/* Lucro KPIs */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-accent/10 rounded-lg p-3 text-center border border-accent/20">
+              <p className="text-[10px] text-muted-foreground">Lucro Bruto</p>
+              <p className="text-sm font-bold text-accent">{formatCurrency(resultado.lucroBruto)}</p>
+              <p className="text-[9px] text-muted-foreground">Receita − Tributos</p>
+            </div>
+            <div className={`rounded-lg p-3 text-center border ${resultado.lucroLiquido >= 0 ? 'bg-accent/15 border-accent/30' : 'bg-destructive/15 border-destructive/30'}`}>
+              <p className="text-[10px] text-muted-foreground">Lucro Líquido</p>
+              <p className={`text-sm font-bold ${resultado.lucroLiquido >= 0 ? 'text-accent' : 'text-destructive'}`}>
+                {formatCurrency(resultado.lucroLiquido)}
+              </p>
+            </div>
+            <div className={`rounded-lg p-3 text-center border ${resultado.margemLiquidaPct >= 5 ? 'bg-accent/15 border-accent/30' : resultado.margemLiquidaPct >= 0 ? 'bg-primary/15 border-primary/30' : 'bg-destructive/15 border-destructive/30'}`}>
+              <p className="text-[10px] text-muted-foreground">Margem Líquida</p>
+              <p className={`text-sm font-bold ${resultado.margemLiquidaPct >= 5 ? 'text-accent' : resultado.margemLiquidaPct >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                {resultado.margemLiquidaPct.toFixed(2)}%
+              </p>
+              <p className="text-[9px] text-muted-foreground">
+                {resultado.margemLiquidaPct < 5 && resultado.margemLiquidaPct >= 0 ? '⚠ Risco' : resultado.margemLiquidaPct < 0 ? '🚫 Prejuízo' : '✓ Saudável'}
               </p>
             </div>
           </div>
@@ -343,11 +367,26 @@ export default function CalculadoraTributaria() {
             ))}
           </div>
 
-          <div className="flex items-center justify-between bg-accent/10 rounded-lg px-3 py-2">
-            <span className="text-xs font-bold">Líquido após tributos</span>
-            <span className="text-sm font-bold text-accent">
-              {formatCurrency(resultado.receita - resultado.totalTributos)}
-            </span>
+          {/* DRE Simplificada */}
+          <div className="bg-muted/20 rounded-lg p-4 space-y-2 border border-border/30">
+            <h5 className="text-xs font-bold text-foreground mb-2">📊 DRE Simplificada</h5>
+            <div className="flex justify-between text-xs">
+              <span>Receita Bruta</span>
+              <span className="font-mono font-semibold">{formatCurrency(resultado.receita)}</span>
+            </div>
+            <div className="flex justify-between text-xs text-destructive">
+              <span>(−) Tributos</span>
+              <span className="font-mono font-semibold">({formatCurrency(resultado.totalTributos)})</span>
+            </div>
+            <div className="border-t border-border/30 my-1" />
+            <div className={`flex justify-between text-xs font-bold ${resultado.lucroLiquido >= 0 ? 'text-accent' : 'text-destructive'}`}>
+              <span>= Lucro Líquido</span>
+              <span className="font-mono">{formatCurrency(resultado.lucroLiquido)}</span>
+            </div>
+            <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+              <span>Margem Líquida</span>
+              <span className="font-mono">{resultado.margemLiquidaPct.toFixed(2)}%</span>
+            </div>
           </div>
 
           <p className="text-[10px] text-muted-foreground text-center">
