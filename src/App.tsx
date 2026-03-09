@@ -39,6 +39,7 @@ import Ebook from "./pages/Ebook";
 import PropostaTecnica from "./pages/PropostaTecnica";
 import HistoricoLicitacoes from "./pages/HistoricoLicitacoes";
 import Ferramentas from "./pages/Ferramentas";
+import GestaoContratos from "./pages/GestaoContratos";
 
 import WhatsAppSetores from "./pages/WhatsAppSetores";
 import Calendario from "./pages/Calendario";
