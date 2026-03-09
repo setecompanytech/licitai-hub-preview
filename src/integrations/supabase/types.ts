@@ -560,6 +560,63 @@ export type Database = {
         }
         Relationships: []
       }
+      composicoes_custo: {
+        Row: {
+          created_at: string
+          dados_json: Json
+          descricao_item: string
+          ia_result: string | null
+          id: string
+          licitacao_id: string | null
+          licitacao_item_id: string | null
+          regime_tributario: string | null
+          uf: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dados_json?: Json
+          descricao_item?: string
+          ia_result?: string | null
+          id?: string
+          licitacao_id?: string | null
+          licitacao_item_id?: string | null
+          regime_tributario?: string | null
+          uf?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dados_json?: Json
+          descricao_item?: string
+          ia_result?: string | null
+          id?: string
+          licitacao_id?: string | null
+          licitacao_item_id?: string | null
+          regime_tributario?: string | null
+          uf?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "composicoes_custo_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "composicoes_custo_licitacao_item_id_fkey"
+            columns: ["licitacao_item_id"]
+            isOneToOne: false
+            referencedRelation: "licitacao_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       concorrentes: {
         Row: {
           capital_social: number | null
