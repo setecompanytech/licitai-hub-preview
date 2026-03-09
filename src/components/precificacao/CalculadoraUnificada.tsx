@@ -142,9 +142,52 @@ export default function CalculadoraUnificada() {
   const regime = empresaAtiva?.regime_tributario || '';
   const config = REGIMES[regime];
   const ufEmpresa = empresaAtiva?.uf || '';
+  const cnae = empresaAtiva?.cnae_principal || '';
 
-  // 2 tabs: produto_bdi (unified) and servico_mdo (labor services IN 5/2017)
-  const [calcTab, setCalcTab] = useState<'produto_bdi' | 'servico_engenharia' | 'servico_mdo'>('produto_bdi');
+  // ── Auto-detection logic based on CNAE + regime ──
+  const detectTipoCalculo = (): { tipo: 'produto_bdi' | 'servico_engenharia' | 'servico_mdo'; motivo: string } => {
+    const cnaePrefix = cnae.substring(0, 2);
+    const cnaeGroup = cnae.substring(0, 4);
+    // Engenharia / Construção: CNAE 41-43
+    if (['41', '42', '43'].includes(cnaePrefix)) {
+      return { tipo: 'servico_engenharia', motivo: `CNAE ${cnae} indica atividade de construção/engenharia` };
+    }
+    // Serviços de limpeza, vigilância, manutenção predial: CNAE 81
+    if (cnaePrefix === '81') {
+      return { tipo: 'servico_mdo', motivo: `CNAE ${cnae} indica serviço com dedicação exclusiva de mão de obra` };
+    }
+    // Vigilância: CNAE 80
+    if (cnaePrefix === '80') {
+      return { tipo: 'servico_mdo', motivo: `CNAE ${cnae} indica serviço de vigilância/segurança (MDO contínua)` };
+    }
+    // Serviços administrativos terceirizados: CNAE 82
+    if (cnaePrefix === '82') {
+      return { tipo: 'servico_mdo', motivo: `CNAE ${cnae} indica serviço administrativo terceirizado` };
+    }
+    // TI / Consultoria: CNAE 62, 63
+    if (['62', '63'].includes(cnaePrefix)) {
+      return { tipo: 'servico_engenharia', motivo: `CNAE ${cnae} indica serviço de TI/consultoria (BDI de serviços comuns)` };
+    }
+    // Comércio: CNAE 45-47
+    if (['45', '46', '47'].includes(cnaePrefix)) {
+      return { tipo: 'produto_bdi', motivo: `CNAE ${cnae} indica atividade comercial (fornecimento de produtos)` };
+    }
+    // Indústria: CNAE 10-33
+    const prefixNum = parseInt(cnaePrefix, 10);
+    if (prefixNum >= 10 && prefixNum <= 33) {
+      return { tipo: 'produto_bdi', motivo: `CNAE ${cnae} indica atividade industrial (fornecimento de produtos)` };
+    }
+    // Default: produtos
+    return { tipo: 'produto_bdi', motivo: 'Tipo padrão — selecione manualmente conforme o objeto da licitação' };
+  };
+
+  const deteccao = cnae ? detectTipoCalculo() : null;
+
+  // 3 tabs: produto_bdi, servico_engenharia, servico_mdo
+  const [calcTab, setCalcTab] = useState<'produto_bdi' | 'servico_engenharia' | 'servico_mdo'>(
+    deteccao?.tipo || 'produto_bdi'
+  );
+  const [usouSugestao, setUsouSugestao] = useState(deteccao ? calcTab === deteccao.tipo : false);
 
   // ── Shared state ──
   const [receitaBruta, setReceitaBruta] = useState('');
