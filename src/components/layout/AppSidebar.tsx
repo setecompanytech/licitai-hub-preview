@@ -72,6 +72,7 @@ const navGroups: NavGroup[] = [
       { icon: Kanban, label: 'Kanban', path: '/kanban' },
       { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
       { icon: Archive, label: 'Histórico', path: '/historico-licitacoes' },
+      { icon: FileText, label: 'Contratos', path: '/gestao-contratos' },
     ],
   },
   {
