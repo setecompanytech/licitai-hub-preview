@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -8,11 +8,12 @@ import {
 } from '@/components/ui/table';
 import {
   Search, Bot, Loader2, ShieldCheck, AlertTriangle, CheckCircle2, ExternalLink,
-  FileText, Scale, Info,
+  FileText, Scale, Info, Globe, BookOpen, Gavel,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { streamAIChat } from '@/lib/ai-stream';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import {
   getRegrasPorNCM, getRegrasPorUF, getTratamentoLabel, getCategoriaLabel,
   temDadosDetalhados, UF_TRIBUTARIA,
@@ -35,6 +36,23 @@ interface AnaliseResultadoItem {
   st_mva?: number;
 }
 
+interface NcmAutoResult {
+  ncm: string;
+  descricao_ncm: string;
+  analise_ia?: any;
+  icms?: any;
+  ipi?: any;
+  pis_cofins?: any;
+  st?: any;
+  cest?: string;
+  beneficios_fiscais?: string[];
+  convenios_confaz?: string[];
+  riscos_fiscais?: string;
+  fontes?: { nome: string; url: string; tipo: string }[];
+  fontes_referencia?: { nome: string; url: string }[];
+  sugestoes_ncm?: { codigo: string; descricao: string }[];
+}
+
 interface Props {
   ufCalculo: string;
   ufNome: string;
@@ -51,14 +69,77 @@ export default function AnaliseRegimeTributario({ ufCalculo, ufNome, regime, reg
   const [consultaManual, setConsultaManual] = useState('');
   const [resultadoManual, setResultadoManual] = useState('');
   const [loadingManual, setLoadingManual] = useState(false);
+  
+  // Auto-search state
+  const [ncmAutoResults, setNcmAutoResults] = useState<Record<number, NcmAutoResult>>({});
+  const [ncmAutoLoading, setNcmAutoLoading] = useState<Record<number, boolean>>({});
+  const debounceTimers = useRef<Record<number, NodeJS.Timeout>>({});
 
   const ufData = UF_TRIBUTARIA[ufCalculo];
   const temDados = temDadosDetalhados(ufCalculo);
   const regrasUF = getRegrasPorUF(ufCalculo);
 
+  // ── Auto-search NCM via edge function ──
+  const buscarNCMAutomatico = useCallback(async (idx: number, ncm: string, descricao: string) => {
+    const ncmClean = ncm.replace(/[^0-9.]/g, '');
+    const ncmDigits = ncmClean.replace(/\D/g, '');
+    
+    // Only search if NCM has at least 4 digits
+    if (ncmDigits.length < 4) return;
+
+    setNcmAutoLoading(prev => ({ ...prev, [idx]: true }));
+
+    try {
+      const { data, error } = await supabase.functions.invoke('consulta-ncm', {
+        body: { ncm: ncmClean, descricao, uf: ufCalculo, regime: regimeLabel },
+      });
+
+      if (error) {
+        console.error('Erro consulta NCM:', error);
+        toast.error('Erro ao consultar NCM');
+        return;
+      }
+
+      setNcmAutoResults(prev => ({ ...prev, [idx]: data as NcmAutoResult }));
+
+      // Auto-update aliquota if available
+      if (data?.icms && onAliquotaUpdate) {
+        const aliq = data.icms.isento ? 0 : (data.icms.aliquota_interna || 0);
+        const trat: TratamentoICMS = data.icms.isento ? 'ISENTO'
+          : data.st?.aplicavel ? 'ST'
+          : data.icms.reducao_bc ? 'REDUCAO_BC'
+          : data.icms.diferido ? 'DIFERIDO'
+          : 'ALIQUOTA_CHEIA';
+        onAliquotaUpdate(idx, aliq, trat);
+      }
+
+      toast.success(`NCM ${ncmClean} — classificação tributária concluída`);
+    } catch (e) {
+      console.error('Erro busca NCM:', e);
+    } finally {
+      setNcmAutoLoading(prev => ({ ...prev, [idx]: false }));
+    }
+  }, [ufCalculo, regimeLabel, onAliquotaUpdate]);
+
   const updateNcm = (idx: number, value: string) => {
     setNcmInputs(prev => prev.map((v, i) => i === idx ? value : v));
+    
+    // Debounce auto-search (800ms)
+    if (debounceTimers.current[idx]) {
+      clearTimeout(debounceTimers.current[idx]);
+    }
+    debounceTimers.current[idx] = setTimeout(() => {
+      const descricao = itens[idx]?.descricao || '';
+      buscarNCMAutomatico(idx, value, descricao);
+    }, 800);
   };
+
+  // Cleanup timers
+  useEffect(() => {
+    return () => {
+      Object.values(debounceTimers.current).forEach(clearTimeout);
+    };
+  }, []);
 
   // ── Análise rápida por NCM (local) ──
   const analisarLocal = (ncm: string, descricao: string): RegraTributariaUF | null => {
