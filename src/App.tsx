@@ -60,6 +60,7 @@ const ProtectedPages = ({ children }: { children: React.ReactNode }) => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
     <TooltipProvider>
       <Toaster />
       <Sonner />
