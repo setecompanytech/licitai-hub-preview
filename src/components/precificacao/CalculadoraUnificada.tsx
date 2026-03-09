@@ -17,7 +17,8 @@ import {
 } from '@/components/ui/table';
 import {
   Calculator, Bot, Loader2, FileText, Plus, Download, ExternalLink, MapPin, Building2,
-  ShieldCheck, Sparkles, TrendingUp, Info, BookOpen, Package, Wrench, HardHat, Save, Users
+  ShieldCheck, Sparkles, TrendingUp, Info, BookOpen, Package, Wrench, HardHat, Save, Users,
+  Lightbulb, ArrowRight,
 } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import { valorPorExtenso } from '@/lib/numero-extenso';
