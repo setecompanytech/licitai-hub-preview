@@ -270,24 +270,44 @@ export default function CalculadoraUnificada() {
 
   const tributosAtivos = getTributosComAliquotas();
 
-  // ── Calcular tributos ──
+  // ── Calcular tributos + lucro ──
   const calcular = () => {
     const receita = parseCurrencyInput(receitaBruta);
     if (!receita || receita <= 0) {
       toast.error('Informe a receita bruta mensal.');
       return;
     }
+
+    const margemPct = parseFloat(margemLucro) || 15;
+    const margem = margemPct / 100;
+    const fretePerc = parseFloat(frete) || 0;
+    const despAdmPerc = parseFloat(despesasAdmin) || 0;
+
+    // Custos operacionais
+    const custoFrete = receita * (fretePerc / 100);
+    const custoDespAdm = receita * (despAdmPerc / 100);
+    const totalCustosOp = custoFrete + custoDespAdm;
+
     if (regime === 'simples_nacional') {
       const faturamento12 = parseCurrencyInput(rbt12) || receita * 12;
       const simples = calcularSimplesNacional(faturamento12, anexoAtual);
+      const totalTributos = simples.valorDAS;
+      const lucroBruto = receita - totalTributos;
+      const lucroLiquido = lucroBruto - totalCustosOp;
+      const margemLiquidaPct = receita > 0 ? (lucroLiquido / receita) * 100 : 0;
+      const pontoEquilibrio = margemLiquidaPct > 0 ? totalTributos / (margemLiquidaPct / 100) : 0;
+
       setResultado({
         regime: 'simples_nacional', receita, rbt12: faturamento12,
         aliquotaEfetiva: simples.aliquotaEfetiva, valorDAS: simples.valorDAS, faixa: simples.faixa,
         tributos: [{ nome: 'DAS (Unificado)', valor: simples.valorDAS, aliquota: simples.aliquotaEfetiva }],
-        totalTributos: simples.valorDAS, anexo: anexoAtual.nome,
+        totalTributos, anexo: anexoAtual.nome,
+        // Profit fields
+        lucroBruto, lucroLiquido, margemLiquidaPct,
+        custoFrete, custoDespAdm, totalCustosOp,
+        margemLucroPct: margemPct, pontoEquilibrio,
       });
     } else {
-      const margem = parseFloat(margemLucro) / 100 || 0.15;
       const lucro = receita * margem;
       const basePresuncaoIRPJ = atividade === 'servicos' ? 0.32 : 0.08;
       const basePresuncaoCSLL = atividade === 'servicos' ? 0.32 : 0.12;
@@ -311,9 +331,19 @@ export default function CalculadoraUnificada() {
       });
       const filtrados = tributos.filter(t => t.valor > 0);
       const totalTributos = filtrados.reduce((s, t) => s + t.valor, 0);
+      const lucroBruto = receita - totalTributos;
+      const lucroLiquido = lucroBruto - totalCustosOp;
+      const margemLiquidaPct = receita > 0 ? (lucroLiquido / receita) * 100 : 0;
+      const cargaEfetiva = (totalTributos / receita) * 100;
+      const pontoEquilibrio = margemLiquidaPct > 0 ? (totalTributos + totalCustosOp) / (margemLiquidaPct / 100) : 0;
+
       setResultado({
-        regime, receita, lucro: receita * margem, margem: margem * 100,
-        tributos: filtrados, totalTributos, cargaEfetiva: (totalTributos / receita) * 100,
+        regime, receita, lucro, margem: margem * 100,
+        tributos: filtrados, totalTributos, cargaEfetiva,
+        // Profit fields
+        lucroBruto, lucroLiquido, margemLiquidaPct,
+        custoFrete, custoDespAdm, totalCustosOp,
+        margemLucroPct: margemPct, pontoEquilibrio,
       });
     }
   };
