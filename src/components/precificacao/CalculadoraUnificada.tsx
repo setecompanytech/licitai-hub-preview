@@ -218,6 +218,7 @@ export default function CalculadoraUnificada() {
   const [iaResult, setIaResult] = useState('');
   const [loading, setLoading] = useState(false);
   const [enviarProposta, setEnviarProposta] = useState(false);
+  const [composicaoResult, setComposicaoResult] = useState<ComposicaoResult | null>(null);
 
   // (Serviços MDO state moved to ServicoMDOCalculadora component)
 
