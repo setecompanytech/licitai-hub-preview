@@ -113,7 +113,9 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
     );
   }
 
-  const { itens, resumo, parecer } = parsed;
+  const itens = parsed.itens || [];
+  const resumo = parsed.resumo || { custoTotalMateriais: 0, totalTributos: 0, tributosPorImposto: [], bdiTotal: 0, bdiPercentual: 0, freteTotal: 0, despesasAdm: 0, margemLucro: 0, precoTotalFormado: 0, precoExtenso: '' };
+  const parecer = parsed.parecer || { viabilidade: 'N/A', margemLiquida: 0, alertaInexequibilidade: false, observacoes: '' };
 
   const viabilidadeIcon = parecer.viabilidade === 'VIÁVEL'
     ? <CheckCircle className="w-4 h-4 text-accent" />
