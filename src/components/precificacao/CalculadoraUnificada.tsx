@@ -412,12 +412,17 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
         <div className="mt-3 bg-muted/30 rounded-lg p-3">
           {calcTab === 'produto_bdi' && (
             <p className="text-xs text-muted-foreground">
-              <strong className="text-foreground">Produtos e Composição BDI:</strong> Calcule custo, margem, impostos, frete e BDI para produtos/mercadorias. Ative a opção "Composição BDI" para gerar planilha detalhada de composição de custos conforme Lei 14.133/2021.
+              <strong className="text-foreground">Fornecimento de Produtos:</strong> Calcule custo, margem, impostos, frete e BDI para produtos/mercadorias. Ative "Composição BDI" para planilha detalhada conforme Lei 14.133/2021.
+            </p>
+          )}
+          {calcTab === 'servico_engenharia' && (
+            <p className="text-xs text-muted-foreground">
+              <strong className="text-foreground">Serviços de Engenharia:</strong> Composição de BDI conforme Acórdão TCU 2622/2013 com encargos sociais, tributos "por dentro" e fórmula oficial. Para obras e serviços comuns de engenharia.
             </p>
           )}
           {calcTab === 'servico_mdo' && (
             <p className="text-xs text-muted-foreground">
-              <strong className="text-foreground">Serviços com Dedicação de Mão de Obra:</strong> Planilha de Custos e Formação de Preços conforme Anexo VII-D da IN nº 5/2017 (SEGES/MP). Estrutura completa com os 6 módulos obrigatórios para serviços continuados com dedicação exclusiva de mão de obra.
+              <strong className="text-foreground">Mão de Obra Contínua:</strong> Planilha de Custos conforme Anexo VII-D da IN nº 5/2017 (SEGES/MP). Estrutura com os 6 módulos obrigatórios para serviços continuados com dedicação exclusiva de mão de obra.
             </p>
           )}
         </div>
