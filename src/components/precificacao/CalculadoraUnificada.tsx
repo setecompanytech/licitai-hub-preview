@@ -716,7 +716,18 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
         </>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* ── TAB: SERVIÇOS DE ENGENHARIA ── */}
+      {calcTab === 'servico_engenharia' && (
+        <ServicoEngenhariaCalculadora
+          regimeLabel={regimeLabel}
+          regime={regime}
+          ufCalculo={ufCalculo}
+          ufNome={ufInfo?.nome || ''}
+          licitacaoNumero={licitacaoNumero}
+          licitacaoOrgao={licitacaoOrgao}
+        />
+      )}
+
       {/* ── TAB: SERVIÇOS COM MÃO DE OBRA ── */}
       {calcTab === 'servico_mdo' && (
         <ServicoMDOCalculadora
