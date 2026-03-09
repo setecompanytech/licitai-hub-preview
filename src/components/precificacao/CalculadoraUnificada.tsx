@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import ComposicaoResultado from './ComposicaoResultado';
 import ServicoMDOCalculadora from './ServicoMDOCalculadora';
 import ServicoEngenhariaCalculadora from './ServicoEngenhariaCalculadora';
+import AnaliseRegimeTributario from './AnaliseRegimeTributario';
 import {
   ANEXOS_SIMPLES, getAnexoById,
   calcularSimplesNacional, getPartilhaSimplesReal, formatCurrencyShort,
