@@ -208,7 +208,7 @@ export function exportComposicaoExcel(data: ComposicaoData, regimeLabel: string,
   const parecerRows = [
     ['Parecer de Viabilidade'],
     ['Viabilidade', parecer.viabilidade || 'N/A'],
-    ['Margem Líquida', `${(parecer.margemLiquida ?? 0).toFixed(2)}%`],
+    ['Margem Líquida', `${Number(parecer.margemLiquida || 0).toFixed(2)}%`],
     ['Alerta Inexequibilidade', parecer.alertaInexequibilidade ? 'SIM' : 'NÃO'],
     ['Observações', parecer.observacoes || ''],
   ];
