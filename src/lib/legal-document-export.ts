@@ -538,6 +538,7 @@ export function exportLegalWord(
     certificado_tipo?: string | null;
     rep_nome?: string;
     rep_cpf?: string;
+    rep_cargo?: string;
   }
 ) {
   const blocks = parseMarkdownToBlocks(content);
