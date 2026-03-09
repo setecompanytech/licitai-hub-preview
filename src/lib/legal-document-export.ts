@@ -722,8 +722,8 @@ export function exportLegalWord(
 <div class="Section1">
 `;
 
-  // Timbrado header
-  if (metadata?.timbradoUrl && /\.(png|jpe?g|webp)(\?|$)/i.test(metadata.timbradoUrl)) {
+  // Timbrado header — accepts any image URL (Supabase storage or direct)
+  if (metadata?.timbradoUrl) {
     html += `<div style="text-align:center;margin-bottom:12pt"><img src="${metadata.timbradoUrl}" style="max-height:60pt;max-width:100%" /></div>\n`;
   }
 
