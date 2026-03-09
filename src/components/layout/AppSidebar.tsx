@@ -33,6 +33,7 @@ import {
   Archive,
   CalendarDays,
   GraduationCap,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
