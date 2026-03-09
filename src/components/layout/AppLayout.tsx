@@ -1,14 +1,17 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppSidebar from './AppSidebar';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
-import { Bell, Menu } from 'lucide-react';
+import { Bell, Menu, Search } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import FloatingChat from '@/components/chat/FloatingChat';
+import GlobalSearch from '@/components/search/GlobalSearch';
+import ThemeToggle from '@/components/theme/ThemeToggle';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const [notifOpen, setNotifOpen] = useState(false);
@@ -17,9 +20,44 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
 
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const initials = user?.user_metadata?.nome_completo
     ? user.user_metadata.nome_completo.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
     : user?.email?.slice(0, 2).toUpperCase() ?? 'LI';
+
+  // Realtime notification count
+  useEffect(() => {
+    if (!user) return;
+    // Initial count
+    supabase
+      .from('notificacoes')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('lida', false)
+      .then(({ count }) => setUnreadCount(count || 0));
+
+    // Subscribe to realtime
+    const channel = supabase
+      .channel('notificacoes-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'notificacoes',
+        filter: `user_id=eq.${user.id}`,
+      }, () => {
+        // Refresh count on any change
+        supabase
+          .from('notificacoes')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('lida', false)
+          .then(({ count }) => setUnreadCount(count || 0));
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -57,16 +95,28 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1 sm:gap-2">
             {!isMobile && <EmpresaSelector />}
+            {!isMobile && (
+              <button
+                className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+                title="Busca global (Ctrl+K)"
+              >
+                <Search className="w-5 h-5" />
+              </button>
+            )}
+            <ThemeToggle />
             <button
               className="relative p-2 rounded-lg hover:bg-muted transition-colors"
               onClick={() => setNotifOpen(!notifOpen)}
             >
               <Bell className="w-5 h-5 text-muted-foreground" />
-              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
-                6
-              </span>
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </button>
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-semibold">
               {initials}
@@ -88,6 +138,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         }}
       />
       <FloatingChat />
+      <GlobalSearch />
     </div>
   );
 }

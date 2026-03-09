@@ -668,6 +668,149 @@ export type Database = {
         }
         Relationships: []
       }
+      contrato_aditivos: {
+        Row: {
+          contrato_id: string
+          created_at: string
+          data_aditivo: string | null
+          id: string
+          justificativa: string | null
+          numero_aditivo: string
+          prazo_adicional_dias: number | null
+          tipo: string
+          user_id: string
+          valor_aditivo: number | null
+        }
+        Insert: {
+          contrato_id: string
+          created_at?: string
+          data_aditivo?: string | null
+          id?: string
+          justificativa?: string | null
+          numero_aditivo: string
+          prazo_adicional_dias?: number | null
+          tipo?: string
+          user_id: string
+          valor_aditivo?: number | null
+        }
+        Update: {
+          contrato_id?: string
+          created_at?: string
+          data_aditivo?: string | null
+          id?: string
+          justificativa?: string | null
+          numero_aditivo?: string
+          prazo_adicional_dias?: number | null
+          tipo?: string
+          user_id?: string
+          valor_aditivo?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contrato_aditivos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contratos: {
+        Row: {
+          created_at: string
+          data_assinatura: string | null
+          data_fim: string | null
+          data_inicio: string | null
+          empresa_id: string | null
+          fiscal_email: string | null
+          fiscal_nome: string | null
+          fiscal_telefone: string | null
+          id: string
+          licitacao_id: string | null
+          modalidade: string | null
+          municipio: string | null
+          numero_contrato: string
+          objeto: string
+          observacoes: string | null
+          orgao_contratante: string
+          saldo_remanescente: number | null
+          status: string
+          uf: string | null
+          updated_at: string
+          user_id: string
+          valor_consumido: number
+          valor_global: number
+          vigencia_meses: number | null
+        }
+        Insert: {
+          created_at?: string
+          data_assinatura?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          empresa_id?: string | null
+          fiscal_email?: string | null
+          fiscal_nome?: string | null
+          fiscal_telefone?: string | null
+          id?: string
+          licitacao_id?: string | null
+          modalidade?: string | null
+          municipio?: string | null
+          numero_contrato: string
+          objeto: string
+          observacoes?: string | null
+          orgao_contratante: string
+          saldo_remanescente?: number | null
+          status?: string
+          uf?: string | null
+          updated_at?: string
+          user_id: string
+          valor_consumido?: number
+          valor_global?: number
+          vigencia_meses?: number | null
+        }
+        Update: {
+          created_at?: string
+          data_assinatura?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          empresa_id?: string | null
+          fiscal_email?: string | null
+          fiscal_nome?: string | null
+          fiscal_telefone?: string | null
+          id?: string
+          licitacao_id?: string | null
+          modalidade?: string | null
+          municipio?: string | null
+          numero_contrato?: string
+          objeto?: string
+          observacoes?: string | null
+          orgao_contratante?: string
+          saldo_remanescente?: number | null
+          status?: string
+          uf?: string | null
+          updated_at?: string
+          user_id?: string
+          valor_consumido?: number
+          valor_global?: number
+          vigencia_meses?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contratos_gov: {
         Row: {
           ano: number
