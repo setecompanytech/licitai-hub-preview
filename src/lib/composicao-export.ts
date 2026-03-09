@@ -149,7 +149,7 @@ export function exportComposicaoPDF(data: ComposicaoData, regimeLabel: string, u
   const parecer = data.parecer || {} as Parecer;
   if (y > 260) { doc.addPage(); y = 15; }
   doc.setFontSize(10);
-  doc.text(`Parecer: ${parecer.viabilidade || 'N/A'} | Margem Líquida: ${(parecer.margemLiquida ?? 0).toFixed(2)}%`, 14, y);
+  doc.text(`Parecer: ${parecer.viabilidade || 'N/A'} | Margem Líquida: ${Number(parecer.margemLiquida || 0).toFixed(2)}%`, 14, y);
   y += 5;
   if (parecer.observacoes) {
     doc.setFontSize(8);
@@ -208,7 +208,7 @@ export function exportComposicaoExcel(data: ComposicaoData, regimeLabel: string,
   const parecerRows = [
     ['Parecer de Viabilidade'],
     ['Viabilidade', parecer.viabilidade || 'N/A'],
-    ['Margem Líquida', `${(parecer.margemLiquida ?? 0).toFixed(2)}%`],
+    ['Margem Líquida', `${Number(parecer.margemLiquida || 0).toFixed(2)}%`],
     ['Alerta Inexequibilidade', parecer.alertaInexequibilidade ? 'SIM' : 'NÃO'],
     ['Observações', parecer.observacoes || ''],
   ];
@@ -267,7 +267,7 @@ h2{font-size:12pt;margin-top:16px}
     html += `</table>`;
   }
 
-  html += `<div class="parecer"><strong>Parecer: ${parecer.viabilidade || 'N/A'}</strong> | Margem Líquida: ${(parecer.margemLiquida ?? 0).toFixed(2)}%<br/>${parecer.observacoes || ''}</div>`;
+  html += `<div class="parecer"><strong>Parecer: ${parecer.viabilidade || 'N/A'}</strong> | Margem Líquida: ${Number(parecer.margemLiquida || 0).toFixed(2)}%<br/>${parecer.observacoes || ''}</div>`;
   html += `</body></html>`;
 
   const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
