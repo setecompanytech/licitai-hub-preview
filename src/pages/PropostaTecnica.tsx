@@ -12,7 +12,8 @@ import {
   FileText, Sparkles, Loader2, Copy, CheckCircle, Settings2,
   ChevronRight, ChevronLeft, Building2, User, Receipt, Scale,
   ShieldCheck, Stamp, Send, Calendar, MapPin, Clock, CreditCard,
-  FileSignature, Upload as UploadIcon, Eye, AlertCircle, Banknote
+  FileSignature, Upload as UploadIcon, Eye, AlertCircle, Banknote,
+  PanelRightOpen, PanelRightClose
 } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -26,9 +27,11 @@ import TimbradoUploader from '@/components/proposta/TimbradoUploader';
 import EnvioProposta from '@/components/proposta/EnvioProposta';
 import PropostaDownload from '@/components/proposta/PropostaDownload';
 import PropostaRenderer from '@/components/proposta/PropostaRenderer';
+import PropostaLivePreview from '@/components/proposta/PropostaLivePreview';
 import DadosEmpresaUploader, { type ExtractedEmpresaData } from '@/components/proposta/DadosEmpresaUploader';
 import BancoSelector from '@/components/proposta/BancoSelector';
 import ImportarDoCatalogo from '@/components/proposta/ImportarDoCatalogo';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const STEPS = [
   { id: 1, label: 'Edital', icon: FileText, desc: 'Upload e extração IA' },
