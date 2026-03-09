@@ -327,7 +327,7 @@ export default function CalculadoraUnificada() {
     const itensTexto = validItens.map((item, idx) => {
       const custo = parseCurrencyInput(item.custoUnitario);
       const qtd = parseFloat(item.quantidade) || 1;
-      return `Item ${idx + 1}: ${item.descricao} | Qtd: ${qtd} ${item.unidade} | Custo Unitário: R$ ${custo.toFixed(2)}`;
+      return `Item ${idx + 1}: ${item.descricao}${item.ncm ? ` (NCM: ${item.ncm})` : ''} | Qtd: ${qtd} ${item.unidade} | Custo Unitário: R$ ${custo.toFixed(2)}`;
     }).join('\n');
     const freteVal = parseFloat(frete) || 0;
     const despAdm = parseFloat(despesasAdmin) || 0;
