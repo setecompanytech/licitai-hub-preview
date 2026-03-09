@@ -1044,6 +1044,58 @@ export default function PropostaTecnica() {
             </div>
           </div>
         )}
+          </div>{/* End left panel */}
+
+          {/* Right: Live Preview */}
+          {showPreview && !isMobile && (
+            <div className="w-1/2 min-w-0">
+              <div className="sticky top-20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Eye className="w-4 h-4 text-accent" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Preview em Tempo Real</span>
+                </div>
+                <div className="max-h-[calc(100vh-120px)] overflow-y-auto rounded-xl border border-border/50 shadow-sm scrollbar-thin">
+                  <PropostaLivePreview
+                    empresa={empresaAtiva}
+                    telefone={telefone}
+                    email={email}
+                    inscEstadual={inscEstadual}
+                    inscMunicipal={inscMunicipal}
+                    repNome={repNome}
+                    repCpf={repCpf}
+                    repRg={repRg}
+                    repOrgaoExp={repOrgaoExp}
+                    repCargo={repCargo}
+                    repNaturalidade={repNaturalidade}
+                    repNacionalidade={repNacionalidade}
+                    repEstadoCivil={repEstadoCivil}
+                    repEndereco={repEndereco}
+                    numeroLicitacao={numeroLicitacao}
+                    orgao={orgao}
+                    modalidade={modalidade}
+                    objeto={objeto}
+                    valorEstimado={valorEstimado}
+                    prazoValidade={prazoValidade}
+                    prazoPagamento={prazoPagamento}
+                    prazoEntrega={prazoEntrega}
+                    localEntrega={localEntrega}
+                    itens={itens}
+                    declaracoesAtivas={declaracoesAtivasLabels}
+                    banco={banco}
+                    agencia={agencia}
+                    conta={conta}
+                    tipoConta={tipoConta}
+                    pix={pix}
+                    fontFamily={fontFamily}
+                    fontSize={fontSize}
+                    timbradoUrl={timbradoUrl}
+                    usarMarcaDagua={usarMarcaDagua}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>{/* End split-screen */}
       </div>
     </AppLayout>
   );
