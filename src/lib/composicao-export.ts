@@ -149,7 +149,7 @@ export function exportComposicaoPDF(data: ComposicaoData, regimeLabel: string, u
   const parecer = data.parecer || {} as Parecer;
   if (y > 260) { doc.addPage(); y = 15; }
   doc.setFontSize(10);
-  doc.text(`Parecer: ${parecer.viabilidade || 'N/A'} | Margem Líquida: ${(parecer.margemLiquida ?? 0).toFixed(2)}%`, 14, y);
+  doc.text(`Parecer: ${parecer.viabilidade || 'N/A'} | Margem Líquida: ${Number(parecer.margemLiquida || 0).toFixed(2)}%`, 14, y);
   y += 5;
   if (parecer.observacoes) {
     doc.setFontSize(8);
