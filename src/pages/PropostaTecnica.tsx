@@ -352,6 +352,11 @@ export default function PropostaTecnica() {
           )}
         </div>
 
+        {/* Split-screen layout */}
+        <div className={`flex gap-4 ${showPreview && !isMobile ? '' : ''}`}>
+          {/* Left: Form */}
+          <div className={`${showPreview && !isMobile ? 'w-1/2 min-w-0' : 'w-full max-w-6xl mx-auto'} space-y-4`}>
+
         {/* Stepper */}
         <div className="bg-card rounded-xl border border-border/50 shadow-sm p-3">
           <div className="flex items-center gap-0.5 overflow-x-auto pb-1">
