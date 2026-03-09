@@ -275,7 +275,7 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {resumo.tributosPorImposto.map((t, i) => (
+                  {(resumo.tributosPorImposto || []).map((t, i) => (
                     <TableRow key={i}>
                       <TableCell className="text-[11px] py-2 font-medium">{t.imposto}</TableCell>
                       <TableCell className="text-[11px] py-2 text-right font-mono">{fmtPct(t.aliquota)}</TableCell>
