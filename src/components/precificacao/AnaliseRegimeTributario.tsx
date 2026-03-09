@@ -417,6 +417,8 @@ Formato: texto estruturado com tópicos numerados.`;
           {itens.filter(i => i.descricao.trim()).map((item, idx) => {
             const regraLocal = analisarLocal(ncmInputs[idx] || '', item.descricao);
             const resultadoIA = analiseIA[idx];
+            const autoResult = ncmAutoResults[idx];
+            const autoLoading = ncmAutoLoading[idx];
 
             return (
               <div key={idx} className="bg-muted/20 rounded-lg p-3 space-y-2">
@@ -424,18 +426,172 @@ Formato: texto estruturado com tópicos numerados.`;
                   <span className="text-xs font-medium text-foreground flex-1 truncate">
                     {item.descricao}
                   </span>
-                  <div className="w-36">
+                  <div className="w-40 relative">
                     <Input
                       value={ncmInputs[idx] || ''}
                       onChange={e => updateNcm(idx, e.target.value)}
                       placeholder="NCM: 0000.00.00"
-                      className="h-7 text-[10px]"
+                      className="h-7 text-[10px] pr-7"
                     />
+                    {autoLoading && (
+                      <Loader2 className="w-3 h-3 animate-spin absolute right-2 top-2 text-muted-foreground" />
+                    )}
                   </div>
                 </div>
 
-                {/* Resultado local (base de dados) */}
-                {regraLocal && !resultadoIA && (
+                {/* Resultado auto-search NCM (portais oficiais + IA) */}
+                {autoResult && !resultadoIA && (
+                  <div className="bg-background/50 rounded-lg p-3 space-y-2 border border-border/30">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Globe className="w-3.5 h-3.5 text-accent" />
+                      <span className="text-[10px] font-semibold text-foreground">
+                        Consulta Automática — Fontes Oficiais
+                      </span>
+                      {autoResult.fontes && (
+                        <Badge variant="outline" className="text-[8px]">
+                          {autoResult.fontes.length} fonte(s)
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Descrição oficial NCM */}
+                    {autoResult.descricao_ncm && (
+                      <p className="text-[10px] text-muted-foreground">
+                        <strong className="text-foreground">Descrição TIPI:</strong> {autoResult.descricao_ncm}
+                      </p>
+                    )}
+
+                    {/* Sugestões de NCM */}
+                    {autoResult.sugestoes_ncm && autoResult.sugestoes_ncm.length > 0 && !autoResult.descricao_ncm && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-medium text-foreground">Sugestões de NCM:</p>
+                        {autoResult.sugestoes_ncm.map((sug, sIdx) => (
+                          <button
+                            key={sIdx}
+                            onClick={() => updateNcm(idx, sug.codigo)}
+                            className="block w-full text-left text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded px-2 py-1 transition-colors"
+                          >
+                            <strong>{sug.codigo}</strong> — {sug.descricao}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Tributos grid */}
+                    {(autoResult.icms || autoResult.ipi || autoResult.pis_cofins) && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        {autoResult.icms && (
+                          <div className="bg-muted/30 rounded p-2">
+                            <p className="text-[9px] font-semibold text-muted-foreground uppercase">ICMS</p>
+                            <p className="text-xs font-bold text-foreground">
+                              {autoResult.icms.isento ? 'Isento' : `${autoResult.icms.aliquota_interna || 0}%`}
+                            </p>
+                            {autoResult.icms.reducao_bc && (
+                              <p className="text-[9px] text-accent">Red. BC: {autoResult.icms.reducao_bc}%</p>
+                            )}
+                          </div>
+                        )}
+                        {autoResult.ipi && (
+                          <div className="bg-muted/30 rounded p-2">
+                            <p className="text-[9px] font-semibold text-muted-foreground uppercase">IPI</p>
+                            <p className="text-xs font-bold text-foreground">{autoResult.ipi.aliquota ?? 0}%</p>
+                          </div>
+                        )}
+                        {autoResult.pis_cofins && (
+                          <div className="bg-muted/30 rounded p-2">
+                            <p className="text-[9px] font-semibold text-muted-foreground uppercase">PIS/COFINS</p>
+                            <p className="text-xs font-bold text-foreground">
+                              {(autoResult.pis_cofins.pis ?? 0)}% / {(autoResult.pis_cofins.cofins ?? 0)}%
+                            </p>
+                          </div>
+                        )}
+                        {autoResult.st?.aplicavel && (
+                          <div className="bg-destructive/10 rounded p-2 border border-destructive/20">
+                            <p className="text-[9px] font-semibold text-destructive uppercase">ST</p>
+                            <p className="text-xs font-bold text-destructive">
+                              MVA: {autoResult.st.mva ?? '—'}%
+                            </p>
+                            {autoResult.cest && (
+                              <p className="text-[9px] text-muted-foreground">CEST: {autoResult.cest}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Benefícios fiscais */}
+                    {autoResult.beneficios_fiscais && autoResult.beneficios_fiscais.length > 0 && (
+                      <div className="flex items-start gap-1.5">
+                        <CheckCircle2 className="w-3 h-3 text-accent mt-0.5 shrink-0" />
+                        <p className="text-[10px] text-muted-foreground">
+                          <strong className="text-foreground">Benefícios:</strong>{' '}
+                          {autoResult.beneficios_fiscais.join('; ')}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Riscos fiscais */}
+                    {autoResult.riscos_fiscais && (
+                      <div className="flex items-start gap-1.5">
+                        <AlertTriangle className="w-3 h-3 text-yellow-500 mt-0.5 shrink-0" />
+                        <p className="text-[10px] text-muted-foreground italic">
+                          {autoResult.riscos_fiscais}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Fundamentação legal */}
+                    {autoResult.analise_ia?.icms_fundamentacao && (
+                      <div className="flex items-start gap-1.5">
+                        <Gavel className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
+                        <p className="text-[10px] text-muted-foreground">
+                          <strong className="text-foreground">Base legal:</strong>{' '}
+                          {autoResult.analise_ia.icms_fundamentacao}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Fontes consultadas */}
+                    {autoResult.fontes && autoResult.fontes.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {autoResult.fontes.map((fonte, fIdx) => (
+                          <Badge key={fIdx} variant="outline" className="text-[8px] gap-1">
+                            {fonte.tipo === 'api_oficial' && <Globe className="w-2.5 h-2.5" />}
+                            {fonte.tipo === 'legislacao_oficial' && <BookOpen className="w-2.5 h-2.5" />}
+                            {fonte.tipo === 'ia_especializada' && <Bot className="w-2.5 h-2.5" />}
+                            {fonte.nome}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Links de referência */}
+                    {autoResult.fontes_referencia && (
+                      <details className="text-[9px]">
+                        <summary className="text-muted-foreground cursor-pointer hover:text-foreground">
+                          Ver fontes de referência ({autoResult.fontes_referencia.length})
+                        </summary>
+                        <div className="mt-1 space-y-0.5 pl-3">
+                          {autoResult.fontes_referencia.map((ref, rIdx) => (
+                            <a
+                              key={rIdx}
+                              href={ref.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-accent hover:underline"
+                            >
+                              <ExternalLink className="w-2.5 h-2.5" />
+                              {ref.nome}
+                            </a>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                )}
+
+                {/* Resultado local (base de dados) - fallback */}
+                {regraLocal && !resultadoIA && !autoResult && (
                   <div className="flex items-center gap-2 flex-wrap">
                     <TratamentoBadge tratamento={regraLocal.tratamento} aliquota={regraLocal.aliquota_efetiva} />
                     <Badge variant="outline" className="text-[9px]">{getCategoriaLabel(regraLocal.categoria)}</Badge>
@@ -443,7 +599,7 @@ Formato: texto estruturado com tópicos numerados.`;
                   </div>
                 )}
 
-                {/* Resultado da IA */}
+                {/* Resultado da IA batch */}
                 {resultadoIA && (
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -451,7 +607,7 @@ Formato: texto estruturado com tópicos numerados.`;
                       <Badge variant="outline" className="text-[9px]">NCM: {resultadoIA.ncm}</Badge>
                       <Badge variant="outline" className="text-[9px]">{resultadoIA.categoria}</Badge>
                       {resultadoIA.st_mva && (
-                        <Badge variant="outline" className="text-[9px] text-orange-600">MVA: {resultadoIA.st_mva}%</Badge>
+                        <Badge variant="outline" className="text-[9px] text-destructive">MVA: {resultadoIA.st_mva}%</Badge>
                       )}
                     </div>
                     <p className="text-[10px] text-muted-foreground">
