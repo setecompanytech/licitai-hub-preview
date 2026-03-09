@@ -414,9 +414,16 @@ export async function exportLegalPDF(
     }
   }
 
-  // ── Assinatura do Representante Legal ──
-  if (metadata?.rep_nome) {
-    ensureSpace(LEGAL_LAYOUT.lineHeight * 8);
+  // ── Assinatura do Representante Legal + Certificado Digital ──
+  // Calculate total space needed for signature + digital cert together
+  const hasSignature = !!(metadata?.empresa || metadata?.rep_nome);
+  const hasDigitalCert = !!metadata?.certificado_nome;
+  const signatureLines = hasSignature ? 8 : 0;
+  const certLines = hasDigitalCert ? 7 : 0;
+  const totalSignatureSpace = (signatureLines + certLines) * LEGAL_LAYOUT.lineHeight;
+
+  if (hasSignature) {
+    ensureSpace(totalSignatureSpace);
     y += LEGAL_LAYOUT.lineHeight * 3;
 
     // Linha de assinatura
@@ -426,52 +433,78 @@ export async function exportLegalPDF(
     doc.line(sigX, y, sigX + 80, y);
     y += LEGAL_LAYOUT.lineHeight;
 
+    // Nome da empresa
     doc.setFont('times', 'bold');
     doc.setFontSize(LEGAL_LAYOUT.bodyFontSize);
     doc.setTextColor(...COLORS.text);
-    doc.text((metadata.empresa || '').toUpperCase(), getPageWidth(doc) / 2, y, { align: 'center' });
-    y += LEGAL_LAYOUT.lineHeight * 0.8;
+    if (metadata?.empresa) {
+      doc.text(metadata.empresa.toUpperCase(), getPageWidth(doc) / 2, y, { align: 'center' });
+      y += LEGAL_LAYOUT.lineHeight * 0.8;
+    }
     doc.setFont('times', 'normal');
     doc.setFontSize(10);
-    if (metadata.cnpj) {
+    if (metadata?.cnpj) {
       doc.text(`CNPJ: ${metadata.cnpj}`, getPageWidth(doc) / 2, y, { align: 'center' });
       y += LEGAL_LAYOUT.lineHeight;
     }
-    doc.text((metadata.rep_nome || '').toUpperCase(), getPageWidth(doc) / 2, y, { align: 'center' });
-    y += LEGAL_LAYOUT.lineHeight * 0.8;
-    if (metadata.rep_cpf) {
+    if (metadata?.rep_nome) {
+      doc.text(metadata.rep_nome.toUpperCase(), getPageWidth(doc) / 2, y, { align: 'center' });
+      y += LEGAL_LAYOUT.lineHeight * 0.8;
+    }
+    if (metadata?.rep_cpf) {
       doc.text(`CPF: ${metadata.rep_cpf}`, getPageWidth(doc) / 2, y, { align: 'center' });
+      y += LEGAL_LAYOUT.lineHeight * 0.8;
+    }
+    if (metadata?.rep_cargo) {
+      doc.text(metadata.rep_cargo, getPageWidth(doc) / 2, y, { align: 'center' });
       y += LEGAL_LAYOUT.lineHeight;
     }
   }
 
-  // ── Digital Signature Block ──
-  if (metadata?.certificado_nome) {
-    ensureSpace(LEGAL_LAYOUT.lineHeight * 6);
-    y += LEGAL_LAYOUT.lineHeight * 2;
+  // ── Digital Signature Block — always rendered when certificate is configured ──
+  if (hasDigitalCert) {
+    if (!hasSignature) ensureSpace(totalSignatureSpace);
+    y += LEGAL_LAYOUT.lineHeight * 1.5;
     
-    const boxX = LEGAL_LAYOUT.marginLeft + 15;
-    const boxW = contentWidth - 30;
-    const boxH = LEGAL_LAYOUT.lineHeight * 4.5;
+    const boxX = LEGAL_LAYOUT.marginLeft + 10;
+    const boxW = contentWidth - 20;
+    const boxH = LEGAL_LAYOUT.lineHeight * 5;
+    
+    // Green border box
     doc.setDrawColor(0, 128, 80);
-    doc.setLineWidth(0.7);
-    doc.roundedRect(boxX, y, boxW, boxH, 2, 2, 'S');
+    doc.setLineWidth(0.8);
+    doc.roundedRect(boxX, y, boxW, boxH, 3, 3, 'S');
     
-    y += LEGAL_LAYOUT.lineHeight * 0.8;
+    // Light green background
+    doc.setFillColor(240, 255, 245);
+    doc.roundedRect(boxX + 0.4, y + 0.4, boxW - 0.8, boxH - 0.8, 2.6, 2.6, 'F');
+    
+    const centerX = getPageWidth(doc) / 2;
+    let certY = y + LEGAL_LAYOUT.lineHeight;
+    
     doc.setFont('times', 'bold');
-    doc.setFontSize(9);
+    doc.setFontSize(10);
     doc.setTextColor(0, 100, 60);
-    doc.text('✓ DOCUMENTO ASSINADO DIGITALMENTE', getPageWidth(doc) / 2, y + 2, { align: 'center' });
-    y += LEGAL_LAYOUT.lineHeight;
+    doc.text('DOCUMENTO ASSINADO DIGITALMENTE', centerX, certY, { align: 'center' });
+    certY += LEGAL_LAYOUT.lineHeight * 0.9;
+    
     doc.setFont('times', 'normal');
     doc.setFontSize(8);
-    doc.setTextColor(60, 60, 60);
-    const certTipo = metadata.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF';
-    doc.text(`Certificado: ${certTipo} — ${metadata.certificado_nome}`, getPageWidth(doc) / 2, y + 2, { align: 'center' });
-    y += LEGAL_LAYOUT.lineHeight * 0.8;
-    doc.text(`Assinante: ${metadata.rep_nome || ''} | CPF: ${metadata.rep_cpf || ''}`, getPageWidth(doc) / 2, y + 2, { align: 'center' });
-    y += LEGAL_LAYOUT.lineHeight * 0.8;
-    doc.text(`Data/Hora: ${new Date().toLocaleString('pt-BR')}`, getPageWidth(doc) / 2, y + 2, { align: 'center' });
+    doc.setTextColor(40, 40, 40);
+    const certTipo = metadata!.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : metadata!.certificado_tipo === 'e-cpf' ? 'e-CPF' : 'Certificado Digital';
+    doc.text(`Tipo: ${certTipo} — ${metadata!.certificado_nome}`, centerX, certY, { align: 'center' });
+    certY += LEGAL_LAYOUT.lineHeight * 0.8;
+    
+    const assinante = metadata?.rep_nome || metadata?.empresa || '';
+    const cpfInfo = metadata?.rep_cpf ? ` | CPF: ${metadata.rep_cpf}` : '';
+    doc.text(`Assinante: ${assinante}${cpfInfo}`, centerX, certY, { align: 'center' });
+    certY += LEGAL_LAYOUT.lineHeight * 0.8;
+    
+    doc.setFontSize(7);
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Data/Hora da Assinatura: ${new Date().toLocaleString('pt-BR')} — Validação via ICP-Brasil`, centerX, certY, { align: 'center' });
+    
+    y += boxH + LEGAL_LAYOUT.lineHeight;
     doc.setTextColor(...COLORS.text);
   }
 
