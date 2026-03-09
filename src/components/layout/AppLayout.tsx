@@ -1,14 +1,17 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppSidebar from './AppSidebar';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
-import { Bell, Menu } from 'lucide-react';
+import { Bell, Menu, Search } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import FloatingChat from '@/components/chat/FloatingChat';
+import GlobalSearch from '@/components/search/GlobalSearch';
+import ThemeToggle from '@/components/theme/ThemeToggle';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const [notifOpen, setNotifOpen] = useState(false);
