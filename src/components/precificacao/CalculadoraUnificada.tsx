@@ -206,7 +206,7 @@ export default function CalculadoraUnificada() {
   const [despesasAdmin, setDespesasAdmin] = useState('');
   const [usarBDI, setUsarBDI] = useState(false);
   const [itens, setItens] = useState<ItemCusto[]>([
-    { descricao: '', quantidade: '1', unidade: 'UN', custoUnitario: '' },
+    { descricao: '', quantidade: '1', unidade: 'UN', custoUnitario: '', ncm: '' },
   ]);
   const [iaResult, setIaResult] = useState('');
   const [loading, setLoading] = useState(false);
