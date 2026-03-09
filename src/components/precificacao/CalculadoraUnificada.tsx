@@ -24,8 +24,15 @@ import { streamAIChat } from '@/lib/ai-stream';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import { toast } from 'sonner';
 import ComposicaoResultado from './ComposicaoResultado';
+import ComposicaoDeterministica from './ComposicaoDeterministica';
 import ServicoMDOCalculadora from './ServicoMDOCalculadora';
 import ServicoEngenhariaCalculadora from './ServicoEngenhariaCalculadora';
+import {
+  calcularComposicao,
+  type ComposicaoResult,
+  type ComposicaoItemInput,
+  type ComposicaoParametros,
+} from '@/lib/composicao-engine';
 import AnaliseRegimeTributario from './AnaliseRegimeTributario';
 import {
   ANEXOS_SIMPLES, getAnexoById,
