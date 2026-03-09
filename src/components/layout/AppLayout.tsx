@@ -20,9 +20,44 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
 
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const initials = user?.user_metadata?.nome_completo
     ? user.user_metadata.nome_completo.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
     : user?.email?.slice(0, 2).toUpperCase() ?? 'LI';
+
+  // Realtime notification count
+  useEffect(() => {
+    if (!user) return;
+    // Initial count
+    supabase
+      .from('notificacoes')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('lida', false)
+      .then(({ count }) => setUnreadCount(count || 0));
+
+    // Subscribe to realtime
+    const channel = supabase
+      .channel('notificacoes-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'notificacoes',
+        filter: `user_id=eq.${user.id}`,
+      }, () => {
+        // Refresh count on any change
+        supabase
+          .from('notificacoes')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('lida', false)
+          .then(({ count }) => setUnreadCount(count || 0));
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-background">
