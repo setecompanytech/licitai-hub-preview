@@ -21,55 +21,6 @@ interface ComposicaoResultadoProps {
   ufNome: string;
 }
 
-type Componente = {
-  componente: string;
-  baseCalculo: number | null;
-  aliquota: number | null;
-  valor: number;
-};
-
-type ItemComposicao = {
-  descricao: string;
-  quantidade: number;
-  unidade: string;
-  componentes: Componente[];
-  custoUnitario: number;
-  precoUnitarioFormado: number;
-  precoTotal: number;
-};
-
-type TributoPorImposto = {
-  imposto: string;
-  aliquota: number;
-  valor: number;
-};
-
-type Resumo = {
-  custoTotalMateriais: number;
-  totalTributos: number;
-  tributosPorImposto: TributoPorImposto[];
-  bdiTotal: number;
-  bdiPercentual: number;
-  freteTotal: number;
-  despesasAdm: number;
-  margemLucro: number;
-  precoTotalFormado: number;
-  precoExtenso: string;
-};
-
-type Parecer = {
-  viabilidade: string;
-  margemLiquida: number;
-  alertaInexequibilidade: boolean;
-  observacoes: string;
-};
-
-type ComposicaoData = {
-  itens: ItemComposicao[];
-  resumo: Resumo;
-  parecer: Parecer;
-};
-
 const fmt = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -77,23 +28,52 @@ const fmtPct = (v: number | null) =>
   v != null ? `${v.toFixed(2).replace('.', ',')}%` : '—';
 
 export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, ufNome }: ComposicaoResultadoProps) {
-  const parsed = useMemo<ComposicaoData | null>(() => {
-    try {
-      // Try to extract JSON from the response (may have ```json wrapper or text around it)
-      let jsonStr = iaResult.trim();
-      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-      if (jsonMatch) jsonStr = jsonMatch[0];
-      const data = JSON.parse(jsonStr);
-      if (data?.itens && data?.resumo && data?.parecer) return data as ComposicaoData;
-      return null;
-    } catch {
-      return null;
-    }
-  }, [iaResult]);
+  const { addItem } = usePropostaCart();
+  const parsed = useMemo<ComposicaoData | null>(() => parseComposicao(iaResult), [iaResult]);
 
   const copyResult = () => {
     navigator.clipboard.writeText(iaResult);
     toast.success('Composição copiada!');
+  };
+
+  const handleExportPDF = () => {
+    if (!parsed) return;
+    exportComposicaoPDF(parsed, regimeLabel, ufCalculo);
+    toast.success('PDF exportado!');
+  };
+
+  const handleExportExcel = () => {
+    if (!parsed) return;
+    exportComposicaoExcel(parsed, regimeLabel, ufCalculo);
+    toast.success('Excel exportado!');
+  };
+
+  const handleExportWord = () => {
+    if (!parsed) return;
+    exportComposicaoWord(parsed, regimeLabel, ufCalculo);
+    toast.success('Word exportado!');
+  };
+
+  const enviarParaProposta = () => {
+    if (!parsed) return;
+    const itens = parsed.itens || [];
+    if (itens.length === 0) { toast.error('Nenhum item na composição.'); return; }
+    itens.forEach((item, idx) => {
+      addItem({
+        item: String(idx + 1),
+        descricao: item.descricao,
+        quantidade: String(item.quantidade),
+        unidade: item.unidade,
+        marca: '',
+        fabricante: '',
+        modelo: '',
+        valorUnitario: item.precoUnitarioFormado.toFixed(2).replace('.', ','),
+        valorUnitarioExtenso: valorPorExtenso(item.precoUnitarioFormado),
+        valorTotal: item.precoTotal.toFixed(2).replace('.', ','),
+        valorTotalExtenso: valorPorExtenso(item.precoTotal),
+      });
+    });
+    toast.success(`${itens.length} item(ns) da composição enviado(s) para a Proposta Comercial!`);
   };
 
   // Fallback: if AI didn't return valid JSON, show markdown
@@ -144,12 +124,29 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
             <Bot className="w-5 h-5 text-accent" />
             <h4 className="font-semibold text-sm">Planilha de Composição de Custo — IA Contábil</h4>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Badge className="bg-accent/10 text-accent text-[10px]">{regimeLabel} • {ufCalculo}</Badge>
             <Button variant="outline" size="sm" onClick={copyResult}>
               <Download className="w-3.5 h-3.5 mr-1" /> Copiar
             </Button>
           </div>
+        </div>
+
+        {/* Export & Sync Buttons */}
+        <div className="flex flex-wrap gap-2 mb-4 p-3 bg-muted/30 rounded-lg border border-border/30">
+          <Button variant="outline" size="sm" onClick={handleExportPDF} className="text-xs">
+            <FileText className="w-3.5 h-3.5 mr-1 text-destructive" /> PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportWord} className="text-xs">
+            <FileText className="w-3.5 h-3.5 mr-1 text-primary" /> Word
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportExcel} className="text-xs">
+            <FileSpreadsheet className="w-3.5 h-3.5 mr-1 text-accent" /> Excel
+          </Button>
+          <div className="flex-1" />
+          <Button size="sm" onClick={enviarParaProposta} className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs">
+            <Send className="w-3.5 h-3.5 mr-1" /> Enviar para Proposta Comercial
+          </Button>
         </div>
 
         {/* Itens Tables */}
