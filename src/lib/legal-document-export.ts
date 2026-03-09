@@ -196,20 +196,24 @@ export async function exportLegalPDF(
   const contentWidth = getContentWidth();
   const blocks = parseMarkdownToBlocks(content);
 
-  // Load timbrado image if available
+  // Load timbrado image if available — supports direct URLs and Supabase storage paths
   let timbradoImg: HTMLImageElement | null = null;
   let timbradoAspect = 1;
-  if (metadata?.timbradoUrl && /\.(png|jpe?g|webp)(\?|$)/i.test(metadata.timbradoUrl)) {
+  const timbradoSrc = metadata?.timbradoUrl || null;
+  if (timbradoSrc) {
     try {
       timbradoImg = await new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = metadata.timbradoUrl!;
+        img.onerror = () => reject(new Error('Timbrado load failed'));
+        img.src = timbradoSrc;
       });
       timbradoAspect = timbradoImg.width / timbradoImg.height;
-    } catch { timbradoImg = null; }
+    } catch {
+      console.warn('Não foi possível carregar o timbrado:', timbradoSrc);
+      timbradoImg = null;
+    }
   }
 
   // Header height accounts for timbrado image space
