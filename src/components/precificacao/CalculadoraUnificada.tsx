@@ -454,10 +454,10 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
           </div>
         )}
         {deteccao && calcTab === deteccao.tipo && usouSugestao && (
-          <div className="mt-3 bg-green-500/10 border border-green-500/30 rounded-lg p-2 flex items-center gap-2">
-            <ShieldCheck className="w-3.5 h-3.5 text-green-600 shrink-0" />
-            <p className="text-[10px] text-green-700 dark:text-green-400">
-              Tipo selecionado automaticamente: <strong>{deteccao.motivo}</strong>
+          <div className="mt-3 bg-accent/10 border border-accent/30 rounded-lg p-2 flex items-center gap-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-accent shrink-0" />
+            <p className="text-[10px] text-muted-foreground">
+              Tipo selecionado automaticamente: <strong className="text-foreground">{deteccao.motivo}</strong>
             </p>
           </div>
         )}
