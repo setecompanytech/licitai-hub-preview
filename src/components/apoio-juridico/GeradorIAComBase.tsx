@@ -546,6 +546,7 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
                   certificado_tipo: activeEmpresa?.certificado_tipo,
                   rep_nome: activeEmpresa?.rep_nome || undefined,
                   rep_cpf: activeEmpresa?.rep_cpf || undefined,
+                  rep_cargo: activeEmpresa?.rep_cargo || undefined,
                 };
                 await exportLegalPDF(resultado, tipoDoc, meta);
                 toast.success('PDF ABNT gerado com sucesso!');
