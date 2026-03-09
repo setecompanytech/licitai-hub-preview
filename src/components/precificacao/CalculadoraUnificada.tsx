@@ -420,7 +420,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
 
         {/* 2 Calculator Tabs */}
         <div className="mt-4">
-          <Tabs value={calcTab} onValueChange={(v) => setCalcTab(v as any)}>
+          <Tabs value={calcTab} onValueChange={(v) => { setCalcTab(v as any); setUsouSugestao(false); }}>
             <TabsList className="w-full grid grid-cols-3">
               <TabsTrigger value="produto_bdi" className="gap-1.5 text-xs">
                 <Package className="w-3.5 h-3.5" /> Produtos / BDI
@@ -435,6 +435,34 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
           </Tabs>
         </div>
 
+        {/* ── Auto-detection recommendation banner ── */}
+        {deteccao && calcTab !== deteccao.tipo && (
+          <div className="mt-3 bg-accent/10 border border-accent/30 rounded-lg p-3 flex items-start gap-2">
+            <Lightbulb className="w-4 h-4 text-accent mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-xs text-foreground font-medium">Sugestão automática com base no CNAE da empresa</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{deteccao.motivo}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 text-[10px] h-7 gap-1 border-accent/30 text-accent hover:bg-accent/10"
+              onClick={() => { setCalcTab(deteccao.tipo); setUsouSugestao(true); }}
+            >
+              Aplicar <ArrowRight className="w-3 h-3" />
+            </Button>
+          </div>
+        )}
+        {deteccao && calcTab === deteccao.tipo && usouSugestao && (
+          <div className="mt-3 bg-green-500/10 border border-green-500/30 rounded-lg p-2 flex items-center gap-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-green-600 shrink-0" />
+            <p className="text-[10px] text-green-700 dark:text-green-400">
+              Tipo selecionado automaticamente: <strong>{deteccao.motivo}</strong>
+            </p>
+          </div>
+        )}
+
+        {/* ── Regime filter badges ── */}
         <div className="flex flex-wrap gap-2 mt-3">
           <Badge className="bg-accent/10 text-accent border-accent/20">
             <Building2 className="w-3 h-3 mr-1" /> {regimeLabel}
@@ -442,6 +470,11 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
           <Badge className="bg-primary/10 text-primary border-primary/20">
             <MapPin className="w-3 h-3 mr-1" /> {ufCalculo} — ICMS {icmsUF}%
           </Badge>
+          {cnae && (
+            <Badge className="bg-secondary/50 text-secondary-foreground border-border/30">
+              CNAE: {cnae}
+            </Badge>
+          )}
           {regime === 'simples_nacional' && (
             <Badge className="bg-secondary/50 text-secondary-foreground border-border/30">
               <BookOpen className="w-3 h-3 mr-1" /> {anexoAtual.nome}
