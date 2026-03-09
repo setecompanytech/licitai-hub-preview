@@ -538,6 +538,9 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
               </Button>
               <Button size="sm" variant="outline" onClick={async () => {
                 const meta = {
+                  empresa: activeEmpresa?.razao_social,
+                  cnpj: activeEmpresa?.cnpj,
+                  edital: editalNum || undefined,
                   timbradoUrl: activeEmpresa?.timbrado_url,
                   certificado_nome: activeEmpresa?.certificado_nome,
                   certificado_tipo: activeEmpresa?.certificado_tipo,
@@ -545,11 +548,15 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
                   rep_cpf: activeEmpresa?.rep_cpf || undefined,
                 };
                 await exportLegalPDF(resultado, tipoDoc, meta);
+                toast.success('PDF ABNT gerado com sucesso!');
               }}>
-                <Download className="w-3 h-3 mr-1" /> PDF
+                <Download className="w-3 h-3 mr-1" /> PDF (ABNT)
               </Button>
               <Button size="sm" variant="outline" onClick={() => {
                 const meta = {
+                  empresa: activeEmpresa?.razao_social,
+                  cnpj: activeEmpresa?.cnpj,
+                  edital: editalNum || undefined,
                   timbradoUrl: activeEmpresa?.timbrado_url,
                   certificado_nome: activeEmpresa?.certificado_nome,
                   certificado_tipo: activeEmpresa?.certificado_tipo,
@@ -557,8 +564,9 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
                   rep_cpf: activeEmpresa?.rep_cpf || undefined,
                 };
                 exportLegalWord(resultado, tipoDoc, meta);
+                toast.success('Word ABNT gerado com sucesso!');
               }}>
-                <Download className="w-3 h-3 mr-1" /> Word
+                <Download className="w-3 h-3 mr-1" /> Word (ABNT)
               </Button>
             </div>
           </div>
