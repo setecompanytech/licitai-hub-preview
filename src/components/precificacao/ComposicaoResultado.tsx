@@ -4,9 +4,15 @@ import { Button } from '@/components/ui/button';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter,
 } from '@/components/ui/table';
-import { Bot, Download, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { Bot, Download, AlertTriangle, CheckCircle, XCircle, FileText, FileSpreadsheet, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import { usePropostaCart } from '@/contexts/PropostaCartContext';
+import { valorPorExtenso } from '@/lib/numero-extenso';
+import {
+  parseComposicao, exportComposicaoPDF, exportComposicaoExcel, exportComposicaoWord,
+  type ComposicaoData,
+} from '@/lib/composicao-export';
 
 interface ComposicaoResultadoProps {
   iaResult: string;
