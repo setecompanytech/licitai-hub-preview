@@ -724,11 +724,15 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
             </div>
             {itens.map((item, idx) => (
               <div key={idx} className="grid grid-cols-12 gap-2 items-end">
-                <div className="col-span-5">
+                <div className="col-span-4">
                   <Label className="text-[10px]">Descrição *</Label>
                   <Input value={item.descricao} onChange={e => updateItem(idx, 'descricao', e.target.value)} placeholder="Ex: Notebook Dell Inspiron 15" className="mt-0.5" />
                 </div>
                 <div className="col-span-2">
+                  <Label className="text-[10px]">NCM</Label>
+                  <Input value={item.ncm} onChange={e => updateItem(idx, 'ncm', e.target.value)} placeholder="0000.00.00" className="mt-0.5" />
+                </div>
+                <div className="col-span-1">
                   <Label className="text-[10px]">Qtd</Label>
                   <Input value={item.quantidade} onChange={e => updateItem(idx, 'quantidade', e.target.value)} placeholder="1" className="mt-0.5" />
                 </div>
