@@ -59,26 +59,16 @@ function getContentWidth() {
 
 function drawPageNumber(doc: jsPDF, pageNum: number, startFrom: number = 2) {
   // ABNT NBR 14724: paginação no canto superior direito, fonte 10pt
-  // Primeira página é contada mas não numerada
   if (pageNum < startFrom) return;
   const pw = getPageWidth(doc);
   doc.setFont('times', 'normal');
-  doc.setFontSize(LEGAL_LAYOUT.footnoteSize); // 10pt conforme ABNT
+  doc.setFontSize(LEGAL_LAYOUT.footnoteSize);
   doc.setTextColor(...COLORS.text);
-  // Posição: canto superior direito, dentro da margem superior (a 15mm do topo)
   doc.text(String(pageNum), pw - LEGAL_LAYOUT.marginRight, 15, { align: 'right' });
-}
-
-function ensureSpace(doc: jsPDF, y: number, needed: number): number {
-  const maxY = getPageHeight(doc) - LEGAL_LAYOUT.marginBottom;
-  if (y + needed <= maxY) return y;
-  doc.addPage();
-  return LEGAL_LAYOUT.marginTop;
 }
 
 /**
  * Justify a single line of text by distributing extra space between words.
- * Last line of a paragraph is left-aligned (standard typographic rule).
  */
 function drawJustifiedLine(doc: jsPDF, text: string, x: number, y: number, maxWidth: number, isLastLine: boolean) {
   if (isLastLine || !text.trim()) {
@@ -94,7 +84,6 @@ function drawJustifiedLine(doc: jsPDF, text: string, x: number, y: number, maxWi
   const totalSpace = maxWidth - totalTextWidth;
   const spacePerGap = totalSpace / (words.length - 1);
 
-  // Avoid absurd spacing (fallback to normal if text is too short)
   if (spacePerGap > 8) {
     doc.text(text, x, y);
     return;
@@ -122,9 +111,9 @@ function stripMarkdown(text: string): string {
     .replace(/\*(.+?)\*/g, '$1')
     .replace(/__(.+?)__/g, '$1')
     .replace(/_(.+?)_/g, '$1')
-    .replace(/\*{2,}/g, '')  // leftover ** markers
+    .replace(/\*{2,}/g, '')
     .replace(/`(.+?)`/g, '$1')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'); // links
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
 }
 
 function parseMarkdownToBlocks(markdown: string): TextBlock[] {
@@ -146,7 +135,6 @@ function parseMarkdownToBlocks(markdown: string): TextBlock[] {
       continue;
     }
 
-    // Detect citation blocks (lines starting with > or indented quotes)
     if (trimmed.startsWith('>')) {
       inCitation = true;
       citationBuffer += (citationBuffer ? ' ' : '') + trimmed.replace(/^>\s*/, '');
@@ -159,7 +147,6 @@ function parseMarkdownToBlocks(markdown: string): TextBlock[] {
       inCitation = false;
     }
 
-    // Headers
     if (trimmed.startsWith('# ')) {
       blocks.push({ type: 'title', content: stripMarkdown(trimmed.replace(/^#\s+/, '')), level: 1 });
     } else if (trimmed.startsWith('## ')) {
@@ -168,21 +155,13 @@ function parseMarkdownToBlocks(markdown: string): TextBlock[] {
       blocks.push({ type: 'subtitle', content: stripMarkdown(trimmed.replace(/^###\s+/, '')), level: 3 });
     } else if (trimmed.startsWith('#### ')) {
       blocks.push({ type: 'subtitle', content: stripMarkdown(trimmed.replace(/^####\s+/, '')), level: 4 });
-    }
-    // Horizontal rules / separators
-    else if (/^[-_*]{3,}$/.test(trimmed)) {
+    } else if (/^[-_*]{3,}$/.test(trimmed)) {
       blocks.push({ type: 'separator', content: '' });
-    }
-    // List items
-    else if (/^[-•*]\s/.test(trimmed) || /^\d+[.)]\s/.test(trimmed)) {
+    } else if (/^[-•*]\s/.test(trimmed) || /^\d+[.)]\s/.test(trimmed)) {
       blocks.push({ type: 'list-item', content: stripMarkdown(trimmed.replace(/^[-•*]\s/, '').replace(/^\d+[.)]\s/, '')) });
-    }
-    // Signature block detection
-    else if (trimmed.startsWith('___') || trimmed.startsWith('---') && lines[i + 1]?.trim()) {
+    } else if (trimmed.startsWith('___') || trimmed.startsWith('---') && lines[i + 1]?.trim()) {
       // Skip, handled by separator
-    }
-    // Regular paragraph
-    else {
+    } else {
       blocks.push({ type: 'paragraph', content: stripMarkdown(trimmed) });
     }
   }
@@ -233,7 +212,10 @@ export async function exportLegalPDF(
     } catch { timbradoImg = null; }
   }
 
+  // Header height accounts for timbrado image space
   const headerH = timbradoImg ? 22 : 0;
+  // Effective top margin: base margin + timbrado space
+  const effectiveTopMargin = LEGAL_LAYOUT.marginTop + headerH;
 
   const drawTimbrado = () => {
     if (!timbradoImg) return;
@@ -244,10 +226,48 @@ export async function exportLegalPDF(
     doc.addImage(timbradoImg, 'PNG', LEGAL_LAYOUT.marginLeft, 8, finalW, finalH);
   };
 
+  const drawFooter = (pageNum: number, totalPages: number) => {
+    const ph = getPageHeight(doc);
+    const footerLineY = ph - LEGAL_LAYOUT.marginBottom + 2;
+    const footerTextY = footerLineY + 4;
+
+    if (footerTextY < ph - 2) {
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.2);
+      doc.line(LEGAL_LAYOUT.marginLeft, footerLineY, getPageWidth(doc) - LEGAL_LAYOUT.marginRight, footerLineY);
+
+      doc.setFont('times', 'italic');
+      doc.setFontSize(8);
+      doc.setTextColor(...COLORS.muted);
+
+      const footerParts: string[] = [];
+      if (metadata?.empresa) footerParts.push(metadata.empresa);
+      if (metadata?.cnpj) footerParts.push(`CNPJ: ${metadata.cnpj}`);
+      footerParts.push(`Página ${pageNum} de ${totalPages}`);
+
+      doc.text(
+        footerParts.join(' — '),
+        getPageWidth(doc) / 2,
+        footerTextY,
+        { align: 'center' }
+      );
+    }
+  };
+
+  // Draw timbrado on first page
   drawTimbrado();
 
-  let y = LEGAL_LAYOUT.marginTop + headerH;
+  let y = effectiveTopMargin;
   let listCounter = 0;
+
+  // ensureSpace now correctly accounts for timbrado on new pages
+  const ensureSpace = (needed: number): void => {
+    const maxY = getPageHeight(doc) - LEGAL_LAYOUT.marginBottom;
+    if (y + needed <= maxY) return;
+    doc.addPage();
+    drawTimbrado();
+    y = effectiveTopMargin;
+  };
 
   // ── Document Header ──
   doc.setFont('times', 'bold');
@@ -290,15 +310,14 @@ export async function exportLegalPDF(
   for (const block of blocks) {
     switch (block.type) {
       case 'title': {
-        y = ensureSpace(doc, y, 16);
+        ensureSpace(16);
         y += LEGAL_LAYOUT.sectionSpacing;
         doc.setFont('times', 'bold');
         doc.setFontSize(block.level === 1 ? LEGAL_LAYOUT.headerFontSize : LEGAL_LAYOUT.subHeaderFontSize);
         doc.setTextColor(...COLORS.text);
         const tLines = doc.splitTextToSize(block.content.toUpperCase(), contentWidth);
         for (const l of tLines) {
-          y = ensureSpace(doc, y, LEGAL_LAYOUT.lineHeight);
-          // Títulos alinhados à esquerda (margem esquerda)
+          ensureSpace(LEGAL_LAYOUT.lineHeight);
           doc.text(l, LEGAL_LAYOUT.marginLeft, y);
           y += LEGAL_LAYOUT.lineHeight;
         }
@@ -308,14 +327,14 @@ export async function exportLegalPDF(
       }
 
       case 'subtitle': {
-        y = ensureSpace(doc, y, 14);
+        ensureSpace(14);
         y += 6;
         doc.setFont('times', 'bold');
         doc.setFontSize(LEGAL_LAYOUT.bodyFontSize);
         doc.setTextColor(...COLORS.text);
         const sLines = doc.splitTextToSize(block.content, contentWidth);
         for (const l of sLines) {
-          y = ensureSpace(doc, y, LEGAL_LAYOUT.lineHeight);
+          ensureSpace(LEGAL_LAYOUT.lineHeight);
           doc.text(l, LEGAL_LAYOUT.marginLeft, y);
           y += LEGAL_LAYOUT.lineHeight;
         }
@@ -325,22 +344,19 @@ export async function exportLegalPDF(
       }
 
       case 'paragraph': {
-        y = ensureSpace(doc, y, LEGAL_LAYOUT.lineHeight * 2);
+        ensureSpace(LEGAL_LAYOUT.lineHeight * 2);
         doc.setFont('times', 'normal');
         doc.setFontSize(LEGAL_LAYOUT.bodyFontSize);
         doc.setTextColor(...COLORS.text);
-        // ABNT: recuo 1,25cm na primeira linha; largura disponível reduzida
         const pWidthFirst = contentWidth - LEGAL_LAYOUT.paragraphIndent;
         const pWidthRest = contentWidth;
-        // Split using the narrower width to ensure no overflow on first line
         const pLines = doc.splitTextToSize(block.content, pWidthFirst);
         for (let li = 0; li < pLines.length; li++) {
-          y = ensureSpace(doc, y, LEGAL_LAYOUT.lineHeight);
+          ensureSpace(LEGAL_LAYOUT.lineHeight);
           const isFirstLine = li === 0;
           const isLastLine = li === pLines.length - 1;
           const xPos = isFirstLine ? LEGAL_LAYOUT.marginLeft + LEGAL_LAYOUT.paragraphIndent : LEGAL_LAYOUT.marginLeft;
           const lineWidth = isFirstLine ? pWidthFirst : pWidthRest;
-          // ABNT: texto justificado
           drawJustifiedLine(doc, pLines[li], xPos, y, lineWidth, isLastLine);
           y += LEGAL_LAYOUT.lineHeight;
         }
@@ -349,8 +365,7 @@ export async function exportLegalPDF(
       }
 
       case 'citation': {
-        // ABNT NBR 10520: citação longa (>3 linhas) = recuo 4cm, fonte menor, espaçamento simples
-        y = ensureSpace(doc, y, LEGAL_LAYOUT.citationLineHeight * 3);
+        ensureSpace(LEGAL_LAYOUT.citationLineHeight * 3);
         y += 3;
         doc.setFont('times', 'italic');
         doc.setFontSize(LEGAL_LAYOUT.citationFontSize);
@@ -358,7 +373,7 @@ export async function exportLegalPDF(
         const citWidth = getPageWidth(doc) - LEGAL_LAYOUT.marginRight - LEGAL_LAYOUT.citationIndent;
         const cLines = doc.splitTextToSize(block.content, citWidth);
         for (let ci = 0; ci < cLines.length; ci++) {
-          y = ensureSpace(doc, y, LEGAL_LAYOUT.citationLineHeight);
+          ensureSpace(LEGAL_LAYOUT.citationLineHeight);
           const isLastCit = ci === cLines.length - 1;
           drawJustifiedLine(doc, cLines[ci], LEGAL_LAYOUT.citationIndent, y, citWidth, isLastCit);
           y += LEGAL_LAYOUT.citationLineHeight;
@@ -369,7 +384,7 @@ export async function exportLegalPDF(
 
       case 'list-item': {
         listCounter++;
-        y = ensureSpace(doc, y, LEGAL_LAYOUT.lineHeight * 2);
+        ensureSpace(LEGAL_LAYOUT.lineHeight * 2);
         doc.setFont('times', 'normal');
         doc.setFontSize(LEGAL_LAYOUT.bodyFontSize);
         doc.setTextColor(...COLORS.text);
@@ -378,7 +393,7 @@ export async function exportLegalPDF(
         const itemWidth = contentWidth - LEGAL_LAYOUT.paragraphIndent;
         const iLines = doc.splitTextToSize(itemText, itemWidth);
         for (let il = 0; il < iLines.length; il++) {
-          y = ensureSpace(doc, y, LEGAL_LAYOUT.lineHeight);
+          ensureSpace(LEGAL_LAYOUT.lineHeight);
           const isLastItem = il === iLines.length - 1;
           drawJustifiedLine(doc, iLines[il], LEGAL_LAYOUT.marginLeft + LEGAL_LAYOUT.paragraphIndent, y, itemWidth, isLastItem);
           y += LEGAL_LAYOUT.lineHeight;
@@ -388,24 +403,54 @@ export async function exportLegalPDF(
       }
 
       case 'separator': {
-        // ABNT: separadores são apenas espaçamento vertical, sem linhas decorativas
-        y = ensureSpace(doc, y, 8);
+        ensureSpace(8);
         y += 6;
         break;
       }
     }
   }
 
+  // ── Assinatura do Representante Legal ──
+  if (metadata?.rep_nome) {
+    ensureSpace(LEGAL_LAYOUT.lineHeight * 8);
+    y += LEGAL_LAYOUT.lineHeight * 3;
+
+    // Linha de assinatura
+    const sigX = getPageWidth(doc) / 2 - 40;
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.3);
+    doc.line(sigX, y, sigX + 80, y);
+    y += LEGAL_LAYOUT.lineHeight;
+
+    doc.setFont('times', 'bold');
+    doc.setFontSize(LEGAL_LAYOUT.bodyFontSize);
+    doc.setTextColor(...COLORS.text);
+    doc.text((metadata.empresa || '').toUpperCase(), getPageWidth(doc) / 2, y, { align: 'center' });
+    y += LEGAL_LAYOUT.lineHeight * 0.8;
+    doc.setFont('times', 'normal');
+    doc.setFontSize(10);
+    if (metadata.cnpj) {
+      doc.text(`CNPJ: ${metadata.cnpj}`, getPageWidth(doc) / 2, y, { align: 'center' });
+      y += LEGAL_LAYOUT.lineHeight;
+    }
+    doc.text((metadata.rep_nome || '').toUpperCase(), getPageWidth(doc) / 2, y, { align: 'center' });
+    y += LEGAL_LAYOUT.lineHeight * 0.8;
+    if (metadata.rep_cpf) {
+      doc.text(`CPF: ${metadata.rep_cpf}`, getPageWidth(doc) / 2, y, { align: 'center' });
+      y += LEGAL_LAYOUT.lineHeight;
+    }
+  }
+
   // ── Digital Signature Block ──
   if (metadata?.certificado_nome) {
-    y = ensureSpace(doc, y, LEGAL_LAYOUT.lineHeight * 6);
+    ensureSpace(LEGAL_LAYOUT.lineHeight * 6);
     y += LEGAL_LAYOUT.lineHeight * 2;
     
     const boxX = LEGAL_LAYOUT.marginLeft + 15;
     const boxW = contentWidth - 30;
-    const boxH = LEGAL_LAYOUT.lineHeight * 4;
+    const boxH = LEGAL_LAYOUT.lineHeight * 4.5;
     doc.setDrawColor(0, 128, 80);
-    doc.setLineWidth(0.5);
+    doc.setLineWidth(0.7);
     doc.roundedRect(boxX, y, boxW, boxH, 2, 2, 'S');
     
     y += LEGAL_LAYOUT.lineHeight * 0.8;
@@ -426,32 +471,13 @@ export async function exportLegalPDF(
     doc.setTextColor(...COLORS.text);
   }
 
-  // ── Header (paginação), Timbrado e Rodapé em cada página ──
+  // ── Timbrado, paginação e rodapé em TODAS as páginas ──
   const totalPages = doc.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p);
     if (p > 1) drawTimbrado();
     drawPageNumber(doc, p, 2);
-    
-    const ph = getPageHeight(doc);
-    const footerLineY = ph - LEGAL_LAYOUT.marginBottom + 2;
-    const footerTextY = footerLineY + 4;
-
-    if (footerTextY < ph - 2) {
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.2);
-      doc.line(LEGAL_LAYOUT.marginLeft, footerLineY, getPageWidth(doc) - LEGAL_LAYOUT.marginRight, footerLineY);
-      
-      doc.setFont('times', 'italic');
-      doc.setFontSize(8);
-      doc.setTextColor(...COLORS.muted);
-      doc.text(
-        `Documento gerado pela plataforma LicitaIA — ${new Date().toLocaleDateString('pt-BR')} — Página ${p} de ${totalPages}`,
-        getPageWidth(doc) / 2,
-        footerTextY,
-        { align: 'center' }
-      );
-    }
+    drawFooter(p, totalPages);
   }
 
   const safeName = title.replace(/[^a-zA-Z0-9À-ÿ\s-]/g, '').replace(/\s+/g, '-').slice(0, 60);
@@ -460,8 +486,6 @@ export async function exportLegalPDF(
 
 /**
  * Export legal document as Word-compatible HTML (.doc).
- * Uses HTML/CSS within a .doc container that Word opens natively,
- * preserving ABNT formatting.
  */
 export function exportLegalWord(
   content: string,
@@ -506,13 +530,11 @@ export function exportLegalWord(
     mso-footer-margin: 1cm;
     mso-page-numbers: true;
   }
-  /* Cabeçalho: número da página no canto superior direito */
   @page Section1 {
     mso-header: h1;
     mso-footer: f1;
   }
   div.Section1 { page: Section1; }
-  /* Header style - página no canto superior direito (ABNT) */
   div.header {
     text-align: right;
     font-family: 'Times New Roman', Times, serif;
@@ -522,7 +544,6 @@ export function exportLegalWord(
     mso-element: header;
     margin-bottom: 0;
   }
-  /* Footer style */
   div.footer-section {
     text-align: center;
     font-family: 'Times New Roman', Times, serif;
@@ -625,19 +646,40 @@ export function exportLegalWord(
     border-top: 1px solid #ddd;
     padding-top: 6pt;
   }
+  .signature-block {
+    text-align: center;
+    margin-top: 36pt;
+  }
+  .signature-block p {
+    text-indent: 0;
+    text-align: center;
+    margin: 0 0 2pt 0;
+  }
+  .digital-sig-box {
+    margin-top: 24pt;
+    border: 2px solid #008050;
+    border-radius: 6pt;
+    padding: 12pt;
+    text-align: center;
+  }
+  .digital-sig-box p {
+    text-indent: 0;
+    text-align: center;
+    margin: 0 0 2pt 0;
+  }
 </style>
 </head>
 <body>
-<!-- Word Header: página no canto superior direito -->
+<!-- Word Header -->
 <div style="mso-element:header" id="h1">
   <p style="text-align:right;font-size:10pt;font-family:'Times New Roman';margin:0;border:none;">
     <span style="mso-field-code:'PAGE'"><!--[if supportFields]><span style="mso-element:field-begin"></span> PAGE <span style="mso-element:field-end"></span><![endif]--></span>
   </p>
 </div>
-<!-- Word Footer: texto institucional centralizado -->
+<!-- Word Footer with empresa info -->
 <div style="mso-element:footer" id="f1">
   <p style="text-align:center;font-size:8pt;font-family:'Times New Roman';font-style:italic;color:#999;border-top:0.5pt solid #ddd;padding-top:4pt;margin:0;">
-    Documento gerado pela plataforma LicitaIA — ${new Date().toLocaleDateString('pt-BR')} — Página <span style="mso-field-code:'PAGE'"><!--[if supportFields]><span style="mso-element:field-begin"></span> PAGE <span style="mso-element:field-end"></span><![endif]--></span> de <span style="mso-field-code:'NUMPAGES'"><!--[if supportFields]><span style="mso-element:field-begin"></span> NUMPAGES <span style="mso-element:field-end"></span><![endif]--></span>
+    ${metadata?.empresa ? `${escapeHtml(metadata.empresa)}${metadata?.cnpj ? ` — CNPJ: ${escapeHtml(metadata.cnpj)}` : ''} — ` : ''}Página <span style="mso-field-code:'PAGE'"><!--[if supportFields]><span style="mso-element:field-begin"></span> PAGE <span style="mso-element:field-end"></span><![endif]--></span> de <span style="mso-field-code:'NUMPAGES'"><!--[if supportFields]><span style="mso-element:field-begin"></span> NUMPAGES <span style="mso-element:field-end"></span><![endif]--></span>
   </p>
 </div>
 <div class="Section1">
@@ -705,23 +747,40 @@ export function exportLegalWord(
 
   if (inList) html += `</ol>\n`;
 
-  // Digital signature block
-  if (metadata?.certificado_nome) {
-    const certTipo = metadata.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF';
+  // ── Bloco de assinatura do representante ──
+  if (metadata?.rep_nome) {
     html += `
-      <div style="margin-top:24pt;border:2px solid #008050;border-radius:6pt;padding:12pt;text-align:center">
-        <p class="no-indent" style="font-weight:bold;color:#006440;font-size:10pt;margin:0 0 4pt 0">&#10003; DOCUMENTO ASSINADO DIGITALMENTE</p>
-        <p class="no-indent" style="font-size:9pt;color:#444;margin:0 0 2pt 0">Certificado: ${certTipo} &mdash; ${escapeHtml(metadata.certificado_nome)}</p>
-        <p class="no-indent" style="font-size:9pt;color:#444;margin:0 0 2pt 0">Assinante: ${escapeHtml(metadata.rep_nome || '')} | CPF: ${escapeHtml(metadata.rep_cpf || '')}</p>
-        <p class="no-indent" style="font-size:9pt;color:#444;margin:0">Data/Hora: ${new Date().toLocaleString('pt-BR')}</p>
+      <div class="signature-block">
+        <div style="width:200pt;border-bottom:2px solid #333;margin:0 auto 6pt auto"></div>
+        <p style="font-weight:bold;font-size:12pt">${escapeHtml((metadata.empresa || '').toUpperCase())}</p>
+        ${metadata.cnpj ? `<p style="font-size:10pt">CNPJ: ${escapeHtml(metadata.cnpj)}</p>` : ''}
+        <p>${escapeHtml((metadata.rep_nome || '').toUpperCase())}</p>
+        ${metadata.rep_cpf ? `<p style="font-size:10pt">CPF: ${escapeHtml(metadata.rep_cpf)}</p>` : ''}
       </div>\n`;
   }
 
-  // Close Section1 div (header/footer handled by Word mso-element directives)
-  html += `<div class="doc-footer">Documento gerado pela plataforma LicitaIA &mdash; ${new Date().toLocaleDateString('pt-BR')}</div>\n`;
+  // ── Digital signature block ──
+  if (metadata?.certificado_nome) {
+    const certTipo = metadata.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF';
+    html += `
+      <div class="digital-sig-box">
+        <p style="font-weight:bold;color:#006440;font-size:10pt">&#10003; DOCUMENTO ASSINADO DIGITALMENTE</p>
+        <p style="font-size:9pt;color:#444">Certificado: ${certTipo} &mdash; ${escapeHtml(metadata.certificado_nome)}</p>
+        <p style="font-size:9pt;color:#444">Assinante: ${escapeHtml(metadata.rep_nome || '')} | CPF: ${escapeHtml(metadata.rep_cpf || '')}</p>
+        <p style="font-size:9pt;color:#444">Data/Hora: ${new Date().toLocaleString('pt-BR')}</p>
+      </div>\n`;
+  }
+
+  // Footer and close
+  const footerParts: string[] = [];
+  if (metadata?.empresa) footerParts.push(metadata.empresa);
+  if (metadata?.cnpj) footerParts.push(`CNPJ: ${metadata.cnpj}`);
+  footerParts.push(new Date().toLocaleDateString('pt-BR'));
+  
+  html += `<div class="doc-footer">${escapeHtml(footerParts.join(' — '))}</div>\n`;
   html += `</div><!-- /Section1 -->\n</body></html>`;
 
-  // Download as .doc (Word opens HTML natively)
+  // Download as .doc
   const blob = new Blob(['\ufeff' + html], { type: 'application/msword;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
