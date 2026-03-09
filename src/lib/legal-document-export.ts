@@ -190,6 +190,7 @@ export async function exportLegalPDF(
     certificado_tipo?: string | null;
     rep_nome?: string;
     rep_cpf?: string;
+    rep_cargo?: string;
   }
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
