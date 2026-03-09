@@ -168,7 +168,7 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {item.componentes.map((comp, ci) => (
+                  {(item.componentes || []).map((comp, ci) => (
                     <TableRow key={ci} className="hover:bg-muted/30">
                       <TableCell className="text-[11px] py-2 font-medium">{comp.componente}</TableCell>
                       <TableCell className="text-[11px] py-2 text-right font-mono">
