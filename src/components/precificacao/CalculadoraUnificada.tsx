@@ -784,6 +784,15 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
             </div>
           </div>
 
+          {/* ── Análise de Regime Tributário ── */}
+          <AnaliseRegimeTributario
+            ufCalculo={ufCalculo}
+            ufNome={ufInfo?.nome || ''}
+            regime={regime}
+            regimeLabel={regimeLabel}
+            itens={itens.map(i => ({ descricao: i.descricao, ncm: i.ncm }))}
+          />
+
           {usarBDI ? (
             <Button onClick={gerarComposicaoBDI} disabled={loading} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12" size="lg">
               {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Sparkles className="w-5 h-5 mr-2" />}
