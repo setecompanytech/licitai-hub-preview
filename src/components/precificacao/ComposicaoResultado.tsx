@@ -239,7 +239,7 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
                   <TableCell className="text-[11px] py-2 text-right font-mono text-destructive font-semibold">{fmt(resumo.totalTributos)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="text-[11px] py-2">BDI ({resumo.bdiPercentual.toFixed(2).replace('.', ',')}%)</TableCell>
+                  <TableCell className="text-[11px] py-2">BDI ({(resumo.bdiPercentual ?? 0).toFixed(2).replace('.', ',')}%)</TableCell>
                   <TableCell className="text-[11px] py-2 text-right font-mono">{fmt(resumo.bdiTotal)}</TableCell>
                 </TableRow>
                 <TableRow>
