@@ -270,24 +270,44 @@ export default function CalculadoraUnificada() {
 
   const tributosAtivos = getTributosComAliquotas();
 
-  // ── Calcular tributos ──
+  // ── Calcular tributos + lucro ──
   const calcular = () => {
     const receita = parseCurrencyInput(receitaBruta);
     if (!receita || receita <= 0) {
       toast.error('Informe a receita bruta mensal.');
       return;
     }
+
+    const margemPct = parseFloat(margemLucro) || 15;
+    const margem = margemPct / 100;
+    const fretePerc = parseFloat(frete) || 0;
+    const despAdmPerc = parseFloat(despesasAdmin) || 0;
+
+    // Custos operacionais
+    const custoFrete = receita * (fretePerc / 100);
+    const custoDespAdm = receita * (despAdmPerc / 100);
+    const totalCustosOp = custoFrete + custoDespAdm;
+
     if (regime === 'simples_nacional') {
       const faturamento12 = parseCurrencyInput(rbt12) || receita * 12;
       const simples = calcularSimplesNacional(faturamento12, anexoAtual);
+      const totalTributos = simples.valorDAS;
+      const lucroBruto = receita - totalTributos;
+      const lucroLiquido = lucroBruto - totalCustosOp;
+      const margemLiquidaPct = receita > 0 ? (lucroLiquido / receita) * 100 : 0;
+      const pontoEquilibrio = margemLiquidaPct > 0 ? totalTributos / (margemLiquidaPct / 100) : 0;
+
       setResultado({
         regime: 'simples_nacional', receita, rbt12: faturamento12,
         aliquotaEfetiva: simples.aliquotaEfetiva, valorDAS: simples.valorDAS, faixa: simples.faixa,
         tributos: [{ nome: 'DAS (Unificado)', valor: simples.valorDAS, aliquota: simples.aliquotaEfetiva }],
-        totalTributos: simples.valorDAS, anexo: anexoAtual.nome,
+        totalTributos, anexo: anexoAtual.nome,
+        // Profit fields
+        lucroBruto, lucroLiquido, margemLiquidaPct,
+        custoFrete, custoDespAdm, totalCustosOp,
+        margemLucroPct: margemPct, pontoEquilibrio,
       });
     } else {
-      const margem = parseFloat(margemLucro) / 100 || 0.15;
       const lucro = receita * margem;
       const basePresuncaoIRPJ = atividade === 'servicos' ? 0.32 : 0.08;
       const basePresuncaoCSLL = atividade === 'servicos' ? 0.32 : 0.12;
@@ -311,9 +331,19 @@ export default function CalculadoraUnificada() {
       });
       const filtrados = tributos.filter(t => t.valor > 0);
       const totalTributos = filtrados.reduce((s, t) => s + t.valor, 0);
+      const lucroBruto = receita - totalTributos;
+      const lucroLiquido = lucroBruto - totalCustosOp;
+      const margemLiquidaPct = receita > 0 ? (lucroLiquido / receita) * 100 : 0;
+      const cargaEfetiva = (totalTributos / receita) * 100;
+      const pontoEquilibrio = margemLiquidaPct > 0 ? (totalTributos + totalCustosOp) / (margemLiquidaPct / 100) : 0;
+
       setResultado({
-        regime, receita, lucro: receita * margem, margem: margem * 100,
-        tributos: filtrados, totalTributos, cargaEfetiva: (totalTributos / receita) * 100,
+        regime, receita, lucro, margem: margem * 100,
+        tributos: filtrados, totalTributos, cargaEfetiva,
+        // Profit fields
+        lucroBruto, lucroLiquido, margemLiquidaPct,
+        custoFrete, custoDespAdm, totalCustosOp,
+        margemLucroPct: margemPct, pontoEquilibrio,
       });
     }
   };
@@ -649,18 +679,20 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
         </div>
       </div>
 
-      {/* ── Resultado Tributos ── */}
+      {/* ── Resultado Tributos + Lucro ── */}
       {resultado && (
         <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
           <h4 className="font-semibold text-sm flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-accent" /> Resultado da Simulação Tributária
+            <TrendingUp className="w-5 h-5 text-accent" /> Resultado da Simulação — Tributos & Lucro
           </h4>
+
+          {/* KPI Cards - Row 1: Receita, Tributos, Carga */}
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-muted/30 rounded-lg p-3 text-center">
               <p className="text-[10px] text-muted-foreground">Receita Bruta</p>
               <p className="text-sm font-bold">{formatCurrency(resultado.receita)}</p>
             </div>
-            <div className="bg-muted/30 rounded-lg p-3 text-center">
+            <div className="bg-destructive/10 rounded-lg p-3 text-center border border-destructive/20">
               <p className="text-[10px] text-muted-foreground">Total Tributos</p>
               <p className="text-sm font-bold text-destructive">{formatCurrency(resultado.totalTributos)}</p>
             </div>
@@ -671,7 +703,40 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
               </p>
             </div>
           </div>
+
+          {/* KPI Cards - Row 2: Lucro */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-accent/10 rounded-lg p-3 text-center border border-accent/20">
+              <p className="text-[10px] text-muted-foreground">Lucro Bruto</p>
+              <p className="text-sm font-bold text-accent">{formatCurrency(resultado.lucroBruto)}</p>
+              <p className="text-[9px] text-muted-foreground">Receita − Tributos</p>
+            </div>
+            <div className="bg-muted/30 rounded-lg p-3 text-center">
+              <p className="text-[10px] text-muted-foreground">Custos Operacionais</p>
+              <p className="text-sm font-bold">{formatCurrency(resultado.totalCustosOp)}</p>
+              <p className="text-[9px] text-muted-foreground">Frete + Desp. Adm.</p>
+            </div>
+            <div className={`rounded-lg p-3 text-center border ${resultado.lucroLiquido >= 0 ? 'bg-accent/15 border-accent/30' : 'bg-destructive/15 border-destructive/30'}`}>
+              <p className="text-[10px] text-muted-foreground">Lucro Líquido</p>
+              <p className={`text-sm font-bold ${resultado.lucroLiquido >= 0 ? 'text-accent' : 'text-destructive'}`}>
+                {formatCurrency(resultado.lucroLiquido)}
+              </p>
+              <p className="text-[9px] text-muted-foreground">L. Bruto − Custos Op.</p>
+            </div>
+            <div className={`rounded-lg p-3 text-center border ${resultado.margemLiquidaPct >= 5 ? 'bg-accent/15 border-accent/30' : resultado.margemLiquidaPct >= 0 ? 'bg-primary/15 border-primary/30' : 'bg-destructive/15 border-destructive/30'}`}>
+              <p className="text-[10px] text-muted-foreground">Margem Líquida</p>
+              <p className={`text-sm font-bold ${resultado.margemLiquidaPct >= 5 ? 'text-accent' : resultado.margemLiquidaPct >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                {resultado.margemLiquidaPct.toFixed(2)}%
+              </p>
+              <p className="text-[9px] text-muted-foreground">
+                {resultado.margemLiquidaPct < 5 && resultado.margemLiquidaPct >= 0 ? '⚠ Risco inexequibilidade' : resultado.margemLiquidaPct < 0 ? '🚫 Prejuízo' : '✓ Saudável'}
+              </p>
+            </div>
+          </div>
+
+          {/* Detalhamento dos Tributos */}
           <div className="space-y-2">
+            <h5 className="text-xs font-semibold text-muted-foreground">Detalhamento dos Tributos</h5>
             {resultado.tributos.map((t: any) => (
               <div key={t.nome} className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
                 <span className="text-xs font-medium">{t.nome} <span className="text-accent">({t.aliquota.toFixed(2)}%)</span></span>
@@ -679,6 +744,84 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
               </div>
             ))}
           </div>
+
+          {/* Detalhamento dos Custos Operacionais */}
+          {resultado.totalCustosOp > 0 && (
+            <div className="space-y-2">
+              <h5 className="text-xs font-semibold text-muted-foreground">Custos Operacionais</h5>
+              {resultado.custoFrete > 0 && (
+                <div className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
+                  <span className="text-xs font-medium">Frete <span className="text-muted-foreground">({parseFloat(frete) || 0}%)</span></span>
+                  <span className="text-xs font-bold">{formatCurrency(resultado.custoFrete)}</span>
+                </div>
+              )}
+              {resultado.custoDespAdm > 0 && (
+                <div className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
+                  <span className="text-xs font-medium">Despesas Administrativas <span className="text-muted-foreground">({parseFloat(despesasAdmin) || 0}%)</span></span>
+                  <span className="text-xs font-bold">{formatCurrency(resultado.custoDespAdm)}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Demonstração de Resultado */}
+          <div className="bg-muted/20 rounded-lg p-4 space-y-2 border border-border/30">
+            <h5 className="text-xs font-bold text-foreground mb-2">📊 DRE Simplificada (Demonstração do Resultado)</h5>
+            <div className="flex justify-between text-xs">
+              <span>Receita Bruta</span>
+              <span className="font-mono font-semibold">{formatCurrency(resultado.receita)}</span>
+            </div>
+            <div className="flex justify-between text-xs text-destructive">
+              <span>(−) Tributos</span>
+              <span className="font-mono font-semibold">({formatCurrency(resultado.totalTributos)})</span>
+            </div>
+            <div className="border-t border-border/30 my-1" />
+            <div className="flex justify-between text-xs font-semibold">
+              <span>= Lucro Bruto</span>
+              <span className="font-mono text-accent">{formatCurrency(resultado.lucroBruto)}</span>
+            </div>
+            {resultado.totalCustosOp > 0 && (
+              <>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>(−) Custos Operacionais</span>
+                  <span className="font-mono">({formatCurrency(resultado.totalCustosOp)})</span>
+                </div>
+                <div className="border-t border-border/30 my-1" />
+              </>
+            )}
+            <div className={`flex justify-between text-xs font-bold ${resultado.lucroLiquido >= 0 ? 'text-accent' : 'text-destructive'}`}>
+              <span>= Lucro Líquido</span>
+              <span className="font-mono">{formatCurrency(resultado.lucroLiquido)}</span>
+            </div>
+            <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+              <span>Margem Líquida</span>
+              <span className="font-mono">{resultado.margemLiquidaPct.toFixed(2)}%</span>
+            </div>
+          </div>
+
+          {/* Alerta de inexequibilidade */}
+          {resultado.margemLiquidaPct < 5 && resultado.margemLiquidaPct >= 0 && (
+            <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 flex items-start gap-2">
+              <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-primary">Alerta de Inexequibilidade — Art. 59, Lei 14.133/2021</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Margem líquida abaixo de 5% pode configurar proposta inexequível. Revise os custos ou aumente a margem de lucro.
+                </p>
+              </div>
+            </div>
+          )}
+          {resultado.lucroLiquido < 0 && (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-start gap-2">
+              <Info className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-destructive">⚠ Operação com Prejuízo</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Os tributos e custos operacionais excedem a receita. Essa operação gera prejuízo de {formatCurrency(Math.abs(resultado.lucroLiquido))}.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
