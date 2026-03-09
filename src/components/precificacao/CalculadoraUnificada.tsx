@@ -143,7 +143,7 @@ export default function CalculadoraUnificada() {
   const ufEmpresa = empresaAtiva?.uf || '';
 
   // 2 tabs: produto_bdi (unified) and servico_mdo (labor services IN 5/2017)
-  const [calcTab, setCalcTab] = useState<'produto_bdi' | 'servico_mdo'>('produto_bdi');
+  const [calcTab, setCalcTab] = useState<'produto_bdi' | 'servico_engenharia' | 'servico_mdo'>('produto_bdi');
 
   // ── Shared state ──
   const [receitaBruta, setReceitaBruta] = useState('');
