@@ -1696,6 +1696,99 @@ export type Database = {
           },
         ]
       }
+      leads: {
+        Row: {
+          cargo: string | null
+          cnpj: string | null
+          convertido: boolean | null
+          created_at: string
+          data_conversao: string | null
+          email: string
+          empresa: string | null
+          id: string
+          interesse: string | null
+          ip_address: string | null
+          municipio: string | null
+          nome: string
+          notas: string | null
+          origem: string | null
+          plano_convertido: string | null
+          referrer: string | null
+          segmento: string | null
+          status: string
+          telefone: string | null
+          uf: string | null
+          updated_at: string
+          user_agent: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+          valor_convertido: number | null
+        }
+        Insert: {
+          cargo?: string | null
+          cnpj?: string | null
+          convertido?: boolean | null
+          created_at?: string
+          data_conversao?: string | null
+          email: string
+          empresa?: string | null
+          id?: string
+          interesse?: string | null
+          ip_address?: string | null
+          municipio?: string | null
+          nome: string
+          notas?: string | null
+          origem?: string | null
+          plano_convertido?: string | null
+          referrer?: string | null
+          segmento?: string | null
+          status?: string
+          telefone?: string | null
+          uf?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          valor_convertido?: number | null
+        }
+        Update: {
+          cargo?: string | null
+          cnpj?: string | null
+          convertido?: boolean | null
+          created_at?: string
+          data_conversao?: string | null
+          email?: string
+          empresa?: string | null
+          id?: string
+          interesse?: string | null
+          ip_address?: string | null
+          municipio?: string | null
+          nome?: string
+          notas?: string | null
+          origem?: string | null
+          plano_convertido?: string | null
+          referrer?: string | null
+          segmento?: string | null
+          status?: string
+          telefone?: string | null
+          uf?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          valor_convertido?: number | null
+        }
+        Relationships: []
+      }
       licitacao_itens: {
         Row: {
           created_at: string
