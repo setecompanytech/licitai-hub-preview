@@ -38,6 +38,7 @@ import FontesManager from '@/components/precificacao/FontesManager';
 import ListasCompras from '@/components/precificacao/ListasCompras';
 import CotacoesManager from '@/components/precificacao/CotacoesManager';
 import ImportacoesManager from '@/components/precificacao/ImportacoesManager';
+import InteligenciaPrecos from '@/components/precificacao/InteligenciaPrecos';
 
 type FontePreco = {
   fonte: string;
