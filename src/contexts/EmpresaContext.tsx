@@ -25,6 +25,10 @@ type Empresa = {
   regime_tributario: string | null;
   timbrado_url: string | null;
   timbrado_path: string | null;
+  cabecalho_url: string | null;
+  cabecalho_path: string | null;
+  rodape_url: string | null;
+  rodape_path: string | null;
   rep_nome: string | null;
   rep_cpf: string | null;
   rep_rg: string | null;

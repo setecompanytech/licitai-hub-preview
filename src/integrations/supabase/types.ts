@@ -1259,6 +1259,8 @@ export type Database = {
       empresas: {
         Row: {
           bairro: string | null
+          cabecalho_path: string | null
+          cabecalho_url: string | null
           cep: string | null
           certificado_nome: string | null
           certificado_path: string | null
@@ -1285,6 +1287,8 @@ export type Database = {
           rep_nome: string | null
           rep_orgao_expedidor: string | null
           rep_rg: string | null
+          rodape_path: string | null
+          rodape_url: string | null
           telefone: string | null
           timbrado_path: string | null
           timbrado_url: string | null
@@ -1293,6 +1297,8 @@ export type Database = {
         }
         Insert: {
           bairro?: string | null
+          cabecalho_path?: string | null
+          cabecalho_url?: string | null
           cep?: string | null
           certificado_nome?: string | null
           certificado_path?: string | null
@@ -1319,6 +1325,8 @@ export type Database = {
           rep_nome?: string | null
           rep_orgao_expedidor?: string | null
           rep_rg?: string | null
+          rodape_path?: string | null
+          rodape_url?: string | null
           telefone?: string | null
           timbrado_path?: string | null
           timbrado_url?: string | null
@@ -1327,6 +1335,8 @@ export type Database = {
         }
         Update: {
           bairro?: string | null
+          cabecalho_path?: string | null
+          cabecalho_url?: string | null
           cep?: string | null
           certificado_nome?: string | null
           certificado_path?: string | null
@@ -1353,6 +1363,8 @@ export type Database = {
           rep_nome?: string | null
           rep_orgao_expedidor?: string | null
           rep_rg?: string | null
+          rodape_path?: string | null
+          rodape_url?: string | null
           telefone?: string | null
           timbrado_path?: string | null
           timbrado_url?: string | null
