@@ -1144,19 +1144,33 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (âš
                         <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', st.className)}>{st.label}</Badge>
                       </td>
                       <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 px-2 text-[10px] gap-1 bg-accent/10 text-accent border-accent/30 hover:bg-accent/20"
-                          onClick={() => handleIniciarProcesso(lic)}
-                          disabled={iniciandoProcesso === lic.id}
-                        >
-                          {iniciandoProcesso === lic.id ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <><FileText className="w-3 h-3" /> Iniciar</>
-                          )}
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-[10px] gap-1 bg-success/10 text-success border-success/30 hover:bg-success/20"
+                            onClick={() => {
+                              setEditalInteresse(lic);
+                              setShowInteresseDialog(true);
+                            }}
+                            title="Marcar interesse e adicionar aos compromissos"
+                          >
+                            <CheckCircle2 className="w-3 h-3" /> Interesse
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-[10px] gap-1 bg-accent/10 text-accent border-accent/30 hover:bg-accent/20"
+                            onClick={() => handleIniciarProcesso(lic)}
+                            disabled={iniciandoProcesso === lic.id}
+                          >
+                            {iniciandoProcesso === lic.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <><FileText className="w-3 h-3" /> Iniciar</>
+                            )}
+                          </Button>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                         <DropdownMenu>
