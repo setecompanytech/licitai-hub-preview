@@ -15,7 +15,7 @@ import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import {
   type ComposicaoResult, type ItemComposicaoResult,
-  recalcularComOverride,
+  recalcularComOverride, calcularPrecoFromMargem,
 } from '@/lib/composicao-engine';
 import {
   exportComposicaoPDF, exportComposicaoExcel, exportComposicaoWord,
@@ -51,6 +51,8 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
   const { addItem } = usePropostaCart();
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [editingMargemIndex, setEditingMargemIndex] = useState<number | null>(null);
+  const [editMargemValue, setEditMargemValue] = useState('');
 
   const { itens, resumo, parecer } = result;
 
@@ -139,6 +141,26 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
     toast.info('Preço revertido ao valor sugerido.');
   };
 
+  const startEditMargem = (idx: number, currentMargem: number) => {
+    setEditingMargemIndex(idx);
+    setEditMargemValue(currentMargem.toFixed(2).replace('.', ','));
+  };
+
+  const confirmEditMargem = (idx: number) => {
+    const margem = parseFloat(editMargemValue.replace(',', '.'));
+    if (isNaN(margem) || margem < -100 || margem > 99) {
+      toast.error('Informe uma margem válida (ex: 10,00).');
+      return;
+    }
+    const item = result.itens[idx];
+    const novoPreco = calcularPrecoFromMargem(item.custoUnitario, result.parametros, margem);
+    const updated = recalcularComOverride(result, idx, novoPreco);
+    onResultChange(updated);
+    setEditingMargemIndex(null);
+    setEditMargemValue('');
+    toast.success(`Margem definida para ${margem.toFixed(2)}% — preço recalculado.`);
+  };
+
   const viabilidadeIcon = parecer.viabilidade === 'VIÁVEL'
     ? <CheckCircle className="w-4 h-4 text-accent" />
     : parecer.viabilidade === 'INVIÁVEL'
@@ -184,7 +206,7 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
         <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-start gap-2 mb-4">
           <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <p className="text-[10px] text-muted-foreground">
-            <strong className="text-foreground">Preço editável:</strong> Clique no ícone <Pencil className="w-3 h-3 inline" /> ao lado do preço para inserir um valor manual. O sistema recalculará automaticamente a margem de lucro resultante com base no novo preço.
+            <strong className="text-foreground">Preço e lucro editáveis:</strong> Clique no ícone <Pencil className="w-3 h-3 inline" /> ao lado do preço unitário <strong>ou da margem de lucro</strong> para ajustar manualmente. O sistema recalculará todos os valores automaticamente.
           </p>
         </div>
 
@@ -233,7 +255,35 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                         {fmt(comp.baseCalculo)}
                       </TableCell>
                       <TableCell className="text-[11px] py-2 text-right font-mono">
-                        {fmtPct(comp.aliquota)}
+                        {comp.editavel ? (
+                          <div className="flex items-center justify-end gap-1">
+                            {editingMargemIndex === idx ? (
+                              <>
+                                <Input
+                                  value={editMargemValue}
+                                  onChange={e => setEditMargemValue(e.target.value.replace(/[^0-9,.-]/g, ''))}
+                                  className="h-6 w-16 text-right text-[11px] font-mono px-1"
+                                  autoFocus
+                                  placeholder="10,00"
+                                  onKeyDown={e => { if (e.key === 'Enter') confirmEditMargem(idx); if (e.key === 'Escape') setEditingMargemIndex(null); }}
+                                />
+                                <span className="text-[10px]">%</span>
+                                <Button variant="ghost" size="sm" onClick={() => confirmEditMargem(idx)} className="h-5 w-5 p-0 text-accent">
+                                  <CheckCircle className="w-3 h-3" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <span>{fmtPct(comp.aliquota)}</span>
+                                <Button variant="ghost" size="sm" onClick={() => startEditMargem(idx, comp.aliquota ?? 0)} className="h-5 w-5 p-0 text-muted-foreground hover:text-primary" title="Editar margem de lucro">
+                                  <Pencil className="w-2.5 h-2.5" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        ) : (
+                          fmtPct(comp.aliquota)
+                        )}
                       </TableCell>
                       <TableCell className={`text-[11px] py-2 text-right font-mono font-semibold ${comp.editavel && comp.valor < 0 ? 'text-destructive' : ''}`}>
                         {fmt(comp.valor)}
