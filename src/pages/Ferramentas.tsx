@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
+import { Button } from '@/components/ui/button';
 import {
   Download, Bell, Target, Archive, Bot, Search, Scale, BookOpen,
   Kanban, Shield, Building2, MessageSquare, Crosshair, TrendingUp,
   Users, DollarSign, ClipboardCheck, HeadphonesIcon, FileText,
-  Zap, BarChart3,
+  Zap, BarChart3, FileDown, Loader2,
 } from 'lucide-react';
+import { generateOrganogramaPDF } from '@/lib/organograma-pdf';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
