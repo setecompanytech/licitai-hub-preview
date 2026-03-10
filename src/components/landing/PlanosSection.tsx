@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Check, ArrowRight, Sparkles, X, Shield, Zap, Crown } from 'lucide-react';
+import { Check, ArrowRight, Sparkles, X, Shield, Zap, Crown, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 
@@ -10,44 +10,27 @@ type Plano = {
   nome: string;
   slug: string;
   descricao: string | null;
-  preco_mensal: number;
-  preco_semestral: number | null;
-  preco_anual: number | null;
-  preco_bienal: number | null;
   recursos: string[];
   destaque: boolean;
 };
 
-type Periodo = 'semestral' | 'anual' | 'bienal';
+const PLAN_ICONS: Record<number, React.ReactNode> = {
+  0: <Zap className="w-6 h-6" />,
+  1: <Sparkles className="w-6 h-6" />,
+  2: <Crown className="w-6 h-6" />,
+};
 
-const PERIODOS: { key: Periodo; label: string; meses: number; badge?: string }[] = [
-  { key: 'semestral', label: 'Semestral', meses: 6 },
-  { key: 'anual', label: 'Anual', meses: 12, badge: '-17%' },
-  { key: 'bienal', label: 'Bienal', meses: 24, badge: '-30%' },
-];
+const PLAN_COLORS: Record<number, string> = {
+  0: 'from-primary/10 to-primary/5 border-primary/20',
+  1: 'from-accent/10 to-accent/5 border-accent/30',
+  2: 'from-warning/10 to-warning/5 border-warning/20',
+};
 
-const PLAN_ICONS = [
-  <Zap className="w-5 h-5" />,
-  <Sparkles className="w-5 h-5" />,
-  <Crown className="w-5 h-5" />,
-];
-
-function getPreco(p: Plano, periodo: Periodo): { mensal: number; total: number } {
-  switch (periodo) {
-    case 'semestral': {
-      const total = p.preco_semestral ?? p.preco_mensal * 6;
-      return { mensal: Math.round(total / 6), total };
-    }
-    case 'anual': {
-      const total = p.preco_anual ?? p.preco_mensal * 12;
-      return { mensal: Math.round(total / 12), total };
-    }
-    case 'bienal': {
-      const total = p.preco_bienal ?? p.preco_mensal * 24;
-      return { mensal: Math.round(total / 24), total };
-    }
-  }
-}
+const PLAN_ICON_COLORS: Record<number, string> = {
+  0: 'bg-primary/15 text-primary',
+  1: 'bg-accent/15 text-accent',
+  2: 'bg-warning/15 text-warning',
+};
 
 // Feature categories for comparison table
 const FEATURE_CATEGORIES = [
@@ -69,7 +52,6 @@ const FEATURE_CATEGORIES = [
   },
 ];
 
-// Which features are included per plan tier (0=basic,1=pro,2=enterprise)
 const FEATURE_TIERS: Record<string, number> = {
   'Boletins diários': 0,
   'Monitoramento de editais': 0,
@@ -92,16 +74,17 @@ const FEATURE_TIERS: Record<string, number> = {
 export default function PlanosSection() {
   const navigate = useNavigate();
   const [planos, setPlanos] = useState<Plano[]>([]);
-  const [periodo, setPeriodo] = useState<Periodo>('anual');
   const [showComparison, setShowComparison] = useState(false);
 
   useEffect(() => {
-    supabase.from('planos').select('*').eq('ativo', true).order('preco_mensal').then(({ data }) => {
+    supabase.from('planos').select('id,nome,slug,descricao,recursos,destaque').eq('ativo', true).order('preco_mensal').then(({ data }) => {
       if (data) setPlanos(data.map(p => ({ ...p, recursos: (p.recursos as any) || [] })) as any);
     });
   }, []);
 
-  const periodoInfo = PERIODOS.find(p => p.key === periodo)!;
+  const handleChoosePlan = (slug: string) => {
+    navigate(`/cadastro?plano=${slug}`);
+  };
 
   return (
     <section id="planos" className="landing-section relative overflow-hidden">
@@ -115,49 +98,20 @@ export default function PlanosSection() {
         {/* Header */}
         <div className="text-center mb-16">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-            <span className="section-label">Planos & Preços</span>
+            <span className="section-label">Planos</span>
             <h2 className="section-title">
               Encontre o plano <span className="gradient-text">ideal para sua empresa</span>
             </h2>
             <p className="section-subtitle mx-auto max-w-xl">
-              São três planos, com assinatura semestral, anual ou bienal, para você escolher
+              São três planos, com assinatura semestral, anual ou bienal. Escolha o seu e comece o teste gratuito de 7 dias.
             </p>
-
-            {/* Period toggle */}
-            <div className="inline-flex items-center gap-1 bg-card rounded-2xl p-1.5 border border-border/50 mt-10 shadow-sm">
-              {PERIODOS.map((p) => (
-                <button
-                  key={p.key}
-                  onClick={() => setPeriodo(p.key)}
-                  className={`relative px-6 py-3 rounded-xl text-[13px] font-bold transition-all duration-300 ${
-                    periodo === p.key
-                      ? 'bg-accent text-accent-foreground shadow-lg'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                  }`}
-                  style={periodo === p.key ? { boxShadow: 'var(--shadow-glow-sm)' } : undefined}
-                >
-                  {p.label}
-                  {p.badge && (
-                    <span className={`ml-1.5 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
-                      periodo === p.key
-                        ? 'bg-accent-foreground/20 text-accent-foreground'
-                        : 'bg-accent/10 text-accent'
-                    }`}>
-                      {p.badge}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
           </motion.div>
         </div>
 
-        {/* Pricing cards */}
-        <div className="grid md:grid-cols-3 gap-5 max-w-6xl mx-auto mb-12">
+        {/* Plan cards — no prices, only features */}
+        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto mb-14">
           {planos.map((p, i) => {
-            const preco = getPreco(p, periodo);
             const isPopular = p.destaque;
-            const Icon = PLAN_ICONS[i] || PLAN_ICONS[0];
 
             return (
               <motion.div
@@ -166,10 +120,10 @@ export default function PlanosSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.12 }}
-                className={`relative rounded-2xl flex flex-col transition-all duration-300 hover:-translate-y-1 ${
+                className={`relative rounded-2xl flex flex-col transition-all duration-300 hover:-translate-y-1 bg-gradient-to-b ${PLAN_COLORS[i] || PLAN_COLORS[0]} ${
                   isPopular
-                    ? 'bg-card border-2 border-accent shadow-2xl scale-[1.03] z-10'
-                    : 'bg-card border border-border/40 hover:shadow-xl hover:border-border/60'
+                    ? 'border-2 border-accent shadow-2xl scale-[1.03] z-10'
+                    : 'border hover:shadow-xl'
                 }`}
                 style={isPopular ? { boxShadow: 'var(--shadow-glow)' } : undefined}
               >
@@ -182,44 +136,21 @@ export default function PlanosSection() {
                 )}
 
                 {/* Card header */}
-                <div className={`p-8 pb-6 ${isPopular ? 'pt-10' : ''}`}>
-                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-4 ${
-                    isPopular
-                      ? 'bg-accent/15 text-accent'
-                      : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {Icon}
+                <div className={`p-8 pb-4 ${isPopular ? 'pt-10' : ''}`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${PLAN_ICON_COLORS[i] || PLAN_ICON_COLORS[0]}`}>
+                    {PLAN_ICONS[i]}
                   </div>
-                  <h3 className="text-xl font-extrabold mb-1 text-foreground">{p.nome}</h3>
+                  <h3 className="text-2xl font-extrabold mb-2 text-foreground">{p.nome}</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">{p.descricao}</p>
                 </div>
 
-                {/* Price */}
-                <div className="px-8 pb-6">
-                  <div className="flex items-end gap-1">
-                    <span className="text-sm text-muted-foreground font-medium">R$</span>
-                    <span className="text-5xl font-extrabold tracking-tight text-foreground leading-none">
-                      {preco.mensal}
-                    </span>
-                    <span className="text-muted-foreground text-sm mb-1">/mês</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Cobrado R$ {preco.total.toLocaleString('pt-BR')}/{periodoInfo.meses === 6 ? 'semestre' : periodoInfo.meses === 12 ? 'ano' : 'biênio'}
-                  </p>
-                  {periodo !== 'semestral' && (
-                    <p className="text-xs text-accent font-semibold mt-1">
-                      Economia de R$ {((p.preco_mensal * periodoInfo.meses) - preco.total).toLocaleString('pt-BR')}
-                    </p>
-                  )}
-                </div>
-
                 {/* Divider */}
-                <div className="mx-8 border-t border-border/50" />
+                <div className="mx-8 border-t border-border/50 my-2" />
 
                 {/* Features */}
-                <div className="p-8 pt-6 flex-1">
+                <div className="p-8 pt-4 flex-1">
                   <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">
-                    {i === 0 ? 'Inclui:' : i === 1 ? 'Tudo do anterior, mais:' : 'Tudo do anterior, mais:'}
+                    {i === 0 ? 'Inclui:' : 'Tudo do anterior, mais:'}
                   </p>
                   <ul className="space-y-3">
                     {p.recursos.map((r: string) => (
@@ -244,10 +175,10 @@ export default function PlanosSection() {
                         : ''
                     }`}
                     variant={isPopular ? 'default' : 'outline'}
-                    onClick={() => navigate('/auth')}
+                    onClick={() => handleChoosePlan(p.slug)}
                     style={isPopular ? { boxShadow: 'var(--shadow-glow-sm)' } : undefined}
                   >
-                    Começar Teste Grátis <ArrowRight className="w-4 h-4 ml-1" />
+                    <Rocket className="w-4 h-4 mr-1" /> Faça o teste grátis <ArrowRight className="w-4 h-4 ml-1" />
                   </Button>
                   <p className="text-[11px] text-muted-foreground text-center mt-3">
                     7 dias grátis · Sem cartão de crédito
@@ -276,24 +207,17 @@ export default function PlanosSection() {
             className="mt-12 max-w-6xl mx-auto"
           >
             <div className="bg-card rounded-2xl border border-border/50 overflow-hidden shadow-lg">
-              {/* Table header */}
               <div className="grid grid-cols-4 border-b border-border/50">
                 <div className="p-6 flex items-center">
                   <span className="text-sm font-bold text-foreground">Funcionalidades</span>
                 </div>
-                {planos.slice(0, 3).map((p, i) => (
-                  <div key={p.id} className={`p-6 text-center ${
-                    p.destaque ? 'bg-accent/5' : ''
-                  }`}>
+                {planos.slice(0, 3).map((p) => (
+                  <div key={p.id} className={`p-6 text-center ${p.destaque ? 'bg-accent/5' : ''}`}>
                     <p className="font-extrabold text-foreground">{p.nome}</p>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      R$ {getPreco(p, periodo).mensal}/mês
-                    </p>
                   </div>
                 ))}
               </div>
 
-              {/* Feature rows by category */}
               {FEATURE_CATEGORIES.map((cat, catIdx) => (
                 <div key={cat.title}>
                   <div className="grid grid-cols-4 bg-muted/30">
@@ -317,10 +241,7 @@ export default function PlanosSection() {
                           const included = tierIdx >= minTier;
                           const isPopularCol = planos[tierIdx]?.destaque;
                           return (
-                            <div
-                              key={tierIdx}
-                              className={`px-6 py-3.5 text-center ${isPopularCol ? 'bg-accent/5' : ''}`}
-                            >
+                            <div key={tierIdx} className={`px-6 py-3.5 text-center ${isPopularCol ? 'bg-accent/5' : ''}`}>
                               {included ? (
                                 <Check className="w-4 h-4 text-accent mx-auto" />
                               ) : (
@@ -346,7 +267,7 @@ export default function PlanosSection() {
                         p.destaque ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''
                       }`}
                       variant={p.destaque ? 'default' : 'outline'}
-                      onClick={() => navigate('/auth')}
+                      onClick={() => handleChoosePlan(p.slug)}
                     >
                       Escolher {p.nome}
                     </Button>
