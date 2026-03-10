@@ -48,7 +48,7 @@ export default function EquipeColaboradores() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteNome, setInviteNome] = useState('');
   const [invitePapel, setInvitePapel] = useState('operador');
-  const [inviteEquipe, setInviteEquipe] = useState('geral');
+  const [inviteEquipes, setInviteEquipes] = useState<string[]>(['geral']);
   const [saving, setSaving] = useState(false);
 
   const currentMembro = empresas.find(e => e.empresa_id === empresaAtiva?.id);
