@@ -2097,6 +2097,7 @@ export type Database = {
           preco_mensal: number
           recursos: Json | null
           slug: string
+          trial_dias: number | null
           updated_at: string
         }
         Insert: {
@@ -2112,6 +2113,7 @@ export type Database = {
           preco_mensal?: number
           recursos?: Json | null
           slug: string
+          trial_dias?: number | null
           updated_at?: string
         }
         Update: {
@@ -2127,6 +2129,7 @@ export type Database = {
           preco_mensal?: number
           recursos?: Json | null
           slug?: string
+          trial_dias?: number | null
           updated_at?: string
         }
         Relationships: []
