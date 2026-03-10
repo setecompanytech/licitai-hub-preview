@@ -204,7 +204,7 @@ function AssinaturaCertificado({ empresaData, repData }: AssinaturaCertificadoPr
   const [assinando, setAssinando] = useState(false);
   const [assinado, setAssinado] = useState(false);
 
-  const hasCertificado = empresaData?.certificado_path && empresaData?.certificado_nome;
+  const hasCertificado = !!(empresaData?.certificado_nome);
 
   const handleAssinar = async () => {
     if (!hasCertificado) {
