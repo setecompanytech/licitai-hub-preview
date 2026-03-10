@@ -421,6 +421,37 @@ export function calcularComposicao(
   // ── Parecer ──
   const alerta = margemResultanteGlobal < 5;
   const inviavel = margemResultanteGlobal < 0;
+
+  const alertasGlobais: AlertaItem[] = [];
+  if (inviavel) {
+    alertasGlobais.push({
+      tipo: 'erro',
+      titulo: 'Precificação Inviável',
+      mensagem: `A margem líquida global de ${margemResultanteGlobal.toFixed(2)}% indica que o preço total não cobre custos e tributos. A proposta resultará em prejuízo financeiro.`,
+      fundamentacao: 'Art. 59, §4º, Lei 14.133/2021',
+    });
+  } else if (alerta) {
+    alertasGlobais.push({
+      tipo: 'atencao',
+      titulo: 'Risco de Inexequibilidade Global',
+      mensagem: `Margem líquida global de ${margemResultanteGlobal.toFixed(2)}% está abaixo do limiar de 5%. A Administração poderá solicitar justificativa de exequibilidade.`,
+      fundamentacao: 'Art. 59, §4º, Lei 14.133/2021',
+    });
+  }
+
+  const itensComOverride = itensResult.filter(i => i.modoPreco === 'manual');
+  if (itensComOverride.length > 0) {
+    const itensComPrejuizo = itensComOverride.filter(i => i.margemResultante < 0);
+    if (itensComPrejuizo.length > 0) {
+      alertasGlobais.push({
+        tipo: 'erro',
+        titulo: `${itensComPrejuizo.length} Item(ns) com Prejuízo`,
+        mensagem: `Existem itens com preço manual abaixo do custo + tributos. Revise os preços para garantir a viabilidade da proposta.`,
+        fundamentacao: 'Art. 59, §4º, Lei 14.133/2021',
+      });
+    }
+  }
+
   const parecer: ParecerComposicao = {
     viabilidade: inviavel ? 'INVIÁVEL' : alerta ? 'ATENÇÃO' : 'VIÁVEL',
     margemLiquida: margemResultanteGlobal,
@@ -437,6 +468,7 @@ export function calcularComposicao(
       ...(params.regime === 'lucro_presumido' ? ['Lei 9.430/96 (Lucro Presumido)'] : []),
       ...(params.regime === 'lucro_real' ? ['Lei 9.718/98 (Lucro Real)'] : []),
     ],
+    alertasGlobais,
   };
 
   return { itens: itensResult, resumo, parecer, parametros: params };
