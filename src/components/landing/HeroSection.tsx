@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Play, Shield, Award, TrendingUp, CheckCircle2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import heroDashboard from '@/assets/landing/hero-dashboard.png';
+import heroBusiness from '@/assets/landing/hero-business.jpg';
 
 const highlights = [
   'Monitoramento automático em 38 portais de compras',
@@ -51,7 +51,7 @@ export default function HeroSection() {
             </motion.div>
 
             <h1 className="text-4xl sm:text-5xl xl:text-[3.4rem] font-extrabold tracking-tight leading-[1.08] mb-6 text-white">
-              Vença licitações com{' '}
+              Domine licitações com{' '}
               <span className="gradient-text">Inteligência Artificial</span>
             </h1>
 
@@ -112,7 +112,7 @@ export default function HeroSection() {
               <div className="absolute -inset-4 rounded-2xl opacity-20 blur-2xl" style={{ background: 'var(--gradient-primary)' }} />
               <div className="relative rounded-xl overflow-hidden border border-white/8 shadow-2xl">
                 <img
-                  src={heroDashboard}
+                  src={heroBusiness}
                   alt="Dashboard do LicitIA com monitoramento de editais e lances automáticos"
                   className="w-full h-auto"
                   loading="eager"
