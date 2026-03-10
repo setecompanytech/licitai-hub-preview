@@ -216,6 +216,47 @@ export type Database = {
           },
         ]
       }
+      atividades_colaborador: {
+        Row: {
+          acao: string
+          created_at: string
+          descricao: string | null
+          empresa_id: string | null
+          id: string
+          metadata: Json | null
+          modulo: string
+          user_id: string
+        }
+        Insert: {
+          acao: string
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          metadata?: Json | null
+          modulo?: string
+          user_id: string
+        }
+        Update: {
+          acao?: string
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          metadata?: Json | null
+          modulo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atividades_colaborador_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       base_contabil: {
         Row: {
           arquivo_nome: string
@@ -1227,22 +1268,31 @@ export type Database = {
       empresa_membros: {
         Row: {
           created_at: string
+          email: string | null
           empresa_id: string
+          equipe: string | null
           id: string
+          nome: string | null
           papel: Database["public"]["Enums"]["empresa_papel"]
           user_id: string
         }
         Insert: {
           created_at?: string
+          email?: string | null
           empresa_id: string
+          equipe?: string | null
           id?: string
+          nome?: string | null
           papel?: Database["public"]["Enums"]["empresa_papel"]
           user_id: string
         }
         Update: {
           created_at?: string
+          email?: string | null
           empresa_id?: string
+          equipe?: string | null
           id?: string
+          nome?: string | null
           papel?: Database["public"]["Enums"]["empresa_papel"]
           user_id?: string
         }
