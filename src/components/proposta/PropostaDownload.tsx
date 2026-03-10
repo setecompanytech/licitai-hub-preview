@@ -416,7 +416,7 @@ export default function PropostaDownload({
   };
 
   const handleExcel = () => {
-    try {
+    withErrorAlert(async () => {
       const validItens = itens?.filter(i => i.descricao.trim()) || [];
       if (validItens.length > 0) {
         const data = validItens.map(i => ({
@@ -446,9 +446,7 @@ export default function PropostaDownload({
         XLSX.writeFile(wb, `${getFilename(numeroLicitacao)}.xlsx`);
       }
       toast.success('Excel gerado com sucesso!');
-    } catch {
-      toast.error('Erro ao gerar Excel');
-    }
+    }, 'Geração do Excel da Proposta');
   };
 
   return (
