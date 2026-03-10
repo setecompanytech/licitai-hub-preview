@@ -33,8 +33,6 @@ interface Plano {
   limite_usuarios: number | null;
 }
 
-const formatCurrency = (v: number) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 /* ── PIX Checkout ── */
 function PixCheckout({ plano, total, cycle }: { plano: Plano; total: number; cycle: BillingCycle }) {
