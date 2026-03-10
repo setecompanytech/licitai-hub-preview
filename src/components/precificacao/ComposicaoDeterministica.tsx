@@ -102,9 +102,9 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
     },
   }), [itens, resumo, parecer]);
 
-  const handleExportPDF = () => { exportComposicaoPDF(toExportData(), regimeLabel, ufCalculo); toast.success('PDF exportado!'); };
-  const handleExportExcel = () => { exportComposicaoExcel(toExportData(), regimeLabel, ufCalculo); toast.success('Excel exportado!'); };
-  const handleExportWord = () => { exportComposicaoWord(toExportData(), regimeLabel, ufCalculo); toast.success('Word exportado!'); };
+  const handleExportPDF = async () => { await exportComposicaoPDF(toExportData(), regimeLabel, ufCalculo, exportOpts); toast.success('PDF exportado!'); };
+  const handleExportExcel = () => { exportComposicaoExcel(toExportData(), regimeLabel, ufCalculo, exportOpts); toast.success('Excel exportado!'); };
+  const handleExportWord = () => { exportComposicaoWord(toExportData(), regimeLabel, ufCalculo, exportOpts); toast.success('Word exportado!'); };
 
   const enviarParaProposta = () => {
     itens.forEach((item, idx) => {

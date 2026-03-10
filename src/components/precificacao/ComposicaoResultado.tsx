@@ -30,28 +30,33 @@ const fmtPct = (v: number | null) =>
 
 export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, ufNome }: ComposicaoResultadoProps) {
   const { addItem } = usePropostaCart();
+  const { empresaAtiva } = useEmpresa();
   const parsed = useMemo<ComposicaoData | null>(() => parseComposicao(iaResult), [iaResult]);
+  const exportOpts = useMemo(() => ({
+    timbradoUrl: empresaAtiva?.timbrado_url,
+    empresaNome: empresaAtiva?.razao_social,
+  }), [empresaAtiva]);
 
   const copyResult = () => {
     navigator.clipboard.writeText(iaResult);
     toast.success('Composição copiada!');
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     if (!parsed) return;
-    exportComposicaoPDF(parsed, regimeLabel, ufCalculo);
+    await exportComposicaoPDF(parsed, regimeLabel, ufCalculo, exportOpts);
     toast.success('PDF exportado!');
   };
 
   const handleExportExcel = () => {
     if (!parsed) return;
-    exportComposicaoExcel(parsed, regimeLabel, ufCalculo);
+    exportComposicaoExcel(parsed, regimeLabel, ufCalculo, exportOpts);
     toast.success('Excel exportado!');
   };
 
   const handleExportWord = () => {
     if (!parsed) return;
-    exportComposicaoWord(parsed, regimeLabel, ufCalculo);
+    exportComposicaoWord(parsed, regimeLabel, ufCalculo, exportOpts);
     toast.success('Word exportado!');
   };
 
