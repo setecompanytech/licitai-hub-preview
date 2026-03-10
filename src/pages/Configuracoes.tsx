@@ -476,6 +476,8 @@ export default function Configuracoes() {
           {/* ── Tab: Plano & Assinatura ── */}
           <TabsContent value="plano" className="space-y-6">
             <PlanoAssinatura />
+            <PlanoVerificacao />
+            <AnalyseCustosPlanos />
           </TabsContent>
         </Tabs>
       </div>
