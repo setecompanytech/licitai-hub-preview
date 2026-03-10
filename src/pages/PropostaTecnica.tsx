@@ -1035,11 +1035,6 @@ export default function PropostaTecnica() {
               </div>
             </div>
 
-            {timbradoUrl && (
-              <div className="border-b border-border/50 pb-4 mb-4">
-                <img src={timbradoUrl} alt="Timbrado" className="h-20 max-w-[300px] object-contain" />
-              </div>
-            )}
 
             <div
               className="bg-white dark:bg-card rounded-lg p-8 shadow-inner border border-border/30 relative overflow-hidden"
