@@ -54,7 +54,8 @@ import ApiIntegracao from "./pages/ApiIntegracao";
 import IndicesRepactuacao from "./pages/IndicesRepactuacao";
 import RelatorioContabil from "./pages/RelatorioContabil";
 import AdminMarketing from "./pages/AdminMarketing";
-
+import MeusCompromissos from "./pages/MeusCompromissos";
+import WorkflowIA from "./pages/WorkflowIA";
 const queryClient = new QueryClient();
 
 const ProtectedPages = ({ children }: { children: React.ReactNode }) => (
