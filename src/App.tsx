@@ -111,6 +111,7 @@ const App = () => (
               <Route path="/tutorial" element={<ProtectedPages><TutorialPage /></ProtectedPages>} />
               <Route path="/api-integracao" element={<ProtectedPages><ApiIntegracao /></ProtectedPages>} />
               <Route path="/indices-repactuacao" element={<ProtectedPages><IndicesRepactuacao /></ProtectedPages>} />
+              <Route path="/relatorio-contabil" element={<ProtectedPages><RelatorioContabil /></ProtectedPages>} />
               <Route path="/gestao-contratos" element={<ProtectedPages><GestaoContratos /></ProtectedPages>} />
               <Route path="/termos-de-uso" element={<TermosDeUso />} />
               <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />
