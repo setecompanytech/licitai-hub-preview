@@ -42,7 +42,7 @@ export default function FeaturesSection() {
               Tudo que você precisa para <span className="gradient-text">licitar e vencer</span>
             </h2>
             <p className="section-subtitle mx-auto">
-              26+ módulos integrados para monitoramento, automação, documentação e análise estratégica de licitações públicas.
+              30+ módulos integrados para monitoramento, automação, documentação e análise estratégica de licitações públicas.
             </p>
           </motion.div>
         </div>
