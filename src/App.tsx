@@ -105,6 +105,7 @@ const App = () => (
               <Route path="/busca-inteligente" element={<Navigate to="/monitoramento-editais" replace />} />
               <Route path="/comprasgov-envio" element={<Navigate to="/proposta-tecnica" replace />} />
               <Route path="/whatsapp-setores" element={<ProtectedPages><WhatsAppSetores /></ProtectedPages>} />
+              <Route path="/whatsapp-crm" element={<ProtectedPages><WhatsAppCRM /></ProtectedPages>} />
               <Route path="/calendario" element={<ProtectedPages><Calendario /></ProtectedPages>} />
               <Route path="/tutorial" element={<ProtectedPages><TutorialPage /></ProtectedPages>} />
               <Route path="/api-integracao" element={<ProtectedPages><ApiIntegracao /></ProtectedPages>} />
