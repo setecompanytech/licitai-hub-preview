@@ -277,22 +277,35 @@ export default function EquipeColaboradores() {
                 <Input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="email@empresa.com" type="email" />
               </div>
               <div>
-                <Label>Equipe / Departamento</Label>
-                <Select value={inviteEquipe} onValueChange={setInviteEquipe}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {EQUIPES.map(eq => (
-                      <SelectItem key={eq.value} value={eq.value}>
-                        <span className="flex items-center gap-2">
-                          <eq.icon className="w-4 h-4" />
-                          {eq.label}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Equipes / Departamentos</Label>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  {EQUIPES.map(eq => {
+                    const checked = inviteEquipes.includes(eq.value);
+                    return (
+                      <label
+                        key={eq.value}
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
+                          checked ? 'border-accent bg-accent/10' : 'border-border hover:bg-muted/50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => {
+                            setInviteEquipes(prev =>
+                              checked ? prev.filter(v => v !== eq.value) : [...prev, eq.value]
+                            );
+                          }}
+                          className="accent-[hsl(var(--accent))]"
+                        />
+                        <eq.icon className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">{eq.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  Define a área de responsabilidade: alimentar IA Jurídica, Contábil, etc.
+                  Selecione uma ou mais equipes. Define a área de responsabilidade: alimentar IA Jurídica, Contábil, etc.
                 </p>
               </div>
               <div>
