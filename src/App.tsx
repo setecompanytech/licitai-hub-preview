@@ -53,6 +53,7 @@ import NotFound from "./pages/NotFound";
 import ApiIntegracao from "./pages/ApiIntegracao";
 import IndicesRepactuacao from "./pages/IndicesRepactuacao";
 import RelatorioContabil from "./pages/RelatorioContabil";
+import AdminMarketing from "./pages/AdminMarketing";
 
 const queryClient = new QueryClient();
 
