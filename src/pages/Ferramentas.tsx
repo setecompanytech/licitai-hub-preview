@@ -126,17 +126,41 @@ function ToolCard({ item, navigate }: { item: ToolItem; navigate: (p: string) =>
 
 export default function Ferramentas() {
   const navigate = useNavigate();
+  const [gerando, setGerando] = useState(false);
+
+  const handleOrganograma = async () => {
+    setGerando(true);
+    try {
+      generateOrganogramaPDF();
+      toast.success('Organograma PDF gerado com sucesso!');
+    } catch {
+      toast.error('Erro ao gerar o organograma.');
+    } finally {
+      setGerando(false);
+    }
+  };
 
   return (
     <AppLayout>
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-1">
-          <Zap className="w-6 h-6 text-accent" />
-          <h1 className="text-2xl font-bold tracking-tight">Nossas Ferramentas</h1>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <Zap className="w-6 h-6 text-accent" />
+            <h1 className="text-2xl font-bold tracking-tight">Nossas Ferramentas</h1>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Acesse todas as funcionalidades da plataforma LicitaIA em um só lugar.
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Acesse todas as funcionalidades da plataforma LicitaIA em um só lugar.
-        </p>
+        <Button
+          onClick={handleOrganograma}
+          disabled={gerando}
+          variant="outline"
+          className="gap-2"
+        >
+          {gerando ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+          {gerando ? 'Gerando...' : 'Organograma PDF'}
+        </Button>
       </div>
 
       <motion.div
