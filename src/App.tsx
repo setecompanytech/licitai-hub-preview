@@ -56,6 +56,7 @@ import RelatorioContabil from "./pages/RelatorioContabil";
 import AdminMarketing from "./pages/AdminMarketing";
 import MeusCompromissos from "./pages/MeusCompromissos";
 import WorkflowIA from "./pages/WorkflowIA";
+import EquipeColaboradores from "./pages/EquipeColaboradores";
 const queryClient = new QueryClient();
 
 const ProtectedPages = ({ children }: { children: React.ReactNode }) => (
