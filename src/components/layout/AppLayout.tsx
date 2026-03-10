@@ -13,7 +13,7 @@ import GlobalSearch from '@/components/search/GlobalSearch';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { supabase } from '@/integrations/supabase/client';
 
-export default function AppLayout({ children }: { children: ReactNode }) {
+const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function AppLayout({ children }, _ref) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
