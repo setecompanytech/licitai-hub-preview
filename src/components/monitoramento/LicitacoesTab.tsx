@@ -12,8 +12,9 @@ import {
   Search, MapPin, Calendar as CalendarIcon2, Building2, CalendarDays, RefreshCw,
   Sparkles, Globe, Download, FileText, FileSpreadsheet, FileJson, FileArchive,
   FileDown, Loader2, Send, ChevronDown, ChevronUp, Filter, X, Zap, Brain,
-  Star, StarOff
+  Star, StarOff, CheckCircle2
 } from 'lucide-react';
+import MarcarInteresseDialog from '@/components/compromissos/MarcarInteresseDialog';
 import { downloadCSV, downloadPDF, downloadJSON } from '@/lib/download-utils';
 import JSZip from 'jszip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
