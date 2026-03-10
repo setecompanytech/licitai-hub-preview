@@ -52,7 +52,7 @@ const megaGroups: MegaMenuGroup[] = [
     items: [
       { icon: MessageSquare, label: 'Chat e Mural', path: '/monitoramento-chat' },
       { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances', isNew: true },
-      { icon: MessageSquare, label: 'WhatsApp Setores', path: '/whatsapp-setores' },
+      { icon: MessageSquare, label: 'WhatsApp CRM', path: '/whatsapp-crm' },
     ],
   },
   {
