@@ -435,7 +435,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         >
           {/* Margin guides (dashed) */}
           <div
-            className="absolute border border-dashed border-blue-300/40 pointer-events-none"
+            className="absolute border border-dashed border-accent/30 pointer-events-none"
             style={{
               top: mTop,
               left: mLeft,
