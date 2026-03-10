@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 
 interface PropostaRendererProps {
   proposal: string;
+  timbradoUrl?: string | null;
+  usarMarcaDagua?: boolean;
   empresaData?: {
     razao_social?: string;
     cnpj?: string;
