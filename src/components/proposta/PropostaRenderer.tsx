@@ -238,15 +238,15 @@ function AssinaturaCertificado({ empresaData, repData }: AssinaturaCertificadoPr
 
         {hasCertificado ? (
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className="text-[10px]">
+            <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-[10px] font-semibold">
               <ShieldCheck className="w-3 h-3 mr-1" />
               {empresaData?.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF'} — {empresaData?.certificado_nome}
-            </Badge>
+            </span>
             {assinado ? (
-              <Badge className="bg-green-600/20 text-green-700 dark:text-green-400 border-green-600/30 text-[10px]">
+              <span className="inline-flex items-center rounded-full bg-green-600/20 text-green-700 dark:text-green-400 border border-green-600/30 px-2.5 py-0.5 text-[10px] font-semibold">
                 <CheckCircle2 className="w-3 h-3 mr-1" />
                 Assinado digitalmente
-              </Badge>
+              </span>
             ) : (
               <Button size="sm" onClick={handleAssinar} disabled={assinando} className="h-7 text-xs">
                 {assinando ? (
