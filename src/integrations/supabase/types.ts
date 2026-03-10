@@ -3006,6 +3006,10 @@ export type Database = {
           setor_juridico: boolean
           setor_licitacoes: boolean
           telefone: string
+          telefone_documentos: string | null
+          telefone_financeiro: string | null
+          telefone_juridico: string | null
+          telefone_licitacoes: string | null
           updated_at: string
           user_id: string
         }
@@ -3018,6 +3022,10 @@ export type Database = {
           setor_juridico?: boolean
           setor_licitacoes?: boolean
           telefone: string
+          telefone_documentos?: string | null
+          telefone_financeiro?: string | null
+          telefone_juridico?: string | null
+          telefone_licitacoes?: string | null
           updated_at?: string
           user_id: string
         }
@@ -3030,6 +3038,10 @@ export type Database = {
           setor_juridico?: boolean
           setor_licitacoes?: boolean
           telefone?: string
+          telefone_documentos?: string | null
+          telefone_financeiro?: string | null
+          telefone_juridico?: string | null
+          telefone_licitacoes?: string | null
           updated_at?: string
           user_id?: string
         }

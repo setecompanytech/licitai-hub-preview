@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -28,6 +27,7 @@ import {
 const SETORES = [
   {
     key: 'setor_licitacoes' as const,
+    telefoneKey: 'telefone_licitacoes' as const,
     label: 'Licitações',
     desc: 'Novos editais, prazos, resultados e alterações',
     icon: Gavel,
@@ -36,6 +36,7 @@ const SETORES = [
   },
   {
     key: 'setor_juridico' as const,
+    telefoneKey: 'telefone_juridico' as const,
     label: 'Jurídico',
     desc: 'Impugnações, recursos, pareceres e prazos legais',
     icon: Scale,
@@ -44,6 +45,7 @@ const SETORES = [
   },
   {
     key: 'setor_financeiro' as const,
+    telefoneKey: 'telefone_financeiro' as const,
     label: 'Financeiro',
     desc: 'Empenhos, pagamentos, garantias e cauções',
     icon: DollarSign,
@@ -52,6 +54,7 @@ const SETORES = [
   },
   {
     key: 'setor_documentos' as const,
+    telefoneKey: 'telefone_documentos' as const,
     label: 'Documentos',
     desc: 'Certidões vencendo, documentos pendentes e atualizações',
     icon: FileText,
@@ -59,6 +62,9 @@ const SETORES = [
     bgColor: 'bg-purple-500/10',
   },
 ];
+
+type SetorKey = typeof SETORES[number]['key'];
+type TelefoneKey = typeof SETORES[number]['telefoneKey'];
 
 interface Envio {
   id: string;
@@ -68,10 +74,23 @@ interface Envio {
   created_at: string;
 }
 
+const formatPhone = (value: string) => {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
+
 export default function WhatsAppSetores() {
   const { user } = useAuth();
-  const [telefone, setTelefone] = useState('');
-  const [setores, setSetores] = useState({
+  const [telefoneGlobal, setTelefoneGlobal] = useState('');
+  const [telefonesSetor, setTelefonesSetor] = useState<Record<TelefoneKey, string>>({
+    telefone_licitacoes: '',
+    telefone_juridico: '',
+    telefone_financeiro: '',
+    telefone_documentos: '',
+  });
+  const [setoresAtivos, setSetoresAtivos] = useState<Record<SetorKey, boolean>>({
     setor_licitacoes: true,
     setor_juridico: false,
     setor_financeiro: false,
@@ -100,12 +119,18 @@ export default function WhatsAppSetores() {
       .maybeSingle();
 
     if (data) {
-      setTelefone(data.telefone);
-      setSetores({
+      setTelefoneGlobal(data.telefone || '');
+      setSetoresAtivos({
         setor_licitacoes: data.setor_licitacoes,
         setor_juridico: data.setor_juridico,
         setor_financeiro: data.setor_financeiro,
         setor_documentos: data.setor_documentos,
+      });
+      setTelefonesSetor({
+        telefone_licitacoes: (data as any).telefone_licitacoes || '',
+        telefone_juridico: (data as any).telefone_juridico || '',
+        telefone_financeiro: (data as any).telefone_financeiro || '',
+        telefone_documentos: (data as any).telefone_documentos || '',
       });
       setAtivo(data.ativo);
       setHasPrefs(true);
@@ -124,25 +149,35 @@ export default function WhatsAppSetores() {
     if (data) setEnvios(data);
   };
 
-  const formatPhone = (value: string) => {
-    const digits = value.replace(/\D/g, '').slice(0, 11);
-    if (digits.length <= 2) return digits;
-    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  const getTelefoneSetor = (telefoneKey: TelefoneKey) => {
+    return telefonesSetor[telefoneKey] || telefoneGlobal;
   };
 
   const handleSave = async () => {
-    if (!telefone || telefone.replace(/\D/g, '').length < 10) {
-      toast.error('Informe um telefone válido com DDD');
-      return;
+    const temAlgumSetorAtivo = Object.values(setoresAtivos).some(Boolean);
+    if (temAlgumSetorAtivo) {
+      // Validate: each active sector must have a phone (own or global)
+      for (const setor of SETORES) {
+        if (setoresAtivos[setor.key]) {
+          const tel = telefonesSetor[setor.telefoneKey] || telefoneGlobal;
+          if (!tel || tel.replace(/\D/g, '').length < 10) {
+            toast.error(`Informe um telefone válido para o setor ${setor.label} ou defina um número principal`);
+            return;
+          }
+        }
+      }
     }
 
     setSaving(true);
-    const payload = {
+    const payload: any = {
       user_id: user!.id,
-      telefone: telefone.replace(/\D/g, ''),
+      telefone: telefoneGlobal.replace(/\D/g, ''),
       ativo,
-      ...setores,
+      ...setoresAtivos,
+      telefone_licitacoes: telefonesSetor.telefone_licitacoes.replace(/\D/g, '') || null,
+      telefone_juridico: telefonesSetor.telefone_juridico.replace(/\D/g, '') || null,
+      telefone_financeiro: telefonesSetor.telefone_financeiro.replace(/\D/g, '') || null,
+      telefone_documentos: telefonesSetor.telefone_documentos.replace(/\D/g, '') || null,
     };
 
     if (hasPrefs) {
@@ -165,25 +200,26 @@ export default function WhatsAppSetores() {
     setSaving(false);
   };
 
-  const handleTestEnvio = async (setor: string) => {
-    if (!telefone || telefone.replace(/\D/g, '').length < 10) {
-      toast.error('Configure seu telefone antes de testar');
+  const handleTestEnvio = async (setor: typeof SETORES[number]) => {
+    const tel = getTelefoneSetor(setor.telefoneKey);
+    if (!tel || tel.replace(/\D/g, '').length < 10) {
+      toast.error(`Configure um telefone para o setor ${setor.label} antes de testar`);
       return;
     }
 
-    setTesting(setor);
+    setTesting(setor.key);
     try {
       const { data, error } = await supabase.functions.invoke('whatsapp-envio', {
         body: {
-          telefone: telefone.replace(/\D/g, ''),
-          setor,
+          telefone: tel.replace(/\D/g, ''),
+          setor: setor.label.toLowerCase(),
           user_id: user!.id,
           tipo: 'teste',
         },
       });
 
       if (error) throw error;
-      toast.success(`Envio simulado para setor ${setor}! (modo teste)`);
+      toast.success(`Envio simulado para ${setor.label} no número ${formatPhone(tel)}!`);
       loadEnvios();
     } catch (err: any) {
       toast.error('Erro no envio: ' + (err.message || 'Erro desconhecido'));
@@ -222,32 +258,30 @@ export default function WhatsAppSetores() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight">WhatsApp por Setor</h1>
-              <p className="text-sm text-muted-foreground">Configure alertas por departamento em um único número</p>
+              <p className="text-sm text-muted-foreground">Configure alertas por departamento com números individuais</p>
             </div>
           </div>
         </div>
 
         <div className="space-y-6">
-          {/* Telefone e status */}
+          {/* Número principal */}
           <Card className="p-5">
             <div className="flex items-center gap-2 mb-4">
               <Phone className="w-5 h-5 text-accent" />
-              <h2 className="text-sm font-semibold">Número do WhatsApp</h2>
+              <h2 className="text-sm font-semibold">Número Principal (padrão)</h2>
               <div className="ml-auto flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Notificações ativas</span>
                 <Switch checked={ativo} onCheckedChange={setAtivo} />
               </div>
             </div>
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <Label className="text-xs">Telefone com DDD</Label>
-                <Input
-                  placeholder="(11) 99999-9999"
-                  value={formatPhone(telefone)}
-                  onChange={(e) => setTelefone(e.target.value.replace(/\D/g, ''))}
-                  className="mt-1"
-                />
-              </div>
+            <div className="flex-1">
+              <Label className="text-xs">Telefone padrão com DDD (usado quando o setor não tem número próprio)</Label>
+              <Input
+                placeholder="(11) 99999-9999"
+                value={formatPhone(telefoneGlobal)}
+                onChange={(e) => setTelefoneGlobal(e.target.value.replace(/\D/g, ''))}
+                className="mt-1"
+              />
             </div>
             <div className="mt-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
               <p className="text-xs text-amber-600 flex items-center gap-1.5">
@@ -257,51 +291,82 @@ export default function WhatsAppSetores() {
             </div>
           </Card>
 
-          {/* Setores */}
+          {/* Setores com número individual */}
           <Card className="p-5">
-            <h2 className="text-sm font-semibold mb-4">Setores de Notificação</h2>
+            <h2 className="text-sm font-semibold mb-1">Setores de Notificação</h2>
             <p className="text-xs text-muted-foreground mb-4">
-              Escolha quais tipos de alerta você deseja receber. Cada setor envia mensagens específicas para sua área.
+              Ative cada setor e defina um número específico. Se deixado em branco, o número principal será utilizado.
             </p>
-            <div className="grid gap-3">
-              {SETORES.map((setor) => (
-                <div
-                  key={setor.key}
-                  className="flex items-center justify-between p-4 rounded-xl border border-border/50 hover:border-border transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-lg ${setor.bgColor} flex items-center justify-center`}>
-                      <setor.icon className={`w-4.5 h-4.5 ${setor.color}`} />
+            <div className="grid gap-4">
+              {SETORES.map((setor) => {
+                const ativoSetor = setoresAtivos[setor.key];
+                const telSetor = telefonesSetor[setor.telefoneKey];
+                const telEfetivo = telSetor || telefoneGlobal;
+
+                return (
+                  <div
+                    key={setor.key}
+                    className={`rounded-xl border transition-colors ${ativoSetor ? 'border-border bg-card' : 'border-border/40 bg-muted/20 opacity-70'}`}
+                  >
+                    <div className="flex items-center justify-between p-4 pb-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-lg ${setor.bgColor} flex items-center justify-center`}>
+                          <setor.icon className={`w-4.5 h-4.5 ${setor.color}`} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{setor.label}</p>
+                          <p className="text-xs text-muted-foreground">{setor.desc}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs h-7 gap-1"
+                          disabled={!ativoSetor || testing !== null}
+                          onClick={() => handleTestEnvio(setor)}
+                        >
+                          {testing === setor.key ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Send className="w-3 h-3" />
+                          )}
+                          Testar
+                        </Button>
+                        <Switch
+                          checked={ativoSetor}
+                          onCheckedChange={(checked) =>
+                            setSetoresAtivos((prev) => ({ ...prev, [setor.key]: checked }))
+                          }
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">{setor.label}</p>
-                      <p className="text-xs text-muted-foreground">{setor.desc}</p>
-                    </div>
+                    {ativoSetor && (
+                      <div className="px-4 pb-4 pt-1">
+                        <Label className="text-xs text-muted-foreground">Número deste setor</Label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Input
+                            placeholder={telefoneGlobal ? `Padrão: ${formatPhone(telefoneGlobal)}` : '(11) 99999-9999'}
+                            value={formatPhone(telSetor)}
+                            onChange={(e) =>
+                              setTelefonesSetor((prev) => ({
+                                ...prev,
+                                [setor.telefoneKey]: e.target.value.replace(/\D/g, ''),
+                              }))
+                            }
+                            className="flex-1"
+                          />
+                          {telEfetivo && (
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {telSetor ? '✅ Próprio' : '📋 Padrão'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs h-7 gap-1"
-                      disabled={!setores[setor.key] || testing !== null}
-                      onClick={() => handleTestEnvio(setor.label.toLowerCase())}
-                    >
-                      {testing === setor.label.toLowerCase() ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <Send className="w-3 h-3" />
-                      )}
-                      Testar
-                    </Button>
-                    <Switch
-                      checked={setores[setor.key]}
-                      onCheckedChange={(checked) =>
-                        setSetores((prev) => ({ ...prev, [setor.key]: checked }))
-                      }
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Card>
 
