@@ -43,8 +43,9 @@ export default function WorkflowIA() {
       return;
     }
 
-    const empresa = empresas.find(e => e.id === empresaId);
-    if (!empresa) return;
+    const mem = empresas.find(e => e.empresa_id === empresaId);
+    if (!mem) return;
+    const empresa = mem.empresa;
 
     setRunning(true);
     setCompleted(new Set());
