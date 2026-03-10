@@ -1,9 +1,9 @@
-import { ReactNode, useState, useEffect, forwardRef } from 'react';
+import { ReactNode, useState, useEffect, forwardRef, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppSidebar from './AppSidebar';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
-import { Bell, Menu, Search } from 'lucide-react';
+import { Bell, Menu, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -12,6 +12,7 @@ import FloatingChat from '@/components/chat/FloatingChat';
 import GlobalSearch from '@/components/search/GlobalSearch';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { supabase } from '@/integrations/supabase/client';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 
 const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function AppLayout({ children }, _ref) {
   const [notifOpen, setNotifOpen] = useState(false);
