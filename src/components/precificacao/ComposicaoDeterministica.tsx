@@ -84,7 +84,7 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
       bdiPercentual: resumo.bdiPercentual,
       freteTotal: resumo.freteTotal,
       despesasAdm: resumo.despesasAdm,
-      margemLucro: resumo.margemLucroResultante,
+      margemLucro: resumo.precoTotalFormado - resumo.custoTotalMateriais - resumo.totalTributos - resumo.freteTotal - resumo.despesasAdm,
       precoTotalFormado: resumo.precoTotalFormado,
       precoExtenso: valorPorExtenso(resumo.precoTotalFormado),
     },
