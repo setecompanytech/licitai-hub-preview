@@ -322,7 +322,7 @@ export default function EquipeColaboradores() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowInvite(false)}>Cancelar</Button>
-              <Button onClick={handleInvite} disabled={saving || !inviteEmail.trim()} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Button onClick={handleInvite} disabled={saving || !inviteEmail.trim() || inviteEquipes.length === 0} className="bg-accent hover:bg-accent/90 text-accent-foreground">
                 {saving ? 'Adicionando...' : 'Adicionar'}
               </Button>
             </DialogFooter>
