@@ -120,9 +120,9 @@ export default function MarcarInteresseDialog({ open, onOpenChange, edital, onSu
                 <SelectValue placeholder="Selecione a empresa" />
               </SelectTrigger>
               <SelectContent>
-                {empresas.map((emp) => (
-                  <SelectItem key={emp.id} value={emp.id}>
-                    {emp.nome_fantasia || emp.razao_social} ({emp.cnpj})
+                {empresas.map((mem) => (
+                  <SelectItem key={mem.empresa_id} value={mem.empresa_id}>
+                    {mem.empresa.nome_fantasia || mem.empresa.razao_social} ({mem.empresa.cnpj})
                   </SelectItem>
                 ))}
               </SelectContent>

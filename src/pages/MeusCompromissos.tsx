@@ -238,7 +238,7 @@ Formate em Markdown. Seja objetivo e estratégico.`
               <SelectContent>
                 <SelectItem value="all">Todas as empresas</SelectItem>
                 {empresas.map(e => (
-                  <SelectItem key={e.id} value={e.id}>{e.nome_fantasia || e.razao_social}</SelectItem>
+                  <SelectItem key={e.empresa_id} value={e.empresa_id}>{e.empresa.nome_fantasia || e.empresa.razao_social}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

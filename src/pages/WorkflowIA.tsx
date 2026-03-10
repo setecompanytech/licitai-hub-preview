@@ -123,10 +123,10 @@ Seja objetivo e formate em Markdown. Use emojis para status (✅ concluído, ⚠
               </SelectTrigger>
               <SelectContent>
                 {empresas.map(e => (
-                  <SelectItem key={e.id} value={e.id}>
+                  <SelectItem key={e.empresa_id} value={e.empresa_id}>
                     <span className="flex items-center gap-2">
                       <Building2 className="w-3.5 h-3.5" />
-                      {e.nome_fantasia || e.razao_social}
+                      {e.empresa.nome_fantasia || e.empresa.razao_social}
                     </span>
                   </SelectItem>
                 ))}
