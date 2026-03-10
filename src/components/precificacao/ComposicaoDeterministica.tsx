@@ -14,8 +14,8 @@ import { toast } from 'sonner';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import {
-  type ComposicaoResult, type ItemComposicaoResult,
-  recalcularComOverride, calcularPrecoFromMargem,
+  type ComposicaoResult, type ItemComposicaoResult, type AlertaItem,
+  recalcularComOverride, calcularPrecoFromMargem, gerarAlertasItem,
 } from '@/lib/composicao-engine';
 import {
   exportComposicaoPDF, exportComposicaoExcel, exportComposicaoWord,
