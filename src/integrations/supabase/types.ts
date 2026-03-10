@@ -2963,6 +2963,163 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_campanha_destinatarios: {
+        Row: {
+          campanha_id: string
+          created_at: string
+          enviado_em: string | null
+          erro: string | null
+          id: string
+          nome: string | null
+          status: string
+          telefone: string
+          user_id: string
+        }
+        Insert: {
+          campanha_id: string
+          created_at?: string
+          enviado_em?: string | null
+          erro?: string | null
+          id?: string
+          nome?: string | null
+          status?: string
+          telefone: string
+          user_id: string
+        }
+        Update: {
+          campanha_id?: string
+          created_at?: string
+          enviado_em?: string | null
+          erro?: string | null
+          id?: string
+          nome?: string | null
+          status?: string
+          telefone?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_campanha_destinatarios_campanha_id_fkey"
+            columns: ["campanha_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_campanhas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_campanhas: {
+        Row: {
+          agendado_para: string | null
+          created_at: string
+          enviados: number | null
+          erros: number | null
+          executado_em: string | null
+          id: string
+          mensagem: string
+          nome: string
+          setor: string | null
+          status: string
+          template_id: string | null
+          total_destinatarios: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agendado_para?: string | null
+          created_at?: string
+          enviados?: number | null
+          erros?: number | null
+          executado_em?: string | null
+          id?: string
+          mensagem: string
+          nome: string
+          setor?: string | null
+          status?: string
+          template_id?: string | null
+          total_destinatarios?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agendado_para?: string | null
+          created_at?: string
+          enviados?: number | null
+          erros?: number | null
+          executado_em?: string | null
+          id?: string
+          mensagem?: string
+          nome?: string
+          setor?: string | null
+          status?: string
+          template_id?: string | null
+          total_destinatarios?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_campanhas_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_conversas: {
+        Row: {
+          atribuido_a: string | null
+          contato_avatar_url: string | null
+          contato_empresa: string | null
+          contato_nome: string
+          contato_telefone: string
+          created_at: string
+          id: string
+          lead_id: string | null
+          setor: string
+          status: string
+          tags: string[] | null
+          ultima_mensagem: string | null
+          ultima_mensagem_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          atribuido_a?: string | null
+          contato_avatar_url?: string | null
+          contato_empresa?: string | null
+          contato_nome: string
+          contato_telefone: string
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          setor?: string
+          status?: string
+          tags?: string[] | null
+          ultima_mensagem?: string | null
+          ultima_mensagem_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          atribuido_a?: string | null
+          contato_avatar_url?: string | null
+          contato_empresa?: string | null
+          contato_nome?: string
+          contato_telefone?: string
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          setor?: string
+          status?: string
+          tags?: string[] | null
+          ultima_mensagem?: string | null
+          ultima_mensagem_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       whatsapp_envios: {
         Row: {
           created_at: string
@@ -2995,6 +3152,101 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      whatsapp_leads: {
+        Row: {
+          created_at: string
+          email: string | null
+          empresa: string | null
+          etapa: string
+          id: string
+          nome: string
+          notas: string | null
+          ordem: number | null
+          origem: string | null
+          setor: string
+          telefone: string
+          updated_at: string
+          user_id: string
+          valor_estimado: number | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          empresa?: string | null
+          etapa?: string
+          id?: string
+          nome: string
+          notas?: string | null
+          ordem?: number | null
+          origem?: string | null
+          setor?: string
+          telefone: string
+          updated_at?: string
+          user_id: string
+          valor_estimado?: number | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          empresa?: string | null
+          etapa?: string
+          id?: string
+          nome?: string
+          notas?: string | null
+          ordem?: number | null
+          origem?: string | null
+          setor?: string
+          telefone?: string
+          updated_at?: string
+          user_id?: string
+          valor_estimado?: number | null
+        }
+        Relationships: []
+      }
+      whatsapp_mensagens: {
+        Row: {
+          conteudo: string
+          conversa_id: string
+          created_at: string
+          direcao: string
+          id: string
+          metadata: Json | null
+          status: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          conteudo: string
+          conversa_id: string
+          created_at?: string
+          direcao?: string
+          id?: string
+          metadata?: Json | null
+          status?: string
+          tipo?: string
+          user_id: string
+        }
+        Update: {
+          conteudo?: string
+          conversa_id?: string
+          created_at?: string
+          direcao?: string
+          id?: string
+          metadata?: Json | null
+          status?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_mensagens_conversa_id_fkey"
+            columns: ["conversa_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       whatsapp_preferencias: {
         Row: {
@@ -3044,6 +3296,45 @@ export type Database = {
           telefone_licitacoes?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_templates: {
+        Row: {
+          ativo: boolean | null
+          categoria: string
+          conteudo: string
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+          user_id: string
+          uso_count: number | null
+          variaveis: string[] | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          categoria?: string
+          conteudo: string
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+          user_id: string
+          uso_count?: number | null
+          variaveis?: string[] | null
+        }
+        Update: {
+          ativo?: boolean | null
+          categoria?: string
+          conteudo?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+          user_id?: string
+          uso_count?: number | null
+          variaveis?: string[] | null
         }
         Relationships: []
       }
