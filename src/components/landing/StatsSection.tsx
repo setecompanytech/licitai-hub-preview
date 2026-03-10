@@ -3,10 +3,10 @@ import { motion, useInView } from 'framer-motion';
 import { Globe, MapPin, Cpu, Layers } from 'lucide-react';
 
 const stats = [
-  { value: 31, suffix: '', label: 'Portais Integrados', desc: 'Federais, estaduais e privados', icon: Globe },
+  { value: 38, suffix: '', label: 'Portais Integrados', desc: 'Federais, estaduais e privados', icon: Globe },
   { value: 27, suffix: '', label: 'Estados Cobertos', desc: 'Cobertura nacional completa', icon: MapPin },
   { value: 12, suffix: '+', label: 'Módulos com IA', desc: 'Assistente, lances, propostas', icon: Cpu },
-  { value: 26, suffix: '+', label: 'Funcionalidades', desc: 'Do edital ao resultado', icon: Layers },
+  { value: 30, suffix: '+', label: 'Funcionalidades', desc: 'Do edital ao resultado', icon: Layers },
 ];
 
 function AnimatedCounter({ target, suffix }: { target: number; suffix: string }) {
