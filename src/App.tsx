@@ -43,6 +43,7 @@ import Ferramentas from "./pages/Ferramentas";
 import GestaoContratos from "./pages/GestaoContratos";
 
 import WhatsAppSetores from "./pages/WhatsAppSetores";
+import WhatsAppCRM from "./pages/WhatsAppCRM";
 import Calendario from "./pages/Calendario";
 import TermosDeUso from "./pages/TermosDeUso";
 import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
