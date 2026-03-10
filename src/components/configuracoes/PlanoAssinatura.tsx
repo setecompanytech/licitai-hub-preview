@@ -11,6 +11,8 @@ import { CreditCard, Check, Star, Zap, QrCode, FileText, Copy, Loader2, ShieldCh
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
+import { type BillingCycle, cycleConfig, formatCurrency, calcCycleTotal, calcMonthlyEquivalent } from '@/data/pricing-config';
+
 type PaymentMethod = 'pix' | 'boleto' | 'cartao';
 
 const paymentMethods: { key: PaymentMethod; label: string; icon: typeof CreditCard; desc: string }[] = [
@@ -18,15 +20,6 @@ const paymentMethods: { key: PaymentMethod; label: string; icon: typeof CreditCa
   { key: 'boleto', label: 'Boleto', icon: FileText, desc: 'Até 3 dias úteis' },
   { key: 'cartao', label: 'Cartão de Crédito', icon: CreditCard, desc: 'Parcele em até 12x' },
 ];
-
-type BillingCycle = 'mensal' | 'trimestral' | 'semestral' | 'anual';
-
-const cycleConfig: Record<BillingCycle, { label: string; months: number; discount: number }> = {
-  mensal:     { label: 'Mensal',     months: 1,  discount: 0 },
-  trimestral: { label: 'Trimestral', months: 3,  discount: 0.10 },
-  semestral:  { label: 'Semestral',  months: 6,  discount: 0.15 },
-  anual:      { label: 'Anual',      months: 12, discount: 0.20 },
-};
 
 interface Plano {
   id: string;

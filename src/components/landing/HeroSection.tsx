@@ -51,7 +51,7 @@ export default function HeroSection() {
             </motion.div>
 
             <h1 className="text-4xl sm:text-5xl xl:text-[3.4rem] font-extrabold tracking-tight leading-[1.08] mb-6 text-white">
-              Vença licitações com{' '}
+              Domine licitações com{' '}
               <span className="gradient-text">Inteligência Artificial</span>
             </h1>
 
