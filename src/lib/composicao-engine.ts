@@ -364,6 +364,24 @@ export function calcularComposicao(
  * Mantém todos os parâmetros originais mas aplica o override de preço,
  * recalculando a margem de lucro resultante.
  */
+/**
+ * Calcula o preço unitário a partir de uma margem de lucro desejada.
+ * Fórmula inversa do mark-up divisor.
+ */
+export function calcularPrecoFromMargem(
+  custoUnitario: number,
+  params: ComposicaoParametros,
+  margemDesejada: number
+): number {
+  const tributos = getTributosRegime(params);
+  const somaAliquotasTributos = tributos.reduce((s, t) => s + t.aliquota, 0);
+  const { fretePerc, despesasAdmPerc } = params;
+  const somaPercentuais = somaAliquotasTributos + fretePerc + despesasAdmPerc + margemDesejada;
+  const divisor = 1 - somaPercentuais / 100;
+  const divisorSafe = divisor > 0.01 ? divisor : 0.01;
+  return r2(custoUnitario / divisorSafe);
+}
+
 export function recalcularComOverride(
   result: ComposicaoResult,
   itemIndex: number,

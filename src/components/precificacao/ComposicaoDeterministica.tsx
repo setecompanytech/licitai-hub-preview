@@ -15,7 +15,7 @@ import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import {
   type ComposicaoResult, type ItemComposicaoResult,
-  recalcularComOverride,
+  recalcularComOverride, calcularPrecoFromMargem,
 } from '@/lib/composicao-engine';
 import {
   exportComposicaoPDF, exportComposicaoExcel, exportComposicaoWord,
