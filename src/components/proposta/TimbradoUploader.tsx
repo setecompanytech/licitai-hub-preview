@@ -501,28 +501,30 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
 
           {/* Footer area */}
           <div
-            className="absolute flex items-center justify-center overflow-hidden"
+            className="absolute overflow-hidden"
             style={{
-              bottom: mBottom,
-              left: mLeft,
-              right: mRight,
-              height: fHeight,
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: mBottom + fHeight,
             }}
           >
             <div className="absolute inset-0 bg-accent/5 border-t border-dashed border-accent/20" />
             {footer.url ? (
               isImageUrl(footer.url) ? (
-                <img src={footer.url} alt="Rodapé" className="relative z-10 max-h-full max-w-full object-contain" />
+                <img src={footer.url} alt="Rodapé" className="relative z-10 w-full h-full object-fill" />
               ) : (
-                <div className="relative z-10 flex items-center gap-1 text-muted-foreground">
+                <div className="relative z-10 w-full h-full flex items-center justify-center text-muted-foreground">
                   <FileText className="w-3 h-3" />
                   <span style={{ fontSize: Math.max(8, fHeight * 0.3) }}>Rodapé</span>
                 </div>
               )
             ) : (
-              <span className="relative z-10 text-muted-foreground/40 italic" style={{ fontSize: Math.max(7, fHeight * 0.25) }}>
-                Área do rodapé
-              </span>
+              <div className="relative z-10 w-full h-full flex items-center justify-center">
+                <span className="text-muted-foreground/40 italic" style={{ fontSize: Math.max(7, fHeight * 0.25) }}>
+                  Área do rodapé
+                </span>
+              </div>
             )}
           </div>
 
