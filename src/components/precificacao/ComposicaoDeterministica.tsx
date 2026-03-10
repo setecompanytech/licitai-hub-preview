@@ -14,8 +14,8 @@ import { toast } from 'sonner';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import {
-  type ComposicaoResult, type ItemComposicaoResult,
-  recalcularComOverride, calcularPrecoFromMargem,
+  type ComposicaoResult, type ItemComposicaoResult, type AlertaItem,
+  recalcularComOverride, calcularPrecoFromMargem, gerarAlertasItem,
 } from '@/lib/composicao-engine';
 import {
   exportComposicaoPDF, exportComposicaoExcel, exportComposicaoWord,
@@ -364,23 +364,47 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
               </Table>
             </div>
 
-            {/* Margin alert per item */}
-            {item.margemResultante < 0 && (
-              <div className="mt-2 bg-destructive/10 border border-destructive/20 rounded-lg p-2 flex items-center gap-2">
-                <XCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
-                <p className="text-[10px] text-destructive">
-                  Preço abaixo do custo + tributos. Margem: {item.margemResultante.toFixed(2)}% — operação com prejuízo neste item.
-                </p>
-              </div>
-            )}
-            {item.margemResultante >= 0 && item.margemResultante < 5 && (
-              <div className="mt-2 bg-primary/10 border border-primary/20 rounded-lg p-2 flex items-center gap-2">
-                <AlertTriangle className="w-3.5 h-3.5 text-primary shrink-0" />
-                <p className="text-[10px] text-primary">
-                  Margem de {item.margemResultante.toFixed(2)}% abaixo de 5% — risco de inexequibilidade (Art. 59, Lei 14.133/21).
-                </p>
-              </div>
-            )}
+            {/* Alertas inteligentes por item */}
+            {(() => {
+              const alertas = gerarAlertasItem(item, result.parametros);
+              if (alertas.length === 0) return null;
+              return (
+                <div className="mt-2 space-y-1.5">
+                  {alertas.map((al, ai) => (
+                    <div
+                      key={ai}
+                      className={`rounded-lg border p-2.5 flex items-start gap-2 ${
+                        al.tipo === 'erro'
+                          ? 'bg-destructive/10 border-destructive/20'
+                          : al.tipo === 'atencao'
+                          ? 'bg-primary/10 border-primary/20'
+                          : 'bg-muted/50 border-border/50'
+                      }`}
+                    >
+                      {al.tipo === 'erro' ? (
+                        <XCircle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+                      ) : al.tipo === 'atencao' ? (
+                        <AlertTriangle className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                      ) : (
+                        <Info className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-[10px] font-semibold ${
+                          al.tipo === 'erro' ? 'text-destructive' : al.tipo === 'atencao' ? 'text-primary' : 'text-muted-foreground'
+                        }`}>
+                          {al.titulo}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground leading-relaxed mt-0.5">{al.mensagem}</p>
+                        <p className="text-[9px] text-muted-foreground/70 italic mt-1">📜 {al.fundamentacao}</p>
+                      </div>
+                    </div>
+                  ))}
+                  <p className="text-[9px] text-muted-foreground/60 italic pl-1">
+                    ℹ Alertas informativos — a decisão final é de responsabilidade exclusiva do usuário.
+                  </p>
+                </div>
+              );
+            })()}
           </div>
         ))}
       </div>
@@ -486,6 +510,35 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
               </Table>
             </div>
 
+            {/* Alertas Globais */}
+            {parecer.alertasGlobais.length > 0 && (
+              <div className="space-y-1.5">
+                {parecer.alertasGlobais.map((al, ai) => (
+                  <div
+                    key={ai}
+                    className={`rounded-lg border p-3 flex items-start gap-2 ${
+                      al.tipo === 'erro'
+                        ? 'bg-destructive/10 border-destructive/20'
+                        : al.tipo === 'atencao'
+                        ? 'bg-primary/10 border-primary/20'
+                        : 'bg-muted/50 border-border/50'
+                    }`}
+                  >
+                    {al.tipo === 'erro' ? (
+                      <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    )}
+                    <div>
+                      <p className={`text-[11px] font-bold ${al.tipo === 'erro' ? 'text-destructive' : 'text-primary'}`}>{al.titulo}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{al.mensagem}</p>
+                      <p className="text-[9px] text-muted-foreground/70 italic mt-1">📜 {al.fundamentacao}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Parecer */}
             <div className={`rounded-lg border p-3 ${viabilidadeColor}`}>
               <div className="flex items-center gap-2 mb-1.5">
@@ -506,6 +559,9 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                   <Badge key={i} variant="outline" className="text-[8px] px-1.5 py-0.5">{f}</Badge>
                 ))}
               </div>
+              <p className="text-[9px] text-muted-foreground/60 italic mt-2 border-t border-current/10 pt-1.5">
+                ⚖ Os alertas são informativos e baseados na legislação vigente. A decisão final sobre os valores é de responsabilidade exclusiva do usuário.
+              </p>
             </div>
 
             {/* Methodology note */}
