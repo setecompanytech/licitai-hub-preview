@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,7 +31,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
   resolvido: { label: 'Resolvido', color: 'bg-success/10 text-success', icon: CheckCircle },
 };
 
-export default function Suporte() {
+const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -262,4 +262,6 @@ export default function Suporte() {
       </div>
     </AppLayout>
   );
-}
+});
+
+export default Suporte;

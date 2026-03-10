@@ -97,16 +97,54 @@ export default function Auth() {
     }
   };
 
+  const checkLeakedPassword = async (pwd: string): Promise<boolean> => {
+    try {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(pwd);
+      const hashBuffer = await crypto.subtle.digest('SHA-1', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+      const prefix = hashHex.slice(0, 5);
+      const suffix = hashHex.slice(5);
+      const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+      const text = await response.text();
+      return text.split('\n').some(line => line.startsWith(suffix));
+    } catch {
+      return false; // fail open if API unreachable
+    }
+  };
+
+  const validatePasswordStrength = (pwd: string): string | null => {
+    if (pwd.length < 8) return 'A senha deve ter no mínimo 8 caracteres';
+    if (!/[A-Z]/.test(pwd)) return 'A senha deve conter ao menos uma letra maiúscula';
+    if (!/[a-z]/.test(pwd)) return 'A senha deve conter ao menos uma letra minúscula';
+    if (!/[0-9]/.test(pwd)) return 'A senha deve conter ao menos um número';
+    if (!/[^A-Za-z0-9]/.test(pwd)) return 'A senha deve conter ao menos um caractere especial (!@#$%...)';
+    return null;
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nome.trim()) { toast.error('Informe seu nome completo'); return; }
     if (!celular.trim()) { toast.error('Informe seu celular'); return; }
     if (email !== emailConfirm) { toast.error('Os e-mails não conferem'); return; }
     if (password !== passwordConfirm) { toast.error('As senhas não conferem'); return; }
-    if (password.length < 6) { toast.error('A senha deve ter no mínimo 6 caracteres'); return; }
+    
+    const strengthError = validatePasswordStrength(password);
+    if (strengthError) { toast.error(strengthError); return; }
+    
     if (!aceitaTermos) { toast.error('Você precisa aceitar os termos de uso'); return; }
 
     setLoading(true);
+
+    // Check if password has been leaked
+    const isLeaked = await checkLeakedPassword(password);
+    if (isLeaked) {
+      setLoading(false);
+      toast.error('Esta senha já foi exposta em vazamentos de dados. Por segurança, escolha outra senha.');
+      return;
+    }
+
     const { error } = await signUp(email, password, nome);
     setLoading(false);
     if (error) {
