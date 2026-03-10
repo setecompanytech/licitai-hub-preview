@@ -50,6 +50,11 @@ const formatCurrencyInput = (raw: string): string => {
 
 export default function ComposicaoDeterministica({ result, onResultChange, regimeLabel, ufCalculo, ufNome }: Props) {
   const { addItem } = usePropostaCart();
+  const { empresaAtiva } = useEmpresa();
+  const exportOpts = useMemo(() => ({
+    timbradoUrl: empresaAtiva?.timbrado_url,
+    empresaNome: empresaAtiva?.razao_social,
+  }), [empresaAtiva]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
   const [editingMargemIndex, setEditingMargemIndex] = useState<number | null>(null);
