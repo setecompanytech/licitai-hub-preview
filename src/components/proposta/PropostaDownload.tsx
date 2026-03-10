@@ -323,10 +323,7 @@ export default function PropostaDownload({
 
       doc.save(`${getFilename(numeroLicitacao)}.pdf`);
       toast.success('PDF gerado com sucesso!');
-    } catch (e) {
-      console.error('PDF error:', e);
-      toast.error('Erro ao gerar PDF');
-    }
+    }, 'Geração do PDF da Proposta');
   };
 
   const handleWord = (landscape = false) => {
