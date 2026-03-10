@@ -71,39 +71,35 @@ export default function EquipeColaboradores() {
   };
 
   const handleInvite = async () => {
-    if (!empresaAtiva || !user || !inviteEmail.trim()) return;
+    if (!empresaAtiva || !user || !inviteEmail.trim() || inviteEquipes.length === 0) return;
     setSaving(true);
 
-    // Check if user exists in profiles by email (we store email on invite for reference)
-    // The invited user will be linked when they sign up or if already signed up
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('user_id')
-      .eq('nome_completo', inviteEmail) // fallback search
-      .maybeSingle();
+    const userId = crypto.randomUUID();
+    let hasError = false;
 
-    // For now, create a placeholder membership entry
-    // When the user with this email signs up/logs in, they'll be matched
-    const userId = existingProfile?.user_id || crypto.randomUUID();
-    
-    const { error } = await supabase.from('empresa_membros').insert({
-      empresa_id: empresaAtiva.id,
-      user_id: userId,
-      papel: invitePapel as any,
-      equipe: inviteEquipe,
-      nome: inviteNome || inviteEmail,
-      email: inviteEmail,
-    } as any);
+    for (const equipe of inviteEquipes) {
+      const { error } = await supabase.from('empresa_membros').insert({
+        empresa_id: empresaAtiva.id,
+        user_id: userId,
+        papel: invitePapel as any,
+        equipe,
+        nome: inviteNome || inviteEmail,
+        email: inviteEmail,
+      } as any);
+      if (error) {
+        toast.error(`Erro ao adicionar na equipe ${equipe}: ${error.message}`);
+        hasError = true;
+      }
+    }
 
-    if (error) {
-      toast.error('Erro ao adicionar colaborador: ' + error.message);
-    } else {
-      toast.success(`Colaborador ${inviteNome || inviteEmail} adicionado à equipe ${EQUIPES.find(e => e.value === inviteEquipe)?.label}`);
+    if (!hasError) {
+      const labels = inviteEquipes.map(e => EQUIPES.find(eq => eq.value === e)?.label).join(', ');
+      toast.success(`Colaborador ${inviteNome || inviteEmail} adicionado às equipes: ${labels}`);
       setShowInvite(false);
       setInviteEmail('');
       setInviteNome('');
       setInvitePapel('operador');
-      setInviteEquipe('geral');
+      setInviteEquipes(['geral']);
       loadMembros();
     }
     setSaving(false);
