@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Play, Shield, Award, TrendingUp, CheckCircle2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import heroDashboard from '@/assets/landing/hero-dashboard.png';
+import heroBusiness from '@/assets/landing/hero-business.jpg';
 
 const highlights = [
   'Monitoramento automático em 38 portais de compras',
