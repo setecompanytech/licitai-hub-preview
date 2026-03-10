@@ -448,28 +448,30 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
 
           {/* Header area */}
           <div
-            className="absolute flex items-center justify-center overflow-hidden"
+            className="absolute overflow-hidden"
             style={{
-              top: mTop,
-              left: mLeft,
-              right: mRight,
-              height: hHeight,
+              top: 0,
+              left: 0,
+              right: 0,
+              height: mTop + hHeight,
             }}
           >
             <div className="absolute inset-0 bg-accent/5 border-b border-dashed border-accent/20" />
             {header.url ? (
               isImageUrl(header.url) ? (
-                <img src={header.url} alt="Cabeçalho" className="relative z-10 max-h-full max-w-full object-contain" />
+                <img src={header.url} alt="Cabeçalho" className="relative z-10 w-full h-full object-fill" />
               ) : (
-                <div className="relative z-10 flex items-center gap-1 text-muted-foreground">
+                <div className="relative z-10 w-full h-full flex items-center justify-center text-muted-foreground">
                   <FileText className="w-3 h-3" />
                   <span style={{ fontSize: Math.max(8, hHeight * 0.3) }}>Cabeçalho</span>
                 </div>
               )
             ) : (
-              <span className="relative z-10 text-muted-foreground/40 italic" style={{ fontSize: Math.max(7, hHeight * 0.25) }}>
-                Área do cabeçalho
-              </span>
+              <div className="relative z-10 w-full h-full flex items-center justify-center">
+                <span className="text-muted-foreground/40 italic" style={{ fontSize: Math.max(7, hHeight * 0.25) }}>
+                  Área do cabeçalho
+                </span>
+              </div>
             )}
           </div>
 
