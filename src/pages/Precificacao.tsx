@@ -1323,6 +1323,12 @@ Responda APENAS em JSON, sem markdown:
               <ImportacoesManager />
             </div>
           </TabsContent>
+
+          <TabsContent value="inteligencia">
+            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+              <InteligenciaPrecos />
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
     </AppLayout>
