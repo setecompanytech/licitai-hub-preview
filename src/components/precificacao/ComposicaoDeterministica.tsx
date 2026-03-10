@@ -255,7 +255,35 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                         {fmt(comp.baseCalculo)}
                       </TableCell>
                       <TableCell className="text-[11px] py-2 text-right font-mono">
-                        {fmtPct(comp.aliquota)}
+                        {comp.editavel ? (
+                          <div className="flex items-center justify-end gap-1">
+                            {editingMargemIndex === idx ? (
+                              <>
+                                <Input
+                                  value={editMargemValue}
+                                  onChange={e => setEditMargemValue(e.target.value.replace(/[^0-9,.-]/g, ''))}
+                                  className="h-6 w-16 text-right text-[11px] font-mono px-1"
+                                  autoFocus
+                                  placeholder="10,00"
+                                  onKeyDown={e => { if (e.key === 'Enter') confirmEditMargem(idx); if (e.key === 'Escape') setEditingMargemIndex(null); }}
+                                />
+                                <span className="text-[10px]">%</span>
+                                <Button variant="ghost" size="sm" onClick={() => confirmEditMargem(idx)} className="h-5 w-5 p-0 text-accent">
+                                  <CheckCircle className="w-3 h-3" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <span>{fmtPct(comp.aliquota)}</span>
+                                <Button variant="ghost" size="sm" onClick={() => startEditMargem(idx, comp.aliquota ?? 0)} className="h-5 w-5 p-0 text-muted-foreground hover:text-primary" title="Editar margem de lucro">
+                                  <Pencil className="w-2.5 h-2.5" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        ) : (
+                          fmtPct(comp.aliquota)
+                        )}
                       </TableCell>
                       <TableCell className={`text-[11px] py-2 text-right font-mono font-semibold ${comp.editavel && comp.valor < 0 ? 'text-destructive' : ''}`}>
                         {fmt(comp.valor)}
