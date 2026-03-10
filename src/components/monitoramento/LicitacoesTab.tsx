@@ -1241,6 +1241,27 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (âš
           </table>
         </div>
       </div>
+
+      {/* Marcar Interesse Dialog */}
+      {editalInteresse && (
+        <MarcarInteresseDialog
+          open={showInteresseDialog}
+          onOpenChange={setShowInteresseDialog}
+          edital={{
+            numero: editalInteresse.numero,
+            orgao: editalInteresse.orgao,
+            objeto: editalInteresse.objeto,
+            modalidade: editalInteresse.modalidade,
+            valor_estimado: editalInteresse.valor_estimado,
+            uf: editalInteresse.uf,
+            municipio: editalInteresse.municipio,
+            data_encerramento: editalInteresse.data_encerramento,
+            portal: editalInteresse.portal,
+            url: editalInteresse.url,
+          }}
+          onSuccess={() => setEditalInteresse(null)}
+        />
+      )}
     </div>
   );
 }
