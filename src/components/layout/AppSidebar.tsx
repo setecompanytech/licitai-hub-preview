@@ -34,6 +34,7 @@ import {
   CalendarDays,
   GraduationCap,
   FileText,
+  ListChecks,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

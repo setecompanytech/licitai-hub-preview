@@ -111,6 +111,8 @@ const App = () => (
               <Route path="/whatsapp-setores" element={<Navigate to="/whatsapp-crm" replace />} />
               <Route path="/whatsapp-crm" element={<ProtectedPages><WhatsAppCRM /></ProtectedPages>} />
               <Route path="/calendario" element={<ProtectedPages><Calendario /></ProtectedPages>} />
+              <Route path="/meus-compromissos" element={<ProtectedPages><MeusCompromissos /></ProtectedPages>} />
+              <Route path="/workflow-ia" element={<ProtectedPages><WorkflowIA /></ProtectedPages>} />
               <Route path="/tutorial" element={<ProtectedPages><TutorialPage /></ProtectedPages>} />
               <Route path="/api-integracao" element={<ProtectedPages><ApiIntegracao /></ProtectedPages>} />
               <Route path="/indices-repactuacao" element={<ProtectedPages><IndicesRepactuacao /></ProtectedPages>} />
