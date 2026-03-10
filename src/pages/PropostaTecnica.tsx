@@ -69,8 +69,15 @@ export default function PropostaTecnica() {
   const resultRef = useRef<HTMLDivElement>(null);
 
   // Timbrado / Marca d'água
-  const [timbradoUrl, setTimbradoUrl] = useState<string | null>(null);
+  const [timbradoUrl, setTimbradoUrl] = useState<string | null>(empresaAtiva?.timbrado_url ?? null);
   const [usarMarcaDagua, setUsarMarcaDagua] = useState(true);
+
+  // Auto-sync timbrado when empresa changes
+  useEffect(() => {
+    if (empresaAtiva?.timbrado_url) {
+      setTimbradoUrl(empresaAtiva.timbrado_url);
+    }
+  }, [empresaAtiva?.timbrado_url]);
 
   // Form fields
   const [numeroLicitacao, setNumeroLicitacao] = useState('');
@@ -149,9 +156,9 @@ export default function PropostaTecnica() {
     }
   }, [empresaAtiva]);
 
-  // Import pending items from Precificação
+  // Import pending items from Precificação — react to changes
   useEffect(() => {
-    if (hasPending) {
+    if (hasPending && pendingItems.length > 0) {
       setItens(prev => {
         const hasEmpty = prev.length === 1 && !prev[0].descricao.trim();
         const base = hasEmpty ? [] : prev;
@@ -164,7 +171,7 @@ export default function PropostaTecnica() {
       toast.success(`${pendingItems.length} ${pendingItems.length === 1 ? 'item importado' : 'itens importados'} da Precificação!`);
       clearPending();
     }
-  }, []);
+  }, [hasPending, pendingItems, clearPending]);
 
   const handleEditalExtracted = (data: ExtractedEditalData) => {
     if (data.numeroLicitacao) setNumeroLicitacao(data.numeroLicitacao);
@@ -280,18 +287,37 @@ export default function PropostaTecnica() {
     if (!objeto.trim()) { toast.error('Informe o objeto da licitação'); return; }
     if (!orgao.trim()) { toast.error('Informe o órgão licitante'); return; }
 
+    if (itens.filter(i => i.descricao.trim()).length === 0) {
+      toast.warning('Nenhum item na planilha de preços. A proposta será gerada sem planilha.');
+    }
+
+    if (!repNome || !repCpf) {
+      toast.warning('Representante legal não preenchido. Verifique a aba Representante.');
+    }
+
     setIsLoading(true);
     setProposal('');
     let content = '';
 
-    await streamAIChat({
-      messages: [{ role: 'user', content: 'Gere a Proposta Comercial completa seguindo rigorosamente a estrutura: 1) Cabeçalho e endereçamento ao Órgão Gerenciador, 2) Objeto, 3) Planilha de Preços com TODAS as 11 colunas (Item, Descrição, Qtde, Unid, Marca, Fabricante, Modelo, Vlr Unitário, Vlr Extenso, Vlr Total, Vlr Total Extenso), 4) Validade da Proposta, 5) Prazo e Condições de Pagamento, 6) Prazo e Local de Entrega, 7) Declarações obrigatórias, 8) Dados da Empresa Licitante, 9) Dados do Representante Legal, 10) Dados Bancários, 11) Local, Data e Assinatura.' }],
-      action: 'proposta_tecnica',
-      context: buildContext(),
-      onDelta: (chunk) => { content += chunk; setProposal(content); },
-      onDone: () => { setIsLoading(false); toast.success('Proposta gerada com sucesso!'); },
-      onError: (error) => { toast.error(error); setIsLoading(false); },
-    });
+    try {
+      await streamAIChat({
+        messages: [{ role: 'user', content: 'Gere a Proposta Comercial completa seguindo rigorosamente a estrutura: 1) Cabeçalho e endereçamento ao Órgão Gerenciador, 2) Objeto, 3) Planilha de Preços com TODAS as 11 colunas (Item, Descrição, Qtde, Unid, Marca, Fabricante, Modelo, Vlr Unitário, Vlr Extenso, Vlr Total, Vlr Total Extenso) — REPRODUZA EXATAMENTE os valores fornecidos sem alterar nenhum número, 4) Validade da Proposta, 5) Prazo e Condições de Pagamento, 6) Prazo e Local de Entrega, 7) Declarações obrigatórias, 8) Dados da Empresa Licitante, 9) Dados do Representante Legal, 10) Dados Bancários, 11) Local, Data e Assinatura. IMPORTANTE: Use EXATAMENTE os dados fornecidos no contexto. NÃO invente, altere ou omita nenhum dado. Reproduza fielmente todos os valores da planilha.' }],
+        action: 'proposta_tecnica',
+        context: buildContext(),
+        onDelta: (chunk) => { content += chunk; setProposal(content); },
+        onDone: () => { setIsLoading(false); toast.success('Proposta gerada com sucesso!'); },
+        onError: (error) => { 
+          toast.error('Erro ao gerar proposta', { description: error, duration: 8000 }); 
+          setIsLoading(false); 
+        },
+      });
+    } catch (err: any) {
+      toast.error('Falha crítica na geração da proposta', { 
+        description: err?.message || 'Erro desconhecido. Tente novamente.',
+        duration: 10000 
+      });
+      setIsLoading(false);
+    }
   };
 
   const handleCopy = async () => {
@@ -1033,6 +1059,8 @@ export default function PropostaTecnica() {
               <div className="relative z-10">
                 <PropostaRenderer
                   proposal={proposal}
+                  timbradoUrl={timbradoUrl}
+                  usarMarcaDagua={usarMarcaDagua}
                   empresaData={empresaAtiva}
                   repData={{
                     nome: repNome,

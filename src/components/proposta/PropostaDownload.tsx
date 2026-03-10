@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { withErrorAlert } from '@/lib/error-alert';
 
 interface EditalItem {
   item: string;
@@ -121,7 +122,7 @@ export default function PropostaDownload({
 }: PropostaDownloadProps) {
 
   const handlePDF = async (orientation: 'portrait' | 'landscape' = 'portrait') => {
-    try {
+    await withErrorAlert(async () => {
       const doc = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
@@ -322,14 +323,11 @@ export default function PropostaDownload({
 
       doc.save(`${getFilename(numeroLicitacao)}.pdf`);
       toast.success('PDF gerado com sucesso!');
-    } catch (e) {
-      console.error('PDF error:', e);
-      toast.error('Erro ao gerar PDF');
-    }
+    }, 'Geração do PDF da Proposta');
   };
 
   const handleWord = (landscape = false) => {
-    try {
+    withErrorAlert(async () => {
       // Render all AI content faithfully
       const sections = parseSections(proposal);
       let bodyHtml = '';
@@ -414,13 +412,11 @@ export default function PropostaDownload({
       const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/msword' });
       triggerDownload(blob, `${getFilename(numeroLicitacao)}.doc`);
       toast.success('Documento Word gerado com sucesso!');
-    } catch {
-      toast.error('Erro ao gerar Word');
-    }
+    }, 'Geração do Word da Proposta');
   };
 
   const handleExcel = () => {
-    try {
+    withErrorAlert(async () => {
       const validItens = itens?.filter(i => i.descricao.trim()) || [];
       if (validItens.length > 0) {
         const data = validItens.map(i => ({
@@ -450,9 +446,7 @@ export default function PropostaDownload({
         XLSX.writeFile(wb, `${getFilename(numeroLicitacao)}.xlsx`);
       }
       toast.success('Excel gerado com sucesso!');
-    } catch {
-      toast.error('Erro ao gerar Excel');
-    }
+    }, 'Geração do Excel da Proposta');
   };
 
   return (

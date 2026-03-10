@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { ShieldCheck, FileSignature, Loader2, CheckCircle2 } from 'lucide-react';
@@ -7,6 +6,8 @@ import { toast } from 'sonner';
 
 interface PropostaRendererProps {
   proposal: string;
+  timbradoUrl?: string | null;
+  usarMarcaDagua?: boolean;
   empresaData?: {
     razao_social?: string;
     cnpj?: string;
@@ -202,7 +203,7 @@ function AssinaturaCertificado({ empresaData, repData }: AssinaturaCertificadoPr
   const [assinando, setAssinando] = useState(false);
   const [assinado, setAssinado] = useState(false);
 
-  const hasCertificado = empresaData?.certificado_path && empresaData?.certificado_nome;
+  const hasCertificado = !!(empresaData?.certificado_nome);
 
   const handleAssinar = async () => {
     if (!hasCertificado) {
@@ -236,15 +237,15 @@ function AssinaturaCertificado({ empresaData, repData }: AssinaturaCertificadoPr
 
         {hasCertificado ? (
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className="text-[10px]">
+            <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-[10px] font-semibold">
               <ShieldCheck className="w-3 h-3 mr-1" />
               {empresaData?.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF'} — {empresaData?.certificado_nome}
-            </Badge>
+            </span>
             {assinado ? (
-              <Badge className="bg-green-600/20 text-green-700 dark:text-green-400 border-green-600/30 text-[10px]">
+              <span className="inline-flex items-center rounded-full bg-green-600/20 text-green-700 dark:text-green-400 border border-green-600/30 px-2.5 py-0.5 text-[10px] font-semibold">
                 <CheckCircle2 className="w-3 h-3 mr-1" />
                 Assinado digitalmente
-              </Badge>
+              </span>
             ) : (
               <Button size="sm" onClick={handleAssinar} disabled={assinando} className="h-7 text-xs">
                 {assinando ? (
@@ -265,17 +266,24 @@ function AssinaturaCertificado({ empresaData, repData }: AssinaturaCertificadoPr
   );
 }
 
-export default function PropostaRenderer({ proposal, empresaData, repData }: PropostaRendererProps) {
+export default function PropostaRenderer({ proposal, empresaData, repData, timbradoUrl, usarMarcaDagua }: PropostaRendererProps) {
   const sections = parseSections(proposal);
 
   return (
-    <div className="space-y-4 font-serif" style={{ fontFamily: "'Times New Roman', Times, serif", fontSize: '12pt', lineHeight: '1.5' }}>
+    <div className="space-y-4 font-serif relative" style={{ fontFamily: "'Times New Roman', Times, serif", fontSize: '12pt', lineHeight: '1.5' }}>
+      {/* Timbrado header */}
+      {timbradoUrl && /\.(png|jpe?g|webp|svg)(\?|$)/i.test(timbradoUrl) && (
+        <div className="border-b border-border/30 pb-3 mb-3">
+          <img src={timbradoUrl} alt="Timbrado" className="h-16 max-w-[300px] object-contain" />
+        </div>
+      )}
+
       {/* Render all sections from AI in order */}
       {sections.map((section, idx) => (
         <RenderSection key={idx} title={section.title} content={section.content} />
       ))}
 
-      {/* Digital Certificate Signature */}
+      {/* Digital Certificate Signature — always rendered */}
       <AssinaturaCertificado empresaData={empresaData} repData={repData} />
     </div>
   );
