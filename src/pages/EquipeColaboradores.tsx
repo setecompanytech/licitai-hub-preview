@@ -48,7 +48,7 @@ export default function EquipeColaboradores() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteNome, setInviteNome] = useState('');
   const [invitePapel, setInvitePapel] = useState('operador');
-  const [inviteEquipe, setInviteEquipe] = useState('geral');
+  const [inviteEquipes, setInviteEquipes] = useState<string[]>(['geral']);
   const [saving, setSaving] = useState(false);
 
   const currentMembro = empresas.find(e => e.empresa_id === empresaAtiva?.id);
@@ -71,39 +71,35 @@ export default function EquipeColaboradores() {
   };
 
   const handleInvite = async () => {
-    if (!empresaAtiva || !user || !inviteEmail.trim()) return;
+    if (!empresaAtiva || !user || !inviteEmail.trim() || inviteEquipes.length === 0) return;
     setSaving(true);
 
-    // Check if user exists in profiles by email (we store email on invite for reference)
-    // The invited user will be linked when they sign up or if already signed up
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('user_id')
-      .eq('nome_completo', inviteEmail) // fallback search
-      .maybeSingle();
+    const userId = crypto.randomUUID();
+    let hasError = false;
 
-    // For now, create a placeholder membership entry
-    // When the user with this email signs up/logs in, they'll be matched
-    const userId = existingProfile?.user_id || crypto.randomUUID();
-    
-    const { error } = await supabase.from('empresa_membros').insert({
-      empresa_id: empresaAtiva.id,
-      user_id: userId,
-      papel: invitePapel as any,
-      equipe: inviteEquipe,
-      nome: inviteNome || inviteEmail,
-      email: inviteEmail,
-    } as any);
+    for (const equipe of inviteEquipes) {
+      const { error } = await supabase.from('empresa_membros').insert({
+        empresa_id: empresaAtiva.id,
+        user_id: userId,
+        papel: invitePapel as any,
+        equipe,
+        nome: inviteNome || inviteEmail,
+        email: inviteEmail,
+      } as any);
+      if (error) {
+        toast.error(`Erro ao adicionar na equipe ${equipe}: ${error.message}`);
+        hasError = true;
+      }
+    }
 
-    if (error) {
-      toast.error('Erro ao adicionar colaborador: ' + error.message);
-    } else {
-      toast.success(`Colaborador ${inviteNome || inviteEmail} adicionado à equipe ${EQUIPES.find(e => e.value === inviteEquipe)?.label}`);
+    if (!hasError) {
+      const labels = inviteEquipes.map(e => EQUIPES.find(eq => eq.value === e)?.label).join(', ');
+      toast.success(`Colaborador ${inviteNome || inviteEmail} adicionado às equipes: ${labels}`);
       setShowInvite(false);
       setInviteEmail('');
       setInviteNome('');
       setInvitePapel('operador');
-      setInviteEquipe('geral');
+      setInviteEquipes(['geral']);
       loadMembros();
     }
     setSaving(false);
@@ -281,22 +277,35 @@ export default function EquipeColaboradores() {
                 <Input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="email@empresa.com" type="email" />
               </div>
               <div>
-                <Label>Equipe / Departamento</Label>
-                <Select value={inviteEquipe} onValueChange={setInviteEquipe}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {EQUIPES.map(eq => (
-                      <SelectItem key={eq.value} value={eq.value}>
-                        <span className="flex items-center gap-2">
-                          <eq.icon className="w-4 h-4" />
-                          {eq.label}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Equipes / Departamentos</Label>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  {EQUIPES.map(eq => {
+                    const checked = inviteEquipes.includes(eq.value);
+                    return (
+                      <label
+                        key={eq.value}
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
+                          checked ? 'border-accent bg-accent/10' : 'border-border hover:bg-muted/50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => {
+                            setInviteEquipes(prev =>
+                              checked ? prev.filter(v => v !== eq.value) : [...prev, eq.value]
+                            );
+                          }}
+                          className="accent-[hsl(var(--accent))]"
+                        />
+                        <eq.icon className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">{eq.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  Define a área de responsabilidade: alimentar IA Jurídica, Contábil, etc.
+                  Selecione uma ou mais equipes. Define a área de responsabilidade: alimentar IA Jurídica, Contábil, etc.
                 </p>
               </div>
               <div>
@@ -313,7 +322,7 @@ export default function EquipeColaboradores() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowInvite(false)}>Cancelar</Button>
-              <Button onClick={handleInvite} disabled={saving || !inviteEmail.trim()} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Button onClick={handleInvite} disabled={saving || !inviteEmail.trim() || inviteEquipes.length === 0} className="bg-accent hover:bg-accent/90 text-accent-foreground">
                 {saving ? 'Adicionando...' : 'Adicionar'}
               </Button>
             </DialogFooter>
