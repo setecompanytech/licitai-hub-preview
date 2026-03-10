@@ -510,6 +510,35 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
               </Table>
             </div>
 
+            {/* Alertas Globais */}
+            {parecer.alertasGlobais.length > 0 && (
+              <div className="space-y-1.5">
+                {parecer.alertasGlobais.map((al, ai) => (
+                  <div
+                    key={ai}
+                    className={`rounded-lg border p-3 flex items-start gap-2 ${
+                      al.tipo === 'erro'
+                        ? 'bg-destructive/10 border-destructive/20'
+                        : al.tipo === 'atencao'
+                        ? 'bg-primary/10 border-primary/20'
+                        : 'bg-muted/50 border-border/50'
+                    }`}
+                  >
+                    {al.tipo === 'erro' ? (
+                      <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    )}
+                    <div>
+                      <p className={`text-[11px] font-bold ${al.tipo === 'erro' ? 'text-destructive' : 'text-primary'}`}>{al.titulo}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{al.mensagem}</p>
+                      <p className="text-[9px] text-muted-foreground/70 italic mt-1">📜 {al.fundamentacao}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Parecer */}
             <div className={`rounded-lg border p-3 ${viabilidadeColor}`}>
               <div className="flex items-center gap-2 mb-1.5">
@@ -530,6 +559,9 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                   <Badge key={i} variant="outline" className="text-[8px] px-1.5 py-0.5">{f}</Badge>
                 ))}
               </div>
+              <p className="text-[9px] text-muted-foreground/60 italic mt-2 border-t border-current/10 pt-1.5">
+                ⚖ Os alertas são informativos e baseados na legislação vigente. A decisão final sobre os valores é de responsabilidade exclusiva do usuário.
+              </p>
             </div>
 
             {/* Methodology note */}
