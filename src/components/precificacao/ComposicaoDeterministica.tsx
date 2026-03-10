@@ -141,6 +141,26 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
     toast.info('Preço revertido ao valor sugerido.');
   };
 
+  const startEditMargem = (idx: number, currentMargem: number) => {
+    setEditingMargemIndex(idx);
+    setEditMargemValue(currentMargem.toFixed(2).replace('.', ','));
+  };
+
+  const confirmEditMargem = (idx: number) => {
+    const margem = parseFloat(editMargemValue.replace(',', '.'));
+    if (isNaN(margem) || margem < -100 || margem > 99) {
+      toast.error('Informe uma margem válida (ex: 10,00).');
+      return;
+    }
+    const item = result.itens[idx];
+    const novoPreco = calcularPrecoFromMargem(item.custoUnitario, result.parametros, margem);
+    const updated = recalcularComOverride(result, idx, novoPreco);
+    onResultChange(updated);
+    setEditingMargemIndex(null);
+    setEditMargemValue('');
+    toast.success(`Margem definida para ${margem.toFixed(2)}% — preço recalculado.`);
+  };
+
   const viabilidadeIcon = parecer.viabilidade === 'VIÁVEL'
     ? <CheckCircle className="w-4 h-4 text-accent" />
     : parecer.viabilidade === 'INVIÁVEL'
