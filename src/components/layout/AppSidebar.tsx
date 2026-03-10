@@ -70,6 +70,8 @@ const navGroups: NavGroup[] = [
     items: [
       { icon: Target, label: 'Estratégicas', path: '/licitacoes-estrategicas' },
       { icon: CalendarDays, label: 'Calendário', path: '/calendario' },
+      { icon: ListChecks, label: 'Meus Compromissos', path: '/meus-compromissos' },
+      { icon: Bot, label: 'Workflow IA', path: '/workflow-ia' },
       { icon: Kanban, label: 'Kanban', path: '/kanban' },
       { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
       { icon: Archive, label: 'Histórico', path: '/historico-licitacoes' },
