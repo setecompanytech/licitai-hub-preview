@@ -3069,6 +3069,8 @@ export type Database = {
       whatsapp_conversas: {
         Row: {
           atribuido_a: string | null
+          auto_roteada: boolean | null
+          classificacao_ia: string | null
           contato_avatar_url: string | null
           contato_empresa: string | null
           contato_nome: string
@@ -3076,6 +3078,7 @@ export type Database = {
           created_at: string
           id: string
           lead_id: string | null
+          provider_chat_id: string | null
           setor: string
           status: string
           tags: string[] | null
@@ -3086,6 +3089,8 @@ export type Database = {
         }
         Insert: {
           atribuido_a?: string | null
+          auto_roteada?: boolean | null
+          classificacao_ia?: string | null
           contato_avatar_url?: string | null
           contato_empresa?: string | null
           contato_nome: string
@@ -3093,6 +3098,7 @@ export type Database = {
           created_at?: string
           id?: string
           lead_id?: string | null
+          provider_chat_id?: string | null
           setor?: string
           status?: string
           tags?: string[] | null
@@ -3103,6 +3109,8 @@ export type Database = {
         }
         Update: {
           atribuido_a?: string | null
+          auto_roteada?: boolean | null
+          classificacao_ia?: string | null
           contato_avatar_url?: string | null
           contato_empresa?: string | null
           contato_nome?: string
@@ -3110,6 +3118,7 @@ export type Database = {
           created_at?: string
           id?: string
           lead_id?: string | null
+          provider_chat_id?: string | null
           setor?: string
           status?: string
           tags?: string[] | null
@@ -3206,34 +3215,46 @@ export type Database = {
       }
       whatsapp_mensagens: {
         Row: {
+          auto_resposta: boolean | null
+          confianca_classificacao: number | null
           conteudo: string
           conversa_id: string
           created_at: string
           direcao: string
           id: string
           metadata: Json | null
+          provider_message_id: string | null
+          setor_classificado: string | null
           status: string
           tipo: string
           user_id: string
         }
         Insert: {
+          auto_resposta?: boolean | null
+          confianca_classificacao?: number | null
           conteudo: string
           conversa_id: string
           created_at?: string
           direcao?: string
           id?: string
           metadata?: Json | null
+          provider_message_id?: string | null
+          setor_classificado?: string | null
           status?: string
           tipo?: string
           user_id: string
         }
         Update: {
+          auto_resposta?: boolean | null
+          confianca_classificacao?: number | null
           conteudo?: string
           conversa_id?: string
           created_at?: string
           direcao?: string
           id?: string
           metadata?: Json | null
+          provider_message_id?: string | null
+          setor_classificado?: string | null
           status?: string
           tipo?: string
           user_id?: string
@@ -3298,6 +3319,107 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      whatsapp_roteamento_config: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          dias_semana: number[] | null
+          horario_fim: string | null
+          horario_inicio: string | null
+          id: string
+          mensagem_boas_vindas: string | null
+          mensagem_fora_horario: string | null
+          provider: string | null
+          provider_api_key_id: string | null
+          provider_instance: string | null
+          provider_url: string | null
+          resposta_automatica: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          dias_semana?: number[] | null
+          horario_fim?: string | null
+          horario_inicio?: string | null
+          id?: string
+          mensagem_boas_vindas?: string | null
+          mensagem_fora_horario?: string | null
+          provider?: string | null
+          provider_api_key_id?: string | null
+          provider_instance?: string | null
+          provider_url?: string | null
+          resposta_automatica?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          dias_semana?: number[] | null
+          horario_fim?: string | null
+          horario_inicio?: string | null
+          id?: string
+          mensagem_boas_vindas?: string | null
+          mensagem_fora_horario?: string | null
+          provider?: string | null
+          provider_api_key_id?: string | null
+          provider_instance?: string | null
+          provider_url?: string | null
+          resposta_automatica?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_roteamento_log: {
+        Row: {
+          acao: string
+          confianca: number | null
+          conversa_id: string | null
+          created_at: string
+          id: string
+          mensagem_id: string | null
+          motivo: string | null
+          setor_destino: string
+          setor_origem: string | null
+          user_id: string
+        }
+        Insert: {
+          acao?: string
+          confianca?: number | null
+          conversa_id?: string | null
+          created_at?: string
+          id?: string
+          mensagem_id?: string | null
+          motivo?: string | null
+          setor_destino: string
+          setor_origem?: string | null
+          user_id: string
+        }
+        Update: {
+          acao?: string
+          confianca?: number | null
+          conversa_id?: string | null
+          created_at?: string
+          id?: string
+          mensagem_id?: string | null
+          motivo?: string | null
+          setor_destino?: string
+          setor_origem?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_roteamento_log_conversa_id_fkey"
+            columns: ["conversa_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       whatsapp_templates: {
         Row: {
