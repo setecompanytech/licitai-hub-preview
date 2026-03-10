@@ -180,29 +180,31 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         </Label>
 
         {data.url ? (
-          <div className="flex items-center gap-3 bg-muted/30 rounded-lg p-3 border border-border/50">
-            {isImageUrl(data.url) ? (
-              <img src={data.url} alt={label} className="h-12 max-w-[180px] object-contain rounded border border-border/50 bg-white p-1" />
-            ) : (
-              <div className="h-12 w-12 rounded border border-border/50 bg-white flex items-center justify-center">
-                <FileText className="w-6 h-6 text-accent" />
+          <div className="bg-muted/30 rounded-lg border border-border/50 overflow-hidden">
+            <div className="flex items-center gap-3 p-3">
+              {isImageUrl(data.url) ? (
+                <img src={data.url} alt={label} className="h-12 max-w-[180px] object-contain rounded border border-border/50 bg-white p-1" />
+              ) : (
+                <div className="h-12 w-12 rounded border border-border/50 bg-white flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-accent" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">{label} carregado</p>
+                <p className="text-xs text-muted-foreground truncate">{fileName}</p>
               </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">{label} carregado</p>
-              <p className="text-xs text-muted-foreground truncate">{fileName}</p>
             </div>
-            <div className="flex gap-1.5">
-              <Button variant="outline" size="sm" asChild>
+            <div className="flex gap-1.5 px-3 pb-3">
+              <Button variant="outline" size="sm" className="text-xs" asChild>
                 <a href={data.url} target="_blank" rel="noopener noreferrer">
                   <Eye className="w-3.5 h-3.5 mr-1" /> Ver
                 </a>
               </Button>
-              <Button variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
+              <Button variant="outline" size="sm" className="text-xs" onClick={() => inputRef.current?.click()}>
                 <Upload className="w-3.5 h-3.5 mr-1" /> Trocar
               </Button>
-              <Button variant="outline" size="sm" onClick={() => handleRemove(slot)} className="text-destructive hover:text-destructive">
-                <X className="w-3.5 h-3.5" />
+              <Button variant="outline" size="sm" className="text-xs text-destructive hover:text-destructive" onClick={() => handleRemove(slot)}>
+                <X className="w-3.5 h-3.5 mr-1" /> Excluir
               </Button>
             </div>
           </div>
