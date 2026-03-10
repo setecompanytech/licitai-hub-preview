@@ -112,7 +112,7 @@ export default function HeroSection() {
               <div className="absolute -inset-4 rounded-2xl opacity-20 blur-2xl" style={{ background: 'var(--gradient-primary)' }} />
               <div className="relative rounded-xl overflow-hidden border border-white/8 shadow-2xl">
                 <img
-                  src={heroDashboard}
+                  src={heroBusiness}
                   alt="Dashboard do LicitIA com monitoramento de editais e lances automáticos"
                   className="w-full h-auto"
                   loading="eager"
