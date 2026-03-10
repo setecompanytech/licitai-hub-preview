@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, MessageCircle, Zap, CheckCircle2, Sparkles } from 'lucide-react';
+import { ArrowRight, MessageCircle, CheckCircle2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 
 const ctaBenefits = [
   'Sem necessidade de cartão de crédito',
-  'Acesso imediato a 31 portais',
+  'Acesso imediato a 38 portais',
   'Assistente IA incluso',
 ];
 
@@ -20,39 +20,34 @@ export default function CtaSection() {
         viewport={{ once: true }}
         className="landing-container"
       >
-        <div className="relative rounded-[2rem] p-12 md:p-20 text-center overflow-hidden" style={{ background: 'var(--gradient-hero)' }}>
-          {/* Grid pattern */}
-          <div className="absolute inset-0 opacity-[0.03]" style={{
-            backgroundImage: 'linear-gradient(hsl(174 72% 50%) 1px, transparent 1px), linear-gradient(90deg, hsl(174 72% 50%) 1px, transparent 1px)',
+        <div className="relative rounded-2xl p-12 md:p-20 text-center overflow-hidden" style={{ background: 'var(--gradient-hero)' }}>
+          <div className="absolute inset-0 opacity-[0.02]" style={{
+            backgroundImage: 'linear-gradient(hsl(174 62% 45%) 1px, transparent 1px), linear-gradient(90deg, hsl(174 62% 45%) 1px, transparent 1px)',
             backgroundSize: '40px 40px',
           }} />
 
-          {/* Orbs */}
-          <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full opacity-15 blur-[100px]" style={{ background: 'hsl(174 72% 45%)' }} />
-          <div className="absolute bottom-0 left-0 w-[350px] h-[350px] rounded-full opacity-10 blur-[80px]" style={{ background: 'hsl(210 100% 50%)' }} />
+          <div className="absolute top-0 right-0 w-[300px] h-[300px] rounded-full opacity-12 blur-[100px]" style={{ background: 'hsl(174 62% 45%)' }} />
 
           <div className="relative">
             <motion.div
               initial={{ scale: 0 }}
               whileInView={{ scale: 1 }}
               viewport={{ once: true }}
-              className="w-16 h-16 rounded-2xl bg-accent/20 flex items-center justify-center mx-auto mb-8 backdrop-blur-sm border border-accent/20"
+              className="w-14 h-14 rounded-xl bg-accent/15 flex items-center justify-center mx-auto mb-8 border border-accent/15"
             >
-              <Sparkles className="w-8 h-8 text-accent" />
+              <Sparkles className="w-7 h-7 text-accent" />
             </motion.div>
 
-            <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-5 tracking-tight leading-tight">
-              Pronto para vencer mais
-              <br className="hidden md:block" />
-              licitações?
+            <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-5 tracking-tight leading-tight">
+              Pronto para vencer mais licitações?
             </h2>
-            <p className="text-base md:text-lg text-white/50 mb-10 max-w-xl mx-auto leading-relaxed">
-              Crie sua conta gratuitamente e comece a monitorar editais em minutos. Sem compromisso, sem burocracia.
+            <p className="text-base text-white/45 mb-10 max-w-lg mx-auto leading-relaxed">
+              Crie sua conta gratuitamente e comece a monitorar editais em minutos.
             </p>
 
-            <ul className="flex flex-col sm:flex-row items-center justify-center gap-5 mb-12">
+            <ul className="flex flex-col sm:flex-row items-center justify-center gap-5 mb-10">
               {ctaBenefits.map((b) => (
-                <li key={b} className="flex items-center gap-2 text-sm text-white/60">
+                <li key={b} className="flex items-center gap-2 text-sm text-white/55">
                   <CheckCircle2 className="w-4 h-4 text-accent flex-shrink-0" />
                   <span>{b}</span>
                 </li>
@@ -62,8 +57,7 @@ export default function CtaSection() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
-                className="bg-accent hover:bg-accent/90 text-accent-foreground text-base px-10 py-6 rounded-xl font-bold shadow-lg hover:shadow-2xl transition-all hover:-translate-y-0.5"
-                style={{ boxShadow: 'var(--shadow-glow)' }}
+                className="bg-accent hover:bg-accent/90 text-accent-foreground text-base px-10 py-6 rounded-lg font-bold transition-all hover:-translate-y-0.5"
                 onClick={() => navigate('/auth')}
               >
                 Criar Conta Gratuita <ArrowRight className="w-5 h-5 ml-1" />
@@ -71,7 +65,7 @@ export default function CtaSection() {
               <Button
                 size="lg"
                 variant="outline"
-                className="text-base px-8 py-6 rounded-xl border-white/15 text-white/70 hover:bg-white/5 hover:text-white"
+                className="text-base px-8 py-6 rounded-lg border-white/12 text-white/65 hover:bg-white/5 hover:text-white"
                 onClick={() => navigate('/suporte')}
               >
                 <MessageCircle className="w-4 h-4 mr-2" /> Falar com Suporte

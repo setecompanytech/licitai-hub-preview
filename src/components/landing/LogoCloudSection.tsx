@@ -31,41 +31,40 @@ const duplicated = [...portaisComLogo, ...portaisComLogo];
 
 export default function LogoCloudSection() {
   return (
-    <section id="portais" className="landing-section bg-muted/30 border-y border-border/30 overflow-hidden">
-      <div className="landing-container">
-        <div className="text-center mb-14">
+    <section id="portais" className="py-16 px-6 bg-card border-y border-border/40 overflow-hidden">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-10">
           <span className="section-label">Integrações</span>
-          <h2 className="section-title">
-            Conectado com <span className="gradient-text">31 portais</span> de licitações e dispensas
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+            Conectado com <span className="gradient-text">38 portais</span> de compras públicas
           </h2>
-          <p className="section-subtitle mx-auto">
-            Monitoramento automatizado via IA em portais federais, estaduais e plataformas privadas de todos os 27 estados.
+          <p className="text-sm text-muted-foreground mt-2 max-w-lg mx-auto">
+            Monitoramento automatizado em portais federais, estaduais e plataformas privadas de todos os 27 estados.
           </p>
         </div>
       </div>
 
-      {/* Carousel */}
       <div className="relative">
-        <div className="absolute left-0 top-0 bottom-0 w-24 md:w-40 z-10 pointer-events-none bg-gradient-to-r from-muted/30 to-transparent" />
-        <div className="absolute right-0 top-0 bottom-0 w-24 md:w-40 z-10 pointer-events-none bg-gradient-to-l from-muted/30 to-transparent" />
+        <div className="absolute left-0 top-0 bottom-0 w-20 md:w-32 z-10 pointer-events-none bg-gradient-to-r from-card to-transparent" />
+        <div className="absolute right-0 top-0 bottom-0 w-20 md:w-32 z-10 pointer-events-none bg-gradient-to-l from-card to-transparent" />
 
         <motion.div
-          className="flex gap-8 md:gap-12 py-4"
+          className="flex gap-6 md:gap-10 py-4"
           animate={{ x: ['0%', '-50%'] }}
           transition={{ x: { duration: 40, repeat: Infinity, ease: 'linear' } }}
           style={{ width: 'max-content' }}
         >
           {duplicated.map((portal, i) => (
-            <div key={`${portal.name}-${i}`} className="flex flex-col items-center gap-2 flex-shrink-0">
-              <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-card border border-border/30 flex items-center justify-center p-3 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-                <div className="absolute bottom-0 left-0 right-0 h-[3px] transition-all group-hover:h-1" style={{ backgroundColor: portal.color }} />
+            <div key={`${portal.name}-${i}`} className="flex flex-col items-center gap-1.5 flex-shrink-0">
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl bg-background border border-border/40 flex items-center justify-center p-2.5 hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] transition-all group-hover:h-[3px]" style={{ backgroundColor: portal.color }} />
                 {portal.logo ? (
                   <img src={portal.logo} alt={portal.name} className="max-w-full max-h-full object-contain" />
                 ) : (
-                  <Globe className="w-8 h-8 text-muted-foreground" />
+                  <Globe className="w-7 h-7 text-muted-foreground" />
                 )}
               </div>
-              <span className="text-[10px] font-medium text-muted-foreground/50 text-center max-w-[90px]">{portal.name}</span>
+              <span className="text-[9px] font-medium text-muted-foreground/50 text-center max-w-[80px]">{portal.name}</span>
             </div>
           ))}
         </motion.div>
