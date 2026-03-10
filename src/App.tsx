@@ -53,6 +53,7 @@ import NotFound from "./pages/NotFound";
 import ApiIntegracao from "./pages/ApiIntegracao";
 import IndicesRepactuacao from "./pages/IndicesRepactuacao";
 import RelatorioContabil from "./pages/RelatorioContabil";
+import AdminMarketing from "./pages/AdminMarketing";
 
 const queryClient = new QueryClient();
 
@@ -93,6 +94,7 @@ const App = () => (
               <Route path="/admin/templates" element={<ProtectedPages><AdminTemplates /></ProtectedPages>} />
               <Route path="/admin/financeiro" element={<ProtectedPages><AdminFinanceiro /></ProtectedPages>} />
               <Route path="/admin/fontes-fabricantes" element={<ProtectedPages><AdminFontesFabricantes /></ProtectedPages>} />
+              <Route path="/admin/marketing" element={<ProtectedPages><AdminMarketing /></ProtectedPages>} />
               <Route path="/monitoramento-chat" element={<ProtectedPages><MonitoramentoChat /></ProtectedPages>} />
               <Route path="/analise-mercado" element={<ProtectedPages><AnaliseMercado /></ProtectedPages>} />
               <Route path="/licitacoes-estrategicas" element={<ProtectedPages><LicitacoesEstrategicas /></ProtectedPages>} />

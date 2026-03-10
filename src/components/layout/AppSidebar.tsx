@@ -119,6 +119,7 @@ const adminItems: NavItem[] = [
   { icon: ShieldCheck, label: 'Templates IA', path: '/admin/templates' },
   { icon: DollarSign, label: 'Financeiro', path: '/admin/financeiro' },
   { icon: Target, label: 'Fontes Fabricantes', path: '/admin/fontes-fabricantes' },
+  { icon: TrendingUp, label: 'Marketing', path: '/admin/marketing' },
 ];
 
 interface AppSidebarProps {
