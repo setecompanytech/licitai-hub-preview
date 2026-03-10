@@ -198,6 +198,8 @@ export default function LicitacoesTab() {
   const [summaryContent, setSummaryContent] = useState<Record<string, string>>({});
   const [loadingSummary, setLoadingSummary] = useState<string | null>(null);
   const [downloadingAnexos, setDownloadingAnexos] = useState<string | null>(null);
+  const [showInteresseDialog, setShowInteresseDialog] = useState(false);
+  const [editalInteresse, setEditalInteresse] = useState<ResultadoBusca | null>(null);
   const resultadosRef = useRef<HTMLDivElement>(null);
 
   // Carregar favoritos do banco
