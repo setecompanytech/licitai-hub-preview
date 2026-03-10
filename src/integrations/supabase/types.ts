@@ -2289,6 +2289,123 @@ export type Database = {
           },
         ]
       }
+      processos_interesse: {
+        Row: {
+          alerta_1dia: boolean | null
+          alerta_3dias: boolean | null
+          alerta_7dias: boolean | null
+          alerta_email: boolean | null
+          alerta_sistema: boolean | null
+          alerta_whatsapp: boolean | null
+          aprovado_usuario: boolean | null
+          auto_cadastro: boolean | null
+          created_at: string
+          data_abertura: string | null
+          data_encerramento: string | null
+          empresa_id: string | null
+          ia_recomendacao: string | null
+          ia_score: number | null
+          id: string
+          licitacao_id: string | null
+          modalidade: string | null
+          municipio: string | null
+          notas: string | null
+          numero: string
+          objeto: string
+          orgao: string
+          portal: string | null
+          preco_validado: boolean | null
+          status: string
+          uf: string | null
+          ultimo_alerta_enviado: string | null
+          updated_at: string
+          url: string | null
+          user_id: string
+          valor_estimado: number | null
+        }
+        Insert: {
+          alerta_1dia?: boolean | null
+          alerta_3dias?: boolean | null
+          alerta_7dias?: boolean | null
+          alerta_email?: boolean | null
+          alerta_sistema?: boolean | null
+          alerta_whatsapp?: boolean | null
+          aprovado_usuario?: boolean | null
+          auto_cadastro?: boolean | null
+          created_at?: string
+          data_abertura?: string | null
+          data_encerramento?: string | null
+          empresa_id?: string | null
+          ia_recomendacao?: string | null
+          ia_score?: number | null
+          id?: string
+          licitacao_id?: string | null
+          modalidade?: string | null
+          municipio?: string | null
+          notas?: string | null
+          numero: string
+          objeto: string
+          orgao: string
+          portal?: string | null
+          preco_validado?: boolean | null
+          status?: string
+          uf?: string | null
+          ultimo_alerta_enviado?: string | null
+          updated_at?: string
+          url?: string | null
+          user_id: string
+          valor_estimado?: number | null
+        }
+        Update: {
+          alerta_1dia?: boolean | null
+          alerta_3dias?: boolean | null
+          alerta_7dias?: boolean | null
+          alerta_email?: boolean | null
+          alerta_sistema?: boolean | null
+          alerta_whatsapp?: boolean | null
+          aprovado_usuario?: boolean | null
+          auto_cadastro?: boolean | null
+          created_at?: string
+          data_abertura?: string | null
+          data_encerramento?: string | null
+          empresa_id?: string | null
+          ia_recomendacao?: string | null
+          ia_score?: number | null
+          id?: string
+          licitacao_id?: string | null
+          modalidade?: string | null
+          municipio?: string | null
+          notas?: string | null
+          numero?: string
+          objeto?: string
+          orgao?: string
+          portal?: string | null
+          preco_validado?: boolean | null
+          status?: string
+          uf?: string | null
+          ultimo_alerta_enviado?: string | null
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+          valor_estimado?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "processos_interesse_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "processos_interesse_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products_normalized: {
         Row: {
           atributos: Json | null
@@ -3555,6 +3672,66 @@ export type Database = {
           variaveis?: string[] | null
         }
         Relationships: []
+      }
+      workflow_ia: {
+        Row: {
+          aprovado: boolean | null
+          created_at: string
+          dados_json: Json | null
+          descricao: string | null
+          empresa_id: string | null
+          etapa: string
+          id: string
+          processo_interesse_id: string | null
+          resultado_ia: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          aprovado?: boolean | null
+          created_at?: string
+          dados_json?: Json | null
+          descricao?: string | null
+          empresa_id?: string | null
+          etapa?: string
+          id?: string
+          processo_interesse_id?: string | null
+          resultado_ia?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          aprovado?: boolean | null
+          created_at?: string
+          dados_json?: Json | null
+          descricao?: string | null
+          empresa_id?: string | null
+          etapa?: string
+          id?: string
+          processo_interesse_id?: string | null
+          resultado_ia?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_ia_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_ia_processo_interesse_id_fkey"
+            columns: ["processo_interesse_id"]
+            isOneToOne: false
+            referencedRelation: "processos_interesse"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -12,8 +12,9 @@ import {
   Search, MapPin, Calendar as CalendarIcon2, Building2, CalendarDays, RefreshCw,
   Sparkles, Globe, Download, FileText, FileSpreadsheet, FileJson, FileArchive,
   FileDown, Loader2, Send, ChevronDown, ChevronUp, Filter, X, Zap, Brain,
-  Star, StarOff
+  Star, StarOff, CheckCircle2
 } from 'lucide-react';
+import MarcarInteresseDialog from '@/components/compromissos/MarcarInteresseDialog';
 import { downloadCSV, downloadPDF, downloadJSON } from '@/lib/download-utils';
 import JSZip from 'jszip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -197,6 +198,8 @@ export default function LicitacoesTab() {
   const [summaryContent, setSummaryContent] = useState<Record<string, string>>({});
   const [loadingSummary, setLoadingSummary] = useState<string | null>(null);
   const [downloadingAnexos, setDownloadingAnexos] = useState<string | null>(null);
+  const [showInteresseDialog, setShowInteresseDialog] = useState(false);
+  const [editalInteresse, setEditalInteresse] = useState<ResultadoBusca | null>(null);
   const resultadosRef = useRef<HTMLDivElement>(null);
 
   // Carregar favoritos do banco
@@ -1144,19 +1147,33 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (âš
                         <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', st.className)}>{st.label}</Badge>
                       </td>
                       <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 px-2 text-[10px] gap-1 bg-accent/10 text-accent border-accent/30 hover:bg-accent/20"
-                          onClick={() => handleIniciarProcesso(lic)}
-                          disabled={iniciandoProcesso === lic.id}
-                        >
-                          {iniciandoProcesso === lic.id ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <><FileText className="w-3 h-3" /> Iniciar</>
-                          )}
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-[10px] gap-1 bg-success/10 text-success border-success/30 hover:bg-success/20"
+                            onClick={() => {
+                              setEditalInteresse(lic);
+                              setShowInteresseDialog(true);
+                            }}
+                            title="Marcar interesse e adicionar aos compromissos"
+                          >
+                            <CheckCircle2 className="w-3 h-3" /> Interesse
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-[10px] gap-1 bg-accent/10 text-accent border-accent/30 hover:bg-accent/20"
+                            onClick={() => handleIniciarProcesso(lic)}
+                            disabled={iniciandoProcesso === lic.id}
+                          >
+                            {iniciandoProcesso === lic.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <><FileText className="w-3 h-3" /> Iniciar</>
+                            )}
+                          </Button>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                         <DropdownMenu>
@@ -1224,6 +1241,27 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (âš
           </table>
         </div>
       </div>
+
+      {/* Marcar Interesse Dialog */}
+      {editalInteresse && (
+        <MarcarInteresseDialog
+          open={showInteresseDialog}
+          onOpenChange={setShowInteresseDialog}
+          edital={{
+            numero: editalInteresse.numero,
+            orgao: editalInteresse.orgao,
+            objeto: editalInteresse.objeto,
+            modalidade: editalInteresse.modalidade,
+            valor_estimado: editalInteresse.valor_estimado,
+            uf: editalInteresse.uf,
+            municipio: editalInteresse.municipio,
+            data_encerramento: editalInteresse.data_encerramento,
+            portal: editalInteresse.portal,
+            url: editalInteresse.url,
+          }}
+          onSuccess={() => setEditalInteresse(null)}
+        />
+      )}
     </div>
   );
 }

@@ -16,6 +16,7 @@ Deno.serve(async (req) => {
 
   const now = new Date();
   const today = now.toISOString().split('T')[0];
+  const in1Day = new Date(now.getTime() + 1 * 86400000).toISOString();
   const in3Days = new Date(now.getTime() + 3 * 86400000).toISOString();
   const in7Days = new Date(now.getTime() + 7 * 86400000).toISOString();
 
@@ -111,6 +112,97 @@ Deno.serve(async (req) => {
         tipo: 'edital',
         link: '/monitoramento-editais',
       });
+    }
+
+    // 5. Alertas de processos de interesse (7, 3 e 1 dia antes)
+    const { data: interessados } = await supabase
+      .from('processos_interesse')
+      .select('*')
+      .eq('user_id', userId)
+      .not('status', 'in', '("rejeitado")')
+      .not('data_encerramento', 'is', null);
+
+    for (const pi of interessados || []) {
+      if (!pi.data_encerramento) continue;
+      const dataEnc = new Date(pi.data_encerramento);
+      const diffMs = dataEnc.getTime() - now.getTime();
+      const diffDias = Math.ceil(diffMs / 86400000);
+
+      if (diffDias < 0) continue;
+
+      let alertaMsg: string | null = null;
+      let alertaKey: string | null = null;
+
+      if (diffDias <= 1 && pi.alerta_1dia && pi.ultimo_alerta_enviado !== '1dia') {
+        alertaMsg = `⚠️ ÚLTIMO DIA! Processo ${pi.numero} (${pi.orgao}) encerra AMANHÃ!`;
+        alertaKey = '1dia';
+      } else if (diffDias <= 3 && diffDias > 1 && pi.alerta_3dias && pi.ultimo_alerta_enviado !== '3dias') {
+        alertaMsg = `⏰ Processo ${pi.numero} (${pi.orgao}) encerra em ${diffDias} dia(s).`;
+        alertaKey = '3dias';
+      } else if (diffDias <= 7 && diffDias > 3 && pi.alerta_7dias && pi.ultimo_alerta_enviado !== '7dias') {
+        alertaMsg = `📅 Processo ${pi.numero} (${pi.orgao}) encerra em ${diffDias} dia(s).`;
+        alertaKey = '7dias';
+      }
+
+      if (alertaMsg && alertaKey) {
+        // System notification
+        if (pi.alerta_sistema) {
+          notifs.push({
+            titulo: `🔔 Alerta de compromisso: ${pi.numero}`,
+            mensagem: alertaMsg,
+            tipo: 'compromisso',
+            link: '/meus-compromissos',
+          });
+        }
+
+        // Email alert
+        if (pi.alerta_email) {
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('nome_completo')
+              .eq('user_id', userId)
+              .single();
+            
+            const { data: authUser } = await supabase.auth.admin.getUserById(userId);
+            const email = authUser?.user?.email;
+            
+            if (email) {
+              const resendKey = Deno.env.get('RESEND_API_KEY');
+              if (resendKey) {
+                await fetch('https://api.resend.com/emails', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${resendKey}` },
+                  body: JSON.stringify({
+                    from: 'LicitIA <alertas@licitia.com.br>',
+                    to: [email],
+                    subject: `🔔 Alerta: Processo ${pi.numero} — ${alertaKey === '1dia' ? 'ÚLTIMO DIA' : `${diffDias} dias restantes`}`,
+                    html: `
+                      <h2>Alerta de Compromisso — LicitIA</h2>
+                      <p>Olá ${profile?.nome_completo || ''},</p>
+                      <p>${alertaMsg}</p>
+                      <p><strong>Objeto:</strong> ${pi.objeto}</p>
+                      <p><strong>Valor Estimado:</strong> ${pi.valor_estimado ? `R$ ${Number(pi.valor_estimado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'N/I'}</p>
+                      <p><strong>Portal:</strong> ${pi.portal || 'N/I'}</p>
+                      <p><a href="https://licitia.com.br/meus-compromissos">Acessar Meus Compromissos →</a></p>
+                      <hr/>
+                      <p style="font-size:12px;color:#888;">LicitIA — Gestão Inteligente de Licitações</p>
+                    `,
+                  }),
+                });
+              }
+            }
+          } catch (emailErr) {
+            console.error('Erro ao enviar email de alerta:', emailErr);
+          }
+        }
+
+        // Update last alert sent
+        await supabase
+          .from('processos_interesse')
+          .update({ ultimo_alerta_enviado: alertaKey })
+          .eq('id', pi.id);
+      }
     }
 
     // Deduplicate: check existing notifications from today

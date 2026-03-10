@@ -54,7 +54,8 @@ import ApiIntegracao from "./pages/ApiIntegracao";
 import IndicesRepactuacao from "./pages/IndicesRepactuacao";
 import RelatorioContabil from "./pages/RelatorioContabil";
 import AdminMarketing from "./pages/AdminMarketing";
-
+import MeusCompromissos from "./pages/MeusCompromissos";
+import WorkflowIA from "./pages/WorkflowIA";
 const queryClient = new QueryClient();
 
 const ProtectedPages = ({ children }: { children: React.ReactNode }) => (
@@ -110,6 +111,8 @@ const App = () => (
               <Route path="/whatsapp-setores" element={<Navigate to="/whatsapp-crm" replace />} />
               <Route path="/whatsapp-crm" element={<ProtectedPages><WhatsAppCRM /></ProtectedPages>} />
               <Route path="/calendario" element={<ProtectedPages><Calendario /></ProtectedPages>} />
+              <Route path="/meus-compromissos" element={<ProtectedPages><MeusCompromissos /></ProtectedPages>} />
+              <Route path="/workflow-ia" element={<ProtectedPages><WorkflowIA /></ProtectedPages>} />
               <Route path="/tutorial" element={<ProtectedPages><TutorialPage /></ProtectedPages>} />
               <Route path="/api-integracao" element={<ProtectedPages><ApiIntegracao /></ProtectedPages>} />
               <Route path="/indices-repactuacao" element={<ProtectedPages><IndicesRepactuacao /></ProtectedPages>} />
