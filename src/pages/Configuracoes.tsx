@@ -213,297 +213,269 @@ export default function Configuracoes() {
           <p className="text-sm text-muted-foreground mt-1">Personalize a plataforma para sua empresa</p>
         </div>
 
-        <div className="space-y-6">
-          {/* Dados da Empresa */}
-          <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <Building2 className="w-5 h-5 text-accent" />
-              <h2 className="text-sm font-semibold">Dados da Empresa</h2>
-            </div>
-            <div className="grid gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs">CNPJ</Label>
-                  <Input value={cnpjInput} onChange={e => setCnpjInput(e.target.value)} className="mt-1" placeholder="00.000.000/0001-00" />
-                </div>
-                <div>
-                  <Label className="text-xs">CNAE Principal</Label>
-                  <Input value={cnaePrincipal} onChange={e => setCnaePrincipal(e.target.value)} className="mt-1" />
-                </div>
-              </div>
+        <Tabs defaultValue={defaultTab} className="w-full">
+          <TabsList className="mb-6 w-full justify-start">
+            <TabsTrigger value="geral" className="gap-2">
+              <Settings className="w-4 h-4" />
+              Configurações Gerais
+            </TabsTrigger>
+            <TabsTrigger value="plano" className="gap-2">
+              <CreditCard className="w-4 h-4" />
+              Plano & Assinatura
+            </TabsTrigger>
+          </TabsList>
 
-              {/* Consulta buttons */}
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleConsultaCNPJ}
-                  disabled={loadingCnpj || loadingSintegra}
-                  className="text-xs gap-1.5"
-                >
-                  {loadingCnpj ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-                  Consultar Receita Federal
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleConsultaSintegra}
-                  disabled={loadingCnpj || loadingSintegra}
-                  className="text-xs gap-1.5"
-                >
-                  {loadingSintegra ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-                  Consultar SINTEGRA
-                </Button>
-                <a
-                  href="https://servicos.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] text-muted-foreground hover:text-accent flex items-center gap-1 transition-colors"
-                >
-                  <ExternalLink className="w-3 h-3" /> Receita Federal
-                </a>
-                <a
-                  href="http://www.sintegra.gov.br/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] text-muted-foreground hover:text-accent flex items-center gap-1 transition-colors"
-                >
-                  <ExternalLink className="w-3 h-3" /> SINTEGRA
-                </a>
+          {/* ── Tab: Configurações Gerais ── */}
+          <TabsContent value="geral" className="space-y-6">
+            {/* Dados da Empresa */}
+            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <Building2 className="w-5 h-5 text-accent" />
+                <h2 className="text-sm font-semibold">Dados da Empresa</h2>
               </div>
-
-              {erroCnpj && (
-                <div className="flex items-center gap-2 text-sm text-destructive">
-                  <AlertTriangle className="w-4 h-4" /> {erroCnpj}
-                </div>
-              )}
-
-              <div>
-                <Label className="text-xs">Razão Social</Label>
-                <Input value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)} className="mt-1" />
-              </div>
-              <div>
-                <Label className="text-xs">Nome Fantasia</Label>
-                <Input value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)} className="mt-1" />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label className="text-xs">CEP</Label>
-                  <Input value={cep} onChange={e => setCep(e.target.value)} className="mt-1" placeholder="00000-000" />
-                </div>
-                <div className="col-span-2">
-                  <Label className="text-xs">Endereço (Logradouro, Nº)</Label>
-                  <Input value={endereco} onChange={e => setEndereco(e.target.value)} className="mt-1" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label className="text-xs">Complemento</Label>
-                  <Input value={complemento} onChange={e => setComplemento(e.target.value)} className="mt-1" />
-                </div>
-                <div>
-                  <Label className="text-xs">Bairro</Label>
-                  <Input value={bairro} onChange={e => setBairro(e.target.value)} className="mt-1" />
-                </div>
-                <div>
-                  <Label className="text-xs">UF</Label>
-                  <Input value={uf} onChange={e => setUf(e.target.value)} className="mt-1" maxLength={2} />
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-xs">Município</Label>
-                <Input value={cidade} onChange={e => setCidade(e.target.value)} className="mt-1" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs">Telefone</Label>
-                  <Input value={telefone} onChange={e => setTelefone(e.target.value)} className="mt-1" placeholder="(XX) XXXXX-XXXX" />
-                </div>
-                <div>
-                  <Label className="text-xs">E-mail</Label>
-                  <Input value={email} onChange={e => setEmail(e.target.value)} className="mt-1" placeholder="contato@empresa.com" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs">Inscrição Estadual</Label>
-                  <Input
-                    value={inscricaoEstadual}
-                    onChange={e => setInscricaoEstadual(e.target.value)}
-                    placeholder="Número da inscrição estadual"
-                    className="mt-1"
-                  />
-                  {inscricaoEstadual && (
-                    <Badge variant="outline" className="mt-1 text-[10px] bg-success/10 text-success border-success/20">
-                      <CheckCircle2 className="w-3 h-3 mr-1" /> Preenchido
-                    </Badge>
-                  )}
-                </div>
-                <div>
-                  <Label className="text-xs">Inscrição Municipal</Label>
-                  <Input
-                    value={inscricaoMunicipal}
-                    onChange={e => setInscricaoMunicipal(e.target.value)}
-                    placeholder="Número da inscrição municipal"
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Dados do Representante */}
-          <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <User className="w-5 h-5 text-accent" />
-              <h2 className="text-sm font-semibold">Dados do Representante Legal</h2>
-            </div>
-            <p className="text-xs text-muted-foreground mb-4">
-              Preencha os dados do representante legal ou extraia automaticamente via upload de documento (contrato social, procuração, RG/CPF). Essas informações serão propagadas para propostas, declarações, petições, recursos e demais documentos.
-            </p>
-
-            <RepresentanteUploader
-              onExtracted={(data: ExtractedRepresentanteData) => {
-                if (data.repNome) setRepNome(data.repNome);
-                if (data.repCpf) setRepCpf(data.repCpf);
-                if (data.repRg) setRepRg(data.repRg);
-                if (data.repOrgaoExp) setRepOrgaoExp(data.repOrgaoExp);
-                if (data.repCargo) setRepCargo(data.repCargo);
-                if (data.repNaturalidade) setRepNaturalidade(data.repNaturalidade);
-                if (data.repNacionalidade) setRepNacionalidade(data.repNacionalidade);
-              }}
-            />
-
-            <div className="grid gap-4 mt-4">
-              <div>
-                <Label className="text-xs">Nome Completo</Label>
-                <Input value={repNome} onChange={e => setRepNome(e.target.value)} className="mt-1" placeholder="Nome completo do representante" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs">CPF</Label>
-                  <Input value={repCpf} onChange={e => setRepCpf(e.target.value)} className="mt-1" placeholder="000.000.000-00" />
-                </div>
-                <div>
-                  <Label className="text-xs">RG</Label>
-                  <Input value={repRg} onChange={e => setRepRg(e.target.value)} className="mt-1" placeholder="Número do RG" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs">Órgão Expedidor</Label>
-                  <Input value={repOrgaoExp} onChange={e => setRepOrgaoExp(e.target.value)} className="mt-1" placeholder="SSP/XX" />
-                </div>
-                <div>
-                  <Label className="text-xs">Cargo / Função</Label>
-                  <Input value={repCargo} onChange={e => setRepCargo(e.target.value)} className="mt-1" placeholder="Sócio-Administrador" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs">Naturalidade</Label>
-                  <Input value={repNaturalidade} onChange={e => setRepNaturalidade(e.target.value)} className="mt-1" placeholder="Cidade/UF" />
-                </div>
-                <div>
-                  <Label className="text-xs">Nacionalidade</Label>
-                  <Input value={repNacionalidade} onChange={e => setRepNacionalidade(e.target.value)} className="mt-1" />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Timbrado / Marca d'Água */}
-          <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-            <TimbradoUploader
-              empresaId={empresaAtiva?.id}
-              timbradoUrl={timbradoUrl}
-              setTimbradoUrl={setTimbradoUrl}
-            />
-          </section>
-
-          {/* Notificações */}
-          <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <Bell className="w-5 h-5 text-accent" />
-              <h2 className="text-sm font-semibold">Notificações</h2>
-            </div>
-            <div className="space-y-4">
-              {[
-                { label: 'Novos editais compatíveis', desc: 'Alerta ao detectar licitação com CNAE compatível', default: true },
-                { label: 'Prazos próximos', desc: 'Aviso 48h antes do encerramento', default: true },
-                { label: 'Atividade de concorrentes', desc: 'Notificação sobre novos lances de concorrentes monitorados', default: false },
-                { label: 'Relatórios semanais', desc: 'Resumo por e-mail toda segunda-feira', default: true },
-              ].map((n) => (
-                <div key={n.label} className="flex items-center justify-between">
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm font-medium">{n.label}</p>
-                    <p className="text-xs text-muted-foreground">{n.desc}</p>
+                    <Label className="text-xs">CNPJ</Label>
+                    <Input value={cnpjInput} onChange={e => setCnpjInput(e.target.value)} className="mt-1" placeholder="00.000.000/0001-00" />
                   </div>
-                  <Switch defaultChecked={n.default} />
+                  <div>
+                    <Label className="text-xs">CNAE Principal</Label>
+                    <Input value={cnaePrincipal} onChange={e => setCnaePrincipal(e.target.value)} className="mt-1" />
+                  </div>
                 </div>
-              ))}
-            </div>
-          </section>
 
-          {/* Integrações */}
-          <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <Globe className="w-5 h-5 text-accent" />
-              <h2 className="text-sm font-semibold">Portais Monitorados</h2>
-            </div>
-            <div className="space-y-3">
-              {['Compras Governamentais', 'PNCP', 'BEC/SP', 'Licitações-e (BB)', 'Bolsa Nacional de Compras', 'Banparanet (PA)', 'Compras Públicas RJ', 'BLL Compras', 'Licitanet', 'Portal de Compras Públicas'].map((portal) => (
-                <div key={portal} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                  <span className="text-sm font-medium">{portal}</span>
-                  <Switch defaultChecked={portal !== 'BEC/SP'} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={handleConsultaCNPJ} disabled={loadingCnpj || loadingSintegra} className="text-xs gap-1.5">
+                    {loadingCnpj ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                    Consultar Receita Federal
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleConsultaSintegra} disabled={loadingCnpj || loadingSintegra} className="text-xs gap-1.5">
+                    {loadingSintegra ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                    Consultar SINTEGRA
+                  </Button>
+                  <a href="https://servicos.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp" target="_blank" rel="noopener noreferrer" className="text-[10px] text-muted-foreground hover:text-accent flex items-center gap-1 transition-colors">
+                    <ExternalLink className="w-3 h-3" /> Receita Federal
+                  </a>
+                  <a href="http://www.sintegra.gov.br/" target="_blank" rel="noopener noreferrer" className="text-[10px] text-muted-foreground hover:text-accent flex items-center gap-1 transition-colors">
+                    <ExternalLink className="w-3 h-3" /> SINTEGRA
+                  </a>
                 </div>
-              ))}
-            </div>
-          </section>
 
-          {/* Diários Oficiais */}
-          <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <Newspaper className="w-5 h-5 text-accent" />
-              <h2 className="text-sm font-semibold">Diários Oficiais Monitorados</h2>
-            </div>
-            <div className="space-y-3">
-              {[
-                'DOU (Federal)',
-                'IOEPA (Estadual)',
-                'TCMPA (Municípios)',
-                'DOE/SP',
-                'IOERJ',
-                'DODF.e (Distrito Federal)',
-              ].map((fonte) => (
-                <div key={fonte} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                  <span className="text-sm font-medium">{fonte}</span>
-                  <Switch defaultChecked />
+                {erroCnpj && (
+                  <div className="flex items-center gap-2 text-sm text-destructive">
+                    <AlertTriangle className="w-4 h-4" /> {erroCnpj}
+                  </div>
+                )}
+
+                <div>
+                  <Label className="text-xs">Razão Social</Label>
+                  <Input value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)} className="mt-1" />
                 </div>
-              ))}
-            </div>
-          </section>
+                <div>
+                  <Label className="text-xs">Nome Fantasia</Label>
+                  <Input value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)} className="mt-1" />
+                </div>
 
-          {/* Plano & Assinatura */}
-          <PlanoAssinatura />
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-xs">CEP</Label>
+                    <Input value={cep} onChange={e => setCep(e.target.value)} className="mt-1" placeholder="00000-000" />
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-xs">Endereço (Logradouro, Nº)</Label>
+                    <Input value={endereco} onChange={e => setEndereco(e.target.value)} className="mt-1" />
+                  </div>
+                </div>
 
-          {/* CNAEs Secundários */}
-          <CnaesSecundarios />
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-xs">Complemento</Label>
+                    <Input value={complemento} onChange={e => setComplemento(e.target.value)} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Bairro</Label>
+                    <Input value={bairro} onChange={e => setBairro(e.target.value)} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">UF</Label>
+                    <Input value={uf} onChange={e => setUf(e.target.value)} className="mt-1" maxLength={2} />
+                  </div>
+                </div>
 
-          <Button
-            className="bg-accent hover:bg-accent/90 text-accent-foreground"
-            onClick={handleSalvar}
-            disabled={loadingSalvar || !empresaAtiva}
-          >
-            {loadingSalvar ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-            Salvar Configurações
-          </Button>
-        </div>
+                <div>
+                  <Label className="text-xs">Município</Label>
+                  <Input value={cidade} onChange={e => setCidade(e.target.value)} className="mt-1" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs">Telefone</Label>
+                    <Input value={telefone} onChange={e => setTelefone(e.target.value)} className="mt-1" placeholder="(XX) XXXXX-XXXX" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">E-mail</Label>
+                    <Input value={email} onChange={e => setEmail(e.target.value)} className="mt-1" placeholder="contato@empresa.com" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs">Inscrição Estadual</Label>
+                    <Input value={inscricaoEstadual} onChange={e => setInscricaoEstadual(e.target.value)} placeholder="Número da inscrição estadual" className="mt-1" />
+                    {inscricaoEstadual && (
+                      <Badge variant="outline" className="mt-1 text-[10px] bg-success/10 text-success border-success/20">
+                        <CheckCircle2 className="w-3 h-3 mr-1" /> Preenchido
+                      </Badge>
+                    )}
+                  </div>
+                  <div>
+                    <Label className="text-xs">Inscrição Municipal</Label>
+                    <Input value={inscricaoMunicipal} onChange={e => setInscricaoMunicipal(e.target.value)} placeholder="Número da inscrição municipal" className="mt-1" />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Dados do Representante */}
+            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <User className="w-5 h-5 text-accent" />
+                <h2 className="text-sm font-semibold">Dados do Representante Legal</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                Preencha os dados do representante legal ou extraia automaticamente via upload de documento (contrato social, procuração, RG/CPF). Essas informações serão propagadas para propostas, declarações, petições, recursos e demais documentos.
+              </p>
+
+              <RepresentanteUploader
+                onExtracted={(data: ExtractedRepresentanteData) => {
+                  if (data.repNome) setRepNome(data.repNome);
+                  if (data.repCpf) setRepCpf(data.repCpf);
+                  if (data.repRg) setRepRg(data.repRg);
+                  if (data.repOrgaoExp) setRepOrgaoExp(data.repOrgaoExp);
+                  if (data.repCargo) setRepCargo(data.repCargo);
+                  if (data.repNaturalidade) setRepNaturalidade(data.repNaturalidade);
+                  if (data.repNacionalidade) setRepNacionalidade(data.repNacionalidade);
+                }}
+              />
+
+              <div className="grid gap-4 mt-4">
+                <div>
+                  <Label className="text-xs">Nome Completo</Label>
+                  <Input value={repNome} onChange={e => setRepNome(e.target.value)} className="mt-1" placeholder="Nome completo do representante" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs">CPF</Label>
+                    <Input value={repCpf} onChange={e => setRepCpf(e.target.value)} className="mt-1" placeholder="000.000.000-00" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">RG</Label>
+                    <Input value={repRg} onChange={e => setRepRg(e.target.value)} className="mt-1" placeholder="Número do RG" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs">Órgão Expedidor</Label>
+                    <Input value={repOrgaoExp} onChange={e => setRepOrgaoExp(e.target.value)} className="mt-1" placeholder="SSP/XX" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Cargo / Função</Label>
+                    <Input value={repCargo} onChange={e => setRepCargo(e.target.value)} className="mt-1" placeholder="Sócio-Administrador" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs">Naturalidade</Label>
+                    <Input value={repNaturalidade} onChange={e => setRepNaturalidade(e.target.value)} className="mt-1" placeholder="Cidade/UF" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Nacionalidade</Label>
+                    <Input value={repNacionalidade} onChange={e => setRepNacionalidade(e.target.value)} className="mt-1" />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Timbrado */}
+            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+              <TimbradoUploader empresaId={empresaAtiva?.id} timbradoUrl={timbradoUrl} setTimbradoUrl={setTimbradoUrl} />
+            </section>
+
+            {/* Notificações */}
+            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <Bell className="w-5 h-5 text-accent" />
+                <h2 className="text-sm font-semibold">Notificações</h2>
+              </div>
+              <div className="space-y-4">
+                {[
+                  { label: 'Novos editais compatíveis', desc: 'Alerta ao detectar licitação com CNAE compatível', default: true },
+                  { label: 'Prazos próximos', desc: 'Aviso 48h antes do encerramento', default: true },
+                  { label: 'Atividade de concorrentes', desc: 'Notificação sobre novos lances de concorrentes monitorados', default: false },
+                  { label: 'Relatórios semanais', desc: 'Resumo por e-mail toda segunda-feira', default: true },
+                ].map((n) => (
+                  <div key={n.label} className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{n.label}</p>
+                      <p className="text-xs text-muted-foreground">{n.desc}</p>
+                    </div>
+                    <Switch defaultChecked={n.default} />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Portais Monitorados */}
+            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <Globe className="w-5 h-5 text-accent" />
+                <h2 className="text-sm font-semibold">Portais Monitorados</h2>
+              </div>
+              <div className="space-y-3">
+                {['Compras Governamentais', 'PNCP', 'BEC/SP', 'Licitações-e (BB)', 'Bolsa Nacional de Compras', 'Banparanet (PA)', 'Compras Públicas RJ', 'BLL Compras', 'Licitanet', 'Portal de Compras Públicas'].map((portal) => (
+                  <div key={portal} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                    <span className="text-sm font-medium">{portal}</span>
+                    <Switch defaultChecked={portal !== 'BEC/SP'} />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Diários Oficiais */}
+            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <Newspaper className="w-5 h-5 text-accent" />
+                <h2 className="text-sm font-semibold">Diários Oficiais Monitorados</h2>
+              </div>
+              <div className="space-y-3">
+                {['DOU (Federal)', 'IOEPA (Estadual)', 'TCMPA (Municípios)', 'DOE/SP', 'IOERJ', 'DODF.e (Distrito Federal)'].map((fonte) => (
+                  <div key={fonte} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                    <span className="text-sm font-medium">{fonte}</span>
+                    <Switch defaultChecked />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* CNAEs Secundários */}
+            <CnaesSecundarios />
+
+            <Button
+              className="bg-accent hover:bg-accent/90 text-accent-foreground"
+              onClick={handleSalvar}
+              disabled={loadingSalvar || !empresaAtiva}
+            >
+              {loadingSalvar ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+              Salvar Configurações
+            </Button>
+          </TabsContent>
+
+          {/* ── Tab: Plano & Assinatura ── */}
+          <TabsContent value="plano" className="space-y-6">
+            <PlanoAssinatura />
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );
