@@ -26,6 +26,7 @@ import Configuracoes from "./pages/Configuracoes";
 import Empresas from "./pages/Empresas";
 import AdminTemplates from "./pages/AdminTemplates";
 import LandingPage from "./pages/LandingPage";
+import Cadastro from "./pages/Cadastro";
 import FaqPage from "./pages/FaqPage";
 import Suporte from "./pages/Suporte";
 import AdminFinanceiro from "./pages/AdminFinanceiro";
