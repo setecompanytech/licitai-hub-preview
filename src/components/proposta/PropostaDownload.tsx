@@ -367,7 +367,8 @@ export default function PropostaDownload({
         }
       }
 
-      // Signature
+      // Signature - only add if AI text doesn't already contain one
+      const hasSignatureInText = proposal.toLowerCase().includes('assinatura') || proposal.includes('___');
       const certInfo = (empresaData as any)?.certificado_nome ? `
         <div style="margin-top:24pt;border:2px solid #008050;border-radius:6pt;padding:12pt;text-align:center">
           <p style="font-weight:bold;color:#006440;font-size:10pt;margin:0 0 4pt 0;text-indent:0">✓ DOCUMENTO ASSINADO DIGITALMENTE</p>
@@ -377,7 +378,7 @@ export default function PropostaDownload({
         </div>
       ` : '';
 
-      const signature = `
+      const signature = hasSignatureInText ? certInfo : `
         <div style="text-align:center;margin-top:36pt">
           <div style="width:200pt;border-bottom:2px solid #333;margin:0 auto 6pt auto"></div>
           <p style="font-weight:bold;text-indent:0">${(empresaData?.razao_social || '').toUpperCase()}</p>
