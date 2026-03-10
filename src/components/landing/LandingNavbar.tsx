@@ -18,7 +18,6 @@ export default function LandingNavbar() {
   const links = [
     { label: 'Funcionalidades', href: '#features' },
     { label: 'Portais', href: '#portais' },
-    { label: 'Treinamentos', href: '#treinamentos' },
     { label: 'Planos', href: '#planos' },
     { label: 'Depoimentos', href: '#depoimentos' },
     { label: 'FAQ', href: '#faq' },
@@ -27,25 +26,25 @@ export default function LandingNavbar() {
   return (
     <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${
       scrolled
-        ? 'bg-background/80 backdrop-blur-2xl border-b border-border/40 shadow-sm'
+        ? 'bg-card/90 backdrop-blur-2xl border-b border-border shadow-sm'
         : 'bg-transparent'
     }`}>
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <a href="#" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shadow-lg transition-transform group-hover:scale-105" style={{ boxShadow: 'var(--shadow-glow-sm)' }}>
+          <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center transition-transform group-hover:scale-105">
             <Zap className="w-5 h-5 text-accent-foreground" />
           </div>
           <span className="text-xl font-extrabold tracking-tight">
-            Licit<span className="gradient-text">IA</span>
+            Licit<span className="text-accent">IA</span>
           </span>
         </a>
 
-        <div className="hidden lg:flex items-center gap-0.5">
+        <div className="hidden lg:flex items-center gap-1">
           {links.map((l) => (
             <a
               key={l.href}
               href={l.href}
-              className="px-3.5 py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/50"
+              className="px-3.5 py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/40"
             >
               {l.label}
             </a>
@@ -58,8 +57,7 @@ export default function LandingNavbar() {
           </Button>
           <Button
             size="sm"
-            className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl font-semibold text-[13px] px-5 shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5"
-            style={{ boxShadow: 'var(--shadow-glow-sm)' }}
+            className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-lg font-semibold text-[13px] px-5"
             onClick={() => navigate('/auth')}
           >
             Começar Grátis <ArrowRight className="w-3.5 h-3.5 ml-1" />
@@ -77,16 +75,12 @@ export default function LandingNavbar() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="lg:hidden border-t border-border/40 bg-background/95 backdrop-blur-2xl overflow-hidden"
+            className="lg:hidden border-t border-border bg-card/95 backdrop-blur-2xl overflow-hidden"
           >
             <div className="px-6 py-4 space-y-1">
               {links.map((l) => (
-                <a
-                  key={l.href}
-                  href={l.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="block px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50"
-                >
+                <a key={l.href} href={l.href} onClick={() => setMobileOpen(false)}
+                  className="block px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/40">
                   {l.label}
                 </a>
               ))}
