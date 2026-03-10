@@ -92,12 +92,95 @@ export interface ResumoComposicao {
   precoTotalFormado: number;
 }
 
+export interface AlertaItem {
+  tipo: 'erro' | 'atencao' | 'info';
+  titulo: string;
+  mensagem: string;
+  fundamentacao: string;
+}
+
 export interface ParecerComposicao {
   viabilidade: 'VIÁVEL' | 'ATENÇÃO' | 'INVIÁVEL';
   margemLiquida: number;
   alertaInexequibilidade: boolean;
   observacoes: string;
   fundamentacaoLegal: string[];
+  alertasGlobais: AlertaItem[];
+}
+
+/**
+ * Gera alertas por item quando valores manuais desviam dos padrões legais.
+ */
+export function gerarAlertasItem(item: ItemComposicaoResult, params: ComposicaoParametros): AlertaItem[] {
+  const alertas: AlertaItem[] = [];
+
+  // 1. Prejuízo: preço não cobre custo + tributos
+  if (item.margemResultante < 0) {
+    alertas.push({
+      tipo: 'erro',
+      titulo: 'Operação com Prejuízo',
+      mensagem: `O preço final R$ ${item.precoUnitarioFinal.toFixed(2)} é inferior ao custo + tributos. Margem resultante: ${item.margemResultante.toFixed(2)}%. O valor não cobre os custos operacionais e tributários, gerando prejuízo direto.`,
+      fundamentacao: 'Art. 59, §4º, Lei 14.133/2021 — Proposta inexequível',
+    });
+  }
+
+  // 2. Inexequibilidade: margem entre 0% e 5%
+  if (item.margemResultante >= 0 && item.margemResultante < 5) {
+    alertas.push({
+      tipo: 'atencao',
+      titulo: 'Risco de Inexequibilidade',
+      mensagem: `Margem líquida de ${item.margemResultante.toFixed(2)}% está abaixo do patamar de 5%. Propostas com margem inferior podem ser classificadas como inexequíveis pela Administração Pública.`,
+      fundamentacao: 'Art. 59, §4º, Lei 14.133/2021 — Indício de inexequibilidade',
+    });
+  }
+
+  // 3. Preço manual muito abaixo do sugerido (>15% abaixo)
+  if (item.modoPreco === 'manual') {
+    const desvio = ((item.precoUnitarioFinal - item.precoUnitarioSugerido) / item.precoUnitarioSugerido) * 100;
+    if (desvio < -15) {
+      alertas.push({
+        tipo: 'atencao',
+        titulo: 'Preço Significativamente Abaixo do Calculado',
+        mensagem: `O preço manual está ${Math.abs(desvio).toFixed(1)}% abaixo do valor sugerido (R$ ${item.precoUnitarioSugerido.toFixed(2)}). Desvios acima de 15% podem indicar preço inexequível ou erro de digitação.`,
+        fundamentacao: 'Acórdão TCU 2.622/2013 — Referencial de BDI e preços',
+      });
+    }
+
+    // 4. Preço manual muito acima do sugerido (>50% acima) — sobrepreço
+    if (desvio > 50) {
+      alertas.push({
+        tipo: 'atencao',
+        titulo: 'Possível Sobrepreço',
+        mensagem: `O preço manual está ${desvio.toFixed(1)}% acima do valor calculado. Desvios significativos podem configurar sobrepreço e comprometer a competitividade da proposta.`,
+        fundamentacao: 'Art. 59, §3º, Lei 14.133/2021 — Preço manifestamente inexequível ou excessivo',
+      });
+    }
+  }
+
+  // 5. BDI fora das faixas referenciais do TCU
+  const bdi = item.bdiPercentual;
+  const atividadeBDI = params.atividade;
+  let bdiMin = 15, bdiMax = 35;
+  if (atividadeBDI === 'servicos') { bdiMin = 15; bdiMax = 40; }
+  if (atividadeBDI === 'industria') { bdiMin = 12; bdiMax = 30; }
+
+  if (bdi < bdiMin && item.modoPreco === 'manual') {
+    alertas.push({
+      tipo: 'atencao',
+      titulo: 'BDI Abaixo do Referencial',
+      mensagem: `BDI de ${bdi.toFixed(2)}% está abaixo da faixa referencial do TCU (${bdiMin}%–${bdiMax}%). Pode indicar margem insuficiente para cobrir custos indiretos.`,
+      fundamentacao: 'Acórdão TCU 2.622/2013 — Faixas referenciais de BDI',
+    });
+  } else if (bdi > bdiMax && item.modoPreco === 'manual') {
+    alertas.push({
+      tipo: 'info',
+      titulo: 'BDI Acima do Referencial',
+      mensagem: `BDI de ${bdi.toFixed(2)}% está acima da faixa referencial do TCU (${bdiMin}%–${bdiMax}%). Embora não seja impeditivo, pode reduzir a competitividade.`,
+      fundamentacao: 'Acórdão TCU 2.622/2013 — Faixas referenciais de BDI',
+    });
+  }
+
+  return alertas;
 }
 
 export interface ComposicaoResult {
