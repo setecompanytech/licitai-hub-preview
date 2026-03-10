@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const categories = ['Todos', 'Core', 'IA', 'Automação', 'Documentos', 'Jurídico'];
 
 const features = [
-  { icon: Search, title: 'Monitoramento 24/7', desc: 'Busca automática em 31 portais — PNCP, BLL, BNC, BEC/SP e 17 sistemas estaduais — com filtros inteligentes por CNAE, UF e palavras-chave.', tag: 'Core' },
+  { icon: Search, title: 'Monitoramento 24/7', desc: 'Busca automática em 38 portais — PNCP, BLL, BNC, BEC/SP, Licitações-e e 20+ sistemas estaduais — com filtros inteligentes por CNAE, UF e palavras-chave.', tag: 'Core' },
   { icon: Bot, title: 'Assistente IA', desc: 'Tire dúvidas sobre editais, gere impugnações e recursos fundamentados na Lei 14.133/2021 e jurisprudência do TCU.', tag: 'IA' },
   { icon: Zap, title: 'Robô de Lances', desc: 'Estratégias de decremento automatizado para pregão eletrônico nos portais ComprasNet, BLL, BNC e Licitações-E.', tag: 'Automação' },
   { icon: FileText, title: 'Propostas ABNT', desc: 'Geração de propostas técnicas e comerciais com capa, sumário, planilha de preços e declarações em padrão ABNT.', tag: 'Documentos' },
