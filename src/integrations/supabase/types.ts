@@ -2237,7 +2237,9 @@ export type Database = {
           limite_usuarios: number | null
           nome: string
           preco_anual: number | null
+          preco_bienal: number | null
           preco_mensal: number
+          preco_semestral: number | null
           recursos: Json | null
           slug: string
           trial_dias: number | null
@@ -2253,7 +2255,9 @@ export type Database = {
           limite_usuarios?: number | null
           nome: string
           preco_anual?: number | null
+          preco_bienal?: number | null
           preco_mensal?: number
+          preco_semestral?: number | null
           recursos?: Json | null
           slug: string
           trial_dias?: number | null
@@ -2269,7 +2273,9 @@ export type Database = {
           limite_usuarios?: number | null
           nome?: string
           preco_anual?: number | null
+          preco_bienal?: number | null
           preco_mensal?: number
+          preco_semestral?: number | null
           recursos?: Json | null
           slug?: string
           trial_dias?: number | null
