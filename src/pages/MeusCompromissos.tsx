@@ -196,7 +196,7 @@ Formate em Markdown. Seja objetivo e estratégico.`
     });
   };
 
-  const empresaMap = Object.fromEntries(empresas.map(e => [e.id, e.nome_fantasia || e.razao_social]));
+  const empresaMap = Object.fromEntries(empresas.map(e => [e.empresa_id, e.empresa.nome_fantasia || e.empresa.razao_social]));
 
   const filtered = processos.filter(p => {
     if (filtroEmpresa !== 'all' && p.empresa_id !== filtroEmpresa) return false;
