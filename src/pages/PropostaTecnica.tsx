@@ -1040,6 +1040,8 @@ export default function PropostaTecnica() {
               <div className="relative z-10">
                 <PropostaRenderer
                   proposal={proposal}
+                  timbradoUrl={timbradoUrl}
+                  usarMarcaDagua={usarMarcaDagua}
                   empresaData={empresaAtiva}
                   repData={{
                     nome: repNome,
