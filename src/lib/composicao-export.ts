@@ -51,6 +51,11 @@ export type ComposicaoData = {
   parecer: Parecer;
 };
 
+export type ExportOptions = {
+  timbradoUrl?: string | null;
+  empresaNome?: string | null;
+};
+
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtPct = (v: number | null) => v != null ? `${v.toFixed(2).replace('.', ',')}%` : '—';
 
@@ -67,17 +72,50 @@ export function parseComposicao(iaResult: string): ComposicaoData | null {
   }
 }
 
+// ── Helper: load image as base64 for jsPDF ──
+async function loadImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 // ── PDF Export ──
-export function exportComposicaoPDF(data: ComposicaoData, regimeLabel: string, uf: string) {
+export async function exportComposicaoPDF(data: ComposicaoData, regimeLabel: string, uf: string, opts?: ExportOptions) {
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
 
-  doc.setFontSize(14);
-  doc.text('Planilha de Composição de Custo e Formação de Preço', pageWidth / 2, 15, { align: 'center' });
-  doc.setFontSize(9);
-  doc.text(`Regime: ${regimeLabel} | UF: ${uf} | Lei nº 14.133/2021`, pageWidth / 2, 22, { align: 'center' });
+  let y = 12;
 
-  let y = 30;
+  // Timbrado header
+  if (opts?.timbradoUrl) {
+    const imgData = await loadImageAsBase64(opts.timbradoUrl);
+    if (imgData) {
+      try {
+        const imgW = pageWidth - 28;
+        const imgH = 22;
+        doc.addImage(imgData, 'PNG', 14, y, imgW, imgH);
+        y += imgH + 4;
+      } catch {
+        // image failed, continue without
+      }
+    }
+  }
+
+  doc.setFontSize(14);
+  doc.text('Planilha de Composição de Custo e Formação de Preço', pageWidth / 2, y, { align: 'center' });
+  y += 7;
+  doc.setFontSize(9);
+  doc.text(`Regime: ${regimeLabel} | UF: ${uf} | Lei nº 14.133/2021`, pageWidth / 2, y, { align: 'center' });
+  y += 8;
 
   // Items
   (data.itens || []).forEach((item, idx) => {
@@ -161,11 +199,17 @@ export function exportComposicaoPDF(data: ComposicaoData, regimeLabel: string, u
 }
 
 // ── Excel Export ──
-export function exportComposicaoExcel(data: ComposicaoData, regimeLabel: string, uf: string) {
+export function exportComposicaoExcel(data: ComposicaoData, regimeLabel: string, uf: string, opts?: ExportOptions) {
   const wb = XLSX.utils.book_new();
 
+  const empresaHeader = opts?.empresaNome ? `Empresa: ${opts.empresaNome}` : '';
+
   // Sheet 1 - Itens
-  const itensRows: any[][] = [['Planilha de Composição de Custo', '', '', '', `Regime: ${regimeLabel} | UF: ${uf}`], []];
+  const itensRows: any[][] = [
+    ['Planilha de Composição de Custo', '', '', '', `Regime: ${regimeLabel} | UF: ${uf}`],
+    empresaHeader ? [empresaHeader] : [],
+    [],
+  ];
 
   (data.itens || []).forEach((item, idx) => {
     itensRows.push([`Item ${idx + 1}: ${item.descricao}`, `Qtd: ${item.quantidade}`, item.unidade, '', '']);
@@ -220,13 +264,17 @@ export function exportComposicaoExcel(data: ComposicaoData, regimeLabel: string,
 }
 
 // ── Word (HTML-based) Export ──
-export function exportComposicaoWord(data: ComposicaoData, regimeLabel: string, uf: string) {
+export function exportComposicaoWord(data: ComposicaoData, regimeLabel: string, uf: string, opts?: ExportOptions) {
   const resumo = data.resumo || {} as Resumo;
   const parecer = data.parecer || {} as Parecer;
 
+  const timbradoHtml = opts?.timbradoUrl
+    ? `<div style="text-align:center;margin-bottom:12px"><img src="${opts.timbradoUrl}" style="max-width:100%;max-height:100px" /></div>`
+    : '';
+
   let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
 <head><meta charset="utf-8"><style>
-body{font-family:Arial;font-size:11pt}
+body{font-family:Arial;font-size:11pt;margin:30mm 20mm 20mm 30mm}
 table{border-collapse:collapse;width:100%;margin:8px 0}
 th,td{border:1px solid #999;padding:4px 8px;font-size:10pt}
 th{background:#2980b9;color:#fff;text-align:left}
@@ -235,6 +283,7 @@ h1{font-size:14pt;text-align:center}
 h2{font-size:12pt;margin-top:16px}
 .parecer{background:#f0f0f0;padding:8px;border-radius:4px;margin-top:12px}
 </style></head><body>
+${timbradoHtml}
 <h1>Planilha de Composição de Custo e Formação de Preço</h1>
 <p style="text-align:center;font-size:9pt">Regime: ${regimeLabel} | UF: ${uf} | Lei nº 14.133/2021</p>`;
 

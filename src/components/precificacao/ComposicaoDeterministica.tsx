@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter,
 } from '@/components/ui/table';
@@ -49,6 +50,11 @@ const formatCurrencyInput = (raw: string): string => {
 
 export default function ComposicaoDeterministica({ result, onResultChange, regimeLabel, ufCalculo, ufNome }: Props) {
   const { addItem } = usePropostaCart();
+  const { empresaAtiva } = useEmpresa();
+  const exportOpts = useMemo(() => ({
+    timbradoUrl: empresaAtiva?.timbrado_url,
+    empresaNome: empresaAtiva?.razao_social,
+  }), [empresaAtiva]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
   const [editingMargemIndex, setEditingMargemIndex] = useState<number | null>(null);
@@ -96,9 +102,9 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
     },
   }), [itens, resumo, parecer]);
 
-  const handleExportPDF = () => { exportComposicaoPDF(toExportData(), regimeLabel, ufCalculo); toast.success('PDF exportado!'); };
-  const handleExportExcel = () => { exportComposicaoExcel(toExportData(), regimeLabel, ufCalculo); toast.success('Excel exportado!'); };
-  const handleExportWord = () => { exportComposicaoWord(toExportData(), regimeLabel, ufCalculo); toast.success('Word exportado!'); };
+  const handleExportPDF = async () => { await exportComposicaoPDF(toExportData(), regimeLabel, ufCalculo, exportOpts); toast.success('PDF exportado!'); };
+  const handleExportExcel = () => { exportComposicaoExcel(toExportData(), regimeLabel, ufCalculo, exportOpts); toast.success('Excel exportado!'); };
+  const handleExportWord = () => { exportComposicaoWord(toExportData(), regimeLabel, ufCalculo, exportOpts); toast.success('Word exportado!'); };
 
   const enviarParaProposta = () => {
     itens.forEach((item, idx) => {
