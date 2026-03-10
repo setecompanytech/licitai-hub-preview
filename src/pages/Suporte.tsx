@@ -31,7 +31,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
   resolvido: { label: 'Resolvido', color: 'bg-success/10 text-success', icon: CheckCircle },
 };
 
-export default function Suporte() {
+const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [showForm, setShowForm] = useState(false);
