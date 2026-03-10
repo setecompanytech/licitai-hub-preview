@@ -122,7 +122,7 @@ export default function PropostaDownload({
 }: PropostaDownloadProps) {
 
   const handlePDF = async (orientation: 'portrait' | 'landscape' = 'portrait') => {
-    try {
+    await withErrorAlert(async () => {
       const doc = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
