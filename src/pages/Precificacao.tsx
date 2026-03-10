@@ -38,6 +38,7 @@ import FontesManager from '@/components/precificacao/FontesManager';
 import ListasCompras from '@/components/precificacao/ListasCompras';
 import CotacoesManager from '@/components/precificacao/CotacoesManager';
 import ImportacoesManager from '@/components/precificacao/ImportacoesManager';
+import InteligenciaPrecos from '@/components/precificacao/InteligenciaPrecos';
 
 type FontePreco = {
   fonte: string;
@@ -683,6 +684,9 @@ Responda APENAS em JSON, sem markdown:
             <TabsTrigger value="importacoes" className="gap-1.5">
               <Upload className="w-3.5 h-3.5" /> Importações
             </TabsTrigger>
+            <TabsTrigger value="inteligencia" className="gap-1.5">
+              <Bot className="w-3.5 h-3.5" /> Inteligência de Preços
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="marketplaces" className="space-y-4">
@@ -1317,6 +1321,12 @@ Responda APENAS em JSON, sem markdown:
           <TabsContent value="importacoes">
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
               <ImportacoesManager />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="inteligencia">
+            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+              <InteligenciaPrecos />
             </div>
           </TabsContent>
         </Tabs>
