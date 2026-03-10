@@ -87,10 +87,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
       <header className="sticky top-0 z-40 h-14 bg-card/90 backdrop-blur-xl border-b border-border flex items-center justify-between px-4 lg:px-6">
         {/* Left: Logo + Nav */}
         <div className="flex items-center gap-4">
-          {/* Mobile menu trigger is inside AppTopNav */}
-          <AppTopNav />
-
-          {/* Logo */}
+          {/* Logo first */}
           <button onClick={() => navigate('/')} className="flex items-center gap-2 group">
             <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105">
               <Zap className="w-4 h-4 text-accent-foreground" />
@@ -99,6 +96,9 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
               Licit<span className="text-accent">IA</span>
             </span>
           </button>
+
+          {/* Navigation */}
+          <AppTopNav />
         </div>
 
         {/* Right: Tools */}
