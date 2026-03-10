@@ -18,6 +18,8 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 
 export default function Configuracoes() {
   const { empresaAtiva, reloadEmpresas } = useEmpresa();
+  const location = useLocation();
+  const defaultTab = location.hash === '#plano' ? 'plano' : 'geral';
 
   // Empresa fields
   const [cnpjInput, setCnpjInput] = useState('');
