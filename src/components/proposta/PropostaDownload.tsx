@@ -327,7 +327,7 @@ export default function PropostaDownload({
   };
 
   const handleWord = (landscape = false) => {
-    try {
+    withErrorAlert(async () => {
       // Render all AI content faithfully
       const sections = parseSections(proposal);
       let bodyHtml = '';
