@@ -112,6 +112,7 @@ const navGroups: NavGroup[] = [
     title: 'Configuração',
     items: [
       { icon: Building2, label: 'Empresas', path: '/empresas' },
+      { icon: Users, label: 'Equipe', path: '/equipe' },
       { icon: Settings, label: 'Configurações', path: '/configuracoes' },
       { icon: HeadphonesIcon, label: 'Suporte', path: '/suporte' },
     ],
