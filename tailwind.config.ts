@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["DM Sans", "Inter", "system-ui", "sans-serif"],
+        sans: ["Plus Jakarta Sans", "Inter", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
       },
       colors: {
@@ -63,6 +63,13 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        nav: {
+          DEFAULT: "hsl(var(--nav-bg))",
+          foreground: "hsl(var(--nav-fg))",
+          active: "hsl(var(--nav-active))",
+          hover: "hsl(var(--nav-hover))",
+          border: "hsl(var(--nav-border))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -73,10 +80,6 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        "sidebar-bg": "hsl(var(--sidebar-bg))",
-        "sidebar-fg": "hsl(var(--sidebar-fg))",
-        "sidebar-active": "hsl(var(--sidebar-active))",
-        "sidebar-hover": "hsl(var(--sidebar-hover))",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -101,8 +104,8 @@ export default {
           to: { opacity: "1", transform: "translateX(0)" },
         },
         "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 0 0 hsl(174 72% 40% / 0.2)" },
-          "50%": { boxShadow: "0 0 20px 4px hsl(174 72% 40% / 0.15)" },
+          "0%, 100%": { boxShadow: "0 0 0 0 hsl(174 62% 38% / 0.2)" },
+          "50%": { boxShadow: "0 0 20px 4px hsl(174 62% 38% / 0.15)" },
         },
         "count-up": {
           from: { opacity: "0", transform: "translateY(10px)" },
