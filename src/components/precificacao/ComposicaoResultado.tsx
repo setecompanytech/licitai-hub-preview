@@ -8,6 +8,7 @@ import { Bot, Download, AlertTriangle, CheckCircle, XCircle, FileText, FileSprea
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import {
   parseComposicao, exportComposicaoPDF, exportComposicaoExcel, exportComposicaoWord,
