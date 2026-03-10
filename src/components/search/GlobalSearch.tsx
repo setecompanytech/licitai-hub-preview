@@ -17,7 +17,7 @@ const pages = [
   { name: 'Monitoramento de Editais', path: '/monitoramento-editais', icon: Download, keywords: 'buscar editais licitacoes' },
   { name: 'Boletins Diários', path: '/boletins', icon: Bell, keywords: 'email notificacao diaria' },
   { name: 'Chat e Mural', path: '/monitoramento-chat', icon: MessageSquare, keywords: 'mensagens comunicacao' },
-  { name: 'WhatsApp Setores', path: '/whatsapp-setores', icon: MessageSquare, keywords: 'whatsapp grupos' },
+  { name: 'WhatsApp CRM', path: '/whatsapp-crm', icon: MessageSquare, keywords: 'whatsapp grupos crm setores' },
   { name: 'Licitações Estratégicas', path: '/licitacoes-estrategicas', icon: Target, keywords: 'estrategia prioridade' },
   { name: 'Calendário', path: '/calendario', icon: CalendarDays, keywords: 'datas prazos agenda' },
   { name: 'Kanban', path: '/kanban', icon: Kanban, keywords: 'quadro tarefas fluxo processos' },

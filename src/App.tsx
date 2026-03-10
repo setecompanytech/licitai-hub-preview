@@ -42,7 +42,7 @@ import HistoricoLicitacoes from "./pages/HistoricoLicitacoes";
 import Ferramentas from "./pages/Ferramentas";
 import GestaoContratos from "./pages/GestaoContratos";
 
-import WhatsAppSetores from "./pages/WhatsAppSetores";
+
 import WhatsAppCRM from "./pages/WhatsAppCRM";
 import Calendario from "./pages/Calendario";
 import TermosDeUso from "./pages/TermosDeUso";
@@ -104,7 +104,7 @@ const App = () => (
               <Route path="/ferramentas" element={<ProtectedPages><Ferramentas /></ProtectedPages>} />
               <Route path="/busca-inteligente" element={<Navigate to="/monitoramento-editais" replace />} />
               <Route path="/comprasgov-envio" element={<Navigate to="/proposta-tecnica" replace />} />
-              <Route path="/whatsapp-setores" element={<ProtectedPages><WhatsAppSetores /></ProtectedPages>} />
+              <Route path="/whatsapp-setores" element={<Navigate to="/whatsapp-crm" replace />} />
               <Route path="/whatsapp-crm" element={<ProtectedPages><WhatsAppCRM /></ProtectedPages>} />
               <Route path="/calendario" element={<ProtectedPages><Calendario /></ProtectedPages>} />
               <Route path="/tutorial" element={<ProtectedPages><TutorialPage /></ProtectedPages>} />
