@@ -262,4 +262,6 @@ const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
       </div>
     </AppLayout>
   );
-}
+});
+
+export default Suporte;

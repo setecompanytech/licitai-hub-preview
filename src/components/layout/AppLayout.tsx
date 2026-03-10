@@ -141,4 +141,6 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
       <GlobalSearch />
     </div>
   );
-}
+});
+
+export default AppLayout;
