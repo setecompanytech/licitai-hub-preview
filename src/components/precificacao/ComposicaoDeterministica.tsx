@@ -206,7 +206,7 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
         <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-start gap-2 mb-4">
           <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <p className="text-[10px] text-muted-foreground">
-            <strong className="text-foreground">Preço editável:</strong> Clique no ícone <Pencil className="w-3 h-3 inline" /> ao lado do preço para inserir um valor manual. O sistema recalculará automaticamente a margem de lucro resultante com base no novo preço.
+            <strong className="text-foreground">Preço e lucro editáveis:</strong> Clique no ícone <Pencil className="w-3 h-3 inline" /> ao lado do preço unitário <strong>ou da margem de lucro</strong> para ajustar manualmente. O sistema recalculará todos os valores automaticamente.
           </p>
         </div>
 
