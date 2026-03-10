@@ -412,9 +412,7 @@ export default function PropostaDownload({
       const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/msword' });
       triggerDownload(blob, `${getFilename(numeroLicitacao)}.doc`);
       toast.success('Documento Word gerado com sucesso!');
-    } catch {
-      toast.error('Erro ao gerar Word');
-    }
+    }, 'Geração do Word da Proposta');
   };
 
   const handleExcel = () => {
