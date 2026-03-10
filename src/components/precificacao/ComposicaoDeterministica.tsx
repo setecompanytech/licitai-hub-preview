@@ -51,6 +51,8 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
   const { addItem } = usePropostaCart();
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [editingMargemIndex, setEditingMargemIndex] = useState<number | null>(null);
+  const [editMargemValue, setEditMargemValue] = useState('');
 
   const { itens, resumo, parecer } = result;
 
