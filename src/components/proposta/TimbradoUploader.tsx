@@ -523,13 +523,13 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           </div>
 
           {/* Corner labels for margins */}
-          <span className="absolute text-[8px] text-blue-400/60 select-none" style={{ top: 2, left: mLeft }}>
+          <span className="absolute text-[8px] text-accent/50 select-none" style={{ top: 2, left: mLeft }}>
             {pageSetup.marginTop}cm
           </span>
-          <span className="absolute text-[8px] text-blue-400/60 select-none" style={{ bottom: 2, left: mLeft }}>
+          <span className="absolute text-[8px] text-accent/50 select-none" style={{ bottom: 2, left: mLeft }}>
             {pageSetup.marginBottom}cm
           </span>
-          <span className="absolute text-[8px] text-blue-400/60 select-none rotate-90 origin-top-left" style={{ top: mTop, left: 2 }}>
+          <span className="absolute text-[8px] text-accent/50 select-none rotate-90 origin-top-left" style={{ top: mTop, left: 2 }}>
             {pageSetup.marginLeft}cm
           </span>
 
