@@ -287,18 +287,37 @@ export default function PropostaTecnica() {
     if (!objeto.trim()) { toast.error('Informe o objeto da licitação'); return; }
     if (!orgao.trim()) { toast.error('Informe o órgão licitante'); return; }
 
+    if (itens.filter(i => i.descricao.trim()).length === 0) {
+      toast.warning('Nenhum item na planilha de preços. A proposta será gerada sem planilha.');
+    }
+
+    if (!repNome || !repCpf) {
+      toast.warning('Representante legal não preenchido. Verifique a aba Representante.');
+    }
+
     setIsLoading(true);
     setProposal('');
     let content = '';
 
-    await streamAIChat({
-      messages: [{ role: 'user', content: 'Gere a Proposta Comercial completa seguindo rigorosamente a estrutura: 1) Cabeçalho e endereçamento ao Órgão Gerenciador, 2) Objeto, 3) Planilha de Preços com TODAS as 11 colunas (Item, Descrição, Qtde, Unid, Marca, Fabricante, Modelo, Vlr Unitário, Vlr Extenso, Vlr Total, Vlr Total Extenso), 4) Validade da Proposta, 5) Prazo e Condições de Pagamento, 6) Prazo e Local de Entrega, 7) Declarações obrigatórias, 8) Dados da Empresa Licitante, 9) Dados do Representante Legal, 10) Dados Bancários, 11) Local, Data e Assinatura.' }],
-      action: 'proposta_tecnica',
-      context: buildContext(),
-      onDelta: (chunk) => { content += chunk; setProposal(content); },
-      onDone: () => { setIsLoading(false); toast.success('Proposta gerada com sucesso!'); },
-      onError: (error) => { toast.error(error); setIsLoading(false); },
-    });
+    try {
+      await streamAIChat({
+        messages: [{ role: 'user', content: 'Gere a Proposta Comercial completa seguindo rigorosamente a estrutura: 1) Cabeçalho e endereçamento ao Órgão Gerenciador, 2) Objeto, 3) Planilha de Preços com TODAS as 11 colunas (Item, Descrição, Qtde, Unid, Marca, Fabricante, Modelo, Vlr Unitário, Vlr Extenso, Vlr Total, Vlr Total Extenso) — REPRODUZA EXATAMENTE os valores fornecidos sem alterar nenhum número, 4) Validade da Proposta, 5) Prazo e Condições de Pagamento, 6) Prazo e Local de Entrega, 7) Declarações obrigatórias, 8) Dados da Empresa Licitante, 9) Dados do Representante Legal, 10) Dados Bancários, 11) Local, Data e Assinatura. IMPORTANTE: Use EXATAMENTE os dados fornecidos no contexto. NÃO invente, altere ou omita nenhum dado. Reproduza fielmente todos os valores da planilha.' }],
+        action: 'proposta_tecnica',
+        context: buildContext(),
+        onDelta: (chunk) => { content += chunk; setProposal(content); },
+        onDone: () => { setIsLoading(false); toast.success('Proposta gerada com sucesso!'); },
+        onError: (error) => { 
+          toast.error('Erro ao gerar proposta', { description: error, duration: 8000 }); 
+          setIsLoading(false); 
+        },
+      });
+    } catch (err: any) {
+      toast.error('Falha crítica na geração da proposta', { 
+        description: err?.message || 'Erro desconhecido. Tente novamente.',
+        duration: 10000 
+      });
+      setIsLoading(false);
+    }
   };
 
   const handleCopy = async () => {
