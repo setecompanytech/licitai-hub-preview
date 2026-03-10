@@ -69,8 +69,15 @@ export default function PropostaTecnica() {
   const resultRef = useRef<HTMLDivElement>(null);
 
   // Timbrado / Marca d'água
-  const [timbradoUrl, setTimbradoUrl] = useState<string | null>(null);
+  const [timbradoUrl, setTimbradoUrl] = useState<string | null>(empresaAtiva?.timbrado_url ?? null);
   const [usarMarcaDagua, setUsarMarcaDagua] = useState(true);
+
+  // Auto-sync timbrado when empresa changes
+  useEffect(() => {
+    if (empresaAtiva?.timbrado_url) {
+      setTimbradoUrl(empresaAtiva.timbrado_url);
+    }
+  }, [empresaAtiva?.timbrado_url]);
 
   // Form fields
   const [numeroLicitacao, setNumeroLicitacao] = useState('');
