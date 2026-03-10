@@ -156,9 +156,9 @@ export default function PropostaTecnica() {
     }
   }, [empresaAtiva]);
 
-  // Import pending items from Precificação
+  // Import pending items from Precificação — react to changes
   useEffect(() => {
-    if (hasPending) {
+    if (hasPending && pendingItems.length > 0) {
       setItens(prev => {
         const hasEmpty = prev.length === 1 && !prev[0].descricao.trim();
         const base = hasEmpty ? [] : prev;
@@ -171,7 +171,7 @@ export default function PropostaTecnica() {
       toast.success(`${pendingItems.length} ${pendingItems.length === 1 ? 'item importado' : 'itens importados'} da Precificação!`);
       clearPending();
     }
-  }, []);
+  }, [hasPending, pendingItems, clearPending]);
 
   const handleEditalExtracted = (data: ExtractedEditalData) => {
     if (data.numeroLicitacao) setNumeroLicitacao(data.numeroLicitacao);

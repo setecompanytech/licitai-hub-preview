@@ -267,17 +267,24 @@ function AssinaturaCertificado({ empresaData, repData }: AssinaturaCertificadoPr
   );
 }
 
-export default function PropostaRenderer({ proposal, empresaData, repData }: PropostaRendererProps) {
+export default function PropostaRenderer({ proposal, empresaData, repData, timbradoUrl, usarMarcaDagua }: PropostaRendererProps) {
   const sections = parseSections(proposal);
 
   return (
-    <div className="space-y-4 font-serif" style={{ fontFamily: "'Times New Roman', Times, serif", fontSize: '12pt', lineHeight: '1.5' }}>
+    <div className="space-y-4 font-serif relative" style={{ fontFamily: "'Times New Roman', Times, serif", fontSize: '12pt', lineHeight: '1.5' }}>
+      {/* Timbrado header */}
+      {timbradoUrl && /\.(png|jpe?g|webp|svg)(\?|$)/i.test(timbradoUrl) && (
+        <div className="border-b border-border/30 pb-3 mb-3">
+          <img src={timbradoUrl} alt="Timbrado" className="h-16 max-w-[300px] object-contain" />
+        </div>
+      )}
+
       {/* Render all sections from AI in order */}
       {sections.map((section, idx) => (
         <RenderSection key={idx} title={section.title} content={section.content} />
       ))}
 
-      {/* Digital Certificate Signature */}
+      {/* Digital Certificate Signature — always rendered */}
       <AssinaturaCertificado empresaData={empresaData} repData={repData} />
     </div>
   );
