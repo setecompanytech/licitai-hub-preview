@@ -684,6 +684,9 @@ Responda APENAS em JSON, sem markdown:
             <TabsTrigger value="importacoes" className="gap-1.5">
               <Upload className="w-3.5 h-3.5" /> Importações
             </TabsTrigger>
+            <TabsTrigger value="inteligencia" className="gap-1.5">
+              <Bot className="w-3.5 h-3.5" /> Inteligência de Preços
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="marketplaces" className="space-y-4">
