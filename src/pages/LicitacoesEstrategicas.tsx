@@ -43,7 +43,7 @@ type LicitacaoEstrategica = {
   salva: boolean;
 };
 
-const mockEstrategicas: LicitacaoEstrategica[] = [];
+const estrategicas: LicitacaoEstrategica[] = [];
 
 const recomendacaoConfig = {
   alta: { label: 'Recomendada', color: 'bg-success/15 text-success border-success/30', icon: Star },
@@ -70,7 +70,7 @@ export default function LicitacoesEstrategicas() {
     });
   };
 
-  const filtradas = mockEstrategicas.filter(l => filtro === 'todas' || l.recomendacao === filtro);
+  const filtradas = estrategicas.filter(l => filtro === 'todas' || l.recomendacao === filtro);
 
   return (
     <AppLayout>
@@ -256,13 +256,13 @@ export default function LicitacoesEstrategicas() {
                 </Button>
               </div>
               {/* Atalhos rápidos */}
-              {mockEstrategicas.length > 0 && (
+              {estrategicas.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   <span className="text-[10px] text-muted-foreground mr-1 self-center">Atalhos:</span>
-                  {[...new Set(mockEstrategicas.map(l => l.orgao))].map(org => (
+                  {[...new Set(estrategicas.map(l => l.orgao))].map(org => (
                     <Button key={org} variant="ghost" size="sm" className="h-6 text-[10px] px-2"
                       onClick={() => { setCapagOrgaoInput(org); setCapagOrgao({ orgao: org, uf: capagUf || undefined, municipio: capagMunicipio || undefined }); }}>
-                      {org}
+                    {org}
                     </Button>
                   ))}
                 </div>

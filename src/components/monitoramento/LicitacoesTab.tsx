@@ -45,7 +45,6 @@ type ResultadoBusca = {
   cnpjOrgao?: string;
   anoCompra?: number;
   sequencialCompra?: number;
-  isMock?: boolean;
   tem_download?: boolean;
 };
 
@@ -586,11 +585,10 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (âš
       const allResults: ResultadoBusca[] = [];
       const seenIds = new Set<string>();
 
-      // Process standard search results (PNCP only, skip mock data)
+      // Process standard search results (PNCP only, real data)
       if (buscaResult.status === 'fulfilled' && buscaResult.value) {
         const data = buscaResult.value;
         (data.items || []).forEach((item: any, idx: number) => {
-          if (item.isMock) return; // Skip mock/simulated data
           const id = item.id || `std-${idx}`;
           if (!seenIds.has(id)) {
             seenIds.add(id);
@@ -778,7 +776,6 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (âš
   };
 
   const hasEditalDownload = (lic: ResultadoBusca): boolean => {
-    if (lic.isMock) return false;
     // Explicitly marked as no download by the backend
     if ((lic as any).tem_download === false) return false;
     // Has PNCP data for direct API download
@@ -789,10 +786,6 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (âš
   };
 
   const handleDownloadEditalPortal = async (lic: ResultadoBusca) => {
-    if (lic.isMock) {
-      toast.warning('Dados simulados â€” download funciona apenas com licitaÃ§Ãµes reais.');
-      return;
-    }
     setDownloadingEdital(lic.id);
     toast.info('Buscando edital nos portais...');
     try {
