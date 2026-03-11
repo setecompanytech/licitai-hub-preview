@@ -88,13 +88,13 @@ export default function LeadCaptureForm() {
         <div className="max-w-2xl mx-auto bg-card rounded-2xl border border-accent/20 p-8 md:p-12 shadow-xl">
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-[11px] font-bold uppercase tracking-wider mb-4">
-              <Zap className="w-3 h-3" /> Últimas vagas do mês
+              <Zap className="w-3 h-3" /> Acesso imediato e seguro
             </div>
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-3">
-              Teste o Praefectus <span className="text-accent">Gratuitamente</span>
+              Experimente o Praefectus <span className="text-accent">sem compromisso</span>
             </h2>
             <p className="text-muted-foreground text-[15px]">
-              Preencha seus dados e receba acesso de 7 dias ao plano Profissional.
+              Preencha seus dados e explore por 7 dias todas as funcionalidades do plano Profissional.
             </p>
           </div>
 
@@ -148,7 +148,7 @@ export default function LeadCaptureForm() {
                 className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-base py-5 rounded-lg font-bold shadow-lg"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-                Quero Testar Grátis <ArrowRight className="w-5 h-5 ml-2" />
+                Quero Conhecer a Plataforma <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </div>
           </form>

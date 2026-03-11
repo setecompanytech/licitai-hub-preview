@@ -129,10 +129,10 @@ export default function FeaturesSection() {
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
             <p className="section-label">Funcionalidades</p>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight leading-[1.12]">
-              Tudo que você precisa para <span className="text-accent">licitar e vencer</span>
+              Tudo que você precisa para <span className="text-accent">licitar com tranquilidade</span>
             </h2>
             <p className="text-base md:text-lg text-muted-foreground max-w-2xl leading-relaxed mt-4 mx-auto">
-              40+ módulos integrados para monitoramento, gestão, precificação e apoio jurídico-contábil.
+              40+ módulos integrados para simplificar seu dia a dia, desde o monitoramento até a gestão completa de processos.
             </p>
           </motion.div>
         </div>

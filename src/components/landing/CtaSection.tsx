@@ -27,17 +27,17 @@ export default function CtaSection() {
           }} />
 
           <div className="relative">
-            {/* Urgency badge */}
+            {/* Welcome badge */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/15 border border-accent/30 text-accent text-[11px] font-bold mb-6 uppercase tracking-wider">
-              <Zap className="w-3.5 h-3.5" /> Oferta por tempo limitado
+              <Zap className="w-3.5 h-3.5" /> Comece com tranquilidade
             </div>
 
             <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-5 tracking-tight">
-              Sua concorrência já está usando.<br />
-              <span className="text-accent">E você?</span>
+              Junte-se a empresas que<br />
+              <span className="text-accent">encontraram seu caminho.</span>
             </h2>
             <p className="text-base text-white/50 mb-10 max-w-lg mx-auto">
-              Cada dia sem monitorar editais é um contrato perdido. Comece agora, gratuitamente.
+              Cada dia é uma nova oportunidade de encontrar editais alinhados ao seu negócio. Experimente sem compromisso.
             </p>
 
             <ul className="flex flex-col sm:flex-row items-center justify-center gap-5 mb-10">
@@ -52,10 +52,10 @@ export default function CtaSection() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
-                className="bg-accent hover:bg-accent/90 text-accent-foreground text-base px-10 py-6 rounded-lg font-bold shadow-lg animate-pulse-orange"
+                className="bg-accent hover:bg-accent/90 text-accent-foreground text-base px-10 py-6 rounded-lg font-bold shadow-lg"
                 onClick={() => navigate('/auth')}
               >
-                Criar Conta Gratuita <ArrowRight className="w-5 h-5 ml-1" />
+                Quero Experimentar Grátis <ArrowRight className="w-5 h-5 ml-1" />
               </Button>
               <Button
                 size="lg"
