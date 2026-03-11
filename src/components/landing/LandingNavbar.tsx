@@ -30,11 +30,9 @@ export default function LandingNavbar() {
         : 'bg-transparent'
     }`}>
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <a href="#" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center transition-transform group-hover:scale-105">
-            <Zap className="w-5 h-5 text-accent-foreground" />
-          </div>
-          <span className="text-xl font-brand font-bold tracking-widest uppercase">
+        <a href="#" className="flex items-center gap-2 group">
+          <Zap className="w-6 h-6 text-accent" />
+          <span className="text-2xl font-brand font-bold tracking-[0.25em] uppercase text-foreground">
             PRAEFECTUS
           </span>
         </a>
