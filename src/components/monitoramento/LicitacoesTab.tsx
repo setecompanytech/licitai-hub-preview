@@ -644,7 +644,6 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (‚ö
       // Reset filtros locais para n√£o esconder resultados da nova busca
       setStatusFilter('all');
       setModalidadeFilter('all');
-      setPortalFilter('all');
       setRegiaoFilter('all');
       setUfFilter('all');
       setDataInicio(undefined);
