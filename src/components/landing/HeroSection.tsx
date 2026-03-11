@@ -85,7 +85,7 @@ export default function HeroSection() {
               <Button
                 size="lg"
                 variant="outline"
-                className="text-base px-8 py-6 rounded-lg border-white/12 text-white/70 hover:bg-white/5 hover:text-white"
+                className="text-base px-8 py-6 rounded-lg border-accent/30 text-accent hover:bg-accent/10 hover:text-accent hover:border-accent/50 bg-transparent"
                 onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
               >
                 <Play className="w-4 h-4 mr-2" /> Ver funcionalidades
