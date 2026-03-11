@@ -43,7 +43,7 @@ const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
 
   // Chat IA
-  const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([{ role: 'assistant', content: 'Olá! Sou o assistente do LicitIA. Como posso ajudar você hoje? Posso tirar dúvidas sobre funcionalidades, planos, cobrança ou problemas técnicos.' }]);
+  const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([{ role: 'assistant', content: 'Olá! Sou o assistente do Praefectus. Como posso ajudar você hoje? Posso tirar dúvidas sobre funcionalidades, planos, cobrança ou problemas técnicos.' }]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
