@@ -1095,6 +1095,29 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (�
         )}
       </div>
 
+      {/* CNAE Auto Results Banner */}
+      {cnaeResults.length > 0 && modoResultados === 'local' && (
+        <div className="bg-success/5 rounded-xl border border-success/20 p-4 shadow-sm animate-fade-in">
+          <div className="flex items-center gap-2 mb-1">
+            <Zap className="w-4 h-4 text-success" />
+            <span className="text-sm font-semibold">Editais automáticos por CNAE</span>
+            <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-[10px]">
+              {cnaeResults.length} encontrados
+            </Badge>
+            <Badge variant="outline" className="text-[10px]">Últimos 30 dias</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Licitações compatíveis com o CNAE {empresaAtiva?.cnae_principal || ''} da empresa {empresaAtiva?.nome_fantasia || empresaAtiva?.razao_social || ''}, publicadas nos últimos 30 dias.
+          </p>
+        </div>
+      )}
+      {loadingCnae && (
+        <div className="bg-muted/30 rounded-xl border border-border/30 p-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <RefreshCw className="w-4 h-4 animate-spin" />
+          Buscando editais compatíveis com seu CNAE (últimos 30 dias)...
+        </div>
+      )}
+
       {/* AI Analysis */}
       {analiseIA && (
         <div className="bg-accent/5 rounded-xl border border-accent/20 p-4 shadow-sm animate-fade-in">
