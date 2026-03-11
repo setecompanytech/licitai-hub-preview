@@ -36,12 +36,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const getRedirectOrigin = () => {
+    const origin = window.location.origin;
+    // Use published domain instead of preview URL
+    if (origin.includes('lovableproject.com') || origin.includes('lovable.app')) {
+      return 'https://levo-licita.lovable.app';
+    }
+    return origin;
+  };
+
   const signUp = async (email: string, password: string, nomeCompleto: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: getRedirectOrigin(),
         data: { nome_completo: nomeCompleto },
       },
     });
@@ -59,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${getRedirectOrigin()}/reset-password`,
     });
     return { error };
   };
