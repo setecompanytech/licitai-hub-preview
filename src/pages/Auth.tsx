@@ -182,12 +182,7 @@ export default function Auth() {
         {/* Header */}
         <div className="bg-card border-b border-border">
           <div className="max-w-3xl mx-auto px-4 py-6 flex items-center justify-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center">
-              <Zap className="w-5 h-5 text-accent-foreground" />
-            </div>
-             <span className="text-2xl font-brand font-bold tracking-widest uppercase">
-               PRAEFECTUS
-             </span>
+            <PraefectusLogo size="lg" />
           </div>
         </div>
 
