@@ -372,7 +372,7 @@ async function buscarPNCP(params: {
           numero: item.numeroCompra || item.numeroControlePNCP || "",
           fonte_real: true,
           tem_download: !!(cnpjOrgao && anoCompra && seqCompra),
-          _relevancia: relevancia,
+          _relevancia: params.skipRelevanceFilter ? 1.0 : (Math.max(calcularRelevancia(objetoCompra, params.query), calcularRelevancia(orgaoNome, params.query)) || 1.0),
         });
       }
     } catch (e) {
