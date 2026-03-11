@@ -283,6 +283,7 @@ async function buscarPNCP(params: {
   dataFim?: string;
   cnpj?: string;
   limite?: number;
+  skipRelevanceFilter?: boolean;
 }): Promise<any[]> {
   const resultados: any[] = [];
   const now = new Date();
