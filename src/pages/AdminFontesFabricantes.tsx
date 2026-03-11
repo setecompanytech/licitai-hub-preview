@@ -102,7 +102,7 @@ export default function AdminFontesFabricantes() {
   useEffect(() => { loadFontes(); }, []);
 
   if (roleLoading) return <AppLayout><div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin" /></div></AppLayout>;
-  if (!isAdmin) return <Navigate to="/" replace />;
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const filtered = fontes.filter(f => {
     if (searchTerm && !f.nome.toLowerCase().includes(searchTerm.toLowerCase()) && !f.url_base.toLowerCase().includes(searchTerm.toLowerCase())) return false;

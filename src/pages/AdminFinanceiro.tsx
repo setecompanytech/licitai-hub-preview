@@ -93,7 +93,7 @@ export default function AdminFinanceiro() {
   }
 
   if (roleLoading) return <AppLayout><div className="flex items-center justify-center h-64 text-muted-foreground">Carregando...</div></AppLayout>;
-  if (!isAdmin) return <Navigate to="/" replace />;
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const filteredAssinaturas = assinaturas.filter(a =>
     !search || a.empresa?.razao_social.toLowerCase().includes(search.toLowerCase()) || a.empresa?.cnpj.includes(search)
