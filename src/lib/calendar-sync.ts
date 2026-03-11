@@ -81,7 +81,7 @@ export function generateICSCalendar(events: CalendarEvent[]): string {
     'PRODID:-//Praefectus//Calendario//PT',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:Praefectus - Licitações',
+    'X-WR-CALNAME:PRAEFECTUS - Licitações',
     'X-WR-TIMEZONE:America/Sao_Paulo',
   ].join('\r\n');
 

@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
                       <p><strong>Portal:</strong> ${pi.portal || 'N/I'}</p>
                       <p><a href="https://praefectus.com.br/meus-compromissos">Acessar Meus Compromissos →</a></p>
                       <hr/>
-                      <p style="font-size:12px;color:#888;">Praefectus — Gestão Inteligente de Licitações</p>
+                      <p style="font-size:12px;color:#888;">PRAEFECTUS — Gestão Inteligente de Licitações</p>
                     `,
                   }),
                 });
