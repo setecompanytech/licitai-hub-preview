@@ -1253,7 +1253,7 @@ export function generateOrganogramaPDF() {
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(71, 85, 105);
-  doc.text('Todas as funcionalidades do sistema Praefectus', pageW / 2, y + 28, { align: 'center' });
+  doc.text('Todas as funcionalidades do sistema PRAEFECTUS', pageW / 2, y + 28, { align: 'center' });
   doc.text('com descrição detalhada e instruções passo a passo.', pageW / 2, y + 35, { align: 'center' });
   doc.setFontSize(9);
   doc.text('Do PAINEL à CONFIGURAÇÃO — 7 grupos · 30+ submódulos · 90+ funcionalidades', pageW / 2, y + 47, { align: 'center' });
