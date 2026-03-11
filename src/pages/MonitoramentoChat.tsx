@@ -99,28 +99,9 @@ type MuralItem = {
   autor: string;
 };
 
-const mockMural: MuralItem[] = [
-  { id: 'm1', pregaoNumero: 'PE-001/2026', tipo: 'esclarecimento', titulo: 'Esclarecimento nº 01', conteudo: 'Em resposta ao pedido de esclarecimento da empresa XYZ, informamos que o prazo de entrega é de 30 dias corridos após a emissão da Ordem de Serviço.', dataPublicacao: '2026-02-24 10:30', autor: 'Pregoeiro(a)' },
-  { id: 'm2', pregaoNumero: 'PE-001/2026', tipo: 'aviso', titulo: 'Aviso de Adiamento', conteudo: 'A sessão pública marcada para 25/02/2026 foi adiada para 28/02/2026 às 09:00, em razão de pedido de impugnação em análise.', dataPublicacao: '2026-02-23 16:45', autor: 'Sistema' },
-  { id: 'm3', pregaoNumero: 'PE-045/2026', tipo: 'impugnacao', titulo: 'Impugnação ao Edital', conteudo: 'Foi registrada impugnação ao edital questionando o critério de qualificação técnica exigido no item 8.2.3.', dataPublicacao: '2026-02-22 14:20', autor: 'Fornecedor B' },
-  { id: 'm4', pregaoNumero: 'PE-001/2026', tipo: 'retificacao', titulo: 'Errata nº 01', conteudo: 'Onde se lê "prazo de 15 dias", leia-se "prazo de 30 dias corridos". Demais condições permanecem inalteradas.', dataPublicacao: '2026-02-21 09:00', autor: 'Pregoeiro(a)' },
-];
-const mockPregoes: PregaoMonitorado[] = [
-  { id: '1', numero: 'PE-001/2026', orgao: 'Prefeitura de Belém', portal: 'Compras.gov.br', objeto: 'Construção de ponte sobre o Rio Guamá', status: 'ao_vivo', totalMensagens: 47, alertas: 3, ultimaAtualizacao: '14:32' },
-  { id: '2', numero: 'PE-045/2026', orgao: 'SEDOP/PA', portal: 'PNCP', objeto: 'Pavimentação asfáltica BR-316', status: 'ao_vivo', totalMensagens: 23, alertas: 1, ultimaAtualizacao: '14:28' },
-  { id: '3', numero: 'PE-012/2026', orgao: 'DNIT', portal: 'Licitações-e (BB)', objeto: 'Obra de contenção na PA-150', status: 'suspenso', totalMensagens: 89, alertas: 0, ultimaAtualizacao: '13:45' },
-  { id: '4', numero: 'PE-078/2026', orgao: 'SETRAN/PA', portal: 'Compras.gov.br', objeto: 'Sinalização viária em Ananindeua', status: 'agendado', totalMensagens: 0, alertas: 0, ultimaAtualizacao: '—' },
-  { id: '5', numero: 'PE-099/2025', orgao: 'COSANPA', portal: 'BLL Compras', objeto: 'Sistema de abastecimento de água', status: 'encerrado', totalMensagens: 156, alertas: 5, ultimaAtualizacao: '11:20' },
-];
-
-const mockMensagens: MensagemChat[] = [
-  { id: '1', pregaoNumero: 'PE-001/2026', orgao: 'Prefeitura de Belém', portal: 'Compras.gov.br', tipo: 'pregoeiro', remetente: 'Pregoeiro(a)', mensagem: 'Boa tarde. Iniciamos a fase de lances do item 1. Favor verificar propostas.', horario: '14:30', destaque: false },
-  { id: '2', pregaoNumero: 'PE-001/2026', orgao: 'Prefeitura de Belém', portal: 'Compras.gov.br', tipo: 'convocacao', remetente: 'Sistema', mensagem: '⚠️ CONVOCAÇÃO: Empresa CNPJ **12.345.678/0001-90** convocada para envio de documentos. Prazo: 2 horas.', horario: '14:31', destaque: true },
-  { id: '3', pregaoNumero: 'PE-001/2026', orgao: 'Prefeitura de Belém', portal: 'Compras.gov.br', tipo: 'fornecedor', remetente: 'Fornecedor A', mensagem: 'Lance enviado: R$ 12.450.000,00', horario: '14:32', destaque: false },
-  { id: '4', pregaoNumero: 'PE-001/2026', orgao: 'Prefeitura de Belém', portal: 'Compras.gov.br', tipo: 'sistema', remetente: 'Sistema', mensagem: 'Melhor lance atual: R$ 12.450.000,00 (Fornecedor A)', horario: '14:32', destaque: false },
-  { id: '5', pregaoNumero: 'PE-045/2026', orgao: 'SEDOP/PA', portal: 'PNCP', tipo: 'pregoeiro', remetente: 'Pregoeiro(a)', mensagem: 'Fase de habilitação em andamento. Aguardando documentos do licitante vencedor.', horario: '14:25', destaque: false },
-  { id: '6', pregaoNumero: 'PE-045/2026', orgao: 'SEDOP/PA', portal: 'PNCP', tipo: 'convocacao', remetente: 'Sistema', mensagem: '🔔 ALERTA: Prazo para envio de proposta readequada expira em 30 minutos.', horario: '14:28', destaque: true },
-];
+const mockMural: MuralItem[] = [];
+const mockPregoes: PregaoMonitorado[] = [];
+const mockMensagens: MensagemChat[] = [];
 
 const statusConfig = {
   ao_vivo: { label: 'Ao Vivo', color: 'bg-destructive/15 text-destructive border-destructive/30', icon: Play },
@@ -286,6 +267,13 @@ export default function MonitoramentoChat() {
                   <Input placeholder="Buscar pregão..." value={busca} onChange={e => setBusca(e.target.value)} className="pl-10" />
                 </div>
                 <div className="space-y-2 max-h-[calc(100vh-440px)] overflow-y-auto pr-1">
+                  {pregoesFiltrados.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">Nenhum pregão monitorado</p>
+                      <p className="text-xs mt-1">Os pregões aparecerão aqui quando você iniciar o monitoramento em tempo real.</p>
+                    </div>
+                  )}
                   {pregoesFiltrados.map(pregao => {
                     const cfg = statusConfig[pregao.status];
                     const Icon = cfg.icon;
@@ -382,7 +370,13 @@ export default function MonitoramentoChat() {
               <p className="text-sm text-muted-foreground">
                 Avisos, esclarecimentos, impugnações e retificações publicados nos portais de compras.
               </p>
-              {mockMural.map(item => {
+              {mockMural.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Megaphone className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">Nenhuma publicação no mural</p>
+                  <p className="text-xs mt-1">Avisos, esclarecimentos e retificações aparecerão aqui quando detectados nos portais.</p>
+                </div>
+              ) : mockMural.map(item => {
                 const cfg = muralTipoConfig[item.tipo];
                 const Icon = cfg.icon;
                 return (
