@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import { writeExcelFile, readExcelAsArrays } from '@/lib/excel-utils';
 import type { EditalItem } from './EditalUploader';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 
@@ -50,17 +50,17 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
   const valorGlobal = itens.reduce((sum, i) => sum + (parseFloat(i.valorTotal.replace(',', '.')) || 0), 0);
 
   // ── Excel Download ──
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
     const headers = ['Item', 'Descrição', 'Quantidade', 'Unidade', 'Marca', 'Fabricante', 'Modelo', 'Valor Unitário (R$)', 'Valor Total (R$)'];
     const sampleRows = [
       ['1', 'Exemplo de produto/serviço', '10', 'UN', 'Marca X', 'Fabricante Y', 'Modelo Z', '150.00', '1500.00'],
       ['2', '', '', 'UN', '', '', '', '', ''],
     ];
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleRows]);
-    ws['!cols'] = [{ wch: 6 }, { wch: 40 }, { wch: 12 }, { wch: 10 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 18 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Planilha de Preços');
-    XLSX.writeFile(wb, 'modelo_planilha_precos.xlsx');
+    await writeExcelFile('modelo_planilha_precos.xlsx', [{
+      name: 'Planilha de Preços',
+      data: [headers, ...sampleRows],
+      colWidths: [6, 40, 12, 10, 16, 16, 16, 18, 18],
+    }]);
     toast.success('Modelo Excel baixado com sucesso!');
   };
 
@@ -70,13 +70,10 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
     if (!file) return;
 
     try {
-      const data = await file.arrayBuffer();
-      const wb = XLSX.read(data);
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows: string[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      const allRows = await readExcelAsArrays(file);
 
       // Skip header row
-      const dataRows = rows.slice(1).filter(r => r.some(cell => cell?.toString().trim()));
+      const dataRows = allRows.slice(1).filter(r => r.some(cell => cell?.toString().trim()));
       if (dataRows.length === 0) {
         toast.error('Planilha vazia ou sem dados válidos.');
         return;

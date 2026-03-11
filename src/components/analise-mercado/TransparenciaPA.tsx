@@ -11,7 +11,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import { readExcelFile, writeExcelFromJson } from '@/lib/excel-utils';
 
 type EmpenhoData = {
   id?: string;
@@ -117,10 +117,7 @@ export default function TransparenciaPA() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Não autenticado');
 
-      const arrayBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
+      const jsonData = await readExcelFile(file);
 
       if (jsonData.length === 0) {
         toast.error('Planilha vazia');
@@ -172,18 +169,17 @@ export default function TransparenciaPA() {
     }
   };
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
     if (dadosFiltrados.length === 0) return;
-    const ws = XLSX.utils.json_to_sheet(dadosFiltrados.map(d => ({
-      'Órgão': d.orgao,
-      'Ano': d.ano,
-      'Valor Total (R$)': d.valor_total,
-      'Qtd Empenhos': d.quantidade_empenhos,
-      'Categoria': d.categoria || '',
-    })));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Transparência PA');
-    XLSX.writeFile(wb, `transparencia-pa-${anoFiltro}.xlsx`);
+    await writeExcelFromJson(`transparencia-pa-${anoFiltro}.xlsx`, 'Transparência PA',
+      dadosFiltrados.map(d => ({
+        'Órgão': d.orgao,
+        'Ano': d.ano,
+        'Valor Total (R$)': d.valor_total,
+        'Qtd Empenhos': d.quantidade_empenhos,
+        'Categoria': d.categoria || '',
+      }))
+    );
   };
 
   const dadosFiltrados = dados.filter(d => !busca || d.orgao.toLowerCase().includes(busca.toLowerCase()));

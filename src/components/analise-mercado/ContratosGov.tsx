@@ -11,7 +11,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import { writeExcelFromJson } from '@/lib/excel-utils';
 
 type ContratoData = {
   id?: string;
@@ -137,21 +137,20 @@ export default function ContratosGov() {
     }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (dadosFiltrados.length === 0) return;
-    const ws = XLSX.utils.json_to_sheet(dadosFiltrados.map(d => ({
-      'Órgão': d.orgao,
-      'Tipo': d.tipo,
-      'Ano': d.ano,
-      'Valor Total (R$)': d.valor_total,
-      'Qtd Itens': d.quantidade_itens,
-      'Modalidade': d.modalidade || '',
-      'Situação': d.situacao || '',
-      'Descrição': d.descricao || '',
-    })));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Contratos Gov');
-    XLSX.writeFile(wb, `contratos-gov-${anoFiltro}-${tipoFiltro}.xlsx`);
+    await writeExcelFromJson(`contratos-gov-${anoFiltro}-${tipoFiltro}.xlsx`, 'Contratos Gov',
+      dadosFiltrados.map(d => ({
+        'Órgão': d.orgao,
+        'Tipo': d.tipo,
+        'Ano': d.ano,
+        'Valor Total (R$)': d.valor_total,
+        'Qtd Itens': d.quantidade_itens,
+        'Modalidade': d.modalidade || '',
+        'Situação': d.situacao || '',
+        'Descrição': d.descricao || '',
+      }))
+    );
   };
 
   const dadosFiltrados = dados.filter(d => !busca || d.orgao.toLowerCase().includes(busca.toLowerCase()));

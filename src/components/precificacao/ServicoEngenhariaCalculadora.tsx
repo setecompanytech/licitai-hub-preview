@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { valorPorExtenso } from '@/lib/numero-extenso';
-import * as XLSX from 'xlsx';
+import { writeExcelFile } from '@/lib/excel-utils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -247,11 +247,10 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
   const removeItem = (i: number) => { if (itens.length > 1) setItens(prev => prev.filter((_, idx) => idx !== i)); };
 
   // ── Export XLSX ──
-  const exportXLSX = () => {
+  const exportXLSX = async () => {
     if (!resultado) return;
-    const wb = XLSX.utils.book_new();
 
-    // Aba 1: Composição BDI
+    // Sheet 1: Composição BDI
     const bdiRows: any[][] = [
       ['COMPOSIÇÃO DE BDI — ' + bdiConfig.label.toUpperCase()],
       [`Referência: ${bdiConfig.ref} | Lei 14.133/2021`],
@@ -261,52 +260,31 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
       ['Componente', 'Percentual (%)', 'Referência TCU (Min)', 'Referência TCU (Max)'],
     ];
     bdiConfig.componentes.forEach(c => {
-      bdiRows.push([c.nome, bdiValues[c.id] / 100, c.min / 100, c.max / 100]);
+      bdiRows.push([c.nome, `${bdiValues[c.id].toFixed(2)}%`, `${c.min.toFixed(2)}%`, `${c.max.toFixed(2)}%`]);
     });
     bdiRows.push([]);
     bdiRows.push(['TRIBUTOS "POR DENTRO"']);
     bdiRows.push(['Tributo', 'Alíquota (%)']);
     tributosPadrao.forEach(t => {
-      bdiRows.push([t.nome, tributoValues[t.id] / 100]);
+      bdiRows.push([t.nome, `${tributoValues[t.id].toFixed(2)}%`]);
     });
     bdiRows.push([]);
-    bdiRows.push(['BDI CALCULADO', bdiCalc.bdiPercentual / 100]);
-    bdiRows.push([`Fórmula: BDI = [(1+AC+S+R)×(1+DF)×(1+L)/(1-I)] - 1`]);
+    bdiRows.push(['BDI CALCULADO', `${bdiCalc.bdiPercentual.toFixed(2)}%`]);
+    bdiRows.push(['Fórmula: BDI = [(1+AC+S+R)×(1+DF)×(1+L)/(1-I)] - 1']);
 
-    const ws1 = XLSX.utils.aoa_to_sheet(bdiRows);
-    ws1['!cols'] = [{ wch: 40 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
-    // Format percentages
-    const rng1 = XLSX.utils.decode_range(ws1['!ref'] || 'A1');
-    for (let R = rng1.s.r; R <= rng1.e.r; R++) {
-      for (let C = 1; C <= 3; C++) {
-        const cell = ws1[XLSX.utils.encode_cell({ r: R, c: C })];
-        if (cell && typeof cell.v === 'number' && cell.v < 1) cell.z = '0.00%';
-      }
-    }
-    XLSX.utils.book_append_sheet(wb, ws1, 'Composição BDI');
-
-    // Aba 2: Encargos Sociais
+    // Sheet 2: Encargos Sociais
     const encRows: any[][] = [
       ['ENCARGOS SOCIAIS E TRABALHISTAS'],
       [],
       ['Componente', 'Alíquota (%)', 'Fundamentação'],
     ];
     ENCARGOS_SOCIAIS.forEach(e => {
-      encRows.push([e.nome, encargosValues[e.id] / 100, e.info]);
+      encRows.push([e.nome, `${encargosValues[e.id].toFixed(2)}%`, e.info]);
     });
     encRows.push([]);
-    encRows.push(['TOTAL ENCARGOS SOCIAIS', bdiCalc.totalEncargosPerc / 100]);
+    encRows.push(['TOTAL ENCARGOS SOCIAIS', `${bdiCalc.totalEncargosPerc.toFixed(2)}%`]);
 
-    const ws2 = XLSX.utils.aoa_to_sheet(encRows);
-    ws2['!cols'] = [{ wch: 35 }, { wch: 16 }, { wch: 45 }];
-    const rng2 = XLSX.utils.decode_range(ws2['!ref'] || 'A1');
-    for (let R = rng2.s.r; R <= rng2.e.r; R++) {
-      const cell = ws2[XLSX.utils.encode_cell({ r: R, c: 1 })];
-      if (cell && typeof cell.v === 'number' && cell.v < 1) cell.z = '0.00%';
-    }
-    XLSX.utils.book_append_sheet(wb, ws2, 'Encargos Sociais');
-
-    // Aba 3: Planilha de Custos
+    // Sheet 3: Planilha de Custos
     const custRows: any[][] = [
       ['PLANILHA DE CUSTOS E FORMAÇÃO DE PREÇOS'],
       [`${bdiConfig.label} | ${regimeLabel} | UF: ${ufCalculo}`],
@@ -315,40 +293,22 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
       ['Item', 'Descrição', 'Qtd', 'Und', 'Custo Unit. (R$)', 'Encargos (R$)', 'BDI (R$)', 'Preço Unit. (R$)', 'Preço Total (R$)'],
     ];
     resultado.itens.forEach((item, idx) => {
-      custRows.push([
-        idx + 1,
-        item.descricao,
-        item.quantidade,
-        item.unidade,
-        item.custoUnitario,
-        item.encargosValor,
-        item.bdiValor,
-        item.precoUnitario,
-        item.precoTotal,
-      ]);
+      custRows.push([idx + 1, item.descricao, item.quantidade, item.unidade, item.custoUnitario, item.encargosValor, item.bdiValor, item.precoUnitario, item.precoTotal]);
     });
     custRows.push([]);
     custRows.push(['', 'TOTAIS', '', '', resultado.totalCusto, resultado.totalEncargos, resultado.totalBDI, '', resultado.totalPreco]);
     custRows.push([]);
-    custRows.push(['', 'BDI Aplicado:', '', '', bdiCalc.bdiPercentual / 100]);
-    custRows.push(['', 'Encargos Sociais:', '', '', bdiCalc.totalEncargosPerc / 100]);
-    custRows.push(['', 'Tributos (por dentro):', '', '', bdiCalc.totalTributosPerc / 100]);
+    custRows.push(['', 'BDI Aplicado:', '', '', `${bdiCalc.bdiPercentual.toFixed(2)}%`]);
+    custRows.push(['', 'Encargos Sociais:', '', '', `${bdiCalc.totalEncargosPerc.toFixed(2)}%`]);
+    custRows.push(['', 'Tributos (por dentro):', '', '', `${bdiCalc.totalTributosPerc.toFixed(2)}%`]);
     custRows.push([]);
     custRows.push([`Valor Total: ${fmtCur(resultado.totalPreco)} (${valorPorExtenso(resultado.totalPreco)})`]);
 
-    const ws3 = XLSX.utils.aoa_to_sheet(custRows);
-    ws3['!cols'] = [{ wch: 6 }, { wch: 40 }, { wch: 8 }, { wch: 6 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }];
-    const rng3 = XLSX.utils.decode_range(ws3['!ref'] || 'A1');
-    for (let R = rng3.s.r; R <= rng3.e.r; R++) {
-      for (let C = 4; C <= 8; C++) {
-        const cell = ws3[XLSX.utils.encode_cell({ r: R, c: C })];
-        if (cell && typeof cell.v === 'number' && cell.v > 1) cell.z = '#,##0.00';
-        if (cell && typeof cell.v === 'number' && cell.v < 1 && cell.v > 0) cell.z = '0.00%';
-      }
-    }
-    XLSX.utils.book_append_sheet(wb, ws3, 'Planilha de Custos');
-
-    XLSX.writeFile(wb, `composicao-custos-engenharia-${tipoServico}.xlsx`);
+    await writeExcelFile(`composicao-custos-engenharia-${tipoServico}.xlsx`, [
+      { name: 'Composição BDI', data: bdiRows, colWidths: [40, 18, 18, 18] },
+      { name: 'Encargos Sociais', data: encRows, colWidths: [35, 16, 45] },
+      { name: 'Planilha de Custos', data: custRows, colWidths: [6, 40, 8, 6, 16, 16, 16, 16, 18] },
+    ]);
     toast.success('Planilha Excel exportada com sucesso!');
   };
 
