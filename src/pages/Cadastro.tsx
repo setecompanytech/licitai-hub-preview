@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Check, User, Building2, Settings, BarChart3, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import PraefectusLogo from '@/components/shared/PraefectusLogo';
 
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import PraefectusLogo from '@/components/shared/PraefectusLogo';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';

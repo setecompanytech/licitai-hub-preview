@@ -12,6 +12,7 @@ import {
   Phone, Building2, Briefcase, MapPin, ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
+import PraefectusLogo from '@/components/shared/PraefectusLogo';
 
 const CARGOS = [
   'Diretor(a)', 'Gerente', 'Coordenador(a)', 'Analista', 'Assistente',

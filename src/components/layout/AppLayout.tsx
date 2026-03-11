@@ -1,4 +1,5 @@
 import { ReactNode, useState, useEffect, forwardRef, useRef } from 'react';
+import PraefectusLogo from '@/components/shared/PraefectusLogo';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppTopNav from './AppTopNav';
