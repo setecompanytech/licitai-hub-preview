@@ -80,7 +80,7 @@ export default function LandingFooter() {
       </div>
 
       <div className="max-w-7xl mx-auto mt-10 pt-6 border-t border-border/20 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>© {new Date().getFullYear()} LicitIA. Todos os direitos reservados.</span>
+        <span>© {new Date().getFullYear()} Praefectus. Todos os direitos reservados.</span>
       </div>
     </footer>
   );

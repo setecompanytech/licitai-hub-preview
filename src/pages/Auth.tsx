@@ -414,7 +414,7 @@ export default function Auth() {
                   <a href="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-semibold">Termos de Uso</a>{' '}
                   e a{' '}
                   <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-semibold">Política de Privacidade</a>{' '}
-                  da plataforma LicitIA, manifestando consentimento livre, informado e inequívoco, nos termos do{' '}
+                  da plataforma Praefectus, manifestando consentimento livre, informado e inequívoco, nos termos do{' '}
                   <strong>Art. 7º, inciso I, da Lei nº 13.709/2018 (LGPD)</strong>, para o tratamento de meus dados pessoais nas finalidades descritas nos referidos documentos.
                 </label>
               </div>
