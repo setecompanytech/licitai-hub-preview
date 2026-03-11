@@ -148,7 +148,7 @@ export default function LeadCaptureForm() {
                 className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-base py-5 rounded-lg font-bold shadow-lg"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-                Quero Testar Grátis <ArrowRight className="w-5 h-5 ml-2" />
+                Quero Conhecer a Plataforma <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </div>
           </form>

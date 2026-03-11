@@ -100,10 +100,10 @@ export default function PlanosSection() {
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
             <span className="section-label">Planos</span>
             <h2 className="section-title">
-              Encontre o plano <span className="gradient-text">ideal para sua empresa</span>
+              Escolha o plano <span className="gradient-text">ideal para sua jornada</span>
             </h2>
             <p className="section-subtitle mx-auto max-w-xl">
-              São três planos, com assinatura semestral, anual ou bienal. Escolha o seu e comece o teste gratuito de 7 dias.
+              Três opções flexíveis, com assinatura semestral, anual ou bienal. Comece com 7 dias gratuitos para explorar tudo.
             </p>
           </motion.div>
         </div>

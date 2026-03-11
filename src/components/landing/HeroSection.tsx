@@ -58,10 +58,10 @@ export default function HeroSection() {
             <div className="flex flex-col sm:flex-row gap-3 mb-14">
               <Button
                 size="lg"
-                className="bg-accent hover:bg-accent/90 text-accent-foreground text-base px-8 py-6 rounded-lg font-bold shadow-lg hover:shadow-xl transition-all animate-pulse-orange"
+                className="bg-accent hover:bg-accent/90 text-accent-foreground text-base px-8 py-6 rounded-lg font-bold shadow-lg hover:shadow-xl transition-all"
                 onClick={() => navigate('/auth')}
               >
-                Começar Gratuitamente <ChevronRight className="w-5 h-5 ml-1" />
+                Começar Meu Teste Gratuito <ChevronRight className="w-5 h-5 ml-1" />
               </Button>
               <Button
                 size="lg"
