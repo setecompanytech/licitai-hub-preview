@@ -99,6 +99,15 @@ export default function MonitoramentoChat() {
       setLoadingMensagens(false);
     };
     loadMessages();
+
+    const channel = supabase
+      .channel('monitoramento-chat-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages', filter: `user_id=eq.${user.id}` }, () => loadMessages())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const handleToggleSom = (checked: boolean) => {

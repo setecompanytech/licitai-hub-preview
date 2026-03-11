@@ -81,12 +81,13 @@ export function useDashboardData() {
     if (!user) return;
     loadAll();
 
-    // Realtime: auto-refresh dashboard when licitacoes change
+    // Realtime: auto-refresh dashboard when source tables change
     const channel = supabase
       .channel('dashboard-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'licitacoes', filter: `user_id=eq.${user.id}` }, () => loadAll())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'contratos', filter: `user_id=eq.${user.id}` }, () => loadAll())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'kanban_tasks', filter: `user_id=eq.${user.id}` }, () => loadAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'monitoramento_editais', filter: `user_id=eq.${user.id}` }, () => loadAll())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };

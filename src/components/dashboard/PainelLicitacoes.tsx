@@ -74,7 +74,21 @@ export default function PainelLicitacoes() {
   const [page, setPage] = useState(0);
 
   useEffect(() => {
-    if (user) loadLicitacoes();
+    if (!user) return;
+    loadLicitacoes();
+
+    const channel = supabase
+      .channel('painel-licitacoes-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'licitacoes', filter: `user_id=eq.${user.id}` },
+        () => loadLicitacoes()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   async function loadLicitacoes() {

@@ -415,6 +415,16 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (�
     };
 
     carregarDados();
+
+    const channel = supabase
+      .channel('licitacoes-tab-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'licitacoes', filter: `user_id=eq.${user.id}` }, () => carregarDados())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'monitoramento_editais', filter: `user_id=eq.${user.id}` }, () => carregarDados())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   // ── Auto CNAE-based search on load (prioritize company's headquarters region) ──
