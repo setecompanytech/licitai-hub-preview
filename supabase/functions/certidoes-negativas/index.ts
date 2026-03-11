@@ -65,52 +65,14 @@ async function consultarCEIS(cnpj: string): Promise<VerificacaoReal> {
   return consultarTransparencia("CEIS", cnpj, "CEIS", "sanção");
 }
 
-// Consulta CNEP (Cadastro Nacional de Empresas Punidas)
+// Consulta CNEP
 async function consultarCNEP(cnpj: string): Promise<VerificacaoReal> {
-  try {
-    const resp = await fetch(
-      `${TRANSPARENCIA_BASE}/cnep?cnpjSancionado=${cnpj}&pagina=1`,
-      { headers: { "Accept": "application/json" } }
-    );
-    if (!resp.ok) {
-      const body = await resp.text();
-      console.log("CNEP response:", resp.status, body);
-      return { fonte: "CNEP", status: "erro", detalhes: `API indisponível (${resp.status})`, dataConsulta: new Date().toISOString() };
-    }
-    const data = await resp.json();
-    const registros = Array.isArray(data) ? data : data?.data || [];
-    if (registros.length === 0) {
-      return { fonte: "CNEP", status: "regular", detalhes: "Nenhuma punição encontrada no CNEP", dataConsulta: new Date().toISOString(), url: "https://portaldatransparencia.gov.br/sancoes/cnep" };
-    }
-    return { fonte: "CNEP", status: "irregular", detalhes: `${registros.length} punição(ões) encontrada(s)`, dataConsulta: new Date().toISOString(), url: "https://portaldatransparencia.gov.br/sancoes/cnep" };
-  } catch (e) {
-    console.error("Erro CNEP:", e);
-    return { fonte: "CNEP", status: "erro", detalhes: `Falha na consulta: ${e.message}`, dataConsulta: new Date().toISOString() };
-  }
+  return consultarTransparencia("CNEP", cnpj, "CNEP", "punição");
 }
 
-// Consulta CEPIM (Cadastro de Entidades Privadas Sem Fins Lucrativos Impedidas)
+// Consulta CEPIM
 async function consultarCEPIM(cnpj: string): Promise<VerificacaoReal> {
-  try {
-    const resp = await fetch(
-      `${TRANSPARENCIA_BASE}/cepim?cnpjSancionado=${cnpj}&pagina=1`,
-      { headers: { "Accept": "application/json" } }
-    );
-    if (!resp.ok) {
-      const body = await resp.text();
-      console.log("CEPIM response:", resp.status, body);
-      return { fonte: "CEPIM", status: "erro", detalhes: `API indisponível (${resp.status})`, dataConsulta: new Date().toISOString() };
-    }
-    const data = await resp.json();
-    const registros = Array.isArray(data) ? data : data?.data || [];
-    if (registros.length === 0) {
-      return { fonte: "CEPIM", status: "regular", detalhes: "Nenhum impedimento encontrado no CEPIM", dataConsulta: new Date().toISOString(), url: "https://portaldatransparencia.gov.br/sancoes/cepim" };
-    }
-    return { fonte: "CEPIM", status: "irregular", detalhes: `${registros.length} impedimento(s) encontrado(s)`, dataConsulta: new Date().toISOString(), url: "https://portaldatransparencia.gov.br/sancoes/cepim" };
-  } catch (e) {
-    console.error("Erro CEPIM:", e);
-    return { fonte: "CEPIM", status: "erro", detalhes: `Falha na consulta: ${e.message}`, dataConsulta: new Date().toISOString() };
-  }
+  return consultarTransparencia("CEPIM", cnpj, "CEPIM", "impedimento");
 }
 
 // Scraping de CNDT (TST) via Firecrawl
