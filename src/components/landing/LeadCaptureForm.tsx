@@ -63,7 +63,7 @@ export default function LeadCaptureForm() {
         </div>
         <h3 className="text-2xl font-bold text-white mb-3">Cadastro Recebido!</h3>
         <p className="text-white/60 max-w-md mx-auto">
-          Em breve nossa equipe entrará em contato para liberar seu acesso gratuito ao LicitIA.
+          Em breve nossa equipe entrará em contato para liberar seu acesso gratuito ao Praefectus.
         </p>
       </motion.div>
     );
