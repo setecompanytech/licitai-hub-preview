@@ -16,6 +16,7 @@ export default {
       fontFamily: {
         sans: ["Plus Jakarta Sans", "Inter", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
+        brand: ["Cinzel", "Trajan Pro", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
