@@ -22,7 +22,7 @@ export default function HeroSection() {
         <div className="absolute inset-0 bg-gradient-to-r from-[hsl(215,50%,14%)/0.97] via-[hsl(215,48%,18%)/0.92] to-[hsl(215,45%,22%)/0.75]" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-28 lg:py-0 w-full relative z-10">
+      <div className="max-w-7xl mx-auto px-6 pt-32 pb-28 lg:pt-28 lg:pb-24 w-full relative z-10">
         <div className="max-w-2xl">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             {/* Comfort badge */}
@@ -74,7 +74,7 @@ export default function HeroSection() {
             </div>
 
             {/* Social proof micro */}
-            <div className="flex items-center gap-3 text-white/40 text-xs">
+            <div className="flex items-center gap-3 text-white/40 text-xs mb-16">
               <div className="flex -space-x-2">
                 {['CM', 'AR', 'RA', 'FC'].map((a) => (
                   <div key={a} className="w-7 h-7 rounded-full bg-accent/20 border-2 border-white/10 flex items-center justify-center text-[9px] font-bold text-accent">
