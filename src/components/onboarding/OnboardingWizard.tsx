@@ -35,7 +35,7 @@ const steps = [
   { title: 'Cadastre sua Empresa', icon: Building2, desc: 'Informe os dados da empresa que participa de licitações.' },
   { title: 'Portais de Interesse', icon: Globe, desc: 'Selecione os portais que você monitora.' },
   { title: 'Palavras-chave', icon: Search, desc: 'Defina termos para monitoramento automático de editais.' },
-  { title: 'Pronto!', icon: CheckCircle2, desc: 'Sua conta está configurada. Comece a usar o LicitIA!' },
+  { title: 'Pronto!', icon: CheckCircle2, desc: 'Sua conta está configurada. Comece a usar o Praefectus!' },
 ];
 
 const portaisOpcoes = [
