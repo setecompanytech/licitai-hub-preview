@@ -43,36 +43,7 @@ type LicitacaoEstrategica = {
   salva: boolean;
 };
 
-const mockEstrategicas: LicitacaoEstrategica[] = [
-  {
-    id: '1', numero: 'PE-001/2026', orgao: 'Prefeitura de Belém', objeto: 'Construção de ponte sobre o Rio Guamá – Lote 3',
-    valor: 12500000, dataAbertura: '2026-03-05', scoreRelevancia: 95, scoreViabilidade: 88, scoreConcorrencia: 72, scoreGeral: 85,
-    fatoresPositivos: ['CNAE compatível', 'Histórico de vitórias no órgão', 'Valor dentro da faixa ideal', 'Poucos concorrentes identificados'],
-    fatoresRisco: ['Prazo de execução apertado', 'Exige certificação específica'],
-    recomendacao: 'alta', salva: true,
-  },
-  {
-    id: '2', numero: 'PE-045/2026', orgao: 'SEDOP/PA', objeto: 'Pavimentação asfáltica BR-316 – Trecho Marituba',
-    valor: 8900000, dataAbertura: '2026-03-10', scoreRelevancia: 90, scoreViabilidade: 82, scoreConcorrencia: 65, scoreGeral: 79,
-    fatoresPositivos: ['CNAE principal', 'Região de atuação', 'Histórico positivo'],
-    fatoresRisco: ['Alta concorrência esperada', 'Requer garantia bancária'],
-    recomendacao: 'alta', salva: false,
-  },
-  {
-    id: '3', numero: 'CC-003/2026', orgao: 'DNIT', objeto: 'Obra de contenção e drenagem na PA-150',
-    valor: 5600000, dataAbertura: '2026-03-15', scoreRelevancia: 75, scoreViabilidade: 70, scoreConcorrencia: 80, scoreGeral: 75,
-    fatoresPositivos: ['Baixa concorrência', 'CNAE secundário compatível'],
-    fatoresRisco: ['Órgão federal (burocracia)', 'Localização remota', 'Exige atestado técnico acima de 50%'],
-    recomendacao: 'media', salva: false,
-  },
-  {
-    id: '4', numero: 'PE-155/2026', orgao: 'TCM-PA', objeto: 'Reforma e adequação do prédio do tribunal',
-    valor: 6300000, dataAbertura: '2026-03-20', scoreRelevancia: 60, scoreViabilidade: 55, scoreConcorrencia: 45, scoreGeral: 53,
-    fatoresPositivos: ['Valor adequado'],
-    fatoresRisco: ['Muitos concorrentes', 'CNAE não é principal', 'Exigências técnicas complexas', 'Histórico de impugnações'],
-    recomendacao: 'baixa', salva: false,
-  },
-];
+const mockEstrategicas: LicitacaoEstrategica[] = [];
 
 const recomendacaoConfig = {
   alta: { label: 'Recomendada', color: 'bg-success/15 text-success border-success/30', icon: Star },
