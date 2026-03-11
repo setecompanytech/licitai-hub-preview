@@ -77,7 +77,7 @@ export default function LandingFooter() {
       </div>
 
       <div className="max-w-7xl mx-auto mt-10 pt-6 border-t border-border/20 text-center text-sm text-muted-foreground">
-        <span>© {new Date().getFullYear()} Praefectus. Todos os direitos reservados.</span>
+        <span>© {new Date().getFullYear()} PRAEFECTUS. Todos os direitos reservados.</span>
       </div>
     </footer>
   );

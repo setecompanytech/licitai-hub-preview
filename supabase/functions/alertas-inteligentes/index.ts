@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${resendKey}` },
                   body: JSON.stringify({
-                    from: 'Praefectus <alertas@praefectus.com.br>',
+                    from: 'PRAEFECTUS <alertas@praefectus.com.br>',
                     to: [email],
                     subject: `🔔 Alerta: Processo ${pi.numero} — ${alertaKey === '1dia' ? 'ÚLTIMO DIA' : `${diffDias} dias restantes`}`,
                     html: `
