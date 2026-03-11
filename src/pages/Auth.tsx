@@ -44,7 +44,9 @@ const FATURAMENTO_ANUAL = [
 type AuthStep = 'escolha' | 'manual' | 'certificado' | 'signup' | 'forgot';
 
 export default function Auth() {
-  const [step, setStep] = useState<AuthStep>('escolha');
+  const [searchParams] = useSearchParams();
+  const initialStep = (searchParams.get('step') as AuthStep) || 'escolha';
+  const [step, setStep] = useState<AuthStep>(initialStep);
   const [email, setEmail] = useState('');
   const [emailConfirm, setEmailConfirm] = useState('');
   const [password, setPassword] = useState('');
