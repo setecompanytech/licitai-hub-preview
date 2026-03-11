@@ -77,7 +77,7 @@ export default function ExportarResultados({ lances }: Props) {
 
   const handleExportPDF = () => {
     const ts = new Date().toISOString().slice(0, 10);
-    downloadPDF(`disputas-${ts}`, 'Relatório de Disputas — Praefectus', headers, buildRows());
+    downloadPDF(`disputas-${ts}`, 'Relatório de Disputas — PRAEFECTUS', headers, buildRows());
   };
 
   const handleExportItemsPDF = () => {
