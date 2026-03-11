@@ -757,17 +757,32 @@ Deno.serve(async (req) => {
       return PORTAIS_BLOQUEADOS.has(mapped);
     });
 
-    // Always search PNCP (real API) — also auto-include when blocked portals are selected
-    if (portais.includes("pncp") || portais.includes("todos") || temPortalBloqueado) {
-      promises.push(buscarPNCP({ query, uf, modalidade, dataInicio: data_inicio, dataFim: data_fim, cnpj, limite }));
+    // In CNAE mode, run multiple searches — one for each CNAE code
+    if (modo_cnae && cnaes.length > 0) {
+      for (const cnaeCode of cnaes.slice(0, 5)) {
+        promises.push(buscarPNCP({
+          query: cnaeCode,
+          uf,
+          modalidade,
+          dataInicio: effectiveDataInicio,
+          dataFim: effectiveDataFim,
+          cnpj,
+          limite: Math.ceil(limite / Math.min(cnaes.length, 5)),
+          skipRelevanceFilter: true,
+        }));
+      }
+      portalLabels.push("PNCP");
+    } else if (portais.includes("pncp") || portais.includes("todos") || temPortalBloqueado) {
+      // Always search PNCP (real API) — also auto-include when blocked portals are selected
+      promises.push(buscarPNCP({ query: searchQuery, uf, modalidade, dataInicio: effectiveDataInicio, dataFim: effectiveDataFim, cnpj, limite }));
       portalLabels.push("PNCP");
       if (temPortalBloqueado && !portais.includes("pncp")) {
         console.log("PNCP auto-incluído como fallback para portais com acesso bloqueado");
       }
     }
 
-    // Firecrawl scraping for other portals
-    if (FIRECRAWL_API_KEY) {
+    // Firecrawl scraping for other portals (skip in CNAE mode)
+    if (FIRECRAWL_API_KEY && !modo_cnae) {
       const scrapePortals = portais.includes("todos")
         ? Object.keys(PORTAIS_SCRAPE)
         : portais
@@ -775,7 +790,7 @@ Deno.serve(async (req) => {
             .filter((p: string) => p !== "pncp" && PORTAIS_SCRAPE[p]);
 
       for (const pid of scrapePortals) {
-        promises.push(buscarComFirecrawl(pid, query, FIRECRAWL_API_KEY));
+        promises.push(buscarComFirecrawl(pid, searchQuery, FIRECRAWL_API_KEY));
         portalLabels.push(PORTAIS_SCRAPE[pid]?.nome || pid);
       }
     }
