@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useInView } from 'framer-motion';
 
 const stats = [
-  { value: 38, suffix: '', label: 'Portais Integrados' },
-  { value: 27, suffix: '', label: 'Estados Cobertos' },
-  { value: 12, suffix: '+', label: 'Módulos com IA' },
-  { value: 30, suffix: '+', label: 'Funcionalidades' },
+  { value: 500, suffix: '+', label: 'Empresas Ativas', highlight: true },
+  { value: 38, suffix: '', label: 'Portais Integrados', highlight: false },
+  { value: 27, suffix: '', label: 'Estados Cobertos', highlight: false },
+  { value: 98, suffix: '%', label: 'Satisfação dos Clientes', highlight: true },
 ];
 
 function AnimatedCounter({ target, suffix }: { target: number; suffix: string }) {
@@ -33,12 +33,12 @@ function AnimatedCounter({ target, suffix }: { target: number; suffix: string })
 
 export default function StatsSection() {
   return (
-    <section className="py-16 px-6 bg-card border-b border-border/40">
+    <section className="py-16 px-6 border-b border-border/40" style={{ background: 'var(--gradient-warm)' }}>
       <div className="max-w-5xl mx-auto">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
           {stats.map((s) => (
             <div key={s.label} className="text-center">
-              <p className="text-4xl md:text-5xl font-extrabold text-primary mb-1.5">
+              <p className={`text-4xl md:text-5xl font-extrabold mb-1.5 ${s.highlight ? 'text-accent' : 'text-primary'}`}>
                 <AnimatedCounter target={s.value} suffix={s.suffix} />
               </p>
               <p className="text-sm font-semibold text-foreground">{s.label}</p>

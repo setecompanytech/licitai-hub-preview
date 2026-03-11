@@ -62,10 +62,10 @@ export default function LandingNavbar() {
           </Button>
           <Button
             size="sm"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-md font-semibold text-[13px] px-5"
+            className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-lg font-bold text-[13px] px-5 shadow-md"
             onClick={() => navigate('/auth')}
           >
-            Começar Agora <ArrowRight className="w-3.5 h-3.5 ml-1" />
+            Teste Grátis <ArrowRight className="w-3.5 h-3.5 ml-1" />
           </Button>
         </div>
 
@@ -94,7 +94,7 @@ export default function LandingNavbar() {
               ))}
               <div className="pt-3 flex flex-col gap-2">
                 <Button variant="outline" className="w-full" onClick={() => navigate('/auth')}>Entrar</Button>
-                <Button className="w-full bg-primary text-primary-foreground" onClick={() => navigate('/auth')}>Começar Agora</Button>
+                <Button className="w-full bg-accent text-accent-foreground font-bold" onClick={() => navigate('/auth')}>Teste Grátis</Button>
               </div>
             </div>
           </motion.div>

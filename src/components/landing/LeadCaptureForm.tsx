@@ -5,10 +5,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { getStoredUtm, trackLeadConversion } from '@/lib/tracking';
 import { toast } from 'sonner';
-import { ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Loader2, Shield, Zap, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const UF_LIST = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
+
+const trustPoints = [
+  { icon: Clock, text: 'Liberação em menos de 2 minutos' },
+  { icon: Shield, text: 'Dados protegidos — LGPD' },
+  { icon: Zap, text: 'Sem cartão de crédito' },
+];
 
 export default function LeadCaptureForm() {
   const [loading, setLoading] = useState(false);
@@ -59,8 +65,8 @@ export default function LeadCaptureForm() {
         className="py-20 px-6"
       >
         <div className="max-w-lg mx-auto text-center bg-card rounded-xl border border-border p-12">
-          <div className="w-16 h-16 rounded-full bg-accent/15 flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 className="w-8 h-8 text-accent" />
+          <div className="w-16 h-16 rounded-full bg-success/15 flex items-center justify-center mx-auto mb-6">
+            <CheckCircle2 className="w-8 h-8 text-success" />
           </div>
           <h3 className="text-2xl font-bold mb-3">Cadastro Recebido!</h3>
           <p className="text-muted-foreground">
@@ -72,17 +78,20 @@ export default function LeadCaptureForm() {
   }
 
   return (
-    <section id="lead-form" className="py-20 md:py-28 px-6 bg-muted/30">
+    <section id="lead-form" className="py-20 md:py-28 px-6" style={{ background: 'var(--gradient-accent-subtle)' }}>
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         className="max-w-7xl mx-auto"
       >
-        <div className="max-w-2xl mx-auto bg-card rounded-xl border border-border p-8 md:p-12 shadow-sm">
+        <div className="max-w-2xl mx-auto bg-card rounded-2xl border border-accent/20 p-8 md:p-12 shadow-xl">
           <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-[11px] font-bold uppercase tracking-wider mb-4">
+              <Zap className="w-3 h-3" /> Últimas vagas do mês
+            </div>
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-3">
-              Teste o Praefectus Gratuitamente
+              Teste o Praefectus <span className="text-accent">Gratuitamente</span>
             </h2>
             <p className="text-muted-foreground text-[15px]">
               Preencha seus dados e receba acesso de 7 dias ao plano Profissional.
@@ -136,18 +145,28 @@ export default function LeadCaptureForm() {
                 type="submit"
                 disabled={loading}
                 size="lg"
-                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-base py-5 rounded-md font-bold"
+                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-base py-5 rounded-lg font-bold shadow-lg"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
                 Quero Testar Grátis <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </div>
-            <p className="sm:col-span-2 text-center text-xs text-muted-foreground">
-              Ao enviar, você concorda com nossos{' '}
-              <a href="/termos-de-uso" className="underline hover:text-foreground">Termos de Uso</a> e{' '}
-              <a href="/politica-de-privacidade" className="underline hover:text-foreground">Política de Privacidade</a>.
-            </p>
           </form>
+
+          <div className="flex flex-wrap items-center justify-center gap-5 mt-6 pt-5 border-t border-border/30">
+            {trustPoints.map((tp) => (
+              <div key={tp.text} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <tp.icon className="w-3.5 h-3.5 text-accent" />
+                <span>{tp.text}</span>
+              </div>
+            ))}
+          </div>
+
+          <p className="sm:col-span-2 text-center text-xs text-muted-foreground mt-4">
+            Ao enviar, você concorda com nossos{' '}
+            <a href="/termos-de-uso" className="underline hover:text-foreground">Termos de Uso</a> e{' '}
+            <a href="/politica-de-privacidade" className="underline hover:text-foreground">Política de Privacidade</a>.
+          </p>
         </div>
       </motion.div>
     </section>

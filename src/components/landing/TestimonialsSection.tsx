@@ -9,6 +9,7 @@ const testimonials = [
     avatar: 'CM',
     text: 'O monitoramento automático nos ajudou a identificar editais em portais estaduais que antes não acompanhávamos. Aumentamos em 40% nossa participação.',
     rating: 5,
+    result: '+40% participação',
   },
   {
     name: 'Ana Paula R.',
@@ -17,6 +18,7 @@ const testimonials = [
     avatar: 'AR',
     text: 'A geração de propostas formatadas em ABNT economiza um dia inteiro de trabalho por semana. O checklist previne falhas de habilitação.',
     rating: 5,
+    result: '1 dia economizado/semana',
   },
   {
     name: 'Roberto A.',
@@ -25,6 +27,7 @@ const testimonials = [
     avatar: 'RA',
     text: 'Usamos o módulo de precificação para compor custos com BDI e consulta ao Painel de Preços. Reduzimos erros e melhoramos a margem.',
     rating: 5,
+    result: 'Margem otimizada',
   },
   {
     name: 'Fernanda C.',
@@ -33,21 +36,22 @@ const testimonials = [
     avatar: 'FC',
     text: 'O assistente jurídico com base na Lei 14.133 agiliza a elaboração de impugnações e recursos. Ferramenta indispensável.',
     rating: 5,
+    result: '3x mais rápido',
   },
 ];
 
 export default function TestimonialsSection() {
   return (
-    <section id="depoimentos" className="py-20 md:py-28 px-6 bg-muted/30">
+    <section id="depoimentos" className="py-20 md:py-28 px-6" style={{ background: 'var(--gradient-warm)' }}>
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-14">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent mb-4">Depoimentos</p>
+            <p className="section-label">Resultados Reais</p>
             <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-              Quem usa, <span className="text-accent">recomenda</span>
+              Empresas que <span className="text-accent">transformaram</span> seus resultados
             </h2>
             <p className="text-base text-muted-foreground max-w-xl mx-auto mt-4">
-              Relatos de profissionais que transformaram sua gestão de licitações.
+              Veja como profissionais reais estão vencendo mais licitações com o Praefectus.
             </p>
           </motion.div>
         </div>
@@ -60,9 +64,14 @@ export default function TestimonialsSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.08 }}
-              className="bg-card rounded-lg border border-border/50 p-7 hover:shadow-md transition-shadow"
+              className="bg-card rounded-xl border border-border/50 p-7 hover:shadow-lg transition-all hover:-translate-y-0.5"
             >
-              <Quote className="w-8 h-8 text-accent/10 mb-4" />
+              <div className="flex items-center justify-between mb-4">
+                <Quote className="w-8 h-8 text-accent/15" />
+                <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-accent/10 text-accent border border-accent/20">
+                  {t.result}
+                </span>
+              </div>
 
               <div className="flex gap-1 mb-4">
                 {Array.from({ length: 5 }).map((_, j) => (
