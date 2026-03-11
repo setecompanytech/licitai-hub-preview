@@ -13,7 +13,7 @@ import {
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
+import { writeExcelFromJson } from '@/lib/excel-utils';
 
 type Quotation = {
   id: string;
