@@ -91,7 +91,7 @@ export default function OnboardingWizard({ open, onClose }: Props) {
       }
 
       localStorage.setItem(ONBOARDING_KEY, 'true');
-      toast.success('Configuração concluída! Bem-vindo ao Praefectus.');
+      toast.success('Configuração concluída! Bem-vindo ao PRAEFECTUS.');
       onClose();
     } catch (err) {
       console.error(err);

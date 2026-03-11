@@ -119,7 +119,7 @@ export default function TreinamentosSection() {
           className="mt-12 rounded-lg border border-border bg-card p-8 md:p-10 flex flex-col md:flex-row items-center gap-8"
         >
           <div className="flex-1">
-            <h3 className="text-xl font-extrabold mb-2">E-book Gratuito: Guia Completo Praefectus</h3>
+            <h3 className="text-xl font-extrabold mb-2">E-book Gratuito: Guia Completo PRAEFECTUS</h3>
             <p className="text-muted-foreground text-[14px]">
               10 capítulos com capturas de tela e fundamentação na Lei 14.133/2021.
             </p>
