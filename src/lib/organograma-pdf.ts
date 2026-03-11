@@ -1226,7 +1226,7 @@ export function generateOrganogramaPDF() {
     doc.rect(0, pageH - 12, pageW, 12, 'F');
     doc.setFontSize(7);
     doc.setTextColor(100, 116, 139);
-    doc.text('LicitIA — Sistema de Gestão de Licitações Públicas', marginL, pageH - 5);
+    doc.text('Praefectus — Sistema de Gestão de Licitações Públicas', marginL, pageH - 5);
     doc.text(`Página ${pageNum}`, pageW - marginR, pageH - 5, { align: 'right' });
     doc.setTextColor(0, 0, 0);
   };
