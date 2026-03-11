@@ -14,9 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Plus Jakarta Sans", "Inter", "system-ui", "sans-serif"],
+        sans: ["Outfit", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
-        brand: ["Cinzel", "Trajan Pro", "serif"],
+        brand: ["Cormorant Garamond", "Georgia", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
