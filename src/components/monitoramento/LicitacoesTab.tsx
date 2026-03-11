@@ -565,6 +565,8 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (âš
       setUfFilter('all');
       setDataInicio(undefined);
       setDataFim(undefined);
+      setFiltroDiariosPublicadosDownload(false);
+      setFiltroFavoritos(false);
       setResultadosBusca(allResults);
       setModoResultados('busca');
 
