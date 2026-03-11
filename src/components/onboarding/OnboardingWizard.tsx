@@ -31,7 +31,7 @@ type Props = {
 };
 
 const steps = [
-  { title: 'Bem-vindo ao Praefectus', icon: Sparkles, desc: 'Vamos configurar sua conta em poucos passos.' },
+  { title: 'Bem-vindo ao PRAEFECTUS', icon: Sparkles, desc: 'Vamos configurar sua conta em poucos passos.' },
   { title: 'Cadastre sua Empresa', icon: Building2, desc: 'Informe os dados da empresa que participa de licitações.' },
   { title: 'Portais de Interesse', icon: Globe, desc: 'Selecione os portais que você monitora.' },
   { title: 'Palavras-chave', icon: Search, desc: 'Defina termos para monitoramento automático de editais.' },
