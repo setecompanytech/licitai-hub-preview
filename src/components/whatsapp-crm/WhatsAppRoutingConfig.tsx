@@ -257,7 +257,7 @@ export default function WhatsAppRoutingConfig() {
     setTesting(setor.key);
     try {
       await supabase.functions.invoke('whatsapp-envio', {
-        body: { telefone: tel.replace(/\D/g, ''), setor: setor.label.toLowerCase(), user_id: user!.id, tipo: 'teste' },
+        body: { telefone: tel.replace(/\D/g, ''), setor: setor.label.toLowerCase(), tipo: 'teste' },
       });
       toast.success(`Envio simulado para ${setor.label} no número ${formatPhone(tel)}!`);
     } catch (err: any) {
