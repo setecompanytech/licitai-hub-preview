@@ -66,7 +66,7 @@ const tipoConfig: Record<TipoDocumento, { label: string; icon: typeof FileText; 
 
 const portaisMonitorados = TODOS_PORTAIS.filter(p => p.ativo);
 
-const mockDocumentoCount: Record<TipoDocumento, number> = {
+const documentoCount: Record<TipoDocumento, number> = {
   edital: 0, aviso: 0, cancelamento: 0, suspenso: 0, adiado: 0, aditivado: 0, adjudicado: 0, homologado: 0,
 };
 
