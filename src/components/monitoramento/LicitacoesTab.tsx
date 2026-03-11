@@ -45,7 +45,6 @@ type ResultadoBusca = {
   cnpjOrgao?: string;
   anoCompra?: number;
   sequencialCompra?: number;
-  isMock?: boolean;
   tem_download?: boolean;
 };
 
