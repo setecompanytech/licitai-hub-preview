@@ -91,7 +91,7 @@ export default function OnboardingWizard({ open, onClose }: Props) {
       }
 
       localStorage.setItem(ONBOARDING_KEY, 'true');
-      toast.success('Configuração concluída! Bem-vindo ao LicitIA.');
+      toast.success('Configuração concluída! Bem-vindo ao Praefectus.');
       onClose();
     } catch (err) {
       console.error(err);

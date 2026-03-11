@@ -90,7 +90,7 @@ export default function LeadCaptureForm() {
                 <Sparkles className="w-7 h-7 text-accent" />
               </div>
               <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4 tracking-tight">
-                Teste o LicitIA Gratuitamente
+                Teste o Praefectus Gratuitamente
               </h2>
               <p className="text-white/50 text-base md:text-lg max-w-lg mx-auto">
                 Preencha seus dados e receba acesso de 7 dias ao plano Profissional — sem cartão de crédito.
