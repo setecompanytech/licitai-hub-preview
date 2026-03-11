@@ -169,6 +169,7 @@ const SUGESTOES_RAPIDAS = [
 
 export default function LicitacoesTab() {
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const { iniciarProcesso } = useLicitacaoIntegration();
   const [licitacoes, setLicitacoes] = useState<ResultadoBusca[]>([]);
   const [resultadosBusca, setResultadosBusca] = useState<ResultadoBusca[]>([]);
@@ -190,7 +191,6 @@ export default function LicitacoesTab() {
   const [portaisSelecionados, setPortaisSelecionados] = useState<string[]>(['pncp']);
   const [downloadingEdital, setDownloadingEdital] = useState<string | null>(null);
   const [comAnaliseIA, setComAnaliseIA] = useState(true);
-  const [portalFilter, setPortalFilter] = useState<string>('all');
   const [filtroDiariosPublicadosDownload, setFiltroDiariosPublicadosDownload] = useState(false);
   const [favoritos, setFavoritos] = useState<Set<string>>(new Set());
   const [favoritando, setFavoritando] = useState<string | null>(null);
@@ -201,6 +201,8 @@ export default function LicitacoesTab() {
   const [downloadingAnexos, setDownloadingAnexos] = useState<string | null>(null);
   const [showInteresseDialog, setShowInteresseDialog] = useState(false);
   const [editalInteresse, setEditalInteresse] = useState<ResultadoBusca | null>(null);
+  const [cnaeResults, setCnaeResults] = useState<ResultadoBusca[]>([]);
+  const [loadingCnae, setLoadingCnae] = useState(false);
   const resultadosRef = useRef<HTMLDivElement>(null);
 
   // Carregar favoritos do banco
