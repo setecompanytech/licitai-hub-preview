@@ -334,13 +334,15 @@ async function buscarPNCP(params: {
         const objetoCompra = item.objetoCompra || "";
         const orgaoNome = item.orgaoEntidade?.razaoSocial || item.unidadeOrgao?.nomeUnidade || "";
 
-        // ── RELEVANCE FILTER: skip items that don't match the query ──
-        const relevanciaObjeto = calcularRelevancia(objetoCompra, params.query);
-        const relevanciaOrgao = calcularRelevancia(orgaoNome, params.query);
-        const relevancia = Math.max(relevanciaObjeto, relevanciaOrgao);
+        // ── RELEVANCE FILTER: skip items that don't match the query (unless CNAE mode) ──
+        if (!params.skipRelevanceFilter) {
+          const relevanciaObjeto = calcularRelevancia(objetoCompra, params.query);
+          const relevanciaOrgao = calcularRelevancia(orgaoNome, params.query);
+          const relevancia = Math.max(relevanciaObjeto, relevanciaOrgao);
 
-        if (relevancia <= 0) {
-          continue; // Skip irrelevant results — strict matching
+          if (relevancia <= 0) {
+            continue; // Skip irrelevant results — strict matching
+          }
         }
 
         const cnpjOrgao = item.orgaoEntidade?.cnpj || "";
