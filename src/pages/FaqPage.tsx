@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { ChevronRight, Search, Zap, ArrowLeft } from 'lucide-react';
+import PraefectusLogo from '@/components/shared/PraefectusLogo';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
