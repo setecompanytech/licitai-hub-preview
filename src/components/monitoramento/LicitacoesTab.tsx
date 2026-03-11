@@ -418,26 +418,29 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (�
     carregarDados();
   }, [user]);
 
-  // ── Auto CNAE-based search on load ──
+  // ── Auto CNAE-based search on load (prioritize company's headquarters region) ──
   useEffect(() => {
     if (!user || !empresaAtiva) return;
     const cnae = empresaAtiva.cnae_principal;
     if (!cnae) return;
 
-    // Get secondary CNAEs from empresa_membros context or DB
     const runCnaeSearch = async () => {
       setLoadingCnae(true);
       try {
-        // Fetch CnaesSecundarios from configuracoes
+        // Fetch config including CNAEs and location preferences
         const { data: config } = await supabase
           .from('configuracoes')
-          .select('cnaes_monitorados')
+          .select('cnaes_monitorados, priorizar_regiao_sede')
           .eq('user_id', user.id)
           .maybeSingle();
 
         const cnaes = [cnae, ...(config?.cnaes_monitorados || [])].filter(Boolean);
-        // Build CNAE description queries
         const cnaeDescriptions = cnaes.map(c => c.replace(/[.\-/]/g, '').substring(0, 7)).join(', ');
+
+        // Use company's UF from CNPJ registration to prioritize region
+        const empresaUf = empresaAtiva.uf || null;
+        const empresaMunicipio = empresaAtiva.municipio || null;
+        const priorizarRegiao = config?.priorizar_regiao_sede !== false; // default true
 
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
@@ -445,21 +448,30 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (�
         const session = await supabase.auth.getSession();
         const token = session.data.session?.access_token;
 
+        // First search: prioritize company's UF (metropolitan region)
+        const searchBody: any = {
+          query: `CNAE ${cnaeDescriptions}`,
+          portais: ['pncp'],
+          com_analise_ia: false,
+          limite: 80,
+          data_inicio: thirtyDaysAgo.toISOString().split('T')[0],
+          data_fim: now.toISOString().split('T')[0],
+          modo_cnae: true,
+          cnaes: cnaes,
+        };
+
+        // If prioritizing region, filter by UF
+        if (priorizarRegiao && empresaUf) {
+          searchBody.uf = empresaUf;
+          searchBody.municipio_sede = empresaMunicipio;
+        }
+
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/busca-editais-ia`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({
-              query: `CNAE ${cnaeDescriptions}`,
-              portais: ['pncp'],
-              com_analise_ia: false,
-              limite: 50,
-              data_inicio: thirtyDaysAgo.toISOString().split('T')[0],
-              data_fim: now.toISOString().split('T')[0],
-              modo_cnae: true,
-              cnaes: cnaes,
-            }),
+            body: JSON.stringify(searchBody),
           }
         );
 
@@ -486,7 +498,8 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (�
               tem_download: item.tem_download ?? false,
             }));
             setCnaeResults(mapped);
-            toast.success(`${mapped.length} editais encontrados automaticamente para seu CNAE (últimos 30 dias)`);
+            const regionLabel = empresaUf && priorizarRegiao ? ` na região de ${empresaMunicipio || empresaUf}` : '';
+            toast.success(`${mapped.length} editais encontrados automaticamente${regionLabel} (últimos 30 dias)`);
           }
         }
       } catch (err) {
