@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Shield, Award, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { ChevronRight, Shield, Award, TrendingUp, CheckCircle2, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import heroCorporate from '@/assets/landing/hero-corporate.jpg';
@@ -15,28 +15,29 @@ export default function HeroSection() {
   const navigate = useNavigate();
 
   return (
-    <section className="relative min-h-[92vh] flex items-center overflow-hidden bg-primary">
+    <section className="relative min-h-[92vh] flex items-center overflow-hidden" style={{ background: 'var(--gradient-hero)' }}>
       {/* Background image with overlay */}
       <div className="absolute inset-0">
-        <img src={heroCorporate} alt="" className="w-full h-full object-cover" loading="eager" />
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/95 via-primary/85 to-primary/60" />
+        <img src={heroCorporate} alt="" className="w-full h-full object-cover opacity-20" loading="eager" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[hsl(215,50%,14%)/0.97] via-[hsl(215,48%,18%)/0.92] to-[hsl(215,45%,22%)/0.75]" />
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-28 lg:py-0 w-full relative z-10">
         <div className="max-w-2xl">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-md border border-white/15 bg-white/8 text-white/80 text-[12px] font-semibold mb-8 tracking-wide uppercase">
-              <Shield className="w-3.5 h-3.5" />
-              Plataforma de Gestão de Licitações
+            {/* Urgency badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-accent/30 bg-accent/10 text-accent text-[12px] font-bold mb-8 tracking-wide uppercase animate-pulse-orange">
+              <Zap className="w-3.5 h-3.5" />
+              7 dias grátis — Vagas limitadas
             </div>
 
             <h1 className="text-4xl sm:text-5xl xl:text-[3.6rem] font-extrabold tracking-tight leading-[1.06] mb-6 text-white">
-              Gestão inteligente de{' '}
-              <span className="text-accent">licitações públicas</span>
+              Pare de perder licitações.{' '}
+              <span className="text-accent">Comece a vencer.</span>
             </h1>
 
-            <p className="text-base md:text-lg text-white/55 max-w-xl mb-8 leading-relaxed">
-              Monitore editais, automatize processos e gere propostas formatadas com segurança e conformidade legal.
+            <p className="text-base md:text-lg text-white/60 max-w-xl mb-8 leading-relaxed">
+              A plataforma que empresas usam para encontrar editais antes da concorrência, gerar propostas em minutos e disputar com inteligência artificial.
             </p>
 
             <ul className="space-y-2.5 mb-10">
@@ -46,7 +47,7 @@ export default function HeroSection() {
                   initial={{ opacity: 0, x: -12 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 + i * 0.08 }}
-                  className="flex items-center gap-2.5 text-sm text-white/65"
+                  className="flex items-center gap-2.5 text-sm text-white/70"
                 >
                   <CheckCircle2 className="w-4 h-4 text-accent flex-shrink-0" />
                   <span>{h}</span>
@@ -57,7 +58,7 @@ export default function HeroSection() {
             <div className="flex flex-col sm:flex-row gap-3 mb-14">
               <Button
                 size="lg"
-                className="bg-accent hover:bg-accent/90 text-accent-foreground text-base px-8 py-6 rounded-md font-bold"
+                className="bg-accent hover:bg-accent/90 text-accent-foreground text-base px-8 py-6 rounded-lg font-bold shadow-lg hover:shadow-xl transition-all animate-pulse-orange"
                 onClick={() => navigate('/auth')}
               >
                 Começar Gratuitamente <ChevronRight className="w-5 h-5 ml-1" />
@@ -65,11 +66,23 @@ export default function HeroSection() {
               <Button
                 size="lg"
                 variant="outline"
-                className="text-base px-8 py-6 rounded-md border-white/20 text-white hover:bg-white/10 hover:border-white/30 bg-transparent"
+                className="text-base px-8 py-6 rounded-lg border-white/20 text-white hover:bg-white/10 hover:border-white/30 bg-transparent"
                 onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
               >
                 Ver Funcionalidades
               </Button>
+            </div>
+
+            {/* Social proof micro */}
+            <div className="flex items-center gap-3 text-white/40 text-xs">
+              <div className="flex -space-x-2">
+                {['CM', 'AR', 'RA', 'FC'].map((a) => (
+                  <div key={a} className="w-7 h-7 rounded-full bg-accent/20 border-2 border-white/10 flex items-center justify-center text-[9px] font-bold text-accent">
+                    {a}
+                  </div>
+                ))}
+              </div>
+              <span>+500 empresas já utilizam o Praefectus</span>
             </div>
           </motion.div>
         </div>

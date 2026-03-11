@@ -15,8 +15,8 @@ const sizeClasses = {
 };
 
 export default function PraefectusLogo({ size = 'md', className, variant = 'default' }: PraefectusLogoProps) {
-  const navyColor = variant === 'light' ? 'text-white' : 'text-[hsl(220,30%,20%)]';
-  const goldColor = 'text-[hsl(37,55%,55%)]';
+  const navyColor = variant === 'light' ? 'text-white' : 'text-primary';
+  const goldColor = 'text-accent';
 
   return (
     <span
