@@ -117,6 +117,7 @@ export default function Documentos() {
   }, [user]);
 
   const categorias = [...new Set(documentos.map((d) => d.categoria))];
+  const filtered = filter === 'todos' ? documentos : documentos.filter((d) => d.status === filter);
   const okCount = documentos.filter((d) => d.status === 'ok').length;
   const progress = Math.round((okCount / documentos.length) * 100);
 
