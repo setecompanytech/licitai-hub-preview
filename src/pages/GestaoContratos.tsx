@@ -66,7 +66,15 @@ export default function GestaoContratos() {
   });
 
   useEffect(() => {
-    if (user) loadContratos();
+    if (!user) return;
+    loadContratos();
+
+    const channel = supabase
+      .channel('contratos-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contratos', filter: `user_id=eq.${user.id}` }, () => loadContratos())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
   const loadContratos = async () => {

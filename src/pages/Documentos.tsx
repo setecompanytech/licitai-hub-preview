@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -36,23 +36,25 @@ type Documento = {
   storagePath?: string;
 };
 
-const documentosIniciais: Documento[] = [
-  { nome: 'Ato Constitutivo / Contrato Social', categoria: 'Habilitação Jurídica', artigo: 'Art. 66', status: 'ok', arquivo: 'contrato-social.pdf' },
-  { nome: 'Cédula de Identidade dos Sócios', categoria: 'Habilitação Jurídica', artigo: 'Art. 66', status: 'ok', arquivo: 'rg-socios.pdf' },
-  { nome: 'Certidão Simplificada da Junta Comercial', categoria: 'Habilitação Jurídica', artigo: 'Art. 66', status: 'pendente', validade: '2026-03-15' },
-  { nome: 'Certidão Negativa de Débitos Federais (CND)', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ok', validade: '2026-06-20', arquivo: 'cnd-federal.pdf' },
-  { nome: 'Certidão de Regularidade do FGTS (CRF)', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'vencido', validade: '2026-01-10' },
-  { nome: 'Certidão Negativa de Débitos Estaduais', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ok', validade: '2026-08-01', arquivo: 'cnd-estadual.pdf' },
-  { nome: 'Certidão Negativa de Débitos Municipais', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'pendente' },
-  { nome: 'CNDT – Certidão Trabalhista', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ok', validade: '2026-05-10', arquivo: 'cndt.pdf' },
-  { nome: 'Registro no CREA/CAU', categoria: 'Qualificação Técnica', artigo: 'Art. 67', status: 'ok', arquivo: 'crea.pdf' },
-  { nome: 'Atestado de Capacidade Técnica', categoria: 'Qualificação Técnica', artigo: 'Art. 67', status: 'ok', arquivo: 'atestado-tecnico.pdf' },
+// Checklist de documentos exigidos pela Lei 14.133/2021 — status começa como 'ausente'
+// e será atualizado conforme o usuário faz upload
+const checklistDocumentos: Documento[] = [
+  { nome: 'Ato Constitutivo / Contrato Social', categoria: 'Habilitação Jurídica', artigo: 'Art. 66', status: 'ausente' },
+  { nome: 'Cédula de Identidade dos Sócios', categoria: 'Habilitação Jurídica', artigo: 'Art. 66', status: 'ausente' },
+  { nome: 'Certidão Simplificada da Junta Comercial', categoria: 'Habilitação Jurídica', artigo: 'Art. 66', status: 'ausente' },
+  { nome: 'Certidão Negativa de Débitos Federais (CND)', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ausente' },
+  { nome: 'Certidão de Regularidade do FGTS (CRF)', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ausente' },
+  { nome: 'Certidão Negativa de Débitos Estaduais', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ausente' },
+  { nome: 'Certidão Negativa de Débitos Municipais', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ausente' },
+  { nome: 'CNDT – Certidão Trabalhista', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ausente' },
+  { nome: 'Registro no CREA/CAU', categoria: 'Qualificação Técnica', artigo: 'Art. 67', status: 'ausente' },
+  { nome: 'Atestado de Capacidade Técnica', categoria: 'Qualificação Técnica', artigo: 'Art. 67', status: 'ausente' },
   { nome: 'CAT – Certidão de Acervo Técnico', categoria: 'Qualificação Técnica', artigo: 'Art. 67', status: 'ausente' },
-  { nome: 'Balanço Patrimonial (último exercício)', categoria: 'Qualif. Econômico-Financeira', artigo: 'Art. 69', status: 'ok', arquivo: 'balanco-2025.pdf' },
-  { nome: 'Certidão Negativa de Falência', categoria: 'Qualif. Econômico-Financeira', artigo: 'Art. 69', status: 'ok', validade: '2026-09-01', arquivo: 'certidao-falencia.pdf' },
-  { nome: 'Declaração de Inexistência de Fato Impeditivo', categoria: 'Declarações', artigo: 'Art. 63, §1º', status: 'ok', arquivo: 'decl-impeditivo.pdf' },
-  { nome: 'Declaração de Não Emprego de Menor', categoria: 'Declarações', artigo: 'Art. 68, VI', status: 'ok', arquivo: 'decl-menor.pdf' },
-  { nome: 'Declaração ME/EPP (se aplicável)', categoria: 'Declarações', artigo: 'LC 123/2006', status: 'pendente' },
+  { nome: 'Balanço Patrimonial (último exercício)', categoria: 'Qualif. Econômico-Financeira', artigo: 'Art. 69', status: 'ausente' },
+  { nome: 'Certidão Negativa de Falência', categoria: 'Qualif. Econômico-Financeira', artigo: 'Art. 69', status: 'ausente' },
+  { nome: 'Declaração de Inexistência de Fato Impeditivo', categoria: 'Declarações', artigo: 'Art. 63, §1º', status: 'ausente' },
+  { nome: 'Declaração de Não Emprego de Menor', categoria: 'Declarações', artigo: 'Art. 68, VI', status: 'ausente' },
+  { nome: 'Declaração ME/EPP (se aplicável)', categoria: 'Declarações', artigo: 'LC 123/2006', status: 'ausente' },
 ];
 
 const statusConfig: Record<DocStatus, { icon: typeof CheckCircle2; color: string; label: string }> = {
@@ -65,7 +67,7 @@ const statusConfig: Record<DocStatus, { icon: typeof CheckCircle2; color: string
 export default function Documentos() {
   const [filter, setFilter] = useState<DocStatus | 'todos'>('todos');
   const [activeTab, setActiveTab] = useState('documentos');
-  const [documentos, setDocumentos] = useState<Documento[]>(documentosIniciais);
+  const [documentos, setDocumentos] = useState<Documento[]>(checklistDocumentos);
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const [removingIdx, setRemovingIdx] = useState<number | null>(null);
   const [analyzingIdx, setAnalyzingIdx] = useState<number | null>(null);
@@ -78,6 +80,41 @@ export default function Documentos() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingValidadeDate, setPendingValidadeDate] = useState<Date | undefined>(undefined);
   const [pendingManualDate, setPendingManualDate] = useState('');
+
+  // Sync checklist status from uploaded documents in DB
+  useEffect(() => {
+    if (!user) return;
+    const syncFromDB = async () => {
+      const { data } = await supabase
+        .from('documentos')
+        .select('nome, validade, arquivo_path')
+        .eq('user_id', user.id);
+      if (!data) return;
+      setDocumentos(prev => prev.map(doc => {
+        const match = data.find(d => d.nome === doc.nome);
+        if (match) {
+          const hoje = new Date();
+          const validade = match.validade ? new Date(match.validade) : null;
+          let status: DocStatus = 'ok';
+          if (validade && validade < hoje) status = 'vencido';
+          else if (validade) {
+            const diff = (validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24);
+            if (diff <= 30) status = 'pendente';
+          }
+          return { ...doc, status, validade: match.validade || undefined, arquivo: match.arquivo_path || undefined, storagePath: match.arquivo_path || undefined };
+        }
+        return doc;
+      }));
+    };
+    syncFromDB();
+
+    const channel = supabase
+      .channel('documentos-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'documentos', filter: `user_id=eq.${user.id}` }, () => syncFromDB())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
 
   const categorias = [...new Set(documentos.map((d) => d.categoria))];
   const filtered = filter === 'todos' ? documentos : documentos.filter((d) => d.status === filter);
