@@ -116,7 +116,7 @@ export default function Documentos() {
     return () => { supabase.removeChannel(channel); };
   }, [user]);
 
-  const filtered = filter === 'todos' ? documentos : documentos.filter((d) => d.status === filter);
+  const categorias = [...new Set(documentos.map((d) => d.categoria))];
   const okCount = documentos.filter((d) => d.status === 'ok').length;
   const progress = Math.round((okCount / documentos.length) * 100);
 
