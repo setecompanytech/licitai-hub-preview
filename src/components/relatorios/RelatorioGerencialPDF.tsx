@@ -79,7 +79,7 @@ export default function RelatorioGerencialPDF() {
 
       downloadPDF(
         `relatorio-gerencial-${ts}`,
-        `Relatório Gerencial — Praefectus — ${periodoLabel}`,
+        `Relatório Gerencial — PRAEFECTUS — ${periodoLabel}`,
         summaryHeaders,
         summaryRows
       );
