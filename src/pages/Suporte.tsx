@@ -80,7 +80,7 @@ const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
       const response = await supabase.functions.invoke('ai-chat', {
         body: {
           messages: [...chatMsgs, { role: 'user', content: userMsg }].map(m => ({ role: m.role, content: m.content })),
-          systemPrompt: 'Você é o assistente de suporte do Praefectus, uma plataforma de gestão de licitações. Responda dúvidas sobre funcionalidades, planos, pagamentos e problemas técnicos de forma clara e objetiva. Se não souber, sugira abrir um ticket de suporte.',
+          systemPrompt: 'Você é o assistente de suporte do PRAEFECTUS, uma plataforma de gestão de licitações. Responda dúvidas sobre funcionalidades, planos, pagamentos e problemas técnicos de forma clara e objetiva. Se não souber, sugira abrir um ticket de suporte.',
         },
       });
       const assistantMsg = response.data?.content || response.data?.message || 'Desculpe, não consegui processar sua pergunta. Tente novamente ou abra um ticket.';
