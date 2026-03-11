@@ -225,7 +225,7 @@ serve(async (req) => {
 
       // Validate agent key
       const expectedKey = (sessao as any).agente_externo_config?.api_key_hash;
-      if (expectedKey && agentKey !== expectedKey) {
+      if (!expectedKey || agentKey !== expectedKey) {
         return jsonResponse({ error: "Chave do agente inválida" }, 403);
       }
 
