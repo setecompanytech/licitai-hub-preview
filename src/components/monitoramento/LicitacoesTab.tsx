@@ -817,7 +817,10 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (âš
     } catch { toast.error('Erro ao baixar edital.'); } finally { setDownloadingEdital(null); }
   };
 
-  const dadosExibidos = modoResultados === 'busca' ? resultadosBusca : licitacoes;
+  // Merge: if in local mode with no manual search, show CNAE results if available
+  const dadosExibidos = modoResultados === 'busca'
+    ? resultadosBusca
+    : (licitacoes.length > 0 ? licitacoes : cnaeResults);
 
   const filtered = dadosExibidos.filter((l) => {
     const s = search.toLowerCase();
