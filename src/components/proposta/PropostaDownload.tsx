@@ -3,7 +3,7 @@ import { Download, FileText, Sheet, File } from 'lucide-react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
+import { writeExcelFromJson } from '@/lib/excel-utils';
 import { withErrorAlert } from '@/lib/error-alert';
 
 interface EditalItem {
