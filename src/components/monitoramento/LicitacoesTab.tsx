@@ -1035,15 +1035,7 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (âš
                   <SelectItem value="Dispensa">Dispensa</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={portalFilter} onValueChange={setPortalFilter}>
-                <SelectTrigger className="w-[150px] h-8 text-xs bg-background border-border/50">
-                  <Globe className="w-3 h-3 mr-1 text-muted-foreground" /><SelectValue placeholder="Portal" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos portais</SelectItem>
-                  {PORTAIS.map(p => <SelectItem key={p.id} value={p.shortName}>{p.shortName}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[140px] h-8 text-xs bg-background border-border/50"><SelectValue placeholder="Status" /></SelectTrigger>
                 <SelectContent>
