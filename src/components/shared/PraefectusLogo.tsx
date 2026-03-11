@@ -27,8 +27,8 @@ export default function PraefectusLogo({ size = 'md', className, variant = 'defa
       )}
       style={{ fontVariant: 'small-caps' }}
     >
-      <span className={navyColor}>Prae</span>
-      <span className={goldColor}>fectus</span>
+      <span className={navyColor}>PRAE</span>
+      <span className={goldColor}>FECTUS</span>
     </span>
   );
 }
