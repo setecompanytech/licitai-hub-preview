@@ -60,7 +60,7 @@ type ItemPesquisa = {
   fontes: FontePreco[];
 };
 
-const itensMock: ItemPesquisa[] = [];
+const itensPesquisa: ItemPesquisa[] = [];
 
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

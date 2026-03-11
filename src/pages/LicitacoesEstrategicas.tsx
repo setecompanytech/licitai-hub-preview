@@ -43,7 +43,7 @@ type LicitacaoEstrategica = {
   salva: boolean;
 };
 
-const mockEstrategicas: LicitacaoEstrategica[] = [];
+const estrategicas: LicitacaoEstrategica[] = [];
 
 const recomendacaoConfig = {
   alta: { label: 'Recomendada', color: 'bg-success/15 text-success border-success/30', icon: Star },

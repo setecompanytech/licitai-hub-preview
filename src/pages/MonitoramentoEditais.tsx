@@ -157,7 +157,7 @@ export default function MonitoramentoEditais() {
           {(Object.keys(tipoConfig) as TipoDocumento[]).map((tipo) => {
             const cfg = tipoConfig[tipo];
             const Icon = cfg.icon;
-            const count = mockDocumentoCount[tipo];
+            const count = documentoCount[tipo];
             return (
               <button
                 key={tipo}
