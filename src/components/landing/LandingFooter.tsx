@@ -31,7 +31,7 @@ export default function LandingFooter() {
             <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
               <Zap className="w-4 h-4 text-accent-foreground" />
             </div>
-            <span className="text-lg font-extrabold">Licit<span className="text-accent">IA</span></span>
+            <span className="text-lg font-brand font-bold tracking-widest uppercase">PRAEFECTUS</span>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mb-3">
             Plataforma de gestão e monitoramento de licitações com IA. Integrada com 38 portais em todos os 27 estados.
@@ -80,7 +80,7 @@ export default function LandingFooter() {
       </div>
 
       <div className="max-w-7xl mx-auto mt-10 pt-6 border-t border-border/20 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>© {new Date().getFullYear()} LicitIA. Todos os direitos reservados.</span>
+        <span>© {new Date().getFullYear()} Praefectus. Todos os direitos reservados.</span>
       </div>
     </footer>
   );

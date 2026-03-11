@@ -48,9 +48,9 @@ export default function ResetPassword() {
           <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center">
             <Zap className="w-6 h-6 text-accent-foreground" />
           </div>
-          <span className="text-3xl font-bold tracking-tight text-white">
-            Licit<span className="text-accent">IA</span>
-          </span>
+           <span className="text-3xl font-brand font-bold tracking-widest uppercase text-white">
+             PRAEFECTUS
+           </span>
         </div>
 
         <div className="bg-card rounded-2xl border border-border/50 shadow-2xl p-8">

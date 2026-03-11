@@ -111,8 +111,8 @@ export default function Cadastro() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex flex-col items-center justify-center p-4">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 text-center">
-        <Link to="/landing" className="text-2xl font-extrabold tracking-tight text-foreground">
-          Licit<span className="text-accent">IA</span>
+        <Link to="/landing" className="text-2xl font-brand font-bold tracking-widest uppercase text-foreground">
+          PRAEFECTUS
         </Link>
         <p className="text-sm text-muted-foreground mt-2">
           Experimente todas as ferramentas por <strong className="text-foreground">7 dias gratuitos</strong>

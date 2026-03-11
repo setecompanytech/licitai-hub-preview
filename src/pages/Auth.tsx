@@ -185,9 +185,9 @@ export default function Auth() {
             <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center">
               <Zap className="w-5 h-5 text-accent-foreground" />
             </div>
-            <span className="text-2xl font-bold tracking-tight">
-              Licit<span className="text-accent">IA</span>
-            </span>
+             <span className="text-2xl font-brand font-bold tracking-widest uppercase">
+               PRAEFECTUS
+             </span>
           </div>
         </div>
 
@@ -200,7 +200,7 @@ export default function Auth() {
               </button>
               <h1 className="text-2xl font-bold">Cadastre-se</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Experimente todas as ferramentas do LicitIA por <strong className="text-accent">15 dias gratuitos</strong>
+                Experimente todas as ferramentas do Praefectus por <strong className="text-accent">15 dias gratuitos</strong>
               </p>
             </div>
 
@@ -354,7 +354,7 @@ export default function Auth() {
                 <Separator className="mb-4" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-xs font-medium">Como conheceu o LicitIA?</Label>
+                    <Label className="text-xs font-medium">Como conheceu o Praefectus?</Label>
                     <Select value={comoConheceu} onValueChange={setComoConheceu}>
                       <SelectTrigger className="mt-1.5">
                         <SelectValue placeholder="Selecionar" />
@@ -414,7 +414,7 @@ export default function Auth() {
                   <a href="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-semibold">Termos de Uso</a>{' '}
                   e a{' '}
                   <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-semibold">Política de Privacidade</a>{' '}
-                  da plataforma LicitIA, manifestando consentimento livre, informado e inequívoco, nos termos do{' '}
+                  da plataforma Praefectus, manifestando consentimento livre, informado e inequívoco, nos termos do{' '}
                   <strong>Art. 7º, inciso I, da Lei nº 13.709/2018 (LGPD)</strong>, para o tratamento de meus dados pessoais nas finalidades descritas nos referidos documentos.
                 </label>
               </div>
@@ -455,9 +455,9 @@ export default function Auth() {
           <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center">
             <Zap className="w-6 h-6 text-accent-foreground" />
           </div>
-          <span className="text-3xl font-bold tracking-tight text-white">
-            Licit<span className="text-accent">IA</span>
-          </span>
+           <span className="text-3xl font-brand font-bold tracking-widest uppercase text-white">
+             PRAEFECTUS
+           </span>
         </div>
 
         <div className="bg-card rounded-2xl border border-border/50 shadow-2xl p-8">

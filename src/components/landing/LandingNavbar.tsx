@@ -34,8 +34,8 @@ export default function LandingNavbar() {
           <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center transition-transform group-hover:scale-105">
             <Zap className="w-5 h-5 text-accent-foreground" />
           </div>
-          <span className="text-xl font-extrabold tracking-tight">
-            Licit<span className="text-accent">IA</span>
+          <span className="text-xl font-brand font-bold tracking-widest uppercase">
+            PRAEFECTUS
           </span>
         </a>
 

@@ -275,7 +275,7 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
               <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
                 <Zap className="w-4 h-4 text-accent-foreground" />
               </div>
-              <span className="text-lg font-bold">Licit<span className="text-accent">IA</span></span>
+              <span className="text-lg font-brand font-bold tracking-widest uppercase">PRAEFECTUS</span>
             </div>
           </div>
 

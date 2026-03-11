@@ -92,8 +92,8 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
             <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105">
               <Zap className="w-4 h-4 text-accent-foreground" />
             </div>
-            <span className="text-base font-bold tracking-tight hidden sm:inline">
-              Licit<span className="text-accent">IA</span>
+            <span className="text-base font-brand font-bold tracking-widest uppercase hidden sm:inline">
+              PRAEFECTUS
             </span>
           </button>
 

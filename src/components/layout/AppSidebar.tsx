@@ -169,8 +169,8 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
           <Zap className="w-4 h-4 text-accent-foreground" />
         </div>
         {!isCollapsed && (
-          <span className="text-lg font-bold tracking-tight text-primary-foreground whitespace-nowrap">
-            Licit<span className="text-accent">IA</span>
+          <span className="text-lg font-brand font-bold tracking-widest uppercase text-primary-foreground whitespace-nowrap">
+            PRAEFECTUS
           </span>
         )}
       </div>
