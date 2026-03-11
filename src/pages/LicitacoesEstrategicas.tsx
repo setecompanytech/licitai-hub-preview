@@ -115,6 +115,15 @@ export default function LicitacoesEstrategicas() {
 
             {/* Lista */}
             <div className="space-y-4">
+              {filtradas.length === 0 && (
+                <Card className="border-dashed border-2 border-muted-foreground/20">
+                  <div className="flex flex-col items-center justify-center py-12 gap-3">
+                    <Target className="w-10 h-10 text-muted-foreground/30" />
+                    <p className="text-sm text-muted-foreground">Nenhuma licitação estratégica encontrada</p>
+                    <p className="text-xs text-muted-foreground">As oportunidades aparecerão aqui conforme o monitoramento identificar licitações compatíveis com seu perfil.</p>
+                  </div>
+                </Card>
+              )}
               {filtradas.map(lic => {
                 const cfg = recomendacaoConfig[lic.recomendacao];
                 const isExpanded = expandido === lic.id;

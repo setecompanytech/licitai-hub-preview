@@ -370,7 +370,13 @@ export default function MonitoramentoChat() {
               <p className="text-sm text-muted-foreground">
                 Avisos, esclarecimentos, impugnações e retificações publicados nos portais de compras.
               </p>
-              {mockMural.map(item => {
+              {mockMural.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Megaphone className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">Nenhuma publicação no mural</p>
+                  <p className="text-xs mt-1">Avisos, esclarecimentos e retificações aparecerão aqui quando detectados nos portais.</p>
+                </div>
+              ) : mockMural.map(item => {
                 const cfg = muralTipoConfig[item.tipo];
                 const Icon = cfg.icon;
                 return (
