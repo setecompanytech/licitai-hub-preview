@@ -30,7 +30,7 @@ export function storeUtmParams() {
 
 export function getStoredUtm(): UtmParams {
   try {
-    const stored = sessionStorage.getItem('licitia_utm');
+    const stored = sessionStorage.getItem('praefectus_utm');
     if (stored) return JSON.parse(stored);
   } catch {}
   return getUtmParams();
