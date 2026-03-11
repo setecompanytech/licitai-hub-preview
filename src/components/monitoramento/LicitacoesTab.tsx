@@ -827,7 +827,7 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (âš
       l.numero.toLowerCase().includes(s);
     const matchStatus = statusFilter === 'all' || l.status === statusFilter;
     const matchModalidade = modalidadeFilter === 'all' || l.modalidade === modalidadeFilter;
-    const matchPortal = portalFilter === 'all' || (l.portal || '').toLowerCase().includes(portalFilter.toLowerCase());
+    const matchPortal = true; // Portal filter removed â€” use checkbox selection instead
     const matchDataInicio = !dataInicio || (l.data_encerramento && new Date(l.data_encerramento) >= dataInicio);
     const matchDataFim = !dataFim || (l.data_encerramento && new Date(l.data_encerramento) <= new Date(dataFim.getTime() + 86400000));
     const matchUf = ufFilter === 'all'
