@@ -732,6 +732,7 @@ Deno.serve(async (req) => {
       limite = 30,
       modo_cnae = false,
       cnaes = [],
+      municipio_sede,
     } = body;
 
     // In CNAE mode, we don't require a text query — we search by CNAE class codes
