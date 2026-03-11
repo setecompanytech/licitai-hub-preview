@@ -38,9 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const getRedirectOrigin = () => {
     const origin = window.location.origin;
-    // Use published domain instead of preview URL
     if (origin.includes('lovableproject.com') || origin.includes('lovable.app')) {
-      return 'https://levo-licita.lovable.app';
+      return 'https://praefectus.com.br';
     }
     return origin;
   };
