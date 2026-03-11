@@ -171,11 +171,15 @@ export default function MonitoramentoEditais() {
           })}
         </div>
 
-        <Tabs defaultValue="licitacoes" className="space-y-4">
+        <Tabs defaultValue="mural" className="space-y-4">
           <TabsList className="flex-wrap h-auto gap-1">
+            <TabsTrigger value="mural">
+              <Gavel className="w-4 h-4 mr-1" />
+              Mural (Tempo Real)
+            </TabsTrigger>
             <TabsTrigger value="licitacoes">
               <List className="w-4 h-4 mr-1" />
-              Licitações
+              Busca Inteligente
             </TabsTrigger>
             <TabsTrigger value="dispensa">
               <Zap className="w-4 h-4 mr-1" />
@@ -191,6 +195,10 @@ export default function MonitoramentoEditais() {
             </TabsTrigger>
             <TabsTrigger value="config">Configuração de Pesquisa</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="mural">
+            <MuralLicitacoes />
+          </TabsContent>
 
           <TabsContent value="licitacoes">
             <LicitacoesTab />
