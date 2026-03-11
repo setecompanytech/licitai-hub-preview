@@ -776,7 +776,6 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (âš
   };
 
   const hasEditalDownload = (lic: ResultadoBusca): boolean => {
-    if (lic.isMock) return false;
     // Explicitly marked as no download by the backend
     if ((lic as any).tem_download === false) return false;
     // Has PNCP data for direct API download
@@ -787,10 +786,6 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (âš
   };
 
   const handleDownloadEditalPortal = async (lic: ResultadoBusca) => {
-    if (lic.isMock) {
-      toast.warning('Dados simulados â€” download funciona apenas com licitaÃ§Ãµes reais.');
-      return;
-    }
     setDownloadingEdital(lic.id);
     toast.info('Buscando edital nos portais...');
     try {
