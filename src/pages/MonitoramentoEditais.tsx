@@ -28,6 +28,7 @@ import {
   ExternalLink,
   KeyRound,
   ShieldCheck,
+  Gavel,
 } from "lucide-react";
 import LicitacoesTab from "@/components/monitoramento/LicitacoesTab";
 import DiariosOficiaisTab from "@/components/monitoramento/DiariosOficiaisTab";
