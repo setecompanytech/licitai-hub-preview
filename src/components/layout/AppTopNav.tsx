@@ -7,7 +7,8 @@ import {
   ChevronDown, Zap, Crosshair, Shield, Scale, DollarSign, Calculator,
   Download, LogOut, Building2, ShieldCheck, HeadphonesIcon, MessageSquare,
   TrendingUp, Target, ClipboardCheck, BookOpen, Bell, Archive, CalendarDays,
-  GraduationCap, FileText, ListChecks, Menu, X,
+  GraduationCap, FileText, ListChecks, Menu, X, FileBarChart, Workflow,
+  Plug, Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -35,19 +36,18 @@ const navGroups: NavGroup[] = [
   {
     title: 'Monitoramento',
     items: [
-      { icon: Download, label: 'Editais', path: '/monitoramento-editais' },
+      { icon: Download, label: 'Editais & Licitações', path: '/monitoramento-editais' },
       { icon: Bell, label: 'Boletins Diários', path: '/boletins' },
       { icon: MessageSquare, label: 'Chat e Mural', path: '/monitoramento-chat' },
-      { icon: MessageSquare, label: 'WhatsApp CRM', path: '/whatsapp-crm' },
     ],
   },
   {
-    title: 'Gestão',
+    title: 'Gestão de Processos',
     items: [
       { icon: Target, label: 'Estratégicas', path: '/licitacoes-estrategicas' },
-      { icon: CalendarDays, label: 'Calendário', path: '/calendario' },
       { icon: ListChecks, label: 'Compromissos', path: '/meus-compromissos' },
-      { icon: Bot, label: 'Workflow IA', path: '/workflow-ia' },
+      { icon: CalendarDays, label: 'Calendário', path: '/calendario' },
+      { icon: Workflow, label: 'Workflow IA', path: '/workflow-ia' },
       { icon: Kanban, label: 'Kanban', path: '/kanban' },
       { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
       { icon: Archive, label: 'Histórico', path: '/historico-licitacoes' },
@@ -55,16 +55,16 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    title: 'Inteligência',
+    title: 'Inteligência & Preços',
     items: [
+      { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
+      { icon: FileBarChart, label: 'Proposta Comercial', path: '/proposta-tecnica' },
       { icon: TrendingUp, label: 'Análise de Mercado', path: '/analise-mercado' },
       { icon: Users, label: 'Concorrentes', path: '/concorrentes' },
-      { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
-      { icon: Search, label: 'Proposta Comercial', path: '/proposta-tecnica' },
     ],
   },
   {
-    title: 'Jurídico & Docs',
+    title: 'Jurídico & Contábil',
     items: [
       { icon: Shield, label: 'Documentos', path: '/documentos' },
       { icon: ClipboardCheck, label: 'Assessoria Cadastral', path: '/assessoria-cadastral' },
@@ -75,9 +75,16 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
+    title: 'Comunicação',
+    items: [
+      { icon: MessageSquare, label: 'WhatsApp CRM', path: '/whatsapp-crm' },
+    ],
+  },
+  {
     title: 'Ferramentas',
     items: [
       { icon: Bot, label: 'Assistente IA', path: '/assistente' },
+      { icon: Plug, label: 'API & Integração', path: '/api-integracao' },
       { icon: GraduationCap, label: 'Tutorial', path: '/tutorial' },
       { icon: BookOpen, label: 'Blog', path: '/blog' },
       { icon: Download, label: 'E-book', path: '/ebook' },
@@ -105,9 +112,10 @@ const adminItems: NavItem[] = [
 const topNavLinks = [
   { label: 'Painel', groups: ['Painel'] },
   { label: 'Monitoramento', groups: ['Monitoramento'] },
-  { label: 'Gestão', groups: ['Gestão'] },
-  { label: 'Inteligência', groups: ['Inteligência'] },
-  { label: 'Jurídico', groups: ['Jurídico & Docs'] },
+  { label: 'Gestão', groups: ['Gestão de Processos'] },
+  { label: 'Inteligência', groups: ['Inteligência & Preços'] },
+  { label: 'Jurídico', groups: ['Jurídico & Contábil'] },
+  { label: 'Comunicação', groups: ['Comunicação'] },
   { label: 'Ferramentas', groups: ['Ferramentas', 'Configuração'] },
 ];
 
@@ -125,7 +133,6 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
   const { signOut } = useAuth();
   const { isAdmin } = useUserRole();
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -154,14 +161,13 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
 
   return (
     <>
-      {/* Desktop horizontal nav — rendered inside AppLayout header */}
+      {/* Desktop horizontal nav */}
       <nav className="hidden lg:flex items-center gap-0.5" ref={dropdownRef}>
         {topNavLinks.map((link) => {
           const active = isLinkActive(link);
           const isOpen = openDropdown === link.label;
           const groups = getGroupsForLink(link);
 
-          // Simple nav for single-item groups (Painel)
           if (groups.length === 1 && groups[0].items.length <= 2) {
             return (
               <div key={link.label} className="relative">
