@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,7 +44,9 @@ const FATURAMENTO_ANUAL = [
 type AuthStep = 'escolha' | 'manual' | 'certificado' | 'signup' | 'forgot';
 
 export default function Auth() {
-  const [step, setStep] = useState<AuthStep>('escolha');
+  const [searchParams] = useSearchParams();
+  const initialStep = (searchParams.get('step') as AuthStep) || 'escolha';
+  const [step, setStep] = useState<AuthStep>(initialStep);
   const [email, setEmail] = useState('');
   const [emailConfirm, setEmailConfirm] = useState('');
   const [password, setPassword] = useState('');
@@ -196,7 +198,7 @@ export default function Auth() {
               </button>
               <h1 className="text-2xl font-bold">Cadastre-se</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Experimente todas as ferramentas do Praefectus por <strong className="text-accent">15 dias gratuitos</strong>
+                Experimente todas as ferramentas do Praefectus por <strong className="text-accent">7 dias gratuitos</strong>
               </p>
             </div>
 

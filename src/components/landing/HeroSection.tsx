@@ -59,7 +59,7 @@ export default function HeroSection() {
               <Button
                 size="lg"
                 className="bg-accent hover:bg-accent/90 text-accent-foreground text-base px-8 py-6 rounded-lg font-bold shadow-lg hover:shadow-xl transition-all"
-                onClick={() => navigate('/auth')}
+                onClick={() => navigate('/auth?step=signup')}
               >
                 Começar Meu Teste Gratuito <ChevronRight className="w-5 h-5 ml-1" />
               </Button>
