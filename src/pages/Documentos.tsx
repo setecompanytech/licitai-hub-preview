@@ -67,7 +67,7 @@ const statusConfig: Record<DocStatus, { icon: typeof CheckCircle2; color: string
 export default function Documentos() {
   const [filter, setFilter] = useState<DocStatus | 'todos'>('todos');
   const [activeTab, setActiveTab] = useState('documentos');
-  const [documentos, setDocumentos] = useState<Documento[]>(documentosIniciais);
+  const [documentos, setDocumentos] = useState<Documento[]>(checklistDocumentos);
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const [removingIdx, setRemovingIdx] = useState<number | null>(null);
   const [analyzingIdx, setAnalyzingIdx] = useState<number | null>(null);
