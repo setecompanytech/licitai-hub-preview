@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { getStoredUtm, trackLeadConversion } from '@/lib/tracking';
 import { toast } from 'sonner';
-import { ArrowRight, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const UF_LIST = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
@@ -44,7 +44,7 @@ export default function LeadCaptureForm() {
       trackLeadConversion({ email: form.email });
       setSubmitted(true);
       toast.success('Solicitação enviada com sucesso!');
-    } catch (err: any) {
+    } catch {
       toast.error('Erro ao enviar. Tente novamente.');
     } finally {
       setLoading(false);
@@ -53,113 +53,101 @@ export default function LeadCaptureForm() {
 
   if (submitted) {
     return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
+      <motion.section
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="text-center py-12"
+        className="py-20 px-6"
       >
-        <div className="w-20 h-20 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-6">
-          <CheckCircle2 className="w-10 h-10 text-accent" />
+        <div className="max-w-lg mx-auto text-center bg-card rounded-xl border border-border p-12">
+          <div className="w-16 h-16 rounded-full bg-accent/15 flex items-center justify-center mx-auto mb-6">
+            <CheckCircle2 className="w-8 h-8 text-accent" />
+          </div>
+          <h3 className="text-2xl font-bold mb-3">Cadastro Recebido!</h3>
+          <p className="text-muted-foreground">
+            Em breve nossa equipe entrará em contato para liberar seu acesso gratuito.
+          </p>
         </div>
-        <h3 className="text-2xl font-bold text-white mb-3">Cadastro Recebido!</h3>
-        <p className="text-white/60 max-w-md mx-auto">
-          Em breve nossa equipe entrará em contato para liberar seu acesso gratuito ao Praefectus.
-        </p>
-      </motion.div>
+      </motion.section>
     );
   }
 
   return (
-    <section id="lead-form" className="landing-section">
+    <section id="lead-form" className="py-20 md:py-28 px-6 bg-muted/30">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        className="landing-container"
+        className="max-w-7xl mx-auto"
       >
-        <div className="relative rounded-[2rem] p-8 md:p-16 overflow-hidden" style={{ background: 'var(--gradient-hero)' }}>
-          <div className="absolute inset-0 opacity-[0.03]" style={{
-            backgroundImage: 'linear-gradient(hsl(174 72% 50%) 1px, transparent 1px), linear-gradient(90deg, hsl(174 72% 50%) 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-          }} />
-          <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full opacity-15 blur-[100px]" style={{ background: 'hsl(174 72% 45%)' }} />
-
-          <div className="relative max-w-2xl mx-auto">
-            <div className="text-center mb-10">
-              <div className="w-14 h-14 rounded-2xl bg-accent/20 flex items-center justify-center mx-auto mb-6 backdrop-blur-sm border border-accent/20">
-                <Sparkles className="w-7 h-7 text-accent" />
-              </div>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4 tracking-tight">
-                Teste o Praefectus Gratuitamente
-              </h2>
-              <p className="text-white/50 text-base md:text-lg max-w-lg mx-auto">
-                Preencha seus dados e receba acesso de 7 dias ao plano Profissional — sem cartão de crédito.
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
-              <Input
-                placeholder="Nome completo *"
-                value={form.nome}
-                onChange={(e) => setForm(f => ({ ...f, nome: e.target.value }))}
-                className="bg-white/10 border-white/15 text-white placeholder:text-white/40 h-12 rounded-xl"
-                required
-                maxLength={100}
-              />
-              <Input
-                type="email"
-                placeholder="E-mail corporativo *"
-                value={form.email}
-                onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
-                className="bg-white/10 border-white/15 text-white placeholder:text-white/40 h-12 rounded-xl"
-                required
-                maxLength={255}
-              />
-              <Input
-                placeholder="Telefone / WhatsApp"
-                value={form.telefone}
-                onChange={(e) => setForm(f => ({ ...f, telefone: e.target.value }))}
-                className="bg-white/10 border-white/15 text-white placeholder:text-white/40 h-12 rounded-xl"
-                maxLength={20}
-              />
-              <Input
-                placeholder="Empresa"
-                value={form.empresa}
-                onChange={(e) => setForm(f => ({ ...f, empresa: e.target.value }))}
-                className="bg-white/10 border-white/15 text-white placeholder:text-white/40 h-12 rounded-xl"
-                maxLength={100}
-              />
-              <div className="sm:col-span-2">
-                <Select value={form.uf} onValueChange={(v) => setForm(f => ({ ...f, uf: v }))}>
-                  <SelectTrigger className="bg-white/10 border-white/15 text-white h-12 rounded-xl [&>span]:text-white/40">
-                    <SelectValue placeholder="Estado (UF)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {UF_LIST.map((uf) => (
-                      <SelectItem key={uf} value={uf}>{uf}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="sm:col-span-2">
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  size="lg"
-                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-base py-6 rounded-xl font-bold shadow-lg"
-                  style={{ boxShadow: 'var(--shadow-glow)' }}
-                >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-                  Quero Testar Grátis <ArrowRight className="w-5 h-5 ml-2" />
-                </Button>
-              </div>
-              <p className="sm:col-span-2 text-center text-xs text-white/30">
-                Ao enviar, você concorda com nossos{' '}
-                <a href="/termos-de-uso" className="underline hover:text-white/50">Termos de Uso</a> e{' '}
-                <a href="/politica-de-privacidade" className="underline hover:text-white/50">Política de Privacidade</a>.
-              </p>
-            </form>
+        <div className="max-w-2xl mx-auto bg-card rounded-xl border border-border p-8 md:p-12 shadow-sm">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-3">
+              Teste o Praefectus Gratuitamente
+            </h2>
+            <p className="text-muted-foreground text-[15px]">
+              Preencha seus dados e receba acesso de 7 dias ao plano Profissional.
+            </p>
           </div>
+
+          <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
+            <Input
+              placeholder="Nome completo *"
+              value={form.nome}
+              onChange={(e) => setForm(f => ({ ...f, nome: e.target.value }))}
+              className="h-11"
+              required maxLength={100}
+            />
+            <Input
+              type="email"
+              placeholder="E-mail corporativo *"
+              value={form.email}
+              onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
+              className="h-11"
+              required maxLength={255}
+            />
+            <Input
+              placeholder="Telefone / WhatsApp"
+              value={form.telefone}
+              onChange={(e) => setForm(f => ({ ...f, telefone: e.target.value }))}
+              className="h-11"
+              maxLength={20}
+            />
+            <Input
+              placeholder="Empresa"
+              value={form.empresa}
+              onChange={(e) => setForm(f => ({ ...f, empresa: e.target.value }))}
+              className="h-11"
+              maxLength={100}
+            />
+            <div className="sm:col-span-2">
+              <Select value={form.uf} onValueChange={(v) => setForm(f => ({ ...f, uf: v }))}>
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Estado (UF)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {UF_LIST.map((uf) => (
+                    <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="sm:col-span-2">
+              <Button
+                type="submit"
+                disabled={loading}
+                size="lg"
+                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-base py-5 rounded-md font-bold"
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
+                Quero Testar Grátis <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </div>
+            <p className="sm:col-span-2 text-center text-xs text-muted-foreground">
+              Ao enviar, você concorda com nossos{' '}
+              <a href="/termos-de-uso" className="underline hover:text-foreground">Termos de Uso</a> e{' '}
+              <a href="/politica-de-privacidade" className="underline hover:text-foreground">Política de Privacidade</a>.
+            </p>
+          </form>
         </div>
       </motion.div>
     </section>

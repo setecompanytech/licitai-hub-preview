@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion, useInView } from 'framer-motion';
-import { Globe, MapPin, Cpu, Layers } from 'lucide-react';
+import { useInView } from 'framer-motion';
 
 const stats = [
-  { value: 38, suffix: '', label: 'Portais Integrados', desc: 'Federais, estaduais e privados', icon: Globe },
-  { value: 27, suffix: '', label: 'Estados Cobertos', desc: 'Cobertura nacional completa', icon: MapPin },
-  { value: 12, suffix: '+', label: 'Módulos com IA', desc: 'Assistente, lances, propostas', icon: Cpu },
-  { value: 30, suffix: '+', label: 'Funcionalidades', desc: 'Do edital ao resultado', icon: Layers },
+  { value: 38, suffix: '', label: 'Portais Integrados' },
+  { value: 27, suffix: '', label: 'Estados Cobertos' },
+  { value: 12, suffix: '+', label: 'Módulos com IA' },
+  { value: 30, suffix: '+', label: 'Funcionalidades' },
 ];
 
 function AnimatedCounter({ target, suffix }: { target: number; suffix: string }) {
@@ -17,11 +16,11 @@ function AnimatedCounter({ target, suffix }: { target: number; suffix: string })
   useEffect(() => {
     if (!inView) return;
     let frame: number;
-    const duration = 1500;
+    const duration = 1400;
     const start = performance.now();
     const step = (now: number) => {
       const progress = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
       setCount(Math.floor(eased * target));
       if (progress < 1) frame = requestAnimationFrame(step);
     };
@@ -34,28 +33,16 @@ function AnimatedCounter({ target, suffix }: { target: number; suffix: string })
 
 export default function StatsSection() {
   return (
-    <section className="py-20 px-6 relative overflow-hidden">
-      <div className="absolute inset-0" style={{ background: 'var(--gradient-accent-subtle)' }} />
-      <div className="max-w-5xl mx-auto relative">
+    <section className="py-16 px-6 bg-card border-b border-border/40">
+      <div className="max-w-5xl mx-auto">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
-          {stats.map((s, i) => (
-            <motion.div
-              key={s.label}
-              initial={{ opacity: 0, y: 25 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1, duration: 0.5 }}
-              className="text-center group"
-            >
-              <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-accent/15 transition-colors">
-                <s.icon className="w-6 h-6 text-accent" />
-              </div>
-              <p className="text-4xl md:text-5xl font-extrabold gradient-text mb-1">
+          {stats.map((s) => (
+            <div key={s.label} className="text-center">
+              <p className="text-4xl md:text-5xl font-extrabold text-primary mb-1.5">
                 <AnimatedCounter target={s.value} suffix={s.suffix} />
               </p>
-              <p className="text-sm font-bold text-foreground">{s.label}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{s.desc}</p>
-            </motion.div>
+              <p className="text-sm font-semibold text-foreground">{s.label}</p>
+            </div>
           ))}
         </div>
       </div>
