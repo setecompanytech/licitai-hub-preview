@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
                     to: [email],
                     subject: `🔔 Alerta: Processo ${pi.numero} — ${alertaKey === '1dia' ? 'ÚLTIMO DIA' : `${diffDias} dias restantes`}`,
                     html: `
-                      <h2>Alerta de Compromisso — Praefectus</h2>
+                      <h2>Alerta de Compromisso — PRAEFECTUS</h2>
                       <p>Olá ${profile?.nome_completo || ''},</p>
                       <p>${alertaMsg}</p>
                       <p><strong>Objeto:</strong> ${pi.objeto}</p>
