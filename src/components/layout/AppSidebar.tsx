@@ -165,13 +165,12 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
     >
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 h-14 border-b flex-shrink-0" style={{ borderColor: `hsl(var(--sidebar-border))` }}>
-        <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
-          <Zap className="w-4 h-4 text-accent-foreground" />
-        </div>
-        {!isCollapsed && (
-          <span className="text-lg font-brand font-bold tracking-widest uppercase text-primary-foreground whitespace-nowrap">
-            PRAEFECTUS
-          </span>
+        {!isCollapsed ? (
+          <PraefectusLogo size="md" />
+        ) : (
+          <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
+            <span className="text-accent-foreground font-bold text-xs font-brand">P</span>
+          </div>
         )}
       </div>
 

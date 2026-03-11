@@ -278,10 +278,7 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
         <SheetContent side="left" className="p-0 w-[280px] bg-card">
           <div className="flex items-center justify-between px-4 h-14 border-b border-border">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
-                <Zap className="w-4 h-4 text-accent-foreground" />
-              </div>
-              <span className="text-lg font-brand font-bold tracking-widest uppercase">PRAEFECTUS</span>
+              <PraefectusLogo size="md" />
             </div>
           </div>
 

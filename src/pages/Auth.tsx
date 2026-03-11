@@ -447,12 +447,7 @@ export default function Auth() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center">
-            <Zap className="w-6 h-6 text-accent-foreground" />
-          </div>
-           <span className="text-3xl font-brand font-bold tracking-widest uppercase text-white">
-             PRAEFECTUS
-           </span>
+          <PraefectusLogo size="xl" variant="light" />
         </div>
 
         <div className="bg-card rounded-2xl border border-border/50 shadow-2xl p-8">
