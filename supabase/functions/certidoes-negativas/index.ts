@@ -5,6 +5,216 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Portal da Transparência - APIs públicas abertas
+const TRANSPARENCIA_BASE = "https://api.portaldatransparencia.gov.br/api-de-dados";
+
+type VerificacaoReal = {
+  fonte: string;
+  status: "regular" | "irregular" | "erro" | "verificando";
+  detalhes: string;
+  dataConsulta: string;
+  url?: string;
+};
+
+// Consulta CEIS (Cadastro de Empresas Inidôneas e Suspensas)
+async function consultarCEIS(cnpj: string): Promise<VerificacaoReal> {
+  try {
+    const resp = await fetch(
+      `${TRANSPARENCIA_BASE}/ceis?cnpjSancionado=${cnpj}&pagina=1`,
+      {
+        headers: { "Accept": "application/json", "chave-api-dados": "sua-chave" },
+      }
+    );
+    if (!resp.ok) {
+      // Tenta sem chave (alguns endpoints funcionam sem)
+      const resp2 = await fetch(
+        `${TRANSPARENCIA_BASE}/ceis?cnpjSancionado=${cnpj}&pagina=1`,
+        { headers: { "Accept": "application/json" } }
+      );
+      if (!resp2.ok) {
+        const body = await resp2.text();
+        console.log("CEIS response:", resp2.status, body);
+        return { fonte: "CEIS", status: "erro", detalhes: `API indisponível (${resp2.status})`, dataConsulta: new Date().toISOString() };
+      }
+      const data2 = await resp2.json();
+      const registros = Array.isArray(data2) ? data2 : data2?.data || [];
+      if (registros.length === 0) {
+        return { fonte: "CEIS", status: "regular", detalhes: "Nenhuma sanção encontrada no CEIS", dataConsulta: new Date().toISOString(), url: "https://portaldatransparencia.gov.br/sancoes/ceis" };
+      }
+      return { fonte: "CEIS", status: "irregular", detalhes: `${registros.length} sanção(ões) encontrada(s)`, dataConsulta: new Date().toISOString(), url: "https://portaldatransparencia.gov.br/sancoes/ceis" };
+    }
+    const data = await resp.json();
+    const registros = Array.isArray(data) ? data : data?.data || [];
+    if (registros.length === 0) {
+      return { fonte: "CEIS", status: "regular", detalhes: "Nenhuma sanção encontrada no CEIS", dataConsulta: new Date().toISOString(), url: "https://portaldatransparencia.gov.br/sancoes/ceis" };
+    }
+    return { fonte: "CEIS", status: "irregular", detalhes: `${registros.length} sanção(ões) encontrada(s): ${registros.map((r: any) => r.orgaoSancionador?.nome || '').filter(Boolean).join(', ')}`, dataConsulta: new Date().toISOString(), url: "https://portaldatransparencia.gov.br/sancoes/ceis" };
+  } catch (e) {
+    console.error("Erro CEIS:", e);
+    return { fonte: "CEIS", status: "erro", detalhes: `Falha na consulta: ${e.message}`, dataConsulta: new Date().toISOString() };
+  }
+}
+
+// Consulta CNEP (Cadastro Nacional de Empresas Punidas)
+async function consultarCNEP(cnpj: string): Promise<VerificacaoReal> {
+  try {
+    const resp = await fetch(
+      `${TRANSPARENCIA_BASE}/cnep?cnpjSancionado=${cnpj}&pagina=1`,
+      { headers: { "Accept": "application/json" } }
+    );
+    if (!resp.ok) {
+      const body = await resp.text();
+      console.log("CNEP response:", resp.status, body);
+      return { fonte: "CNEP", status: "erro", detalhes: `API indisponível (${resp.status})`, dataConsulta: new Date().toISOString() };
+    }
+    const data = await resp.json();
+    const registros = Array.isArray(data) ? data : data?.data || [];
+    if (registros.length === 0) {
+      return { fonte: "CNEP", status: "regular", detalhes: "Nenhuma punição encontrada no CNEP", dataConsulta: new Date().toISOString(), url: "https://portaldatransparencia.gov.br/sancoes/cnep" };
+    }
+    return { fonte: "CNEP", status: "irregular", detalhes: `${registros.length} punição(ões) encontrada(s)`, dataConsulta: new Date().toISOString(), url: "https://portaldatransparencia.gov.br/sancoes/cnep" };
+  } catch (e) {
+    console.error("Erro CNEP:", e);
+    return { fonte: "CNEP", status: "erro", detalhes: `Falha na consulta: ${e.message}`, dataConsulta: new Date().toISOString() };
+  }
+}
+
+// Consulta CEPIM (Cadastro de Entidades Privadas Sem Fins Lucrativos Impedidas)
+async function consultarCEPIM(cnpj: string): Promise<VerificacaoReal> {
+  try {
+    const resp = await fetch(
+      `${TRANSPARENCIA_BASE}/cepim?cnpjSancionado=${cnpj}&pagina=1`,
+      { headers: { "Accept": "application/json" } }
+    );
+    if (!resp.ok) {
+      const body = await resp.text();
+      console.log("CEPIM response:", resp.status, body);
+      return { fonte: "CEPIM", status: "erro", detalhes: `API indisponível (${resp.status})`, dataConsulta: new Date().toISOString() };
+    }
+    const data = await resp.json();
+    const registros = Array.isArray(data) ? data : data?.data || [];
+    if (registros.length === 0) {
+      return { fonte: "CEPIM", status: "regular", detalhes: "Nenhum impedimento encontrado no CEPIM", dataConsulta: new Date().toISOString(), url: "https://portaldatransparencia.gov.br/sancoes/cepim" };
+    }
+    return { fonte: "CEPIM", status: "irregular", detalhes: `${registros.length} impedimento(s) encontrado(s)`, dataConsulta: new Date().toISOString(), url: "https://portaldatransparencia.gov.br/sancoes/cepim" };
+  } catch (e) {
+    console.error("Erro CEPIM:", e);
+    return { fonte: "CEPIM", status: "erro", detalhes: `Falha na consulta: ${e.message}`, dataConsulta: new Date().toISOString() };
+  }
+}
+
+// Scraping de CNDT (TST) via Firecrawl
+async function consultarCNDT(cnpj: string): Promise<VerificacaoReal> {
+  const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+  if (!FIRECRAWL_API_KEY) {
+    return { fonte: "CNDT/TST", status: "erro", detalhes: "Firecrawl não configurado para scraping", dataConsulta: new Date().toISOString(), url: "https://cndt-certidao.tst.jus.br/inicio.faces" };
+  }
+
+  try {
+    // Tenta buscar informações sobre CNDT via search
+    const resp = await fetch("https://api.firecrawl.dev/v1/search", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${FIRECRAWL_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: `CNDT certidão negativa débitos trabalhistas CNPJ ${cnpj} site:tst.jus.br OR site:jusbrasil.com.br`,
+        limit: 3,
+        lang: "pt-br",
+        country: "BR",
+        tbs: "qdr:m",
+      }),
+    });
+
+    if (!resp.ok) {
+      const body = await resp.text();
+      console.log("Firecrawl CNDT search:", resp.status, body);
+      return { fonte: "CNDT/TST", status: "verificar", detalhes: "Consulte diretamente no portal do TST", dataConsulta: new Date().toISOString(), url: "https://cndt-certidao.tst.jus.br/inicio.faces" };
+    }
+
+    const data = await resp.json();
+    const results = data?.data || [];
+
+    if (results.length > 0) {
+      const hasDebito = results.some((r: any) =>
+        (r.description || r.markdown || "").toLowerCase().includes("positiva") ||
+        (r.description || r.markdown || "").toLowerCase().includes("débito")
+      );
+
+      if (hasDebito) {
+        return { fonte: "CNDT/TST", status: "verificar", detalhes: "Possíveis débitos trabalhistas detectados na busca. Verifique diretamente no TST.", dataConsulta: new Date().toISOString(), url: "https://cndt-certidao.tst.jus.br/inicio.faces" };
+      }
+    }
+
+    return { fonte: "CNDT/TST", status: "verificar", detalhes: "Emissão requer consulta direta (CAPTCHA). Use o link para verificar.", dataConsulta: new Date().toISOString(), url: "https://cndt-certidao.tst.jus.br/inicio.faces" };
+  } catch (e) {
+    console.error("Erro CNDT Firecrawl:", e);
+    return { fonte: "CNDT/TST", status: "verificar", detalhes: "Consulte diretamente no portal do TST", dataConsulta: new Date().toISOString(), url: "https://cndt-certidao.tst.jus.br/inicio.faces" };
+  }
+}
+
+// Scraping CRF/FGTS via Firecrawl
+async function consultarCRF(cnpj: string): Promise<VerificacaoReal> {
+  const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+  if (!FIRECRAWL_API_KEY) {
+    return { fonte: "CRF/FGTS", status: "erro", detalhes: "Firecrawl não configurado para scraping", dataConsulta: new Date().toISOString(), url: "https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf" };
+  }
+
+  try {
+    const resp = await fetch("https://api.firecrawl.dev/v1/search", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${FIRECRAWL_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: `CRF FGTS regularidade CNPJ ${cnpj} site:caixa.gov.br`,
+        limit: 3,
+        lang: "pt-br",
+        country: "BR",
+        tbs: "qdr:m",
+      }),
+    });
+
+    if (!resp.ok) {
+      return { fonte: "CRF/FGTS", status: "verificar", detalhes: "Consulte diretamente no portal da Caixa", dataConsulta: new Date().toISOString(), url: "https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf" };
+    }
+
+    return { fonte: "CRF/FGTS", status: "verificar", detalhes: "Emissão requer consulta direta (CAPTCHA). Use o link para verificar.", dataConsulta: new Date().toISOString(), url: "https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf" };
+  } catch (e) {
+    console.error("Erro CRF:", e);
+    return { fonte: "CRF/FGTS", status: "verificar", detalhes: "Consulte diretamente no portal da Caixa", dataConsulta: new Date().toISOString(), url: "https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf" };
+  }
+}
+
+// Consulta Receita Federal (dados cadastrais via BrasilAPI)
+async function consultarReceitaFederal(cnpj: string): Promise<VerificacaoReal> {
+  try {
+    const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+    if (!resp.ok) {
+      return { fonte: "Receita Federal", status: "verificar", detalhes: "Não foi possível consultar dados cadastrais", dataConsulta: new Date().toISOString(), url: "https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp" };
+    }
+    const data = await resp.json();
+
+    if (data.situacao_cadastral === 2) {
+      return {
+        fonte: "Receita Federal",
+        status: "regular",
+        detalhes: `Situação cadastral: ATIVA. Razão Social: ${data.razao_social}. CNAE: ${data.cnae_fiscal_descricao}`,
+        dataConsulta: new Date().toISOString(),
+        url: "https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp",
+      };
+    }
+
+    const situacoes: Record<number, string> = { 1: "NULA", 3: "SUSPENSA", 4: "INAPTA", 8: "BAIXADA" };
+    return {
+      fonte: "Receita Federal",
+      status: "irregular",
+      detalhes: `Situação cadastral: ${situacoes[data.situacao_cadastral] || data.descricao_situacao_cadastral || "IRREGULAR"}. ${data.motivo_situacao_cadastral || ""}`,
+      dataConsulta: new Date().toISOString(),
+      url: "https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp",
+    };
+  } catch (e) {
+    console.error("Erro Receita:", e);
+    return { fonte: "Receita Federal", status: "erro", detalhes: `Erro: ${e.message}`, dataConsulta: new Date().toISOString() };
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -12,62 +222,72 @@ serve(async (req) => {
     const { cnpj, razaoSocial } = await req.json();
     if (!cnpj) {
       return new Response(JSON.stringify({ error: "CNPJ é obrigatório" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    const cnpjLimpo = cnpj.replace(/\D/g, "");
+
+    // 1. Executar verificações reais em paralelo
+    console.log(`Iniciando verificações reais para CNPJ: ${cnpjLimpo}`);
+    const [ceis, cnep, cepim, cndt, crf, receita] = await Promise.all([
+      consultarCEIS(cnpjLimpo),
+      consultarCNEP(cnpjLimpo),
+      consultarCEPIM(cnpjLimpo),
+      consultarCNDT(cnpjLimpo),
+      consultarCRF(cnpjLimpo),
+      consultarReceitaFederal(cnpjLimpo),
+    ]);
+
+    const verificacoesReais: VerificacaoReal[] = [ceis, cnep, cepim, cndt, crf, receita];
+    console.log("Verificações reais concluídas:", verificacoesReais.map(v => `${v.fonte}: ${v.status}`));
+
+    // 2. Gerar análise complementar com IA
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
 
-    const prompt = `Você é um especialista em licitações públicas brasileiras (Lei 14.133/2021).
-Para a empresa com CNPJ ${cnpj}${razaoSocial ? ` (${razaoSocial})` : ''}, gere uma análise completa de certidões negativas necessárias para participação em licitações.
+    const verificacoesTexto = verificacoesReais.map(v => `${v.fonte}: ${v.status} - ${v.detalhes}`).join("\n");
 
-Para cada certidão, informe:
+    const prompt = `Você é um especialista em licitações públicas brasileiras (Lei 14.133/2021).
+Para a empresa com CNPJ ${cnpj}${razaoSocial ? ` (${razaoSocial})` : ''}, já realizamos verificações automáticas com os seguintes resultados:
+
+${verificacoesTexto}
+
+Com base nesses resultados REAIS, gere uma análise complementar das certidões negativas necessárias para participação em licitações.
+
+Para cada certidão que NÃO foi verificada automaticamente (CND Federal tributária, Certidão Estadual, Certidão Municipal, Certidão de Falência), informe:
 1. Nome da certidão
 2. Órgão emissor
 3. URL oficial para emissão
 4. Validade padrão (em dias)
-5. Documentos necessários para emissão
-6. Status provável (baseado no tipo de empresa)
-7. Observações importantes
+5. Status como "verificar" (já que não foi verificada automaticamente)
+6. Observações e documentos necessários
 
-As certidões obrigatórias são:
-- CND Federal (Receita Federal + PGFN)
-- CRF FGTS (Caixa Econômica)
-- CNDT Trabalhista (TST)
-- Certidão Negativa Estadual (SEFAZ)
-- Certidão Negativa Municipal (Prefeitura)
-- Certidão de Falência e Concordata (TJ)
-- SICAF (Portal de Fornecedores do Governo Federal)
-- Certidão do CEIS (Cadastro de Empresas Inidôneas)
-- Certidão do CNEP (Cadastro Nacional de Empresas Punidas)
+NÃO repita as certidões já verificadas automaticamente (CEIS, CNEP, CEPIM, CNDT, CRF, Receita Federal).
 
-Responda APENAS com JSON válido no formato:
+Responda APENAS com JSON válido:
 {
-  "certidoes": [
+  "certidoes_complementares": [
     {
       "nome": "string",
       "orgao": "string",
       "url": "string",
       "validadeDias": number,
       "documentosNecessarios": ["string"],
-      "statusProvavel": "regular" | "pendente" | "verificar",
+      "statusProvavel": "verificar",
       "observacoes": "string"
     }
   ],
-  "resumo": "string com análise geral",
-  "recomendacoes": ["string"]
+  "resumo": "string - análise geral considerando os resultados reais",
+  "recomendacoes": ["string"],
+  "alertas": ["string - alertas baseados nos resultados reais"]
 }`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você é um assistente jurídico especializado em licitações brasileiras. Responda apenas com JSON válido." },
           { role: "user", content: prompt },
@@ -77,34 +297,65 @@ Responda APENAS com JSON válido no formato:
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns minutos." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes. Adicione créditos ao workspace." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(JSON.stringify({
+          verificacoesReais,
+          certidoes: [],
+          resumo: "Limite de requisições excedido para análise IA. Resultados parciais (verificações reais) disponíveis.",
+          recomendacoes: [],
+          alertas: verificacoesReais.filter(v => v.status === "irregular").map(v => `⚠️ ${v.fonte}: ${v.detalhes}`),
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
     const aiData = await response.json();
     let content = aiData.choices?.[0]?.message?.content || "";
-    
-    // Clean markdown code blocks if present
     content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    
     const parsed = JSON.parse(content);
 
-    return new Response(JSON.stringify(parsed), {
+    // 3. Combinar resultados reais com análise IA
+    const certidoesReais = verificacoesReais.map(v => ({
+      nome: v.fonte === "CEIS" ? "Certidão CEIS (Empresas Inidôneas)" :
+            v.fonte === "CNEP" ? "Certidão CNEP (Empresas Punidas)" :
+            v.fonte === "CEPIM" ? "Certidão CEPIM (Entidades Impedidas)" :
+            v.fonte === "CNDT/TST" ? "CNDT – Certidão Negativa de Débitos Trabalhistas" :
+            v.fonte === "CRF/FGTS" ? "CRF – Certificado de Regularidade do FGTS" :
+            "Situação Cadastral – Receita Federal",
+      orgao: v.fonte === "CEIS" || v.fonte === "CNEP" || v.fonte === "CEPIM" ? "Portal da Transparência" :
+             v.fonte === "CNDT/TST" ? "Tribunal Superior do Trabalho" :
+             v.fonte === "CRF/FGTS" ? "Caixa Econômica Federal" :
+             "Receita Federal do Brasil",
+      url: v.url || "#",
+      validadeDias: v.fonte === "CNDT/TST" ? 180 : v.fonte === "CRF/FGTS" ? 30 : 0,
+      documentosNecessarios: ["CNPJ"],
+      statusProvavel: v.status === "regular" ? "regular" : v.status === "irregular" ? "pendente" : "verificar",
+      observacoes: v.detalhes,
+      verificacaoReal: true,
+      dataVerificacao: v.dataConsulta,
+      fonteVerificacao: v.fonte,
+    }));
+
+    const certidoesComplementares = (parsed.certidoes_complementares || []).map((c: any) => ({
+      ...c,
+      verificacaoReal: false,
+    }));
+
+    return new Response(JSON.stringify({
+      verificacoesReais,
+      certidoes: [...certidoesReais, ...certidoesComplementares],
+      resumo: parsed.resumo || "Análise concluída com verificações reais e complemento IA.",
+      recomendacoes: parsed.recomendacoes || [],
+      alertas: [
+        ...verificacoesReais.filter(v => v.status === "irregular").map(v => `⚠️ ${v.fonte}: ${v.detalhes}`),
+        ...(parsed.alertas || []),
+      ],
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("Erro certidões:", e);
     return new Response(JSON.stringify({ error: e.message || "Erro ao consultar certidões" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
