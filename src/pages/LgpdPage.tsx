@@ -27,7 +27,7 @@ export default function LgpdPage() {
           <section>
             <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">1. COMPROMISSO COM A LGPD</h2>
             <p className="text-sm text-muted-foreground">
-              A plataforma <strong>Praefectus</strong> está comprometida com a proteção dos dados pessoais de seus USUÁRIOS, em total conformidade com a <strong>Lei nº 13.709/2018</strong> (Lei Geral de Proteção de Dados Pessoais – LGPD), regulamentada pela Autoridade Nacional de Proteção de Dados (ANPD). Este documento descreve as práticas, mecanismos e garantias adotadas pela Plataforma para assegurar o tratamento lícito, adequado e transparente dos dados pessoais.
+               A <strong>PRAEFECTUS DADOS E CORPORATIVO LTDA</strong>, por meio da plataforma <strong>Praefectus</strong>, está comprometida com a proteção dos dados pessoais de seus USUÁRIOS, em total conformidade com a <strong>Lei nº 13.709/2018</strong> (Lei Geral de Proteção de Dados Pessoais – LGPD), regulamentada pela Autoridade Nacional de Proteção de Dados (ANPD). Este documento descreve as práticas, mecanismos e garantias adotadas pela Plataforma para assegurar o tratamento lícito, adequado e transparente dos dados pessoais.
             </p>
           </section>
 
