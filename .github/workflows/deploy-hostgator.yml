@@ -23,18 +23,6 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
-      # Deploy via FTP para HostGator
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./dist/
-          server-dir: ${{ secrets.FTP_SERVER_DIR || '/public_html/' }}
-          dangerous-clean-slate: false
-
-      # Criar .htaccess para SPA routing
       - name: Create .htaccess
         run: |
           cat > dist/.htaccess << 'EOF'
@@ -45,7 +33,14 @@ jobs:
           RewriteCond %{REQUEST_FILENAME} !-d
           RewriteRule . /index.html [L]
 
-          # Cache de assets estáticos
+          <IfModule mod_headers.c>
+            <FilesMatch "^(index\.html|sw\.js|registerSW\.js|manifest\.webmanifest)$">
+              Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+              Header set Pragma "no-cache"
+              Header set Expires "0"
+            </FilesMatch>
+          </IfModule>
+
           <IfModule mod_expires.c>
             ExpiresActive On
             ExpiresByType image/jpg "access plus 1 year"
@@ -59,8 +54,17 @@ jobs:
             ExpiresByType font/woff2 "access plus 1 year"
           </IfModule>
 
-          # Compressão GZIP
           <IfModule mod_deflate.c>
             AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
           </IfModule>
           EOF
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist/
+          server-dir: ${{ secrets.FTP_SERVER_DIR || '/public_html/' }}
+          dangerous-clean-slate: true
