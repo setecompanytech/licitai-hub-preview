@@ -203,6 +203,38 @@ export default function Documentos() {
       if (valDate < new Date()) newStatus = 'vencido';
     }
 
+    const { error: deleteDbError } = await supabase
+      .from('documentos')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('nome', documentos[idx].nome);
+
+    if (deleteDbError) {
+      toast.error('Erro ao atualizar cadastro do documento: ' + deleteDbError.message);
+      setUploadingIdx(null);
+      setPendingFile(null);
+      return;
+    }
+
+    const { error: insertDbError } = await supabase
+      .from('documentos')
+      .insert({
+        user_id: user.id,
+        nome: documentos[idx].nome,
+        tipo: documentos[idx].categoria,
+        descricao: `${documentos[idx].categoria} • ${documentos[idx].artigo}`,
+        arquivo_path: path,
+        validade: validadeStr,
+        tamanho_bytes: file.size,
+      });
+
+    if (insertDbError) {
+      toast.error('Erro ao salvar metadados do documento: ' + insertDbError.message);
+      setUploadingIdx(null);
+      setPendingFile(null);
+      return;
+    }
+
     setDocumentos(prev => prev.map((d, i) =>
       i === idx ? {
         ...d,
