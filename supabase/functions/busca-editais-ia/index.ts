@@ -738,9 +738,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`Busca IA: query="${query}" uf=${uf} portais=${portais.join(",")} modalidade=${modalidade}`);
+    const searchQuery = modo_cnae ? (cnaes.length > 0 ? cnaes[0] : query) : query;
+    console.log(`Busca IA: query="${searchQuery}" uf=${uf} portais=${portais.join(",")} modalidade=${modalidade} modo_cnae=${modo_cnae}`);
 
-    // ── Run searches in parallel ──────────────────────────────────────
+    // ── In CNAE mode, use 30-day window ──
+    const effectiveDataInicio = data_inicio || (modo_cnae ? new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0] : undefined);
+    const effectiveDataFim = data_fim || (modo_cnae ? new Date().toISOString().split("T")[0] : undefined);
     const promises: Promise<any[]>[] = [];
     const portalLabels: string[] = [];
 
