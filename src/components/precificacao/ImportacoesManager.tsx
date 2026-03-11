@@ -41,8 +41,8 @@ export default function ImportacoesManager() {
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
 
-  const downloadTemplate = () => {
-    const ws = XLSX.utils.json_to_sheet([{
+  const downloadTemplate = async () => {
+    await writeExcelFromJson('template-importacao-precos.xlsx', 'Template', [{
       source_name: 'Mercado Livre',
       supplier_name: 'Loja Exemplo',
       product_title: 'Notebook Dell Inspiron 15',
@@ -57,9 +57,6 @@ export default function ImportacoesManager() {
       product_url: 'https://www.mercadolivre.com.br/exemplo',
       collected_at: new Date().toISOString().split('T')[0],
     }]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Template');
-    XLSX.writeFile(wb, 'template-importacao-precos.xlsx');
     toast.success('Template baixado!');
   };
 
