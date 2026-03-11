@@ -233,24 +233,45 @@ function formatDatePNCP(date: Date): string {
 }
 
 // ── Relevance filter ──────────────────────────────────────────────────────
+function normalizeText(text: string): string {
+  return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ");
+}
+
 function calcularRelevancia(texto: string, query: string): number {
   if (!texto || !query) return 0;
-  const textoLower = texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const queryLower = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const textoNorm = normalizeText(texto);
+  const queryNorm = normalizeText(query);
 
-  // Check exact phrase match first
-  if (textoLower.includes(queryLower)) return 1.0;
+  // Exact phrase match = perfect score
+  if (textoNorm.includes(queryNorm)) return 1.0;
 
-  // Check individual words (skip very short ones and stop words)
-  const stopWords = new Set(["de", "do", "da", "dos", "das", "em", "no", "na", "nos", "nas", "para", "por", "com", "sem", "que", "uma", "uns", "um", "ao", "aos", "pela", "pelo", "entre", "sobre", "ate", "como", "mais", "este", "esta", "esse", "essa", "licitacao", "edital", "pregao", "eletronico"]);
-  const queryWords = queryLower.split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
-  if (queryWords.length === 0) return 0.5; // All stop words, can't filter
+  const stopWords = new Set([
+    "de", "do", "da", "dos", "das", "em", "no", "na", "nos", "nas",
+    "para", "por", "com", "sem", "que", "uma", "uns", "um", "ao", "aos",
+    "pela", "pelo", "entre", "sobre", "ate", "como", "mais", "este",
+    "esta", "esse", "essa", "licitacao", "edital", "pregao", "eletronico",
+    "aquisicao", "contratacao", "servico", "servicos", "fornecimento",
+    "registro", "precos", "preco", "ata", "objeto",
+  ]);
+  const queryWords = queryNorm.split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+  if (queryWords.length === 0) return 0.5; // All stop words — can't meaningfully filter
 
   let matched = 0;
+  // Also check partial/stem matches (e.g. "alimenticio" matches "alimenticios")
   for (const word of queryWords) {
-    if (textoLower.includes(word)) matched++;
+    const stem = word.length > 5 ? word.substring(0, word.length - 1) : word;
+    if (textoNorm.includes(word) || textoNorm.includes(stem)) matched++;
   }
-  return queryWords.length > 0 ? matched / queryWords.length : 0;
+
+  const ratio = matched / queryWords.length;
+
+  // For short queries (1-2 meaningful words), ALL words must match
+  if (queryWords.length <= 2) {
+    return matched === queryWords.length ? 1.0 : 0;
+  }
+
+  // For longer queries (3+ words), at least 60% must match
+  return ratio >= 0.6 ? ratio : 0;
 }
 
 // ── PNCP API (real data) ──────────────────────────────────────────────────
