@@ -1285,7 +1285,7 @@ export function generateOrganogramaPDF() {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.text('Praefectus', pageW / 2, y + 6.5, { align: 'center' });
+  doc.text('PRAEFECTUS', pageW / 2, y + 6.5, { align: 'center' });
   y += boxH + 4;
 
   // Group boxes
