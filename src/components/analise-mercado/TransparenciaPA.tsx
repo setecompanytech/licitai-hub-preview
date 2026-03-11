@@ -11,7 +11,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import { readExcelFile, writeExcelFromJson } from '@/lib/excel-utils';
 
 type EmpenhoData = {
   id?: string;
