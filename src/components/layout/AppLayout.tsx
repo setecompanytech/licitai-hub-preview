@@ -88,7 +88,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
         {/* Left: Logo + Nav */}
         <div className="flex items-center gap-4">
           {/* Logo first */}
-          <button onClick={() => navigate('/')} className="flex items-center gap-2 group">
+          <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 group">
             <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105">
               <Zap className="w-4 h-4 text-accent-foreground" />
             </div>
