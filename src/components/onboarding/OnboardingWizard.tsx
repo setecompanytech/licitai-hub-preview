@@ -14,7 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-const ONBOARDING_KEY = 'licitia_onboarding_done';
+const ONBOARDING_KEY = 'praefectus_onboarding_done';
 
 export function useOnboarding() {
   const [show, setShow] = useState(() => localStorage.getItem(ONBOARDING_KEY) !== 'true');
