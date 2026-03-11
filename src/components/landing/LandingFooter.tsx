@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import PraefectusLogo from '@/components/shared/PraefectusLogo';
 
 export default function LandingFooter() {
   const navigate = useNavigate();
