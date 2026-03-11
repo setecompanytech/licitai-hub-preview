@@ -25,19 +25,19 @@ export default function HeroSection() {
       <div className="max-w-7xl mx-auto px-6 py-28 lg:py-0 w-full relative z-10">
         <div className="max-w-2xl">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            {/* Urgency badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-accent/30 bg-accent/10 text-accent text-[12px] font-bold mb-8 tracking-wide uppercase animate-pulse-orange">
+            {/* Comfort badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-accent/30 bg-accent/10 text-accent text-[12px] font-bold mb-8 tracking-wide uppercase">
               <Zap className="w-3.5 h-3.5" />
-              7 dias grátis — Vagas limitadas
+              Experimente 7 dias gratuitos
             </div>
 
             <h1 className="text-4xl sm:text-5xl xl:text-[3.6rem] font-extrabold tracking-tight leading-[1.06] mb-6 text-white">
-              Pare de perder licitações.{' '}
-              <span className="text-accent">Comece a vencer.</span>
+              Descubra oportunidades que{' '}
+              <span className="text-accent">fazem seu negócio crescer.</span>
             </h1>
 
             <p className="text-base md:text-lg text-white/60 max-w-xl mb-8 leading-relaxed">
-              A plataforma que empresas usam para encontrar editais antes da concorrência, gerar propostas em minutos e disputar com inteligência artificial.
+              Uma plataforma acolhedora para encontrar editais alinhados ao seu perfil, preparar propostas com tranquilidade e participar de licitações com mais confiança.
             </p>
 
             <ul className="space-y-2.5 mb-10">
