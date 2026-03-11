@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, CheckCircle2, Zap } from 'lucide-react';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Zap, Wifi, CheckCircle2 } from 'lucide-react';
 
 import comprasnetLogo from '@/assets/portais/comprasnet.png';
 import bllLogo from '@/assets/portais/bll.png';
@@ -14,138 +14,127 @@ import comprasnetBahiaLogo from '@/assets/portais/comprasnet-bahia.png';
 import banparanetLogo from '@/assets/portais/banparanet.png';
 import comprasGovLogo from '@/assets/portais/compras-gov.png';
 
-type PortalEntry = { name: string; logo?: string; url: string; desc: string; status: string };
+type PortalEntry = { name: string; logo: string; desc: string };
 
-const portaisComLogo: PortalEntry[] = [
-  { name: 'PNCP', logo: comprasnetLogo, url: 'https://pncp.gov.br', desc: 'Portal Nacional de Contratações Públicas', status: 'Integração ativa' },
-  { name: 'Compras Gov', logo: comprasGovLogo, url: 'https://www.gov.br/compras', desc: 'Portal de Compras do Governo Federal', status: 'Integração ativa' },
-  { name: 'BLL Compras', logo: bllLogo, url: 'https://bll.org.br', desc: 'Maior plataforma privada de licitações', status: 'Integração ativa' },
-  { name: 'BEC/SP', logo: becLogo, url: 'https://www.bec.sp.gov.br', desc: 'Bolsa Eletrônica de Compras de São Paulo', status: 'Integração ativa' },
-  { name: 'BNC', logo: bncLogo, url: 'https://bnc.org.br', desc: 'Bolsa Nacional de Compras', status: 'Integração ativa' },
-  { name: 'Licitações-e', logo: licitacoesELogo, url: 'https://licitacoes-e2.bb.com.br', desc: 'Plataforma do Banco do Brasil', status: 'Integração ativa' },
-  { name: 'ComprasBR', logo: comprasbrLogo, url: 'https://comprasbr.com.br', desc: 'Plataforma de compras públicas eletrônicas', status: 'Integração ativa' },
-  { name: 'Portal de Compras', logo: portalComprasLogo, url: 'https://www.portaldecompraspublicas.com.br', desc: 'Portal de Compras Públicas', status: 'Integração ativa' },
-  { name: 'LicitaNet', logo: licitanetLogo, url: 'https://www.licitanet.com.br', desc: 'Plataforma de licitações eletrônicas', status: 'Integração ativa' },
-  { name: 'ComprasNet BA', logo: comprasnetBahiaLogo, url: 'https://www.comprasnet.ba.gov.br', desc: 'Portal de Compras da Bahia', status: 'Integração ativa' },
-  { name: 'Banparanet', logo: banparanetLogo, url: 'https://cotacao.banpara.b.br', desc: 'Portal do Estado do Pará', status: 'Integração ativa' },
+const portais: PortalEntry[] = [
+  { name: 'PNCP', logo: comprasnetLogo, desc: 'Portal Nacional de Contratações Públicas' },
+  { name: 'Compras Gov', logo: comprasGovLogo, desc: 'Portal de Compras do Governo Federal' },
+  { name: 'BLL Compras', logo: bllLogo, desc: 'Maior plataforma privada de licitações' },
+  { name: 'BEC/SP', logo: becLogo, desc: 'Bolsa Eletrônica de Compras de São Paulo' },
+  { name: 'BNC', logo: bncLogo, desc: 'Bolsa Nacional de Compras' },
+  { name: 'Licitações-e', logo: licitacoesELogo, desc: 'Plataforma do Banco do Brasil' },
+  { name: 'ComprasBR', logo: comprasbrLogo, desc: 'Plataforma de compras públicas eletrônicas' },
+  { name: 'Portal de Compras', logo: portalComprasLogo, desc: 'Portal de Compras Públicas' },
+  { name: 'LicitaNet', logo: licitanetLogo, desc: 'Plataforma de licitações eletrônicas' },
+  { name: 'ComprasNet BA', logo: comprasnetBahiaLogo, desc: 'Portal de Compras da Bahia' },
+  { name: 'Banparanet', logo: banparanetLogo, desc: 'Portal do Estado do Pará' },
 ];
-
-const duplicated = [...portaisComLogo, ...portaisComLogo];
 
 export default function LogoCloudSection() {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   return (
-    <section id="portais" className="py-16 md:py-20 px-6 bg-card border-y border-border/30 overflow-hidden">
-      <div className="max-w-7xl mx-auto">
+    <section id="portais" className="py-16 md:py-20 px-6 bg-[hsl(215,50%,8%)] overflow-hidden relative">
+      {/* Grid pattern overlay */}
+      <div
+        className="absolute inset-0 opacity-[0.04] pointer-events-none"
+        style={{
+          backgroundImage: 'linear-gradient(hsl(var(--accent)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--accent)) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+        }}
+      />
+
+      {/* Scan line animation */}
+      <motion.div
+        className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent pointer-events-none"
+        animate={{ top: ['0%', '100%'] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+      />
+
+      <div className="max-w-7xl mx-auto relative z-10">
         <div className="text-center mb-12">
-          <p className="section-label">Integrações Nativas</p>
-          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent/20 bg-accent/5 text-accent text-[11px] font-bold mb-4 tracking-widest uppercase">
+            <Wifi className="w-3 h-3" />
+            Integrações Ativas
+          </div>
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
             Conectado com <span className="text-accent">38 portais</span> de compras públicas
           </h2>
-          <p className="text-sm text-muted-foreground mt-2 max-w-lg mx-auto">
+          <p className="text-sm text-white/40 mt-2 max-w-lg mx-auto">
             Monitoramento automatizado em portais federais, estaduais e plataformas privadas homologadas.
           </p>
         </div>
-      </div>
 
-      <div ref={containerRef} className="relative">
-        {/* Fade edges */}
-        <div className="absolute left-0 top-0 bottom-0 w-20 md:w-32 z-10 pointer-events-none bg-gradient-to-r from-card to-transparent" />
-        <div className="absolute right-0 top-0 bottom-0 w-20 md:w-32 z-10 pointer-events-none bg-gradient-to-l from-card to-transparent" />
-
-        <div
-          className="flex gap-5 md:gap-6 py-4 animate-marquee hover:[animation-play-state:paused]"
-          style={{ width: 'max-content' }}
-        >
-          {duplicated.map((portal, i) => {
+        {/* Tech grid of portals */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
+          {portais.map((portal, i) => {
             const isHovered = hoveredIndex === i;
 
             return (
-              <a
-                key={`${portal.name}-${i}`}
-                href={portal.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-shrink-0 group relative"
+              <motion.div
+                key={portal.name}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05, duration: 0.4 }}
+                className="relative group cursor-default"
                 onMouseEnter={() => setHoveredIndex(i)}
                 onMouseLeave={() => setHoveredIndex(null)}
               >
-                <motion.div
-                  layout
-                  className={`relative flex items-center gap-3 rounded-xl border bg-background px-4 py-3 transition-all duration-300 cursor-pointer ${
+                <div
+                  className={`relative flex flex-col items-center justify-center gap-2.5 rounded-xl border p-4 h-[100px] transition-all duration-300 ${
                     isHovered
-                      ? 'border-accent/50 shadow-lg ring-1 ring-accent/20'
-                      : 'border-border/40 shadow-sm'
+                      ? 'border-accent/50 bg-accent/5 shadow-[0_0_20px_hsl(var(--accent)/0.15)]'
+                      : 'border-white/[0.06] bg-white/[0.02]'
                   }`}
-                  style={{ minWidth: isHovered ? 220 : 56 }}
                 >
-                  {/* Logo */}
-                  <div className={`flex-shrink-0 flex items-center justify-center transition-all duration-300 ${
-                    isHovered ? 'w-10 h-10' : 'w-10 h-10'
+                  {/* Status dot */}
+                  <div className={`absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
+                    isHovered ? 'bg-accent animate-pulse' : 'bg-emerald-500/60'
+                  }`} />
+
+                  <img
+                    src={portal.logo}
+                    alt={portal.name}
+                    className={`w-9 h-9 object-contain transition-all duration-300 ${
+                      isHovered ? 'brightness-110 scale-110' : 'brightness-90 opacity-70'
+                    }`}
+                    draggable={false}
+                  />
+
+                  <span className={`text-[10px] font-semibold text-center leading-tight transition-colors duration-300 ${
+                    isHovered ? 'text-white' : 'text-white/50'
                   }`}>
-                    {portal.logo ? (
-                      <img
-                        src={portal.logo}
-                        alt={portal.name}
-                        className={`object-contain transition-all duration-300 ${
-                          isHovered ? 'w-10 h-10' : 'w-9 h-9 opacity-70 group-hover:opacity-100'
-                        }`}
-                        draggable={false}
-                      />
-                    ) : (
-                      <Globe className="w-7 h-7 text-muted-foreground" />
-                    )}
-                  </div>
+                    {portal.name}
+                  </span>
 
-                  {/* Expanded info — slides in */}
-                  <AnimatePresence>
-                    {isHovered && (
-                      <motion.div
-                        initial={{ opacity: 0, width: 0 }}
-                        animate={{ opacity: 1, width: 'auto' }}
-                        exit={{ opacity: 0, width: 0 }}
-                        transition={{ duration: 0.25, ease: 'easeOut' }}
-                        className="overflow-hidden whitespace-nowrap"
-                      >
-                        <div className="flex flex-col pr-2">
-                          <span className="text-xs font-bold text-foreground leading-tight">
-                            {portal.name}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground leading-tight mt-0.5">
-                            {portal.desc}
-                          </span>
-                          <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-accent mt-1">
-                            <CheckCircle2 className="w-2.5 h-2.5" />
-                            {portal.status}
-                          </span>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Subtle glow on hover */}
+                  {/* Hover tooltip */}
                   {isHovered && (
                     <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="absolute inset-0 rounded-xl bg-accent/[0.03] pointer-events-none"
-                    />
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="absolute -bottom-12 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap px-3 py-1.5 rounded-md bg-foreground text-background text-[10px] font-medium shadow-lg"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        {portal.desc}
+                      </div>
+                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-foreground rotate-45" />
+                    </motion.div>
                   )}
-                </motion.div>
-              </a>
+                </div>
+              </motion.div>
             );
           })}
         </div>
-      </div>
 
-      {/* Counter badge */}
-      <div className="text-center mt-8">
-        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold">
-          <Zap className="w-3.5 h-3.5" />
-          + 28 portais estaduais e municipais integrados
-        </span>
+        {/* Counter badge */}
+        <div className="text-center mt-10">
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold">
+            <Zap className="w-3.5 h-3.5" />
+            + 28 portais estaduais e municipais integrados
+          </span>
+        </div>
       </div>
     </section>
   );
