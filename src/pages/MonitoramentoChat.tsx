@@ -7,12 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  MessageSquare, Bell, AlertTriangle, CheckCircle2, Clock,
-  Search, RefreshCw, Eye, Volume2, VolumeX, Filter, Play, Pause,
-  Megaphone, FileWarning, HelpCircle, FileEdit
+  MessageSquare, Bell, CheckCircle2, Clock,
+  Search, RefreshCw, Volume2, VolumeX, Play, Pause,
+  Megaphone, FileWarning, HelpCircle, FileEdit, Info
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import LicitacaoChat from '@/components/licitacoes/LicitacaoChat';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 // --- Sound Alert System ---
 function useSoundAlert() {
@@ -30,7 +32,6 @@ function useSoundAlert() {
       gainNode.connect(ctx.destination);
 
       if (type === 'convocacao') {
-        // Urgent triple beep
         oscillator.type = 'square';
         oscillator.frequency.setValueAtTime(880, ctx.currentTime);
         oscillator.frequency.setValueAtTime(1100, ctx.currentTime + 0.15);
@@ -40,7 +41,6 @@ function useSoundAlert() {
         oscillator.start(ctx.currentTime);
         oscillator.stop(ctx.currentTime + 0.5);
       } else if (type === 'alerta') {
-        // Double beep
         oscillator.type = 'sine';
         oscillator.frequency.setValueAtTime(660, ctx.currentTime);
         oscillator.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
@@ -49,7 +49,6 @@ function useSoundAlert() {
         oscillator.start(ctx.currentTime);
         oscillator.stop(ctx.currentTime + 0.3);
       } else {
-        // Single soft tone
         oscillator.type = 'sine';
         oscillator.frequency.setValueAtTime(520, ctx.currentTime);
         gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
@@ -65,111 +64,49 @@ function useSoundAlert() {
   return playAlert;
 }
 
-type MensagemChat = {
+type ChatMessage = {
   id: string;
-  pregaoNumero: string;
-  orgao: string;
-  portal: string;
-  tipo: 'sistema' | 'pregoeiro' | 'fornecedor' | 'convocacao';
-  remetente: string;
-  mensagem: string;
-  horario: string;
-  destaque: boolean;
-};
-
-type PregaoMonitorado = {
-  id: string;
-  numero: string;
-  orgao: string;
-  portal: string;
-  objeto: string;
-  status: 'ao_vivo' | 'encerrado' | 'suspenso' | 'agendado';
-  totalMensagens: number;
-  alertas: number;
-  ultimaAtualizacao: string;
-};
-
-type MuralItem = {
-  id: string;
-  pregaoNumero: string;
-  tipo: 'aviso' | 'esclarecimento' | 'impugnacao' | 'retificacao';
-  titulo: string;
-  conteudo: string;
-  dataPublicacao: string;
-  autor: string;
-};
-
-const mockMural: MuralItem[] = [];
-const mockPregoes: PregaoMonitorado[] = [];
-const mockMensagens: MensagemChat[] = [];
-
-const statusConfig = {
-  ao_vivo: { label: 'Ao Vivo', color: 'bg-destructive/15 text-destructive border-destructive/30', icon: Play },
-  encerrado: { label: 'Encerrado', color: 'bg-muted text-muted-foreground border-border', icon: CheckCircle2 },
-  suspenso: { label: 'Suspenso', color: 'bg-warning/15 text-warning border-warning/30', icon: Pause },
-  agendado: { label: 'Agendado', color: 'bg-info/15 text-info border-info/30', icon: Clock },
-};
-
-const tipoMsgConfig = {
-  sistema: 'text-muted-foreground bg-muted/50',
-  pregoeiro: 'text-info bg-info/10 border-l-4 border-info',
-  fornecedor: 'text-foreground bg-card',
-  convocacao: 'text-warning bg-warning/10 border-l-4 border-warning font-medium',
+  content: string;
+  role: string;
+  created_at: string;
+  metadata: any;
 };
 
 export default function MonitoramentoChat() {
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const licitacaoId = searchParams.get('lid');
   const licitacaoNumero = searchParams.get('num');
-  const [busca, setBusca] = useState('');
-  const [pregaoSelecionado, setPregaoSelecionado] = useState<string | null>('1');
   const [alertaSonoro, setAlertaSonoro] = useState(true);
-  const [autoRefresh, setAutoRefresh] = useState(true);
   const [mainTab, setMainTab] = useState(licitacaoId ? 'processo' : 'chat');
   const playAlert = useSoundAlert();
-  const prevMsgCountRef = useRef(mockMensagens.length);
 
-  // Play sound on new convocação messages when alertaSonoro is on
+  // Real chat messages from DB
+  const [mensagens, setMensagens] = useState<ChatMessage[]>([]);
+  const [loadingMensagens, setLoadingMensagens] = useState(false);
+
   useEffect(() => {
-    if (!alertaSonoro) return;
-    const pregaoAtivo = mockPregoes.find(p => p.id === pregaoSelecionado);
-    if (!pregaoAtivo) return;
-    
-    const mensagens = mockMensagens.filter(m => pregaoAtivo.numero === m.pregaoNumero);
-    const convocacoes = mensagens.filter(m => m.tipo === 'convocacao');
-    
-    if (convocacoes.length > 0 && mensagens.length > prevMsgCountRef.current) {
-      playAlert('convocacao');
-    }
-    prevMsgCountRef.current = mensagens.length;
-  }, [alertaSonoro, pregaoSelecionado, playAlert]);
+    if (!user) return;
+    const loadMessages = async () => {
+      setLoadingMensagens(true);
+      const { data } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      setMensagens(data || []);
+      setLoadingMensagens(false);
+    };
+    loadMessages();
+  }, [user]);
 
-  // Demo: play sound when toggling alertaSonoro ON
   const handleToggleSom = (checked: boolean) => {
     setAlertaSonoro(checked);
     if (checked) {
       setTimeout(() => playAlert('mensagem'), 100);
     }
   };
-
-  const muralTipoConfig = {
-    aviso: { icon: Megaphone, color: 'text-warning bg-warning/10 border-warning/30' },
-    esclarecimento: { icon: HelpCircle, color: 'text-info bg-info/10 border-info/30' },
-    impugnacao: { icon: FileWarning, color: 'text-destructive bg-destructive/10 border-destructive/30' },
-    retificacao: { icon: FileEdit, color: 'text-accent bg-accent/10 border-accent/30' },
-  };
-
-  const pregoesFiltrados = mockPregoes.filter(p =>
-    !busca || p.numero.toLowerCase().includes(busca.toLowerCase()) ||
-    p.orgao.toLowerCase().includes(busca.toLowerCase()) ||
-    p.objeto.toLowerCase().includes(busca.toLowerCase())
-  );
-
-  const mensagensFiltradas = mockMensagens.filter(m =>
-    !pregaoSelecionado || mockPregoes.find(p => p.id === pregaoSelecionado)?.numero === m.pregaoNumero
-  );
-
-  const pregaoAtivo = mockPregoes.find(p => p.id === pregaoSelecionado);
 
   return (
     <AppLayout>
@@ -186,17 +123,10 @@ export default function MonitoramentoChat() {
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Auto-refresh</span>
-              <Switch checked={autoRefresh} onCheckedChange={setAutoRefresh} />
-            </div>
-            <div className="flex items-center gap-2 text-sm">
               {alertaSonoro ? <Volume2 className="w-4 h-4 text-accent" /> : <VolumeX className="w-4 h-4 text-muted-foreground" />}
               <Switch checked={alertaSonoro} onCheckedChange={handleToggleSom} />
               <span className="text-xs text-muted-foreground">{alertaSonoro ? 'Som ativo' : 'Mudo'}</span>
             </div>
-            <Button size="sm" variant="outline">
-              <RefreshCw className="w-4 h-4 mr-1" /> Atualizar
-            </Button>
           </div>
         </div>
 
@@ -207,30 +137,6 @@ export default function MonitoramentoChat() {
             <span>Alertas sonoros ativados — você receberá notificações sonoras ao ser convocado ou quando houver mensagens urgentes</span>
           </div>
         )}
-
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-3">
-          <div className="stat-card text-center">
-            <Play className="w-5 h-5 mx-auto mb-1 text-destructive" />
-            <p className="text-lg font-bold">{mockPregoes.filter(p => p.status === 'ao_vivo').length}</p>
-            <p className="text-[10px] text-muted-foreground">Ao Vivo</p>
-          </div>
-          <div className="stat-card text-center">
-            <Clock className="w-5 h-5 mx-auto mb-1 text-info" />
-            <p className="text-lg font-bold">{mockPregoes.filter(p => p.status === 'agendado').length}</p>
-            <p className="text-[10px] text-muted-foreground">Agendados</p>
-          </div>
-          <div className="stat-card text-center">
-            <Bell className="w-5 h-5 mx-auto mb-1 text-warning" />
-            <p className="text-lg font-bold">{mockPregoes.reduce((a, p) => a + p.alertas, 0)}</p>
-            <p className="text-[10px] text-muted-foreground">Alertas</p>
-          </div>
-          <div className="stat-card text-center">
-            <MessageSquare className="w-5 h-5 mx-auto mb-1 text-accent" />
-            <p className="text-lg font-bold">{mockPregoes.reduce((a, p) => a + p.totalMensagens, 0)}</p>
-            <p className="text-[10px] text-muted-foreground">Mensagens</p>
-          </div>
-        </div>
 
         <Tabs value={mainTab} onValueChange={setMainTab}>
           <TabsList>
@@ -259,147 +165,66 @@ export default function MonitoramentoChat() {
           )}
 
           <TabsContent value="chat">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Left: Lista de pregões */}
-              <div className="space-y-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input placeholder="Buscar pregão..." value={busca} onChange={e => setBusca(e.target.value)} className="pl-10" />
-                </div>
-                <div className="space-y-2 max-h-[calc(100vh-440px)] overflow-y-auto pr-1">
-                  {pregoesFiltrados.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                      <p className="text-sm">Nenhum pregão monitorado</p>
-                      <p className="text-xs mt-1">Os pregões aparecerão aqui quando você iniciar o monitoramento em tempo real.</p>
-                    </div>
-                  )}
-                  {pregoesFiltrados.map(pregao => {
-                    const cfg = statusConfig[pregao.status];
-                    const Icon = cfg.icon;
-                    return (
-                      <button
-                        key={pregao.id}
-                        onClick={() => setPregaoSelecionado(pregao.id)}
-                        className={`w-full text-left bg-card rounded-xl border p-3 shadow-sm hover:shadow-md transition-shadow ${pregaoSelecionado === pregao.id ? 'ring-2 ring-accent border-accent/50' : 'border-border/50'}`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-semibold text-sm">{pregao.numero}</span>
-                          <Badge variant="outline" className={cfg.color + ' text-[10px]'}>
-                            <Icon className="w-3 h-3 mr-1" /> {cfg.label}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate">{pregao.objeto}</p>
-                        <div className="flex items-center justify-between mt-2 text-[10px] text-muted-foreground">
-                          <span>{pregao.orgao}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="flex items-center gap-0.5"><MessageSquare className="w-3 h-3" /> {pregao.totalMensagens}</span>
-                            {pregao.alertas > 0 && (
-                              <span className="flex items-center gap-0.5 text-warning"><Bell className="w-3 h-3" /> {pregao.alertas}</span>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
+            <div className="space-y-4">
+              {/* Info banner */}
+              <div className="flex items-start gap-3 p-4 rounded-lg border border-info/30 bg-info/5">
+                <Info className="w-5 h-5 text-info flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-info">Chat em Tempo Real de Pregões</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    O chat ao vivo será ativado automaticamente quando você estiver participando de um pregão eletrônico.
+                    Para monitorar um pregão, acesse o <strong>Kanban</strong> ou a <strong>Busca Inteligente</strong> e inicie o acompanhamento de uma licitação.
+                  </p>
                 </div>
               </div>
 
-              {/* Right: Chat */}
-              <div className="lg:col-span-2">
-                {pregaoAtivo ? (
-                  <Card className="p-0 overflow-hidden">
-                    <div className="bg-card border-b border-border/50 p-4 flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-sm">{pregaoAtivo.numero}</h3>
-                          <Badge variant="outline" className={statusConfig[pregaoAtivo.status].color + ' text-[10px]'}>
-                            {statusConfig[pregaoAtivo.status].label}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">• {pregaoAtivo.portal}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{pregaoAtivo.orgao} — {pregaoAtivo.objeto}</p>
+              {/* Recent messages from DB */}
+              {mensagens.length > 0 ? (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground">Últimas mensagens do assistente</h3>
+                  {mensagens.slice(0, 10).map(msg => (
+                    <Card key={msg.id} className="p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <Badge variant="outline" className="text-[10px]">{msg.role === 'user' ? 'Você' : 'Assistente'}</Badge>
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(msg.created_at).toLocaleString('pt-BR')}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" variant="outline" onClick={() => { if (alertaSonoro) playAlert('convocacao'); }}>
-                          <Volume2 className="w-3 h-3 mr-1" /> Testar Som
-                        </Button>
-                        <Button size="sm" variant="outline"><Eye className="w-3 h-3 mr-1" /> Ver no Portal</Button>
-                      </div>
-                    </div>
-
-                    <div className="p-4 space-y-3 max-h-[calc(100vh-500px)] overflow-y-auto bg-muted/30">
-                      {mensagensFiltradas.length > 0 ? mensagensFiltradas.map(msg => (
-                        <div key={msg.id} className={`rounded-lg p-3 text-sm ${tipoMsgConfig[msg.tipo]}`}>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-medium text-xs flex items-center gap-1.5">
-                              {msg.tipo === 'convocacao' && <Volume2 className="w-3 h-3 text-warning animate-pulse" />}
-                              {msg.remetente}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground">{msg.horario}</span>
-                          </div>
-                          <p className="text-sm">{msg.mensagem}</p>
-                        </div>
-                      )) : (
-                        <div className="text-center py-12 text-muted-foreground">
-                          <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                          <p className="text-sm">Nenhuma mensagem ainda neste pregão.</p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="border-t border-border/50 p-3 bg-card text-xs text-muted-foreground flex items-center justify-between">
-                      <span>Última atualização: {pregaoAtivo.ultimaAtualizacao}</span>
-                      <span>{pregaoAtivo.totalMensagens} mensagens • {pregaoAtivo.alertas} alertas</span>
-                    </div>
-                  </Card>
-                ) : (
-                  <div className="flex items-center justify-center h-64 text-muted-foreground">
-                    <div className="text-center">
-                      <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                      <p className="text-sm">Selecione um pregão para visualizar o chat</p>
-                    </div>
-                  </div>
-                )}
-              </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{msg.content}</p>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">Nenhum pregão monitorado no momento</p>
+                  <p className="text-xs mt-1">
+                    Os pregões aparecerão aqui quando você iniciar o monitoramento em tempo real via Kanban ou Busca Inteligente.
+                  </p>
+                </div>
+              )}
             </div>
           </TabsContent>
 
           <TabsContent value="mural">
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Avisos, esclarecimentos, impugnações e retificações publicados nos portais de compras.
-              </p>
-              {mockMural.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Megaphone className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">Nenhuma publicação no mural</p>
-                  <p className="text-xs mt-1">Avisos, esclarecimentos e retificações aparecerão aqui quando detectados nos portais.</p>
+              {/* Info banner */}
+              <div className="flex items-start gap-3 p-4 rounded-lg border border-info/30 bg-info/5">
+                <Info className="w-5 h-5 text-info flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-info">Mural de Publicações</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Avisos, esclarecimentos, impugnações e retificações publicados nos portais serão exibidos aqui automaticamente 
+                    quando você estiver acompanhando processos licitatórios ativos.
+                  </p>
                 </div>
-              ) : mockMural.map(item => {
-                const cfg = muralTipoConfig[item.tipo];
-                const Icon = cfg.icon;
-                return (
-                  <Card key={item.id} className={`p-4 border-l-4 ${cfg.color}`}>
-                    <div className="flex items-start gap-3">
-                      <Icon className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm">{item.titulo}</span>
-                            <Badge variant="outline" className="text-[10px]">{item.pregaoNumero}</Badge>
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(item.dataPublicacao).toLocaleString('pt-BR')}
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground leading-relaxed">{item.conteudo}</p>
-                        <p className="text-xs text-muted-foreground mt-2">Por: {item.autor}</p>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })}
+              </div>
+
+              <div className="text-center py-12 text-muted-foreground">
+                <Megaphone className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">Nenhuma publicação no mural</p>
+                <p className="text-xs mt-1">Avisos, esclarecimentos e retificações aparecerão aqui quando detectados nos portais dos processos que você acompanha.</p>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
