@@ -87,12 +87,16 @@ export default function Documentos() {
     const syncFromDB = async () => {
       const { data } = await supabase
         .from('documentos')
-        .select('nome, validade, arquivo_path')
+        .select('id, nome, validade, arquivo_path')
         .eq('user_id', user.id);
       if (!data) return;
-      setDocumentos(prev => prev.map(doc => {
-        const match = data.find(d => d.nome === doc.nome);
-        if (match) {
+      setDocumentos(
+        checklistDocumentos.map((doc) => {
+          const match = data.find((d) => d.nome === doc.nome);
+          if (!match) {
+            return { ...doc, status: 'ausente' as DocStatus, validade: undefined, arquivo: undefined, storagePath: undefined };
+          }
+
           const hoje = new Date();
           const validade = match.validade ? new Date(match.validade) : null;
           let status: DocStatus = 'ok';
@@ -101,10 +105,16 @@ export default function Documentos() {
             const diff = (validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24);
             if (diff <= 30) status = 'pendente';
           }
-          return { ...doc, status, validade: match.validade || undefined, arquivo: match.arquivo_path || undefined, storagePath: match.arquivo_path || undefined };
-        }
-        return doc;
-      }));
+
+          return {
+            ...doc,
+            status,
+            validade: match.validade || undefined,
+            arquivo: match.arquivo_path || undefined,
+            storagePath: match.arquivo_path || undefined,
+          };
+        })
+      );
     };
     syncFromDB();
 
@@ -191,6 +201,38 @@ export default function Documentos() {
     if (validadeStr) {
       const valDate = new Date(validadeStr);
       if (valDate < new Date()) newStatus = 'vencido';
+    }
+
+    const { error: deleteDbError } = await supabase
+      .from('documentos')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('nome', documentos[idx].nome);
+
+    if (deleteDbError) {
+      toast.error('Erro ao atualizar cadastro do documento: ' + deleteDbError.message);
+      setUploadingIdx(null);
+      setPendingFile(null);
+      return;
+    }
+
+    const { error: insertDbError } = await supabase
+      .from('documentos')
+      .insert({
+        user_id: user.id,
+        nome: documentos[idx].nome,
+        tipo: documentos[idx].categoria,
+        descricao: `${documentos[idx].categoria} • ${documentos[idx].artigo}`,
+        arquivo_path: path,
+        validade: validadeStr,
+        tamanho_bytes: file.size,
+      });
+
+    if (insertDbError) {
+      toast.error('Erro ao salvar metadados do documento: ' + insertDbError.message);
+      setUploadingIdx(null);
+      setPendingFile(null);
+      return;
     }
 
     setDocumentos(prev => prev.map((d, i) =>
@@ -288,8 +330,20 @@ export default function Documentos() {
       }
     }
 
+    const { error: deleteDbError } = await supabase
+      .from('documentos')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('nome', doc.nome);
+
+    if (deleteDbError) {
+      toast.error('Erro ao remover cadastro: ' + deleteDbError.message);
+      setRemovingIdx(null);
+      return;
+    }
+
     setDocumentos(prev => prev.map((d, i) =>
-      i === globalIdx ? { ...d, arquivo: undefined, storagePath: undefined, status: 'pendente' as DocStatus } : d
+      i === globalIdx ? { ...d, arquivo: undefined, storagePath: undefined, validade: undefined, status: 'ausente' as DocStatus } : d
     ));
 
     toast.success(`"${doc.nome}" removido.`);

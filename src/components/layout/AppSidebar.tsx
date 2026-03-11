@@ -53,7 +53,7 @@ const navGroups: NavGroup[] = [
   {
     title: 'Painel',
     items: [
-      { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+      { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
       { icon: BarChart3, label: 'Analytics', path: '/analytics' },
     ],
   },
