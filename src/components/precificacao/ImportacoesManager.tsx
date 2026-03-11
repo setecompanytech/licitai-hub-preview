@@ -11,7 +11,7 @@ import {
   Upload, FileSpreadsheet, Loader2, CheckCircle, AlertTriangle, Download, Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import { writeExcelFromJson, readExcelFile } from '@/lib/excel-utils';
 
 type ImportResult = {
   total: number;
