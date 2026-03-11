@@ -435,7 +435,7 @@ async function buscarComFirecrawl(
         calcularRelevancia(description, query),
         calcularRelevancia(markdown.substring(0, 500), query)
       );
-      if (relevancia < 0.3) continue; // Skip irrelevant
+      if (relevancia <= 0) continue; // Skip irrelevant — strict matching
 
       // Extract value if present
       let valor: number | null = null;
