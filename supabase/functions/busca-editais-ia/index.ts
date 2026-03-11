@@ -408,6 +408,14 @@ async function buscarComFirecrawl(
       const url = result.url || "";
       const markdown = result.markdown || "";
 
+      // ── RELEVANCE FILTER for Firecrawl results ──
+      const relevancia = Math.max(
+        calcularRelevancia(title, query),
+        calcularRelevancia(description, query),
+        calcularRelevancia(markdown.substring(0, 500), query)
+      );
+      if (relevancia < 0.3) continue; // Skip irrelevant
+
       // Extract value if present
       let valor: number | null = null;
       const valorMatch = (markdown + description).match(/R\$\s*([\d.,]+)/);
