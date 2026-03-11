@@ -24,7 +24,7 @@ export function getUtmParams(): UtmParams {
 export function storeUtmParams() {
   const utm = getUtmParams();
   if (utm.utm_source || utm.utm_medium || utm.utm_campaign) {
-    sessionStorage.setItem('licitia_utm', JSON.stringify(utm));
+    sessionStorage.setItem('praefectus_utm', JSON.stringify(utm));
   }
 }
 
