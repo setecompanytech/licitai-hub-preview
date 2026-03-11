@@ -87,12 +87,16 @@ export default function Documentos() {
     const syncFromDB = async () => {
       const { data } = await supabase
         .from('documentos')
-        .select('nome, validade, arquivo_path')
+        .select('id, nome, validade, arquivo_path')
         .eq('user_id', user.id);
       if (!data) return;
-      setDocumentos(prev => prev.map(doc => {
-        const match = data.find(d => d.nome === doc.nome);
-        if (match) {
+      setDocumentos(
+        checklistDocumentos.map((doc) => {
+          const match = data.find((d) => d.nome === doc.nome);
+          if (!match) {
+            return { ...doc, status: 'ausente' as DocStatus, validade: undefined, arquivo: undefined, storagePath: undefined };
+          }
+
           const hoje = new Date();
           const validade = match.validade ? new Date(match.validade) : null;
           let status: DocStatus = 'ok';
@@ -101,10 +105,16 @@ export default function Documentos() {
             const diff = (validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24);
             if (diff <= 30) status = 'pendente';
           }
-          return { ...doc, status, validade: match.validade || undefined, arquivo: match.arquivo_path || undefined, storagePath: match.arquivo_path || undefined };
-        }
-        return doc;
-      }));
+
+          return {
+            ...doc,
+            status,
+            validade: match.validade || undefined,
+            arquivo: match.arquivo_path || undefined,
+            storagePath: match.arquivo_path || undefined,
+          };
+        })
+      );
     };
     syncFromDB();
 
