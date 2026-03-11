@@ -732,6 +732,7 @@ Deno.serve(async (req) => {
       limite = 30,
       modo_cnae = false,
       cnaes = [],
+      municipio_sede,
     } = body;
 
     // In CNAE mode, we don't require a text query — we search by CNAE class codes
@@ -840,11 +841,22 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── Sort: prioritize items with download available ────────────
+    // ── Sort: prioritize metropolitan region of company sede, then download ──
+    const sedeUf = uf || "";
+    const sedeMunicipio = (municipio_sede || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
     allItems.sort((a, b) => {
+      // If in CNAE mode with UF, prioritize items from the same municipality first
+      if (modo_cnae && sedeMunicipio) {
+        const aMun = (a.municipio || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const bMun = (b.municipio || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const aMatch = aMun.includes(sedeMunicipio) || sedeMunicipio.includes(aMun);
+        const bMatch = bMun.includes(sedeMunicipio) || sedeMunicipio.includes(bMun);
+        if (aMatch && !bMatch) return -1;
+        if (!aMatch && bMatch) return 1;
+      }
       if (a.download_disponivel && !b.download_disponivel) return -1;
       if (!a.download_disponivel && b.download_disponivel) return 1;
-      // Secondary: PNCP first, then enriched, then others
       if (a.portal === "PNCP" && b.portal !== "PNCP") return -1;
       if (a.portal !== "PNCP" && b.portal === "PNCP") return 1;
       return 0;

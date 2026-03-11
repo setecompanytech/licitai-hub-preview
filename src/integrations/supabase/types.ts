@@ -723,13 +723,20 @@ export type Database = {
       }
       configuracoes: {
         Row: {
+          alerta_email: boolean | null
+          alerta_sistema: boolean | null
+          alerta_whatsapp: boolean | null
           cnaes_monitorados: string[] | null
           created_at: string
           id: string
+          municipio_sede: string | null
           municipios_interesse: string[] | null
           notificacoes_email: boolean | null
           notificacoes_push: boolean | null
           palavras_chave: string[] | null
+          priorizar_regiao_sede: boolean | null
+          segmentos_prioridade: string[] | null
+          uf_sede: string | null
           ufs_interesse: string[] | null
           updated_at: string
           user_id: string
@@ -737,13 +744,20 @@ export type Database = {
           valor_minimo: number | null
         }
         Insert: {
+          alerta_email?: boolean | null
+          alerta_sistema?: boolean | null
+          alerta_whatsapp?: boolean | null
           cnaes_monitorados?: string[] | null
           created_at?: string
           id?: string
+          municipio_sede?: string | null
           municipios_interesse?: string[] | null
           notificacoes_email?: boolean | null
           notificacoes_push?: boolean | null
           palavras_chave?: string[] | null
+          priorizar_regiao_sede?: boolean | null
+          segmentos_prioridade?: string[] | null
+          uf_sede?: string | null
           ufs_interesse?: string[] | null
           updated_at?: string
           user_id: string
@@ -751,13 +765,20 @@ export type Database = {
           valor_minimo?: number | null
         }
         Update: {
+          alerta_email?: boolean | null
+          alerta_sistema?: boolean | null
+          alerta_whatsapp?: boolean | null
           cnaes_monitorados?: string[] | null
           created_at?: string
           id?: string
+          municipio_sede?: string | null
           municipios_interesse?: string[] | null
           notificacoes_email?: boolean | null
           notificacoes_push?: boolean | null
           palavras_chave?: string[] | null
+          priorizar_regiao_sede?: boolean | null
+          segmentos_prioridade?: string[] | null
+          uf_sede?: string | null
           ufs_interesse?: string[] | null
           updated_at?: string
           user_id?: string
