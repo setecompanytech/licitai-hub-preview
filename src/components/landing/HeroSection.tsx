@@ -75,7 +75,7 @@ export default function HeroSection() {
 
             {/* Social proof micro */}
             <div className="flex items-center gap-3 text-white/40 text-xs mb-16">
-              <span>+500 empresas já utilizam o Praefectus</span>
+              <span>+500 empresas já utilizam o PRAEFECTUS</span>
             </div>
           </motion.div>
         </div>
