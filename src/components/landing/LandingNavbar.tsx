@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
+import PraefectusLogo from '@/components/shared/PraefectusLogo';
 
 export default function LandingNavbar() {
   const navigate = useNavigate();
@@ -31,14 +32,7 @@ export default function LandingNavbar() {
     }`}>
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <a href="#" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">P</span>
-          </div>
-          <span className={`text-xl font-brand font-bold tracking-[0.2em] uppercase transition-colors duration-300 ${
-            scrolled ? 'text-foreground' : 'text-white'
-          }`}>
-            PRAEFECTUS
-          </span>
+          <PraefectusLogo size="md" variant={scrolled ? 'default' : 'light'} />
         </a>
 
         <div className="hidden lg:flex items-center gap-1">

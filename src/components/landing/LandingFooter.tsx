@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import PraefectusLogo from '@/components/shared/PraefectusLogo';
 
 export default function LandingFooter() {
   const navigate = useNavigate();
@@ -27,10 +28,7 @@ export default function LandingFooter() {
       <div className="max-w-7xl mx-auto grid md:grid-cols-5 gap-10">
         <div className="md:col-span-2">
           <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">P</span>
-            </div>
-            <span className="text-lg font-brand font-bold tracking-widest uppercase">PRAEFECTUS</span>
+            <PraefectusLogo size="md" />
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mb-3">
             Plataforma de gestão e monitoramento de licitações públicas com IA. Integrada com 38 portais em 27 estados.

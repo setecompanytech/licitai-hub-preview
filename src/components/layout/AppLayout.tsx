@@ -1,4 +1,5 @@
 import { ReactNode, useState, useEffect, forwardRef, useRef } from 'react';
+import PraefectusLogo from '@/components/shared/PraefectusLogo';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppTopNav from './AppTopNav';
@@ -89,12 +90,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
         <div className="flex items-center gap-4">
           {/* Logo first */}
           <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105">
-              <Zap className="w-4 h-4 text-accent-foreground" />
-            </div>
-            <span className="text-base font-brand font-bold tracking-widest uppercase hidden sm:inline">
-              PRAEFECTUS
-            </span>
+            <PraefectusLogo size="sm" />
           </button>
 
           {/* Navigation */}

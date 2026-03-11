@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Check, User, Building2, Settings, BarChart3, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import PraefectusLogo from '@/components/shared/PraefectusLogo';
 
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
 
@@ -111,8 +112,8 @@ export default function Cadastro() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex flex-col items-center justify-center p-4">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 text-center">
-        <Link to="/" className="text-2xl font-brand font-bold tracking-widest uppercase text-foreground">
-          PRAEFECTUS
+        <Link to="/">
+          <PraefectusLogo size="lg" />
         </Link>
         <p className="text-sm text-muted-foreground mt-2">
           Experimente todas as ferramentas por <strong className="text-foreground">7 dias gratuitos</strong>
