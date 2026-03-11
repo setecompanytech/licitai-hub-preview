@@ -256,15 +256,17 @@ export default function LicitacoesEstrategicas() {
                 </Button>
               </div>
               {/* Atalhos rápidos */}
-              <div className="flex flex-wrap gap-1.5 mt-3">
-                <span className="text-[10px] text-muted-foreground mr-1 self-center">Atalhos:</span>
-                {[...new Set(mockEstrategicas.map(l => l.orgao))].map(org => (
-                  <Button key={org} variant="ghost" size="sm" className="h-6 text-[10px] px-2"
-                    onClick={() => { setCapagOrgaoInput(org); setCapagOrgao({ orgao: org, uf: capagUf || undefined, municipio: capagMunicipio || undefined }); }}>
-                    {org}
-                  </Button>
-                ))}
-              </div>
+              {mockEstrategicas.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  <span className="text-[10px] text-muted-foreground mr-1 self-center">Atalhos:</span>
+                  {[...new Set(mockEstrategicas.map(l => l.orgao))].map(org => (
+                    <Button key={org} variant="ghost" size="sm" className="h-6 text-[10px] px-2"
+                      onClick={() => { setCapagOrgaoInput(org); setCapagOrgao({ orgao: org, uf: capagUf || undefined, municipio: capagMunicipio || undefined }); }}>
+                      {org}
+                    </Button>
+                  ))}
+                </div>
+              )}
             </Card>
 
             {/* Resultado */}
