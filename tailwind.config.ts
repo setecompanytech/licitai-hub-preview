@@ -14,9 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Outfit", "system-ui", "sans-serif"],
+        sans: ["DM Sans", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
-        brand: ["Cormorant Garamond", "Georgia", "serif"],
+        brand: ["Cinzel", "Georgia", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
