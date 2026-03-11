@@ -70,7 +70,7 @@ export default function LicitacoesEstrategicas() {
     });
   };
 
-  const filtradas = mockEstrategicas.filter(l => filtro === 'todas' || l.recomendacao === filtro);
+  const filtradas = estrategicas.filter(l => filtro === 'todas' || l.recomendacao === filtro);
 
   return (
     <AppLayout>
