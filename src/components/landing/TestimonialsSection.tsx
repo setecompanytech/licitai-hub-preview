@@ -51,7 +51,7 @@ export default function TestimonialsSection() {
               Empresas que <span className="text-accent">transformaram</span> seus resultados
             </h2>
             <p className="text-base text-muted-foreground max-w-xl mx-auto mt-4">
-              Veja como profissionais reais estão vencendo mais licitações com o Praefectus.
+              Veja como profissionais reais estão vencendo mais licitações com o PRAEFECTUS.
             </p>
           </motion.div>
         </div>

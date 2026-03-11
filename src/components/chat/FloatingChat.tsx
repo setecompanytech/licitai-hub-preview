@@ -138,7 +138,7 @@ export default function FloatingChat({ isLanding = false }: FloatingChatProps) {
                   <Bot className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold leading-none">Lia — Assistente Praefectus</p>
+                  <p className="text-sm font-semibold leading-none">Lia — Assistente PRAEFECTUS</p>
                   <p className="text-[10px] opacity-80 mt-0.5">Online • Resposta instantânea</p>
                 </div>
               </div>
