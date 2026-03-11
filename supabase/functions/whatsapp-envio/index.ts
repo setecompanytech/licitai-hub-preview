@@ -28,15 +28,35 @@ serve(async (req) => {
   }
 
   try {
+    // Auth check — extract user_id from JWT, never from body
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const user_id = user.id;
+
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { telefone, setor, user_id, tipo = "alerta", mensagem_custom }: WhatsAppRequest = await req.json();
+    const { telefone, setor, tipo = "alerta", mensagem_custom }: Omit<WhatsAppRequest, 'user_id'> = await req.json();
 
-    if (!telefone || !setor || !user_id) {
+    if (!telefone || !setor) {
       return new Response(
-        JSON.stringify({ error: "telefone, setor e user_id são obrigatórios" }),
+        JSON.stringify({ error: "telefone e setor são obrigatórios" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
