@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import { writeExcelFile, readExcelAsArrays } from '@/lib/excel-utils';
 import type { EditalItem } from './EditalUploader';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 
