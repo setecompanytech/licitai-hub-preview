@@ -338,8 +338,8 @@ async function buscarPNCP(params: {
         const relevanciaOrgao = calcularRelevancia(orgaoNome, params.query);
         const relevancia = Math.max(relevanciaObjeto, relevanciaOrgao);
 
-        if (relevancia < 0.3) {
-          continue; // Skip irrelevant results
+        if (relevancia <= 0) {
+          continue; // Skip irrelevant results — strict matching
         }
 
         const cnpjOrgao = item.orgaoEntidade?.cnpj || "";
