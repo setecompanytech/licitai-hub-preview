@@ -283,6 +283,7 @@ async function buscarPNCP(params: {
   dataFim?: string;
   cnpj?: string;
   limite?: number;
+  skipRelevanceFilter?: boolean;
 }): Promise<any[]> {
   const resultados: any[] = [];
   const now = new Date();
@@ -333,13 +334,15 @@ async function buscarPNCP(params: {
         const objetoCompra = item.objetoCompra || "";
         const orgaoNome = item.orgaoEntidade?.razaoSocial || item.unidadeOrgao?.nomeUnidade || "";
 
-        // ── RELEVANCE FILTER: skip items that don't match the query ──
-        const relevanciaObjeto = calcularRelevancia(objetoCompra, params.query);
-        const relevanciaOrgao = calcularRelevancia(orgaoNome, params.query);
-        const relevancia = Math.max(relevanciaObjeto, relevanciaOrgao);
+        // ── RELEVANCE FILTER: skip items that don't match the query (unless CNAE mode) ──
+        if (!params.skipRelevanceFilter) {
+          const relevanciaObjeto = calcularRelevancia(objetoCompra, params.query);
+          const relevanciaOrgao = calcularRelevancia(orgaoNome, params.query);
+          const relevancia = Math.max(relevanciaObjeto, relevanciaOrgao);
 
-        if (relevancia <= 0) {
-          continue; // Skip irrelevant results — strict matching
+          if (relevancia <= 0) {
+            continue; // Skip irrelevant results — strict matching
+          }
         }
 
         const cnpjOrgao = item.orgaoEntidade?.cnpj || "";
@@ -369,7 +372,7 @@ async function buscarPNCP(params: {
           numero: item.numeroCompra || item.numeroControlePNCP || "",
           fonte_real: true,
           tem_download: !!(cnpjOrgao && anoCompra && seqCompra),
-          _relevancia: relevancia,
+          _relevancia: params.skipRelevanceFilter ? 1.0 : (Math.max(calcularRelevancia(objetoCompra, params.query), calcularRelevancia(orgaoNome, params.query)) || 1.0),
         });
       }
     } catch (e) {
@@ -727,17 +730,23 @@ Deno.serve(async (req) => {
       cnpj,
       com_analise_ia = true,
       limite = 30,
+      modo_cnae = false,
+      cnaes = [],
     } = body;
 
-    if (!query || query.trim().length < 2) {
+    // In CNAE mode, we don't require a text query — we search by CNAE class codes
+    if (!modo_cnae && (!query || query.trim().length < 2)) {
       return new Response(JSON.stringify({ error: "Informe um termo de busca" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log(`Busca IA: query="${query}" uf=${uf} portais=${portais.join(",")} modalidade=${modalidade}`);
+    const searchQuery = modo_cnae ? (cnaes.length > 0 ? cnaes[0] : query) : query;
+    console.log(`Busca IA: query="${searchQuery}" uf=${uf} portais=${portais.join(",")} modalidade=${modalidade} modo_cnae=${modo_cnae}`);
 
-    // ── Run searches in parallel ──────────────────────────────────────
+    // ── In CNAE mode, use 30-day window ──
+    const effectiveDataInicio = data_inicio || (modo_cnae ? new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0] : undefined);
+    const effectiveDataFim = data_fim || (modo_cnae ? new Date().toISOString().split("T")[0] : undefined);
     const promises: Promise<any[]>[] = [];
     const portalLabels: string[] = [];
 
@@ -751,17 +760,32 @@ Deno.serve(async (req) => {
       return PORTAIS_BLOQUEADOS.has(mapped);
     });
 
-    // Always search PNCP (real API) — also auto-include when blocked portals are selected
-    if (portais.includes("pncp") || portais.includes("todos") || temPortalBloqueado) {
-      promises.push(buscarPNCP({ query, uf, modalidade, dataInicio: data_inicio, dataFim: data_fim, cnpj, limite }));
+    // In CNAE mode, run multiple searches — one for each CNAE code
+    if (modo_cnae && cnaes.length > 0) {
+      for (const cnaeCode of cnaes.slice(0, 5)) {
+        promises.push(buscarPNCP({
+          query: cnaeCode,
+          uf,
+          modalidade,
+          dataInicio: effectiveDataInicio,
+          dataFim: effectiveDataFim,
+          cnpj,
+          limite: Math.ceil(limite / Math.min(cnaes.length, 5)),
+          skipRelevanceFilter: true,
+        }));
+      }
+      portalLabels.push("PNCP");
+    } else if (portais.includes("pncp") || portais.includes("todos") || temPortalBloqueado) {
+      // Always search PNCP (real API) — also auto-include when blocked portals are selected
+      promises.push(buscarPNCP({ query: searchQuery, uf, modalidade, dataInicio: effectiveDataInicio, dataFim: effectiveDataFim, cnpj, limite }));
       portalLabels.push("PNCP");
       if (temPortalBloqueado && !portais.includes("pncp")) {
         console.log("PNCP auto-incluído como fallback para portais com acesso bloqueado");
       }
     }
 
-    // Firecrawl scraping for other portals
-    if (FIRECRAWL_API_KEY) {
+    // Firecrawl scraping for other portals (skip in CNAE mode)
+    if (FIRECRAWL_API_KEY && !modo_cnae) {
       const scrapePortals = portais.includes("todos")
         ? Object.keys(PORTAIS_SCRAPE)
         : portais
@@ -769,7 +793,7 @@ Deno.serve(async (req) => {
             .filter((p: string) => p !== "pncp" && PORTAIS_SCRAPE[p]);
 
       for (const pid of scrapePortals) {
-        promises.push(buscarComFirecrawl(pid, query, FIRECRAWL_API_KEY));
+        promises.push(buscarComFirecrawl(pid, searchQuery, FIRECRAWL_API_KEY));
         portalLabels.push(PORTAIS_SCRAPE[pid]?.nome || pid);
       }
     }

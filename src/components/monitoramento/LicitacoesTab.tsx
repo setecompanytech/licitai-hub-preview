@@ -22,6 +22,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { streamAIChat } from '@/lib/ai-stream';
@@ -168,6 +169,7 @@ const SUGESTOES_RAPIDAS = [
 
 export default function LicitacoesTab() {
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const { iniciarProcesso } = useLicitacaoIntegration();
   const [licitacoes, setLicitacoes] = useState<ResultadoBusca[]>([]);
   const [resultadosBusca, setResultadosBusca] = useState<ResultadoBusca[]>([]);
@@ -189,7 +191,6 @@ export default function LicitacoesTab() {
   const [portaisSelecionados, setPortaisSelecionados] = useState<string[]>(['pncp']);
   const [downloadingEdital, setDownloadingEdital] = useState<string | null>(null);
   const [comAnaliseIA, setComAnaliseIA] = useState(true);
-  const [portalFilter, setPortalFilter] = useState<string>('all');
   const [filtroDiariosPublicadosDownload, setFiltroDiariosPublicadosDownload] = useState(false);
   const [favoritos, setFavoritos] = useState<Set<string>>(new Set());
   const [favoritando, setFavoritando] = useState<string | null>(null);
@@ -200,6 +201,8 @@ export default function LicitacoesTab() {
   const [downloadingAnexos, setDownloadingAnexos] = useState<string | null>(null);
   const [showInteresseDialog, setShowInteresseDialog] = useState(false);
   const [editalInteresse, setEditalInteresse] = useState<ResultadoBusca | null>(null);
+  const [cnaeResults, setCnaeResults] = useState<ResultadoBusca[]>([]);
+  const [loadingCnae, setLoadingCnae] = useState(false);
   const resultadosRef = useRef<HTMLDivElement>(null);
 
   // Carregar favoritos do banco
@@ -415,6 +418,87 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (�
     carregarDados();
   }, [user]);
 
+  // ── Auto CNAE-based search on load ──
+  useEffect(() => {
+    if (!user || !empresaAtiva) return;
+    const cnae = empresaAtiva.cnae_principal;
+    if (!cnae) return;
+
+    // Get secondary CNAEs from empresa_membros context or DB
+    const runCnaeSearch = async () => {
+      setLoadingCnae(true);
+      try {
+        // Fetch CnaesSecundarios from configuracoes
+        const { data: config } = await supabase
+          .from('configuracoes')
+          .select('cnaes_monitorados')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        const cnaes = [cnae, ...(config?.cnaes_monitorados || [])].filter(Boolean);
+        // Build CNAE description queries
+        const cnaeDescriptions = cnaes.map(c => c.replace(/[.\-/]/g, '').substring(0, 7)).join(', ');
+
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
+
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/busca-editais-ia`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              query: `CNAE ${cnaeDescriptions}`,
+              portais: ['pncp'],
+              com_analise_ia: false,
+              limite: 50,
+              data_inicio: thirtyDaysAgo.toISOString().split('T')[0],
+              data_fim: now.toISOString().split('T')[0],
+              modo_cnae: true,
+              cnaes: cnaes,
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.resultados?.length > 0) {
+            const mapped: ResultadoBusca[] = data.resultados.map((item: any, idx: number) => ({
+              id: `cnae-${idx}`,
+              numero: item.numero || '-',
+              orgao: item.orgao || '-',
+              objeto: item.titulo || '-',
+              modalidade: item.modalidade || 'Não informada',
+              status: item.status || 'Publicado',
+              valor_estimado: item.valor_estimado || null,
+              uf: item.uf || null,
+              municipio: item.municipio || null,
+              data_encerramento: item.data_abertura || null,
+              portal: item.portal || 'PNCP',
+              url: item.url || null,
+              pncpNumero: item.pncp_numero || null,
+              cnpjOrgao: item.cnpj_orgao || null,
+              anoCompra: item.ano_compra || null,
+              sequencialCompra: item.seq_compra || null,
+              tem_download: item.tem_download ?? false,
+            }));
+            setCnaeResults(mapped);
+            toast.success(`${mapped.length} editais encontrados automaticamente para seu CNAE (últimos 30 dias)`);
+          }
+        }
+      } catch (err) {
+        console.error('CNAE auto-search error:', err);
+      } finally {
+        setLoadingCnae(false);
+      }
+    };
+
+    runCnaeSearch();
+  }, [user, empresaAtiva]);
+
   const togglePortal = (id: string) => {
     setPortaisSelecionados(prev =>
       prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
@@ -560,7 +644,6 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (�
       // Reset filtros locais para não esconder resultados da nova busca
       setStatusFilter('all');
       setModalidadeFilter('all');
-      setPortalFilter('all');
       setRegiaoFilter('all');
       setUfFilter('all');
       setDataInicio(undefined);
@@ -734,7 +817,10 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (�
     } catch { toast.error('Erro ao baixar edital.'); } finally { setDownloadingEdital(null); }
   };
 
-  const dadosExibidos = modoResultados === 'busca' ? resultadosBusca : licitacoes;
+  // Merge: if in local mode with no manual search, show CNAE results if available
+  const dadosExibidos = modoResultados === 'busca'
+    ? resultadosBusca
+    : (licitacoes.length > 0 ? licitacoes : cnaeResults);
 
   const filtered = dadosExibidos.filter((l) => {
     const s = search.toLowerCase();
@@ -744,7 +830,7 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (�
       l.numero.toLowerCase().includes(s);
     const matchStatus = statusFilter === 'all' || l.status === statusFilter;
     const matchModalidade = modalidadeFilter === 'all' || l.modalidade === modalidadeFilter;
-    const matchPortal = portalFilter === 'all' || (l.portal || '').toLowerCase().includes(portalFilter.toLowerCase());
+    const matchPortal = true; // Portal filter removed — use checkbox selection instead
     const matchDataInicio = !dataInicio || (l.data_encerramento && new Date(l.data_encerramento) >= dataInicio);
     const matchDataFim = !dataFim || (l.data_encerramento && new Date(l.data_encerramento) <= new Date(dataFim.getTime() + 86400000));
     const matchUf = ufFilter === 'all'
@@ -952,15 +1038,7 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (�
                   <SelectItem value="Dispensa">Dispensa</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={portalFilter} onValueChange={setPortalFilter}>
-                <SelectTrigger className="w-[150px] h-8 text-xs bg-background border-border/50">
-                  <Globe className="w-3 h-3 mr-1 text-muted-foreground" /><SelectValue placeholder="Portal" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos portais</SelectItem>
-                  {PORTAIS.map(p => <SelectItem key={p.id} value={p.shortName}>{p.shortName}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[140px] h-8 text-xs bg-background border-border/50"><SelectValue placeholder="Status" /></SelectTrigger>
                 <SelectContent>
@@ -1016,6 +1094,29 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (�
           </div>
         )}
       </div>
+
+      {/* CNAE Auto Results Banner */}
+      {cnaeResults.length > 0 && modoResultados === 'local' && (
+        <div className="bg-success/5 rounded-xl border border-success/20 p-4 shadow-sm animate-fade-in">
+          <div className="flex items-center gap-2 mb-1">
+            <Zap className="w-4 h-4 text-success" />
+            <span className="text-sm font-semibold">Editais automáticos por CNAE</span>
+            <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-[10px]">
+              {cnaeResults.length} encontrados
+            </Badge>
+            <Badge variant="outline" className="text-[10px]">Últimos 30 dias</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Licitações compatíveis com o CNAE {empresaAtiva?.cnae_principal || ''} da empresa {empresaAtiva?.nome_fantasia || empresaAtiva?.razao_social || ''}, publicadas nos últimos 30 dias.
+          </p>
+        </div>
+      )}
+      {loadingCnae && (
+        <div className="bg-muted/30 rounded-xl border border-border/30 p-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <RefreshCw className="w-4 h-4 animate-spin" />
+          Buscando editais compatíveis com seu CNAE (últimos 30 dias)...
+        </div>
+      )}
 
       {/* AI Analysis */}
       {analiseIA && (
