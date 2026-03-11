@@ -232,6 +232,27 @@ function formatDatePNCP(date: Date): string {
   return `${y}${m}${d}`;
 }
 
+// ── Relevance filter ──────────────────────────────────────────────────────
+function calcularRelevancia(texto: string, query: string): number {
+  if (!texto || !query) return 0;
+  const textoLower = texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const queryLower = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  // Check exact phrase match first
+  if (textoLower.includes(queryLower)) return 1.0;
+
+  // Check individual words (skip very short ones and stop words)
+  const stopWords = new Set(["de", "do", "da", "dos", "das", "em", "no", "na", "nos", "nas", "para", "por", "com", "sem", "que", "uma", "uns", "um", "ao", "aos", "pela", "pelo", "entre", "sobre", "ate", "como", "mais", "este", "esta", "esse", "essa", "licitacao", "edital", "pregao", "eletronico"]);
+  const queryWords = queryLower.split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+  if (queryWords.length === 0) return 0.5; // All stop words, can't filter
+
+  let matched = 0;
+  for (const word of queryWords) {
+    if (textoLower.includes(word)) matched++;
+  }
+  return queryWords.length > 0 ? matched / queryWords.length : 0;
+}
+
 // ── PNCP API (real data) ──────────────────────────────────────────────────
 async function buscarPNCP(params: {
   query: string;
@@ -255,6 +276,9 @@ async function buscarPNCP(params: {
     ? [params.modalidade]
     : ["6", "4", "8", "5", "9", "1"];
 
+  // Request more to allow filtering
+  const fetchLimit = Math.min((params.limite || 30) * 3, 100);
+
   for (const mod of modalidades) {
     try {
       const searchParams = new URLSearchParams({
@@ -262,7 +286,7 @@ async function buscarPNCP(params: {
         dataFinal,
         codigoModalidadeContratacao: mod,
         pagina: "1",
-        tamanhoPagina: String(params.limite || 30),
+        tamanhoPagina: String(fetchLimit),
       });
       if (params.query) searchParams.set("q", params.query.substring(0, 100));
       if (params.uf) searchParams.set("uf", params.uf);
@@ -285,6 +309,18 @@ async function buscarPNCP(params: {
         const ufItem = item.unidadeOrgao?.ufSigla || item.orgaoEntidade?.ufSigla || "";
         if (params.uf && params.uf !== "TODOS" && ufItem !== params.uf && ufItem !== "DF") continue;
 
+        const objetoCompra = item.objetoCompra || "";
+        const orgaoNome = item.orgaoEntidade?.razaoSocial || item.unidadeOrgao?.nomeUnidade || "";
+
+        // ── RELEVANCE FILTER: skip items that don't match the query ──
+        const relevanciaObjeto = calcularRelevancia(objetoCompra, params.query);
+        const relevanciaOrgao = calcularRelevancia(orgaoNome, params.query);
+        const relevancia = Math.max(relevanciaObjeto, relevanciaOrgao);
+
+        if (relevancia < 0.3) {
+          continue; // Skip irrelevant results
+        }
+
         const cnpjOrgao = item.orgaoEntidade?.cnpj || "";
         const anoCompra = item.anoCompra || "";
         const seqCompra = item.sequencialCompra || "";
@@ -294,8 +330,8 @@ async function buscarPNCP(params: {
         }
 
         resultados.push({
-          titulo: (item.objetoCompra || "Sem título").substring(0, 500),
-          orgao: item.orgaoEntidade?.razaoSocial || item.unidadeOrgao?.nomeUnidade || "Órgão",
+          titulo: objetoCompra.substring(0, 500),
+          orgao: orgaoNome || "Órgão",
           modalidade: item.modalidadeNome || "Pregão Eletrônico",
           status: item.situacaoCompraNome || "Publicado",
           valor_estimado: item.valorTotalEstimado || item.valorTotalHomologado || null,
@@ -312,12 +348,17 @@ async function buscarPNCP(params: {
           numero: item.numeroCompra || item.numeroControlePNCP || "",
           fonte_real: true,
           tem_download: !!(cnpjOrgao && anoCompra && seqCompra),
+          _relevancia: relevancia,
         });
       }
     } catch (e) {
       console.error(`PNCP mod=${mod}:`, e);
     }
   }
+
+  // Sort by relevance
+  resultados.sort((a, b) => (b._relevancia || 0) - (a._relevancia || 0));
+
   return resultados;
 }
 
@@ -366,6 +407,14 @@ async function buscarComFirecrawl(
       const description = result.description || "";
       const url = result.url || "";
       const markdown = result.markdown || "";
+
+      // ── RELEVANCE FILTER for Firecrawl results ──
+      const relevancia = Math.max(
+        calcularRelevancia(title, query),
+        calcularRelevancia(description, query),
+        calcularRelevancia(markdown.substring(0, 500), query)
+      );
+      if (relevancia < 0.3) continue; // Skip irrelevant
 
       // Extract value if present
       let valor: number | null = null;
