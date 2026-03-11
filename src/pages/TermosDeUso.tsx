@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Zap, Scale } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import PraefectusLogo from '@/components/shared/PraefectusLogo';
 
 export default function TermosDeUso() {
   const navigate = useNavigate();
