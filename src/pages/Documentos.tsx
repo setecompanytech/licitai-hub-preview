@@ -330,8 +330,20 @@ export default function Documentos() {
       }
     }
 
+    const { error: deleteDbError } = await supabase
+      .from('documentos')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('nome', doc.nome);
+
+    if (deleteDbError) {
+      toast.error('Erro ao remover cadastro: ' + deleteDbError.message);
+      setRemovingIdx(null);
+      return;
+    }
+
     setDocumentos(prev => prev.map((d, i) =>
-      i === globalIdx ? { ...d, arquivo: undefined, storagePath: undefined, status: 'pendente' as DocStatus } : d
+      i === globalIdx ? { ...d, arquivo: undefined, storagePath: undefined, validade: undefined, status: 'ausente' as DocStatus } : d
     ));
 
     toast.success(`"${doc.nome}" removido.`);
