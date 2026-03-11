@@ -3,7 +3,8 @@ import {
   Download, Bell, Target, Archive, Bot, Search, Scale, BookOpen,
   Kanban, Shield, Building2, MessageSquare, Crosshair, TrendingUp,
   Users, DollarSign, ClipboardCheck, HeadphonesIcon, FileText,
-  BarChart3, CalendarDays,
+  BarChart3, CalendarDays, ListChecks, Calculator, Workflow, Plug,
+  FileBarChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -22,57 +23,58 @@ interface QuickGroup {
 
 const groups: QuickGroup[] = [
   {
-    title: 'Oportunidades de Negócio',
+    title: 'Monitoramento',
     items: [
-      { icon: Bell, label: 'Boletins', path: '/boletins' },
       { icon: Download, label: 'Encontrar Editais', path: '/monitoramento-editais' },
+      { icon: Bell, label: 'Boletins Diários', path: '/boletins' },
       { icon: Target, label: 'Estratégicas', path: '/licitacoes-estrategicas' },
-      { icon: Archive, label: 'Histórico', path: '/historico-licitacoes' },
+      { icon: MessageSquare, label: 'Chat e Mural', path: '/monitoramento-chat' },
     ],
   },
   {
-    title: 'Inteligência Artificial',
+    title: 'Gestão de Processos',
+    items: [
+      { icon: ListChecks, label: 'Compromissos', path: '/meus-compromissos' },
+      { icon: CalendarDays, label: 'Calendário', path: '/calendario' },
+      { icon: Kanban, label: 'Kanban', path: '/kanban' },
+      { icon: FileText, label: 'Contratos', path: '/gestao-contratos' },
+    ],
+  },
+  {
+    title: 'Inteligência & Preços',
     accent: true,
     items: [
-      { icon: Bot, label: 'Assistente IA', path: '/assistente', badge: 'novo' },
-      { icon: Scale, label: 'Consultor Jurídico', path: '/apoio-juridico' },
-      { icon: Search, label: 'Proposta Técnica', path: '/proposta-tecnica' },
-      { icon: BookOpen, label: 'Blog Jurídico', path: '/blog' },
+      { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
+      { icon: FileBarChart, label: 'Proposta Comercial', path: '/proposta-tecnica' },
+      { icon: TrendingUp, label: 'Análise de Mercado', path: '/analise-mercado' },
+      { icon: Users, label: 'Concorrentes', path: '/concorrentes' },
     ],
   },
   {
-    title: 'Gestão',
+    title: 'Jurídico & Contábil',
     items: [
-      { icon: CalendarDays, label: 'Calendário', path: '/calendario', badge: 'novo' },
-      { icon: Kanban, label: 'Kanban', path: '/kanban' },
+      { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
+      { icon: Calculator, label: 'Apoio Contábil', path: '/apoio-contabil' },
       { icon: Shield, label: 'Documentos', path: '/documentos' },
-      { icon: Building2, label: 'Empresas', path: '/empresas' },
+      { icon: ClipboardCheck, label: 'Assessoria Cadastral', path: '/assessoria-cadastral' },
     ],
   },
   {
     title: 'Automação',
     items: [
-      { icon: MessageSquare, label: 'Chat e Mural', path: '/monitoramento-chat' },
-      { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances', badge: 'novo' },
+      { icon: Workflow, label: 'Workflow IA', path: '/workflow-ia', badge: 'novo' },
+      { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
+      { icon: Bot, label: 'Assistente IA', path: '/assistente' },
       { icon: MessageSquare, label: 'WhatsApp CRM', path: '/whatsapp-crm' },
     ],
   },
   {
-    title: 'Análise Estratégica',
+    title: 'Configuração',
     items: [
-      { icon: TrendingUp, label: 'Mercado', path: '/analise-mercado' },
-      { icon: Users, label: 'Concorrentes', path: '/concorrentes' },
-      { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
-      { icon: BarChart3, label: 'Analytics', path: '/analytics' },
-    ],
-  },
-  {
-    title: 'Assessoria e Consultoria',
-    items: [
-      { icon: ClipboardCheck, label: 'Cadastral', path: '/assessoria-cadastral' },
-      { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
-      { icon: FileText, label: 'E-book', path: '/ebook' },
+      { icon: Building2, label: 'Empresas', path: '/empresas' },
+      { icon: Users, label: 'Equipe', path: '/equipe' },
       { icon: HeadphonesIcon, label: 'Suporte', path: '/suporte' },
+      { icon: Plug, label: 'API & Integração', path: '/api-integracao' },
     ],
   },
 ];

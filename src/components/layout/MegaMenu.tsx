@@ -4,7 +4,8 @@ import {
   LayoutDashboard, Search, Kanban, Users, Bot, BarChart3, Settings,
   Zap, Crosshair, Shield, Scale, DollarSign, Download, Building2,
   ShieldCheck, HeadphonesIcon, MessageSquare, TrendingUp, Target,
-  ClipboardCheck, BookOpen, Bell, Archive, ChevronDown,
+  ClipboardCheck, BookOpen, Bell, Archive, ChevronDown, CalendarDays,
+  ListChecks, FileText, Calculator, Workflow, Plug, FileBarChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -22,52 +23,56 @@ interface MegaMenuGroup {
 
 const megaGroups: MegaMenuGroup[] = [
   {
-    title: 'Oportunidades',
+    title: 'Monitoramento',
     items: [
-      { icon: Download, label: 'Monitorar Editais', path: '/monitoramento-editais' },
+      { icon: Download, label: 'Editais & Licitações', path: '/monitoramento-editais' },
       { icon: Bell, label: 'Boletins Diários', path: '/boletins' },
       { icon: Target, label: 'Estratégicas', path: '/licitacoes-estrategicas' },
+      { icon: MessageSquare, label: 'Chat e Mural', path: '/monitoramento-chat' },
+    ],
+  },
+  {
+    title: 'Gestão de Processos',
+    items: [
+      { icon: ListChecks, label: 'Compromissos', path: '/meus-compromissos' },
+      { icon: CalendarDays, label: 'Calendário', path: '/calendario' },
+      { icon: Kanban, label: 'Kanban', path: '/kanban' },
+      { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
+      { icon: FileText, label: 'Contratos', path: '/gestao-contratos' },
       { icon: Archive, label: 'Histórico', path: '/historico-licitacoes' },
     ],
   },
   {
-    title: 'Inteligência Artificial',
+    title: 'Inteligência & Preços',
     items: [
-      { icon: Bot, label: 'Assistente IA', path: '/assistente', isNew: true },
-      { icon: Search, label: 'Proposta Comercial', path: '/proposta-tecnica' },
-      { icon: Scale, label: 'Consultor Jurídico', path: '/apoio-juridico' },
-      { icon: BookOpen, label: 'Blog IA', path: '/blog' },
+      { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
+      { icon: FileBarChart, label: 'Proposta Comercial', path: '/proposta-tecnica' },
+      { icon: TrendingUp, label: 'Análise de Mercado', path: '/analise-mercado' },
+      { icon: Users, label: 'Concorrentes', path: '/concorrentes' },
     ],
   },
   {
-    title: 'Ferramentas de Gestão',
+    title: 'Jurídico & Contábil',
     items: [
-      { icon: Kanban, label: 'Kanban', path: '/kanban' },
-      { icon: Shield, label: 'Gerenciar Documentos', path: '/documentos' },
-      { icon: Building2, label: 'Gerenciar Empresas', path: '/empresas' },
+      { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
+      { icon: Calculator, label: 'Apoio Contábil', path: '/apoio-contabil' },
+      { icon: Shield, label: 'Documentos', path: '/documentos' },
+      { icon: ClipboardCheck, label: 'Assessoria Cadastral', path: '/assessoria-cadastral' },
     ],
   },
   {
     title: 'Automação',
     items: [
-      { icon: MessageSquare, label: 'Chat e Mural', path: '/monitoramento-chat' },
-      { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances', isNew: true },
+      { icon: Workflow, label: 'Workflow IA', path: '/workflow-ia', isNew: true },
+      { icon: Bot, label: 'Assistente IA', path: '/assistente' },
       { icon: MessageSquare, label: 'WhatsApp CRM', path: '/whatsapp-crm' },
     ],
   },
   {
-    title: 'Análise Estratégica',
+    title: 'Configuração',
     items: [
-      { icon: TrendingUp, label: 'Análise de Mercado', path: '/analise-mercado' },
-      { icon: Users, label: 'Concorrentes', path: '/concorrentes' },
-      { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
-    ],
-  },
-  {
-    title: 'Assessoria',
-    items: [
-      { icon: ClipboardCheck, label: 'Assessoria Cadastral', path: '/assessoria-cadastral' },
-      { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
+      { icon: Building2, label: 'Empresas', path: '/empresas' },
+      { icon: Users, label: 'Equipe', path: '/equipe' },
       { icon: HeadphonesIcon, label: 'Suporte', path: '/suporte' },
     ],
   },
@@ -89,7 +94,6 @@ export default function MegaMenu() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Close on route change
   useEffect(() => { setOpen(false); }, [location.pathname]);
 
   const handleNav = (path: string) => {

@@ -1,30 +1,56 @@
 import { useState } from 'react';
-import { Search, Bot, Zap, Shield, Users, BarChart3, FileText, Bell, Scale, TrendingUp, Brain, Truck } from 'lucide-react';
+import {
+  Search, Bot, Zap, Shield, Users, BarChart3, FileText, Bell, Scale,
+  TrendingUp, Brain, Truck, Kanban, Crosshair, CalendarDays, ListChecks,
+  ClipboardCheck, Calculator, MessageSquare, DollarSign, BookOpen,
+  Download, Target, Archive, GraduationCap, Workflow, FileBarChart,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const categories = ['Todos', 'Core', 'IA', 'Automação', 'Documentos', 'Jurídico'];
+const categories = ['Todos', 'Monitoramento', 'Gestão', 'Inteligência', 'Jurídico', 'Automação'];
 
 const features = [
-  { icon: Search, title: 'Monitoramento 24/7', desc: 'Busca automática em 38 portais — PNCP, BLL, BNC, BEC/SP, Licitações-e e 20+ sistemas estaduais — com filtros inteligentes por CNAE, UF e palavras-chave.', tag: 'Core' },
-  { icon: Bot, title: 'Assistente IA', desc: 'Tire dúvidas sobre editais, gere impugnações e recursos fundamentados na Lei 14.133/2021 e jurisprudência do TCU.', tag: 'IA' },
-  { icon: Zap, title: 'Robô de Lances', desc: 'Estratégias de decremento automatizado para pregão eletrônico nos portais ComprasNet, BLL, BNC e Licitações-E.', tag: 'Automação' },
-  { icon: FileText, title: 'Propostas ABNT', desc: 'Geração de propostas técnicas e comerciais com capa, sumário, planilha de preços e declarações em padrão ABNT.', tag: 'Documentos' },
-  { icon: Shield, title: 'Gestão de Documentos', desc: 'Organize certidões, atestados e habilitações com alertas automáticos de vencimento e renovação.', tag: 'Documentos' },
-  { icon: Users, title: 'Análise de Concorrentes', desc: 'Consulte CNPJ, histórico de participação em licitações e situação cadastral de concorrentes.', tag: 'Core' },
-  { icon: BarChart3, title: 'Relatórios Gerenciais', desc: 'Dashboards com métricas de participação, taxa de sucesso por modalidade e volume de editais.', tag: 'Core' },
-  { icon: Bell, title: 'Alertas Personalizados', desc: 'Notificações por e-mail e push ao detectar editais compatíveis com CNAE e perfil da empresa.', tag: 'Automação' },
-  { icon: Scale, title: 'Apoio Jurídico', desc: 'Base de jurisprudência com gerador de peças jurídicas e cálculo de reequilíbrio econômico-financeiro.', tag: 'Jurídico' },
-  { icon: TrendingUp, title: 'Precificação Inteligente', desc: 'Composição de custos com BDI, consulta ao Painel de Preços do Governo e pesquisa em fontes comerciais.', tag: 'IA' },
-  { icon: Brain, title: 'Busca Inteligente', desc: 'Filtro com IA que identifica editais relevantes baseado no perfil e histórico da empresa.', tag: 'IA' },
-  { icon: Truck, title: 'Cotação de Frete', desc: 'Cálculo de custos logísticos e comparação de transportadoras para composição de preços.', tag: 'Core' },
+  // Monitoramento
+  { icon: Search, title: 'Monitoramento 24/7', desc: 'Busca automática em 38+ portais — PNCP, BLL, BNC, BEC/SP, Licitações-e, Banparanet, ComprasNet e sistemas estaduais — com filtros por CNAE, UF e palavras-chave.', tag: 'Monitoramento' },
+  { icon: Bell, title: 'Boletins & Alertas', desc: 'Notificações por e-mail, push e WhatsApp ao detectar editais compatíveis. Boletins diários configuráveis (manhã, meio-dia e tarde).', tag: 'Monitoramento' },
+  { icon: Brain, title: 'Busca Inteligente IA', desc: 'Motor de busca com IA que identifica editais relevantes baseado no perfil, CNAE e histórico de participação da empresa.', tag: 'Monitoramento' },
+  { icon: Download, title: 'Download de Editais', desc: 'Download consolidado de anexos oficiais (PDF/ZIP) diretamente dos portais, com resumos executivos gerados por IA.', tag: 'Monitoramento' },
+
+  // Gestão
+  { icon: Target, title: 'Licitações Estratégicas', desc: 'Gestão inteligente de oportunidades com score de viabilidade, cronômetros regressivos e alertas automáticos de abertura.', tag: 'Gestão' },
+  { icon: Kanban, title: 'Kanban de Processos', desc: 'Quadro visual com 8 etapas normatizadas: Monitorando, Analisando, Proposta, Em Disputa, Vencida, Homologada, Perdida e Arquivada.', tag: 'Gestão' },
+  { icon: CalendarDays, title: 'Calendário Unificado', desc: 'Calendário que sincroniza datas de abertura, vencimentos de documentos, certificados e credenciais de portais em uma única visão.', tag: 'Gestão' },
+  { icon: ListChecks, title: 'Compromissos & Prazos', desc: 'Controle de compromissos com cronômetros regressivos e marcação de interesse em processos para múltiplas empresas.', tag: 'Gestão' },
+  { icon: FileText, title: 'Gestão de Contratos', desc: 'Gestão completa de contratos com aditivos, fiscais, consumo de saldo e alertas de vigência automatizados.', tag: 'Gestão' },
+  { icon: Archive, title: 'Histórico de Licitações', desc: 'Registro completo de todos os processos participados com métricas de desempenho e lições aprendidas.', tag: 'Gestão' },
+
+  // Inteligência
+  { icon: DollarSign, title: 'Precificação Inteligente', desc: 'Composição de custos com BDI, pesquisa em 30+ fontes de mercado, consulta ao PNCP e calculadora tributária por regime e UF.', tag: 'Inteligência' },
+  { icon: FileBarChart, title: 'Proposta Comercial', desc: 'Geração de propostas ABNT com planilha de preços, declarações, assinatura digital via A1 e papel timbrado personalizado.', tag: 'Inteligência' },
+  { icon: TrendingUp, title: 'Análise de Mercado', desc: 'Dados de contratos governamentais, transparência e benchmarking competitivo para embasar decisões estratégicas.', tag: 'Inteligência' },
+  { icon: Users, title: 'Análise de Concorrentes', desc: 'Consulta CNPJ, Sintegra, certidões negativas e análise documental de competidores com IA baseada na Lei 14.133/21.', tag: 'Inteligência' },
+  { icon: Truck, title: 'Cotação de Frete', desc: 'Cálculo de custos logísticos e comparação de transportadoras para composição de preços em licitações.', tag: 'Inteligência' },
+
+  // Jurídico
+  { icon: Scale, title: 'Apoio Jurídico IA', desc: '24 modelos de peças jurídicas: impugnações, recursos, reequilíbrio, mandados de segurança — fundamentados na Lei 14.133/21 e TCU.', tag: 'Jurídico' },
+  { icon: Calculator, title: 'Apoio Contábil', desc: 'Diagnóstico de balanços patrimoniais e DREs via IA com análise NBC TSP, LRF e formação de preços estratégicos.', tag: 'Jurídico' },
+  { icon: Shield, title: 'Gestão de Documentos', desc: 'Organize certidões, atestados e habilitações com alertas automáticos de vencimento, renovação e merge de PDFs.', tag: 'Jurídico' },
+  { icon: ClipboardCheck, title: 'Assessoria Cadastral', desc: 'Apoio especializado no cadastro e manutenção de registros junto a órgãos e portais de compras públicas.', tag: 'Jurídico' },
+  { icon: BarChart3, title: 'Índices & Repactuação', desc: 'Consulta a índices econômicos (IPCA, INPC, IGP-M) e cálculo automatizado de reajustes e repactuações contratuais.', tag: 'Jurídico' },
+
+  // Automação
+  { icon: Crosshair, title: 'Robô de Lances', desc: 'Estratégias automatizadas para pregão eletrônico com agente externo via webhook e suporte a certificado A1.', tag: 'Automação' },
+  { icon: Workflow, title: 'Workflow IA', desc: 'Orquestração autônoma de 8 etapas: Pesquisa → Seleção → Agendamento → Alertas → Precificação → Documentação → Proposta → Lances.', tag: 'Automação' },
+  { icon: Bot, title: 'Assistente IA', desc: 'Chat inteligente para dúvidas sobre editais, legislação, estratégias de lances e geração de documentos em tempo real.', tag: 'Automação' },
+  { icon: MessageSquare, title: 'WhatsApp CRM', desc: 'Gerenciamento de comunicação com fornecedores e clientes via WhatsApp com templates, broadcasts e pipeline de vendas.', tag: 'Automação' },
 ];
 
 const tagColors: Record<string, string> = {
-  'Core': 'bg-accent/10 text-accent',
-  'IA': 'bg-primary/10 text-primary',
-  'Automação': 'bg-warning/10 text-warning',
-  'Documentos': 'bg-info/10 text-info',
+  'Monitoramento': 'bg-primary/10 text-primary',
+  'Gestão': 'bg-accent/10 text-accent',
+  'Inteligência': 'bg-info/10 text-info',
   'Jurídico': 'bg-destructive/10 text-destructive',
+  'Automação': 'bg-warning/10 text-warning',
 };
 
 export default function FeaturesSection() {
@@ -42,7 +68,7 @@ export default function FeaturesSection() {
               Tudo que você precisa para <span className="gradient-text">licitar e vencer</span>
             </h2>
             <p className="section-subtitle mx-auto">
-              30+ módulos integrados para monitoramento, automação, documentação e análise estratégica de licitações públicas.
+              40+ módulos integrados para monitoramento, gestão de processos, precificação inteligente, automação e apoio jurídico-contábil em licitações públicas.
             </p>
           </motion.div>
         </div>
