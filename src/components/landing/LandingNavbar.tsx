@@ -32,7 +32,9 @@ export default function LandingNavbar() {
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <a href="#" className="flex items-center gap-2 group">
           <Zap className="w-6 h-6 text-accent" />
-          <span className="text-2xl font-brand font-bold tracking-[0.25em] uppercase text-foreground">
+          <span className={`text-2xl font-brand font-bold tracking-[0.25em] uppercase transition-colors duration-500 ${
+            scrolled ? 'text-foreground' : 'text-white'
+          }`}>
             PRAEFECTUS
           </span>
         </a>

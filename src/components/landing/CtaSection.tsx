@@ -65,7 +65,7 @@ export default function CtaSection() {
               <Button
                 size="lg"
                 variant="outline"
-                className="text-base px-8 py-6 rounded-lg border-white/12 text-white/65 hover:bg-white/5 hover:text-white"
+                className="text-base px-8 py-6 rounded-lg border-accent/30 text-accent hover:bg-accent/10 hover:text-accent hover:border-accent/50 bg-transparent"
                 onClick={() => navigate('/suporte')}
               >
                 <MessageCircle className="w-4 h-4 mr-2" /> Falar com Suporte
