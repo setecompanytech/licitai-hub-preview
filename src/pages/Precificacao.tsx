@@ -545,7 +545,7 @@ Responda APENAS em JSON, sem markdown:
     toast.success(`"${item.descricao}" adicionado à proposta!`);
   };
 
-  const filtered = itensMock.filter((item) =>
+  const filtered = itensPesquisa.filter((item) =>
     item.descricao.toLowerCase().includes(search.toLowerCase())
   );
 
