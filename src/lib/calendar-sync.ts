@@ -32,7 +32,7 @@ function escapeICS(text: string): string {
 export function generateICSEvent(event: CalendarEvent): string {
   const lines: string[] = [
     'BEGIN:VEVENT',
-    `UID:${event.uid}@licitia.app`,
+    `UID:${event.uid}@praefectus.app`,
     `DTSTAMP:${formatICSDate(new Date())}`,
   ];
 
