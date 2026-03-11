@@ -77,12 +77,12 @@ export default function ExportarResultados({ lances }: Props) {
 
   const handleExportPDF = () => {
     const ts = new Date().toISOString().slice(0, 10);
-    downloadPDF(`disputas-${ts}`, 'Relatório de Disputas — LicitIA', headers, buildRows());
+    downloadPDF(`disputas-${ts}`, 'Relatório de Disputas — Praefectus', headers, buildRows());
   };
 
   const handleExportItemsPDF = () => {
     const ts = new Date().toISOString().slice(0, 10);
-    downloadPDF(`disputas-itens-${ts}`, 'Relatório de Itens de Disputas — LicitIA', buildItemHeaders(), buildItemRows());
+    downloadPDF(`disputas-itens-${ts}`, 'Relatório de Itens de Disputas — Praefectus', buildItemHeaders(), buildItemRows());
   };
 
   const handleExportJSON = () => {

@@ -38,7 +38,7 @@ const cursos = [
     icon: Award,
     badge: 'Certificação',
     badgeColor: 'bg-warning/10 text-warning border-warning/20',
-    title: 'Certificação LicitIA Expert',
+    title: 'Certificação Praefectus Expert',
     desc: 'Certificação completa com avaliação prática e certificado reconhecido.',
     duracao: '20h',
     aulas: 48,
@@ -119,7 +119,7 @@ export default function TreinamentosSection() {
           style={{ background: 'var(--gradient-accent-subtle)' }}
         >
           <div className="flex-1">
-            <h3 className="text-2xl font-extrabold mb-2">E-book Gratuito: Guia Completo LicitIA</h3>
+            <h3 className="text-2xl font-extrabold mb-2">E-book Gratuito: Guia Completo Praefectus</h3>
             <p className="text-muted-foreground text-[15px]">
               10 capítulos, capturas de tela e fundamentação na Lei 14.133/2021. Para iniciantes e profissionais.
             </p>

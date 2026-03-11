@@ -11,7 +11,7 @@ export const ebookSections: EbookSection[] = [
   {
     title: 'Visao Estrategica do Dashboard',
     contextualizacao:
-      'O Dashboard da LicitaIA consolida indicadores operacionais e financeiros em uma unica visao, reduzindo o tempo de analise e aumentando a capacidade de decisao das equipes de licitacao.',
+      'O Dashboard da Praefectus consolida indicadores operacionais e financeiros em uma unica visao, reduzindo o tempo de analise e aumentando a capacidade de decisao das equipes de licitacao.',
     fundamento:
       'A centralizacao de dados melhora governanca, rastreabilidade e resposta a prazos criticos. O modulo organiza informacoes por status, modalidade e valor para apoiar planejamento tatico e executivo.',
     fluxos: [

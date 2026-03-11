@@ -79,7 +79,7 @@ export default function RelatorioGerencialPDF() {
 
       downloadPDF(
         `relatorio-gerencial-${ts}`,
-        `Relatório Gerencial — LicitIA — ${periodoLabel}`,
+        `Relatório Gerencial — Praefectus — ${periodoLabel}`,
         summaryHeaders,
         summaryRows
       );

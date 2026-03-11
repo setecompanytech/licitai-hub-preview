@@ -118,7 +118,7 @@ serve(async (req) => {
               <body style="margin:0;padding:0;background-color:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
                 <div style="max-width:600px;margin:0 auto;padding:20px;">
                   <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:24px 30px;border-radius:12px 12px 0 0;">
-                    <h1 style="color:#ffffff;margin:0;font-size:22px;">⚡ LicitIA</h1>
+                    <h1 style="color:#ffffff;margin:0;font-size:22px;">⚡ Praefectus</h1>
                     <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:14px;">Alerta de Vencimento de Plano</p>
                   </div>
                   <div style="background:#ffffff;padding:24px 30px;border-radius:0 0 12px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
@@ -145,14 +145,14 @@ serve(async (req) => {
                     </div>
                   </div>
                   <p style="text-align:center;color:#999;font-size:11px;margin-top:16px;">
-                    LicitIA — Plataforma inteligente de licitações
+                    Praefectus — Plataforma inteligente de licitações
                   </p>
                 </div>
               </body>
               </html>`;
 
               await resend.emails.send({
-                from: "LicitIA <noreply@resend.dev>",
+                from: "Praefectus <noreply@resend.dev>",
                 to: [userEmail],
                 subject: `${urgencia} — Plano ${planoNome} vence em ${dias} dia(s)`,
                 html,

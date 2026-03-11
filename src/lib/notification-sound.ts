@@ -45,7 +45,7 @@ export function playNotificationSound(type: 'message' | 'alert' | 'success' = 'm
 }
 
 // Sound preference storage
-const SOUND_KEY = 'licitia_sound_enabled';
+const SOUND_KEY = 'praefectus_sound_enabled';
 
 export function isSoundEnabled(): boolean {
   return localStorage.getItem(SOUND_KEY) !== 'false';

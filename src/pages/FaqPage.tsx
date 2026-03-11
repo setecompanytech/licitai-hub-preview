@@ -40,7 +40,7 @@ export default function FaqPage() {
 
       <div className="max-w-4xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-bold tracking-tight mb-2">Perguntas Frequentes</h1>
-        <p className="text-muted-foreground mb-8">Encontre respostas para suas dúvidas sobre o LicitIA</p>
+        <p className="text-muted-foreground mb-8">Encontre respostas para suas dúvidas sobre o Praefectus</p>
 
         <div className="relative mb-6">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

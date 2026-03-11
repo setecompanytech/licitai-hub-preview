@@ -27,7 +27,7 @@ export default function PoliticaPrivacidade() {
           <section>
             <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">1. INTRODUÇÃO</h2>
             <p className="text-sm text-muted-foreground">
-              A presente Política de Privacidade descreve como a plataforma <strong>LicitIA</strong> ("Controlador") coleta, utiliza, armazena, compartilha e protege os dados pessoais dos USUÁRIOS, em total conformidade com a <strong>Lei nº 13.709/2018</strong> (Lei Geral de Proteção de Dados Pessoais – LGPD) e demais normas aplicáveis do ordenamento jurídico brasileiro.
+              A presente Política de Privacidade descreve como a plataforma <strong>Praefectus</strong> ("Controlador") coleta, utiliza, armazena, compartilha e protege os dados pessoais dos USUÁRIOS, em total conformidade com a <strong>Lei nº 13.709/2018</strong> (Lei Geral de Proteção de Dados Pessoais – LGPD) e demais normas aplicáveis do ordenamento jurídico brasileiro.
             </p>
           </section>
 

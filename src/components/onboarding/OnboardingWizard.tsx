@@ -14,7 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-const ONBOARDING_KEY = 'licitia_onboarding_done';
+const ONBOARDING_KEY = 'praefectus_onboarding_done';
 
 export function useOnboarding() {
   const [show, setShow] = useState(() => localStorage.getItem(ONBOARDING_KEY) !== 'true');
@@ -31,11 +31,11 @@ type Props = {
 };
 
 const steps = [
-  { title: 'Bem-vindo ao LicitIA', icon: Sparkles, desc: 'Vamos configurar sua conta em poucos passos.' },
+  { title: 'Bem-vindo ao Praefectus', icon: Sparkles, desc: 'Vamos configurar sua conta em poucos passos.' },
   { title: 'Cadastre sua Empresa', icon: Building2, desc: 'Informe os dados da empresa que participa de licitações.' },
   { title: 'Portais de Interesse', icon: Globe, desc: 'Selecione os portais que você monitora.' },
   { title: 'Palavras-chave', icon: Search, desc: 'Defina termos para monitoramento automático de editais.' },
-  { title: 'Pronto!', icon: CheckCircle2, desc: 'Sua conta está configurada. Comece a usar o LicitIA!' },
+  { title: 'Pronto!', icon: CheckCircle2, desc: 'Sua conta está configurada. Comece a usar o Praefectus!' },
 ];
 
 const portaisOpcoes = [
@@ -91,7 +91,7 @@ export default function OnboardingWizard({ open, onClose }: Props) {
       }
 
       localStorage.setItem(ONBOARDING_KEY, 'true');
-      toast.success('Configuração concluída! Bem-vindo ao LicitIA.');
+      toast.success('Configuração concluída! Bem-vindo ao Praefectus.');
       onClose();
     } catch (err) {
       console.error(err);

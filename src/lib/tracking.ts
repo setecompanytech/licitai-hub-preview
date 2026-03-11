@@ -24,13 +24,13 @@ export function getUtmParams(): UtmParams {
 export function storeUtmParams() {
   const utm = getUtmParams();
   if (utm.utm_source || utm.utm_medium || utm.utm_campaign) {
-    sessionStorage.setItem('licitia_utm', JSON.stringify(utm));
+    sessionStorage.setItem('praefectus_utm', JSON.stringify(utm));
   }
 }
 
 export function getStoredUtm(): UtmParams {
   try {
-    const stored = sessionStorage.getItem('licitia_utm');
+    const stored = sessionStorage.getItem('praefectus_utm');
     if (stored) return JSON.parse(stored);
   } catch {}
   return getUtmParams();
@@ -52,7 +52,7 @@ export function trackGA4Event(eventName: string, params?: Record<string, any>) {
 
 // Track lead submission
 export function trackLeadConversion(data: { email: string; plano?: string }) {
-  trackPixelEvent('Lead', { content_name: 'LicitIA Trial', currency: 'BRL' });
+  trackPixelEvent('Lead', { content_name: 'Praefectus Trial', currency: 'BRL' });
   trackGA4Event('generate_lead', { event_category: 'engagement', event_label: data.plano || 'trial' });
   trackGA4Event('conversion', { send_to: 'AW-CONVERSION_ID/CONVERSION_LABEL', value: 0, currency: 'BRL' });
 }

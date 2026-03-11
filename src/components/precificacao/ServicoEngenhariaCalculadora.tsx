@@ -428,7 +428,7 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
     doc.setFontSize(6);
     doc.setTextColor(120);
     const finalY = (doc as any).lastAutoTable.finalY + 6;
-    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')} | LicitIA — Sistema de Precificação`, 14, finalY);
+    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')} | Praefectus — Sistema de Precificação`, 14, finalY);
 
     doc.save(`composicao-custos-engenharia-${tipoServico}.pdf`);
     toast.success('PDF exportado com sucesso!');

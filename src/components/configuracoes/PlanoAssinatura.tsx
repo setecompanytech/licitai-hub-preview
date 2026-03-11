@@ -37,7 +37,7 @@ interface Plano {
 /* ── PIX Checkout ── */
 function PixCheckout({ plano, total, cycle }: { plano: Plano; total: number; cycle: BillingCycle }) {
   const [status, setStatus] = useState<'qr' | 'confirmado'>('qr');
-  const pixCode = `00020126580014BR.GOV.BCB.PIX0136licitia-${plano.slug}-${Date.now()}5204000053039865802BR5913LICITIA LTDA6008BRASILIA62070503***6304`;
+  const pixCode = `00020126580014BR.GOV.BCB.PIX0136praefectus-${plano.slug}-${Date.now()}5204000053039865802BR5913PRAEFECTUS LT6008BRASILIA62070503***6304`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(pixCode);
