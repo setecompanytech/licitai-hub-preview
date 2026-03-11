@@ -117,10 +117,7 @@ export default function TransparenciaPA() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Não autenticado');
 
-      const arrayBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
+      const jsonData = await readExcelFile(file);
 
       if (jsonData.length === 0) {
         toast.error('Planilha vazia');
