@@ -5,6 +5,19 @@
   text-align: center;
 }
 
+/* Hide Lovable editor badge */
+[data-lovable],
+.lovable-badge,
+[data-lovable-badge],
+[role="dialog"][aria-label*="Edit"],
+[class*="lovable"],
+[id*="lovable"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;
