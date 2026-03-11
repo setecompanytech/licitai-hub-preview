@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
+import PraefectusLogo from '@/components/shared/PraefectusLogo';
 
 export default function LandingNavbar() {
   const navigate = useNavigate();
