@@ -231,7 +231,7 @@
   animation: float 6s ease-in-out 2s infinite;
 }
 .animate-pulse-orange {
-  animation: pulse-orange 2s ease-in-out infinite;
+  animation: none;
 }
 .shimmer-text {
   background: linear-gradient(

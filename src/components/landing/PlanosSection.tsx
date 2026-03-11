@@ -178,10 +178,10 @@ export default function PlanosSection() {
                     onClick={() => handleChoosePlan(p.slug)}
                     style={isPopular ? { boxShadow: 'var(--shadow-glow-sm)' } : undefined}
                   >
-                    <Rocket className="w-4 h-4 mr-1" /> Faça o teste grátis <ArrowRight className="w-4 h-4 ml-1" />
+                    <Rocket className="w-4 h-4 mr-1" /> Experimentar Grátis <ArrowRight className="w-4 h-4 ml-1" />
                   </Button>
                   <p className="text-[11px] text-muted-foreground text-center mt-3">
-                    7 dias grátis · Sem cartão de crédito
+                    7 dias gratuitos · Sem cartão de crédito
                   </p>
                 </div>
               </motion.div>
