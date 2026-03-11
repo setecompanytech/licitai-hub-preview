@@ -116,7 +116,7 @@ export default function LogoCloudSection() {
                           <span className="text-[10px] text-muted-foreground leading-tight mt-0.5">
                             {portal.desc}
                           </span>
-                          <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
+                          <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-accent mt-1">
                             <CheckCircle2 className="w-2.5 h-2.5" />
                             {portal.status}
                           </span>
