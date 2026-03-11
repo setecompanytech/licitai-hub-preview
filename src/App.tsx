@@ -75,12 +75,13 @@ const App = () => (
           <EmpresaProvider>
           <PropostaCartProvider>
             <Routes>
-              <Route path="/landing" element={<LandingPage />} />
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/landing" element={<Navigate to="/" replace />} />
               <Route path="/faq" element={<FaqPage />} />
               <Route path="/cadastro" element={<Cadastro />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/" element={<ProtectedPages><Index /></ProtectedPages>} />
+              <Route path="/dashboard" element={<ProtectedPages><Index /></ProtectedPages>} />
               <Route path="/licitacoes" element={<Navigate to="/monitoramento-editais" replace />} />
               <Route path="/kanban" element={<ProtectedPages><KanbanPage /></ProtectedPages>} />
               <Route path="/robo-lances" element={<ProtectedPages><RoboLances /></ProtectedPages>} />
