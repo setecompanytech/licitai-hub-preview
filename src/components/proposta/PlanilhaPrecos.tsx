@@ -50,17 +50,17 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
   const valorGlobal = itens.reduce((sum, i) => sum + (parseFloat(i.valorTotal.replace(',', '.')) || 0), 0);
 
   // ── Excel Download ──
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
     const headers = ['Item', 'Descrição', 'Quantidade', 'Unidade', 'Marca', 'Fabricante', 'Modelo', 'Valor Unitário (R$)', 'Valor Total (R$)'];
     const sampleRows = [
       ['1', 'Exemplo de produto/serviço', '10', 'UN', 'Marca X', 'Fabricante Y', 'Modelo Z', '150.00', '1500.00'],
       ['2', '', '', 'UN', '', '', '', '', ''],
     ];
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleRows]);
-    ws['!cols'] = [{ wch: 6 }, { wch: 40 }, { wch: 12 }, { wch: 10 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 18 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Planilha de Preços');
-    XLSX.writeFile(wb, 'modelo_planilha_precos.xlsx');
+    await writeExcelFile('modelo_planilha_precos.xlsx', [{
+      name: 'Planilha de Preços',
+      data: [headers, ...sampleRows],
+      colWidths: [6, 40, 12, 10, 16, 16, 16, 18, 18],
+    }]);
     toast.success('Modelo Excel baixado com sucesso!');
   };
 
