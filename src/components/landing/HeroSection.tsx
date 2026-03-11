@@ -75,13 +75,6 @@ export default function HeroSection() {
 
             {/* Social proof micro */}
             <div className="flex items-center gap-3 text-white/40 text-xs mb-16">
-              <div className="flex -space-x-2">
-                {['CM', 'AR', 'RA', 'FC'].map((a) => (
-                  <div key={a} className="w-7 h-7 rounded-full bg-accent/20 border-2 border-white/10 flex items-center justify-center text-[9px] font-bold text-accent">
-                    {a}
-                  </div>
-                ))}
-              </div>
               <span>+500 empresas já utilizam o Praefectus</span>
             </div>
           </motion.div>
