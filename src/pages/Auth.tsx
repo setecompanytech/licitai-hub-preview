@@ -93,7 +93,7 @@ export default function Auth() {
     if (error) {
       toast.error('E-mail ou senha incorretos');
     } else {
-      navigate('/');
+      navigate('/dashboard');
     }
   };
 
