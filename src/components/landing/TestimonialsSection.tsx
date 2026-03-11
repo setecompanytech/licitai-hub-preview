@@ -7,7 +7,7 @@ const testimonials = [
     role: 'Diretor Comercial',
     company: 'Empresa de TI — São Paulo',
     avatar: 'CM',
-    text: 'O monitoramento automático nos ajudou a identificar editais em portais estaduais que antes não acompanhávamos. Aumentamos em 40% nossa participação em pregões.',
+    text: 'O monitoramento automático nos ajudou a identificar editais em portais estaduais que antes não acompanhávamos. Aumentamos em 40% nossa participação.',
     rating: 5,
   },
   {
@@ -15,7 +15,7 @@ const testimonials = [
     role: 'Gerente de Licitações',
     company: 'Construção Civil — Minas Gerais',
     avatar: 'AR',
-    text: 'A geração de propostas formatadas em ABNT economiza um dia inteiro de trabalho por semana. O checklist de documentos previne falhas de habilitação.',
+    text: 'A geração de propostas formatadas em ABNT economiza um dia inteiro de trabalho por semana. O checklist previne falhas de habilitação.',
     rating: 5,
   },
   {
@@ -23,7 +23,7 @@ const testimonials = [
     role: 'Sócio-Diretor',
     company: 'Distribuidora — Paraná',
     avatar: 'RA',
-    text: 'Usamos o módulo de precificação para compor custos com BDI e consulta ao Painel de Preços. Reduzimos erros de cotação e melhoramos nossa margem.',
+    text: 'Usamos o módulo de precificação para compor custos com BDI e consulta ao Painel de Preços. Reduzimos erros e melhoramos a margem.',
     rating: 5,
   },
   {
@@ -31,55 +31,54 @@ const testimonials = [
     role: 'Advogada',
     company: 'Consultoria Jurídica — Rio de Janeiro',
     avatar: 'FC',
-    text: 'O assistente jurídico com base na Lei 14.133 agiliza a elaboração de impugnações e recursos. Ferramenta indispensável para escritórios especializados.',
+    text: 'O assistente jurídico com base na Lei 14.133 agiliza a elaboração de impugnações e recursos. Ferramenta indispensável.',
     rating: 5,
   },
 ];
 
 export default function TestimonialsSection() {
   return (
-    <section id="depoimentos" className="landing-section bg-muted/20">
-      <div className="landing-container">
-        <div className="text-center mb-16">
+    <section id="depoimentos" className="py-20 md:py-28 px-6 bg-muted/30">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-14">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-            <span className="section-label">Depoimentos</span>
-            <h2 className="section-title">
-              Quem usa, <span className="gradient-text">recomenda</span>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent mb-4">Depoimentos</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
+              Quem usa, <span className="text-accent">recomenda</span>
             </h2>
-            <p className="section-subtitle mx-auto">
-              Relatos de profissionais que transformaram sua gestão de licitações com a plataforma.
+            <p className="text-base text-muted-foreground max-w-xl mx-auto mt-4">
+              Relatos de profissionais que transformaram sua gestão de licitações.
             </p>
           </motion.div>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-5">
           {testimonials.map((t, i) => (
             <motion.div
               key={t.name}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-              className="relative bg-card rounded-2xl border border-border/30 p-8 hover:shadow-lg hover:border-accent/15 transition-all duration-300"
+              transition={{ delay: i * 0.08 }}
+              className="bg-card rounded-lg border border-border/50 p-7 hover:shadow-md transition-shadow"
             >
-              <Quote className="absolute top-6 right-6 w-10 h-10 text-accent/8" />
+              <Quote className="w-8 h-8 text-accent/10 mb-4" />
 
-              <div className="flex gap-1 mb-5">
+              <div className="flex gap-1 mb-4">
                 {Array.from({ length: 5 }).map((_, j) => (
-                  <Star key={j} className={`w-4 h-4 ${j < t.rating ? 'fill-warning text-warning' : 'text-muted-foreground/20'}`} />
+                  <Star key={j} className={`w-3.5 h-3.5 ${j < t.rating ? 'fill-warning text-warning' : 'text-muted-foreground/20'}`} />
                 ))}
               </div>
 
-              <p className="text-[15px] text-foreground/80 leading-relaxed mb-8 italic">"{t.text}"</p>
+              <p className="text-[14px] text-foreground/75 leading-relaxed mb-6">"{t.text}"</p>
 
-              <div className="flex items-center gap-4 pt-5 border-t border-border/20">
-                <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center text-sm font-bold text-accent">
+              <div className="flex items-center gap-3 pt-4 border-t border-border/30">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
                   {t.avatar}
                 </div>
                 <div>
-                  <p className="text-sm font-bold">{t.name}</p>
-                  <p className="text-xs text-muted-foreground">{t.role}</p>
-                  <p className="text-xs text-muted-foreground/60">{t.company}</p>
+                  <p className="text-sm font-semibold">{t.name}</p>
+                  <p className="text-xs text-muted-foreground">{t.role} · {t.company}</p>
                 </div>
               </div>
             </motion.div>
