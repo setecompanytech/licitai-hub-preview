@@ -109,6 +109,21 @@ export default function MuralLicitacoes() {
       .then(({ data }) => {
         if (data) setFavoritos(new Set(data.map(f => `${f.numero}|${f.orgao}`)));
       });
+
+    const channel = supabase
+      .channel('mural-favoritos-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'editais_favoritos', filter: `user_id=eq.${user.id}` }, async () => {
+        const { data } = await supabase
+          .from('editais_favoritos')
+          .select('numero, orgao')
+          .eq('user_id', user.id);
+        if (data) setFavoritos(new Set(data.map(f => `${f.numero}|${f.orgao}`)));
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const carregarMural = useCallback(async () => {
