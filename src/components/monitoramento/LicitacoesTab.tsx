@@ -585,11 +585,10 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (âš
       const allResults: ResultadoBusca[] = [];
       const seenIds = new Set<string>();
 
-      // Process standard search results (PNCP only, skip mock data)
+      // Process standard search results (PNCP only, real data)
       if (buscaResult.status === 'fulfilled' && buscaResult.value) {
         const data = buscaResult.value;
         (data.items || []).forEach((item: any, idx: number) => {
-          if (item.isMock) return; // Skip mock/simulated data
           const id = item.id || `std-${idx}`;
           if (!seenIds.has(id)) {
             seenIds.add(id);
