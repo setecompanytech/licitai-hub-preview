@@ -418,6 +418,87 @@ Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (�
     carregarDados();
   }, [user]);
 
+  // ── Auto CNAE-based search on load ──
+  useEffect(() => {
+    if (!user || !empresaAtiva) return;
+    const cnae = empresaAtiva.cnae_principal;
+    if (!cnae) return;
+
+    // Get secondary CNAEs from empresa_membros context or DB
+    const runCnaeSearch = async () => {
+      setLoadingCnae(true);
+      try {
+        // Fetch CnaesSecundarios from configuracoes
+        const { data: config } = await supabase
+          .from('configuracoes')
+          .select('cnaes_monitorados')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        const cnaes = [cnae, ...(config?.cnaes_monitorados || [])].filter(Boolean);
+        // Build CNAE description queries
+        const cnaeDescriptions = cnaes.map(c => c.replace(/[.\-/]/g, '').substring(0, 7)).join(', ');
+
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
+
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/busca-editais-ia`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              query: `CNAE ${cnaeDescriptions}`,
+              portais: ['pncp'],
+              com_analise_ia: false,
+              limite: 50,
+              data_inicio: thirtyDaysAgo.toISOString().split('T')[0],
+              data_fim: now.toISOString().split('T')[0],
+              modo_cnae: true,
+              cnaes: cnaes,
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.resultados?.length > 0) {
+            const mapped: ResultadoBusca[] = data.resultados.map((item: any, idx: number) => ({
+              id: `cnae-${idx}`,
+              numero: item.numero || '-',
+              orgao: item.orgao || '-',
+              objeto: item.titulo || '-',
+              modalidade: item.modalidade || 'Não informada',
+              status: item.status || 'Publicado',
+              valor_estimado: item.valor_estimado || null,
+              uf: item.uf || null,
+              municipio: item.municipio || null,
+              data_encerramento: item.data_abertura || null,
+              portal: item.portal || 'PNCP',
+              url: item.url || null,
+              pncpNumero: item.pncp_numero || null,
+              cnpjOrgao: item.cnpj_orgao || null,
+              anoCompra: item.ano_compra || null,
+              sequencialCompra: item.seq_compra || null,
+              tem_download: item.tem_download ?? false,
+            }));
+            setCnaeResults(mapped);
+            toast.success(`${mapped.length} editais encontrados automaticamente para seu CNAE (últimos 30 dias)`);
+          }
+        }
+      } catch (err) {
+        console.error('CNAE auto-search error:', err);
+      } finally {
+        setLoadingCnae(false);
+      }
+    };
+
+    runCnaeSearch();
+  }, [user, empresaAtiva]);
+
   const togglePortal = (id: string) => {
     setPortaisSelecionados(prev =>
       prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
