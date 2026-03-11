@@ -22,7 +22,7 @@ export default function HeroSection() {
         <div className="absolute inset-0 bg-gradient-to-r from-[hsl(215,50%,14%)/0.97] via-[hsl(215,48%,18%)/0.92] to-[hsl(215,45%,22%)/0.75]" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-28 lg:py-0 w-full relative z-10">
+      <div className="max-w-7xl mx-auto px-6 pt-32 pb-28 lg:pt-28 lg:pb-24 w-full relative z-10">
         <div className="max-w-2xl">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             {/* Comfort badge */}
