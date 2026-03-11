@@ -727,9 +727,12 @@ Deno.serve(async (req) => {
       cnpj,
       com_analise_ia = true,
       limite = 30,
+      modo_cnae = false,
+      cnaes = [],
     } = body;
 
-    if (!query || query.trim().length < 2) {
+    // In CNAE mode, we don't require a text query — we search by CNAE class codes
+    if (!modo_cnae && (!query || query.trim().length < 2)) {
       return new Response(JSON.stringify({ error: "Informe um termo de busca" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
