@@ -68,10 +68,7 @@ export default function ImportacoesManager() {
     setResult(null);
 
     try {
-      const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(buffer, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows: any[] = XLSX.utils.sheet_to_json(ws);
+      const rows: any[] = await readExcelFile(file);
 
       if (rows.length === 0) {
         toast.error('Planilha vazia.');

@@ -169,18 +169,17 @@ export default function TransparenciaPA() {
     }
   };
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
     if (dadosFiltrados.length === 0) return;
-    const ws = XLSX.utils.json_to_sheet(dadosFiltrados.map(d => ({
-      'Órgão': d.orgao,
-      'Ano': d.ano,
-      'Valor Total (R$)': d.valor_total,
-      'Qtd Empenhos': d.quantidade_empenhos,
-      'Categoria': d.categoria || '',
-    })));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Transparência PA');
-    XLSX.writeFile(wb, `transparencia-pa-${anoFiltro}.xlsx`);
+    await writeExcelFromJson(`transparencia-pa-${anoFiltro}.xlsx`, 'Transparência PA',
+      dadosFiltrados.map(d => ({
+        'Órgão': d.orgao,
+        'Ano': d.ano,
+        'Valor Total (R$)': d.valor_total,
+        'Qtd Empenhos': d.quantidade_empenhos,
+        'Categoria': d.categoria || '',
+      }))
+    );
   };
 
   const dadosFiltrados = dados.filter(d => !busca || d.orgao.toLowerCase().includes(busca.toLowerCase()));

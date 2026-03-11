@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
+import { writeExcelFile } from './excel-utils';
 
 type Componente = {
   componente: string;
@@ -72,7 +72,6 @@ export function parseComposicao(iaResult: string): ComposicaoData | null {
   }
 }
 
-// ── Helper: load image as base64 for jsPDF ──
 async function loadImageAsBase64(url: string): Promise<string | null> {
   try {
     const res = await fetch(url, { mode: 'cors' });
@@ -88,14 +87,12 @@ async function loadImageAsBase64(url: string): Promise<string | null> {
   }
 }
 
-// ── PDF Export ──
 export async function exportComposicaoPDF(data: ComposicaoData, regimeLabel: string, uf: string, opts?: ExportOptions) {
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
 
   let y = 12;
 
-  // Timbrado header
   if (opts?.timbradoUrl) {
     const imgData = await loadImageAsBase64(opts.timbradoUrl);
     if (imgData) {
@@ -117,7 +114,6 @@ export async function exportComposicaoPDF(data: ComposicaoData, regimeLabel: str
   doc.text(`Regime: ${regimeLabel} | UF: ${uf} | Lei nº 14.133/2021`, pageWidth / 2, y, { align: 'center' });
   y += 8;
 
-  // Items
   (data.itens || []).forEach((item, idx) => {
     doc.setFontSize(10);
     doc.text(`Item ${idx + 1}: ${item.descricao} — ${item.quantidade} ${item.unidade}`, 14, y);
@@ -145,7 +141,6 @@ export async function exportComposicaoPDF(data: ComposicaoData, regimeLabel: str
     if (y > 260) { doc.addPage(); y = 15; }
   });
 
-  // Resumo
   doc.setFontSize(11);
   doc.text('Resumo Geral', 14, y);
   y += 5;
@@ -170,7 +165,6 @@ export async function exportComposicaoPDF(data: ComposicaoData, regimeLabel: str
 
   y = (doc as any).lastAutoTable.finalY + 6;
 
-  // Tributos
   if ((resumo.tributosPorImposto || []).length > 0) {
     autoTable(doc, {
       startY: y,
@@ -183,7 +177,6 @@ export async function exportComposicaoPDF(data: ComposicaoData, regimeLabel: str
     y = (doc as any).lastAutoTable.finalY + 6;
   }
 
-  // Parecer
   const parecer = data.parecer || {} as Parecer;
   if (y > 260) { doc.addPage(); y = 15; }
   doc.setFontSize(10);
@@ -199,9 +192,7 @@ export async function exportComposicaoPDF(data: ComposicaoData, regimeLabel: str
 }
 
 // ── Excel Export ──
-export function exportComposicaoExcel(data: ComposicaoData, regimeLabel: string, uf: string, opts?: ExportOptions) {
-  const wb = XLSX.utils.book_new();
-
+export async function exportComposicaoExcel(data: ComposicaoData, regimeLabel: string, uf: string, opts?: ExportOptions) {
   const empresaHeader = opts?.empresaNome ? `Empresa: ${opts.empresaNome}` : '';
 
   // Sheet 1 - Itens
@@ -222,13 +213,9 @@ export function exportComposicaoExcel(data: ComposicaoData, regimeLabel: string,
     itensRows.push([]);
   });
 
-  const wsItens = XLSX.utils.aoa_to_sheet(itensRows);
-  wsItens['!cols'] = [{ wch: 40 }, { wch: 18 }, { wch: 14 }, { wch: 18 }, { wch: 30 }];
-  XLSX.utils.book_append_sheet(wb, wsItens, 'Composição');
-
   // Sheet 2 - Resumo
   const resumo = data.resumo || {} as Resumo;
-  const resumoRows = [
+  const resumoRows: any[][] = [
     ['Resumo Geral'],
     ['Componente', 'Valor (R$)'],
     ['Custo Total Materiais/Serviços', resumo.custoTotalMateriais || 0],
@@ -243,24 +230,22 @@ export function exportComposicaoExcel(data: ComposicaoData, regimeLabel: string,
     ['Tributo', 'Alíquota (%)', 'Valor (R$)'],
     ...(resumo.tributosPorImposto || []).map(t => [t.imposto, t.aliquota, t.valor]),
   ];
-  const wsResumo = XLSX.utils.aoa_to_sheet(resumoRows);
-  wsResumo['!cols'] = [{ wch: 35 }, { wch: 18 }, { wch: 18 }];
-  XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo');
 
   // Sheet 3 - Parecer
   const parecer = data.parecer || {} as Parecer;
-  const parecerRows = [
+  const parecerRows: any[][] = [
     ['Parecer de Viabilidade'],
     ['Viabilidade', parecer.viabilidade || 'N/A'],
     ['Margem Líquida', `${Number(parecer.margemLiquida || 0).toFixed(2)}%`],
     ['Alerta Inexequibilidade', parecer.alertaInexequibilidade ? 'SIM' : 'NÃO'],
     ['Observações', parecer.observacoes || ''],
   ];
-  const wsParecer = XLSX.utils.aoa_to_sheet(parecerRows);
-  wsParecer['!cols'] = [{ wch: 25 }, { wch: 60 }];
-  XLSX.utils.book_append_sheet(wb, wsParecer, 'Parecer');
 
-  XLSX.writeFile(wb, 'composicao-custo.xlsx');
+  await writeExcelFile('composicao-custo.xlsx', [
+    { name: 'Composição', data: itensRows, colWidths: [40, 18, 14, 18, 30] },
+    { name: 'Resumo', data: resumoRows, colWidths: [35, 18, 18] },
+    { name: 'Parecer', data: parecerRows, colWidths: [25, 60] },
+  ]);
 }
 
 // ── Word (HTML-based) Export ──

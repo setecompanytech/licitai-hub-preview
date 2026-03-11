@@ -136,27 +136,28 @@ export default function CotacoesManager() {
     setItems(prev => prev.filter(i => i.id !== id));
   };
 
-  const exportXLSX = () => {
+  const exportXLSX = async () => {
     if (!selectedQuot || items.length === 0) return;
-    const ws = XLSX.utils.json_to_sheet(items.map((i, idx) => ({
-      'Item': idx + 1,
-      'Descrição': i.descricao,
-      'Marca': i.marca || '',
-      'Unid.': i.unidade,
-      'Qtd.': i.quantidade,
-      'Preço Unitário': i.preco_unitario,
-      'Frete': i.frete,
-      'Total': i.total,
-      'Fonte': i.fonte || '',
-      'Fornecedor': i.fornecedor || '',
-      'UF': i.uf || '',
-      'Data Coleta': i.data_coleta ? new Date(i.data_coleta).toLocaleDateString('pt-BR') : '',
-      'Link': i.url || '',
-      'Obs.': i.observacoes || '',
-    })));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Cotação');
-    XLSX.writeFile(wb, `cotacao-${selectedQuot.nome.replace(/\s+/g, '-')}.xlsx`);
+    await writeExcelFromJson(
+      `cotacao-${selectedQuot.nome.replace(/\s+/g, '-')}.xlsx`,
+      'Cotação',
+      items.map((i, idx) => ({
+        'Item': idx + 1,
+        'Descrição': i.descricao,
+        'Marca': i.marca || '',
+        'Unid.': i.unidade,
+        'Qtd.': i.quantidade,
+        'Preço Unitário': i.preco_unitario,
+        'Frete': i.frete,
+        'Total': i.total,
+        'Fonte': i.fonte || '',
+        'Fornecedor': i.fornecedor || '',
+        'UF': i.uf || '',
+        'Data Coleta': i.data_coleta ? new Date(i.data_coleta).toLocaleDateString('pt-BR') : '',
+        'Link': i.url || '',
+        'Obs.': i.observacoes || '',
+      }))
+    );
     toast.success('XLSX exportado!');
   };
 

@@ -434,19 +434,12 @@ export default function PropostaDownload({
           'Vl. Total': `R$ ${i.valorTotal}`,
           'Vl. Total Extenso': i.valorTotalExtenso || '-',
         }));
-        const ws = XLSX.utils.json_to_sheet(data);
-        ws['!cols'] = [{ wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 14 }, { wch: 30 }, { wch: 14 }, { wch: 30 }];
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Planilha de Preços');
-        XLSX.writeFile(wb, `${getFilename(numeroLicitacao)}.xlsx`);
+        await writeExcelFromJson(`${getFilename(numeroLicitacao)}.xlsx`, 'Planilha de Preços', data,
+          [6, 6, 6, 40, 15, 15, 14, 30, 14, 30]);
       } else {
         const lines = proposal.split('\n').filter(l => l.trim());
         const data = lines.map((line, idx) => ({ 'Linha': idx + 1, 'Conteúdo': line.trim() }));
-        const ws = XLSX.utils.json_to_sheet(data);
-        ws['!cols'] = [{ wch: 8 }, { wch: 120 }];
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Proposta');
-        XLSX.writeFile(wb, `${getFilename(numeroLicitacao)}.xlsx`);
+        await writeExcelFromJson(`${getFilename(numeroLicitacao)}.xlsx`, 'Proposta', data, [8, 120]);
       }
       toast.success('Excel gerado com sucesso!');
     }, 'Geração do Excel da Proposta');

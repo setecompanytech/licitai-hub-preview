@@ -70,13 +70,10 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
     if (!file) return;
 
     try {
-      const data = await file.arrayBuffer();
-      const wb = XLSX.read(data);
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows: string[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      const allRows = await readExcelAsArrays(file);
 
       // Skip header row
-      const dataRows = rows.slice(1).filter(r => r.some(cell => cell?.toString().trim()));
+      const dataRows = allRows.slice(1).filter(r => r.some(cell => cell?.toString().trim()));
       if (dataRows.length === 0) {
         toast.error('Planilha vazia ou sem dados válidos.');
         return;
