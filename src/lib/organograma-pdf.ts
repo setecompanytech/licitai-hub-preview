@@ -1212,7 +1212,7 @@ export function generateOrganogramaPDF() {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('LicitIA — Organograma do Sistema', marginL, 14);
+    doc.text('Praefectus — Organograma do Sistema', marginL, 14);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text('Manual Completo de Funcionalidades e Passo a Passo', marginL, 22);
