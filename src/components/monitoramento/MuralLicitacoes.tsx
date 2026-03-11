@@ -9,7 +9,8 @@ import { cn } from '@/lib/utils';
 import {
   Search, MapPin, Building2, CalendarDays, RefreshCw, Globe, Loader2,
   ExternalLink, DollarSign, FileText, ChevronLeft, ChevronRight, Eye,
-  X, AlertTriangle, CheckCircle2, Clock, Gavel, Star, StarOff
+  X, AlertTriangle, CheckCircle2, Clock, Gavel, Star, StarOff, Download,
+  FileDown, Link2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -64,6 +65,14 @@ const statusColor = (status: string) => {
   return 'bg-accent/10 text-accent border-accent/20';
 };
 
+// Build PNCP portal URL
+function buildPncpUrl(lic: LicitacaoMural): string | null {
+  if (lic.cnpjOrgao && lic.anoCompra && lic.sequencialCompra) {
+    return `https://pncp.gov.br/app/editais/${lic.cnpjOrgao}/${lic.anoCompra}/${lic.sequencialCompra}`;
+  }
+  return null;
+}
+
 export default function MuralLicitacoes() {
   const { user } = useAuth();
   const { iniciarProcesso } = useLicitacaoIntegration();
@@ -84,6 +93,9 @@ export default function MuralLicitacoes() {
   const [interesseDialog, setInteresseDialog] = useState(false);
   const [editalInteresse, setEditalInteresse] = useState<LicitacaoMural | null>(null);
   const [iniciandoProcesso, setIniciandoProcesso] = useState<string | null>(null);
+
+  // Download state
+  const [downloading, setDownloading] = useState<string | null>(null);
 
   // Favoritos
   const [favoritos, setFavoritos] = useState<Set<string>>(new Set());
@@ -181,6 +193,86 @@ export default function MuralLicitacoes() {
     setIniciandoProcesso(null);
   };
 
+  // Download edital via edge function
+  const handleDownloadEdital = async (lic: LicitacaoMural) => {
+    setDownloading(lic.id);
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-edital`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            numero: lic.numero,
+            portal: lic.portal,
+            url: lic.url,
+            orgao: lic.orgao,
+            objeto: lic.objeto,
+            cnpjOrgao: lic.cnpjOrgao,
+            pncpNumero: lic.pncpNumero,
+            anoCompra: lic.anoCompra,
+            sequencialCompra: lic.sequencialCompra,
+          }),
+        }
+      );
+
+      const data = await resp.json();
+
+      if (!resp.ok || !data.success) {
+        // If download failed, offer direct link to PNCP
+        const pncpUrl = buildPncpUrl(lic);
+        if (pncpUrl) {
+          toast.info('Documento não disponível via API. Abrindo portal PNCP...', { duration: 4000 });
+          window.open(pncpUrl, '_blank');
+        } else if (lic.url) {
+          toast.info('Abrindo portal do edital...', { duration: 3000 });
+          window.open(lic.url, '_blank');
+        } else {
+          toast.error(data.error || 'Não foi possível baixar o edital.');
+        }
+        return;
+      }
+
+      if (data.tipo === 'arquivo_direto' && data.arquivo?.conteudo_base64) {
+        // Direct download via base64
+        const byteCharacters = atob(data.arquivo.conteudo_base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: data.arquivo.content_type || 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = data.arquivo.nome || 'edital.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success(`✅ ${data.arquivo.nome} baixado com sucesso!`);
+      } else if (data.tipo === 'download_urls' && data.documentos?.length > 0) {
+        // Open first document URL directly
+        window.open(data.documentos[0].url, '_blank');
+        toast.success(`📄 ${data.documentos.length} documento(s) encontrado(s). Abrindo download...`);
+      } else {
+        const pncpUrl = buildPncpUrl(lic);
+        if (pncpUrl) {
+          window.open(pncpUrl, '_blank');
+          toast.info('Abrindo ficha no PNCP...');
+        }
+      }
+    } catch (err) {
+      console.error('Download error:', err);
+      toast.error('Erro ao tentar baixar o edital.');
+    } finally {
+      setDownloading(null);
+    }
+  };
+
   const toggleFavorito = async (lic: LicitacaoMural) => {
     if (!user) return;
     const key = `${lic.numero}|${lic.orgao}`;
@@ -205,6 +297,10 @@ export default function MuralLicitacoes() {
   if (fichaAberta) {
     const lic = fichaAberta;
     const isFav = favoritos.has(`${lic.numero}|${lic.orgao}`);
+    const pncpUrl = buildPncpUrl(lic);
+    const portalUrl = lic.url || pncpUrl;
+    const isDownloading = downloading === lic.id;
+
     return (
       <div className="space-y-4 animate-fade-in">
         <Button variant="ghost" size="sm" onClick={() => setFichaAberta(null)} className="gap-1.5 text-sm">
@@ -252,13 +348,47 @@ export default function MuralLicitacoes() {
               <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Data de Publicação" value={lic.data_publicacao ? new Date(lic.data_publicacao).toLocaleDateString('pt-BR') : 'Não informada'} />
               <InfoField icon={<Globe className="w-4 h-4" />} label="Portal" value={lic.portal} />
               {lic.pncpNumero && <InfoField icon={<FileText className="w-4 h-4" />} label="Nº Controle PNCP" value={lic.pncpNumero} />}
+              {lic.cnpjOrgao && <InfoField icon={<Building2 className="w-4 h-4" />} label="CNPJ do Órgão" value={lic.cnpjOrgao.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')} />}
             </div>
+
+            {/* Links diretos */}
+            {(portalUrl || pncpUrl) && (
+              <div className="bg-muted/30 rounded-lg p-4 space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <Link2 className="w-3.5 h-3.5" /> Links Diretos
+                </label>
+                <div className="space-y-1">
+                  {pncpUrl && (
+                    <a href={pncpUrl} target="_blank" rel="noopener noreferrer"
+                       className="text-xs text-accent hover:underline flex items-center gap-1.5 break-all">
+                      <Globe className="w-3.5 h-3.5 flex-shrink-0" /> {pncpUrl}
+                    </a>
+                  )}
+                  {lic.url && lic.url !== pncpUrl && (
+                    <a href={lic.url} target="_blank" rel="noopener noreferrer"
+                       className="text-xs text-accent hover:underline flex items-center gap-1.5 break-all">
+                      <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" /> {lic.url}
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex flex-wrap gap-3 pt-4 border-t border-border/50">
-              {lic.url && (
-                <Button variant="default" className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2" asChild>
-                  <a href={lic.url} target="_blank" rel="noopener noreferrer">
+              {/* Download Edital - Primary Action */}
+              <Button
+                className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2"
+                onClick={() => handleDownloadEdital(lic)}
+                disabled={isDownloading}
+              >
+                {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+                {isDownloading ? 'Baixando...' : 'Baixar Edital'}
+              </Button>
+
+              {portalUrl && (
+                <Button variant="outline" className="gap-2" asChild>
+                  <a href={portalUrl} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="w-4 h-4" /> Acessar no Portal
                   </a>
                 </Button>
@@ -410,12 +540,12 @@ export default function MuralLicitacoes() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {licitacoes.map((lic, idx) => {
             const isFav = favoritos.has(`${lic.numero}|${lic.orgao}`);
+            const isDownloading = downloading === lic.id;
             return (
               <Card
                 key={lic.id}
-                className="p-4 hover:shadow-md transition-all cursor-pointer border-border/50 hover:border-accent/30 group animate-fade-in"
+                className="p-4 hover:shadow-md transition-all border-border/50 hover:border-accent/30 group animate-fade-in"
                 style={{ animationDelay: `${idx * 40}ms` }}
-                onClick={() => setFichaAberta(lic)}
               >
                 {/* Top row */}
                 <div className="flex items-start justify-between mb-2">
@@ -435,7 +565,7 @@ export default function MuralLicitacoes() {
                 <p className="text-[10px] font-mono text-muted-foreground mb-1">{lic.numero}</p>
 
                 {/* Objeto */}
-                <p className="text-sm font-medium line-clamp-2 mb-3 group-hover:text-accent transition-colors">{lic.objeto}</p>
+                <p className="text-sm font-medium line-clamp-2 mb-3 group-hover:text-accent transition-colors cursor-pointer" onClick={() => setFichaAberta(lic)}>{lic.objeto}</p>
 
                 {/* Órgão */}
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
@@ -465,10 +595,26 @@ export default function MuralLicitacoes() {
                   </div>
                 </div>
 
-                {/* Hover action */}
-                <div className="flex items-center justify-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Eye className="w-3 h-3 text-accent" />
-                  <span className="text-[10px] text-accent font-medium">Ver ficha completa</span>
+                {/* Action buttons */}
+                <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/20">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 text-xs gap-1.5 h-8"
+                    onClick={() => setFichaAberta(lic)}
+                  >
+                    <Eye className="w-3.5 h-3.5" /> Ver Ficha
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 text-xs gap-1.5 h-8 text-accent border-accent/30 hover:bg-accent/10"
+                    onClick={() => handleDownloadEdital(lic)}
+                    disabled={isDownloading}
+                  >
+                    {isDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                    {isDownloading ? 'Baixando...' : 'Edital'}
+                  </Button>
                 </div>
               </Card>
             );
