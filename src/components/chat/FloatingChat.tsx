@@ -32,7 +32,7 @@ export default function FloatingChat({ isLanding = false }: FloatingChatProps) {
       if (!hasGreeted && messages.length === 0) {
         setMessages([{
           role: 'assistant',
-          content: 'Olá! 👋 Sou a **Lia**, sua assistente virtual do Praefectus. Como posso te ajudar hoje?\n\nPosso tirar dúvidas sobre:\n- 📋 Funcionalidades da plataforma\n- 📝 Licitações e editais\n- 💡 Como usar as ferramentas\n- 🆘 Suporte técnico'
+          content: 'Olá! 👋 Sou a **Lia**, sua assistente virtual do PRAEFECTUS. Como posso te ajudar hoje?\n\nPosso tirar dúvidas sobre:\n- 📋 Funcionalidades da plataforma\n- 📝 Licitações e editais\n- 💡 Como usar as ferramentas\n- 🆘 Suporte técnico'
         }]);
         setHasGreeted(true);
       }
