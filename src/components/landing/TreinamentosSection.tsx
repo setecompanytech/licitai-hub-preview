@@ -38,7 +38,7 @@ const cursos = [
     icon: Award,
     badge: 'Certificação',
     badgeColor: 'bg-warning/8 text-warning border-warning/20',
-    title: 'Certificação Praefectus Expert',
+    title: 'Certificação PRAEFECTUS Expert',
     desc: 'Certificação completa com avaliação prática e certificado reconhecido.',
     duracao: '20h',
     aulas: 48,
