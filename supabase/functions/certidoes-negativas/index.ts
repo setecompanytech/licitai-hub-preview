@@ -16,43 +16,53 @@ type VerificacaoReal = {
   url?: string;
 };
 
-// Consulta CEIS (Cadastro de Empresas Inidôneas e Suspensas)
-async function consultarCEIS(cnpj: string): Promise<VerificacaoReal> {
+// Helper para consultar Portal da Transparência (CEIS/CNEP/CEPIM)
+async function consultarTransparencia(endpoint: string, cnpj: string, nomeFonte: string, descSingular: string): Promise<VerificacaoReal> {
+  const url = `https://portaldatransparencia.gov.br/sancoes/${endpoint.toLowerCase()}`;
   try {
-    const resp = await fetch(
-      `${TRANSPARENCIA_BASE}/ceis?cnpjSancionado=${cnpj}&pagina=1`,
-      {
-        headers: { "Accept": "application/json", "chave-api-dados": "sua-chave" },
-      }
-    );
+    // A API pública do Portal da Transparência requer scraping via Firecrawl
+    const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+    if (!FIRECRAWL_API_KEY) {
+      return { fonte: nomeFonte, status: "verificar", detalhes: "Consulte diretamente no Portal da Transparência", dataConsulta: new Date().toISOString(), url };
+    }
+
+    const resp = await fetch("https://api.firecrawl.dev/v1/search", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${FIRECRAWL_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: `"${cnpj}" ${endpoint} site:portaldatransparencia.gov.br`,
+        limit: 3,
+        lang: "pt-br",
+        country: "BR",
+      }),
+    });
+
     if (!resp.ok) {
-      // Tenta sem chave (alguns endpoints funcionam sem)
-      const resp2 = await fetch(
-        `${TRANSPARENCIA_BASE}/ceis?cnpjSancionado=${cnpj}&pagina=1`,
-        { headers: { "Accept": "application/json" } }
-      );
-      if (!resp2.ok) {
-        const body = await resp2.text();
-        console.log("CEIS response:", resp2.status, body);
-        return { fonte: "CEIS", status: "erro", detalhes: `API indisponível (${resp2.status})`, dataConsulta: new Date().toISOString() };
-      }
-      const data2 = await resp2.json();
-      const registros = Array.isArray(data2) ? data2 : data2?.data || [];
-      if (registros.length === 0) {
-        return { fonte: "CEIS", status: "regular", detalhes: "Nenhuma sanção encontrada no CEIS", dataConsulta: new Date().toISOString(), url: "https://portaldatransparencia.gov.br/sancoes/ceis" };
-      }
-      return { fonte: "CEIS", status: "irregular", detalhes: `${registros.length} sanção(ões) encontrada(s)`, dataConsulta: new Date().toISOString(), url: "https://portaldatransparencia.gov.br/sancoes/ceis" };
+      const body = await resp.text();
+      console.log(`${nomeFonte} search response:`, resp.status, body);
+      return { fonte: nomeFonte, status: "verificar", detalhes: "Consulte diretamente no Portal da Transparência", dataConsulta: new Date().toISOString(), url };
     }
+
     const data = await resp.json();
-    const registros = Array.isArray(data) ? data : data?.data || [];
-    if (registros.length === 0) {
-      return { fonte: "CEIS", status: "regular", detalhes: "Nenhuma sanção encontrada no CEIS", dataConsulta: new Date().toISOString(), url: "https://portaldatransparencia.gov.br/sancoes/ceis" };
+    const results = data?.data || [];
+    const found = results.some((r: any) => {
+      const text = (r.description || r.markdown || r.title || "").toLowerCase();
+      return text.includes(cnpj) && (text.includes("sanção") || text.includes("punição") || text.includes("impedid"));
+    });
+
+    if (found) {
+      return { fonte: nomeFonte, status: "irregular", detalhes: `Possível ${descSingular} encontrada via busca pública`, dataConsulta: new Date().toISOString(), url };
     }
-    return { fonte: "CEIS", status: "irregular", detalhes: `${registros.length} sanção(ões) encontrada(s): ${registros.map((r: any) => r.orgaoSancionador?.nome || '').filter(Boolean).join(', ')}`, dataConsulta: new Date().toISOString(), url: "https://portaldatransparencia.gov.br/sancoes/ceis" };
+    return { fonte: nomeFonte, status: "regular", detalhes: `Nenhuma ${descSingular} encontrada em busca pública`, dataConsulta: new Date().toISOString(), url };
   } catch (e) {
-    console.error("Erro CEIS:", e);
-    return { fonte: "CEIS", status: "erro", detalhes: `Falha na consulta: ${e.message}`, dataConsulta: new Date().toISOString() };
+    console.error(`Erro ${nomeFonte}:`, e);
+    return { fonte: nomeFonte, status: "erro", detalhes: `Falha: ${e.message}`, dataConsulta: new Date().toISOString() };
   }
+}
+
+// Consulta CEIS
+async function consultarCEIS(cnpj: string): Promise<VerificacaoReal> {
+  return consultarTransparencia("CEIS", cnpj, "CEIS", "sanção");
 }
 
 // Consulta CNEP (Cadastro Nacional de Empresas Punidas)
