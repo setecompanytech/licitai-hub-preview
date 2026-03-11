@@ -31,7 +31,7 @@ export default function FaqPage() {
     <div className="min-h-screen bg-background">
       <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
-          <button onClick={() => navigate('/landing')} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={() => navigate('/')} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="w-4 h-4" /> <Zap className="w-5 h-5 text-accent" /> <span className="font-brand font-bold tracking-widest uppercase">PRAEFECTUS</span>
           </button>
           <Button size="sm" onClick={() => navigate('/auth')}>Acessar Sistema</Button>

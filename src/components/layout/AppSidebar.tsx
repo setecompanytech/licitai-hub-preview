@@ -260,7 +260,7 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
       {/* Bottom */}
       <div className="p-2 border-t space-y-0.5 flex-shrink-0" style={{ borderColor: `hsl(var(--sidebar-border))` }}>
         <button
-          onClick={async () => { await signOut(); navigate('/landing'); onNavigate?.(); }}
+          onClick={async () => { await signOut(); navigate('/'); onNavigate?.(); }}
           className="sidebar-item sidebar-item-idle w-full text-destructive/80 hover:text-destructive"
         >
           <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
