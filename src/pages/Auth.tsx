@@ -354,7 +354,7 @@ export default function Auth() {
                 <Separator className="mb-4" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-xs font-medium">Como conheceu o LicitIA?</Label>
+                    <Label className="text-xs font-medium">Como conheceu o Praefectus?</Label>
                     <Select value={comoConheceu} onValueChange={setComoConheceu}>
                       <SelectTrigger className="mt-1.5">
                         <SelectValue placeholder="Selecionar" />
