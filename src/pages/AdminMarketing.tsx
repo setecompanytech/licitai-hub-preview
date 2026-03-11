@@ -125,7 +125,7 @@ export default function AdminMarketing() {
   }, [leads, search]);
 
   if (roleLoading) return <AppLayout><div className="flex justify-center p-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div></AppLayout>;
-  if (!isAdmin) return <Navigate to="/" replace />;
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const statusColor = (s: string) => {
     if (s === 'convertido') return 'default';

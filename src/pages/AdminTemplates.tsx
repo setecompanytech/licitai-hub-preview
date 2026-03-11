@@ -69,7 +69,7 @@ export default function AdminTemplates() {
   useEffect(() => { if (isAdmin) loadTemplates(); }, [isAdmin]);
 
   if (roleLoading) return <AppLayout><div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Carregando...</p></div></AppLayout>;
-  if (!isAdmin) return <Navigate to="/" replace />;
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const resetForm = () => {
     setForm({ nome: '', categoria: 'geral', descricao: '', prompt_sistema: '', modelo_conteudo: '', legislacao_base: '', ativo: true });

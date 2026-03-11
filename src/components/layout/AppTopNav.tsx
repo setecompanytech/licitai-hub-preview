@@ -345,7 +345,7 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
 
           <div className="p-3 border-t border-border">
             <button
-              onClick={async () => { await signOut(); navigate('/landing'); setMobileDrawerOpen(false); }}
+              onClick={async () => { await signOut(); navigate('/'); setMobileDrawerOpen(false); }}
               className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-destructive/80 hover:text-destructive hover:bg-destructive/5 transition-all"
             >
               <LogOut className="w-4 h-4 flex-shrink-0" />
