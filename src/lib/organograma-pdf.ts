@@ -1443,5 +1443,5 @@ export function generateOrganogramaPDF() {
     // Footer is already added at key points, but let's ensure consistency
   }
 
-  doc.save('Praefectus-Organograma-Completo.pdf');
+  doc.save('PRAEFECTUS-Organograma-Completo.pdf');
 }
