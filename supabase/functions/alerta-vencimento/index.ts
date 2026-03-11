@@ -152,7 +152,7 @@ serve(async (req) => {
               </html>`;
 
               await resend.emails.send({
-                from: "LicitIA <noreply@resend.dev>",
+                from: "Praefectus <noreply@resend.dev>",
                 to: [userEmail],
                 subject: `${urgencia} — Plano ${planoNome} vence em ${dias} dia(s)`,
                 html,

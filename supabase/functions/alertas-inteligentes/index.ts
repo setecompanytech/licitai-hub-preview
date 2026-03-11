@@ -184,9 +184,9 @@ Deno.serve(async (req) => {
                       <p><strong>Objeto:</strong> ${pi.objeto}</p>
                       <p><strong>Valor Estimado:</strong> ${pi.valor_estimado ? `R$ ${Number(pi.valor_estimado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'N/I'}</p>
                       <p><strong>Portal:</strong> ${pi.portal || 'N/I'}</p>
-                      <p><a href="https://licitia.com.br/meus-compromissos">Acessar Meus Compromissos →</a></p>
+                      <p><a href="https://praefectus.com.br/meus-compromissos">Acessar Meus Compromissos →</a></p>
                       <hr/>
-                      <p style="font-size:12px;color:#888;">LicitIA — Gestão Inteligente de Licitações</p>
+                      <p style="font-size:12px;color:#888;">Praefectus — Gestão Inteligente de Licitações</p>
                     `,
                   }),
                 });

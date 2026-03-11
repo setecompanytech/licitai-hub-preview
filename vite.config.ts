@@ -25,8 +25,8 @@ export default defineConfig(({ mode }) => ({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
       manifest: {
-        name: "LicitIA - Gestão de Licitações",
-        short_name: "LicitIA",
+        name: "Praefectus - Gestão de Licitações",
+        short_name: "Praefectus",
         description: "Plataforma inteligente de gestão de licitações públicas",
         theme_color: "#0066cc",
         background_color: "#f5f6f8",

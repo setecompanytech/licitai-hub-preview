@@ -283,7 +283,7 @@ Deno.serve(async (req) => {
           resumo: artigo.resumo,
           conteudo: artigo.conteudo,
           categoria: cat.categoria,
-          autor: 'LicitIA News',
+          autor: 'Praefectus News',
           tempo_leitura: tempoLeitura,
           tags: [...(artigo.tags || []), ...cat.tags],
           destaque: artigo.destaque || false,

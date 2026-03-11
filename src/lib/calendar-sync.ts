@@ -78,10 +78,10 @@ export function generateICSCalendar(events: CalendarEvent[]): string {
   const header = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//LicitIA//Calendario//PT',
+    'PRODID:-//Praefectus//Calendario//PT',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:LicitIA - Licitações',
+    'X-WR-CALNAME:Praefectus - Licitações',
     'X-WR-TIMEZONE:America/Sao_Paulo',
   ].join('\r\n');
 
