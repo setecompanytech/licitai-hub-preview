@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { valorPorExtenso } from '@/lib/numero-extenso';
-import * as XLSX from 'xlsx';
+import { writeExcelFile } from '@/lib/excel-utils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
