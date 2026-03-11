@@ -81,7 +81,41 @@ export default function Documentos() {
   const [pendingValidadeDate, setPendingValidadeDate] = useState<Date | undefined>(undefined);
   const [pendingManualDate, setPendingManualDate] = useState('');
 
-  const categorias = [...new Set(documentos.map((d) => d.categoria))];
+  // Sync checklist status from uploaded documents in DB
+  useEffect(() => {
+    if (!user) return;
+    const syncFromDB = async () => {
+      const { data } = await supabase
+        .from('documentos')
+        .select('nome, validade, arquivo_path')
+        .eq('user_id', user.id);
+      if (!data) return;
+      setDocumentos(prev => prev.map(doc => {
+        const match = data.find(d => d.nome === doc.nome);
+        if (match) {
+          const hoje = new Date();
+          const validade = match.validade ? new Date(match.validade) : null;
+          let status: DocStatus = 'ok';
+          if (validade && validade < hoje) status = 'vencido';
+          else if (validade) {
+            const diff = (validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24);
+            if (diff <= 30) status = 'pendente';
+          }
+          return { ...doc, status, validade: match.validade || undefined, arquivo: match.arquivo_path || undefined, storagePath: match.arquivo_path || undefined };
+        }
+        return doc;
+      }));
+    };
+    syncFromDB();
+
+    const channel = supabase
+      .channel('documentos-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'documentos', filter: `user_id=eq.${user.id}` }, () => syncFromDB())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
   const filtered = filter === 'todos' ? documentos : documentos.filter((d) => d.status === filter);
   const okCount = documentos.filter((d) => d.status === 'ok').length;
   const progress = Math.round((okCount / documentos.length) * 100);
