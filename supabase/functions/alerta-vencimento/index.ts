@@ -145,7 +145,7 @@ serve(async (req) => {
                     </div>
                   </div>
                   <p style="text-align:center;color:#999;font-size:11px;margin-top:16px;">
-                    Praefectus — Plataforma inteligente de licitações
+                    PRAEFECTUS — Plataforma inteligente de licitações
                   </p>
                 </div>
               </body>
