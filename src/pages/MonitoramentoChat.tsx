@@ -267,6 +267,13 @@ export default function MonitoramentoChat() {
                   <Input placeholder="Buscar pregão..." value={busca} onChange={e => setBusca(e.target.value)} className="pl-10" />
                 </div>
                 <div className="space-y-2 max-h-[calc(100vh-440px)] overflow-y-auto pr-1">
+                  {pregoesFiltrados.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">Nenhum pregão monitorado</p>
+                      <p className="text-xs mt-1">Os pregões aparecerão aqui quando você iniciar o monitoramento em tempo real.</p>
+                    </div>
+                  )}
                   {pregoesFiltrados.map(pregao => {
                     const cfg = statusConfig[pregao.status];
                     const Icon = cfg.icon;
