@@ -198,7 +198,7 @@ export default function Auth() {
               </button>
               <h1 className="text-2xl font-bold">Cadastre-se</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Experimente todas as ferramentas do Praefectus por <strong className="text-accent">7 dias gratuitos</strong>
+                Experimente todas as ferramentas do PRAEFECTUS por <strong className="text-accent">7 dias gratuitos</strong>
               </p>
             </div>
 
@@ -352,7 +352,7 @@ export default function Auth() {
                 <Separator className="mb-4" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-xs font-medium">Como conheceu o Praefectus?</Label>
+                    <Label className="text-xs font-medium">Como conheceu o PRAEFECTUS?</Label>
                     <Select value={comoConheceu} onValueChange={setComoConheceu}>
                       <SelectTrigger className="mt-1.5">
                         <SelectValue placeholder="Selecionar" />
@@ -412,7 +412,7 @@ export default function Auth() {
                   <a href="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-semibold">Termos de Uso</a>{' '}
                   e a{' '}
                   <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-semibold">Política de Privacidade</a>{' '}
-                  da plataforma Praefectus, manifestando consentimento livre, informado e inequívoco, nos termos do{' '}
+                  da plataforma PRAEFECTUS, manifestando consentimento livre, informado e inequívoco, nos termos do{' '}
                   <strong>Art. 7º, inciso I, da Lei nº 13.709/2018 (LGPD)</strong>, para o tratamento de meus dados pessoais nas finalidades descritas nos referidos documentos.
                 </label>
               </div>

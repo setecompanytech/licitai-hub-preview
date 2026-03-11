@@ -59,7 +59,7 @@ export default function WorkflowIA() {
       await streamAIChat({
         messages: [{
           role: 'user',
-          content: `Você é o assistente de workflow autônomo da Praefectus. Execute a etapa "${step.label}" para a empresa:
+          content: `Você é o assistente de workflow autônomo da PRAEFECTUS. Execute a etapa "${step.label}" para a empresa:
 
 **Empresa**: ${empresa.nome_fantasia || empresa.razao_social}
 **CNPJ**: ${empresa.cnpj}

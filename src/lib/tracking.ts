@@ -52,7 +52,7 @@ export function trackGA4Event(eventName: string, params?: Record<string, any>) {
 
 // Track lead submission
 export function trackLeadConversion(data: { email: string; plano?: string }) {
-  trackPixelEvent('Lead', { content_name: 'Praefectus Trial', currency: 'BRL' });
+  trackPixelEvent('Lead', { content_name: 'PRAEFECTUS Trial', currency: 'BRL' });
   trackGA4Event('generate_lead', { event_category: 'engagement', event_label: data.plano || 'trial' });
   trackGA4Event('conversion', { send_to: 'AW-CONVERSION_ID/CONVERSION_LABEL', value: 0, currency: 'BRL' });
 }

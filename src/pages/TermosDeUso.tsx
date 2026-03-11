@@ -28,7 +28,7 @@ export default function TermosDeUso() {
           <section>
             <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">1. OBJETO</h2>
             <p className="text-sm text-muted-foreground">
-               Os presentes Termos de Uso regulam as condições de acesso e utilização da plataforma <strong>Praefectus</strong> ("Plataforma"), de propriedade e operação da <strong>PRAEFECTUS DADOS E CORPORATIVO LTDA</strong> ("Empresa"), um sistema de gestão inteligente de licitações públicas que utiliza inteligência artificial para auxiliar empresas no processo licitatório, nos termos da <strong>Lei nº 14.133/2021</strong> (Nova Lei de Licitações e Contratos Administrativos).
+               Os presentes Termos de Uso regulam as condições de acesso e utilização da plataforma <strong>PRAEFECTUS</strong> ("Plataforma"), de propriedade e operação da <strong>PRAEFECTUS DADOS E CORPORATIVO LTDA</strong> ("Empresa"), um sistema de gestão inteligente de licitações públicas que utiliza inteligência artificial para auxiliar empresas no processo licitatório, nos termos da <strong>Lei nº 14.133/2021</strong> (Nova Lei de Licitações e Contratos Administrativos).
             </p>
           </section>
 

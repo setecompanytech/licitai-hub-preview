@@ -174,11 +174,11 @@ Deno.serve(async (req) => {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${resendKey}` },
                   body: JSON.stringify({
-                    from: 'Praefectus <alertas@praefectus.com.br>',
+                    from: 'PRAEFECTUS <alertas@praefectus.com.br>',
                     to: [email],
                     subject: `🔔 Alerta: Processo ${pi.numero} — ${alertaKey === '1dia' ? 'ÚLTIMO DIA' : `${diffDias} dias restantes`}`,
                     html: `
-                      <h2>Alerta de Compromisso — Praefectus</h2>
+                      <h2>Alerta de Compromisso — PRAEFECTUS</h2>
                       <p>Olá ${profile?.nome_completo || ''},</p>
                       <p>${alertaMsg}</p>
                       <p><strong>Objeto:</strong> ${pi.objeto}</p>
@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
                       <p><strong>Portal:</strong> ${pi.portal || 'N/I'}</p>
                       <p><a href="https://praefectus.com.br/meus-compromissos">Acessar Meus Compromissos →</a></p>
                       <hr/>
-                      <p style="font-size:12px;color:#888;">Praefectus — Gestão Inteligente de Licitações</p>
+                      <p style="font-size:12px;color:#888;">PRAEFECTUS — Gestão Inteligente de Licitações</p>
                     `,
                   }),
                 });

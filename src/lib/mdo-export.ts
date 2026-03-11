@@ -120,7 +120,7 @@ export function exportMDOPDF(result: MDOResult, inputs: MDOInputs) {
   y = (doc as any).lastAutoTable.finalY + 5;
 
   doc.setFontSize(6); doc.setTextColor(120);
-  doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')} | Praefectus — Sistema de Precificação para Licitações`, 14, y);
+  doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')} | PRAEFECTUS — Sistema de Precificação para Licitações`, 14, y);
 
   doc.save(`planilha-custos-mdo-${inputs.cargo.nome.replace(/\s+/g, '-').toLowerCase()}.pdf`);
 }

@@ -38,7 +38,7 @@ export default function PlanoAssinatura() {
   useEffect(() => {
     const checkout = searchParams.get('checkout');
     if (checkout === 'success') {
-      toast.success('Assinatura realizada com sucesso! Bem-vindo ao Praefectus.');
+      toast.success('Assinatura realizada com sucesso! Bem-vindo ao PRAEFECTUS.');
       searchParams.delete('checkout');
       setSearchParams(searchParams, { replace: true });
       checkSubscription();

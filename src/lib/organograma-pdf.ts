@@ -1212,7 +1212,7 @@ export function generateOrganogramaPDF() {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('Praefectus — Organograma do Sistema', marginL, 14);
+    doc.text('PRAEFECTUS — Organograma do Sistema', marginL, 14);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text('Manual Completo de Funcionalidades e Passo a Passo', marginL, 22);
@@ -1226,7 +1226,7 @@ export function generateOrganogramaPDF() {
     doc.rect(0, pageH - 12, pageW, 12, 'F');
     doc.setFontSize(7);
     doc.setTextColor(100, 116, 139);
-    doc.text('Praefectus — Sistema de Gestão de Licitações Públicas', marginL, pageH - 5);
+    doc.text('PRAEFECTUS — Sistema de Gestão de Licitações Públicas', marginL, pageH - 5);
     doc.text(`Página ${pageNum}`, pageW - marginR, pageH - 5, { align: 'right' });
     doc.setTextColor(0, 0, 0);
   };
@@ -1253,7 +1253,7 @@ export function generateOrganogramaPDF() {
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(71, 85, 105);
-  doc.text('Todas as funcionalidades do sistema Praefectus', pageW / 2, y + 28, { align: 'center' });
+  doc.text('Todas as funcionalidades do sistema PRAEFECTUS', pageW / 2, y + 28, { align: 'center' });
   doc.text('com descrição detalhada e instruções passo a passo.', pageW / 2, y + 35, { align: 'center' });
   doc.setFontSize(9);
   doc.text('Do PAINEL à CONFIGURAÇÃO — 7 grupos · 30+ submódulos · 90+ funcionalidades', pageW / 2, y + 47, { align: 'center' });
@@ -1285,7 +1285,7 @@ export function generateOrganogramaPDF() {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.text('Praefectus', pageW / 2, y + 6.5, { align: 'center' });
+  doc.text('PRAEFECTUS', pageW / 2, y + 6.5, { align: 'center' });
   y += boxH + 4;
 
   // Group boxes
@@ -1443,5 +1443,5 @@ export function generateOrganogramaPDF() {
     // Footer is already added at key points, but let's ensure consistency
   }
 
-  doc.save('Praefectus-Organograma-Completo.pdf');
+  doc.save('PRAEFECTUS-Organograma-Completo.pdf');
 }
