@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Zap, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import PraefectusLogo from '@/components/shared/PraefectusLogo';
 
 export default function PoliticaPrivacidade() {
   const navigate = useNavigate();
