@@ -192,7 +192,7 @@ export default function Auth() {
         <div className="max-w-3xl mx-auto px-4 py-8">
           <div className="bg-card rounded-2xl border border-border shadow-lg p-6 md:p-10">
             <div className="mb-6">
-              <button onClick={() => setStep('escolha')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
+              <button onClick={() => navigate('/')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
                 <ArrowLeft className="w-4 h-4" />
                 Voltar
               </button>
