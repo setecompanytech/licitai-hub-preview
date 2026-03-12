@@ -66,7 +66,7 @@ jobs:
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_SERVER_DIR: ${{ secrets.FTP_SERVER_DIR }}
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq lftp dnsutils
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp dnsutils netcat-openbsd
 
           if [ -z "$FTP_SERVER" ] || [ -z "$FTP_USERNAME" ] || [ -z "$FTP_PASSWORD" ]; then
             echo "::error::Secrets FTP_SERVER, FTP_USERNAME e FTP_PASSWORD são obrigatórios."
@@ -75,48 +75,67 @@ jobs:
 
           TARGET_DIR="${FTP_SERVER_DIR:-/public_html/}"
 
-          echo "Validando DNS de $FTP_SERVER..."
+          echo "::group::Diagnóstico de rede"
+          echo "Servidor informado: $FTP_SERVER"
           nslookup "$FTP_SERVER" || true
+          for port in 21 22 990; do
+            if nc -vz -w 5 "$FTP_SERVER" "$port"; then
+              echo "Porta $port: alcançável"
+            else
+              echo "Porta $port: indisponível"
+            fi
+          done
+          echo "::endgroup::"
 
-          echo "Testando conectividade na porta 21..."
-          if ! timeout 10 bash -c "</dev/tcp/$FTP_SERVER/21"; then
-            echo "::error::Runner do GitHub não conseguiu alcançar $FTP_SERVER:21 (bloqueio de rede/firewall)."
-            exit 1
-          fi
+          deploy_with_lftp() {
+            local host="$1"
+            local protocol="$2"
+            local port="$3"
+            local ssl_allow="$4"
+            local ssl_force="$5"
 
-          cat > /tmp/deploy-ftp.lftp <<EOF
+            cat > /tmp/deploy.lftp <<EOF
           set cmd:fail-exit yes
+          set cmd:trace yes
           set net:timeout 30
-          set net:max-retries 2
-          set net:reconnect-interval-base 5
+          set net:max-retries 1
+          set net:reconnect-interval-base 3
           set dns:order inet
           set ftp:passive-mode true
-          set ftp:ssl-allow true
+          set ftp:ssl-allow $ssl_allow
+          set ftp:ssl-force $ssl_force
+          set ftp:ssl-protect-data true
           set ssl:verify-certificate false
-          open -u "$FTP_USERNAME","$FTP_PASSWORD" -p 21 "ftp://$FTP_SERVER"
+          open -u "$FTP_USERNAME","$FTP_PASSWORD" -p $port "$protocol://$host"
+          pwd
           cls
           mirror --reverse --delete --verbose ./dist/ "$TARGET_DIR"
           bye
-          EOF
+EOF
 
-          if ! lftp -f /tmp/deploy-ftp.lftp; then
-            echo "::warning::FTP padrão falhou, tentando FTPS explícito..."
+            echo "::group::Tentativa: ${protocol^^} em $host:$port"
+            if lftp -f /tmp/deploy.lftp; then
+              echo "::endgroup::"
+              return 0
+            fi
+            echo "::endgroup::"
+            return 1
+          }
 
-            cat > /tmp/deploy-ftps.lftp <<EOF
-            set cmd:fail-exit yes
-            set net:timeout 30
-            set net:max-retries 2
-            set net:reconnect-interval-base 5
-            set dns:order inet
-            set ftp:passive-mode true
-            set ftp:ssl-force true
-            set ftp:ssl-protect-data true
-            set ssl:verify-certificate false
-            open -u "$FTP_USERNAME","$FTP_PASSWORD" -p 21 "ftp://$FTP_SERVER"
-            cls
-            mirror --reverse --delete --verbose ./dist/ "$TARGET_DIR"
-            bye
-            EOF
-
-            lftp -f /tmp/deploy-ftps.lftp
+          HOSTS=("$FTP_SERVER")
+          if [[ "$FTP_SERVER" == ftp.* ]]; then
+            HOSTS+=("${FTP_SERVER#ftp.}")
           fi
+
+          for host in "${HOSTS[@]}"; do
+            if deploy_with_lftp "$host" ftp 21 true false \
+              || deploy_with_lftp "$host" ftp 21 true true \
+              || deploy_with_lftp "$host" ftps 990 true true \
+              || deploy_with_lftp "$host" sftp 22 false false; then
+              echo "Deploy concluído com sucesso em $host"
+              exit 0
+            fi
+          done
+
+          echo "::error::Falha de conexão em todas as tentativas (FTP/FTPS/SFTP). Verifique host FTP real no cPanel (normalmente hostname do servidor, não domínio do site), credenciais e bloqueios de IP/firewall."
+          exit 1
