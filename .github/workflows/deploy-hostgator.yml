@@ -1,4 +1,4 @@
-name: Deploy Frontend → HostGator
+name: Deploy Frontend via FTP
 
 on:
   push:
@@ -9,17 +9,14 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
 
       - name: Build
         run: npm run build
@@ -29,114 +26,34 @@ jobs:
 
       - name: Create .htaccess
         run: |
-          cat > dist/.htaccess << 'EOF'
-          RewriteEngine On
-          RewriteBase /
-          RewriteRule ^index\.html$ - [L]
-          RewriteCond %{REQUEST_FILENAME} !-f
-          RewriteCond %{REQUEST_FILENAME} !-d
-          RewriteRule . /index.html [L]
+          printf '%s\n' \
+            'RewriteEngine On' \
+            'RewriteBase /' \
+            'RewriteRule ^index\.html$ - [L]' \
+            'RewriteCond %{REQUEST_FILENAME} !-f' \
+            'RewriteCond %{REQUEST_FILENAME} !-d' \
+            'RewriteRule . /index.html [L]' \
+            '' \
+            '<IfModule mod_headers.c>' \
+            '  <FilesMatch "^(index\.html|sw\.js|registerSW\.js|manifest\.webmanifest)$">' \
+            '    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"' \
+            '    Header set Pragma "no-cache"' \
+            '    Header set Expires "0"' \
+            '  </FilesMatch>' \
+            '</IfModule>' \
+            '' \
+            '<IfModule mod_deflate.c>' \
+            '  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml' \
+            '</IfModule>' \
+            > dist/.htaccess
 
-          <IfModule mod_headers.c>
-            <FilesMatch "^(index\.html|sw\.js|registerSW\.js|manifest\.webmanifest)$">
-              Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
-              Header set Pragma "no-cache"
-              Header set Expires "0"
-            </FilesMatch>
-          </IfModule>
-
-          <IfModule mod_expires.c>
-            ExpiresActive On
-            ExpiresByType image/jpg "access plus 1 year"
-            ExpiresByType image/jpeg "access plus 1 year"
-            ExpiresByType image/gif "access plus 1 year"
-            ExpiresByType image/png "access plus 1 year"
-            ExpiresByType image/webp "access plus 1 year"
-            ExpiresByType text/css "access plus 1 month"
-            ExpiresByType application/javascript "access plus 1 month"
-            ExpiresByType image/svg+xml "access plus 1 month"
-            ExpiresByType font/woff2 "access plus 1 year"
-          </IfModule>
-
-          <IfModule mod_deflate.c>
-            AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
-          </IfModule>
-          EOF
-
-      - name: Deploy via FTP/FTPS
-        env:
-          FTP_SERVER: ${{ secrets.FTP_SERVER }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          FTP_SERVER_DIR: ${{ secrets.FTP_SERVER_DIR }}
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq lftp dnsutils netcat-openbsd
-
-          if [ -z "$FTP_SERVER" ] || [ -z "$FTP_USERNAME" ] || [ -z "$FTP_PASSWORD" ]; then
-            echo "::error::Secrets FTP_SERVER, FTP_USERNAME e FTP_PASSWORD são obrigatórios."
-            exit 1
-          fi
-
-          TARGET_DIR="${FTP_SERVER_DIR:-/public_html/}"
-
-          echo "::group::Diagnóstico de rede"
-          echo "Servidor informado: $FTP_SERVER"
-          nslookup "$FTP_SERVER" || true
-          for port in 21 990; do
-            if nc -vz -w 5 "$FTP_SERVER" "$port"; then
-              echo "Porta $port: alcançável"
-            else
-              echo "Porta $port: indisponível"
-            fi
-          done
-          echo "::endgroup::"
-
-          deploy_lftp() {
-            local protocol="$1"
-            local port="$2"
-            local ssl_allow="$3"
-            local ssl_force="$4"
-
-            cat > /tmp/deploy.lftp <<EOF
-          set cmd:fail-exit yes
-          set cmd:trace yes
-          set net:timeout 40
-          set net:max-retries 2
-          set net:reconnect-interval-base 5
-          set net:reconnect-interval-max 15
-          set dns:order inet
-          set ftp:passive-mode true
-          set ftp:prefer-epsv false
-          set ftp:sync-mode off
-          set ftp:ssl-allow $ssl_allow
-          set ftp:ssl-force $ssl_force
-          set ftp:ssl-protect-data true
-          set ssl:verify-certificate false
-          open -u "$FTP_USERNAME","$FTP_PASSWORD" -p $port "$protocol://$FTP_SERVER"
-          mkdir -p "$TARGET_DIR"
-          mirror --reverse --delete --verbose --parallel=2 --continue ./dist/ "$TARGET_DIR"
-          bye
-EOF
-
-            for attempt in 1 2 3; do
-              echo "::group::Tentativa ${attempt}/3 - ${protocol^^} porta ${port}"
-              if lftp -f /tmp/deploy.lftp; then
-                echo "::endgroup::"
-                return 0
-              fi
-              echo "::warning::Falha na tentativa ${attempt} (${protocol} ${port})"
-              echo "::endgroup::"
-              sleep 5
-            done
-
-            return 1
-          }
-
-          if deploy_lftp ftp 21 true false || deploy_lftp ftp 21 true true || deploy_lftp ftps 990 true true; then
-            echo "Deploy concluído com sucesso"
-            exit 0
-          fi
-
-          echo "::error::Falha de conexão FTP/FTPS em todas as tentativas."
-          exit 1
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist/
+          server-dir: ${{ secrets.FTP_SERVER_DIR || '/public_html/' }}
+          protocol: ftp
+          timeout: 60000
