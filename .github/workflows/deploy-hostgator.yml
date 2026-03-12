@@ -59,13 +59,15 @@ jobs:
           </IfModule>
           EOF
 
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./dist/
-          server-dir: ${{ secrets.FTP_SERVER_DIR || '/public_html/' }}
-          timeout: 240000
-          dangerous-clean-slate: false
+      - name: Deploy via FTP (lftp)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+          lftp -e "
+            set ftp:ssl-allow yes;
+            set ftp:passive-mode yes;
+            set net:timeout 60;
+            set net:max-retries 3;
+            set net:reconnect-interval-base 5;
+            mirror --reverse --delete --verbose ./dist/ ${{ secrets.FTP_SERVER_DIR || '/public_html/' }};
+            quit;
+          " -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" ${{ secrets.FTP_SERVER }}
