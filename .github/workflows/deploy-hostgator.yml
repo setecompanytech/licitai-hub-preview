@@ -9,16 +9,20 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-      - run: npm run build
+      - name: Build
+        run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
@@ -59,14 +63,15 @@ jobs:
           </IfModule>
           EOF
 
-      - name: Deploy via FTP (lftp)
+      - name: Deploy via FTP/FTPS
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_SERVER_DIR: ${{ secrets.FTP_SERVER_DIR }}
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq lftp dnsutils netcat-openbsd
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq lftp dnsutils netcat-openbsd
 
           if [ -z "$FTP_SERVER" ] || [ -z "$FTP_USERNAME" ] || [ -z "$FTP_PASSWORD" ]; then
             echo "::error::Secrets FTP_SERVER, FTP_USERNAME e FTP_PASSWORD são obrigatórios."
@@ -78,7 +83,7 @@ jobs:
           echo "::group::Diagnóstico de rede"
           echo "Servidor informado: $FTP_SERVER"
           nslookup "$FTP_SERVER" || true
-          for port in 21 22 990; do
+          for port in 21 990; do
             if nc -vz -w 5 "$FTP_SERVER" "$port"; then
               echo "Porta $port: alcançável"
             else
@@ -87,12 +92,11 @@ jobs:
           done
           echo "::endgroup::"
 
-          deploy_with_lftp() {
-            local host="$1"
-            local protocol="$2"
-            local port="$3"
-            local ssl_allow="$4"
-            local ssl_force="$5"
+          deploy_lftp() {
+            local protocol="$1"
+            local port="$2"
+            local ssl_allow="$3"
+            local ssl_force="$4"
 
             cat > /tmp/deploy.lftp <<EOF
           set cmd:fail-exit yes
@@ -109,21 +113,19 @@ jobs:
           set ftp:ssl-force $ssl_force
           set ftp:ssl-protect-data true
           set ssl:verify-certificate false
-          open -u "$FTP_USERNAME","$FTP_PASSWORD" -p $port "$protocol://$host"
-          pwd
+          open -u "$FTP_USERNAME","$FTP_PASSWORD" -p $port "$protocol://$FTP_SERVER"
           mkdir -p "$TARGET_DIR"
-          cls
           mirror --reverse --delete --verbose --parallel=2 --continue ./dist/ "$TARGET_DIR"
           bye
 EOF
 
             for attempt in 1 2 3; do
-              echo "::group::Tentativa: ${protocol^^} em $host:$port (try $attempt/3)"
+              echo "::group::Tentativa ${attempt}/3 - ${protocol^^} porta ${port}"
               if lftp -f /tmp/deploy.lftp; then
                 echo "::endgroup::"
                 return 0
               fi
-              echo "::warning::Falha na tentativa $attempt para $protocol://$host:$port"
+              echo "::warning::Falha na tentativa ${attempt} (${protocol} ${port})"
               echo "::endgroup::"
               sleep 5
             done
@@ -131,19 +133,10 @@ EOF
             return 1
           }
 
-          HOSTS=("$FTP_SERVER")
-          if [[ "$FTP_SERVER" == ftp.* ]]; then
-            HOSTS+=("${FTP_SERVER#ftp.}")
+          if deploy_lftp ftp 21 true false || deploy_lftp ftp 21 true true || deploy_lftp ftps 990 true true; then
+            echo "Deploy concluído com sucesso"
+            exit 0
           fi
 
-          for host in "${HOSTS[@]}"; do
-            if deploy_with_lftp "$host" ftp 21 true false \
-              || deploy_with_lftp "$host" ftp 21 true true \
-              || deploy_with_lftp "$host" ftps 990 true true; then
-              echo "Deploy concluído com sucesso em $host"
-              exit 0
-            fi
-          done
-
-          echo "::error::Falha de conexão em todas as tentativas FTP/FTPS. Verifique host FTP real no cPanel (hostname do servidor), credenciais, pasta FTP_SERVER_DIR e bloqueio de firewall/cPHulk para IPs do GitHub Actions."
+          echo "::error::Falha de conexão FTP/FTPS em todas as tentativas."
           exit 1
