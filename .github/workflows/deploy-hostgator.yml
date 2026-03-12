@@ -67,4 +67,5 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./dist/
           server-dir: ${{ secrets.FTP_SERVER_DIR || '/public_html/' }}
-          dangerous-clean-slate: true
+          timeout: 240000
+          dangerous-clean-slate: false
