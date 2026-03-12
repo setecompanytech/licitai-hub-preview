@@ -97,28 +97,37 @@ jobs:
             cat > /tmp/deploy.lftp <<EOF
           set cmd:fail-exit yes
           set cmd:trace yes
-          set net:timeout 30
-          set net:max-retries 1
-          set net:reconnect-interval-base 3
+          set net:timeout 40
+          set net:max-retries 2
+          set net:reconnect-interval-base 5
+          set net:reconnect-interval-max 15
           set dns:order inet
           set ftp:passive-mode true
+          set ftp:prefer-epsv false
+          set ftp:sync-mode off
           set ftp:ssl-allow $ssl_allow
           set ftp:ssl-force $ssl_force
           set ftp:ssl-protect-data true
           set ssl:verify-certificate false
           open -u "$FTP_USERNAME","$FTP_PASSWORD" -p $port "$protocol://$host"
           pwd
+          mkdir -p "$TARGET_DIR"
           cls
-          mirror --reverse --delete --verbose ./dist/ "$TARGET_DIR"
+          mirror --reverse --delete --verbose --parallel=2 --continue ./dist/ "$TARGET_DIR"
           bye
 EOF
 
-            echo "::group::Tentativa: ${protocol^^} em $host:$port"
-            if lftp -f /tmp/deploy.lftp; then
+            for attempt in 1 2 3; do
+              echo "::group::Tentativa: ${protocol^^} em $host:$port (try $attempt/3)"
+              if lftp -f /tmp/deploy.lftp; then
+                echo "::endgroup::"
+                return 0
+              fi
+              echo "::warning::Falha na tentativa $attempt para $protocol://$host:$port"
               echo "::endgroup::"
-              return 0
-            fi
-            echo "::endgroup::"
+              sleep 5
+            done
+
             return 1
           }
 
@@ -130,12 +139,11 @@ EOF
           for host in "${HOSTS[@]}"; do
             if deploy_with_lftp "$host" ftp 21 true false \
               || deploy_with_lftp "$host" ftp 21 true true \
-              || deploy_with_lftp "$host" ftps 990 true true \
-              || deploy_with_lftp "$host" sftp 22 false false; then
+              || deploy_with_lftp "$host" ftps 990 true true; then
               echo "Deploy concluído com sucesso em $host"
               exit 0
             fi
           done
 
-          echo "::error::Falha de conexão em todas as tentativas (FTP/FTPS/SFTP). Verifique host FTP real no cPanel (normalmente hostname do servidor, não domínio do site), credenciais e bloqueios de IP/firewall."
+          echo "::error::Falha de conexão em todas as tentativas FTP/FTPS. Verifique host FTP real no cPanel (hostname do servidor), credenciais, pasta FTP_SERVER_DIR e bloqueio de firewall/cPHulk para IPs do GitHub Actions."
           exit 1
