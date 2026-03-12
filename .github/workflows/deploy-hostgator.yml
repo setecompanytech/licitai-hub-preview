@@ -1,4 +1,4 @@
-name: Deploy Frontend via FTP
+name: Deploy Frontend via SFTP
 
 on:
   push:
@@ -27,24 +27,6 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
-      - name: Resolve deploy directory
-        id: target_dir
-        env:
-          FTP_SERVER_DIR: ${{ secrets.FTP_SERVER_DIR }}
-        run: |
-          echo "value=${FTP_SERVER_DIR:-/public_html/}" >> "$GITHUB_OUTPUT"
-
-      - name: Validate required FTP secrets
-        env:
-          FTP_SERVER: ${{ secrets.FTP_SERVER }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-        run: |
-          if [ -z "$FTP_SERVER" ] || [ -z "$FTP_USERNAME" ] || [ -z "$FTP_PASSWORD" ]; then
-            echo "::error::Secrets FTP_SERVER, FTP_USERNAME e FTP_PASSWORD são obrigatórios."
-            exit 1
-          fi
-
       - name: Create .htaccess
         run: |
           printf '%s\n' \
@@ -68,81 +50,16 @@ jobs:
             '</IfModule>' \
             > dist/.htaccess
 
-      - name: Network diagnostics
-        env:
-          FTP_SERVER: ${{ secrets.FTP_SERVER }}
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq dnsutils netcat-openbsd
-
-          echo "::group::Diagnóstico de rede"
-          echo "Servidor informado: $FTP_SERVER"
-          nslookup "$FTP_SERVER" || true
-          for port in 21 990; do
-            if nc -vz -w 5 "$FTP_SERVER" "$port"; then
-              echo "Porta $port: alcançável"
-            else
-              echo "Porta $port: indisponível"
-            fi
-          done
-          echo "::endgroup::"
-
-      - name: Deploy attempt 1 - FTP (21)
-        id: deploy_ftp
-        continue-on-error: true
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+      - name: Deploy via SFTP
+        uses: appleboy/scp-action@v0.2.0
         with:
-          server: ${{ secrets.FTP_SERVER }}
+          host: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
-          port: 21
-          security: loose
-          timeout: 180000
-          log-level: verbose
-          local-dir: ./dist/
-          server-dir: ${{ steps.target_dir.outputs.value }}
-
-      - name: Deploy attempt 2 - FTPS explícito (21)
-        id: deploy_ftps_explicit
-        if: ${{ steps.deploy_ftp.outcome != 'success' }}
-        continue-on-error: true
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          port: 21
-          security: loose
-          timeout: 180000
-          log-level: verbose
-          local-dir: ./dist/
-          server-dir: ${{ steps.target_dir.outputs.value }}
-
-      - name: Deploy attempt 3 - FTPS legado (990)
-        id: deploy_ftps_legacy
-        if: ${{ steps.deploy_ftp.outcome != 'success' && steps.deploy_ftps_explicit.outcome != 'success' }}
-        continue-on-error: true
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps-legacy
-          port: 990
-          security: loose
-          timeout: 180000
-          log-level: verbose
-          local-dir: ./dist/
-          server-dir: ${{ steps.target_dir.outputs.value }}
-
-      - name: Fail when all attempts fail
-        if: ${{ steps.deploy_ftp.outcome != 'success' && steps.deploy_ftps_explicit.outcome != 'success' && steps.deploy_ftps_legacy.outcome != 'success' }}
-        run: |
-          echo "::error::Falha de conexão FTP/FTPS em todas as tentativas (FTP 21, FTPS 21, FTPS legado 990)."
-          exit 1
+          port: 22
+          source: "dist/*"
+          target: ${{ secrets.FTP_SERVER_DIR || '/home/praefe10/public_html' }}
+          strip_components: 1
 
       - name: Success summary
-        if: ${{ steps.deploy_ftp.outcome == 'success' || steps.deploy_ftps_explicit.outcome == 'success' || steps.deploy_ftps_legacy.outcome == 'success' }}
-        run: echo "Deploy concluído com sucesso."
+        run: echo "Deploy SFTP concluído com sucesso."
