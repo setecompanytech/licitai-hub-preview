@@ -60,14 +60,63 @@ jobs:
           EOF
 
       - name: Deploy via FTP (lftp)
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_SERVER_DIR: ${{ secrets.FTP_SERVER_DIR }}
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
-          lftp -e "
-            set ftp:ssl-allow yes;
-            set ftp:passive-mode yes;
-            set net:timeout 60;
-            set net:max-retries 3;
-            set net:reconnect-interval-base 5;
-            mirror --reverse --delete --verbose ./dist/ ${{ secrets.FTP_SERVER_DIR || '/public_html/' }};
-            quit;
-          " -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" ${{ secrets.FTP_SERVER }}
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp dnsutils
+
+          if [ -z "$FTP_SERVER" ] || [ -z "$FTP_USERNAME" ] || [ -z "$FTP_PASSWORD" ]; then
+            echo "::error::Secrets FTP_SERVER, FTP_USERNAME e FTP_PASSWORD são obrigatórios."
+            exit 1
+          fi
+
+          TARGET_DIR="${FTP_SERVER_DIR:-/public_html/}"
+
+          echo "Validando DNS de $FTP_SERVER..."
+          nslookup "$FTP_SERVER" || true
+
+          echo "Testando conectividade na porta 21..."
+          if ! timeout 10 bash -c "</dev/tcp/$FTP_SERVER/21"; then
+            echo "::error::Runner do GitHub não conseguiu alcançar $FTP_SERVER:21 (bloqueio de rede/firewall)."
+            exit 1
+          fi
+
+          cat > /tmp/deploy-ftp.lftp <<EOF
+          set cmd:fail-exit yes
+          set net:timeout 30
+          set net:max-retries 2
+          set net:reconnect-interval-base 5
+          set dns:order inet
+          set ftp:passive-mode true
+          set ftp:ssl-allow true
+          set ssl:verify-certificate false
+          open -u "$FTP_USERNAME","$FTP_PASSWORD" -p 21 "ftp://$FTP_SERVER"
+          cls
+          mirror --reverse --delete --verbose ./dist/ "$TARGET_DIR"
+          bye
+          EOF
+
+          if ! lftp -f /tmp/deploy-ftp.lftp; then
+            echo "::warning::FTP padrão falhou, tentando FTPS explícito..."
+
+            cat > /tmp/deploy-ftps.lftp <<EOF
+            set cmd:fail-exit yes
+            set net:timeout 30
+            set net:max-retries 2
+            set net:reconnect-interval-base 5
+            set dns:order inet
+            set ftp:passive-mode true
+            set ftp:ssl-force true
+            set ftp:ssl-protect-data true
+            set ssl:verify-certificate false
+            open -u "$FTP_USERNAME","$FTP_PASSWORD" -p 21 "ftp://$FTP_SERVER"
+            cls
+            mirror --reverse --delete --verbose ./dist/ "$TARGET_DIR"
+            bye
+            EOF
+
+            lftp -f /tmp/deploy-ftps.lftp
+          fi
