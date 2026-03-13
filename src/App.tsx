@@ -65,6 +65,11 @@ const ProtectedPages = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute>{children}</ProtectedRoute>
 );
 
+/** Rota protegida + restrição por plano */
+const PlanPages = ({ children }: { children: React.ReactNode }) => (
+  <ProtectedRoute><PlanGuard>{children}</PlanGuard></ProtectedRoute>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
