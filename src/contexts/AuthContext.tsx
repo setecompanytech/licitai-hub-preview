@@ -1,12 +1,22 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+import { stripePlans } from '@/data/stripe-config';
+import type { PlanSlug } from '@/data/plan-features';
+
+type SubscriptionState = {
+  subscribed: boolean;
+  planSlug: PlanSlug | null;
+  subscriptionEnd: string | null;
+  loading: boolean;
+};
 
 type AuthContextType = {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  subscription: SubscriptionState;
+  refreshSubscription: () => Promise<void>;
   signUp: (email: string, password: string, nomeCompleto: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -15,16 +25,65 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function productIdToPlanSlug(productId: string | null): PlanSlug | null {
+  if (!productId) return null;
+  for (const [slug, config] of Object.entries(stripePlans)) {
+    if (config.product_id === productId) return slug as PlanSlug;
+  }
+  return null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [subscription, setSubscription] = useState<SubscriptionState>({
+    subscribed: false,
+    planSlug: null,
+    subscriptionEnd: null,
+    loading: true,
+  });
+
+  const checkSubscription = useCallback(async (accessToken?: string) => {
+    const token = accessToken || (await supabase.auth.getSession()).data.session?.access_token;
+    if (!token) {
+      setSubscription({ subscribed: false, planSlug: null, subscriptionEnd: null, loading: false });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subscription', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!error && data) {
+        setSubscription({
+          subscribed: data.subscribed ?? false,
+          planSlug: productIdToPlanSlug(data.product_id ?? null),
+          subscriptionEnd: data.subscription_end ?? null,
+          loading: false,
+        });
+      } else {
+        setSubscription(prev => ({ ...prev, loading: false }));
+      }
+    } catch (err) {
+      console.error('Error checking subscription:', err);
+      setSubscription(prev => ({ ...prev, loading: false }));
+    }
+  }, []);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+
+      if (session?.access_token) {
+        // Defer to avoid Supabase client deadlock
+        setTimeout(() => checkSubscription(session.access_token), 0);
+      } else {
+        setSubscription({ subscribed: false, planSlug: null, subscriptionEnd: null, loading: false });
+      }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -33,8 +92,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => authSub.unsubscribe();
+  }, [checkSubscription]);
+
+  // Auto-refresh every 60 seconds
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => checkSubscription(), 60_000);
+    return () => clearInterval(interval);
+  }, [user, checkSubscription]);
 
   const getRedirectOrigin = () => {
     const origin = window.location.origin;
@@ -73,7 +139,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, resetPassword }}>
+    <AuthContext.Provider value={{
+      user, session, loading,
+      subscription,
+      refreshSubscription: () => checkSubscription(),
+      signUp, signIn, signOut, resetPassword,
+    }}>
       {children}
     </AuthContext.Provider>
   );
