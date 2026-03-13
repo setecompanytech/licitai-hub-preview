@@ -181,6 +181,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
 
       {/* Main content */}
       <main className="max-w-[1440px] mx-auto p-4 sm:p-6">
+        <MaintenanceBanner showModal />
         <AlertaVencimentoBanner />
         {children}
       </main>
