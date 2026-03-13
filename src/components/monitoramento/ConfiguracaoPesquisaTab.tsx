@@ -125,6 +125,8 @@ export default function ConfiguracaoPesquisaTab() {
         setAlertaEmail((data as any).alerta_email ?? true);
         setAlertaWhatsapp((data as any).alerta_whatsapp ?? false);
         setPriorizarRegiaoSede((data as any).priorizar_regiao_sede ?? true);
+        setUfSede(data.uf_sede || empresaAtiva?.uf || '');
+        setMunicipioSede(data.municipio_sede || empresaAtiva?.municipio || '');
       }
       setLoading(false);
     };
