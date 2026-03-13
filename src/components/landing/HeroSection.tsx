@@ -28,7 +28,7 @@ export default function HeroSection() {
             {/* Comfort badge */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-accent/30 bg-accent/10 text-accent text-[12px] font-bold mb-8 tracking-wide uppercase">
               <Zap className="w-3.5 h-3.5" />
-              Experimente 7 dias gratuitos
+              Plataforma completa de licitações
             </div>
 
             <h1 className="text-4xl sm:text-5xl xl:text-[3.6rem] font-extrabold tracking-tight leading-[1.06] mb-6 text-white">
@@ -61,7 +61,7 @@ export default function HeroSection() {
                 className="bg-accent hover:bg-accent/90 text-accent-foreground text-base px-8 py-6 rounded-lg font-bold shadow-lg hover:shadow-xl transition-all"
                 onClick={() => navigate('/auth?step=signup')}
               >
-                Começar Meu Teste Gratuito <ChevronRight className="w-5 h-5 ml-1" />
+                Criar Minha Conta <ChevronRight className="w-5 h-5 ml-1" />
               </Button>
               <Button
                 size="lg"

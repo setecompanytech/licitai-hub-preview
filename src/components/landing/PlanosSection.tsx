@@ -103,7 +103,7 @@ export default function PlanosSection() {
               Escolha o plano <span className="gradient-text">ideal para sua jornada</span>
             </h2>
             <p className="section-subtitle mx-auto max-w-xl">
-              Três opções flexíveis, com assinatura semestral, anual ou bienal. Comece com 7 dias gratuitos para explorar tudo.
+              Três opções flexíveis, com assinatura semestral, anual ou bienal. Escolha o plano que mais combina com seu negócio.
             </p>
           </motion.div>
         </div>
@@ -178,11 +178,8 @@ export default function PlanosSection() {
                     onClick={() => handleChoosePlan(p.slug)}
                     style={isPopular ? { boxShadow: 'var(--shadow-glow-sm)' } : undefined}
                   >
-                    <Rocket className="w-4 h-4 mr-1" /> Experimentar Grátis <ArrowRight className="w-4 h-4 ml-1" />
+                    <Rocket className="w-4 h-4 mr-1" /> Escolher Plano <ArrowRight className="w-4 h-4 ml-1" />
                   </Button>
-                  <p className="text-[11px] text-muted-foreground text-center mt-3">
-                    7 dias gratuitos · Sem cartão de crédito
-                  </p>
                 </div>
               </motion.div>
             );
