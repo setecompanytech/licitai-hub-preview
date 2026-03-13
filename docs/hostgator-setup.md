@@ -1,4 +1,4 @@
-# Guia Completo — Deploy na HostGator
+# Guia Completo — Deploy na HostGator (via FTP)
 
 ## Parte 1: Deploy Automático do Frontend (GitHub Actions)
 
