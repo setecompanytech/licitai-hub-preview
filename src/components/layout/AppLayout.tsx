@@ -87,20 +87,19 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
   return (
     <div className="min-h-screen bg-background">
       {/* Top header bar */}
-      <header className="sticky top-0 z-40 h-14 bg-card/90 backdrop-blur-xl border-b border-border flex items-center justify-between px-4 lg:px-6">
-        {/* Left: Logo + Nav */}
-        <div className="flex items-center gap-4">
-          {/* Logo first */}
-          <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 group">
-            <PraefectusLogo size="sm" />
-          </button>
+      <header className="sticky top-0 z-40 h-14 bg-card/90 backdrop-blur-xl border-b border-border flex items-center px-4 lg:px-6 gap-4">
+        {/* Logo */}
+        <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 group flex-shrink-0">
+          <PraefectusLogo size="md" />
+        </button>
 
-          {/* Navigation */}
+        {/* Navigation — fills center */}
+        <div className="flex-1 flex items-center justify-center">
           <AppTopNav />
         </div>
 
         {/* Right: Tools */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <div className="hidden md:block">
             <EmpresaSelector />
           </div>
