@@ -257,6 +257,51 @@ export type Database = {
           },
         ]
       }
+      audit_log_lances: {
+        Row: {
+          created_at: string
+          detalhes: Json
+          evento: string
+          id: string
+          ip_address: string | null
+          licitacao_id: string | null
+          nivel_automacao: number
+          rodada: number | null
+          sessao_id: string | null
+          user_agent: string | null
+          user_id: string
+          valor_lance: number | null
+        }
+        Insert: {
+          created_at?: string
+          detalhes?: Json
+          evento: string
+          id?: string
+          ip_address?: string | null
+          licitacao_id?: string | null
+          nivel_automacao?: number
+          rodada?: number | null
+          sessao_id?: string | null
+          user_agent?: string | null
+          user_id: string
+          valor_lance?: number | null
+        }
+        Update: {
+          created_at?: string
+          detalhes?: Json
+          evento?: string
+          id?: string
+          ip_address?: string | null
+          licitacao_id?: string | null
+          nivel_automacao?: number
+          rodada?: number | null
+          sessao_id?: string | null
+          user_agent?: string | null
+          user_id?: string
+          valor_lance?: number | null
+        }
+        Relationships: []
+      }
       base_contabil: {
         Row: {
           arquivo_nome: string
@@ -2819,6 +2864,72 @@ export type Database = {
           },
         ]
       }
+      robo_aceite_termos: {
+        Row: {
+          aceite_politica_uso: boolean
+          aceite_responsabilidade: boolean
+          codigo_2fa_hash: string | null
+          created_at: string
+          dupla_autenticacao_verificada: boolean
+          id: string
+          ip_aceite: string | null
+          licitacao_id: string | null
+          limite_financeiro: number
+          nivel_automacao: number
+          revogado_em: string | null
+          sessao_id: string | null
+          user_agent_aceite: string | null
+          user_id: string
+        }
+        Insert: {
+          aceite_politica_uso?: boolean
+          aceite_responsabilidade?: boolean
+          codigo_2fa_hash?: string | null
+          created_at?: string
+          dupla_autenticacao_verificada?: boolean
+          id?: string
+          ip_aceite?: string | null
+          licitacao_id?: string | null
+          limite_financeiro?: number
+          nivel_automacao: number
+          revogado_em?: string | null
+          sessao_id?: string | null
+          user_agent_aceite?: string | null
+          user_id: string
+        }
+        Update: {
+          aceite_politica_uso?: boolean
+          aceite_responsabilidade?: boolean
+          codigo_2fa_hash?: string | null
+          created_at?: string
+          dupla_autenticacao_verificada?: boolean
+          id?: string
+          ip_aceite?: string | null
+          licitacao_id?: string | null
+          limite_financeiro?: number
+          nivel_automacao?: number
+          revogado_em?: string | null
+          sessao_id?: string | null
+          user_agent_aceite?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "robo_aceite_termos_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "robo_aceite_termos_sessao_id_fkey"
+            columns: ["sessao_id"]
+            isOneToOne: false
+            referencedRelation: "sessoes_lance_real"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       search_logs: {
         Row: {
           created_at: string
@@ -2893,6 +3004,7 @@ export type Database = {
       }
       sessoes_lance_real: {
         Row: {
+          aceite_id: string | null
           agente_id: string | null
           created_at: string
           decremento_min: number | null
@@ -2902,8 +3014,13 @@ export type Database = {
           id: string
           intervalo_segundos: number | null
           lance_config_id: string
+          limite_financeiro: number | null
           max_lances: number | null
           modo: string
+          nivel_automacao: number
+          parada_emergencial: boolean
+          parada_emergencial_em: string | null
+          parada_emergencial_por: string | null
           portal_id: string
           portal_nome: string
           resultado: string | null
@@ -2917,6 +3034,7 @@ export type Database = {
           valor_referencia: number
         }
         Insert: {
+          aceite_id?: string | null
           agente_id?: string | null
           created_at?: string
           decremento_min?: number | null
@@ -2926,8 +3044,13 @@ export type Database = {
           id?: string
           intervalo_segundos?: number | null
           lance_config_id: string
+          limite_financeiro?: number | null
           max_lances?: number | null
           modo?: string
+          nivel_automacao?: number
+          parada_emergencial?: boolean
+          parada_emergencial_em?: string | null
+          parada_emergencial_por?: string | null
           portal_id: string
           portal_nome: string
           resultado?: string | null
@@ -2941,6 +3064,7 @@ export type Database = {
           valor_referencia: number
         }
         Update: {
+          aceite_id?: string | null
           agente_id?: string | null
           created_at?: string
           decremento_min?: number | null
@@ -2950,8 +3074,13 @@ export type Database = {
           id?: string
           intervalo_segundos?: number | null
           lance_config_id?: string
+          limite_financeiro?: number | null
           max_lances?: number | null
           modo?: string
+          nivel_automacao?: number
+          parada_emergencial?: boolean
+          parada_emergencial_em?: string | null
+          parada_emergencial_por?: string | null
           portal_id?: string
           portal_nome?: string
           resultado?: string | null
@@ -2965,6 +3094,13 @@ export type Database = {
           valor_referencia?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "sessoes_lance_real_aceite_id_fkey"
+            columns: ["aceite_id"]
+            isOneToOne: false
+            referencedRelation: "robo_aceite_termos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sessoes_lance_real_agente_id_fkey"
             columns: ["agente_id"]
