@@ -51,7 +51,7 @@ jobs:
             > dist/.htaccess
 
       - name: Deploy via SFTP
-        uses: appleboy/scp-action@v0.2.0
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
