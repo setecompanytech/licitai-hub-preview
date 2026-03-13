@@ -11,6 +11,13 @@ import {
   ExternalLink, Info, Brain, Scale, Banknote, FileWarning, Search
 } from 'lucide-react';
 
+type FonteDados = {
+  tipo: 'oficial' | 'estimativa_ia';
+  portal?: string;
+  url?: string;
+  uf_dados?: any;
+};
+
 type CapagData = {
   capag: {
     nota: 'A' | 'B' | 'C' | 'D';
@@ -30,6 +37,7 @@ type CapagData = {
   recomendacoes: string[];
   fontes_consulta: string[];
   resumo_executivo: string;
+  fonte_dados?: FonteDados;
 };
 
 const notaConfig = {
