@@ -116,7 +116,7 @@ export default function Cadastro() {
           <PraefectusLogo size="lg" />
         </Link>
         <p className="text-sm text-muted-foreground mt-2">
-          Experimente todas as ferramentas por <strong className="text-foreground">7 dias gratuitos</strong>
+          Plataforma completa para licitações públicas
         </p>
       </motion.div>
 

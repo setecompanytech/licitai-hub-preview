@@ -198,7 +198,7 @@ export default function Auth() {
               </button>
               <h1 className="text-2xl font-bold">Cadastre-se</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Experimente todas as ferramentas do PRAEFECTUS por <strong className="text-accent">7 dias gratuitos</strong>
+                Crie sua conta e acesse a plataforma completa de licitações
               </p>
             </div>
 
