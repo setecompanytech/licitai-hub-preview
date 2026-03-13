@@ -21,7 +21,7 @@ import {
   AlertTriangle, CheckCircle2, ExternalLink, RefreshCw, Trash2, Edit2,
   Eye, ChevronDown, Search, MessageSquare, ListChecks, Info,
   Building2, Hash, CalendarDays, FileText, Shield, MoreVertical,
-  Zap, Target, ArrowDown, Send, Trophy, XCircle,
+  Zap, Target, ArrowDown, Send, Trophy, XCircle, History, ShieldCheck,
 } from 'lucide-react';
 import CredenciaisPortalForm from '@/components/robo-lances/CredenciaisPortalForm';
 import ConfigurarLanceDialog, { type LanceConfig, type DisputeItem } from '@/components/robo-lances/ConfigurarLanceDialog';
@@ -31,6 +31,13 @@ import LicitacaoChat from '@/components/licitacoes/LicitacaoChat';
 import SimulacaoDisputa from '@/components/robo-lances/SimulacaoDisputa';
 import DisputasResumo from '@/components/robo-lances/DisputasResumo';
 import ExportarResultados from '@/components/robo-lances/ExportarResultados';
+import NivelAutomacaoSelector, { type NivelAutomacao } from '@/components/robo-lances/NivelAutomacaoSelector';
+import AceiteTermosDialog from '@/components/robo-lances/AceiteTermosDialog';
+import PainelRisco from '@/components/robo-lances/PainelRisco';
+import KillSwitchButton from '@/components/robo-lances/KillSwitchButton';
+import AuditTrailViewer from '@/components/robo-lances/AuditTrailViewer';
+import AutorizacaoLanceDialog from '@/components/robo-lances/AutorizacaoLanceDialog';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { supabase } from '@/integrations/supabase/client';
