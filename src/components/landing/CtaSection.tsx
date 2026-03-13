@@ -53,9 +53,9 @@ export default function CtaSection() {
               <Button
                 size="lg"
                 className="bg-accent hover:bg-accent/90 text-accent-foreground text-base px-10 py-6 rounded-lg font-bold shadow-lg"
-                onClick={() => navigate('/auth?step=signup')}
+                onClick={() => document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' })}
               >
-                Criar Minha Conta <ArrowRight className="w-5 h-5 ml-1" />
+                Escolher Meu Plano <ArrowRight className="w-5 h-5 ml-1" />
               </Button>
               <Button
                 size="lg"

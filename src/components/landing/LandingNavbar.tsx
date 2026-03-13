@@ -63,9 +63,9 @@ export default function LandingNavbar() {
           <Button
             size="sm"
             className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-lg font-bold text-[13px] px-5 shadow-md"
-            onClick={() => navigate('/auth?step=signup')}
+            onClick={() => document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' })}
           >
-            Criar Conta <ArrowRight className="w-3.5 h-3.5 ml-1" />
+            Escolher Plano <ArrowRight className="w-3.5 h-3.5 ml-1" />
           </Button>
         </div>
 
@@ -94,7 +94,7 @@ export default function LandingNavbar() {
               ))}
               <div className="pt-3 flex flex-col gap-2">
                 <Button variant="outline" className="w-full" onClick={() => navigate('/auth')}>Entrar</Button>
-                <Button className="w-full bg-accent text-accent-foreground font-bold" onClick={() => navigate('/auth?step=signup')}>Criar Conta</Button>
+                <Button className="w-full bg-accent text-accent-foreground font-bold" onClick={() => { setMobileOpen(false); document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' }); }}>Escolher Plano</Button>
               </div>
             </div>
           </motion.div>
