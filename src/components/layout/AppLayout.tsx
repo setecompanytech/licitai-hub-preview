@@ -161,6 +161,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
                       <span>{item.label}</span>
                     </button>
                   ))}
+                  <ExportarDados variant="menu-item" />
                 </div>
 
                 <div className="border-t border-border p-2.5 flex justify-center">
