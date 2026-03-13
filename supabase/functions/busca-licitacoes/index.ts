@@ -46,12 +46,12 @@ serve(async (req) => {
       const dataInicialDate = dataInicio ? new Date(dataInicio) : new Date(now.getTime() - 90 * 86400000);
       const dataFinalDate = dataFim ? new Date(dataFim) : new Date(now.getTime() + 90 * 86400000);
 
-      // For "mural" mode, search multiple modalidades for broader results
+      // For "mural" mode, search multiple modalidades in parallel for speed
       const modalidades = mural
-        ? [6, 4, 5, 8, 7, 11] // pregão, concorrência, conc.eletr, inexig, dispensa, credenciamento
+        ? [6, 4, 5, 8, 7, 11]
         : [modalidade ? (MODALIDADES_PNCP[modalidade.toLowerCase().trim()] || 6) : 6];
 
-      for (const codModalidade of modalidades) {
+      const fetchModalidade = async (codModalidade: number) => {
         const params = new URLSearchParams();
         params.set("dataInicial", formatDatePNCP(dataInicialDate));
         params.set("dataFinal", formatDatePNCP(dataFinalDate));
@@ -65,23 +65,28 @@ serve(async (req) => {
         console.log(`PNCP API: ${url}`);
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000);
-        const response = await fetch(url, {
-          headers: {
-            Accept: "application/json",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          },
-          signal: controller.signal,
-        });
-        clearTimeout(timeout);
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        try {
+          const response = await fetch(url, {
+            headers: {
+              Accept: "application/json",
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            },
+            signal: controller.signal,
+          });
+          clearTimeout(timeout);
 
-        if (response.ok) {
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.log(`PNCP API error ${response.status}: ${errorText.substring(0, 300)}`);
+            return [];
+          }
+
           const data = await response.json();
           const pncpArray = data.data || [];
+          console.log(`PNCP mod=${codModalidade}: ${pncpArray.length} resultados`);
 
-          console.log(`PNCP mod=${codModalidade}: ${pncpArray.length} resultados (total: ${data.totalRegistros})`);
-
-          for (const item of pncpArray) {
+          return pncpArray.map((item: any) => {
             const cnpjOrgao = item.orgaoEntidade?.cnpj || "";
             const anoCompra = item.anoCompra || "";
             const seqCompra = item.sequencialCompra || "";
@@ -89,8 +94,7 @@ serve(async (req) => {
             if (cnpjOrgao && anoCompra && seqCompra) {
               urlPncp = `https://pncp.gov.br/app/editais/${cnpjOrgao}/${anoCompra}/${seqCompra}`;
             }
-
-            allItems.push({
+            return {
               numero: item.numeroCompra || item.numeroControlePNCP || "-",
               orgao: item.orgaoEntidade?.razaoSocial || "-",
               objeto: item.objetoCompra || "-",
@@ -108,15 +112,22 @@ serve(async (req) => {
               anoCompra: anoCompra || null,
               sequencialCompra: seqCompra || null,
               isMock: false,
-            });
-          }
-        } else {
-          const errorText = await response.text();
-          console.log(`PNCP API error ${response.status}: ${errorText.substring(0, 300)}`);
+            };
+          });
+        } catch (e) {
+          clearTimeout(timeout);
+          console.log(`PNCP mod=${codModalidade} timeout/error:`, e);
+          return [];
         }
+      };
 
-        // In mural mode, stop if we already have enough results
-        if (mural && allItems.length >= 50) break;
+      // Run all modalidade fetches in parallel for speed
+      const results = await Promise.allSettled(modalidades.map(fetchModalidade));
+      for (const result of results) {
+        if (result.status === "fulfilled") {
+          allItems.push(...result.value);
+          if (mural && allItems.length >= 50) break;
+        }
       }
     } catch (e) {
       console.log("PNCP API error:", e);
