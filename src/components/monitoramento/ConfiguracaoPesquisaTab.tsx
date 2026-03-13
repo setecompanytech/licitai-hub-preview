@@ -116,8 +116,8 @@ export default function ConfiguracaoPesquisaTab() {
       if (data) {
         if (data.ufs_interesse && data.ufs_interesse.length > 0) setSelectedUfs(new Set(data.ufs_interesse));
         if (data.palavras_chave) setPalavrasChave(data.palavras_chave);
-        setValorMinimo(data.valor_minimo?.toString() || '');
-        setValorMaximo(data.valor_maximo?.toString() || '');
+        setValorMinimo(data.valor_minimo ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(data.valor_minimo) : '');
+        setValorMaximo(data.valor_maximo ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(data.valor_maximo) : '');
         setCnaesSecundarios(data.cnaes_monitorados || []);
         // Load new fields
         setSegmentos((data as any).segmentos_prioridade || []);
