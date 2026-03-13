@@ -395,6 +395,13 @@ export default function RoboLances() {
                     <Badge variant="outline" className={statusColors[selectedLance.status]}>
                       {selectedLance.status.charAt(0).toUpperCase() + selectedLance.status.slice(1)}
                     </Badge>
+                    <Badge variant="outline" className={`text-[9px] ${
+                      nivelAutomacao === 1 ? 'bg-info/15 text-info border-info/30' :
+                      nivelAutomacao === 2 ? 'bg-warning/15 text-warning border-warning/30' :
+                      'bg-destructive/15 text-destructive border-destructive/30'
+                    }`}>
+                      N{nivelAutomacao} — {nivelAutomacao === 1 ? 'Assistente' : nivelAutomacao === 2 ? 'Semi' : 'Auto'}
+                    </Badge>
                   </div>
                   <div className="flex items-center gap-2">
                     <DropdownMenu>
