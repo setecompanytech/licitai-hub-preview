@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 
 const benefits = [
-  'Sem cartão de crédito',
   'Acesso imediato a 38 portais',
   'Assistente IA incluso',
+  'Suporte especializado',
 ];
 
 export default function CtaSection() {
