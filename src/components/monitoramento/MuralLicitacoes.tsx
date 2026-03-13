@@ -187,7 +187,7 @@ export default function MuralLicitacoes() {
     } finally {
       setLoading(false);
     }
-  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted]);
+  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim]);
 
   useEffect(() => {
     if (user) carregarMural();
