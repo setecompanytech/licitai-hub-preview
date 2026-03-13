@@ -17,6 +17,7 @@ import TimbradoUploader from '@/components/proposta/TimbradoUploader';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import ExportarDados from '@/components/export/ExportarDados';
 
 export default function Configuracoes() {
   const { empresaAtiva, reloadEmpresas } = useEmpresa();
