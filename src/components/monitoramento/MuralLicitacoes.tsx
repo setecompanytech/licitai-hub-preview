@@ -93,6 +93,8 @@ export default function MuralLicitacoes() {
   const [modalidadeFiltro, setModalidadeFiltro] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchSubmitted, setSearchSubmitted] = useState('');
+  const [dataInicio, setDataInicio] = useState<Date | undefined>(undefined);
+  const [dataFim, setDataFim] = useState<Date | undefined>(undefined);
 
   // Ficha detail
   const [fichaAberta, setFichaAberta] = useState<LicitacaoMural | null>(null);
