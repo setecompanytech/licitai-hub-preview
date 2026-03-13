@@ -21,7 +21,7 @@ import {
   AlertTriangle, CheckCircle2, ExternalLink, RefreshCw, Trash2, Edit2,
   Eye, ChevronDown, Search, MessageSquare, ListChecks, Info,
   Building2, Hash, CalendarDays, FileText, Shield, MoreVertical,
-  Zap, Target, ArrowDown, Send, Trophy, XCircle,
+  Zap, Target, ArrowDown, Send, Trophy, XCircle, History, ShieldCheck,
 } from 'lucide-react';
 import CredenciaisPortalForm from '@/components/robo-lances/CredenciaisPortalForm';
 import ConfigurarLanceDialog, { type LanceConfig, type DisputeItem } from '@/components/robo-lances/ConfigurarLanceDialog';
@@ -31,6 +31,13 @@ import LicitacaoChat from '@/components/licitacoes/LicitacaoChat';
 import SimulacaoDisputa from '@/components/robo-lances/SimulacaoDisputa';
 import DisputasResumo from '@/components/robo-lances/DisputasResumo';
 import ExportarResultados from '@/components/robo-lances/ExportarResultados';
+import NivelAutomacaoSelector, { type NivelAutomacao } from '@/components/robo-lances/NivelAutomacaoSelector';
+import AceiteTermosDialog from '@/components/robo-lances/AceiteTermosDialog';
+import PainelRisco from '@/components/robo-lances/PainelRisco';
+import KillSwitchButton from '@/components/robo-lances/KillSwitchButton';
+import AuditTrailViewer from '@/components/robo-lances/AuditTrailViewer';
+import AutorizacaoLanceDialog from '@/components/robo-lances/AutorizacaoLanceDialog';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,12 +66,57 @@ const statusColors: Record<string, string> = {
 export default function RoboLances() {
   const { user } = useAuth();
   const { registrarResultadoDisputa } = useLicitacaoIntegration();
+  const { registrar } = useAuditLog();
   const [lances, setLances] = useState<LanceConfig[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [bottomTab, setBottomTab] = useState<'mural' | 'operacoes' | 'simulacao'>('mural');
+  const [bottomTab, setBottomTab] = useState<'mural' | 'operacoes' | 'simulacao' | 'auditoria'>('mural');
   const [activeMainTab, setActiveMainTab] = useState('disputar');
+
+  // ── Governance: 3 Levels ──
+  const [nivelAutomacao, setNivelAutomacao] = useState<NivelAutomacao>(() => {
+    const saved = localStorage.getItem('robo_nivel_automacao');
+    return (saved ? parseInt(saved) : 1) as NivelAutomacao;
+  });
+  const [aceiteTermosOpen, setAceiteTermosOpen] = useState(false);
+  const [aceiteId, setAceiteId] = useState<string | null>(null);
+  const [limiteFinanceiro, setLimiteFinanceiro] = useState(0);
+  const [autorizacaoOpen, setAutorizacaoOpen] = useState(false);
+  const [estrategiaAutorizada, setEstrategiaAutorizada] = useState(false);
+  const [paradaEmergencial, setParadaEmergencial] = useState(false);
+
+  const handleNivelChange = (novoNivel: NivelAutomacao) => {
+    if (novoNivel > 1) {
+      // Require aceite for levels 2 and 3
+      setNivelAutomacao(novoNivel);
+      localStorage.setItem('robo_nivel_automacao', String(novoNivel));
+      setAceiteTermosOpen(true);
+      setEstrategiaAutorizada(false);
+      registrar('nivel_alterado', { de: nivelAutomacao, para: novoNivel }, { nivelAutomacao: novoNivel });
+    } else {
+      setNivelAutomacao(1);
+      localStorage.setItem('robo_nivel_automacao', '1');
+      setAceiteId(null);
+      setEstrategiaAutorizada(false);
+      registrar('nivel_alterado', { de: nivelAutomacao, para: 1 }, { nivelAutomacao: 1 });
+    }
+  };
+
+  const handleAceite = (id: string) => {
+    setAceiteId(id);
+    toast.success(`Nível ${nivelAutomacao} ativado com sucesso!`);
+  };
+
+  const handleParadaEmergencial = () => {
+    setParadaEmergencial(true);
+    // Stop all active disputes
+    setLances(prev => prev.map(l =>
+      l.status === 'ativo' || l.status === 'vencendo' || l.status === 'perdendo'
+        ? { ...l, status: 'encerrado' as const }
+        : l
+    ));
+  };
 
   // Configurações globais persistidas em localStorage
   const [configDecremento, setConfigDecremento] = useState(() => localStorage.getItem('robo_config_decremento') || '1.5');
@@ -308,8 +360,8 @@ export default function RoboLances() {
             <DisputasResumo lances={lances} onSelect={setSelectedId} selectedId={selectedId} />
 
             {!selectedLance ? (
-              /* empty state */
-              <div className="flex-1 flex items-center justify-center bg-muted/20">
+              /* empty state with level selector */
+              <div className="flex-1 flex flex-col items-center justify-center bg-muted/20 gap-6 p-6">
                 <div className="text-center space-y-3">
                   <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto">
                     <Target className="w-8 h-8 text-accent" />
@@ -318,6 +370,10 @@ export default function RoboLances() {
                   <p className="text-xs text-muted-foreground max-w-xs">
                     Adicione uma nova disputa no painel lateral ou selecione uma existente para gerenciar seus lances.
                   </p>
+                </div>
+                {/* Level selector in empty state */}
+                <div className="w-full max-w-3xl">
+                  <NivelAutomacaoSelector nivel={nivelAutomacao} onChange={handleNivelChange} />
                 </div>
               </div>
             ) : (
@@ -339,12 +395,46 @@ export default function RoboLances() {
                     <Badge variant="outline" className={statusColors[selectedLance.status]}>
                       {selectedLance.status.charAt(0).toUpperCase() + selectedLance.status.slice(1)}
                     </Badge>
+                    <Badge variant="outline" className={`text-[9px] ${
+                      nivelAutomacao === 1 ? 'bg-info/15 text-info border-info/30' :
+                      nivelAutomacao === 2 ? 'bg-warning/15 text-warning border-warning/30' :
+                      'bg-destructive/15 text-destructive border-destructive/30'
+                    }`}>
+                      N{nivelAutomacao} — {nivelAutomacao === 1 ? 'Assistente' : nivelAutomacao === 2 ? 'Semi' : 'Auto'}
+                    </Badge>
                   </div>
                   <div className="flex items-center gap-2">
+                    {/* Kill Switch - visible for levels 2 and 3 */}
+                    {nivelAutomacao >= 2 && selectedLance.status !== 'encerrado' && (
+                      <KillSwitchButton
+                        sessaoId={undefined}
+                        licitacaoId={selectedLance.licitacaoId}
+                        onParada={handleParadaEmergencial}
+                        disabled={paradaEmergencial}
+                      />
+                    )}
+
+                    {/* Level 2: Authorize strategy button */}
+                    {nivelAutomacao === 2 && !estrategiaAutorizada && selectedLance.status === 'aguardando' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs gap-1.5 border-warning/40 text-warning hover:bg-warning/10"
+                        onClick={() => setAutorizacaoOpen(true)}
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" /> Autorizar Estratégia
+                      </Button>
+                    )}
+                    {estrategiaAutorizada && (
+                      <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-[9px]">
+                        ✓ Estratégia Autorizada
+                      </Badge>
+                    )}
+
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button size="sm" variant="outline" className="text-xs gap-1.5">
-                          <Settings className="w-3.5 h-3.5" /> Ações da disputa <ChevronDown className="w-3 h-3" />
+                          <Settings className="w-3.5 h-3.5" /> Ações <ChevronDown className="w-3 h-3" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -475,7 +565,12 @@ export default function RoboLances() {
                   )}
                 </div>
 
-                {/* ── Bottom Panel: Mural + Operations ── */}
+                {/* ── Painel de Risco (Level 1+) ── */}
+                <div className="px-4 py-2 border-t border-border overflow-auto max-h-52 shrink-0">
+                  <PainelRisco lance={selectedLance} nivel={nivelAutomacao} />
+                </div>
+
+                {/* ── Bottom Panel: Mural + Operations + Audit ── */}
                 <div className="border-t border-border bg-card shrink-0">
                   <div className="flex items-center gap-0 border-b border-border">
                      <button
@@ -486,7 +581,7 @@ export default function RoboLances() {
                           : 'border-transparent text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      <MessageSquare className="w-3.5 h-3.5" /> Mural do Processo
+                      <MessageSquare className="w-3.5 h-3.5" /> Mural
                     </button>
                     <button
                       onClick={() => setBottomTab('simulacao')}
@@ -506,11 +601,21 @@ export default function RoboLances() {
                           : 'border-transparent text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      <ListChecks className="w-3.5 h-3.5" /> Operações realizadas
+                      <ListChecks className="w-3.5 h-3.5" /> Operações
+                    </button>
+                    <button
+                      onClick={() => setBottomTab('auditoria')}
+                      className={`px-4 py-2 text-xs font-medium transition-colors flex items-center gap-1.5 border-b-2 ${
+                        bottomTab === 'auditoria'
+                          ? 'border-accent text-accent'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <History className="w-3.5 h-3.5" /> Auditoria
                     </button>
                   </div>
 
-                  <div className="h-48">
+                  <div className="h-56">
                     {bottomTab === 'mural' ? (
                       selectedLance?.licitacaoId ? (
                         <LicitacaoChat
@@ -539,6 +644,10 @@ export default function RoboLances() {
                           }}
                           licitacaoId={selectedLance.licitacaoId}
                         />
+                      </div>
+                    ) : bottomTab === 'auditoria' ? (
+                      <div className="p-3 overflow-auto h-full">
+                        <AuditTrailViewer sessaoId={undefined} />
                       </div>
                     ) : (
                       <div className="p-3 space-y-2 overflow-auto h-full">
@@ -591,6 +700,8 @@ export default function RoboLances() {
 
         {/* ── CONFIGURAÇÕES TAB ── */}
         <TabsContent value="configuracoes" className="flex-1 m-0 overflow-auto p-6 space-y-6">
+          <NivelAutomacaoSelector nivel={nivelAutomacao} onChange={handleNivelChange} />
+
           <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4 max-w-2xl">
             <h3 className="text-sm font-semibold flex items-center gap-2">
               <Settings className="w-4 h-4 text-accent" /> Regras de Lance Automático (Padrão Global)
@@ -617,8 +728,41 @@ export default function RoboLances() {
               Salvar Regras
             </Button>
           </div>
+
+          {/* Audit trail in config tab too */}
+          <AuditTrailViewer />
         </TabsContent>
       </Tabs>
+
+      {/* ── Governance Dialogs ── */}
+      <AceiteTermosDialog
+        open={aceiteTermosOpen}
+        onOpenChange={setAceiteTermosOpen}
+        nivel={nivelAutomacao}
+        sessaoId={undefined}
+        licitacaoId={selectedLance?.licitacaoId}
+        onAceite={handleAceite}
+      />
+
+      {selectedLance && (
+        <AutorizacaoLanceDialog
+          open={autorizacaoOpen}
+          onOpenChange={setAutorizacaoOpen}
+          estrategia={{
+            valorInicial: selectedLance.valorInicial,
+            valorMinimo: selectedLance.valorMinimo,
+            decrementoMin: selectedLance.decrementoMin,
+            decrementoPercentual: selectedLance.decrementoPercentual,
+            maxLances: selectedLance.maxLances,
+            intervaloSegundos: selectedLance.intervaloSegundos,
+          }}
+          limiteFinanceiro={limiteFinanceiro}
+          sessaoId={undefined}
+          licitacaoId={selectedLance.licitacaoId}
+          edital={selectedLance.edital}
+          onAutorizar={() => setEstrategiaAutorizada(true)}
+        />
+      )}
 
       {/* ── Details Modal ── */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
@@ -645,6 +789,7 @@ export default function RoboLances() {
                 { icon: Clock, label: 'Intervalo entre lances', value: `${selectedLance.intervaloSegundos}s` },
                 { icon: ListChecks, label: 'Máx. Lances', value: String(selectedLance.maxLances) },
                 { icon: Bot, label: 'Modo', value: selectedLance.modoAutomatico ? 'Automático' : 'Manual' },
+                { icon: Shield, label: 'Nível de Automação', value: `Nível ${nivelAutomacao} — ${nivelAutomacao === 1 ? 'Assistente' : nivelAutomacao === 2 ? 'Semiautomático' : 'Automação Controlada'}` },
               ].map((item) => (
                 <div key={item.label} className="flex items-start gap-3 py-3 px-1">
                   <item.icon className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
