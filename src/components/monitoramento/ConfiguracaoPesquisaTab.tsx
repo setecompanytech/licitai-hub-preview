@@ -100,6 +100,8 @@ export default function ConfiguracaoPesquisaTab() {
   const [alertaEmail, setAlertaEmail] = useState(true);
   const [alertaWhatsapp, setAlertaWhatsapp] = useState(false);
   const [priorizarRegiaoSede, setPriorizarRegiaoSede] = useState(true);
+  const [ufSede, setUfSede] = useState('');
+  const [municipioSede, setMunicipioSede] = useState('');
 
   useEffect(() => {
     if (!user) return;
