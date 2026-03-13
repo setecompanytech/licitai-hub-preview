@@ -3,6 +3,7 @@ import PraefectusLogo from '@/components/shared/PraefectusLogo';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
+import { hasAccessToRoute } from '@/data/plan-features';
 import {
   LayoutDashboard,
   Search,
@@ -36,8 +37,10 @@ import {
   GraduationCap,
   FileText,
   ListChecks,
+  Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface NavItem {
   icon: React.ElementType;
@@ -140,7 +143,7 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
   });
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, subscription } = useAuth();
   const { isAdmin } = useUserRole();
 
   const handleNav = (path: string) => {
@@ -154,6 +157,45 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
 
   const isInSheet = !!onNavigate;
   const isCollapsed = isInSheet ? false : collapsed;
+
+  const renderNavItem = (item: NavItem) => {
+    const isActive = location.pathname === item.path;
+    const locked = !isAdmin && !hasAccessToRoute(subscription.planSlug, item.path);
+
+    const button = (
+      <button
+        key={item.path}
+        onClick={() => handleNav(item.path)}
+        className={cn(
+          'sidebar-item w-full',
+          isActive ? 'sidebar-item-active' : 'sidebar-item-idle',
+          locked && 'opacity-60'
+        )}
+        title={isCollapsed ? item.label : undefined}
+      >
+        <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
+        {!isCollapsed && (
+          <>
+            <span className="truncate flex-1">{item.label}</span>
+            {locked && <Lock className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />}
+          </>
+        )}
+      </button>
+    );
+
+    if (locked && isCollapsed) {
+      return (
+        <Tooltip key={item.path}>
+          <TooltipTrigger asChild>{button}</TooltipTrigger>
+          <TooltipContent side="right">
+            <p className="text-xs">{item.label} 🔒</p>
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return button;
+  };
 
   return (
     <aside
@@ -179,7 +221,6 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
       <nav className="flex-1 py-2 px-2 overflow-y-auto space-y-1">
         {navGroups.map((group) => {
           const isOpen = openGroups[group.title] ?? true;
-          const groupHasActive = group.items.some((i) => location.pathname === i.path);
 
           return (
             <div key={group.title}>
@@ -202,23 +243,7 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
 
               {(isCollapsed || isOpen) && (
                 <div className="space-y-0.5">
-                  {group.items.map((item) => {
-                    const isActive = location.pathname === item.path;
-                    return (
-                      <button
-                        key={item.path}
-                        onClick={() => handleNav(item.path)}
-                        className={cn(
-                          'sidebar-item w-full',
-                          isActive ? 'sidebar-item-active' : 'sidebar-item-idle'
-                        )}
-                        title={isCollapsed ? item.label : undefined}
-                      >
-                        <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
-                        {!isCollapsed && <span className="truncate">{item.label}</span>}
-                      </button>
-                    );
-                  })}
+                  {group.items.map(renderNavItem)}
                 </div>
               )}
             </div>
@@ -235,23 +260,7 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
               <div className="my-2 mx-3 border-t" style={{ borderColor: `hsl(var(--sidebar-border))` }} />
             )}
             <div className="space-y-0.5">
-              {adminItems.map((item) => {
-                const isActive = location.pathname === item.path;
-                return (
-                  <button
-                    key={item.path}
-                    onClick={() => handleNav(item.path)}
-                    className={cn(
-                      'sidebar-item w-full',
-                      isActive ? 'sidebar-item-active' : 'sidebar-item-idle'
-                    )}
-                    title={isCollapsed ? item.label : undefined}
-                  >
-                    <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
-                    {!isCollapsed && <span className="truncate">{item.label}</span>}
-                  </button>
-                );
-              })}
+              {adminItems.map(renderNavItem)}
             </div>
           </div>
         )}

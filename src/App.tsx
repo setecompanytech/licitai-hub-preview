@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { EmpresaProvider } from "@/contexts/EmpresaContext";
 import { PropostaCartProvider } from "@/contexts/PropostaCartContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import PlanGuard from "@/components/auth/PlanGuard";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
@@ -64,6 +65,11 @@ const ProtectedPages = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute>{children}</ProtectedRoute>
 );
 
+/** Rota protegida + restrição por plano */
+const PlanPages = ({ children }: { children: React.ReactNode }) => (
+  <ProtectedRoute><PlanGuard>{children}</PlanGuard></ProtectedRoute>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
@@ -84,14 +90,14 @@ const App = () => (
               <Route path="/dashboard" element={<ProtectedPages><Index /></ProtectedPages>} />
               <Route path="/licitacoes" element={<Navigate to="/monitoramento-editais" replace />} />
               <Route path="/kanban" element={<ProtectedPages><KanbanPage /></ProtectedPages>} />
-              <Route path="/robo-lances" element={<ProtectedPages><RoboLances /></ProtectedPages>} />
-              <Route path="/concorrentes" element={<ProtectedPages><Concorrentes /></ProtectedPages>} />
+              <Route path="/robo-lances" element={<PlanPages><RoboLances /></PlanPages>} />
+              <Route path="/concorrentes" element={<PlanPages><Concorrentes /></PlanPages>} />
               <Route path="/documentos" element={<ProtectedPages><Documentos /></ProtectedPages>} />
-              <Route path="/apoio-juridico" element={<ProtectedPages><ApoioJuridico /></ProtectedPages>} />
-              <Route path="/apoio-contabil" element={<ProtectedPages><ApoioContabil /></ProtectedPages>} />
-              <Route path="/precificacao" element={<ProtectedPages><Precificacao /></ProtectedPages>} />
-              <Route path="/assistente" element={<ProtectedPages><Assistente /></ProtectedPages>} />
-              <Route path="/analytics" element={<ProtectedPages><Analytics /></ProtectedPages>} />
+              <Route path="/apoio-juridico" element={<PlanPages><ApoioJuridico /></PlanPages>} />
+              <Route path="/apoio-contabil" element={<PlanPages><ApoioContabil /></PlanPages>} />
+              <Route path="/precificacao" element={<PlanPages><Precificacao /></PlanPages>} />
+              <Route path="/assistente" element={<PlanPages><Assistente /></PlanPages>} />
+              <Route path="/analytics" element={<PlanPages><Analytics /></PlanPages>} />
               <Route path="/monitoramento-editais" element={<ProtectedPages><MonitoramentoEditais /></ProtectedPages>} />
               <Route path="/configuracoes" element={<ProtectedPages><Configuracoes /></ProtectedPages>} />
               <Route path="/empresas" element={<ProtectedPages><Empresas /></ProtectedPages>} />
@@ -101,28 +107,28 @@ const App = () => (
               <Route path="/admin/fontes-fabricantes" element={<ProtectedPages><AdminFontesFabricantes /></ProtectedPages>} />
               <Route path="/admin/marketing" element={<ProtectedPages><AdminMarketing /></ProtectedPages>} />
               <Route path="/monitoramento-chat" element={<ProtectedPages><MonitoramentoChat /></ProtectedPages>} />
-              <Route path="/analise-mercado" element={<ProtectedPages><AnaliseMercado /></ProtectedPages>} />
+              <Route path="/analise-mercado" element={<PlanPages><AnaliseMercado /></PlanPages>} />
               <Route path="/licitacoes-estrategicas" element={<ProtectedPages><LicitacoesEstrategicas /></ProtectedPages>} />
               <Route path="/assessoria-cadastral" element={<ProtectedPages><AssessoriaCadastral /></ProtectedPages>} />
               <Route path="/blog" element={<ProtectedPages><Blog /></ProtectedPages>} />
               <Route path="/boletins" element={<ProtectedPages><Boletins /></ProtectedPages>} />
               <Route path="/ebook" element={<ProtectedPages><Ebook /></ProtectedPages>} />
-              <Route path="/proposta-tecnica" element={<ProtectedPages><PropostaTecnica /></ProtectedPages>} />
+              <Route path="/proposta-tecnica" element={<PlanPages><PropostaTecnica /></PlanPages>} />
               <Route path="/historico-licitacoes" element={<ProtectedPages><HistoricoLicitacoes /></ProtectedPages>} />
               <Route path="/ferramentas" element={<ProtectedPages><Ferramentas /></ProtectedPages>} />
               <Route path="/busca-inteligente" element={<Navigate to="/monitoramento-editais" replace />} />
               <Route path="/comprasgov-envio" element={<Navigate to="/proposta-tecnica" replace />} />
               <Route path="/whatsapp-setores" element={<Navigate to="/whatsapp-crm" replace />} />
-              <Route path="/whatsapp-crm" element={<ProtectedPages><WhatsAppCRM /></ProtectedPages>} />
+              <Route path="/whatsapp-crm" element={<PlanPages><WhatsAppCRM /></PlanPages>} />
               <Route path="/calendario" element={<ProtectedPages><Calendario /></ProtectedPages>} />
               <Route path="/meus-compromissos" element={<ProtectedPages><MeusCompromissos /></ProtectedPages>} />
-              <Route path="/workflow-ia" element={<ProtectedPages><WorkflowIA /></ProtectedPages>} />
+              <Route path="/workflow-ia" element={<PlanPages><WorkflowIA /></PlanPages>} />
               <Route path="/tutorial" element={<ProtectedPages><TutorialPage /></ProtectedPages>} />
-              <Route path="/api-integracao" element={<ProtectedPages><ApiIntegracao /></ProtectedPages>} />
-              <Route path="/indices-repactuacao" element={<ProtectedPages><IndicesRepactuacao /></ProtectedPages>} />
-              <Route path="/relatorio-contabil" element={<ProtectedPages><RelatorioContabil /></ProtectedPages>} />
-              <Route path="/gestao-contratos" element={<ProtectedPages><GestaoContratos /></ProtectedPages>} />
-              <Route path="/equipe" element={<ProtectedPages><EquipeColaboradores /></ProtectedPages>} />
+              <Route path="/api-integracao" element={<PlanPages><ApiIntegracao /></PlanPages>} />
+              <Route path="/indices-repactuacao" element={<PlanPages><IndicesRepactuacao /></PlanPages>} />
+              <Route path="/relatorio-contabil" element={<PlanPages><RelatorioContabil /></PlanPages>} />
+              <Route path="/gestao-contratos" element={<PlanPages><GestaoContratos /></PlanPages>} />
+              <Route path="/equipe" element={<PlanPages><EquipeColaboradores /></PlanPages>} />
               <Route path="/termos-de-uso" element={<TermosDeUso />} />
               <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />
               <Route path="/lgpd" element={<LgpdPage />} />
