@@ -255,11 +255,11 @@ export default function ConfiguracaoPesquisaTab() {
         <div className="grid grid-cols-3 gap-3">
           <div>
             <label className="text-xs text-muted-foreground">UF da Sede</label>
-            <Input value={empresaAtiva?.uf || 'N/I'} readOnly className="mt-1 bg-muted/30" />
+            <Input value={ufSede || empresaAtiva?.uf || ''} onChange={e => setUfSede(e.target.value.toUpperCase().slice(0, 2))} placeholder="Ex: PA" className="mt-1" maxLength={2} />
           </div>
           <div>
             <label className="text-xs text-muted-foreground">Município</label>
-            <Input value={empresaAtiva?.municipio || 'N/I'} readOnly className="mt-1 bg-muted/30" />
+            <Input value={municipioSede || empresaAtiva?.municipio || ''} onChange={e => setMunicipioSede(e.target.value)} placeholder="Ex: Belém" className="mt-1" />
           </div>
           <div className="flex items-end">
             <div className="flex items-center gap-2">
