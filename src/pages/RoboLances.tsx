@@ -360,8 +360,8 @@ export default function RoboLances() {
             <DisputasResumo lances={lances} onSelect={setSelectedId} selectedId={selectedId} />
 
             {!selectedLance ? (
-              /* empty state */
-              <div className="flex-1 flex items-center justify-center bg-muted/20">
+              /* empty state with level selector */
+              <div className="flex-1 flex flex-col items-center justify-center bg-muted/20 gap-6 p-6">
                 <div className="text-center space-y-3">
                   <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto">
                     <Target className="w-8 h-8 text-accent" />
@@ -370,6 +370,10 @@ export default function RoboLances() {
                   <p className="text-xs text-muted-foreground max-w-xs">
                     Adicione uma nova disputa no painel lateral ou selecione uma existente para gerenciar seus lances.
                   </p>
+                </div>
+                {/* Level selector in empty state */}
+                <div className="w-full max-w-3xl">
+                  <NivelAutomacaoSelector nivel={nivelAutomacao} onChange={handleNivelChange} />
                 </div>
               </div>
             ) : (
