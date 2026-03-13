@@ -29,7 +29,7 @@ export default function CtaSection() {
           <div className="relative">
             {/* Welcome badge */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/15 border border-accent/30 text-accent text-[11px] font-bold mb-6 uppercase tracking-wider">
-              <Zap className="w-3.5 h-3.5" /> Comece com tranquilidade
+              <Zap className="w-3.5 h-3.5" /> Comece agora
             </div>
 
             <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-5 tracking-tight">
@@ -37,7 +37,7 @@ export default function CtaSection() {
               <span className="text-accent">encontraram seu caminho.</span>
             </h2>
             <p className="text-base text-white/50 mb-10 max-w-lg mx-auto">
-              Cada dia é uma nova oportunidade de encontrar editais alinhados ao seu negócio. Experimente sem compromisso.
+              Cada dia é uma nova oportunidade de encontrar editais alinhados ao seu negócio. Comece sua jornada hoje.
             </p>
 
             <ul className="flex flex-col sm:flex-row items-center justify-center gap-5 mb-10">
