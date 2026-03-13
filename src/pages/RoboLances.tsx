@@ -565,7 +565,12 @@ export default function RoboLances() {
                   )}
                 </div>
 
-                {/* ── Bottom Panel: Mural + Operations ── */}
+                {/* ── Painel de Risco (Level 1+) ── */}
+                <div className="px-4 py-2 border-t border-border overflow-auto max-h-52 shrink-0">
+                  <PainelRisco lance={selectedLance} nivel={nivelAutomacao} />
+                </div>
+
+                {/* ── Bottom Panel: Mural + Operations + Audit ── */}
                 <div className="border-t border-border bg-card shrink-0">
                   <div className="flex items-center gap-0 border-b border-border">
                      <button
@@ -576,7 +581,7 @@ export default function RoboLances() {
                           : 'border-transparent text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      <MessageSquare className="w-3.5 h-3.5" /> Mural do Processo
+                      <MessageSquare className="w-3.5 h-3.5" /> Mural
                     </button>
                     <button
                       onClick={() => setBottomTab('simulacao')}
@@ -596,11 +601,21 @@ export default function RoboLances() {
                           : 'border-transparent text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      <ListChecks className="w-3.5 h-3.5" /> Operações realizadas
+                      <ListChecks className="w-3.5 h-3.5" /> Operações
+                    </button>
+                    <button
+                      onClick={() => setBottomTab('auditoria')}
+                      className={`px-4 py-2 text-xs font-medium transition-colors flex items-center gap-1.5 border-b-2 ${
+                        bottomTab === 'auditoria'
+                          ? 'border-accent text-accent'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <History className="w-3.5 h-3.5" /> Auditoria
                     </button>
                   </div>
 
-                  <div className="h-48">
+                  <div className="h-56">
                     {bottomTab === 'mural' ? (
                       selectedLance?.licitacaoId ? (
                         <LicitacaoChat
@@ -629,6 +644,10 @@ export default function RoboLances() {
                           }}
                           licitacaoId={selectedLance.licitacaoId}
                         />
+                      </div>
+                    ) : bottomTab === 'auditoria' ? (
+                      <div className="p-3 overflow-auto h-full">
+                        <AuditTrailViewer sessaoId={undefined} />
                       </div>
                     ) : (
                       <div className="p-3 space-y-2 overflow-auto h-full">
