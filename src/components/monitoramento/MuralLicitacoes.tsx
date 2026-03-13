@@ -474,17 +474,26 @@ export default function MuralLicitacoes() {
         </div>
 
         {/* Filters */}
-        <form onSubmit={handleSearch} className="flex gap-2 mb-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Pesquisar por objeto, órgão..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="pl-9 text-sm"
-              disabled={loading}
-            />
-          </div>
+        <div className="flex flex-wrap gap-2 mb-3">
+          <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-[200px]">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Pesquisar por objeto, órgão..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-9 text-sm"
+                disabled={loading}
+              />
+            </div>
+            <Button type="submit" disabled={loading} className="bg-accent hover:bg-accent/90 text-accent-foreground gap-1.5">
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              Buscar
+            </Button>
+          </form>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-3">
           <Select value={ufFiltro} onValueChange={v => { setUfFiltro(v); setPagina(1); }}>
             <SelectTrigger className="w-[120px] h-10 text-xs">
               <MapPin className="w-3 h-3 mr-1 text-muted-foreground" /><SelectValue placeholder="UF" />
@@ -494,6 +503,53 @@ export default function MuralLicitacoes() {
               {UFS_BRASIL.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
             </SelectContent>
           </Select>
+
+          {/* Date range filters */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("w-[150px] h-10 justify-start text-left text-xs font-normal", !dataInicio && "text-muted-foreground")}>
+                <CalendarDays className="w-3 h-3 mr-1.5" />
+                {dataInicio ? format(dataInicio, "dd/MM/yyyy") : "Data início"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={dataInicio}
+                onSelect={(d) => { setDataInicio(d); setPagina(1); }}
+                locale={ptBR}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("w-[150px] h-10 justify-start text-left text-xs font-normal", !dataFim && "text-muted-foreground")}>
+                <CalendarDays className="w-3 h-3 mr-1.5" />
+                {dataFim ? format(dataFim, "dd/MM/yyyy") : "Data fim"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={dataFim}
+                onSelect={(d) => { setDataFim(d); setPagina(1); }}
+                locale={ptBR}
+                disabled={(date) => dataInicio ? date < dataInicio : false}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+
+          {(dataInicio || dataFim) && (
+            <Button variant="ghost" size="sm" className="h-10 text-xs gap-1 text-muted-foreground" onClick={() => { setDataInicio(undefined); setDataFim(undefined); setPagina(1); }}>
+              <X className="w-3 h-3" /> Limpar datas
+            </Button>
+          )}
+
           <Select value={modalidadeFiltro} onValueChange={v => { setModalidadeFiltro(v); setPagina(1); }}>
             <SelectTrigger className="w-[180px] h-10 text-xs">
               <Gavel className="w-3 h-3 mr-1 text-muted-foreground" /><SelectValue placeholder="Modalidade" />
@@ -503,11 +559,7 @@ export default function MuralLicitacoes() {
               {MODALIDADES.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button type="submit" disabled={loading} className="bg-accent hover:bg-accent/90 text-accent-foreground gap-1.5">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-            Buscar
-          </Button>
-        </form>
+        </div>
 
         {searchSubmitted && (
           <div className="flex items-center gap-2">
