@@ -23,28 +23,28 @@ serve(async (req) => {
 
 Analise o ente federativo vinculado ao órgão "${orgao}"${uf ? ` (UF: ${uf})` : ''}${municipio ? ` (Município: ${municipio})` : ''}.
 
-Forneça uma análise COMPLETA e DETALHADA contemplando:
+REGRAS IMPORTANTES:
+- Se o órgão é subordinado a um município ou estado, analise o ente federativo correspondente (ex: "SEMED Belém" → analise "Município de Belém/PA").
+- SEMPRE forneça estimativas numéricas para os três indicadores CAPAG, mesmo que aproximadas. Use dados públicos disponíveis do Tesouro Nacional, FINBRA, SICONFI, STN.
+- A classificação dos indicadores DEVE ser sempre "A", "B" ou "C" (nunca "indisponível").
+- O percentual_estimado DEVE ser sempre um número (nunca null ou 0 sem justificativa).
+- Quando o dado exato não estiver disponível, forneça a MELHOR ESTIMATIVA possível baseada em dados históricos, porte do município, região e contexto fiscal conhecido. Indique na descrição que é uma estimativa.
 
-1. **CAPAG (Capacidade de Pagamento)**: Nota estimada (A, B, C ou D) com base nos três indicadores oficiais:
-   - Endividamento (DC/RCL)
-   - Poupança Corrente (despesas correntes / receita corrente ajustada)
-   - Liquidez (obrigações financeiras / disponibilidade de caixa)
+Forneça uma análise COMPLETA contemplando:
 
-2. **Indicadores Fiscais Complementares** para o fornecedor avaliar:
-   - Situação de tributos federais e contribuições previdenciárias (CND federal)
-   - Pagamento de precatórios judiciais
-   - Regularidade com o FGTS
-   - Adimplência em empréstimos/financiamentos com a União
-   - Situação no CADIN
-   - Histórico de pagamentos a fornecedores (Portal da Transparência)
-   - Ações judiciais contra o órgão (cobranças judiciais)
-   - Situação no CAUC (Serviço Auxiliar de Informações para Transferências Voluntárias)
+1. **CAPAG**: Nota estimada (A, B, C ou D) com os três indicadores oficiais:
+   - Endividamento (DC/RCL) - classificação A/B/C com percentual estimado
+   - Poupança Corrente - classificação A/B/C com percentual estimado
+   - Liquidez - classificação A/B/C com percentual estimado
 
-3. **Avaliação de Risco para o Fornecedor**: classificação geral do risco de inadimplência ou atraso.
+2. **Indicadores Fiscais Complementares**: CND federal, precatórios, FGTS, empréstimos União, CADIN, transparência, ações judiciais, CAUC.
+   - O status deve ser "regular", "atencao" ou "critico". Use "indisponivel" APENAS se realmente impossível estimar.
 
-4. **Recomendações Estratégicas**: orientações práticas para o licitante.
+3. **Avaliação de Risco**: classificação geral com score numérico.
 
-Responda APENAS com JSON válido no formato:
+4. **Recomendações Estratégicas**: orientações práticas.
+
+Responda APENAS com JSON válido:
 {
   "capag": {
     "nota": "A" | "B" | "C" | "D",
@@ -52,24 +52,15 @@ Responda APENAS com JSON válido no formato:
     "endividamento": { "classificacao": "A"|"B"|"C", "percentual_estimado": number, "descricao": "string" },
     "poupanca_corrente": { "classificacao": "A"|"B"|"C", "percentual_estimado": number, "descricao": "string" },
     "liquidez": { "classificacao": "A"|"B"|"C", "percentual_estimado": number, "descricao": "string" },
-    "observacao": "string com contexto sobre a nota"
+    "observacao": "string"
   },
   "indicadores_fiscais": [
-    {
-      "indicador": "string (nome do indicador)",
-      "status": "regular" | "atencao" | "critico" | "indisponivel",
-      "descricao": "string detalhada",
-      "fonte": "string (onde consultar)"
-    }
+    { "indicador": "string", "status": "regular"|"atencao"|"critico"|"indisponivel", "descricao": "string", "fonte": "string" }
   ],
-  "risco_geral": {
-    "nivel": "baixo" | "moderado" | "elevado" | "critico",
-    "score": number (0-100, onde 100 = máximo risco),
-    "justificativa": "string"
-  },
+  "risco_geral": { "nivel": "baixo"|"moderado"|"elevado"|"critico", "score": number, "justificativa": "string" },
   "recomendacoes": ["string"],
-  "fontes_consulta": ["string com links ou nomes de portais oficiais"],
-  "resumo_executivo": "string com 2-3 frases resumindo a análise"
+  "fontes_consulta": ["string"],
+  "resumo_executivo": "string"
 }`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -81,7 +72,7 @@ Responda APENAS com JSON válido no formato:
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "Você é um analista fiscal especializado em finanças públicas brasileiras e CAPAG do Tesouro Nacional. Responda apenas com JSON válido, sem markdown." },
+          { role: "system", content: "Você é um analista fiscal especializado em finanças públicas brasileiras e CAPAG do Tesouro Nacional. SEMPRE forneça estimativas numéricas — nunca retorne 'indisponível' para classificações CAPAG. Se o dado exato não existir, estime com base em dados históricos e contexto. Responda apenas com JSON válido, sem markdown." },
           { role: "user", content: prompt },
         ],
       }),
