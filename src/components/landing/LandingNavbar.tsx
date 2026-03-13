@@ -76,18 +76,18 @@ export default function LandingNavbar() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="lg:hidden border-t border-border bg-background/98 backdrop-blur-xl overflow-hidden"
+            className="lg:hidden border-t border-border bg-card shadow-lg overflow-hidden"
           >
             <div className="px-6 py-4 space-y-1">
               {links.map((l) => (
                 <a key={l.href} href={l.href} onClick={() => setMobileOpen(false)}
-                  className="block px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground rounded-md hover:bg-muted/40">
+                  className="block px-4 py-2.5 text-sm text-foreground hover:text-accent font-medium rounded-md hover:bg-muted/60">
                   {l.label}
                 </a>
               ))}
               <div className="pt-3 flex flex-col gap-2">
                 <Button variant="outline" className="w-full" onClick={() => navigate('/auth')}>Entrar</Button>
-                <Button className="w-full bg-accent text-accent-foreground font-bold" onClick={() => { setMobileOpen(false); document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' }); }}>Escolher Plano</Button>
+                <Button className="w-full bg-accent text-accent-foreground font-bold" onClick={() => { setMobileOpen(false); document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' }); }}>Escolher Meu Plano</Button>
               </div>
             </div>
           </motion.div>
