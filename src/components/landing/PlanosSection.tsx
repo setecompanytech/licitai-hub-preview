@@ -103,7 +103,7 @@ export default function PlanosSection() {
               Escolha o plano <span className="gradient-text">ideal para sua jornada</span>
             </h2>
             <p className="section-subtitle mx-auto max-w-xl">
-              Três opções flexíveis, com assinatura semestral, anual ou bienal. Comece com 7 dias gratuitos para explorar tudo.
+              Três opções flexíveis, com assinatura semestral, anual ou bienal. Escolha o plano que mais combina com seu negócio.
             </p>
           </motion.div>
         </div>
