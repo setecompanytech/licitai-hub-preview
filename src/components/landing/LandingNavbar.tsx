@@ -63,9 +63,9 @@ export default function LandingNavbar() {
           <Button
             size="sm"
             className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-lg font-bold text-[13px] px-5 shadow-md"
-            onClick={() => navigate('/auth?step=signup')}
+            onClick={() => document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' })}
           >
-            Criar Conta <ArrowRight className="w-3.5 h-3.5 ml-1" />
+            Escolher Plano <ArrowRight className="w-3.5 h-3.5 ml-1" />
           </Button>
         </div>
 
