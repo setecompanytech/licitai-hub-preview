@@ -101,7 +101,7 @@ export default function Blog() {
   if (artigoAberto) {
     return (
       <AppLayout>
-        <div className="space-y-4 max-w-4xl mx-auto">
+        <div className="space-y-4 max-w-5xl mx-auto">
           <Button variant="ghost" size="sm" onClick={() => setArtigoAberto(null)} className="gap-1">
             <ChevronLeft className="w-4 h-4" /> Voltar ao Blog
           </Button>
