@@ -90,14 +90,14 @@ const App = () => (
               <Route path="/dashboard" element={<ProtectedPages><Index /></ProtectedPages>} />
               <Route path="/licitacoes" element={<Navigate to="/monitoramento-editais" replace />} />
               <Route path="/kanban" element={<ProtectedPages><KanbanPage /></ProtectedPages>} />
-              <Route path="/robo-lances" element={<ProtectedPages><RoboLances /></ProtectedPages>} />
-              <Route path="/concorrentes" element={<ProtectedPages><Concorrentes /></ProtectedPages>} />
+              <Route path="/robo-lances" element={<PlanPages><RoboLances /></PlanPages>} />
+              <Route path="/concorrentes" element={<PlanPages><Concorrentes /></PlanPages>} />
               <Route path="/documentos" element={<ProtectedPages><Documentos /></ProtectedPages>} />
-              <Route path="/apoio-juridico" element={<ProtectedPages><ApoioJuridico /></ProtectedPages>} />
-              <Route path="/apoio-contabil" element={<ProtectedPages><ApoioContabil /></ProtectedPages>} />
-              <Route path="/precificacao" element={<ProtectedPages><Precificacao /></ProtectedPages>} />
-              <Route path="/assistente" element={<ProtectedPages><Assistente /></ProtectedPages>} />
-              <Route path="/analytics" element={<ProtectedPages><Analytics /></ProtectedPages>} />
+              <Route path="/apoio-juridico" element={<PlanPages><ApoioJuridico /></PlanPages>} />
+              <Route path="/apoio-contabil" element={<PlanPages><ApoioContabil /></PlanPages>} />
+              <Route path="/precificacao" element={<PlanPages><Precificacao /></PlanPages>} />
+              <Route path="/assistente" element={<PlanPages><Assistente /></PlanPages>} />
+              <Route path="/analytics" element={<PlanPages><Analytics /></PlanPages>} />
               <Route path="/monitoramento-editais" element={<ProtectedPages><MonitoramentoEditais /></ProtectedPages>} />
               <Route path="/configuracoes" element={<ProtectedPages><Configuracoes /></ProtectedPages>} />
               <Route path="/empresas" element={<ProtectedPages><Empresas /></ProtectedPages>} />
