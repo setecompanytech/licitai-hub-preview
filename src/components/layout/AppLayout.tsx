@@ -4,12 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppTopNav from './AppTopNav';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
-import { Bell, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette, Zap } from 'lucide-react';
+import { Bell, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette, Zap, Download } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import FloatingChat from '@/components/chat/FloatingChat';
 import GlobalSearch from '@/components/search/GlobalSearch';
 import ThemeToggle from '@/components/theme/ThemeToggle';
+import MaintenanceBanner from '@/components/layout/MaintenanceBanner';
+import ExportarDados from '@/components/export/ExportarDados';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 
@@ -159,6 +161,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
                       <span>{item.label}</span>
                     </button>
                   ))}
+                  <ExportarDados variant="menu-item" />
                 </div>
 
                 <div className="border-t border-border p-2.5 flex justify-center">
@@ -178,6 +181,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
 
       {/* Main content */}
       <main className="max-w-[1440px] mx-auto p-4 sm:p-6">
+        <MaintenanceBanner showModal />
         <AlertaVencimentoBanner />
         {children}
       </main>

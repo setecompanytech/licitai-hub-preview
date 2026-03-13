@@ -17,6 +17,7 @@ import TimbradoUploader from '@/components/proposta/TimbradoUploader';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import ExportarDados from '@/components/export/ExportarDados';
 
 export default function Configuracoes() {
   const { empresaAtiva, reloadEmpresas } = useEmpresa();
@@ -462,6 +463,18 @@ export default function Configuracoes() {
 
             {/* CNAEs Secundários */}
             <CnaesSecundarios />
+
+            {/* Exportar Dados */}
+            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <Shield className="w-5 h-5 text-accent" />
+                <h2 className="text-sm font-semibold">Privacidade & Dados (LGPD)</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Exporte todos os seus dados em formato JSON. Conforme a LGPD, você tem direito à portabilidade dos seus dados a qualquer momento.
+              </p>
+              <ExportarDados />
+            </section>
 
             <Button
               className="bg-accent hover:bg-accent/90 text-accent-foreground"
