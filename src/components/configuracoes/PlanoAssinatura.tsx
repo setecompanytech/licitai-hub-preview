@@ -335,7 +335,7 @@ export default function PlanoAssinatura() {
                 onClick={() => isActive ? handleManageSubscription() : handleCheckout(plano)}
                 variant={isActive ? 'outline' : isHighlight ? 'default' : 'outline'}
                 className={cn(
-                  'w-full',
+                  'w-full truncate',
                   isActive && 'border-success text-success hover:bg-success/10',
                   !isActive && isHighlight && 'bg-accent hover:bg-accent/90 text-accent-foreground'
                 )}
@@ -346,7 +346,7 @@ export default function PlanoAssinatura() {
                 ) : isActive ? (
                   <><Settings className="w-4 h-4 mr-2" /> Gerenciar</>
                 ) : (
-                  <><ExternalLink className="w-4 h-4 mr-2" /> Assinar {plano.nome}</>
+                  <><ExternalLink className="w-4 h-4 mr-2 flex-shrink-0" /> <span className="truncate">Assinar {plano.nome}</span></>
                 )}
               </Button>
             </div>
