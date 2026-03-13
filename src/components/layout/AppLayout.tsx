@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppTopNav from './AppTopNav';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
-import { Bell, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette, Zap } from 'lucide-react';
+import { Bell, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette, Zap, Download } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import FloatingChat from '@/components/chat/FloatingChat';
