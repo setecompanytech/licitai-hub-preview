@@ -404,10 +404,37 @@ export default function RoboLances() {
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2">
+                    {/* Kill Switch - visible for levels 2 and 3 */}
+                    {nivelAutomacao >= 2 && selectedLance.status !== 'encerrado' && (
+                      <KillSwitchButton
+                        sessaoId={undefined}
+                        licitacaoId={selectedLance.licitacaoId}
+                        onParada={handleParadaEmergencial}
+                        disabled={paradaEmergencial}
+                      />
+                    )}
+
+                    {/* Level 2: Authorize strategy button */}
+                    {nivelAutomacao === 2 && !estrategiaAutorizada && selectedLance.status === 'aguardando' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs gap-1.5 border-warning/40 text-warning hover:bg-warning/10"
+                        onClick={() => setAutorizacaoOpen(true)}
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" /> Autorizar Estratégia
+                      </Button>
+                    )}
+                    {estrategiaAutorizada && (
+                      <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-[9px]">
+                        ✓ Estratégia Autorizada
+                      </Badge>
+                    )}
+
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button size="sm" variant="outline" className="text-xs gap-1.5">
-                          <Settings className="w-3.5 h-3.5" /> Ações da disputa <ChevronDown className="w-3 h-3" />
+                          <Settings className="w-3.5 h-3.5" /> Ações <ChevronDown className="w-3 h-3" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
