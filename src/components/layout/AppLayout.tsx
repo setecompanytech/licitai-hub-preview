@@ -10,6 +10,8 @@ import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import FloatingChat from '@/components/chat/FloatingChat';
 import GlobalSearch from '@/components/search/GlobalSearch';
 import ThemeToggle from '@/components/theme/ThemeToggle';
+import MaintenanceBanner from '@/components/layout/MaintenanceBanner';
+import ExportarDados from '@/components/export/ExportarDados';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 
