@@ -2136,6 +2136,42 @@ export type Database = {
           },
         ]
       }
+      manutencao_agendada: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          criado_por: string
+          data_fim: string
+          data_inicio: string
+          id: string
+          mensagem: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          criado_por: string
+          data_fim: string
+          data_inicio: string
+          id?: string
+          mensagem: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          criado_por?: string
+          data_fim?: string
+          data_inicio?: string
+          id?: string
+          mensagem?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       monitoramento_editais: {
         Row: {
           cnae_compativel: boolean | null
