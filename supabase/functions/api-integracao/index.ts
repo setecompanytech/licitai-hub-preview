@@ -217,7 +217,30 @@ Deno.serve(async (req) => {
       })
     }
 
-    return jsonError(`Recurso não encontrado: ${resource || '/'}`, 404)
+    // Root path or unknown resource
+    if (!resource) {
+      return jsonOk({
+        status: 'ok',
+        version: '1.0.0',
+        message: 'API de Integração Praefectus',
+        endpoints: [
+          'GET /licitacoes',
+          'GET /licitacoes/:id',
+          'POST /licitacoes',
+          'PUT /licitacoes/:id',
+          'DELETE /licitacoes/:id',
+          'GET /empresas',
+          'GET /empresas/:id',
+          'GET /documentos',
+          'GET /kanban',
+          'PUT /kanban/:id',
+          'GET /catalogo',
+          'GET /health',
+        ],
+      })
+    }
+
+    return jsonError(`Recurso não encontrado: ${resource}`, 404)
   } catch (err) {
     console.error('API Error:', err)
     return jsonError(err instanceof Error ? err.message : 'Erro interno', 500)
