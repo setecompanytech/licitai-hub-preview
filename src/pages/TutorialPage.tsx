@@ -152,7 +152,7 @@ export default function TutorialPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto space-y-8 pb-12">
+      <div className="max-w-5xl mx-auto space-y-8 pb-12">
         {/* Header */}
         <div className="text-center space-y-3">
           <div className="flex items-center justify-center gap-2">

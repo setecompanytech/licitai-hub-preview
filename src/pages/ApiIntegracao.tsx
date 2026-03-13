@@ -57,7 +57,7 @@ export default function ApiIntegracao() {
 
   return (
     <AppLayout>
-      <div className="space-y-6 max-w-4xl">
+      <div className="space-y-6 max-w-5xl">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Code2 className="w-6 h-6 text-accent" />

@@ -55,7 +55,7 @@ export default function Assistente() {
 
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Bot className="w-6 h-6 text-accent" />

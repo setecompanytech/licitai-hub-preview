@@ -103,7 +103,7 @@ const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
 
   return (
     <AppLayout>
-      <div className="max-w-4xl">
+      <div className="max-w-5xl">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Central de Suporte</h1>
           <p className="text-sm text-muted-foreground mt-1">Chat com IA ou abra um ticket para a equipe</p>
