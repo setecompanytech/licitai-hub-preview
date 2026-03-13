@@ -70,7 +70,7 @@ export default function LeadCaptureForm() {
           </div>
           <h3 className="text-2xl font-bold mb-3">Cadastro Recebido!</h3>
           <p className="text-muted-foreground">
-            Em breve nossa equipe entrará em contato para liberar seu acesso gratuito.
+            Em breve nossa equipe entrará em contato.
           </p>
         </div>
       </motion.section>

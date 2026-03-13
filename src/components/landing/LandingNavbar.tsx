@@ -94,7 +94,7 @@ export default function LandingNavbar() {
               ))}
               <div className="pt-3 flex flex-col gap-2">
                 <Button variant="outline" className="w-full" onClick={() => navigate('/auth')}>Entrar</Button>
-                <Button className="w-full bg-accent text-accent-foreground font-bold" onClick={() => navigate('/auth?step=signup')}>Teste Grátis</Button>
+                <Button className="w-full bg-accent text-accent-foreground font-bold" onClick={() => navigate('/auth?step=signup')}>Criar Conta</Button>
               </div>
             </div>
           </motion.div>
