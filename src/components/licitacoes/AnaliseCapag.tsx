@@ -147,7 +147,9 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
           { key: 'poupanca', label: 'Poupança Corrente', icon: Banknote, data: data.capag.poupanca_corrente },
           { key: 'liquidez', label: 'Liquidez', icon: Scale, data: data.capag.liquidez },
         ].map(ind => {
-          const classColor = ind.data.classificacao === 'A' ? 'text-emerald-600' : ind.data.classificacao === 'B' ? 'text-blue-600' : 'text-red-600';
+          const isIndisponivel = !ind.data.classificacao || ind.data.classificacao.toLowerCase().includes('indispon');
+          const classColor = isIndisponivel ? 'text-muted-foreground' : ind.data.classificacao === 'A' ? 'text-emerald-600' : ind.data.classificacao === 'B' ? 'text-blue-600' : 'text-red-600';
+          const percentual = typeof ind.data.percentual_estimado === 'number' ? ind.data.percentual_estimado : null;
           return (
             <Card key={ind.key} className="p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -155,10 +157,16 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
                 <span className="text-xs font-medium text-muted-foreground">{ind.label}</span>
               </div>
               <div className="flex items-center gap-2 mb-1">
-                <span className={`text-2xl font-bold ${classColor}`}>{ind.data.classificacao}</span>
-                <span className="text-sm text-muted-foreground">{ind.data.percentual_estimado}%</span>
+                <span className={`text-2xl font-bold ${classColor}`}>
+                  {isIndisponivel ? 'N/D' : ind.data.classificacao}
+                </span>
+                {percentual !== null && (
+                  <span className="text-sm text-muted-foreground">{percentual}%</span>
+                )}
               </div>
-              <Progress value={Math.min(ind.data.percentual_estimado, 100)} className="h-1.5 mb-2" />
+              {percentual !== null && (
+                <Progress value={Math.min(percentual, 100)} className="h-1.5 mb-2" />
+              )}
               <p className="text-[11px] text-muted-foreground leading-tight">{ind.data.descricao}</p>
             </Card>
           );
