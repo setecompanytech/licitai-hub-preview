@@ -148,6 +148,8 @@ export default function MuralLicitacoes() {
             query: searchSubmitted || undefined,
             uf: ufFiltro !== 'all' ? ufFiltro : undefined,
             modalidade: modalidadeFiltro !== 'all' ? modalidadeFiltro : undefined,
+            dataInicio: dataInicio ? dataInicio.toISOString().split('T')[0] : undefined,
+            dataFim: dataFim ? dataFim.toISOString().split('T')[0] : undefined,
             pagina,
             mural: true,
           }),
