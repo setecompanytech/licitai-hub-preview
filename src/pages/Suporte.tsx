@@ -23,7 +23,7 @@ type Ticket = {
   created_at: string;
 };
 
-type ChatMsg = { role: 'user' | 'assistant'; content: string };
+type ChatMsg = ChatMessage;
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
   aberto: { label: 'Aberto', color: 'bg-warning/10 text-warning', icon: Clock },
