@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, forwardRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
+import { streamAIChat, ChatMessage } from '@/lib/ai-stream';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,7 +23,7 @@ type Ticket = {
   created_at: string;
 };
 
-type ChatMsg = { role: 'user' | 'assistant'; content: string };
+type ChatMsg = ChatMessage;
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
   aberto: { label: 'Aberto', color: 'bg-warning/10 text-warning', icon: Clock },
@@ -73,22 +73,32 @@ const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
     if (!chatInput.trim() || chatLoading) return;
     const userMsg = chatInput.trim();
     setChatInput('');
-    setChatMsgs(prev => [...prev, { role: 'user', content: userMsg }]);
+    const userMessage: ChatMsg = { role: 'user', content: userMsg };
+    setChatMsgs(prev => [...prev, userMessage]);
     setChatLoading(true);
 
-    try {
-      const response = await supabase.functions.invoke('ai-chat', {
-        body: {
-          messages: [...chatMsgs, { role: 'user', content: userMsg }].map(m => ({ role: m.role, content: m.content })),
-          systemPrompt: 'Você é o assistente de suporte do PRAEFECTUS, uma plataforma de gestão de licitações. Responda dúvidas sobre funcionalidades, planos, pagamentos e problemas técnicos de forma clara e objetiva. Se não souber, sugira abrir um ticket de suporte.',
-        },
-      });
-      const assistantMsg = response.data?.content || response.data?.message || 'Desculpe, não consegui processar sua pergunta. Tente novamente ou abra um ticket.';
-      setChatMsgs(prev => [...prev, { role: 'assistant', content: assistantMsg }]);
-    } catch {
-      setChatMsgs(prev => [...prev, { role: 'assistant', content: 'Erro ao processar. Tente novamente ou abra um ticket de suporte.' }]);
-    }
-    setChatLoading(false);
+    let assistantContent = '';
+    const allMessages = [...chatMsgs, userMessage];
+
+    await streamAIChat({
+      messages: allMessages,
+      action: 'suporte_chat',
+      onDelta: (chunk) => {
+        assistantContent += chunk;
+        setChatMsgs(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.role === 'assistant' && prev.length === allMessages.length + 1) {
+            return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantContent } : m);
+          }
+          return [...prev, { role: 'assistant', content: assistantContent }];
+        });
+      },
+      onDone: () => setChatLoading(false),
+      onError: (err) => {
+        setChatMsgs(prev => [...prev, { role: 'assistant', content: `❌ Erro: ${err}. Tente novamente ou abra um ticket.` }]);
+        setChatLoading(false);
+      },
+    });
   }
 
   return (
