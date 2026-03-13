@@ -100,6 +100,8 @@ export default function ConfiguracaoPesquisaTab() {
   const [alertaEmail, setAlertaEmail] = useState(true);
   const [alertaWhatsapp, setAlertaWhatsapp] = useState(false);
   const [priorizarRegiaoSede, setPriorizarRegiaoSede] = useState(true);
+  const [ufSede, setUfSede] = useState('');
+  const [municipioSede, setMunicipioSede] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -114,8 +116,8 @@ export default function ConfiguracaoPesquisaTab() {
       if (data) {
         if (data.ufs_interesse && data.ufs_interesse.length > 0) setSelectedUfs(new Set(data.ufs_interesse));
         if (data.palavras_chave) setPalavrasChave(data.palavras_chave);
-        setValorMinimo(data.valor_minimo?.toString() || '');
-        setValorMaximo(data.valor_maximo?.toString() || '');
+        setValorMinimo(data.valor_minimo ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(data.valor_minimo) : '');
+        setValorMaximo(data.valor_maximo ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(data.valor_maximo) : '');
         setCnaesSecundarios(data.cnaes_monitorados || []);
         // Load new fields
         setSegmentos((data as any).segmentos_prioridade || []);
@@ -123,6 +125,8 @@ export default function ConfiguracaoPesquisaTab() {
         setAlertaEmail((data as any).alerta_email ?? true);
         setAlertaWhatsapp((data as any).alerta_whatsapp ?? false);
         setPriorizarRegiaoSede((data as any).priorizar_regiao_sede ?? true);
+        setUfSede(data.uf_sede || empresaAtiva?.uf || '');
+        setMunicipioSede(data.municipio_sede || empresaAtiva?.municipio || '');
       }
       setLoading(false);
     };
@@ -157,6 +161,17 @@ export default function ConfiguracaoPesquisaTab() {
 
   const removePalavra = (word: string) => setPalavrasChave(prev => prev.filter(w => w !== word));
 
+  const formatBRL = (value: string): string => {
+    const digits = value.replace(/\D/g, '');
+    if (!digits) return '';
+    const num = parseInt(digits, 10);
+    return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num / 100);
+  };
+
+  const handleValorChange = (raw: string, setter: (v: string) => void) => {
+    setter(formatBRL(raw));
+  };
+
   const addSegmento = (seg?: string) => {
     const value = (seg || segmentoInput).trim();
     if (!value || segmentos.includes(value)) return;
@@ -181,8 +196,8 @@ export default function ConfiguracaoPesquisaTab() {
       alerta_sistema: alertaSistema,
       alerta_email: alertaEmail,
       alerta_whatsapp: alertaWhatsapp,
-      uf_sede: empresaAtiva?.uf || null,
-      municipio_sede: empresaAtiva?.municipio || null,
+      uf_sede: ufSede || empresaAtiva?.uf || null,
+      municipio_sede: municipioSede || empresaAtiva?.municipio || null,
       priorizar_regiao_sede: priorizarRegiaoSede,
       updated_at: new Date().toISOString(),
     };
@@ -251,11 +266,11 @@ export default function ConfiguracaoPesquisaTab() {
         <div className="grid grid-cols-3 gap-3">
           <div>
             <label className="text-xs text-muted-foreground">UF da Sede</label>
-            <Input value={empresaAtiva?.uf || 'N/I'} readOnly className="mt-1 bg-muted/30" />
+            <Input value={ufSede || empresaAtiva?.uf || ''} onChange={e => setUfSede(e.target.value.toUpperCase().slice(0, 2))} placeholder="Ex: PA" className="mt-1" maxLength={2} />
           </div>
           <div>
             <label className="text-xs text-muted-foreground">Município</label>
-            <Input value={empresaAtiva?.municipio || 'N/I'} readOnly className="mt-1 bg-muted/30" />
+            <Input value={municipioSede || empresaAtiva?.municipio || ''} onChange={e => setMunicipioSede(e.target.value)} placeholder="Ex: Belém" className="mt-1" />
           </div>
           <div className="flex items-end">
             <div className="flex items-center gap-2">
@@ -420,11 +435,11 @@ export default function ConfiguracaoPesquisaTab() {
         </div>
         <div>
           <label className="text-xs text-muted-foreground">Valor mínimo (R$)</label>
-          <Input value={valorMinimo} onChange={e => setValorMinimo(e.target.value)} placeholder="500.000" className="mt-1" />
+          <Input value={valorMinimo} onChange={e => handleValorChange(e.target.value, setValorMinimo)} placeholder="500.000,00" className="mt-1" />
         </div>
         <div>
           <label className="text-xs text-muted-foreground">Valor máximo (R$)</label>
-          <Input value={valorMaximo} onChange={e => setValorMaximo(e.target.value)} placeholder="100.000.000" className="mt-1" />
+          <Input value={valorMaximo} onChange={e => handleValorChange(e.target.value, setValorMaximo)} placeholder="100.000.000,00" className="mt-1" />
         </div>
       </div>
 
