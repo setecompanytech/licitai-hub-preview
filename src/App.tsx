@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { EmpresaProvider } from "@/contexts/EmpresaContext";
 import { PropostaCartProvider } from "@/contexts/PropostaCartContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import PlanGuard from "@/components/auth/PlanGuard";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
