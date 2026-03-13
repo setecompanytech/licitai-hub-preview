@@ -11,6 +11,13 @@ import {
   ExternalLink, Info, Brain, Scale, Banknote, FileWarning, Search
 } from 'lucide-react';
 
+type FonteDados = {
+  tipo: 'oficial' | 'estimativa_ia';
+  portal?: string;
+  url?: string;
+  uf_dados?: any;
+};
+
 type CapagData = {
   capag: {
     nota: 'A' | 'B' | 'C' | 'D';
@@ -30,6 +37,7 @@ type CapagData = {
   recomendacoes: string[];
   fontes_consulta: string[];
   resumo_executivo: string;
+  fonte_dados?: FonteDados;
 };
 
 const notaConfig = {
@@ -111,6 +119,25 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
       {/* Header com Nota CAPAG */}
       <Card className={`${nota.bg} ${nota.border} border-2`}>
         <CardContent className="py-5">
+          {/* Data source badge */}
+          {data.fonte_dados && (
+            <div className="flex items-center justify-between mb-3">
+              {data.fonte_dados.tipo === 'oficial' ? (
+                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px]">
+                  <CheckCircle2 className="w-3 h-3 mr-1" /> Dados Oficiais — Tesouro Nacional
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">
+                  <Brain className="w-3 h-3 mr-1" /> Estimativa por IA
+                </Badge>
+              )}
+              {data.fonte_dados.url && (
+                <a href={data.fonte_dados.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-muted-foreground hover:text-accent flex items-center gap-1">
+                  <ExternalLink className="w-3 h-3" /> Fonte oficial
+                </a>
+              )}
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className={`w-16 h-16 rounded-2xl ${nota.color} flex items-center justify-center shadow-lg`}>
