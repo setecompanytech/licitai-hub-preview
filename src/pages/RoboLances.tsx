@@ -66,12 +66,57 @@ const statusColors: Record<string, string> = {
 export default function RoboLances() {
   const { user } = useAuth();
   const { registrarResultadoDisputa } = useLicitacaoIntegration();
+  const { registrar } = useAuditLog();
   const [lances, setLances] = useState<LanceConfig[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [bottomTab, setBottomTab] = useState<'mural' | 'operacoes' | 'simulacao'>('mural');
+  const [bottomTab, setBottomTab] = useState<'mural' | 'operacoes' | 'simulacao' | 'auditoria'>('mural');
   const [activeMainTab, setActiveMainTab] = useState('disputar');
+
+  // ── Governance: 3 Levels ──
+  const [nivelAutomacao, setNivelAutomacao] = useState<NivelAutomacao>(() => {
+    const saved = localStorage.getItem('robo_nivel_automacao');
+    return (saved ? parseInt(saved) : 1) as NivelAutomacao;
+  });
+  const [aceiteTermosOpen, setAceiteTermosOpen] = useState(false);
+  const [aceiteId, setAceiteId] = useState<string | null>(null);
+  const [limiteFinanceiro, setLimiteFinanceiro] = useState(0);
+  const [autorizacaoOpen, setAutorizacaoOpen] = useState(false);
+  const [estrategiaAutorizada, setEstrategiaAutorizada] = useState(false);
+  const [paradaEmergencial, setParadaEmergencial] = useState(false);
+
+  const handleNivelChange = (novoNivel: NivelAutomacao) => {
+    if (novoNivel > 1) {
+      // Require aceite for levels 2 and 3
+      setNivelAutomacao(novoNivel);
+      localStorage.setItem('robo_nivel_automacao', String(novoNivel));
+      setAceiteTermosOpen(true);
+      setEstrategiaAutorizada(false);
+      registrar('nivel_alterado', { de: nivelAutomacao, para: novoNivel }, { nivelAutomacao: novoNivel });
+    } else {
+      setNivelAutomacao(1);
+      localStorage.setItem('robo_nivel_automacao', '1');
+      setAceiteId(null);
+      setEstrategiaAutorizada(false);
+      registrar('nivel_alterado', { de: nivelAutomacao, para: 1 }, { nivelAutomacao: 1 });
+    }
+  };
+
+  const handleAceite = (id: string) => {
+    setAceiteId(id);
+    toast.success(`Nível ${nivelAutomacao} ativado com sucesso!`);
+  };
+
+  const handleParadaEmergencial = () => {
+    setParadaEmergencial(true);
+    // Stop all active disputes
+    setLances(prev => prev.map(l =>
+      l.status === 'ativo' || l.status === 'vencendo' || l.status === 'perdendo'
+        ? { ...l, status: 'encerrado' as const }
+        : l
+    ));
+  };
 
   // Configurações globais persistidas em localStorage
   const [configDecremento, setConfigDecremento] = useState(() => localStorage.getItem('robo_config_decremento') || '1.5');
