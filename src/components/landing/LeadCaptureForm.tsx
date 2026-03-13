@@ -91,10 +91,10 @@ export default function LeadCaptureForm() {
               <Zap className="w-3 h-3" /> Acesso imediato e seguro
             </div>
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-3">
-              Experimente o PRAEFECTUS <span className="text-accent">sem compromisso</span>
+              Conheça o PRAEFECTUS <span className="text-accent">de perto</span>
             </h2>
             <p className="text-muted-foreground text-[15px]">
-              Preencha seus dados e explore por 7 dias todas as funcionalidades do plano Profissional.
+              Preencha seus dados e nossa equipe entrará em contato para apresentar a plataforma.
             </p>
           </div>
 
