@@ -161,6 +161,17 @@ export default function ConfiguracaoPesquisaTab() {
 
   const removePalavra = (word: string) => setPalavrasChave(prev => prev.filter(w => w !== word));
 
+  const formatBRL = (value: string): string => {
+    const digits = value.replace(/\D/g, '');
+    if (!digits) return '';
+    const num = parseInt(digits, 10);
+    return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num / 100);
+  };
+
+  const handleValorChange = (raw: string, setter: (v: string) => void) => {
+    setter(formatBRL(raw));
+  };
+
   const addSegmento = (seg?: string) => {
     const value = (seg || segmentoInput).trim();
     if (!value || segmentos.includes(value)) return;
