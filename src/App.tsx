@@ -119,15 +119,15 @@ const App = () => (
               <Route path="/busca-inteligente" element={<Navigate to="/monitoramento-editais" replace />} />
               <Route path="/comprasgov-envio" element={<Navigate to="/proposta-tecnica" replace />} />
               <Route path="/whatsapp-setores" element={<Navigate to="/whatsapp-crm" replace />} />
-              <Route path="/whatsapp-crm" element={<ProtectedPages><WhatsAppCRM /></ProtectedPages>} />
+              <Route path="/whatsapp-crm" element={<PlanPages><WhatsAppCRM /></PlanPages>} />
               <Route path="/calendario" element={<ProtectedPages><Calendario /></ProtectedPages>} />
               <Route path="/meus-compromissos" element={<ProtectedPages><MeusCompromissos /></ProtectedPages>} />
-              <Route path="/workflow-ia" element={<ProtectedPages><WorkflowIA /></ProtectedPages>} />
+              <Route path="/workflow-ia" element={<PlanPages><WorkflowIA /></PlanPages>} />
               <Route path="/tutorial" element={<ProtectedPages><TutorialPage /></ProtectedPages>} />
-              <Route path="/api-integracao" element={<ProtectedPages><ApiIntegracao /></ProtectedPages>} />
-              <Route path="/indices-repactuacao" element={<ProtectedPages><IndicesRepactuacao /></ProtectedPages>} />
-              <Route path="/relatorio-contabil" element={<ProtectedPages><RelatorioContabil /></ProtectedPages>} />
-              <Route path="/gestao-contratos" element={<ProtectedPages><GestaoContratos /></ProtectedPages>} />
+              <Route path="/api-integracao" element={<PlanPages><ApiIntegracao /></PlanPages>} />
+              <Route path="/indices-repactuacao" element={<PlanPages><IndicesRepactuacao /></PlanPages>} />
+              <Route path="/relatorio-contabil" element={<PlanPages><RelatorioContabil /></PlanPages>} />
+              <Route path="/gestao-contratos" element={<PlanPages><GestaoContratos /></PlanPages>} />
               <Route path="/equipe" element={<ProtectedPages><EquipeColaboradores /></ProtectedPages>} />
               <Route path="/termos-de-uso" element={<TermosDeUso />} />
               <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />
