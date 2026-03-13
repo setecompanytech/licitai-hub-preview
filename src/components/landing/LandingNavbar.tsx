@@ -60,13 +60,6 @@ export default function LandingNavbar() {
           >
             Entrar
           </Button>
-          <Button
-            size="sm"
-            className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-lg font-bold text-[13px] px-5 shadow-md"
-            onClick={() => document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' })}
-          >
-            Escolher Plano <ArrowRight className="w-3.5 h-3.5 ml-1" />
-          </Button>
         </div>
 
         <button className="lg:hidden p-2" onClick={() => setMobileOpen(!mobileOpen)}>
