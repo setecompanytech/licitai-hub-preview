@@ -99,7 +99,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
         </div>
 
         {/* Right: Tools */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <div className="hidden md:block">
             <EmpresaSelector />
           </div>
