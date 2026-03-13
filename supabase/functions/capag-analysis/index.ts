@@ -72,7 +72,7 @@ Responda APENAS com JSON válido:
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "Você é um analista fiscal especializado em finanças públicas brasileiras e CAPAG do Tesouro Nacional. Responda apenas com JSON válido, sem markdown." },
+          { role: "system", content: "Você é um analista fiscal especializado em finanças públicas brasileiras e CAPAG do Tesouro Nacional. SEMPRE forneça estimativas numéricas — nunca retorne 'indisponível' para classificações CAPAG. Se o dado exato não existir, estime com base em dados históricos e contexto. Responda apenas com JSON válido, sem markdown." },
           { role: "user", content: prompt },
         ],
       }),
