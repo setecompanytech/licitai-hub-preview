@@ -128,7 +128,7 @@ const App = () => (
               <Route path="/indices-repactuacao" element={<PlanPages><IndicesRepactuacao /></PlanPages>} />
               <Route path="/relatorio-contabil" element={<PlanPages><RelatorioContabil /></PlanPages>} />
               <Route path="/gestao-contratos" element={<PlanPages><GestaoContratos /></PlanPages>} />
-              <Route path="/equipe" element={<ProtectedPages><EquipeColaboradores /></ProtectedPages>} />
+              <Route path="/equipe" element={<PlanPages><EquipeColaboradores /></PlanPages>} />
               <Route path="/termos-de-uso" element={<TermosDeUso />} />
               <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />
               <Route path="/lgpd" element={<LgpdPage />} />
