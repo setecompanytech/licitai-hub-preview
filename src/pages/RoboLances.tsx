@@ -700,6 +700,8 @@ export default function RoboLances() {
 
         {/* ── CONFIGURAÇÕES TAB ── */}
         <TabsContent value="configuracoes" className="flex-1 m-0 overflow-auto p-6 space-y-6">
+          <NivelAutomacaoSelector nivel={nivelAutomacao} onChange={handleNivelChange} />
+
           <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4 max-w-2xl">
             <h3 className="text-sm font-semibold flex items-center gap-2">
               <Settings className="w-4 h-4 text-accent" /> Regras de Lance Automático (Padrão Global)
@@ -726,8 +728,41 @@ export default function RoboLances() {
               Salvar Regras
             </Button>
           </div>
+
+          {/* Audit trail in config tab too */}
+          <AuditTrailViewer />
         </TabsContent>
       </Tabs>
+
+      {/* ── Governance Dialogs ── */}
+      <AceiteTermosDialog
+        open={aceiteTermosOpen}
+        onOpenChange={setAceiteTermosOpen}
+        nivel={nivelAutomacao}
+        sessaoId={undefined}
+        licitacaoId={selectedLance?.licitacaoId}
+        onAceite={handleAceite}
+      />
+
+      {selectedLance && (
+        <AutorizacaoLanceDialog
+          open={autorizacaoOpen}
+          onOpenChange={setAutorizacaoOpen}
+          estrategia={{
+            valorInicial: selectedLance.valorInicial,
+            valorMinimo: selectedLance.valorMinimo,
+            decrementoMin: selectedLance.decrementoMin,
+            decrementoPercentual: selectedLance.decrementoPercentual,
+            maxLances: selectedLance.maxLances,
+            intervaloSegundos: selectedLance.intervaloSegundos,
+          }}
+          limiteFinanceiro={limiteFinanceiro}
+          sessaoId={undefined}
+          licitacaoId={selectedLance.licitacaoId}
+          edital={selectedLance.edital}
+          onAutorizar={() => setEstrategiaAutorizada(true)}
+        />
+      )}
 
       {/* ── Details Modal ── */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
@@ -754,6 +789,7 @@ export default function RoboLances() {
                 { icon: Clock, label: 'Intervalo entre lances', value: `${selectedLance.intervaloSegundos}s` },
                 { icon: ListChecks, label: 'Máx. Lances', value: String(selectedLance.maxLances) },
                 { icon: Bot, label: 'Modo', value: selectedLance.modoAutomatico ? 'Automático' : 'Manual' },
+                { icon: Shield, label: 'Nível de Automação', value: `Nível ${nivelAutomacao} — ${nivelAutomacao === 1 ? 'Assistente' : nivelAutomacao === 2 ? 'Semiautomático' : 'Automação Controlada'}` },
               ].map((item) => (
                 <div key={item.label} className="flex items-start gap-3 py-3 px-1">
                   <item.icon className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
