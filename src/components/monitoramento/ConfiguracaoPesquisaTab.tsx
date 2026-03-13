@@ -424,11 +424,11 @@ export default function ConfiguracaoPesquisaTab() {
         </div>
         <div>
           <label className="text-xs text-muted-foreground">Valor mínimo (R$)</label>
-          <Input value={valorMinimo} onChange={e => setValorMinimo(e.target.value)} placeholder="500.000" className="mt-1" />
+          <Input value={valorMinimo} onChange={e => handleValorChange(e.target.value, setValorMinimo)} placeholder="500.000,00" className="mt-1" />
         </div>
         <div>
           <label className="text-xs text-muted-foreground">Valor máximo (R$)</label>
-          <Input value={valorMaximo} onChange={e => setValorMaximo(e.target.value)} placeholder="100.000.000" className="mt-1" />
+          <Input value={valorMaximo} onChange={e => handleValorChange(e.target.value, setValorMaximo)} placeholder="100.000.000,00" className="mt-1" />
         </div>
       </div>
 
