@@ -68,7 +68,7 @@ export function useAuditLog() {
     }
 
     const { data } = await query;
-    return (data || []) as Array<{
+    return (data || []) as unknown as Array<{
       id: string;
       evento: string;
       detalhes: Record<string, unknown>;
