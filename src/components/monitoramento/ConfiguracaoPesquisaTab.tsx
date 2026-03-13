@@ -185,8 +185,8 @@ export default function ConfiguracaoPesquisaTab() {
       alerta_sistema: alertaSistema,
       alerta_email: alertaEmail,
       alerta_whatsapp: alertaWhatsapp,
-      uf_sede: empresaAtiva?.uf || null,
-      municipio_sede: empresaAtiva?.municipio || null,
+      uf_sede: ufSede || empresaAtiva?.uf || null,
+      municipio_sede: municipioSede || empresaAtiva?.municipio || null,
       priorizar_regiao_sede: priorizarRegiaoSede,
       updated_at: new Date().toISOString(),
     };
