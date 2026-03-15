@@ -1021,12 +1021,14 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
       {/* ── TAB: SERVIÇOS DE ENGENHARIA ── */}
       {calcTab === 'servico_engenharia' && (
         <ServicoEngenhariaCalculadora
+          key={engItensAutoFill.length > 0 ? `eng-${engItensAutoFill.length}` : 'eng-default'}
           regimeLabel={regimeLabel}
           regime={regime}
           ufCalculo={ufCalculo}
           ufNome={ufInfo?.nome || ''}
           licitacaoNumero={licitacaoNumero}
           licitacaoOrgao={licitacaoOrgao}
+          initialItens={engItensAutoFill.length > 0 ? engItensAutoFill : undefined}
         />
       )}
 
