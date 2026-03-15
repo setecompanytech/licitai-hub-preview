@@ -95,6 +95,7 @@ interface Props {
   ufNome: string;
   licitacaoNumero: string;
   licitacaoOrgao: string;
+  initialItens?: { descricao: string; quantidade: number; unidade: string; custoUnitario: number }[];
 }
 
 const fmtCur = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -111,7 +112,7 @@ const parseCurrencyInput = (f: string): number => {
   return d ? parseInt(d, 10) / 100 : 0;
 };
 
-export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCalculo, ufNome, licitacaoNumero, licitacaoOrgao }: Props) {
+export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCalculo, ufNome, licitacaoNumero, licitacaoOrgao, initialItens }: Props) {
   const { empresaAtiva } = useEmpresa();
   const { user } = useAuth();
 
@@ -141,9 +142,18 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
   });
 
   // Itens de custo
-  const [itens, setItens] = useState<ItemCusto[]>([
-    { descricao: '', quantidade: '1', unidade: 'M²', custoUnitario: '' },
-  ]);
+  const [itens, setItens] = useState<ItemCusto[]>(
+    initialItens && initialItens.length > 0
+      ? initialItens.map(i => ({
+          descricao: i.descricao,
+          quantidade: String(i.quantidade),
+          unidade: i.unidade,
+          custoUnitario: i.custoUnitario > 0
+            ? i.custoUnitario.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : '',
+        }))
+      : [{ descricao: '', quantidade: '1', unidade: 'M²', custoUnitario: '' }]
+  );
 
   const [calculado, setCalculado] = useState(false);
 
