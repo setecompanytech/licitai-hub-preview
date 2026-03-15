@@ -575,23 +575,28 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
         </div>
       </div>
 
-      {/* ── Vinculação com Licitação ── */}
-      <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
-        <h4 className="text-sm font-semibold flex items-center gap-2">
-          <FileText className="w-4 h-4 text-accent" />
-          Vincular à Licitação (opcional)
-        </h4>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-xs">Nº da Licitação</Label>
-            <Input value={licitacaoNumero} onChange={e => setLicitacaoNumero(e.target.value)} placeholder="Ex: PE 001/2026" className="mt-1" />
-          </div>
-          <div>
-            <Label className="text-xs">Órgão</Label>
-            <Input value={licitacaoOrgao} onChange={e => setLicitacaoOrgao(e.target.value)} placeholder="Ex: Prefeitura de Belém" className="mt-1" />
-          </div>
-        </div>
-      </div>
+      {/* ── Vinculação com Licitação (Smart Selector) ── */}
+      <LicitacaoSelector
+        licitacaoNumero={licitacaoNumero}
+        setLicitacaoNumero={setLicitacaoNumero}
+        licitacaoOrgao={licitacaoOrgao}
+        setLicitacaoOrgao={setLicitacaoOrgao}
+        onItensLoaded={(loadedItens: LicitacaoItemAutoFill[]) => {
+          // Auto-fill items into the produto_bdi calculator
+          const newItens: ItemCusto[] = loadedItens.map(li => ({
+            descricao: li.descricao,
+            quantidade: String(li.quantidade),
+            unidade: li.unidade,
+            custoUnitario: li.valorUnitario > 0
+              ? li.valorUnitario.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+              : '',
+            ncm: '',
+          }));
+          if (newItens.length > 0) {
+            setItens(newItens);
+          }
+        }}
+      />
 
       {/* ── Seletor de Anexo (só Simples Nacional) ── */}
       {regime === 'simples_nacional' && (
