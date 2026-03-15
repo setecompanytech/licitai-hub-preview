@@ -185,7 +185,7 @@
     background: hsl(var(--muted) / 0.6);
   }
   .stat-card {
-    @apply bg-card rounded-xl p-5 border border-border/60 shadow-sm transition-all duration-300;
+    @apply bg-card rounded-xl p-3 sm:p-5 border border-border/60 shadow-sm transition-all duration-300;
   }
   .stat-card:hover {
     box-shadow: var(--shadow-lg);
