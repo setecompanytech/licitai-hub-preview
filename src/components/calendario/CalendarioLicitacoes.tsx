@@ -393,16 +393,28 @@ export default function CalendarioLicitacoes() {
               Calendário
             </h3>
             <SyncCalendarButton
-              events={licitacoes
-                .filter((l) => l.data_abertura)
-                .map((l): CalendarEvent => ({
-                  uid: l.id,
-                  title: `[${l.modalidade}] ${l.numero} — ${l.orgao}`,
-                  description: l.objeto,
-                  start: new Date(l.data_abertura!),
-                  end: l.data_encerramento ? new Date(l.data_encerramento) : undefined,
-                  alarm: 60,
-                }))}
+              events={[
+                ...licitacoes
+                  .filter((l) => l.data_abertura)
+                  .map((l): CalendarEvent => ({
+                    uid: l.id,
+                    title: `[${l.modalidade}] ${l.numero} — ${l.orgao}`,
+                    description: l.objeto,
+                    start: new Date(l.data_abertura!),
+                    end: l.data_encerramento ? new Date(l.data_encerramento) : undefined,
+                    alarm: 60,
+                  })),
+                ...docsValidade
+                  .filter((d) => d.validade)
+                  .map((d): CalendarEvent => ({
+                    uid: d.id,
+                    title: `⚠ Vencimento: ${d.nome}`,
+                    description: `Documento com vencimento em ${format(new Date(d.validade), 'dd/MM/yyyy')}. Origem: ${d.origem}`,
+                    start: new Date(d.validade),
+                    alarm: 1440,
+                    allDay: true,
+                  })),
+              ]}
             />
           </div>
           <Calendar
