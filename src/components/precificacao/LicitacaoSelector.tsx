@@ -301,10 +301,10 @@ export default function LicitacaoSelector({
 
       <div className="flex items-center gap-2">
         <Badge variant="outline" className="text-[10px]">
-          {licitacoesMarcadas.length} processo(s) marcado(s)
+          {licitacoesMarcadas.length} processo(s) disponível(is)
         </Badge>
         {favoritosKeys.size > 0 && (
-          <span className="text-[10px] text-muted-foreground">Fonte: editais favoritos + processos da gestão</span>
+          <span className="text-[10px] text-muted-foreground">Editais marcados aparecem primeiro na lista.</span>
         )}
       </div>
 
