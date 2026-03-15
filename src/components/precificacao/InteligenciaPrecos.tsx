@@ -243,8 +243,8 @@ export default function InteligenciaPrecos() {
           }
         }
       }
+      } // close else (catalog mode)
 
-      setComparisons(results);
       setLastUpdate(new Date().toLocaleString('pt-BR'));
 
       if (results.length > 0) {
