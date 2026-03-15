@@ -17,6 +17,7 @@ type LicitacaoResumo = {
   objeto: string;
   modalidade: string | null;
   valor_estimado: number | null;
+  url_edital?: string | null;
 };
 
 export type LicitacaoItemAutoFill = {
