@@ -28,6 +28,7 @@ import ComposicaoDeterministica from './ComposicaoDeterministica';
 import ServicoMDOCalculadora from './ServicoMDOCalculadora';
 import ServicoEngenhariaCalculadora from './ServicoEngenhariaCalculadora';
 import LicitacaoSelector, { type LicitacaoItemAutoFill } from './LicitacaoSelector';
+import { useRascunho } from '@/hooks/useRascunho';
 import {
   calcularComposicao,
   type ComposicaoResult,
