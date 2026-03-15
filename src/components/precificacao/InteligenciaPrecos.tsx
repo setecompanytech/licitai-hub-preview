@@ -110,10 +110,60 @@ export default function InteligenciaPrecos() {
 
     try {
       const results: PriceComparison[] = [];
+      const isManual = mode === 'manual' || catalogItems.length === 0;
 
-      // Analyze up to 20 items from catalog
-      const itemsToAnalyze = catalogItems.slice(0, 20);
-      const batchSize = 5;
+      if (isManual) {
+        // Manual mode: parse comma/newline-separated terms
+        const terms = manualTerms.split(/[,;\n]+/).map(t => t.trim()).filter(t => t.length > 2);
+        const batchSize = 5;
+
+        for (let i = 0; i < terms.length; i += batchSize) {
+          const batch = terms.slice(i, i + batchSize);
+          const promises = batch.map(async (termo) => {
+            try {
+              const { data: mkData } = await supabase.functions.invoke('pesquisa-preco-real', {
+                body: { termo },
+              });
+
+              const { data: govData } = await supabase.functions.invoke('consulta-painel-precos', {
+                body: { termo },
+              });
+
+              const mkPrices = mkData?.data?.fornecedores?.map((f: any) => f.preco).filter((p: number) => p > 0) || [];
+              const govPrices = govData?.resultados?.map((r: any) => r.preco_unitario).filter((p: number) => p > 0) || [];
+              const allPrices = [...mkPrices, ...govPrices];
+              if (allPrices.length === 0) return null;
+
+              const menorMercado = Math.min(...allPrices);
+              const maiorMercado = Math.max(...allPrices);
+              const mediaMercado = allPrices.reduce((a: number, b: number) => a + b, 0) / allPrices.length;
+              const precoGov = govPrices.length > 0 ? govPrices.reduce((a: number, b: number) => a + b, 0) / govPrices.length : null;
+
+              return {
+                descricao: termo,
+                meuPreco: mediaMercado,
+                menorMercado,
+                mediaMercado: Math.round(mediaMercado * 100) / 100,
+                maiorMercado,
+                precoGov,
+                diferenca: 0,
+                oportunidade: 'manter' as const,
+                margemAtual: 0,
+                margemSugerida: 0,
+                economia: 0,
+              } as PriceComparison;
+            } catch { return null; }
+          });
+
+          const batchResults = await Promise.allSettled(promises);
+          for (const r of batchResults) {
+            if (r.status === 'fulfilled' && r.value) results.push(r.value);
+          }
+        }
+      } else {
+        // Catalog mode (original)
+        const itemsToAnalyze = catalogItems.slice(0, 20);
+        const batchSize = 5;
 
       for (let i = 0; i < itemsToAnalyze.length; i += batchSize) {
         const batch = itemsToAnalyze.slice(i, i + batchSize);
