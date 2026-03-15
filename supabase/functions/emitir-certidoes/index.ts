@@ -172,7 +172,7 @@ async function emitirCRF(cnpj: string, FIRECRAWL_API_KEY: string, LOVABLE_API_KE
 // CND Federal – Receita Federal / PGFN
 // ══════════════════════════════════════════════════════════════
 async function emitirCNDFederal(cnpj: string, FIRECRAWL_API_KEY: string, LOVABLE_API_KEY: string): Promise<EmissaoResult> {
-  const url = "https://solucoes.receita.fazenda.gov.br/Servicos/CertidaoInternet/PJ/Emitir";
+  const url = "https://servicos.receitafederal.gov.br/servico/certidoes/#/home";
 
   try {
     console.log("CND Federal: Tentando emissão via scrape+actions para CNPJ:", cnpj);
