@@ -370,9 +370,7 @@ Formato: texto estruturado com tópicos numerados.`;
       </div>
 
       {/* ── Panorama tributário do estado ── */}
-      {temDados && (() => {
-        const [panoramaOpen, setPanoramaOpen] = useState(true);
-        return (
+      {temDados && (
         <div className="bg-card rounded-xl border border-border/50 p-5">
           <button
             onClick={() => setPanoramaOpen(!panoramaOpen)}
@@ -432,8 +430,7 @@ Formato: texto estruturado com tópicos numerados.`;
             </div>
           )}
         </div>
-        );
-      })()}
+      )}
 
       {/* ── NCM Input por Item ── */}
       {itens.some(i => i.descricao.trim()) && (
