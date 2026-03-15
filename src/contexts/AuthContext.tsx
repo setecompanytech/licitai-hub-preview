@@ -73,10 +73,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
+    let initialLoad = true;
+
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Only update user/session state — never reset loading after initial load
+      // This prevents page unmount when opening new tabs (TOKEN_REFRESHED via localStorage sync)
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+
+      if (initialLoad) {
+        setLoading(false);
+        initialLoad = false;
+      }
 
       if (session?.access_token) {
         // Defer to avoid Supabase client deadlock
@@ -89,7 +97,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+      if (initialLoad) {
+        setLoading(false);
+        initialLoad = false;
+      }
     });
 
     return () => authSub.unsubscribe();
