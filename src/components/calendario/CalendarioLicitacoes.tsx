@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   CalendarDays, FileText, AlertTriangle, Clock, CheckCircle2,
-  ChevronRight, Shield, Building2,
+  ChevronRight, Shield, Building2, Database,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
