@@ -369,7 +369,7 @@ Responda APENAS em JSON válido:
             )}
             <Button
               onClick={handleAnalyze}
-              disabled={loading || catalogItems.length === 0}
+              disabled={loading || (mode === 'manual' && !manualTerms.trim())}
               className="bg-primary hover:bg-primary/90"
               size="sm"
             >
@@ -381,10 +381,45 @@ Responda APENAS em JSON válido:
             </Button>
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-4 text-[11px] text-muted-foreground">
-          <span className="flex items-center gap-1"><ShoppingCart className="w-3 h-3" /> Marketplaces</span>
-          <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> Gov.br (PNCP)</span>
-          <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> Catálogo interno ({catalogItems.length} itens)</span>
+
+        {/* Mode selector + manual input */}
+        <div className="mt-3 flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-0.5">
+              <button
+                onClick={() => setMode('catalog')}
+                className={`px-3 py-1 text-[11px] font-medium rounded-md transition-colors ${
+                  mode === 'catalog' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Catálogo ({catalogItems.length})
+              </button>
+              <button
+                onClick={() => setMode('manual')}
+                className={`px-3 py-1 text-[11px] font-medium rounded-md transition-colors ${
+                  mode === 'manual' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Busca Manual
+              </button>
+            </div>
+            <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+              <span className="flex items-center gap-1"><ShoppingCart className="w-3 h-3" /> Marketplaces</span>
+              <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> Gov.br (PNCP)</span>
+            </div>
+          </div>
+
+          {mode === 'manual' && (
+            <div className="flex gap-2">
+              <Input
+                placeholder="Digite os produtos separados por vírgula. Ex: papel A4 500 folhas, toner HP 83A, notebook Dell"
+                value={manualTerms}
+                onChange={(e) => setManualTerms(e.target.value)}
+                className="flex-1 h-9 text-xs"
+                onKeyDown={(e) => e.key === 'Enter' && !loading && handleAnalyze()}
+              />
+            </div>
+          )}
         </div>
       </div>
 
