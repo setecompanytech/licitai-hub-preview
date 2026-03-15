@@ -87,40 +87,42 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
   return (
     <div className="min-h-screen bg-background">
       {/* Top header bar */}
-      <header className="sticky top-0 z-40 h-14 bg-card/90 backdrop-blur-xl border-b border-border flex items-center px-4 lg:px-6 gap-4">
+      <header className="sticky top-0 z-40 h-12 sm:h-14 bg-card/90 backdrop-blur-xl border-b border-border flex items-center px-2 sm:px-4 lg:px-6 gap-1.5 sm:gap-4">
         {/* Logo */}
         <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 group flex-shrink-0">
           <PraefectusLogo size="md" />
         </button>
 
         {/* Navigation — fills center */}
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center min-w-0">
           <AppTopNav />
         </div>
 
         {/* Right: Tools */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <div className="hidden md:block">
+        <div className="flex items-center gap-0.5 sm:gap-1.5 flex-shrink-0">
+          <div className="hidden lg:block">
             <EmpresaSelector />
           </div>
 
           <button
-            className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+            className="hidden sm:flex p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
             onClick={() => navigate('/configuracoes')}
             title="Configurações"
           >
             <Settings className="w-[18px] h-[18px]" />
           </button>
 
-          <ThemeToggle />
+          <div className="hidden sm:block">
+            <ThemeToggle />
+          </div>
 
           <button
             className="relative p-2 rounded-lg hover:bg-muted transition-colors"
             onClick={() => setNotifOpen(!notifOpen)}
           >
-            <Bell className="w-[18px] h-[18px] text-muted-foreground" />
+            <Bell className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-muted-foreground" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+              <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-destructive text-destructive-foreground text-[8px] sm:text-[9px] font-bold flex items-center justify-center">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -129,7 +131,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
           {/* Avatar dropdown */}
           <div className="relative" ref={profileRef}>
             <button
-              className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold hover:ring-2 hover:ring-accent/30 transition-all cursor-pointer"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-[10px] sm:text-xs font-bold hover:ring-2 hover:ring-accent/30 transition-all cursor-pointer"
               onClick={() => setProfileOpen(o => !o)}
               title="Minha conta"
             >
