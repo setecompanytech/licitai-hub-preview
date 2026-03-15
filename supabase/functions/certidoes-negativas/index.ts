@@ -171,12 +171,12 @@ serve(async (req) => {
 
     // 1. Verificações reais em paralelo
     console.log(`Iniciando verificações reais para CNPJ: ${cnpjLimpo}`);
-    const [ceis, cnep, cepim, cndt, crf, receita] = await Promise.all([
+    const [ceis, cnep, cepim, cndt, crf, cndConjunta] = await Promise.all([
       consultarCEIS(cnpjLimpo), consultarCNEP(cnpjLimpo), consultarCEPIM(cnpjLimpo),
-      consultarCNDT(cnpjLimpo), consultarCRF(cnpjLimpo), consultarReceitaFederal(cnpjLimpo),
+      consultarCNDT(cnpjLimpo), consultarCRF(cnpjLimpo), consultarCNDConjunta(cnpjLimpo),
     ]);
 
-    const verificacoesReais: VerificacaoReal[] = [ceis, cnep, cepim, cndt, crf, receita];
+    const verificacoesReais: VerificacaoReal[] = [ceis, cnep, cepim, cndt, crf, cndConjunta];
     console.log("Verificações reais concluídas:", verificacoesReais.map(v => `${v.fonte}: ${v.status}`));
 
     // 2. Análise complementar com IA
