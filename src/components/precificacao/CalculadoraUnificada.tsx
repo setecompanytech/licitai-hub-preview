@@ -596,6 +596,13 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
           if (newItens.length > 0) {
             setItens(newItens);
           }
+          // Store for engineering tab auto-fill
+          setEngItensAutoFill(loadedItens.map(li => ({
+            descricao: li.descricao,
+            quantidade: li.quantidade,
+            unidade: li.unidade,
+            custoUnitario: li.valorUnitario,
+          })));
         }}
       />
 
