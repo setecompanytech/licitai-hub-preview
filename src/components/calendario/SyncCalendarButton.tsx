@@ -48,7 +48,7 @@ export default function SyncCalendarButton({ events, singleEvent }: SyncCalendar
   const handleOutlook = () => {
     const event = singleEvent || events[0];
     if (!event) {
-      toast.warning('Nenhum evento para sincronizar');
+      toast.warning('Nenhum evento para sincronizar. Cadastre licitações com data de abertura ou documentos com validade.');
       return;
     }
     window.open(generateOutlookUrl(event), '_blank');
