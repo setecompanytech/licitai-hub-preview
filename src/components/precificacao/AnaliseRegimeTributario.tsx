@@ -68,6 +68,7 @@ export default function AnaliseRegimeTributario({ ufCalculo, ufNome, regime, reg
   const [analiseIA, setAnaliseIA] = useState<AnaliseResultadoItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [consultaManual, setConsultaManual] = useState('');
+  const [panoramaOpen, setPanoramaOpen] = useState(true);
   const [resultadoManual, setResultadoManual] = useState('');
   const [loadingManual, setLoadingManual] = useState(false);
   
