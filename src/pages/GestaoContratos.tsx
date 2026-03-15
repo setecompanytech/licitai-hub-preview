@@ -298,8 +298,18 @@ export default function GestaoContratos() {
               <div><Label>Fiscal - Telefone</Label><Input value={form.fiscal_telefone} onChange={e => setForm(f => ({ ...f, fiscal_telefone: e.target.value }))} /></div>
               <div className="md:col-span-2"><Label>Observações</Label><Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} /></div>
             </div>
+            {pendingItens.length > 0 && (
+              <div className="mt-3 p-3 rounded-lg bg-accent/10 border border-accent/20">
+                <p className="text-sm font-medium flex items-center gap-2 text-accent">
+                  <Package className="w-4 h-4" /> {pendingItens.length} itens extraídos do PDF
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Serão cadastrados automaticamente na aba "Itens" ao salvar o contrato.
+                </p>
+              </div>
+            )}
             <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+              <Button variant="outline" onClick={() => { setDialogOpen(false); setPendingItens([]); }}>Cancelar</Button>
               <Button onClick={handleSave} disabled={saving}>{saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}Salvar Contrato</Button>
             </div>
           </DialogContent>
