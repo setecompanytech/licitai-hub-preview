@@ -134,6 +134,90 @@ export default function PropostaTecnica() {
   const [lineSpacing, setLineSpacing] = useState('1.5');
   const [marginStyle, setMarginStyle] = useState('ABNT (3/2 cm)');
 
+  // ── Rascunho (Draft) ──
+  const { loadRascunho, autoSave, saving, lastSaved, markLoaded, deleteRascunho, rascunhoId } = useRascunho<any>({
+    modulo: 'proposta',
+    licitacaoId: null,
+    debounceMs: 3000,
+  });
+
+  // Collect all form state into a saveable object
+  const collectFormData = useCallback(() => ({
+    numeroLicitacao, orgao, modalidade, objeto, valorEstimado,
+    prazoValidade, prazoPagamento, prazoEntrega, localEntrega, liquidacaoNfe,
+    editalRawText, itens, repNome, repCpf, repRg, repOrgaoExp, repCargo,
+    repNaturalidade, repNacionalidade, repEstadoCivil, repEndereco,
+    banco, agencia, conta, tipoConta, pix, telefone, email,
+    inscEstadual, inscMunicipal, declaracoes, declaracoesCustom,
+    fontFamily, fontSize, lineSpacing, marginStyle, currentStep,
+    timbradoUrl, usarMarcaDagua,
+  }), [
+    numeroLicitacao, orgao, modalidade, objeto, valorEstimado,
+    prazoValidade, prazoPagamento, prazoEntrega, localEntrega, liquidacaoNfe,
+    editalRawText, itens, repNome, repCpf, repRg, repOrgaoExp, repCargo,
+    repNaturalidade, repNacionalidade, repEstadoCivil, repEndereco,
+    banco, agencia, conta, tipoConta, pix, telefone, email,
+    inscEstadual, inscMunicipal, declaracoes, declaracoesCustom,
+    fontFamily, fontSize, lineSpacing, marginStyle, currentStep,
+    timbradoUrl, usarMarcaDagua,
+  ]);
+
+  // Restore draft on mount
+  useEffect(() => {
+    loadRascunho().then(data => {
+      if (data) {
+        if (data.numeroLicitacao) setNumeroLicitacao(data.numeroLicitacao);
+        if (data.orgao) setOrgao(data.orgao);
+        if (data.modalidade) setModalidade(data.modalidade);
+        if (data.objeto) setObjeto(data.objeto);
+        if (data.valorEstimado) setValorEstimado(data.valorEstimado);
+        if (data.prazoValidade) setPrazoValidade(data.prazoValidade);
+        if (data.prazoPagamento) setPrazoPagamento(data.prazoPagamento);
+        if (data.prazoEntrega) setPrazoEntrega(data.prazoEntrega);
+        if (data.localEntrega) setLocalEntrega(data.localEntrega);
+        if (data.liquidacaoNfe) setLiquidacaoNfe(data.liquidacaoNfe);
+        if (data.editalRawText) setEditalRawText(data.editalRawText);
+        if (data.itens?.length > 0) setItens(data.itens);
+        if (data.repNome) setRepNome(data.repNome);
+        if (data.repCpf) setRepCpf(data.repCpf);
+        if (data.repRg) setRepRg(data.repRg);
+        if (data.repOrgaoExp) setRepOrgaoExp(data.repOrgaoExp);
+        if (data.repCargo) setRepCargo(data.repCargo);
+        if (data.repNaturalidade) setRepNaturalidade(data.repNaturalidade);
+        if (data.repNacionalidade) setRepNacionalidade(data.repNacionalidade);
+        if (data.repEstadoCivil) setRepEstadoCivil(data.repEstadoCivil);
+        if (data.repEndereco) setRepEndereco(data.repEndereco);
+        if (data.banco) setBanco(data.banco);
+        if (data.agencia) setAgencia(data.agencia);
+        if (data.conta) setConta(data.conta);
+        if (data.tipoConta) setTipoConta(data.tipoConta);
+        if (data.pix) setPix(data.pix);
+        if (data.telefone) setTelefone(data.telefone);
+        if (data.email) setEmail(data.email);
+        if (data.inscEstadual) setInscEstadual(data.inscEstadual);
+        if (data.inscMunicipal) setInscMunicipal(data.inscMunicipal);
+        if (data.declaracoes) setDeclaracoes(data.declaracoes);
+        if (data.declaracoesCustom) setDeclaracoesCustom(data.declaracoesCustom);
+        if (data.fontFamily) setFontFamily(data.fontFamily);
+        if (data.fontSize) setFontSize(data.fontSize);
+        if (data.lineSpacing) setLineSpacing(data.lineSpacing);
+        if (data.marginStyle) setMarginStyle(data.marginStyle);
+        if (data.currentStep) setCurrentStep(data.currentStep);
+        if (data.timbradoUrl) setTimbradoUrl(data.timbradoUrl);
+        if (typeof data.usarMarcaDagua === 'boolean') setUsarMarcaDagua(data.usarMarcaDagua);
+        toast.info('Rascunho restaurado automaticamente.');
+      }
+      markLoaded();
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save on form changes
+  useEffect(() => {
+    const data = collectFormData();
+    const titulo = objeto ? `${numeroLicitacao || 'Proposta'} — ${orgao || objeto.slice(0, 40)}` : undefined;
+    autoSave(data, titulo);
+  }, [collectFormData, autoSave]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (proposal && resultRef.current) {
       resultRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
