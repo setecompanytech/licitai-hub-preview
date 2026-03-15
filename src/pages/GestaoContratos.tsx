@@ -204,9 +204,10 @@ export default function GestaoContratos() {
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Contratos</h1>
           <p className="text-sm text-muted-foreground mt-1">Controle itens, pedidos, custos e faturamento dos seus contratos</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-2" /> Novo Contrato</Button></DialogTrigger>
+        <div className="flex gap-2">
           <ImportarContratoPDF onExtracted={handleImportExtracted} />
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-2" /> Novo Contrato</Button></DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Cadastrar Contrato</DialogTitle></DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
