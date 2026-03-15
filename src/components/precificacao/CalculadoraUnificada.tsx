@@ -277,6 +277,7 @@ export default function CalculadoraUnificada() {
     autoSave(data, titulo);
   }, [collectCalcData, autoSave]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  if (!regime || !config) {
     return (
       <div className="bg-card rounded-xl border border-border/50 p-6 text-center">
         <Calculator className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
