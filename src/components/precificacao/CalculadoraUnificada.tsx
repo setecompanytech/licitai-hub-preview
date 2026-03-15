@@ -227,6 +227,7 @@ export default function CalculadoraUnificada() {
   const [licitacaoNumero, setLicitacaoNumero] = useState('');
   const [licitacaoOrgao, setLicitacaoOrgao] = useState('');
   const [savingCatalogo, setSavingCatalogo] = useState(false);
+  const [engItensAutoFill, setEngItensAutoFill] = useState<{ descricao: string; quantidade: number; unidade: string; custoUnitario: number }[]>([]);
 
   if (!regime || !config) {
     return (
