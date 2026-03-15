@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Search, Shield, ExternalLink, Loader2, AlertTriangle,
   CheckCircle2, AlertCircle, HelpCircle, Download, FileSpreadsheet, FileDown, FileText,
-  Wifi, WifiOff, Bot, Globe, Clock, Zap, ShieldAlert
+  Wifi, WifiOff, Bot, Globe, Clock, Zap, ShieldAlert, MapPin, Building2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -15,6 +15,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CERTIDOES_POR_ESTADO, getPortaisCertidoes, getMunicipiosCadastrados } from '@/data/certidoes-estaduais-municipais';
+import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 
 // ── Types for Verification mode ──
 type Certidao = {
@@ -64,12 +67,38 @@ const emissaoStatusConfig = {
 export default function CertidoesNegativas() {
   const [cnpjInput, setCnpjInput] = useState('');
   const [razaoSocial, setRazaoSocial] = useState('');
+  const [ufSelecionada, setUfSelecionada] = useState('');
+  const [municipioSelecionado, setMunicipioSelecionado] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingEmissao, setLoadingEmissao] = useState(false);
   const [resultado, setResultado] = useState<ResultadoCertidoes | null>(null);
   const [emissaoResult, setEmissaoResult] = useState<EmissaoResponse | null>(null);
   const [erro, setErro] = useState('');
   const [activeTab, setActiveTab] = useState('verificar');
+
+  // Build list of all UFs sorted
+  const ufsDisponiveis = useMemo(() => {
+    const ufs: { uf: string; nome: string }[] = [];
+    Object.values(REGIOES_ESTADOS).forEach(regiao => {
+      regiao.estados.forEach(e => ufs.push({ uf: e.uf, nome: e.nome }));
+    });
+    return ufs.sort((a, b) => a.nome.localeCompare(b.nome));
+  }, []);
+
+  // Build list of municipalities for selected UF
+  const municipiosDisponiveis = useMemo(() => {
+    if (!ufSelecionada) return [];
+    // Get municipalities from regioes-brasil (comprehensive list)
+    const regiao = Object.values(REGIOES_ESTADOS).find(r => r.estados.some(e => e.uf === ufSelecionada));
+    const estado = regiao?.estados.find(e => e.uf === ufSelecionada);
+    return estado?.cidades?.sort() || [];
+  }, [ufSelecionada]);
+
+  // Get regional portals for selected UF/municipality
+  const portaisRegionais = useMemo(() => {
+    if (!ufSelecionada) return [];
+    return getPortaisCertidoes(ufSelecionada, municipioSelecionado || undefined);
+  }, [ufSelecionada, municipioSelecionado]);
 
   const handleConsultar = async () => {
     const cnpjLimpo = cnpjInput.replace(/\D/g, '');
@@ -93,7 +122,20 @@ export default function CertidoesNegativas() {
     if (cnpjLimpo.length !== 14) { setErro('CNPJ deve conter 14 dígitos'); return; }
     setErro(''); setLoadingEmissao(true); setEmissaoResult(null);
     try {
-      const { data, error } = await supabase.functions.invoke('emitir-certidoes', { body: { cnpj: cnpjLimpo } });
+      const { data, error } = await supabase.functions.invoke('emitir-certidoes', {
+        body: {
+          cnpj: cnpjLimpo,
+          uf: ufSelecionada || undefined,
+          municipio: municipioSelecionado || undefined,
+          portaisRegionais: portaisRegionais.map(p => ({
+            nome: p.nome,
+            url: p.url,
+            tipo: p.tipo,
+            descricao: p.descricao,
+            requerLogin: p.requerLogin,
+          })),
+        },
+      });
       if (error) throw error;
       if (data.error) { setErro(data.error); } else {
         setEmissaoResult(data);
@@ -123,6 +165,49 @@ export default function CertidoesNegativas() {
           <Input placeholder="CNPJ" value={cnpjInput} onChange={(e) => setCnpjInput(e.target.value)} className="flex-1" />
           <Input placeholder="Razão Social (opcional)" value={razaoSocial} onChange={(e) => setRazaoSocial(e.target.value)} className="flex-1" />
         </div>
+        <div className="flex gap-2 mt-2">
+          <div className="flex-1">
+            <Select value={ufSelecionada} onValueChange={(v) => { setUfSelecionada(v); setMunicipioSelecionado(''); }}>
+              <SelectTrigger className="w-full">
+                <MapPin className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
+                <SelectValue placeholder="UF (Estado)" />
+              </SelectTrigger>
+              <SelectContent>
+                {ufsDisponiveis.map(e => (
+                  <SelectItem key={e.uf} value={e.uf}>{e.uf} – {e.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-1">
+            <Select value={municipioSelecionado} onValueChange={setMunicipioSelecionado} disabled={!ufSelecionada}>
+              <SelectTrigger className="w-full">
+                <Building2 className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
+                <SelectValue placeholder={ufSelecionada ? "Município" : "Selecione UF primeiro"} />
+              </SelectTrigger>
+              <SelectContent>
+                {municipiosDisponiveis.map(c => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {portaisRegionais.length > 0 && (
+          <div className="mt-2 p-2 rounded-lg bg-accent/5 border border-accent/20">
+            <p className="text-[10px] font-medium text-accent mb-1 flex items-center gap-1">
+              <MapPin className="w-3 h-3" /> Portais regionais identificados ({portaisRegionais.length}):
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {portaisRegionais.map((p, i) => (
+                <Badge key={i} variant="outline" className="text-[9px] bg-accent/10 text-accent border-accent/30">
+                  {p.tipo === 'estadual' ? '🏛️' : '🏙️'} {p.nome.split(' - ')[0]}
+                  {p.requerLogin && ' 🔒'}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="flex gap-2 mt-3">
           <Button onClick={handleConsultar} disabled={isLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground">
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
