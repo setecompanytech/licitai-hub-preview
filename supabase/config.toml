@@ -1,55 +1,41 @@
 project_id = "sbnlovigyifvrkgsoalj"
 
-[functions.ai-chat]
-verify_jwt = false
-
-[functions.consulta-cnpj]
-verify_jwt = false
-
-[functions.busca-licitacoes]
-verify_jwt = false
-
-[functions.consulta-sintegra]
-verify_jwt = false
-
-[functions.certidoes-negativas]
-verify_jwt = false
-
-[functions.envio-boletim]
-verify_jwt = false
-
-[functions.busca-diarios-oficiais]
-verify_jwt = false
-
-[functions.whatsapp-envio]
-verify_jwt = false
-
-[functions.alerta-vencimento]
-verify_jwt = false
-
-[functions.licitacoes-cleanup]
-verify_jwt = false
-
-[functions.busca-editais-ia]
-verify_jwt = false
-
-[functions.robo-lances-webhook]
-verify_jwt = false
-
-[functions.blog-ia-alimentar]
-verify_jwt = false
-
-[functions.capag-analysis]
-verify_jwt = false
-
-[functions.alertas-inteligentes]
-verify_jwt = false
-
-[functions.consulta-ncm]
-verify_jwt = false
-
-[functions.process-email-queue]
-verify_jwt = false
-
-[functions.emitir-certidoes]
-verify_jwt = false
+[functions]
+  [functions.ai-chat]
+    verify_jwt = false
+  [functions.alerta-vencimento]
+    verify_jwt = false
+  [functions.alertas-inteligentes]
+    verify_jwt = false
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.blog-ia-alimentar]
+    verify_jwt = false
+  [functions.busca-diarios-oficiais]
+    verify_jwt = false
+  [functions.busca-editais-ia]
+    verify_jwt = false
+  [functions.busca-licitacoes]
+    verify_jwt = false
+  [functions.capag-analysis]
+    verify_jwt = false
+  [functions.certidoes-negativas]
+    verify_jwt = false
+  [functions.consulta-cnpj]
+    verify_jwt = false
+  [functions.consulta-ncm]
+    verify_jwt = false
+  [functions.consulta-sintegra]
+    verify_jwt = false
+  [functions.emitir-certidoes]
+    verify_jwt = false
+  [functions.envio-boletim]
+    verify_jwt = false
+  [functions.licitacoes-cleanup]
+    verify_jwt = false
+  [functions.process-email-queue]
+    verify_jwt = false
+  [functions.robo-lances-webhook]
+    verify_jwt = false
+  [functions.whatsapp-envio]
+    verify_jwt = false
