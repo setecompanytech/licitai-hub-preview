@@ -454,7 +454,7 @@ export default function CalendarioLicitacoes() {
 
             {/* Tab: selected day */}
             <TabsContent value="todos" className="mt-0">
-              {selectedEvents.licitacoes.length === 0 && selectedEvents.docs.length === 0 ? (
+              {selectedEvents.licitacoes.length === 0 && selectedEvents.docs.length === 0 && !selectedEvents.backups ? (
                 <div className="text-center py-8 text-muted-foreground text-sm">
                   <CalendarDays className="w-10 h-10 mx-auto mb-2 opacity-30" />
                   Nenhum evento nesta data
