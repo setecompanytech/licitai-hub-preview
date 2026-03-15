@@ -301,6 +301,7 @@ export default function CalendarioLicitacoes() {
     licitacao: { backgroundColor: 'hsl(var(--accent) / 0.2)', borderRadius: '50%' },
     documento: { border: '2px solid hsl(var(--warning))', borderRadius: '50%' },
     urgente: { backgroundColor: 'hsl(var(--destructive) / 0.2)', borderRadius: '50%' },
+    backup: { border: '2px solid hsl(var(--info))', borderRadius: '50%' },
   };
 
   const formatCurrency = (v: number) =>
