@@ -290,7 +290,111 @@ export default function LicitacaoSelector({
         )}
       </div>
 
-      {selectedId ? (
+      <p className="text-[10px] text-muted-foreground">
+        Selecione uma licitação marcada no sistema para preencher automaticamente os itens (descrição, quantidade, unidade e valores de referência).
+      </p>
+
+      <div className="flex items-center gap-2">
+        <Badge variant="outline" className="text-[10px]">
+          {licitacoesMarcadas.length} processo(s) marcado(s)
+        </Badge>
+        {favoritosKeys.size > 0 && (
+          <span className="text-[10px] text-muted-foreground">Fonte: editais favoritos + processos da gestão</span>
+        )}
+      </div>
+
+      {/* Filters */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label className="text-xs">Filtrar por Nº da Licitação</Label>
+          <div className="relative mt-1">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={filterNumero}
+              onChange={e => setFilterNumero(e.target.value)}
+              placeholder="Ex: PE 001/2026"
+              className="pl-8"
+            />
+          </div>
+        </div>
+        <div>
+          <Label className="text-xs">Filtrar por Órgão</Label>
+          {orgaosUnicos.length > 0 ? (
+            <Select value={filterOrgao} onValueChange={setFilterOrgao}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Selecione o órgão" />
+              </SelectTrigger>
+              <SelectContent>
+                {orgaosUnicos.map(o => (
+                  <SelectItem key={o} value={o}>{o}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Input
+              value={filterOrgao}
+              onChange={e => setFilterOrgao(e.target.value)}
+              placeholder="Ex: Prefeitura de Belém"
+              className="mt-1"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Results */}
+      {loading ? (
+        <div className="flex items-center justify-center py-6">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : licitacoesMarcadas.length === 0 ? (
+        <div className="text-center py-4 border border-dashed border-border/50 rounded-lg">
+          <p className="text-xs text-muted-foreground">Nenhum processo marcado foi encontrado para este usuário.</p>
+        </div>
+      ) : !hasActiveFilter ? (
+        <div className="text-center py-4 border border-dashed border-border/50 rounded-lg">
+          <Search className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
+          <p className="text-xs text-muted-foreground">Preencha os dois filtros para localizar a licitação desejada.</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Após filtrar por Nº e Órgão, o processo aparecerá abaixo.</p>
+        </div>
+      ) : filtered.length > 0 ? (
+        <div className="max-h-48 overflow-y-auto space-y-1.5 border border-border/30 rounded-lg p-2">
+          {filtered.map(l => (
+            <button
+              key={l.id}
+              onClick={() => handleSelect(l.id)}
+              disabled={loadingItens || extracting}
+              className="w-full text-left p-2.5 rounded-lg hover:bg-accent/10 transition-colors border border-transparent hover:border-accent/20 group disabled:opacity-70"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-foreground group-hover:text-accent transition-colors">
+                    {l.numero || 'Sem número'}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground truncate">{l.orgao}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {l.modalidade && (
+                    <Badge variant="outline" className="text-[9px] h-5">{l.modalidade}</Badge>
+                  )}
+                  {l.valor_estimado && l.valor_estimado > 0 && (
+                    <span className="text-[10px] font-medium text-accent">
+                      R$ {l.valor_estimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  )}
+                  <Download className="w-3.5 h-3.5 text-muted-foreground group-hover:text-accent transition-colors" />
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{l.objeto}</p>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-4">
+          <p className="text-xs text-muted-foreground">Nenhuma licitação encontrada com os filtros aplicados.</p>
+        </div>
+      )}
+
+      {selectedId && (
         <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 space-y-2">
           <div className="flex items-center gap-2">
             {extracting ? (
@@ -303,7 +407,7 @@ export default function LicitacaoSelector({
                 {licitacaoNumero} — {licitacaoOrgao}
               </p>
               <p className="text-[10px] text-muted-foreground">
-                {licitacoes.find(l => l.id === selectedId)?.objeto?.slice(0, 100)}
+                {licitacoesMarcadas.find(l => l.id === selectedId)?.objeto?.slice(0, 100)}
               </p>
             </div>
             {extracting ? (
@@ -332,115 +436,22 @@ export default function LicitacaoSelector({
             </p>
           )}
         </div>
-      ) : (
-        <>
-          <p className="text-[10px] text-muted-foreground">
-            Selecione uma licitação do sistema para preencher automaticamente os itens (descrição, quantidade, unidade e valores de referência).
-          </p>
-
-          {/* Filters */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs">Filtrar por Nº da Licitação</Label>
-              <div className="relative mt-1">
-                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  value={filterNumero}
-                  onChange={e => setFilterNumero(e.target.value)}
-                  placeholder="Ex: PE 001/2026"
-                  className="pl-8"
-                />
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs">Filtrar por Órgão</Label>
-              {orgaosUnicos.length > 0 ? (
-                <Select value={filterOrgao} onValueChange={setFilterOrgao}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Selecione o órgão" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {orgaosUnicos.map(o => (
-                      <SelectItem key={o} value={o}>{o}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input
-                  value={filterOrgao}
-                  onChange={e => setFilterOrgao(e.target.value)}
-                  placeholder="Ex: Prefeitura de Belém"
-                  className="mt-1"
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Results */}
-          {loading ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : !hasActiveFilter ? (
-            <div className="text-center py-4 border border-dashed border-border/50 rounded-lg">
-              <Search className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
-              <p className="text-xs text-muted-foreground">Preencha os dois filtros para localizar a licitação desejada.</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Informe o Nº da Licitação e selecione/digite o Órgão.</p>
-            </div>
-          ) : filtered.length > 0 ? (
-            <div className="max-h-48 overflow-y-auto space-y-1.5 border border-border/30 rounded-lg p-2">
-              {filtered.map(l => (
-                <button
-                  key={l.id}
-                  onClick={() => handleSelect(l.id)}
-                  disabled={loadingItens}
-                  className="w-full text-left p-2.5 rounded-lg hover:bg-accent/10 transition-colors border border-transparent hover:border-accent/20 group"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-foreground group-hover:text-accent transition-colors">
-                        {l.numero || 'Sem número'}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground truncate">{l.orgao}</p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {l.modalidade && (
-                        <Badge variant="outline" className="text-[9px] h-5">{l.modalidade}</Badge>
-                      )}
-                      {l.valor_estimado && l.valor_estimado > 0 && (
-                        <span className="text-[10px] font-medium text-accent">
-                          R$ {l.valor_estimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </span>
-                      )}
-                      <Download className="w-3.5 h-3.5 text-muted-foreground group-hover:text-accent transition-colors" />
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{l.objeto}</p>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-xs text-muted-foreground">Nenhuma licitação encontrada com os filtros aplicados.</p>
-            </div>
-          )}
-
-          {/* Manual fallback */}
-          <div className="border-t border-border/30 pt-3">
-            <p className="text-[10px] text-muted-foreground mb-2">Ou preencha manualmente:</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Nº da Licitação</Label>
-                <Input value={licitacaoNumero} onChange={e => setLicitacaoNumero(e.target.value)} placeholder="Ex: PE 001/2026" className="mt-1" />
-              </div>
-              <div>
-                <Label className="text-xs">Órgão</Label>
-                <Input value={licitacaoOrgao} onChange={e => setLicitacaoOrgao(e.target.value)} placeholder="Ex: Prefeitura de Belém" className="mt-1" />
-              </div>
-            </div>
-          </div>
-        </>
       )}
+
+      {/* Manual fallback */}
+      <div className="border-t border-border/30 pt-3">
+        <p className="text-[10px] text-muted-foreground mb-2">Ou preencha manualmente:</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs">Nº da Licitação</Label>
+            <Input value={licitacaoNumero} onChange={e => setLicitacaoNumero(e.target.value)} placeholder="Ex: PE 001/2026" className="mt-1" />
+          </div>
+          <div>
+            <Label className="text-xs">Órgão</Label>
+            <Input value={licitacaoOrgao} onChange={e => setLicitacaoOrgao(e.target.value)} placeholder="Ex: Prefeitura de Belém" className="mt-1" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
