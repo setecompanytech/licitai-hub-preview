@@ -227,13 +227,28 @@ Responda EXCLUSIVAMENTE em JSON:
             if (jsonMatch) {
               const parsed: AnaliseResultadoItem[] = JSON.parse(jsonMatch[0]);
               setAnaliseIA(parsed);
-              // Notify parent of aliquota updates
+              
+              // Auto-fill NCM inputs and propagate to parent
+              const newNcmInputs = [...ncmInputs];
               parsed.forEach((item, idx) => {
-                if (onAliquotaUpdate && idx < itens.length) {
-                  onAliquotaUpdate(idx, item.aliquota_efetiva, item.tratamento);
+                if (idx < itens.length) {
+                  // Update NCM input field
+                  if (item.ncm && item.ncm !== '0000.00.00') {
+                    newNcmInputs[idx] = item.ncm;
+                    // Propagate NCM to parent (Itens de Produto)
+                    if (onNcmUpdate) {
+                      onNcmUpdate(idx, item.ncm);
+                    }
+                  }
+                  // Notify parent of aliquota updates
+                  if (onAliquotaUpdate) {
+                    onAliquotaUpdate(idx, item.aliquota_efetiva, item.tratamento);
+                  }
                 }
               });
-              toast.success(`Análise tributária concluída para ${parsed.length} item(ns)!`);
+              setNcmInputs(newNcmInputs);
+              
+              toast.success(`Análise tributária concluída — ${parsed.length} NCM(s) classificados!`);
             } else {
               toast.error('Não foi possível processar a resposta da IA.');
             }
