@@ -804,6 +804,16 @@ Deno.serve(async (req) => {
     const results = await Promise.all(promises);
     let allItems = results.flat();
 
+    // ── Filter out stale/old results ──────────────────────────────────
+    const cutoffDate = new Date(Date.now() - 60 * 86400000); // 60 days max age
+    allItems = allItems.filter((r) => {
+      const dateStr = r.data_publicacao || r.data_abertura;
+      if (!dateStr) return true; // Keep if no date (can't verify)
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return true; // Keep if invalid date
+      return d >= cutoffDate;
+    });
+
     // Deduplicate by title similarity
     const seen = new Set<string>();
     allItems = allItems.filter((r) => {
