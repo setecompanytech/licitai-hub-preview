@@ -450,15 +450,14 @@ serve(async (req) => {
     console.log(`Iniciando emissão de certidões para CNPJ: ${cnpjLimpo}`);
 
     // Execute all emissions in parallel
-    const [cndt, crf, cndFederal, transparencia, situacao] = await Promise.all([
+    const [cndt, crf, cndConjunta, transparencia] = await Promise.all([
       emitirCNDT(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
       emitirCRF(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
-      emitirCNDFederal(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
+      emitirCNDConjunta(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
       consultarTransparencia(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
-      consultarSituacaoCadastral(cnpjLimpo),
     ]);
 
-    const resultados: EmissaoResult[] = [situacao, ...transparencia, cndt, crf, cndFederal];
+    const resultados: EmissaoResult[] = [cndConjunta, ...transparencia, cndt, crf];
 
     const emitidas = resultados.filter(r => r.status === "emitida").length;
     const captcha = resultados.filter(r => r.status === "captcha").length;
