@@ -27,6 +27,10 @@ const CORE_FILES: Record<string, string> = {
 PORT=3500
 AGENT_API_KEY=sua-chave-secreta-aqui
 
+# Sessões paralelas (cada uma consome ~500MB RAM)
+# Padrão: 3 — ajuste conforme a RAM do servidor
+MAX_SESSOES_PARALELAS=3
+
 # URL de callback do sistema (Lovable Cloud)
 CALLBACK_URL=https://sbnlovigyifvrkgsoalj.supabase.co/functions/v1/robo-lances-webhook/callback
 
