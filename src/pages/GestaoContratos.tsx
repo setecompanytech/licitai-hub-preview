@@ -236,6 +236,7 @@ export default function GestaoContratos() {
           </DialogContent>
         </Dialog>
         </div>
+      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><FileText className="w-4 h-4" /> Total</div><p className="text-2xl font-bold">{contratos.length}</p></Card>
