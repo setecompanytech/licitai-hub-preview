@@ -27,7 +27,7 @@ export default function SyncCalendarButton({ events, singleEvent }: SyncCalendar
   const handleDownloadICS = () => {
     const target = singleEvent ? [singleEvent] : events;
     if (target.length === 0) {
-      toast.warning('Nenhum evento para exportar');
+      toast.warning('Nenhum evento para exportar. Cadastre licitações com data de abertura ou documentos com validade.');
       return;
     }
     downloadICS(target, singleEvent ? 'licitacao.ics' : 'licitacoes.ics');
@@ -38,7 +38,7 @@ export default function SyncCalendarButton({ events, singleEvent }: SyncCalendar
   const handleGoogle = () => {
     const event = singleEvent || events[0];
     if (!event) {
-      toast.warning('Nenhum evento para sincronizar');
+      toast.warning('Nenhum evento para sincronizar. Cadastre licitações com data de abertura ou documentos com validade.');
       return;
     }
     window.open(generateGoogleCalendarUrl(event), '_blank');
@@ -48,7 +48,7 @@ export default function SyncCalendarButton({ events, singleEvent }: SyncCalendar
   const handleOutlook = () => {
     const event = singleEvent || events[0];
     if (!event) {
-      toast.warning('Nenhum evento para sincronizar');
+      toast.warning('Nenhum evento para sincronizar. Cadastre licitações com data de abertura ou documentos com validade.');
       return;
     }
     window.open(generateOutlookUrl(event), '_blank');
