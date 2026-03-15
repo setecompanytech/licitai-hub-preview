@@ -168,29 +168,22 @@ Deno.serve(async (req) => {
             const email = authUser?.user?.email;
             
             if (email) {
-              const resendKey = Deno.env.get('RESEND_API_KEY');
-              if (resendKey) {
-                await fetch('https://api.resend.com/emails', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${resendKey}` },
-                  body: JSON.stringify({
-                    from: 'PRAEFECTUS <alertas@praefectus.com.br>',
-                    to: [email],
-                    subject: `🔔 Alerta: Processo ${pi.numero} — ${alertaKey === '1dia' ? 'ÚLTIMO DIA' : `${diffDias} dias restantes`}`,
-                    html: `
-                      <h2>Alerta de Compromisso — PRAEFECTUS</h2>
-                      <p>Olá ${profile?.nome_completo || ''},</p>
-                      <p>${alertaMsg}</p>
-                      <p><strong>Objeto:</strong> ${pi.objeto}</p>
-                      <p><strong>Valor Estimado:</strong> ${pi.valor_estimado ? `R$ ${Number(pi.valor_estimado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'N/I'}</p>
-                      <p><strong>Portal:</strong> ${pi.portal || 'N/I'}</p>
-                      <p><a href="https://praefectus.com.br/meus-compromissos">Acessar Meus Compromissos →</a></p>
-                      <hr/>
-                      <p style="font-size:12px;color:#888;">PRAEFECTUS — Gestão Inteligente de Licitações</p>
-                    `,
-                  }),
-                });
-              }
+              await supabase.functions.invoke('send-transactional-email', {
+                body: {
+                  template: 'alerta-compromisso',
+                  to: email,
+                  subject: `🔔 Alerta: Processo ${pi.numero} — ${alertaKey === '1dia' ? 'ÚLTIMO DIA' : `${diffDias} dias restantes`}`,
+                  data: {
+                    nome: profile?.nome_completo || '',
+                    numero: pi.numero,
+                    orgao: pi.orgao,
+                    objeto: pi.objeto,
+                    valor: pi.valor_estimado ? `R$ ${Number(pi.valor_estimado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : undefined,
+                    portal: pi.portal,
+                    dias: diffDias,
+                  },
+                },
+              });
             }
           } catch (emailErr) {
             console.error('Erro ao enviar email de alerta:', emailErr);

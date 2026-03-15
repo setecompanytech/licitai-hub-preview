@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@4.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
@@ -17,8 +16,6 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
 
     // Find subscriptions expiring in 7, 3 or 1 days
     const now = new Date();
@@ -105,59 +102,24 @@ serve(async (req) => {
           const { data: authUser } = await supabase.auth.admin.getUserById(membro.user_id);
           const userEmail = authUser?.user?.email;
 
-          // 2. EMAIL NOTIFICATION
-          if (resendApiKey && userEmail) {
+          // 2. EMAIL NOTIFICATION via transactional queue
+          if (userEmail) {
             try {
-              const resend = new Resend(resendApiKey);
               const nomeUsuario = profile?.nome_completo || userEmail;
-
-              const html = `
-              <!DOCTYPE html>
-              <html>
-              <head><meta charset="utf-8"/></head>
-              <body style="margin:0;padding:0;background-color:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-                <div style="max-width:600px;margin:0 auto;padding:20px;">
-                  <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:24px 30px;border-radius:12px 12px 0 0;">
-                    <h1 style="color:#ffffff;margin:0;font-size:22px;">⚡ PRAEFECTUS</h1>
-                    <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:14px;">Alerta de Vencimento de Plano</p>
-                  </div>
-                  <div style="background:#ffffff;padding:24px 30px;border-radius:0 0 12px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-                    <p style="color:#333;font-size:15px;">Olá, <strong>${nomeUsuario}</strong>!</p>
-                    
-                    <div style="background:${dias === 1 ? '#fef2f2' : dias === 3 ? '#fffbeb' : '#f0f9ff'};border-left:4px solid ${dias === 1 ? '#ef4444' : dias === 3 ? '#f59e0b' : '#3b82f6'};padding:16px;border-radius:0 8px 8px 0;margin:20px 0;">
-                      <strong style="color:${dias === 1 ? '#dc2626' : dias === 3 ? '#d97706' : '#2563eb'};font-size:16px;">
-                        ${urgencia}: Seu plano vence em ${dias} dia(s)
-                      </strong>
-                      <p style="color:#555;margin:8px 0 0;font-size:14px;">
-                        Plano <strong>${planoNome}</strong> • Empresa: ${empresaNome}<br/>
-                        Data de vencimento: <strong>${dataFim}</strong>
-                      </p>
-                    </div>
-
-                    <p style="color:#555;font-size:14px;line-height:1.6;">
-                      Para manter acesso contínuo a todas as funcionalidades da plataforma, renove seu plano antes do vencimento.
-                    </p>
-
-                    <div style="text-align:center;margin:24px 0;">
-                      <a href="#" style="display:inline-block;background:linear-gradient(135deg,#0d9488,#0891b2);color:#fff;padding:14px 36px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
-                        Renovar Plano
-                      </a>
-                    </div>
-                  </div>
-                  <p style="text-align:center;color:#999;font-size:11px;margin-top:16px;">
-                    PRAEFECTUS — Plataforma inteligente de licitações
-                  </p>
-                </div>
-              </body>
-              </html>`;
-
-              await resend.emails.send({
-                from: "PRAEFECTUS <noreply@resend.dev>",
-                to: [userEmail],
-                subject: `${urgencia} — Plano ${planoNome} vence em ${dias} dia(s)`,
-                html,
+              await supabase.functions.invoke('send-transactional-email', {
+                body: {
+                  template: 'alerta-vencimento-plano',
+                  to: userEmail,
+                  subject: `${urgencia} — Plano ${planoNome} vence em ${dias} dia(s)`,
+                  data: {
+                    nome: nomeUsuario,
+                    plano: planoNome,
+                    empresa: empresaNome,
+                    dias,
+                    dataFim,
+                  },
+                },
               });
-
               results.push({ empresa_id: ass.empresa_id, dias, canal: "email", sucesso: true });
             } catch (e) {
               console.error("Erro envio email:", e);
