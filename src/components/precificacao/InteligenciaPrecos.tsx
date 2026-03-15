@@ -68,6 +68,8 @@ export default function InteligenciaPrecos() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterOportunidade, setFilterOportunidade] = useState<string>('todos');
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
+  const [manualTerms, setManualTerms] = useState('');
+  const [mode, setMode] = useState<'catalog' | 'manual'>('catalog');
 
   // Load catalog items
   useEffect(() => {
@@ -84,13 +86,21 @@ export default function InteligenciaPrecos() {
 
     if (!error && data) {
       setCatalogItems(data);
+      // Auto-switch to manual mode if no catalog items
+      if (data.length === 0) setMode('manual');
     }
   };
 
   // Run price comparison analysis
   const handleAnalyze = async () => {
-    if (catalogItems.length === 0) {
-      toast.error('Nenhum item no catálogo. Precifique itens primeiro na aba Calculadoras.');
+    const isManual = mode === 'manual' || catalogItems.length === 0;
+
+    if (isManual && !manualTerms.trim()) {
+      toast.error('Informe pelo menos um produto para pesquisar.');
+      return;
+    }
+    if (!isManual && catalogItems.length === 0) {
+      toast.error('Nenhum item no catálogo. Use a busca manual ou precifique itens primeiro.');
       return;
     }
 
