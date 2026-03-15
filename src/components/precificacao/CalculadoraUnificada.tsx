@@ -985,6 +985,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
             regime={regime}
             regimeLabel={regimeLabel}
             itens={itens.map(i => ({ descricao: i.descricao, ncm: i.ncm }))}
+            onNcmUpdate={(idx, ncm) => updateItem(idx, 'ncm', ncm)}
           />
 
           {usarBDI ? (
