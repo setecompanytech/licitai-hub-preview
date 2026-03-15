@@ -569,7 +569,7 @@ export default function CalendarioLicitacoes() {
                           'flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer hover:bg-muted/50',
                           isUrgent ? 'border-destructive/30 bg-destructive/5' : 'border-border/50'
                         )}
-                        onClick={() => navigate('/licitacoes-estrategicas')}
+                        onClick={() => navigate('/kanban')}
                       >
                         <div className="flex items-start gap-3 min-w-0">
                           <div className="text-center flex-shrink-0 w-12">
