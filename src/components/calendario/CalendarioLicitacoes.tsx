@@ -529,6 +529,22 @@ export default function CalendarioLicitacoes() {
                       </Badge>
                     </div>
                   ))}
+                  {selectedEvents.backups && (
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-info/30 bg-info/5">
+                      <div className="flex items-center gap-2">
+                        <Database className="w-4 h-4 text-info" />
+                        <div>
+                          <p className="text-sm font-medium">Backup programado</p>
+                          <p className="text-xs text-muted-foreground">
+                            Backup automático agendado para esta data
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="text-[10px] text-info border-info/30">
+                        Agendado
+                      </Badge>
+                    </div>
+                  )}
                 </div>
               )}
             </TabsContent>
