@@ -11,21 +11,21 @@ interface PlanGuardProps {
 
 export default function PlanGuard({ children }: PlanGuardProps) {
   const { subscription } = useAuth();
-  const { isAdmin } = useUserRole();
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Admins bypass plan restrictions
-  if (isAdmin) return <>{children}</>;
-
-  // Still loading subscription
-  if (subscription.loading) {
+  // Still loading role or subscription — show spinner
+  if (roleLoading || subscription.loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-accent" />
       </div>
     );
   }
+
+  // Admins bypass plan restrictions
+  if (isAdmin) return <>{children}</>;
 
   const hasAccess = hasAccessToRoute(subscription.planSlug, location.pathname);
 
