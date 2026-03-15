@@ -233,13 +233,50 @@ app.listen(PORT, () => {
   'src/session-manager.js': `const { launchBrowser } = require('./browser');
 const { sendCallback } = require('./callback');
 const { getPortal } = require('./portals');
+const os = require('os');
 
+/**
+ * Gerenciador de sessões paralelas.
+ * Cada sessão abre sua própria instância do Chromium (~500MB RAM).
+ * O limite de sessões simultâneas é calculado com base na RAM disponível.
+ */
 class SessionManager {
   constructor() {
     this.sessions = new Map();
+    this.maxParallel = parseInt(process.env.MAX_SESSOES_PARALELAS || '3', 10);
+  }
+
+  /**
+   * Calcula quantas sessões paralelas o servidor suporta com base na RAM.
+   * Reserva 512MB para o SO e ~500MB por sessão Chromium.
+   */
+  getCapacity() {
+    const totalMB = Math.floor(os.totalmem() / 1024 / 1024);
+    const freeMB = Math.floor(os.freemem() / 1024 / 1024);
+    const activeSessions = this.getActiveSessions().length;
+    const calculatedMax = Math.max(1, Math.floor((totalMB - 512) / 500));
+    const effectiveMax = Math.min(this.maxParallel, calculatedMax);
+
+    return {
+      max_sessoes: effectiveMax,
+      sessoes_ativas: activeSessions,
+      slots_disponiveis: Math.max(0, effectiveMax - activeSessions),
+      ram_total_mb: totalMB,
+      ram_livre_mb: freeMB,
+      ram_por_sessao_mb: 500,
+    };
   }
 
   async createSession(config) {
+    const capacity = this.getCapacity();
+    if (capacity.slots_disponiveis <= 0) {
+      throw new Error(
+        \`Limite de sessões paralelas atingido (\${capacity.max_sessoes}). \` +
+        \`RAM disponível: \${capacity.ram_livre_mb}MB. \` +
+        \`Encerre uma sessão ativa ou aumente a RAM do servidor.\`
+      );
+    }
+
     const session = {
       ...config,
       status: 'ativo',
@@ -254,12 +291,18 @@ class SessionManager {
 
     this.sessions.set(config.sessao_id, session);
 
-    // Heartbeat
+    // Heartbeat — inclui info de capacidade
     session.heartbeatInterval = setInterval(() => {
-      sendCallback(session, 'heartbeat', { rodada: session.rodada, valor_atual: session.valor_atual });
+      sendCallback(session, 'heartbeat', {
+        rodada: session.rodada,
+        valor_atual: session.valor_atual,
+        capacidade: this.getCapacity(),
+      });
     }, 30000);
 
     try {
+      // Cada sessão recebe seu próprio browser (instância Chromium isolada)
+      console.log(\`🚀 Abrindo sessão \${config.sessao_id} (browser #\${this.getActiveSessions().length})\`);
       const { browser, page } = await launchBrowser();
       session.browser = browser;
       session.page = page;
@@ -268,19 +311,23 @@ class SessionManager {
       session.portal = getPortal(config.portal_id, page, config.credenciais_portal || {});
 
       // Login no portal
-      console.log(\`🔐 Fazendo login no portal: \${config.portal_id}\`);
+      console.log(\`🔐 [\${config.sessao_id}] Login no portal: \${config.portal_id}\`);
       await session.portal.login();
 
       // Navegar para a disputa
-      console.log(\`📋 Navegando para edital: \${config.edital}\`);
+      console.log(\`📋 [\${config.sessao_id}] Navegando para edital: \${config.edital}\`);
       await session.portal.navegarParaDisputa(config.edital);
 
       // Iniciar loop de lances
       this._startBiddingLoop(session);
+
+      console.log(\`✅ Sessão \${config.sessao_id} ativa. Total ativas: \${this.getActiveSessions().length}\`);
     } catch (err) {
-      console.error('Erro ao iniciar sessão:', err);
+      console.error(\`❌ Erro ao iniciar sessão \${config.sessao_id}:\`, err);
       sendCallback(session, 'erro', { mensagem: err.message });
       session.status = 'erro';
+      // Liberar browser para não travar slots
+      if (session.browser) session.browser.close().catch(() => {});
     }
 
     return session;
@@ -302,7 +349,6 @@ class SessionManager {
         // 1. Ler melhor lance atual no portal
         const melhorLance = await session.portal.lerMelhorLance();
         if (melhorLance !== null && melhorLance < session.valor_atual) {
-          // Concorrente deu lance menor
           await sendCallback(session, 'lance-concorrente', {
             rodada: session.rodada,
             valor: melhorLance,
@@ -319,7 +365,7 @@ class SessionManager {
         );
 
         if (novoValor <= session.valor_minimo) {
-          console.log(\`Sessão \${session.sessao_id}: valor mínimo atingido\`);
+          console.log(\`[\${session.sessao_id}] Valor mínimo atingido\`);
           this.endSession(session.sessao_id);
           return;
         }
@@ -340,10 +386,10 @@ class SessionManager {
         });
 
         console.log(
-          \`Sessão \${session.sessao_id} | Rodada \${session.rodada} | Lance: R$ \${novoValor.toFixed(2)} | \${resultado}\`
+          \`[\${session.sessao_id}] Rodada \${session.rodada} | R$ \${novoValor.toFixed(2)} | \${resultado}\`
         );
       } catch (err) {
-        console.error(\`Erro na rodada \${session.rodada}:\`, err);
+        console.error(\`[\${session.sessao_id}] Erro rodada \${session.rodada}:\`, err);
         await session.portal.screenshot?.('erro-rodada-' + session.rodada).catch(() => {});
         await sendCallback(session, 'erro', { mensagem: err.message, rodada: session.rodada });
       }
@@ -355,6 +401,7 @@ class SessionManager {
     if (!session) return null;
     session.status = 'pausado';
     if (session.interval) clearInterval(session.interval);
+    console.log(\`⏸️ Sessão \${sessaoId} pausada. Ativas: \${this.getActiveSessions().length}\`);
     return session;
   }
 
@@ -372,11 +419,24 @@ class SessionManager {
       total_rodadas: session.rodada,
     });
 
+    console.log(\`🏁 Sessão \${sessaoId} encerrada. Ativas: \${this.getActiveSessions().length}\`);
     return session;
   }
 
   getActiveSessions() {
     return [...this.sessions.values()].filter((s) => s.status === 'ativo');
+  }
+
+  getAllSessions() {
+    return [...this.sessions.entries()].map(([id, s]) => ({
+      sessao_id: id,
+      status: s.status,
+      portal_id: s.portal_id,
+      edital: s.edital,
+      rodada: s.rodada,
+      valor_atual: s.valor_atual,
+      created_at: s.created_at,
+    }));
   }
 }
 
