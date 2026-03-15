@@ -29,21 +29,23 @@ export default function Index() {
 
   return (
     <AppLayout>
-      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Painel de Gestão</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+      <div className="mb-3 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-2xl font-bold tracking-tight">Painel de Gestão</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1 truncate">
             Resultados de: <span className="font-medium text-foreground">{empresaLabel}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <RelatorioGerencialPDF />
-          <EmpresaSelector />
+          <div className="hidden sm:block lg:hidden">
+            <EmpresaSelector />
+          </div>
         </div>
       </div>
 
       {/* KPI Grid — Principal */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4 mb-3 sm:mb-4">
         <StatCard label="Monitoradas" value={kpis.licitacoesMonitoradas.toString()} icon={Eye} />
         <StatCard label="Propostas" value={kpis.propostasEnviadas.toString()} icon={Send} />
         <StatCard label="Taxa de Vitória" value={`${kpis.taxaVitoria}%`} icon={Trophy} accentColor="hsl(142, 71%, 45%)" />
@@ -53,12 +55,12 @@ export default function Index() {
       </div>
 
       {/* KPI Grid — Detalhamento Processos (Realtime) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
         <StatCard label="Ganhas" value={analyticsKpis.ganhas.toString()} icon={Trophy} accentColor="hsl(142, 71%, 45%)" change={`Pregões: ${analyticsKpis.pregoesGanhos} · Dispensas: ${analyticsKpis.dispensasGanhas}`} changeType="positive" />
         <StatCard label="Perdidas" value={analyticsKpis.perdidas.toString()} icon={XCircle} accentColor="hsl(0, 72%, 51%)" />
         <StatCard label="Em Andamento" value={analyticsKpis.emAndamento.toString()} icon={Clock} accentColor="hsl(38, 92%, 50%)" change={`${formatCurrency(analyticsKpis.valorEmDisputa)} em disputa`} changeType="neutral" />
         <button onClick={() => navigate('/analytics')} className="text-left">
-          <StatCard label="Pregões / Dispensas" value={`${analyticsKpis.pregoes} / ${analyticsKpis.dispensas}`} icon={Gavel} accentColor="hsl(280, 60%, 50%)" change="Ver analytics completo →" changeType="neutral" />
+          <StatCard label="Pregões / Dispensas" value={`${analyticsKpis.pregoes} / ${analyticsKpis.dispensas}`} icon={Gavel} accentColor="hsl(280, 60%, 50%)" change="Ver analytics →" changeType="neutral" />
         </button>
       </div>
 
