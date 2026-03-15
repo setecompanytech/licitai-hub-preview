@@ -230,7 +230,53 @@ export default function CalculadoraUnificada() {
   const [savingCatalogo, setSavingCatalogo] = useState(false);
   const [engItensAutoFill, setEngItensAutoFill] = useState<{ descricao: string; quantidade: number; unidade: string; custoUnitario: number }[]>([]);
 
-  if (!regime || !config) {
+  // ── Rascunho (Draft) ──
+  const { loadRascunho, autoSave, saving, lastSaved, markLoaded } = useRascunho<any>({
+    modulo: 'precificacao',
+    licitacaoId: null,
+    debounceMs: 3000,
+  });
+
+  const collectCalcData = useCallback(() => ({
+    calcTab, receitaBruta, rbt12, atividade, margemLucro, ufCalculo,
+    anexoSelecionado, frete, despesasAdmin, usarBDI, itens,
+    licitacaoNumero, licitacaoOrgao,
+  }), [
+    calcTab, receitaBruta, rbt12, atividade, margemLucro, ufCalculo,
+    anexoSelecionado, frete, despesasAdmin, usarBDI, itens,
+    licitacaoNumero, licitacaoOrgao,
+  ]);
+
+  // Restore draft on mount
+  useEffect(() => {
+    loadRascunho().then(data => {
+      if (data) {
+        if (data.calcTab) setCalcTab(data.calcTab);
+        if (data.receitaBruta) setReceitaBruta(data.receitaBruta);
+        if (data.rbt12) setRbt12(data.rbt12);
+        if (data.atividade) setAtividade(data.atividade);
+        if (data.margemLucro) setMargemLucro(data.margemLucro);
+        if (data.ufCalculo) setUfCalculo(data.ufCalculo);
+        if (data.anexoSelecionado) setAnexoSelecionado(data.anexoSelecionado);
+        if (data.frete) setFrete(data.frete);
+        if (data.despesasAdmin) setDespesasAdmin(data.despesasAdmin);
+        if (typeof data.usarBDI === 'boolean') setUsarBDI(data.usarBDI);
+        if (data.itens?.length > 0) setItens(data.itens);
+        if (data.licitacaoNumero) setLicitacaoNumero(data.licitacaoNumero);
+        if (data.licitacaoOrgao) setLicitacaoOrgao(data.licitacaoOrgao);
+        toast.info('Rascunho da calculadora restaurado.');
+      }
+      markLoaded();
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save on form changes
+  useEffect(() => {
+    const data = collectCalcData();
+    const titulo = licitacaoNumero ? `Precificação — ${licitacaoNumero}` : 'Precificação (sem licitação)';
+    autoSave(data, titulo);
+  }, [collectCalcData, autoSave]); // eslint-disable-line react-hooks/exhaustive-deps
+
     return (
       <div className="bg-card rounded-xl border border-border/50 p-6 text-center">
         <Calculator className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
