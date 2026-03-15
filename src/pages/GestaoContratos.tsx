@@ -72,6 +72,7 @@ export default function GestaoContratos() {
     status: 'vigente', modalidade: '', uf: '', municipio: '',
     fiscal_nome: '', fiscal_email: '', fiscal_telefone: '', observacoes: '',
   });
+  const [pendingItens, setPendingItens] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -103,7 +104,7 @@ export default function GestaoContratos() {
     setSaving(true);
     const val = parseFloat(form.valor_global) || 0;
     const consumed = parseFloat(form.valor_consumido) || 0;
-    const { error } = await supabase.from('contratos').insert({
+    const { data: inserted, error } = await supabase.from('contratos').insert({
       user_id: user!.id, numero_contrato: form.numero_contrato, objeto: form.objeto,
       orgao_contratante: form.orgao_contratante, valor_global: val, valor_consumido: consumed,
       data_assinatura: form.data_assinatura || null, data_inicio: form.data_inicio || null,
@@ -112,10 +113,36 @@ export default function GestaoContratos() {
       municipio: form.municipio || null, fiscal_nome: form.fiscal_nome || null,
       fiscal_email: form.fiscal_email || null, fiscal_telefone: form.fiscal_telefone || null,
       observacoes: form.observacoes || null,
-    } as any);
+    } as any).select('id').single();
     setSaving(false);
     if (error) { console.error('Erro ao salvar contrato:', error); toast.error('Erro ao salvar contrato', { description: error.message }); return; }
-    toast.success('Contrato cadastrado!');
+
+    // Auto-insert extracted items if available
+    if (inserted && pendingItens.length > 0) {
+      const itensToInsert = pendingItens.map(item => ({
+        contrato_id: inserted.id,
+        user_id: user!.id,
+        descricao: item.descricao || 'Sem descrição',
+        unidade: item.unidade || 'UN',
+        quantidade_contratada: item.quantidade || 0,
+        valor_unitario: item.valor_unitario || 0,
+        valor_total: item.valor_total || (item.quantidade || 0) * (item.valor_unitario || 0),
+        saldo_quantitativo: item.quantidade || 0,
+        saldo_financeiro: item.valor_total || (item.quantidade || 0) * (item.valor_unitario || 0),
+        codigo_item: item.codigo_item || null,
+      }));
+      const { error: itensError } = await supabase.from('contrato_itens').insert(itensToInsert as any);
+      if (itensError) {
+        console.error('Erro ao salvar itens:', itensError);
+        toast.error('Contrato salvo, mas houve erro ao importar os itens');
+      } else {
+        toast.success(`Contrato cadastrado com ${pendingItens.length} itens importados!`);
+      }
+      setPendingItens([]);
+    } else {
+      toast.success('Contrato cadastrado!');
+    }
+
     setDialogOpen(false);
     setForm({ numero_contrato: '', objeto: '', orgao_contratante: '', valor_global: '', valor_consumido: '0', data_assinatura: '', data_inicio: '', data_fim: '', vigencia_meses: '', status: 'vigente', modalidade: '', uf: '', municipio: '', fiscal_nome: '', fiscal_email: '', fiscal_telefone: '', observacoes: '' });
     loadContratos();
@@ -148,6 +175,13 @@ export default function GestaoContratos() {
       fiscal_telefone: data.fiscal_telefone || '',
       observacoes: data.observacoes || '',
     });
+    // Store extracted items to be saved with the contract
+    if (data.itens && Array.isArray(data.itens) && data.itens.length > 0) {
+      setPendingItens(data.itens);
+      toast.info(`${data.itens.length} itens extraídos do contrato serão importados automaticamente ao salvar.`);
+    } else {
+      setPendingItens([]);
+    }
     setDialogOpen(true);
   };
 
@@ -264,8 +298,18 @@ export default function GestaoContratos() {
               <div><Label>Fiscal - Telefone</Label><Input value={form.fiscal_telefone} onChange={e => setForm(f => ({ ...f, fiscal_telefone: e.target.value }))} /></div>
               <div className="md:col-span-2"><Label>Observações</Label><Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} /></div>
             </div>
+            {pendingItens.length > 0 && (
+              <div className="mt-3 p-3 rounded-lg bg-accent/10 border border-accent/20">
+                <p className="text-sm font-medium flex items-center gap-2 text-accent">
+                  <Package className="w-4 h-4" /> {pendingItens.length} itens extraídos do PDF
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Serão cadastrados automaticamente na aba "Itens" ao salvar o contrato.
+                </p>
+              </div>
+            )}
             <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+              <Button variant="outline" onClick={() => { setDialogOpen(false); setPendingItens([]); }}>Cancelar</Button>
               <Button onClick={handleSave} disabled={saving}>{saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}Salvar Contrato</Button>
             </div>
           </DialogContent>
