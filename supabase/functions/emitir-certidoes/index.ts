@@ -328,7 +328,7 @@ async function consultarSituacaoCadastral(cnpj: string): Promise<EmissaoResult> 
         status: "emitida",
         detalhes: `Situação: ATIVA | Razão Social: ${data.razao_social} | CNAE: ${data.cnae_fiscal_descricao}`,
         dataEmissao: new Date().toISOString(),
-        url: "https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp",
+        url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home",
       };
     }
 
