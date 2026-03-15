@@ -165,6 +165,49 @@ export default function CertidoesNegativas() {
           <Input placeholder="CNPJ" value={cnpjInput} onChange={(e) => setCnpjInput(e.target.value)} className="flex-1" />
           <Input placeholder="Razão Social (opcional)" value={razaoSocial} onChange={(e) => setRazaoSocial(e.target.value)} className="flex-1" />
         </div>
+        <div className="flex gap-2 mt-2">
+          <div className="flex-1">
+            <Select value={ufSelecionada} onValueChange={(v) => { setUfSelecionada(v); setMunicipioSelecionado(''); }}>
+              <SelectTrigger className="w-full">
+                <MapPin className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
+                <SelectValue placeholder="UF (Estado)" />
+              </SelectTrigger>
+              <SelectContent>
+                {ufsDisponiveis.map(e => (
+                  <SelectItem key={e.uf} value={e.uf}>{e.uf} – {e.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-1">
+            <Select value={municipioSelecionado} onValueChange={setMunicipioSelecionado} disabled={!ufSelecionada}>
+              <SelectTrigger className="w-full">
+                <Building2 className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
+                <SelectValue placeholder={ufSelecionada ? "Município" : "Selecione UF primeiro"} />
+              </SelectTrigger>
+              <SelectContent>
+                {municipiosDisponiveis.map(c => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {portaisRegionais.length > 0 && (
+          <div className="mt-2 p-2 rounded-lg bg-accent/5 border border-accent/20">
+            <p className="text-[10px] font-medium text-accent mb-1 flex items-center gap-1">
+              <MapPin className="w-3 h-3" /> Portais regionais identificados ({portaisRegionais.length}):
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {portaisRegionais.map((p, i) => (
+                <Badge key={i} variant="outline" className="text-[9px] bg-accent/10 text-accent border-accent/30">
+                  {p.tipo === 'estadual' ? '🏛️' : '🏙️'} {p.nome.split(' - ')[0]}
+                  {p.requerLogin && ' 🔒'}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="flex gap-2 mt-3">
           <Button onClick={handleConsultar} disabled={isLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground">
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
