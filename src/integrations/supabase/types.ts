@@ -879,6 +879,203 @@ export type Database = {
           },
         ]
       }
+      contrato_custos: {
+        Row: {
+          categoria: string | null
+          contrato_id: string
+          contrato_pedido_id: string | null
+          created_at: string
+          data_lancamento: string | null
+          descricao: string
+          id: string
+          nota_fiscal: string | null
+          observacoes: string | null
+          tipo: string
+          updated_at: string
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          categoria?: string | null
+          contrato_id: string
+          contrato_pedido_id?: string | null
+          created_at?: string
+          data_lancamento?: string | null
+          descricao: string
+          id?: string
+          nota_fiscal?: string | null
+          observacoes?: string | null
+          tipo?: string
+          updated_at?: string
+          user_id: string
+          valor?: number
+        }
+        Update: {
+          categoria?: string | null
+          contrato_id?: string
+          contrato_pedido_id?: string | null
+          created_at?: string
+          data_lancamento?: string | null
+          descricao?: string
+          id?: string
+          nota_fiscal?: string | null
+          observacoes?: string | null
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contrato_custos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_custos_contrato_pedido_id_fkey"
+            columns: ["contrato_pedido_id"]
+            isOneToOne: false
+            referencedRelation: "contrato_pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contrato_itens: {
+        Row: {
+          codigo_item: string | null
+          contrato_id: string
+          created_at: string
+          descricao: string
+          id: string
+          observacoes: string | null
+          quantidade_consumida: number
+          quantidade_contratada: number
+          saldo_financeiro: number
+          saldo_quantitativo: number
+          unidade: string
+          updated_at: string
+          user_id: string
+          valor_total: number
+          valor_unitario: number
+        }
+        Insert: {
+          codigo_item?: string | null
+          contrato_id: string
+          created_at?: string
+          descricao: string
+          id?: string
+          observacoes?: string | null
+          quantidade_consumida?: number
+          quantidade_contratada?: number
+          saldo_financeiro?: number
+          saldo_quantitativo?: number
+          unidade?: string
+          updated_at?: string
+          user_id: string
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Update: {
+          codigo_item?: string | null
+          contrato_id?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          observacoes?: string | null
+          quantidade_consumida?: number
+          quantidade_contratada?: number
+          saldo_financeiro?: number
+          saldo_quantitativo?: number
+          unidade?: string
+          updated_at?: string
+          user_id?: string
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contrato_itens_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contrato_pedidos: {
+        Row: {
+          contrato_id: string
+          contrato_item_id: string | null
+          created_at: string
+          data_entrega: string | null
+          data_pedido: string | null
+          descricao: string | null
+          id: string
+          nota_fiscal: string | null
+          numero_pedido: string
+          observacoes: string | null
+          quantidade: number
+          status: string
+          updated_at: string
+          user_id: string
+          valor_total: number
+          valor_unitario: number
+        }
+        Insert: {
+          contrato_id: string
+          contrato_item_id?: string | null
+          created_at?: string
+          data_entrega?: string | null
+          data_pedido?: string | null
+          descricao?: string | null
+          id?: string
+          nota_fiscal?: string | null
+          numero_pedido: string
+          observacoes?: string | null
+          quantidade?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Update: {
+          contrato_id?: string
+          contrato_item_id?: string | null
+          created_at?: string
+          data_entrega?: string | null
+          data_pedido?: string | null
+          descricao?: string | null
+          id?: string
+          nota_fiscal?: string | null
+          numero_pedido?: string
+          observacoes?: string | null
+          quantidade?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contrato_pedidos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_pedidos_contrato_item_id_fkey"
+            columns: ["contrato_item_id"]
+            isOneToOne: false
+            referencedRelation: "contrato_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contratos: {
         Row: {
           created_at: string
