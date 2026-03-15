@@ -169,13 +169,20 @@ export default function AnaliseRegimeTributario({ ufCalculo, ufNome, regime, reg
       `${idx + 1}. ${item.descricao}${item.ncm ? ` (NCM: ${item.ncm})` : ''}`
     ).join('\n');
 
-    const prompt = `Atue como analista tributário especialista em ICMS. Analise cada item abaixo e determine o TRATAMENTO TRIBUTÁRIO correto para o estado ${ufCalculo} (${ufNome}), considerando o regime ${regimeLabel}.
+    const prompt = `Atue como analista tributário especialista em ICMS e classificação fiscal de mercadorias. Analise cada item abaixo e determine o TRATAMENTO TRIBUTÁRIO correto para o estado ${ufCalculo} (${ufNome}), considerando o regime ${regimeLabel}.
 
 ITENS:
 ${itensTexto}
 
+FONTES OFICIAIS DE NCM QUE VOCÊ DEVE CONSULTAR:
+- TIPI (Tabela de Incidência do IPI) - Decreto 11.158/2022 atualizado
+- Portal Único Siscomex: https://portalunico.siscomex.gov.br/classif/#/sumario?perfil=publico
+- Cosmos / Bluesoft: https://cosmos.bluesoft.com.br/ncms
+- Tabela IBGE/IBPT de NCM
+- AFRFB / Receita Federal - Classificação Fiscal de Mercadorias
+
 Para cada item, determine:
-1. O NCM correto (se não informado, sugira o mais provável)
+1. O NCM CORRETO conforme a TIPI vigente e fontes oficiais acima. O NCM deve ter 8 dígitos no formato 0000.00.00
 2. O tratamento ICMS: ISENTO, ST (Substituição Tributária), REDUCAO_BC (Redução de Base de Cálculo), DIFERIDO, ALIQUOTA_CHEIA ou ALIQUOTA_ESPECIAL
 3. A alíquota efetiva real (%) considerando todos os benefícios fiscais do estado
 4. A categoria fiscal do produto
@@ -183,6 +190,7 @@ Para cada item, determine:
 6. Se for ST, informe o MVA aplicável
 
 REGRAS IMPORTANTES:
+- O NCM deve ser PRECISO e corresponder exatamente ao produto descrito
 - Considere o RICMS do ${ufCalculo} atualizado
 - Verifique Convênios CONFAZ vigentes (especialmente 142/18 para ST)
 - Considere reduções de base de cálculo para cesta básica conforme legislação estadual
