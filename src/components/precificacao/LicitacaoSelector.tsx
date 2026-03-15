@@ -119,22 +119,66 @@ export default function LicitacaoSelector({
   // Unique orgaos for filter
   const orgaosUnicos = [...new Set(licitacoesMarcadas.map(l => l.orgao).filter(Boolean))].sort();
 
+  const mapItensToAutofill = (itensData: any[]): LicitacaoItemAutoFill[] => {
+    return (itensData || []).map(i => ({
+      descricao: i.descricao || '',
+      quantidade: i.quantidade || 1,
+      unidade: i.unidade || 'UN',
+      valorUnitario: i.valor_unitario || 0,
+      valorTotal: i.valor_total || 0,
+      lote: i.lote || 'Único',
+    }));
+  };
+
+  const extractTextFromBlob = async (blob: Blob): Promise<string> => {
+    const contentType = blob.type?.toLowerCase() || '';
+
+    if (contentType.includes('pdf')) {
+      try {
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        const buffer = await blob.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+        const maxPages = Math.min(pdf.numPages, 30);
+        const pages: string[] = [];
+
+        for (let p = 1; p <= maxPages; p++) {
+          const page = await pdf.getPage(p);
+          const content = await page.getTextContent();
+          const text = content.items
+            .map((item: any) => (typeof item?.str === 'string' ? item.str : ''))
+            .join(' ')
+            .trim();
+          if (text) pages.push(text);
+        }
+
+        return pages.join('\n').slice(0, 50000);
+      } catch {
+        return '';
+      }
+    }
+
+    return (await blob.text()).slice(0, 50000);
+  };
+
   // Select licitacao and load items
   const handleSelect = async (licitacaoId: string) => {
-    const lic = licitacoes.find(l => l.id === licitacaoId);
+    if (!user) return;
+
+    const lic = licitacoesMarcadas.find(l => l.id === licitacaoId);
     if (!lic) return;
 
     setSelectedId(licitacaoId);
     setLicitacaoNumero(lic.numero || '');
     setLicitacaoOrgao(lic.orgao || '');
 
-    // Fetch existing items from licitacao_itens
+    // 1) Try existing structured items first
     setLoadingItens(true);
     const { data: itensData, error } = await supabase
       .from('licitacao_itens')
       .select('descricao, quantidade, unidade, valor_unitario, valor_total, lote')
       .eq('licitacao_id', licitacaoId)
-      .eq('user_id', user!.id)
+      .eq('user_id', user.id)
       .order('numero', { ascending: true });
 
     if (error) {
@@ -144,15 +188,7 @@ export default function LicitacaoSelector({
       return;
     }
 
-    const existingItens: LicitacaoItemAutoFill[] = ((itensData as any[]) || []).map(i => ({
-      descricao: i.descricao || '',
-      quantidade: i.quantidade || 1,
-      unidade: i.unidade || 'UN',
-      valorUnitario: i.valor_unitario || 0,
-      valorTotal: i.valor_total || 0,
-      lote: i.lote || 'Único',
-    }));
-
+    const existingItens = mapItensToAutofill((itensData as any[]) || []);
     setLoadingItens(false);
 
     if (existingItens.length > 0) {
@@ -162,44 +198,48 @@ export default function LicitacaoSelector({
       return;
     }
 
-    // No items found — try to auto-extract from edital document
-    toast.info('Nenhum item encontrado. Buscando edital para extração automática via IA...');
+    // 2) If empty, auto-extract from edital already stored/linked in system
+    toast.info('Nenhum item estruturado encontrado. Iniciando extração automática do edital...');
     setExtracting(true);
 
     try {
-      // Look for edital documents associated with this licitação
       const { data: docs } = await supabase
         .from('documentos')
-        .select('arquivo_path, nome, tipo')
+        .select('arquivo_path, nome, tipo, created_at')
         .eq('licitacao_id', licitacaoId)
-        .eq('user_id', user!.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(5);
+        .limit(10);
 
       let editalText = '';
 
-      if (docs && docs.length > 0) {
-        // Try to download and read the first edital document
+      if (docs?.length) {
         for (const doc of docs) {
-          if (doc.arquivo_path) {
-            try {
-              const { data: fileData } = await supabase.storage
-                .from('documentos')
-                .download(doc.arquivo_path);
-              if (fileData) {
-                editalText = await fileData.text();
-                if (editalText.length > 100) break;
-              }
-            } catch {
-              // continue to next document
+          if (!doc.arquivo_path) continue;
+          try {
+            const { data: fileData } = await supabase.storage.from('documentos').download(doc.arquivo_path);
+            if (!fileData) continue;
+
+            const extractedText = await extractTextFromBlob(fileData);
+            if (extractedText.length > 100) {
+              editalText = extractedText;
+              break;
             }
+          } catch {
+            // tenta próximo documento
           }
         }
       }
 
-      // If no document text, use the objeto field as base for extraction
       if (!editalText || editalText.length < 100) {
-        editalText = `Licitação: ${lic.numero}\nÓrgão: ${lic.orgao}\nObjeto: ${lic.objeto}\nModalidade: ${lic.modalidade || 'N/I'}\nValor Estimado: R$ ${lic.valor_estimado?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || 'N/I'}`;
+        editalText = [
+          `Licitação: ${lic.numero}`,
+          `Órgão: ${lic.orgao}`,
+          `Objeto: ${lic.objeto}`,
+          `Modalidade: ${lic.modalidade || 'N/I'}`,
+          `Valor estimado: ${lic.valor_estimado ? `R$ ${lic.valor_estimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'N/I'}`,
+          `URL do edital: ${lic.url_edital || 'N/I'}`,
+        ].join('\n');
       }
 
       const extracted = await extrairItensIA(licitacaoId, editalText);
@@ -213,11 +253,12 @@ export default function LicitacaoSelector({
           valorTotal: i.valor_total || 0,
           lote: i.lote || 'Único',
         }));
+
         setItensCount(mappedItens.length);
         if (onItensLoaded) onItensLoaded(mappedItens);
       } else {
         setItensCount(0);
-        toast.info('Não foi possível extrair itens automaticamente. Adicione manualmente na planilha abaixo.');
+        toast.info('Não foi possível extrair itens automaticamente deste processo marcado. Você pode preencher manualmente.');
       }
     } catch (err) {
       console.error('Erro na extração automática:', err);
