@@ -128,6 +128,7 @@ const adminItems: NavItem[] = [
   { icon: DollarSign, label: 'Financeiro', path: '/admin/financeiro' },
   { icon: Target, label: 'Fontes Fabricantes', path: '/admin/fontes-fabricantes' },
   { icon: TrendingUp, label: 'Marketing', path: '/admin/marketing' },
+  { icon: BarChart3, label: 'Relatório Contábil', path: '/relatorio-contabil' },
 ];
 
 interface AppSidebarProps {
