@@ -743,85 +743,123 @@ function FreteCalculator({ contratoId, userId, onSaved, onClose }: {
   );
 }
 
-// ── Generic Cost Calculator (Custo Direto, Desp. Admin, Outros) ──
+// ── Generic Cost Calculator (Custo Direto, Desp. Admin, Outros) — Multi-item ──
+type LineItem = {
+  key: string; descricao: string; valor: string; quantidade: string;
+  dataLancamento: string; categoria: string; notaFiscal: string; observacoes: string;
+};
+
+const emptyLine = (): LineItem => ({
+  key: crypto.randomUUID(), descricao: '', valor: '', quantidade: '1',
+  dataLancamento: new Date().toISOString().split('T')[0], categoria: '', notaFiscal: '', observacoes: '',
+});
+
 function GenericCostCalculator({ contratoId, userId, tipo, onSaved, onClose }: {
   contratoId: string; userId: string; tipo: string; onSaved: () => void; onClose: () => void;
 }) {
-  const [descricao, setDescricao] = useState('');
-  const [valor, setValor] = useState('');
-  const [quantidade, setQuantidade] = useState('1');
-  const [dataLancamento, setDataLancamento] = useState(new Date().toISOString().split('T')[0]);
-  const [categoria, setCategoria] = useState('');
-  const [notaFiscal, setNotaFiscal] = useState('');
-  const [observacoes, setObservacoes] = useState('');
+  const [lines, setLines] = useState<LineItem[]>([emptyLine()]);
   const [saving, setSaving] = useState(false);
 
-  const valorUnit = parseFloat(valor) || 0;
-  const qtd = parseFloat(quantidade) || 1;
-  const total = valorUnit * qtd;
+  const updateLine = (key: string, field: keyof LineItem, value: string) => {
+    setLines(prev => prev.map(l => l.key === key ? { ...l, [field]: value } : l));
+  };
+  const removeLine = (key: string) => setLines(prev => prev.length > 1 ? prev.filter(l => l.key !== key) : prev);
+  const addLine = () => setLines(prev => [...prev, emptyLine()]);
+
+  const lineTotal = (l: LineItem) => (parseFloat(l.valor) || 0) * (parseFloat(l.quantidade) || 1);
+  const grandTotal = lines.reduce((s, l) => s + lineTotal(l), 0);
+  const validLines = lines.filter(l => l.descricao && (parseFloat(l.valor) || 0) > 0);
 
   const handleSave = async () => {
-    if (!descricao || valorUnit <= 0) { toast.error('Preencha descrição e valor'); return; }
+    if (validLines.length === 0) { toast.error('Preencha ao menos um item com descrição e valor'); return; }
     setSaving(true);
-    const { error } = await supabase.from('contrato_custos').insert({
-      contrato_id: contratoId, user_id: userId, tipo,
-      descricao: qtd > 1 ? `${descricao} (${qtd}x)` : descricao,
-      valor: Math.round(total * 100) / 100,
-      data_lancamento: dataLancamento || null,
-      categoria: categoria || null,
-      nota_fiscal: notaFiscal || null,
-      observacoes: observacoes || null,
-    } as any);
+    const inserts = validLines.map(l => {
+      const qtd = parseFloat(l.quantidade) || 1;
+      const total = Math.round(lineTotal(l) * 100) / 100;
+      return {
+        contrato_id: contratoId, user_id: userId, tipo,
+        descricao: qtd > 1 ? `${l.descricao} (${qtd}x)` : l.descricao,
+        valor: total,
+        data_lancamento: l.dataLancamento || null,
+        categoria: l.categoria || null,
+        nota_fiscal: l.notaFiscal || null,
+        observacoes: l.observacoes || null,
+      };
+    });
+    const { error } = await supabase.from('contrato_custos').insert(inserts as any);
     setSaving(false);
-    if (error) { toast.error('Erro ao salvar custo'); return; }
-    toast.success('Custo registrado!');
+    if (error) { toast.error('Erro ao salvar custos'); return; }
+    toast.success(`${inserts.length} lançamento(s) registrado(s)!`);
     onSaved();
     onClose();
   };
 
   return (
     <div className="space-y-3 mt-2">
-      <div>
-        <Label className="text-xs">Descrição *</Label>
-        <Input value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Ex: Material de consumo" />
+      <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+        {lines.map((line, idx) => (
+          <Card key={line.key} className="p-3 space-y-2 relative">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-muted-foreground">Item {idx + 1}</span>
+              {lines.length > 1 && (
+                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeLine(line.key)}>
+                  <Trash2 className="w-3 h-3 text-destructive" />
+                </Button>
+              )}
+            </div>
+            <div>
+              <Label className="text-xs">Descrição *</Label>
+              <Input value={line.descricao} onChange={e => updateLine(line.key, 'descricao', e.target.value)} placeholder="Ex: Material de consumo" />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <Label className="text-xs">Valor Unit. (R$) *</Label>
+                <Input inputMode="decimal" value={formatInputBRL(line.valor)} onChange={e => updateLine(line.key, 'valor', parseBRLInput(e.target.value))} placeholder="0,00" />
+              </div>
+              <div>
+                <Label className="text-xs">Qtd</Label>
+                <Input type="number" min="1" step="1" value={line.quantidade} onChange={e => updateLine(line.key, 'quantidade', e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Total</Label>
+                <Input value={fmt(lineTotal(line))} readOnly className="bg-muted/50 font-medium" />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <Label className="text-xs">Data</Label>
+                <Input type="date" value={line.dataLancamento} onChange={e => updateLine(line.key, 'dataLancamento', e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Categoria</Label>
+                <Input value={line.categoria} onChange={e => updateLine(line.key, 'categoria', e.target.value)} placeholder="Material..." />
+              </div>
+              <div>
+                <Label className="text-xs">Nota Fiscal</Label>
+                <Input value={line.notaFiscal} onChange={e => updateLine(line.key, 'notaFiscal', e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Observações</Label>
+              <Textarea value={line.observacoes} onChange={e => updateLine(line.key, 'observacoes', e.target.value)} rows={1} />
+            </div>
+          </Card>
+        ))}
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        <div>
-          <Label className="text-xs">Valor Unitário (R$) *</Label>
-          <Input inputMode="decimal" value={formatInputBRL(valor)} onChange={e => setValor(parseBRLInput(e.target.value))} placeholder="0,00" />
-        </div>
-        <div>
-          <Label className="text-xs">Quantidade</Label>
-          <Input type="number" min="1" step="1" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs">Total</Label>
-          <Input value={fmt(total)} readOnly className="bg-muted/50 font-medium" />
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-3">
-        <div>
-          <Label className="text-xs">Data</Label>
-          <Input type="date" value={dataLancamento} onChange={e => setDataLancamento(e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs">Categoria</Label>
-          <Input value={categoria} onChange={e => setCategoria(e.target.value)} placeholder="Material, Serviço..." />
-        </div>
-        <div>
-          <Label className="text-xs">Nota Fiscal</Label>
-          <Input value={notaFiscal} onChange={e => setNotaFiscal(e.target.value)} />
-        </div>
-      </div>
-      <div>
-        <Label className="text-xs">Observações</Label>
-        <Textarea value={observacoes} onChange={e => setObservacoes(e.target.value)} rows={2} />
+
+      <Button variant="outline" size="sm" className="w-full text-xs" onClick={addLine}>
+        <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar mais um item
+      </Button>
+
+      <div className="p-3 rounded-lg bg-muted/50 border flex justify-between items-center">
+        <span className="text-xs font-medium">{validLines.length} item(ns) válido(s)</span>
+        <span className="text-sm font-bold text-primary">Total: {fmt(grandTotal)}</span>
       </div>
 
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={onClose}>Cancelar</Button>
-        <Button onClick={handleSave} disabled={saving || !descricao || valorUnit <= 0}>
-          {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />} Registrar {fmt(total)}
+        <Button onClick={handleSave} disabled={saving || validLines.length === 0}>
+          {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />} Registrar {validLines.length} item(ns) — {fmt(grandTotal)}
         </Button>
       </div>
     </div>
