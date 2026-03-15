@@ -555,8 +555,8 @@ async function enrichWithPncpData(items: any[]): Promise<any[]> {
   for (const kw of keywordArr) {
     try {
       const now = new Date();
-      const dataInicial = formatDatePNCP(new Date(now.getTime() - 180 * 86400000));
-      const dataFinal = formatDatePNCP(new Date(now.getTime() + 90 * 86400000));
+      const dataInicial = formatDatePNCP(new Date(now.getTime() - 60 * 86400000));
+      const dataFinal = formatDatePNCP(new Date(now.getTime() + 30 * 86400000));
 
       for (const mod of ["6", "8", "5"]) {
         const params = new URLSearchParams({
