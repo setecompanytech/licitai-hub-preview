@@ -112,7 +112,7 @@ const parseCurrencyInput = (f: string): number => {
   return d ? parseInt(d, 10) / 100 : 0;
 };
 
-export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCalculo, ufNome, licitacaoNumero, licitacaoOrgao }: Props) {
+export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCalculo, ufNome, licitacaoNumero, licitacaoOrgao, initialItens }: Props) {
   const { empresaAtiva } = useEmpresa();
   const { user } = useAuth();
 
