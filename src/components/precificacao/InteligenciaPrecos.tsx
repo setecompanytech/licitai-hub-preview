@@ -612,13 +612,14 @@ Responda APENAS em JSON válido:
           <Brain className="w-16 h-16 mx-auto mb-4 opacity-20" />
           <h3 className="text-sm font-semibold mb-1">Inteligência de Preços</h3>
           <p className="text-xs max-w-md mx-auto">
-            Clique em <b>Analisar Mercado</b> para comparar automaticamente seus preços do catálogo com
-            marketplaces e o Painel de Preços Gov.br, identificando oportunidades de margem.
+            {mode === 'manual'
+              ? 'Digite os produtos acima e clique em Analisar Mercado para comparar preços em marketplaces e Gov.br.'
+              : 'Clique em Analisar Mercado para comparar automaticamente seus preços do catálogo com marketplaces e o Painel de Preços Gov.br.'
+            }
           </p>
-          {catalogItems.length === 0 && (
-            <p className="text-xs text-warning mt-3 flex items-center gap-1 justify-center">
-              <AlertTriangle className="w-3.5 h-3.5" />
-              Nenhum item no catálogo. Precifique itens na aba Calculadoras primeiro.
+          {mode === 'catalog' && catalogItems.length === 0 && (
+            <p className="text-xs text-muted-foreground mt-3">
+              Catálogo vazio — use a aba <b>Busca Manual</b> para pesquisar produtos diretamente.
             </p>
           )}
         </div>
