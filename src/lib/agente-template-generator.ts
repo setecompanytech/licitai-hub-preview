@@ -66,10 +66,26 @@ HEALTHCHECK --interval=30s --timeout=10s CMD curl -f http://localhost:3500/healt
 CMD ["node", "src/index.js"]
 `,
 
-  'README.md': `# Agente Externo de Lances v2.0
+  'README.md': `# Agente Externo de Lances v2.1
 
 Servidor dedicado para automação de lances reais em portais de licitação.
 Usa Puppeteer + certificado digital A1 para autenticar e enviar lances.
+
+## ⚡ Multi-Sessão Paralela
+
+O agente v2.1 suporta **múltiplas disputas simultâneas**:
+- Cada sessão abre seu próprio navegador Chromium (~500MB RAM)
+- Configure \`MAX_SESSOES_PARALELAS\` no .env (padrão: 3)
+- O /health reporta capacidade e slots disponíveis em tempo real
+- Ideal para disputar com múltiplas empresas no mesmo horário
+
+### RAM Recomendada
+
+| Sessões | RAM mínima | VPS sugerido |
+|---------|-----------|--------------|
+| 1       | 2GB       | VPS básico   |
+| 2-3     | 4GB       | VPS 2        |
+| 4-6     | 8GB       | VPS 4        |
 
 ## Portais Suportados
 
@@ -86,52 +102,40 @@ Usa Puppeteer + certificado digital A1 para autenticar e enviar lances.
 
 ## Instalação Rápida (Ubuntu/Debian)
 
-\`\`\`bash
+\\\`\\\`\\\`bash
 chmod +x setup.sh && bash setup.sh
-\`\`\`
-
-Isso instala Node.js 20, Chromium, PM2 e configura tudo automaticamente.
-
-## Instalação Manual
-
-\`\`\`bash
-npm install
-cp .env.example .env
-# Edite o .env com suas configurações
-mkdir -p certs logs/screenshots
-npm start
-\`\`\`
+\\\`\\\`\\\`
 
 ## Docker
 
-\`\`\`bash
+\\\`\\\`\\\`bash
 docker compose up -d
-\`\`\`
+\\\`\\\`\\\`
 
 ## HTTPS (Produção)
 
-\`\`\`bash
+\\\`\\\`\\\`bash
 sudo bash setup-nginx.sh agente.seudominio.com.br
-\`\`\`
+\\\`\\\`\\\`
 
 ## Endpoints
 
 | Método | Rota | Descrição | Auth |
 |---|---|---|---|
-| GET | /health | Status, versão, portais suportados | Não |
-| POST | /sessao/iniciar | Iniciar sessão de lance real | X-Agent-Key |
+| GET | /health | Status, capacidade, sessões ativas | Não |
+| POST | /sessao/iniciar | Iniciar sessão paralela | X-Agent-Key |
 | POST | /sessao/pausar | Pausar sessão ativa | X-Agent-Key |
-| POST | /sessao/encerrar | Encerrar sessão | X-Agent-Key |
+| POST | /sessao/encerrar | Encerrar sessão e liberar slot | X-Agent-Key |
 
 ## Protocolo de Callback
 
-O agente envia POST para o \`CALLBACK_URL\` com:
+O agente envia POST para o \\\`CALLBACK_URL\\\` com:
 
-- \`lance-enviado\` — Lance enviado com sucesso
-- \`lance-concorrente\` — Lance de concorrente detectado
-- \`sessao-encerrada\` — Sessão finalizada
-- \`erro\` — Erro durante execução
-- \`heartbeat\` — Sinal de vida periódico (30s)
+- \\\`lance-enviado\\\` — Lance enviado com sucesso
+- \\\`lance-concorrente\\\` — Lance de concorrente detectado
+- \\\`sessao-encerrada\\\` — Sessão finalizada
+- \\\`erro\\\` — Erro durante execução
+- \\\`heartbeat\\\` — Sinal de vida + capacidade (30s)
 `,
 
   'src/index.js': `require('dotenv').config();
