@@ -22,6 +22,7 @@ import ContratoItens from '@/components/contratos/ContratoItens';
 import ContratoPedidos from '@/components/contratos/ContratoPedidos';
 import ContratoCustos from '@/components/contratos/ContratoCustos';
 import ContratoDashboard from '@/components/contratos/ContratoDashboard';
+import ImportarContratoPDF from '@/components/contratos/ImportarContratoPDF';
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -115,6 +116,29 @@ export default function GestaoContratos() {
     loadContratos();
   };
 
+  const handleImportExtracted = (data: any) => {
+    setForm({
+      numero_contrato: data.numero_contrato || '',
+      objeto: data.objeto || '',
+      orgao_contratante: data.orgao_contratante || '',
+      valor_global: data.valor_global?.toString() || '',
+      valor_consumido: '0',
+      data_assinatura: data.data_assinatura || '',
+      data_inicio: data.data_inicio || '',
+      data_fim: data.data_fim || '',
+      vigencia_meses: data.vigencia_meses?.toString() || '',
+      status: 'vigente',
+      modalidade: data.modalidade || '',
+      uf: data.uf || '',
+      municipio: data.municipio || '',
+      fiscal_nome: data.fiscal_nome || '',
+      fiscal_email: data.fiscal_email || '',
+      fiscal_telefone: data.fiscal_telefone || '',
+      observacoes: data.observacoes || '',
+    });
+    setDialogOpen(true);
+  };
+
   // ═══ DETAIL VIEW ═══
   if (selectedContrato) {
     const c = selectedContrato;
@@ -180,8 +204,10 @@ export default function GestaoContratos() {
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Contratos</h1>
           <p className="text-sm text-muted-foreground mt-1">Controle itens, pedidos, custos e faturamento dos seus contratos</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-2" /> Novo Contrato</Button></DialogTrigger>
+        <div className="flex gap-2">
+          <ImportarContratoPDF onExtracted={handleImportExtracted} />
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-2" /> Novo Contrato</Button></DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Cadastrar Contrato</DialogTitle></DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
@@ -209,6 +235,7 @@ export default function GestaoContratos() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
