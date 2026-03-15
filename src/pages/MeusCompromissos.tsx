@@ -148,31 +148,43 @@ export default function MeusCompromissos() {
     carregarProcessos();
   };
 
+  const [expandedAnalise, setExpandedAnalise] = useState<Record<string, boolean>>({});
+
   const handleAnaliseIA = async (p: ProcessoInteresse) => {
     setAnalisandoIA(p.id);
+    setExpandedAnalise(prev => ({ ...prev, [p.id]: true }));
     let content = '';
     await streamAIChat({
       messages: [{
         role: 'user',
-        content: `Analise este processo licitatório e forneça uma recomendação completa para o fornecedor:
+        content: `Você é um analista técnico de licitações públicas. Elabore um parecer técnico sobre o processo licitatório abaixo, com linguagem formal, objetiva e impessoal, conforme normas da ABNT e a Lei nº 14.133/2021.
 
-**Processo**: ${p.numero} — ${p.orgao}
-**Objeto**: ${p.objeto}
-**Modalidade**: ${p.modalidade}
-**Valor Estimado**: ${p.valor_estimado ? formatCurrency(p.valor_estimado) : 'N/I'}
-**UF/Município**: ${p.uf || 'N/I'} / ${p.municipio || 'N/I'}
-**Data Encerramento**: ${p.data_encerramento ? new Date(p.data_encerramento).toLocaleDateString('pt-BR') : 'N/I'}
-**Portal**: ${p.portal || 'N/I'}
+REGRAS OBRIGATÓRIAS:
+- NÃO utilize emojis, emoticons ou caracteres decorativos em hipótese alguma.
+- NÃO faça suposições, hipóteses ou sugestões genéricas. Baseie-se estritamente nos dados fornecidos.
+- Utilize numeração arábica sequencial para seções (1., 2., 3., etc.) e alíneas com letras minúsculas (a), b), c)) para subitens.
+- Mantenha tom técnico, corporativo e impessoal em todo o documento.
+- Utilize terminologia jurídica e técnica adequada à Nova Lei de Licitações.
 
-Analise:
-1. **Score de Viabilidade** (0-100): Chance de sucesso
-2. **Análise de Preços**: O valor estimado é competitivo?
-3. **Requisitos Prováveis**: Documentação e habilitação esperada
-4. **Estratégia Sugerida**: Abordagem recomendada para lances
-5. **Riscos**: Pontos de atenção
-6. **Timeline**: Cronograma de ações sugerido
+DADOS DO PROCESSO:
+- Número: ${p.numero}
+- Órgão: ${p.orgao}
+- Objeto: ${p.objeto}
+- Modalidade: ${p.modalidade}
+- Valor Estimado: ${p.valor_estimado ? formatCurrency(p.valor_estimado) : 'Não informado'}
+- UF/Município: ${p.uf || 'Não informado'} / ${p.municipio || 'Não informado'}
+- Data de Encerramento: ${p.data_encerramento ? new Date(p.data_encerramento).toLocaleDateString('pt-BR') : 'Não informado'}
+- Portal: ${p.portal || 'Não informado'}
 
-Formate em Markdown. Seja objetivo e estratégico.`
+ESTRUTURA DO PARECER:
+1. Score de Viabilidade (0-100) — fundamentação objetiva baseada nos dados disponíveis
+2. Análise de Preços — avaliação do valor estimado com base no objeto e na modalidade
+3. Requisitos de Habilitação — exigências documentais previstas na Lei 14.133/2021 para a modalidade informada
+4. Estratégia de Participação — orientações técnicas para apresentação de proposta e lances
+5. Riscos Identificados — fatores de risco concretos baseados nos dados do processo
+6. Cronograma de Ações — linha do tempo sugerida até a data de encerramento
+
+Formate em Markdown com seções numeradas. Não inclua saudações, apresentações pessoais ou referências a si mesmo.`
       }],
       action: 'analise_processo',
       onDelta: (chunk) => {
