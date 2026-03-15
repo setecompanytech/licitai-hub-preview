@@ -63,7 +63,7 @@ interface Props {
   onNcmUpdate?: (idx: number, ncm: string) => void;
 }
 
-export default function AnaliseRegimeTributario({ ufCalculo, ufNome, regime, regimeLabel, itens, onAliquotaUpdate }: Props) {
+export default function AnaliseRegimeTributario({ ufCalculo, ufNome, regime, regimeLabel, itens, onAliquotaUpdate, onNcmUpdate }: Props) {
   const [ncmInputs, setNcmInputs] = useState<string[]>(itens.map(i => i.ncm || ''));
   const [analiseIA, setAnaliseIA] = useState<AnaliseResultadoItem[]>([]);
   const [loading, setLoading] = useState(false);
