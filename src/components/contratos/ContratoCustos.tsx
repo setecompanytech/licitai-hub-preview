@@ -203,7 +203,7 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
           <p className="text-sm font-bold text-warning">{fmt(tributos)}</p>
         </Card>
         <Card className="p-3">
-          <div className="flex items-center gap-1 text-muted-foreground text-[10px] mb-1">🚚 Frete/Logística</div>
+          <div className="flex items-center gap-1 text-muted-foreground text-[10px] mb-1"><Truck className="w-3 h-3" /> Frete/Logística</div>
           <p className="text-sm font-bold text-accent">{fmt(custosPorTipo['frete_logistica'] || 0)}</p>
         </Card>
       </div>
