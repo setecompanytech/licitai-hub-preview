@@ -206,6 +206,7 @@ export default function GestaoContratos() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-2" /> Novo Contrato</Button></DialogTrigger>
+          <ImportarContratoPDF onExtracted={handleImportExtracted} />
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Cadastrar Contrato</DialogTitle></DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
