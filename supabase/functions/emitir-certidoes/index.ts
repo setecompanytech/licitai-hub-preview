@@ -337,7 +337,7 @@ async function consultarSituacaoCadastral(cnpj: string): Promise<EmissaoResult> 
       certidao: "Situação Cadastral (Receita Federal)",
       status: "erro",
       detalhes: `Situação: ${situacoes[data.situacao_cadastral] || "IRREGULAR"} – ${data.motivo_situacao_cadastral || ""}`,
-      url: "https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp",
+      url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home",
     };
   } catch (e) {
     return {
