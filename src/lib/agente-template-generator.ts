@@ -154,11 +154,14 @@ function authMiddleware(req, res, next) {
 
 // ─── GET /health ───
 app.get('/health', (req, res) => {
+  const capacity = sessionManager.getCapacity();
   res.json({
     status: 'online',
-    version: '2.0.0',
+    version: '2.1.0',
     uptime: process.uptime(),
-    sessoes_ativas: sessionManager.getActiveSessions().length,
+    capacidade: capacity,
+    sessoes_ativas: capacity.sessoes_ativas,
+    sessoes: sessionManager.getAllSessions(),
     portais_suportados: Object.keys(PORTALS),
     certificado: {
       carregado: !!process.env.CERT_PATH,
