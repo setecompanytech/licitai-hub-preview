@@ -34,6 +34,10 @@ const KNOWN_BRANDS = [
   'Suvinil', 'Coral', 'Sherwin-Williams', 'Tigre', 'Amanco', 'Quartzolit',
   'Kingston', 'HyperX', 'Redragon', 'JBL', 'Edifier', 'TP-Link', 'Nvidia',
   'Gigabyte', 'MSI', 'Razer', 'SteelSeries', 'AOC', 'BenQ', 'ViewSonic',
+  'Chamex', 'Report', 'Suzano', 'International Paper', 'Navigator', 'Copimax',
+  '3M', 'Faber-Castell', 'BIC', 'Pilot', 'Staedtler', 'Pentel',
+  'Caterpillar', 'John Deere', 'Komatsu', 'Volvo', 'Scania',
+  'Havaianas', 'Alpargatas', 'Grendene', 'Nike', 'Adidas', 'Puma',
 ];
 
 function extractBrand(title: string): string {
@@ -55,7 +59,7 @@ function extractModel(title: string): string {
 /** Detects which store a URL belongs to */
 function detectStore(url: string): string {
   const u = url.toLowerCase();
-  if (u.includes('mercadolivre') || u.includes('mercadolibre') || u.includes('mlstatic')) return 'Mercado Livre';
+  if (u.includes('mercadolivre') || u.includes('mercadolibre') || u.includes('mlstatic') || u.includes('produto.mercadolivre')) return 'Mercado Livre';
   if (u.includes('amazon.com.br')) return 'Amazon';
   if (u.includes('magazineluiza') || u.includes('magalu')) return 'Magazine Luiza';
   if (u.includes('kabum.com.br')) return 'KaBuM';
@@ -73,49 +77,48 @@ function detectStore(url: string): string {
   if (u.includes('pontofrio.com.br')) return 'Ponto Frio';
   if (u.includes('rakaymed.com.br')) return 'Rakay Med';
   if (u.includes('hospitalardistribuidora.com.br')) return 'Hospitalar Distribuidora';
-  if (u.includes('google.com')) return 'Google Shopping';
+  if (u.includes('google.com/shopping') || u.includes('google.com.br/shopping')) return 'Google Shopping';
   if (u.includes('buscape.com.br')) return 'Buscapé';
   if (u.includes('zoom.com.br')) return 'Zoom';
   if (u.includes('leroymerlin.com.br')) return 'Leroy Merlin';
   if (u.includes('madeiramadeira.com.br')) return 'MadeiraMadeira';
   if (u.includes('fastshop.com.br')) return 'Fast Shop';
   if (u.includes('mirao.com.br')) return 'Mirão Atacado';
+  if (u.includes('kalunga.com.br')) return 'Kalunga';
+  if (u.includes('staples.com.br')) return 'Staples';
+  if (u.includes('extra.com.br')) return 'Extra';
+  if (u.includes('colombo.com.br')) return 'Colombo';
+  if (u.includes('centauro.com.br')) return 'Centauro';
   return 'Outros';
 }
 
+/** Check if URL is a search/listing page rather than a product detail */
 function isSearchOrListingPage(url: string): boolean {
-  const u = url.toLowerCase();
-  return /\/busca\/|\/search|\/lista\/|\/list\/|catalogsearch|\?s?k=|[?&]q=|[?&]search=|[?&]str=|\/(?:categoria|departamento|monitores|notebooks|celulares)\//i.test(u);
+  return /\/busca\/|\/search|\/lista\/|\/list\/|catalogsearch|\?s?k=|[?&]q=|[?&]search=|[?&]str=|\/(?:categoria|departamento)\//i.test(url);
 }
 
-function isLikelyProductDetailPage(url: string, loja: string): boolean {
+/** Check if URL is likely a product detail page */
+function isLikelyProductPage(url: string, loja: string): boolean {
   const u = url.toLowerCase();
 
   if (loja === 'Amazon') return /\/dp\/[a-z0-9]{8,}/i.test(url) || /\/gp\/product\//i.test(url);
-  if (loja === 'Mercado Livre') return /\/mlb[-/]?\d+/i.test(url) || /\/p\/mlb\d+/i.test(url);
+  if (loja === 'Mercado Livre') {
+    // ML uses many URL patterns: /MLB-XXXX, /p/MLBXXXX, /produto/..., etc.
+    return /mlb[-\/]?\d{6,}/i.test(url) || /\/p\/mlb\d+/i.test(url) || /produto\.mercadolivre/i.test(url);
+  }
   if (loja === 'Magazine Luiza') return /\/p\//i.test(u) && !u.includes('/busca/');
   if (loja === 'KaBuM' || loja === 'Terabyte' || loja === 'Pichau') return /\/produto\//i.test(u);
   if (loja === 'Shopee') return /-i\.\d+\.\d+/i.test(url);
-  if (loja === 'Gazin Atacado') return u.includes('gazinatacado.com.br');
-  if (loja === 'Mirão Atacado') return u.includes('mirao.com.br') && (/\/produto\//i.test(u) || /\/p\//i.test(u));
+  if (loja === 'Casas Bahia' || loja === 'Americanas' || loja === 'Submarino') return /\/produto\//i.test(u) || /\/p\//i.test(u) || /\/\d{6,}\//i.test(u);
+  if (loja === 'Buscapé' || loja === 'Zoom') return true; // aggregators always show product info
+  if (loja === 'Google Shopping') return true;
 
+  // For other stores, accept if it's not a search page
   return !isSearchOrListingPage(url);
-}
-
-function storeRequiresDetailPage(loja: string): boolean {
-  return [
-    'Amazon', 'Mercado Livre', 'Magazine Luiza', 'KaBuM', 'Terabyte', 'Pichau', 'Shopee', 'Gazin Atacado',
-    'Americanas', 'Casas Bahia', 'Carrefour', 'Havan', 'Fast Shop', 'Leroy Merlin', 'MadeiraMadeira',
-    'Webcontinental', 'Ponto Frio', 'Rakay Med', 'Hospitalar Distribuidora', 'Mirão Atacado'
-  ].includes(loja);
 }
 
 /**
  * INTELLIGENT PRICE EXTRACTION
- * Filters out accessory/insurance/case prices by:
- * 1. Only using prices that appear near the product title context
- * 2. Excluding prices from lines mentioning insurance/case/protection/accessory
- * 3. Using the MOST PROMINENT price (usually the first large one)
  */
 function extractMainProductPrice(title: string, fullText: string): { preco: number; precoOriginal?: number } | null {
   const prices: { value: number; context: string; lineIdx: number }[] = [];
@@ -134,55 +137,32 @@ function extractMainProductPrice(title: string, fullText: string): { preco: numb
 
   if (prices.length === 0) return null;
 
-  // Keywords that indicate the price is NOT for the main product
   const ACCESSORY_KEYWORDS = /seguro|proteç[aã]o|garantia\s*estendida|capa\s*protetora|película|case\s*para|acessório|carregador\s*para|fone\s*para|suporte\s*para|adaptador\s*para|cabo\s*para|mouse\s*pad|kit\s*de\s*limp/i;
 
-  // Keywords that indicate this IS the product price
-  const PRODUCT_PRICE_KEYWORDS = /à\s*vista|no\s*pix|preço|comprar|adicionar|carrinho|por\s*R\$|de\s*R\$/i;
-
-  // Filter out prices from accessory/insurance contexts
   const mainPrices = prices.filter(p => {
-    // Check surrounding lines too (2 lines before and after)
     const contextWindow = lines.slice(Math.max(0, p.lineIdx - 2), Math.min(lines.length, p.lineIdx + 3)).join(' ');
     if (ACCESSORY_KEYWORDS.test(contextWindow)) return false;
     return true;
   });
 
-  // If all were filtered, use originals but with caution
   const validPrices = mainPrices.length > 0 ? mainPrices : prices;
-
-  // Estimate a reasonable price range based on the product title
-  // Use median-based approach: cluster prices and pick the main cluster
   const sortedValues = validPrices.map(p => p.value).sort((a, b) => a - b);
 
-  if (sortedValues.length === 1) {
-    return { preco: sortedValues[0] };
-  }
+  if (sortedValues.length === 1) return { preco: sortedValues[0] };
 
-  // Use statistical filtering: remove extreme outliers
-  // If the cheapest price is < 10% of the most expensive, it's likely an accessory
   const median = sortedValues[Math.floor(sortedValues.length / 2)];
-
-  // Main price is the one closest to the first prominent price that's
-  // within a reasonable range (not an accessory price)
-  // Rule: if a price is less than 15% of the median, it's an accessory/addon
   const reasonablePrices = sortedValues.filter(p => p >= median * 0.15);
 
-  if (reasonablePrices.length === 0) {
-    return { preco: sortedValues[0] };
-  }
+  if (reasonablePrices.length === 0) return { preco: sortedValues[0] };
 
-  // Pick the first reasonable price (usually the main displayed price)
   const firstReasonable = validPrices.find(p => reasonablePrices.includes(p.value));
   const preco = firstReasonable?.value || reasonablePrices[0];
-
-  // Find original price (crossed out / "de R$") - must be higher
   const precoOriginal = sortedValues.find(p => p > preco * 1.05) || undefined;
 
   return { preco, precoOriginal };
 }
 
-/** Score image quality/relevance to prioritize real product photos */
+/** Score image quality/relevance */
 function scoreImageCandidate(url: string): number {
   const u = url.toLowerCase();
   let score = 0;
@@ -192,13 +172,35 @@ function scoreImageCandidate(url: string): number {
   if (/images\.kabum\.com\.br/i.test(u)) score += 3;
   if (/\/produto\//i.test(u)) score += 3;
   if (/_ac_|_sx|_sy|_sl/i.test(u)) score += 2;
+  if (/cf\.shopee/i.test(u)) score += 3;
+  if (/magazineluiza|magalu/i.test(u)) score += 3;
+  if (/americanas|b2w/i.test(u)) score += 3;
+  if (/casasbahia/i.test(u)) score += 3;
 
-  if (/thumb|thumbnail/i.test(u)) score -= 2;
+  if (/thumb|thumbnail/i.test(u)) score -= 1; // thumbs may still be ok
   if (/og[_\-.]|social[-_]?share/i.test(u)) score -= 5;
   if (/\/assets\/|\/static\/|\/themes\/|\/template\//i.test(u)) score -= 5;
   if (/\/rating\/|\/stars\//i.test(u)) score -= 4;
+  if (/logo|icon|sprite|banner|favicon|badge|selo|stamp|watermark/i.test(u)) score -= 6;
 
   return score;
+}
+
+/** Check if URL looks like a real product image */
+function isProductImage(url: string): boolean {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+
+  if (/logo|icon|sprite|banner|favicon|avatar|badge|selo|stamp|watermark/i.test(lower)) return false;
+  if (/1x1|pixel|tracking|analytics/i.test(lower)) return false;
+  if (/ad[s]?[_\-\/]|doubleclick|googlesyndication|adsense|adserver|pubmatic|criteo|taboola|outbrain/i.test(lower)) return false;
+  if (/promo|campanha|anuncio|slide.*banner|hero[-_]?banner|og[_\-.]|social[-_]?share/i.test(lower)) return false;
+  if (/\/assets\/|\/static\/|\/themes\/|\/template\/|\/rating\/|\/stars\//i.test(lower)) return false;
+  if (/vlibras|access_popup|shopee-pcmall-live-sg|kalunga\.jpg|og_tb\.png/i.test(lower)) return false;
+  if (/_S_\d{2,3}\.\w+$/i.test(lower)) return false;
+  if (/_AC_US\d{1,3}_/i.test(lower)) return false;
+
+  return /\.(jpg|jpeg|png|webp)(\?.*)?$/i.test(lower);
 }
 
 /** Extract all product image URLs from search result */
@@ -226,52 +228,29 @@ function extractImages(result: any): string[] {
   for (const m of kabumMatches) addImg(m[1]);
 
   // 4. Magazine Luiza images
-  const magaluMatches = [...markdown.matchAll(/(https?:\/\/[^\s"')]*magazineluiza[^\s"')]*\.(?:jpg|webp|png))/gi)];
+  const magaluMatches = [...markdown.matchAll(/(https?:\/\/[^\s"')]*(?:magazineluiza|magalu)[^\s"')]*\.(?:jpg|webp|png))/gi)];
   for (const m of magaluMatches) addImg(m[1]);
 
-  // 5. Markdown images
+  // 5. Shopee images
+  const shopeeMatches = [...markdown.matchAll(/(https?:\/\/cf\.shopee\.[^\s"')]+\.(?:jpg|webp|png))/gi)];
+  for (const m of shopeeMatches) addImg(m[1]);
+
+  // 6. Markdown images ![alt](url)
   const mdImgMatches = [...markdown.matchAll(/!\[[^\]]*\]\((https?:\/\/[^\s)]+\.(?:jpg|jpeg|png|webp)[^\s)]*)\)/gi)];
   for (const m of mdImgMatches) addImg(m[1]);
 
-  // 6. Raw image URLs
+  // 7. Raw image URLs
   const rawMatches = [...markdown.matchAll(/(https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp))(?:\?[^\s"'<>]*)?/gi)];
   for (const m of rawMatches) addImg(m[1]);
 
-  // 7. OG image as fallback only
+  // 8. OG image as fallback
   const ogImage = result.metadata?.ogImage || result.metadata?.['og:image'];
   if (ogImage) addImg(ogImage);
 
   return candidates
     .sort((a, b) => b.score - a.score)
     .map(c => c.url)
-    .slice(0, 6);
-}
-
-/** Extract single best image (backwards compat) */
-function extractImage(result: any): string | undefined {
-  const imgs = extractImages(result);
-  return imgs.length > 0 ? imgs[0] : undefined;
-}
-
-/** Check if URL looks like a real product image (not logo/icon/banner) */
-function isProductImage(url: string): boolean {
-  if (!url) return false;
-  const lower = url.toLowerCase();
-
-  // Reject non-product images (logos, icons, banners, ads, site assets)
-  if (/logo|icon|sprite|banner|favicon|avatar|badge|selo|stamp|watermark/i.test(lower)) return false;
-  if (/1x1|pixel|tracking|analytics/i.test(lower)) return false;
-  if (/ad[s]?[_\-\/]|doubleclick|googlesyndication|adsense|adserver|pubmatic|criteo|taboola|outbrain/i.test(lower)) return false;
-  if (/promo|campanha|anuncio|slide.*banner|hero[-_]?banner|og[_\-.]|social[-_]?share/i.test(lower)) return false;
-  if (/\/assets\/|\/static\/|\/themes\/|\/template\/|\/rating\/|\/stars\//i.test(lower)) return false;
-  if (/vlibras|access_popup|shopee-pcmall-live-sg|kalunga\.jpg|og_tb\.png/i.test(lower)) return false;
-
-  // Reject very small images / known placeholders
-  if (/_S_\d{2,3}\.\w+$/i.test(lower)) return false;
-  if (/_AC_US\d{1,3}_/i.test(lower)) return false;
-  if (/\/D_NQ_NP_ID-MLB/i.test(lower)) return false;
-
-  return /\.(jpg|jpeg|png|webp)(\?.*)?$/i.test(lower);
+    .slice(0, 8);
 }
 
 /**
@@ -279,30 +258,32 @@ function isProductImage(url: string): boolean {
  */
 function isMainProduct(title: string, searchTerm: string, url: string, loja: string): boolean {
   const titleLower = title.toLowerCase();
-  const searchLower = searchTerm.toLowerCase();
 
-  // Skip list/search/category pages (these usually return wrong images and prices)
-  if (isSearchOrListingPage(url) && !isLikelyProductDetailPage(url, loja)) return false;
+  // For aggregators (Buscapé, Zoom, Google Shopping), be more permissive
+  if (['Buscapé', 'Zoom', 'Google Shopping'].includes(loja)) {
+    // Just check basic relevance
+    const searchWords = searchTerm.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    if (searchWords.length > 0) {
+      const matchCount = searchWords.filter(w => titleLower.includes(w)).length;
+      return matchCount > 0;
+    }
+    return true;
+  }
 
-  // For major marketplaces, only accept detail product pages
-  if (storeRequiresDetailPage(loja) && !isLikelyProductDetailPage(url, loja)) return false;
+  // For major marketplaces, accept detail pages and also well-structured search results
+  if (!isLikelyProductPage(url, loja)) {
+    // Only reject if it's clearly a search/listing page with no product info
+    if (isSearchOrListingPage(url)) return false;
+  }
 
-  // Skip items that are clearly accessories/insurance for the product
+  // Skip items that are clearly accessories/insurance
   const SKIP_PATTERNS = [
-    /^seguro\s/i,
-    /^proteç[aã]o\s/i,
-    /^garantia\s*estendida/i,
-    /^capa\s*(para|de|do|da)\s/i,
-    /^película\s/i,
-    /^case\s*(para|de|do|da)\s/i,
-    /^suporte\s*(para|de|do|da)\s/i,
-    /^kit\s*de\s*limpeza/i,
-    /^adaptador\s*(para|de|do|da)\s/i,
-    /^cabo\s*(para|de|do|da)\s/i,
-    /^carregador\s*(para|de|do|da)\s/i,
-    /^mouse\s*pad/i,
-    /^skin\s*(para|de|do|da)\s/i,
-    /^adesivo\s*(para|de|do|da)\s/i,
+    /^seguro\s/i, /^proteç[aã]o\s/i, /^garantia\s*estendida/i,
+    /^capa\s*(para|de|do|da)\s/i, /^película\s/i, /^case\s*(para|de|do|da)\s/i,
+    /^suporte\s*(para|de|do|da)\s/i, /^kit\s*de\s*limpeza/i,
+    /^adaptador\s*(para|de|do|da)\s/i, /^cabo\s*(para|de|do|da)\s/i,
+    /^carregador\s*(para|de|do|da)\s/i, /^mouse\s*pad/i,
+    /^skin\s*(para|de|do|da)\s/i, /^adesivo\s*(para|de|do|da)\s/i,
   ];
 
   for (const pattern of SKIP_PATTERNS) {
@@ -314,7 +295,7 @@ function isMainProduct(title: string, searchTerm: string, url: string, loja: str
     return false;
   }
 
-  // Skip generic category pages (e.g. "Eletrodomésticos no atacado", "Freezer no atacado")
+  // Skip generic category pages
   if (/^(eletrodomésticos|eletrônicos|informática|móveis|utilidades)\s*(no\s*atacado|em\s*oferta)/i.test(titleLower)) {
     return false;
   }
@@ -322,11 +303,13 @@ function isMainProduct(title: string, searchTerm: string, url: string, loja: str
     return false;
   }
 
-  // At least one significant word from the search should appear in the title
-  const searchWords = searchLower.split(/\s+/).filter(w => w.length > 3);
+  // Relevance check: at least one significant word from search should appear in title
+  const searchWords = searchTerm.toLowerCase().split(/\s+/).filter(w => w.length > 2);
   if (searchWords.length > 0) {
     const matchCount = searchWords.filter(w => titleLower.includes(w)).length;
-    if (matchCount === 0) return false;
+    // More lenient: require at least 1 match for short queries, 40% for longer
+    const threshold = searchWords.length <= 3 ? 1 : Math.ceil(searchWords.length * 0.4);
+    if (matchCount < threshold) return false;
   }
 
   return true;
@@ -344,38 +327,29 @@ function parseSearchResult(result: any, searchTerm: string): ProdutoExtraido | n
 
   const loja = detectStore(url);
 
-  // Check if this is actually the main product (not accessory/listing page)
   if (!isMainProduct(title, searchTerm, url, loja)) {
-    console.log(`Filtered out non-product/listing: "${title.substring(0, 80)}"`);
     return null;
   }
 
-  // Use intelligent price extraction
   const priceResult = extractMainProductPrice(title, fullText);
   if (!priceResult) return null;
 
   const { preco, precoOriginal } = priceResult;
 
-  // Check for free shipping
   const freteGratis = /frete\s*gr[aá]tis|entrega\s*gr[aá]tis|free.shipping|sem\s*custo\s*de\s*envio/i.test(fullText);
 
-  // Condition
   let condicao = 'Novo';
   if (/usado|segunda\s*mão|second.hand/i.test(fullText)) condicao = 'Usado';
   if (/recondicionado|refurbished|seminovo/i.test(fullText)) condicao = 'Recondicionado';
 
-  // Rating
   const ratingMatch = fullText.match(/(\d[.,]\d)\s*(?:de\s*5|estrelas|avalia)/i);
   const avaliacao = ratingMatch ? parseFloat(ratingMatch[1].replace(',', '.')) : undefined;
 
-  // Parcelas
   const parcelasMatch = fullText.match(/(\d{1,2}x\s*(?:de\s*)?R\$\s*[0-9.,]+(?:\s*sem\s*juros)?)/i);
 
-  // Images - use dedicated extractor
   const allImages = extractImages(result);
   const image_url = allImages.length > 0 ? allImages[0] : undefined;
 
-  // Qualified seller
   const vendedorQualificado = /mercadol[ií]der|loja.oficial|vendedor.destaque|prime|full/i.test(fullText);
 
   return {
@@ -398,7 +372,7 @@ function parseSearchResult(result: any, searchTerm: string): ProdutoExtraido | n
 }
 
 /** Run a Firecrawl search query */
-async function searchProducts(apiKey: string, query: string, limit = 10): Promise<any[]> {
+async function searchProducts(apiKey: string, query: string, limit = 15): Promise<any[]> {
   try {
     console.log(`Searching: "${query}" (limit ${limit})`);
     const response = await fetch("https://api.firecrawl.dev/v1/search", {
@@ -412,12 +386,13 @@ async function searchProducts(apiKey: string, query: string, limit = 10): Promis
         limit,
         lang: "pt-BR",
         country: "BR",
-        scrapeOptions: { formats: ["markdown"] },
+        scrapeOptions: { formats: ["markdown", "links"] },
       }),
     });
 
     if (!response.ok) {
-      console.error(`Search error: HTTP ${response.status}`);
+      const errText = await response.text();
+      console.error(`Search error: HTTP ${response.status} - ${errText.substring(0, 200)}`);
       return [];
     }
 
@@ -426,6 +401,31 @@ async function searchProducts(apiKey: string, query: string, limit = 10): Promis
   } catch (e) {
     console.error("Search error:", e);
     return [];
+  }
+}
+
+/** Scrape a single product page for richer data (images + details) */
+async function scrapeProductPage(apiKey: string, url: string): Promise<any | null> {
+  try {
+    const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url,
+        formats: ["markdown", "links"],
+        onlyMainContent: true,
+        waitFor: 2000,
+      }),
+    });
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data?.data || data || null;
+  } catch {
+    return null;
   }
 }
 
@@ -454,18 +454,32 @@ serve(async (req) => {
 
     console.log(`Pesquisa real para: "${termo}"`);
 
-    // Run targeted searches
+    // ─── STRATEGY: Multiple targeted searches with higher limits ───
+    // Use product-focused queries and broader searches
+    const termoEncoded = termo.replace(/\s+/g, '+');
+
     const searches = await Promise.allSettled([
-      searchProducts(apiKey, `${termo} comprar preço site:mercadolivre.com.br`, 12),
-      searchProducts(apiKey, `${termo} comprar preço site:amazon.com.br`, 10),
-      searchProducts(apiKey, `${termo} comprar preço site:magazineluiza.com.br OR site:kabum.com.br`, 10),
-      searchProducts(apiKey, `${termo} comprar preço site:americanas.com.br OR site:casasbahia.com.br`, 8),
-      searchProducts(apiKey, `${termo} comprar preço site:shopee.com.br OR site:carrefour.com.br`, 8),
-      searchProducts(apiKey, `"${termo}" site:gazinatacado.com.br OR site:mirao.com.br`, 8),
-      searchProducts(apiKey, `${termo} comprar preço site:buscape.com.br OR site:zoom.com.br`, 8),
-      searchProducts(apiKey, `${termo} comprar preço site:webcontinental.com.br OR site:pontofrio.com.br`, 8),
+      // Primary: Mercado Livre (largest BR marketplace) — multiple queries
+      searchProducts(apiKey, `"${termo}" site:mercadolivre.com.br`, 20),
+      searchProducts(apiKey, `${termo} preço site:produto.mercadolivre.com.br`, 15),
+      // Amazon BR
+      searchProducts(apiKey, `"${termo}" comprar site:amazon.com.br`, 15),
+      // Major retail
+      searchProducts(apiKey, `"${termo}" site:magazineluiza.com.br OR site:kabum.com.br OR site:americanas.com.br`, 15),
+      searchProducts(apiKey, `"${termo}" site:casasbahia.com.br OR site:carrefour.com.br OR site:shopee.com.br`, 12),
+      // Atacado / specialty
+      searchProducts(apiKey, `"${termo}" site:gazinatacado.com.br OR site:mirao.com.br OR site:kalunga.com.br`, 10),
+      // Price comparators (Buscapé, Zoom) — great for aggregated prices
+      searchProducts(apiKey, `${termo} site:buscape.com.br OR site:zoom.com.br`, 12),
+      // Webcontinental, Leroy, MadeiraMadeira, Fast Shop
+      searchProducts(apiKey, `"${termo}" site:webcontinental.com.br OR site:leroymerlin.com.br OR site:madeiramadeira.com.br OR site:fastshop.com.br`, 10),
+      // Havan, Colombo
+      searchProducts(apiKey, `"${termo}" site:havan.com.br OR site:colombo.com.br OR site:extra.com.br`, 10),
+      // Medical/special
       searchProducts(apiKey, `${termo} site:rakaymed.com.br OR site:hospitalardistribuidora.com.br`, 8),
-      searchProducts(apiKey, `${termo} preço comprar Brasil`, 12),
+      // Generic broad search to catch other stores
+      searchProducts(apiKey, `"${termo}" comprar preço loja online Brasil`, 20),
+      searchProducts(apiKey, `${termo} preço atacado distribuidor Brasil`, 15),
     ]);
 
     const allFornecedores: ProdutoExtraido[] = [];
@@ -475,11 +489,10 @@ serve(async (req) => {
     for (const result of searches) {
       if (result.status !== 'fulfilled') continue;
       for (const item of result.value) {
-        const url = (item.url || '').split('?')[0];
+        const url = (item.url || '').split('?')[0].split('#')[0];
         if (seenUrls.has(url)) continue;
         seenUrls.add(url);
 
-        // Pass search term for relevance checking
         const produto = parseSearchResult(item, termo);
         if (produto) {
           allFornecedores.push(produto);
@@ -488,15 +501,31 @@ serve(async (req) => {
       }
     }
 
+    // ─── ENRICHMENT: For top results without images, scrape the product page ───
+    const itemsWithoutImages = allFornecedores.filter(f => !f.image_url && f.url?.startsWith('https://'));
+    const scrapePromises = itemsWithoutImages.slice(0, 8).map(async (item) => {
+      try {
+        const scraped = await scrapeProductPage(apiKey, item.url);
+        if (scraped) {
+          const images = extractImages(scraped);
+          if (images.length > 0) {
+            item.image_url = images[0];
+            item.images = images.length > 1 ? images : undefined;
+          }
+        }
+      } catch { /* ignore */ }
+    });
+
+    await Promise.allSettled(scrapePromises);
+
     // Sort by price
     allFornecedores.sort((a, b) => a.preco - b.preco);
 
     // POST-PROCESSING: Remove statistical outliers
-    // If median is known, remove items priced < 10% of median (likely accessories that slipped through)
     if (allFornecedores.length >= 3) {
       const medianIdx = Math.floor(allFornecedores.length / 2);
       const median = allFornecedores[medianIdx].preco;
-      const threshold = median * 0.10; // 10% of median
+      const threshold = median * 0.10;
       const filtered = allFornecedores.filter(f => f.preco >= threshold);
       if (filtered.length >= 3) {
         allFornecedores.length = 0;
@@ -531,7 +560,7 @@ serve(async (req) => {
           fornecedor_menor: fornecedorMenor ? `${fornecedorMenor.loja}` : '',
           fornecedor_maior: fornecedorMaior ? `${fornecedorMaior.loja}` : '',
           recomendacao: allFornecedores.length > 0
-            ? `Pesquisa real em ${Object.keys(fonteCount).length} marketplaces com ${allFornecedores.length} resultados. Menor preço: R$ ${menorPreco.toFixed(2)} (${fornecedorMenor?.loja}).`
+            ? `Pesquisa em ${Object.keys(fonteCount).length} fontes com ${allFornecedores.length} resultados válidos. Menor preço: R$ ${menorPreco.toFixed(2)} (${fornecedorMenor?.loja}).`
             : 'Nenhum resultado encontrado.',
         },
         fontes_consultadas: fonteCount,
