@@ -116,6 +116,29 @@ export default function GestaoContratos() {
     loadContratos();
   };
 
+  const handleImportExtracted = (data: any) => {
+    setForm({
+      numero_contrato: data.numero_contrato || '',
+      objeto: data.objeto || '',
+      orgao_contratante: data.orgao_contratante || '',
+      valor_global: data.valor_global?.toString() || '',
+      valor_consumido: '0',
+      data_assinatura: data.data_assinatura || '',
+      data_inicio: data.data_inicio || '',
+      data_fim: data.data_fim || '',
+      vigencia_meses: data.vigencia_meses?.toString() || '',
+      status: 'vigente',
+      modalidade: data.modalidade || '',
+      uf: data.uf || '',
+      municipio: data.municipio || '',
+      fiscal_nome: data.fiscal_nome || '',
+      fiscal_email: data.fiscal_email || '',
+      fiscal_telefone: data.fiscal_telefone || '',
+      observacoes: data.observacoes || '',
+    });
+    setDialogOpen(true);
+  };
+
   // ═══ DETAIL VIEW ═══
   if (selectedContrato) {
     const c = selectedContrato;
