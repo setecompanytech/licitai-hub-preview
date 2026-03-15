@@ -424,6 +424,9 @@ export default function CalendarioLicitacoes() {
             <span className="flex items-center gap-1">
               <span className="w-3 h-3 rounded-full bg-destructive/20" /> Urgente
             </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full border-2 border-info" /> Backup
+            </span>
           </div>
         </Card>
 
