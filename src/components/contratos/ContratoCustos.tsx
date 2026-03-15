@@ -262,7 +262,7 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
           <SelectContent>
             <SelectItem value="all">Todos os tipos</SelectItem>
             {tiposCusto.map(t => (
-              <SelectItem key={t.value} value={t.value}>{t.icon} {t.label}</SelectItem>
+              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
