@@ -5,13 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
+import { Progress } from '@/components/ui/progress';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
-  Server, Wifi, WifiOff, Loader2, Settings, RefreshCw, CheckCircle2, XCircle, Clock,
+  Server, Wifi, WifiOff, Loader2, Settings, CheckCircle2, XCircle, Clock,
+  Layers, Cpu, HardDrive,
 } from 'lucide-react';
 
 type AgenteConfig = {
@@ -22,6 +26,9 @@ type AgenteConfig = {
   ultimo_heartbeat: string | null;
   versao_agente: string | null;
   capacidades: string[];
+  max_sessoes_paralelas: number;
+  sessoes_ativas: number;
+  ram_mb: number | null;
 };
 
 export default function AgenteExternoConfig() {
@@ -34,6 +41,7 @@ export default function AgenteExternoConfig() {
   const [urlBase, setUrlBase] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [nome, setNome] = useState('Agente Principal');
+  const [maxSessoes, setMaxSessoes] = useState('3');
 
   useEffect(() => {
     if (!user) return;
@@ -53,7 +61,12 @@ export default function AgenteExternoConfig() {
 
     try {
       const resp = await supabase.functions.invoke('robo-lances-webhook/configurar-agente', {
-        body: { url_base: urlBase, nome, api_key: apiKey },
+        body: {
+          url_base: urlBase,
+          nome,
+          api_key: apiKey,
+          max_sessoes_paralelas: parseInt(maxSessoes),
+        },
       });
 
       if (resp.error) throw resp.error;
@@ -120,9 +133,9 @@ export default function AgenteExternoConfig() {
             <div className="space-y-4 mt-2">
               <div className="bg-info/10 border border-info/20 rounded-lg p-3">
                 <p className="text-xs text-info">
-                  O agente externo é um servidor dedicado que executa lances reais nos portais
-                  usando certificado digital e automação de navegador. Configure a URL do seu
-                  agente para habilitar lances em tempo real.
+                  O agente externo suporta <strong>múltiplas sessões paralelas</strong>, permitindo
+                  disputar em vários portais simultaneamente com empresas diferentes. Cada sessão
+                  consome ~500MB de RAM.
                 </p>
               </div>
 
@@ -160,6 +173,26 @@ export default function AgenteExternoConfig() {
                 />
               </div>
 
+              <div>
+                <Label className="text-xs">Máximo de Sessões Paralelas</Label>
+                <Select value={maxSessoes} onValueChange={setMaxSessoes}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 sessão (~2GB RAM)</SelectItem>
+                    <SelectItem value="2">2 sessões (~2.5GB RAM)</SelectItem>
+                    <SelectItem value="3">3 sessões (~3GB RAM)</SelectItem>
+                    <SelectItem value="4">4 sessões (~4GB RAM)</SelectItem>
+                    <SelectItem value="5">5 sessões (~5GB RAM)</SelectItem>
+                    <SelectItem value="6">6 sessões (~6GB RAM)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Cada sessão abre um navegador Chromium isolado (~500MB). Ajuste conforme a RAM do VPS.
+                </p>
+              </div>
+
               <div className="border border-border/50 rounded-lg p-3 space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   URL de Callback (configure no agente)
@@ -167,9 +200,6 @@ export default function AgenteExternoConfig() {
                 <code className="block text-[11px] bg-muted p-2 rounded break-all font-mono">
                   {callbackUrl}
                 </code>
-                <p className="text-[10px] text-muted-foreground">
-                  O agente deve enviar POST para esta URL com atualizações de lances.
-                </p>
               </div>
 
               <div className="border border-border/50 rounded-lg p-3 space-y-2">
@@ -177,20 +207,12 @@ export default function AgenteExternoConfig() {
                   Protocolo de Comunicação
                 </p>
                 <div className="text-[11px] text-muted-foreground space-y-1">
-                  <p>O agente deve implementar os seguintes endpoints:</p>
+                  <p>Endpoints do agente:</p>
                   <ul className="list-disc list-inside space-y-0.5 ml-1">
-                    <li><code className="bg-muted px-1 rounded">GET /health</code> — Status e versão</li>
-                    <li><code className="bg-muted px-1 rounded">POST /sessao/iniciar</code> — Iniciar sessão de lance</li>
+                    <li><code className="bg-muted px-1 rounded">GET /health</code> — Status, capacidade e sessões</li>
+                    <li><code className="bg-muted px-1 rounded">POST /sessao/iniciar</code> — Iniciar sessão (paralela)</li>
                     <li><code className="bg-muted px-1 rounded">POST /sessao/pausar</code> — Pausar sessão</li>
                     <li><code className="bg-muted px-1 rounded">POST /sessao/encerrar</code> — Encerrar sessão</li>
-                  </ul>
-                  <p className="mt-1">Callbacks enviados ao sistema:</p>
-                  <ul className="list-disc list-inside space-y-0.5 ml-1">
-                    <li><code className="bg-muted px-1 rounded">lance-enviado</code> — Lance enviado com sucesso</li>
-                    <li><code className="bg-muted px-1 rounded">lance-concorrente</code> — Lance de concorrente detectado</li>
-                    <li><code className="bg-muted px-1 rounded">sessao-encerrada</code> — Sessão finalizada</li>
-                    <li><code className="bg-muted px-1 rounded">erro</code> — Erro durante execução</li>
-                    <li><code className="bg-muted px-1 rounded">heartbeat</code> — Sinal de vida</li>
                   </ul>
                 </div>
               </div>
@@ -223,36 +245,70 @@ export default function AgenteExternoConfig() {
             habilitar lances reais nos portais de licitação.
           </p>
           <p className="text-[10px] text-muted-foreground">
-            O agente deve rodar em um servidor com Puppeteer e certificado digital A1/A3 instalado.
+            Suporte a múltiplas sessões paralelas — dispute em vários portais ao mesmo tempo.
           </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {agentes.map((agente) => (
-            <div key={agente.id} className="border border-border/50 rounded-lg p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {statusIcon(agente.status)}
-                <div>
-                  <p className="text-sm font-medium">{agente.nome}</p>
-                  <p className="text-[11px] text-muted-foreground font-mono">{agente.url_base}</p>
-                  {agente.versao_agente && (
-                    <p className="text-[10px] text-muted-foreground">v{agente.versao_agente}</p>
-                  )}
+          {agentes.map((agente) => {
+            const maxSess = agente.max_sessoes_paralelas || 3;
+            const ativas = agente.sessoes_ativas || 0;
+            const usagePercent = Math.min(100, (ativas / maxSess) * 100);
+
+            return (
+              <div key={agente.id} className="border border-border/50 rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {statusIcon(agente.status)}
+                    <div>
+                      <p className="text-sm font-medium">{agente.nome}</p>
+                      <p className="text-[11px] text-muted-foreground font-mono">{agente.url_base}</p>
+                      {agente.versao_agente && (
+                        <p className="text-[10px] text-muted-foreground">v{agente.versao_agente}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {agente.ultimo_heartbeat && (
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {new Date(agente.ultimo_heartbeat).toLocaleTimeString('pt-BR')}
+                      </span>
+                    )}
+                    <Badge variant="outline" className={statusBadge(agente.status)}>
+                      {agente.status}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Capacidade de sessões paralelas */}
+                <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Layers className="w-3.5 h-3.5" />
+                      Sessões Paralelas
+                    </span>
+                    <span className="font-medium">
+                      {ativas} / {maxSess} ativas
+                    </span>
+                  </div>
+                  <Progress value={usagePercent} className="h-1.5" />
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Cpu className="w-3 h-3" />
+                      {maxSess - ativas} slot{maxSess - ativas !== 1 ? 's' : ''} disponíve{maxSess - ativas !== 1 ? 'is' : 'l'}
+                    </span>
+                    {agente.ram_mb && (
+                      <span className="flex items-center gap-1">
+                        <HardDrive className="w-3 h-3" />
+                        {agente.ram_mb}MB RAM
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                {agente.ultimo_heartbeat && (
-                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {new Date(agente.ultimo_heartbeat).toLocaleTimeString('pt-BR')}
-                  </span>
-                )}
-                <Badge variant="outline" className={statusBadge(agente.status)}>
-                  {agente.status}
-                </Badge>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -79,6 +79,8 @@ serve(async (req) => {
             ultimo_heartbeat: new Date().toISOString(),
             versao_agente: pingData.version || null,
             capacidades: pingData.capabilities || [],
+            sessoes_ativas: pingData.capacidade?.sessoes_ativas || pingData.sessoes_ativas || 0,
+            ram_mb: pingData.capacidade?.ram_total_mb || null,
           })
           .eq("id", data.id);
 
