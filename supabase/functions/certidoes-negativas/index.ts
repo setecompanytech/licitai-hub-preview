@@ -257,11 +257,11 @@ Responda APENAS com JSON válido:
             v.fonte === "CEPIM" ? "Certidão CEPIM (Entidades Impedidas)" :
             v.fonte === "CNDT/TST" ? "CNDT – Certidão Negativa de Débitos Trabalhistas" :
             v.fonte === "CRF/FGTS" ? "CRF – Certificado de Regularidade do FGTS" :
-            "Situação Cadastral – Receita Federal",
+            "CND Conjunta de Débitos Relativos a Tributos Federais e à Dívida Ativa da União",
       orgao: v.fonte === "CEIS" || v.fonte === "CNEP" || v.fonte === "CEPIM" ? "Portal da Transparência" :
              v.fonte === "CNDT/TST" ? "Tribunal Superior do Trabalho" :
              v.fonte === "CRF/FGTS" ? "Caixa Econômica Federal" :
-             "Receita Federal do Brasil",
+             "Receita Federal do Brasil / PGFN",
       url: v.url || "#",
       validadeDias: v.fonte === "CNDT/TST" ? 180 : v.fonte === "CRF/FGTS" ? 30 : 0,
       documentosNecessarios: ["CNPJ"],
