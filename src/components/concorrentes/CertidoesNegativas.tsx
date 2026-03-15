@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Search, Shield, ExternalLink, Loader2, AlertTriangle,
   CheckCircle2, AlertCircle, HelpCircle, Download, FileSpreadsheet, FileDown, FileText,
-  Wifi, WifiOff, Bot, Globe, Clock, Zap, ShieldAlert
+  Wifi, WifiOff, Bot, Globe, Clock, Zap, ShieldAlert, MapPin, Building2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -15,6 +15,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CERTIDOES_POR_ESTADO, getPortaisCertidoes, getMunicipiosCadastrados } from '@/data/certidoes-estaduais-municipais';
+import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 
 // ── Types for Verification mode ──
 type Certidao = {
