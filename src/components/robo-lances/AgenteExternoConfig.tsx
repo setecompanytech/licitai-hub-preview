@@ -186,6 +186,8 @@ export default function AgenteExternoConfig() {
                     <SelectItem value="4">4 sessões (~4GB RAM)</SelectItem>
                     <SelectItem value="5">5 sessões (~5GB RAM)</SelectItem>
                     <SelectItem value="6">6 sessões (~6GB RAM)</SelectItem>
+                    <SelectItem value="8">8 sessões (~8GB RAM)</SelectItem>
+                    <SelectItem value="10">10 sessões (~10GB RAM)</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-[10px] text-muted-foreground mt-1">
