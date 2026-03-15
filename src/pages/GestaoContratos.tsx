@@ -228,10 +228,33 @@ export default function GestaoContratos() {
               <div className="md:col-span-2"><Label>Objeto *</Label><Textarea value={form.objeto} onChange={e => setForm(f => ({ ...f, objeto: e.target.value }))} rows={2} /></div>
               <div><Label>Valor Global (R$)</Label><Input inputMode="decimal" value={form.valor_global ? formatInputBRL(form.valor_global) : ''} onChange={e => setForm(f => ({ ...f, valor_global: parseBRLInput(e.target.value) }))} placeholder="0,00" /></div>
               <div><Label>Valor Consumido (R$)</Label><Input inputMode="decimal" value={form.valor_consumido ? formatInputBRL(form.valor_consumido) : ''} onChange={e => setForm(f => ({ ...f, valor_consumido: parseBRLInput(e.target.value) }))} placeholder="0,00" /></div>
-              <div><Label>Data Assinatura</Label><Input type="date" value={form.data_assinatura} onChange={e => setForm(f => ({ ...f, data_assinatura: e.target.value }))} /></div>
-              <div><Label>Data Início</Label><Input type="date" value={form.data_inicio} onChange={e => setForm(f => ({ ...f, data_inicio: e.target.value }))} /></div>
-              <div><Label>Data Fim</Label><Input type="date" value={form.data_fim} onChange={e => setForm(f => ({ ...f, data_fim: e.target.value }))} /></div>
-              <div><Label>Vigência (meses)</Label><Input type="number" value={form.vigencia_meses} onChange={e => setForm(f => ({ ...f, vigencia_meses: e.target.value }))} /></div>
+              <div><Label>Data Assinatura</Label><Input type="date" value={form.data_assinatura} onChange={e => {
+                const assinatura = e.target.value;
+                const updates: any = { data_assinatura: assinatura };
+                if (assinatura) {
+                  const d = new Date(assinatura + 'T00:00:00');
+                  d.setDate(d.getDate() + 1);
+                  updates.data_inicio = d.toISOString().split('T')[0];
+                  if (form.vigencia_meses) {
+                    const fim = new Date(d);
+                    fim.setMonth(fim.getMonth() + parseInt(form.vigencia_meses));
+                    updates.data_fim = fim.toISOString().split('T')[0];
+                  }
+                }
+                setForm(f => ({ ...f, ...updates }));
+              }} /></div>
+              <div><Label>Data Início</Label><Input type="date" value={form.data_inicio} readOnly className="bg-muted/50" /></div>
+              <div><Label>Data Fim</Label><Input type="date" value={form.data_fim} readOnly className="bg-muted/50" /></div>
+              <div><Label>Vigência (meses)</Label><Input type="number" value={form.vigencia_meses} onChange={e => {
+                const meses = e.target.value;
+                const updates: any = { vigencia_meses: meses };
+                if (meses && form.data_inicio) {
+                  const fim = new Date(form.data_inicio + 'T00:00:00');
+                  fim.setMonth(fim.getMonth() + parseInt(meses));
+                  updates.data_fim = fim.toISOString().split('T')[0];
+                }
+                setForm(f => ({ ...f, ...updates }));
+              }} /></div>
               <div><Label>Status</Label><Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="vigente">Vigente</SelectItem><SelectItem value="vencendo">Vencendo</SelectItem><SelectItem value="encerrado">Encerrado</SelectItem><SelectItem value="suspenso">Suspenso</SelectItem></SelectContent></Select></div>
               <div><Label>Modalidade</Label><Input value={form.modalidade} onChange={e => setForm(f => ({ ...f, modalidade: e.target.value }))} placeholder="Pregão Eletrônico" /></div>
               <div><Label>UF</Label><Input value={form.uf} onChange={e => setForm(f => ({ ...f, uf: e.target.value }))} maxLength={2} /></div>
