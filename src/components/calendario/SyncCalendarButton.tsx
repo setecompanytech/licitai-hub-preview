@@ -27,7 +27,7 @@ export default function SyncCalendarButton({ events, singleEvent }: SyncCalendar
   const handleDownloadICS = () => {
     const target = singleEvent ? [singleEvent] : events;
     if (target.length === 0) {
-      toast.warning('Nenhum evento para exportar');
+      toast.warning('Nenhum evento para exportar. Cadastre licitações com data de abertura ou documentos com validade.');
       return;
     }
     downloadICS(target, singleEvent ? 'licitacao.ics' : 'licitacoes.ics');
