@@ -175,6 +175,13 @@ export default function GestaoContratos() {
       fiscal_telefone: data.fiscal_telefone || '',
       observacoes: data.observacoes || '',
     });
+    // Store extracted items to be saved with the contract
+    if (data.itens && Array.isArray(data.itens) && data.itens.length > 0) {
+      setPendingItens(data.itens);
+      toast.info(`${data.itens.length} itens extraídos do contrato serão importados automaticamente ao salvar.`);
+    } else {
+      setPendingItens([]);
+    }
     setDialogOpen(true);
   };
 
