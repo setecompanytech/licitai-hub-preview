@@ -8,17 +8,50 @@ export function useUserRole() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) { setRole('user'); setLoading(false); return; }
+    let active = true;
 
-    supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        setRole((data?.role as any) || 'user');
+    const loadRole = async () => {
+      if (!user) {
+        if (!active) return;
+        setRole('user');
         setLoading(false);
-      });
+        return;
+      }
+
+      setLoading(true);
+
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+
+      if (!active) return;
+
+      if (error) {
+        console.error('Erro ao carregar roles:', error);
+        setRole('user');
+        setLoading(false);
+        return;
+      }
+
+      const roles = (data ?? []).map((item) => String(item.role));
+
+      if (roles.includes('admin')) {
+        setRole('admin');
+      } else if (roles.includes('viewer')) {
+        setRole('viewer');
+      } else {
+        setRole('user');
+      }
+
+      setLoading(false);
+    };
+
+    void loadRole();
+
+    return () => {
+      active = false;
+    };
   }, [user]);
 
   return { role, isAdmin: role === 'admin', loading };
