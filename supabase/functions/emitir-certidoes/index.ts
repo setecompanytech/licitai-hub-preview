@@ -419,13 +419,113 @@ Responda APENAS com JSON:
 }
 
 // ══════════════════════════════════════════════════════════════
+// Certidões Estaduais e Municipais (scraping nos portais)
+// ══════════════════════════════════════════════════════════════
+type PortalInfo = { nome: string; url: string; tipo: string; descricao: string; requerLogin?: boolean };
+
+async function emitirCertidoesRegionais(
+  portais: PortalInfo[],
+  cnpj: string,
+  FIRECRAWL_API_KEY: string,
+  LOVABLE_API_KEY: string
+): Promise<EmissaoResult[]> {
+  const results: EmissaoResult[] = [];
+
+  for (const portal of portais) {
+    if (portal.requerLogin) {
+      results.push({
+        certidao: portal.nome,
+        status: "pendente",
+        detalhes: `${portal.descricao}. Portal requer login/autenticação para emissão.`,
+        url: portal.url,
+      });
+      continue;
+    }
+
+    try {
+      const resp = await fetch("https://api.firecrawl.dev/v1/scrape", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${FIRECRAWL_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: portal.url,
+          formats: ["markdown", "screenshot"],
+          waitFor: 3000,
+          timeout: 25000,
+          actions: [
+            { type: "wait", milliseconds: 2000 },
+            { type: "write", text: cnpj, selector: "input[id*='cnpj'], input[name*='cnpj'], input[id*='CNPJ'], input[name*='CNPJ'], input[id*='inscricao'], input[type='text']" },
+            { type: "wait", milliseconds: 500 },
+            { type: "click", selector: "input[type='submit'], button[type='submit'], button[type='button'], input[value*='Emitir'], input[value*='Consultar'], button:has-text('Emitir'), button:has-text('Consultar')" },
+            { type: "wait", milliseconds: 4000 },
+            { type: "screenshot" },
+          ],
+        }),
+      });
+
+      if (!resp.ok) {
+        results.push({
+          certidao: portal.nome,
+          status: "pendente",
+          detalhes: `${portal.descricao}. Não foi possível acessar o portal automaticamente.`,
+          url: portal.url,
+        });
+        continue;
+      }
+
+      const data = await resp.json();
+      const markdown = data.data?.markdown || data.markdown || "";
+      const screenshot = data.data?.screenshot || data.screenshot || "";
+
+      if (markdown.toLowerCase().includes("captcha") || markdown.toLowerCase().includes("recaptcha")) {
+        results.push({
+          certidao: portal.nome,
+          status: "captcha",
+          detalhes: `${portal.descricao}. Portal requer CAPTCHA.`,
+          url: portal.url,
+          screenshot,
+        });
+        continue;
+      }
+
+      if (markdown.length > 100) {
+        const aiResult = await extractCertidaoIA(markdown, portal.nome, formatCnpj(cnpj), LOVABLE_API_KEY);
+        if (aiResult) {
+          results.push({ ...aiResult, certidao: portal.nome, url: portal.url, screenshot } as EmissaoResult);
+          continue;
+        }
+      }
+
+      results.push({
+        certidao: portal.nome,
+        status: "pendente",
+        detalhes: `${portal.descricao}. Acesse o portal para emissão manual.`,
+        url: portal.url,
+        screenshot,
+      });
+    } catch (e) {
+      results.push({
+        certidao: portal.nome,
+        status: "erro",
+        detalhes: `${portal.descricao}. Falha: ${e.message}`,
+        url: portal.url,
+      });
+    }
+  }
+
+  return results;
+}
+
+// ══════════════════════════════════════════════════════════════
 // MAIN HANDLER
 // ══════════════════════════════════════════════════════════════
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { cnpj } = await req.json();
+    const { cnpj, uf, municipio, portaisRegionais } = await req.json();
     if (!cnpj) {
       return new Response(JSON.stringify({ error: "CNPJ é obrigatório" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -447,17 +547,33 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Iniciando emissão de certidões para CNPJ: ${cnpjLimpo}`);
+    console.log(`Iniciando emissão de certidões para CNPJ: ${cnpjLimpo}, UF: ${uf || 'N/A'}, Município: ${municipio || 'N/A'}`);
 
-    // Execute all emissions in parallel
-    const [cndt, crf, cndConjunta, transparencia] = await Promise.all([
+    // Execute federal emissions in parallel
+    const federalPromises = [
       emitirCNDT(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
       emitirCRF(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
       emitirCNDConjunta(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
       consultarTransparencia(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
+    ];
+
+    // Add regional certificates if portals provided
+    const regionalPromise = portaisRegionais && portaisRegionais.length > 0
+      ? emitirCertidoesRegionais(portaisRegionais, cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY)
+      : Promise.resolve([]);
+
+    const [cndt, crf, cndConjunta, transparencia, regionais] = await Promise.all([
+      ...federalPromises,
+      regionalPromise,
     ]);
 
-    const resultados: EmissaoResult[] = [cndConjunta, ...transparencia, cndt, crf];
+    const resultados: EmissaoResult[] = [
+      cndConjunta as EmissaoResult,
+      ...(transparencia as EmissaoResult[]),
+      cndt as EmissaoResult,
+      crf as EmissaoResult,
+      ...(regionais as EmissaoResult[]),
+    ];
 
     const emitidas = resultados.filter(r => r.status === "emitida").length;
     const captcha = resultados.filter(r => r.status === "captcha").length;
