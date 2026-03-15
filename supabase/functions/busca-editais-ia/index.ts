@@ -413,6 +413,7 @@ async function buscarComFirecrawl(
         limit: 10,
         lang: "pt",
         country: "br",
+        tbs: "qdr:m", // Last month only — avoid old/stale results
         scrapeOptions: { formats: ["markdown"] },
       }),
     });
