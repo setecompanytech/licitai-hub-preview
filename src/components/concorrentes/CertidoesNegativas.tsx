@@ -67,12 +67,38 @@ const emissaoStatusConfig = {
 export default function CertidoesNegativas() {
   const [cnpjInput, setCnpjInput] = useState('');
   const [razaoSocial, setRazaoSocial] = useState('');
+  const [ufSelecionada, setUfSelecionada] = useState('');
+  const [municipioSelecionado, setMunicipioSelecionado] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingEmissao, setLoadingEmissao] = useState(false);
   const [resultado, setResultado] = useState<ResultadoCertidoes | null>(null);
   const [emissaoResult, setEmissaoResult] = useState<EmissaoResponse | null>(null);
   const [erro, setErro] = useState('');
   const [activeTab, setActiveTab] = useState('verificar');
+
+  // Build list of all UFs sorted
+  const ufsDisponiveis = useMemo(() => {
+    const ufs: { uf: string; nome: string }[] = [];
+    Object.values(REGIOES_ESTADOS).forEach(regiao => {
+      regiao.estados.forEach(e => ufs.push({ uf: e.uf, nome: e.nome }));
+    });
+    return ufs.sort((a, b) => a.nome.localeCompare(b.nome));
+  }, []);
+
+  // Build list of municipalities for selected UF
+  const municipiosDisponiveis = useMemo(() => {
+    if (!ufSelecionada) return [];
+    // Get municipalities from regioes-brasil (comprehensive list)
+    const regiao = Object.values(REGIOES_ESTADOS).find(r => r.estados.some(e => e.uf === ufSelecionada));
+    const estado = regiao?.estados.find(e => e.uf === ufSelecionada);
+    return estado?.cidades?.sort() || [];
+  }, [ufSelecionada]);
+
+  // Get regional portals for selected UF/municipality
+  const portaisRegionais = useMemo(() => {
+    if (!ufSelecionada) return [];
+    return getPortaisCertidoes(ufSelecionada, municipioSelecionado || undefined);
+  }, [ufSelecionada, municipioSelecionado]);
 
   const handleConsultar = async () => {
     const cnpjLimpo = cnpjInput.replace(/\D/g, '');
