@@ -11,6 +11,7 @@ import {
   CalendarDays, Clock, Building2, Bell, Mail, MessageSquare, Zap,
   CheckCircle2, XCircle, Trash2, ExternalLink, Bot, AlertTriangle,
   ArrowRight, Loader2, RefreshCw, ListChecks, Brain, Shield,
+  ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
