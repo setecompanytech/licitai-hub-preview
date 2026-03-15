@@ -65,18 +65,18 @@ export default function Index() {
       </div>
 
       {/* Acesso Rápido — Módulos */}
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <QuickAccessGrid />
       </div>
 
       {/* Painel de Processos Licitatórios */}
-      <div className="mb-6">
-        <h2 className="text-lg font-bold tracking-tight mb-4">Processos Licitatórios</h2>
+      <div className="mb-4 sm:mb-6">
+        <h2 className="text-base sm:text-lg font-bold tracking-tight mb-3 sm:mb-4">Processos Licitatórios</h2>
         <PainelLicitacoes />
       </div>
 
       {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
         <LicitacoesChart data={chartMensal} />
         <ValorChart data={chartValor} />
       </div>
