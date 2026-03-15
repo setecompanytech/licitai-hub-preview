@@ -17,8 +17,6 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-
     // Find subscriptions expiring in 7, 3 or 1 days
     const now = new Date();
     const alertDays = [7, 3, 1];
