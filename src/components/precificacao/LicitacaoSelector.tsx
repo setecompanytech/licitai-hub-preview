@@ -75,15 +75,16 @@ export default function LicitacaoSelector({
     fetchLicitacoes();
   }, [fetchLicitacoes]);
 
-  // Only show results when at least one filter is active
-  const hasActiveFilter = filterNumero.trim().length > 0 || (filterOrgao && filterOrgao !== '__all__');
+  // Only show results when both filters are active
+  const numeroFiltro = filterNumero.trim();
+  const orgaoFiltro = filterOrgao.trim();
+  const hasActiveFilter = numeroFiltro.length > 0 && orgaoFiltro.length > 0;
 
   // Filter licitacoes
   const filtered = hasActiveFilter
     ? licitacoes.filter(l => {
-        const matchNumero = !filterNumero || l.numero?.toLowerCase().includes(filterNumero.toLowerCase());
-        const effectiveOrgao = filterOrgao === '__all__' ? '' : filterOrgao;
-        const matchOrgao = !effectiveOrgao || l.orgao?.toLowerCase().includes(effectiveOrgao.toLowerCase());
+        const matchNumero = l.numero?.toLowerCase().includes(numeroFiltro.toLowerCase());
+        const matchOrgao = l.orgao?.toLowerCase().includes(orgaoFiltro.toLowerCase());
         return matchNumero && matchOrgao;
       })
     : [];
@@ -204,10 +205,9 @@ export default function LicitacaoSelector({
               {orgaosUnicos.length > 0 ? (
                 <Select value={filterOrgao} onValueChange={setFilterOrgao}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Todos os órgãos" />
+                    <SelectValue placeholder="Selecione o órgão" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__all__">Todos os órgãos</SelectItem>
                     {orgaosUnicos.map(o => (
                       <SelectItem key={o} value={o}>{o}</SelectItem>
                     ))}
@@ -232,8 +232,8 @@ export default function LicitacaoSelector({
           ) : !hasActiveFilter ? (
             <div className="text-center py-4 border border-dashed border-border/50 rounded-lg">
               <Search className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
-              <p className="text-xs text-muted-foreground">Use os filtros acima para localizar a licitação desejada.</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Filtre por número e/ou órgão para refinar os resultados.</p>
+              <p className="text-xs text-muted-foreground">Preencha os dois filtros para localizar a licitação desejada.</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Informe o Nº da Licitação e selecione/digite o Órgão.</p>
             </div>
           ) : filtered.length > 0 ? (
             <div className="max-h-48 overflow-y-auto space-y-1.5 border border-border/30 rounded-lg p-2">
