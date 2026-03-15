@@ -78,7 +78,8 @@ export default function LicitacaoSelector({
   // Filter licitacoes
   const filtered = licitacoes.filter(l => {
     const matchNumero = !filterNumero || l.numero?.toLowerCase().includes(filterNumero.toLowerCase());
-    const matchOrgao = !filterOrgao || l.orgao?.toLowerCase().includes(filterOrgao.toLowerCase());
+    const effectiveOrgao = filterOrgao === '__all__' ? '' : filterOrgao;
+    const matchOrgao = !effectiveOrgao || l.orgao?.toLowerCase().includes(effectiveOrgao.toLowerCase());
     return matchNumero && matchOrgao;
   });
 
