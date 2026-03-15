@@ -75,13 +75,18 @@ export default function LicitacaoSelector({
     fetchLicitacoes();
   }, [fetchLicitacoes]);
 
+  // Only show results when at least one filter is active
+  const hasActiveFilter = filterNumero.trim().length > 0 || (filterOrgao && filterOrgao !== '__all__');
+
   // Filter licitacoes
-  const filtered = licitacoes.filter(l => {
-    const matchNumero = !filterNumero || l.numero?.toLowerCase().includes(filterNumero.toLowerCase());
-    const effectiveOrgao = filterOrgao === '__all__' ? '' : filterOrgao;
-    const matchOrgao = !effectiveOrgao || l.orgao?.toLowerCase().includes(effectiveOrgao.toLowerCase());
-    return matchNumero && matchOrgao;
-  });
+  const filtered = hasActiveFilter
+    ? licitacoes.filter(l => {
+        const matchNumero = !filterNumero || l.numero?.toLowerCase().includes(filterNumero.toLowerCase());
+        const effectiveOrgao = filterOrgao === '__all__' ? '' : filterOrgao;
+        const matchOrgao = !effectiveOrgao || l.orgao?.toLowerCase().includes(effectiveOrgao.toLowerCase());
+        return matchNumero && matchOrgao;
+      })
+    : [];
 
   // Unique orgaos for filter
   const orgaosUnicos = [...new Set(licitacoes.map(l => l.orgao).filter(Boolean))].sort();
@@ -224,6 +229,12 @@ export default function LicitacaoSelector({
             <div className="flex items-center justify-center py-6">
               <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
+          ) : !hasActiveFilter ? (
+            <div className="text-center py-4 border border-dashed border-border/50 rounded-lg">
+              <Search className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
+              <p className="text-xs text-muted-foreground">Use os filtros acima para localizar a licitação desejada.</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Filtre por número e/ou órgão para refinar os resultados.</p>
+            </div>
           ) : filtered.length > 0 ? (
             <div className="max-h-48 overflow-y-auto space-y-1.5 border border-border/30 rounded-lg p-2">
               {filtered.map(l => (
@@ -255,11 +266,6 @@ export default function LicitacaoSelector({
                   <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{l.objeto}</p>
                 </button>
               ))}
-            </div>
-          ) : licitacoes.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-xs text-muted-foreground">Nenhuma licitação cadastrada no sistema.</p>
-              <p className="text-[10px] text-muted-foreground mt-1">Cadastre licitações no módulo Kanban ou Monitoramento.</p>
             </div>
           ) : (
             <div className="text-center py-4">
