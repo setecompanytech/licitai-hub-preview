@@ -240,9 +240,9 @@ export default function CalendarioLicitacoes() {
 
   // Events for selected date
   const selectedEvents = useMemo(() => {
-    if (!selectedDate) return { licitacoes: [], docs: [] };
+    if (!selectedDate) return { licitacoes: [], docs: [], backups: false };
     const key = format(selectedDate, 'yyyy-MM-dd');
-    return eventDates.get(key) || { licitacoes: [], docs: [] };
+    return eventDates.get(key) || { licitacoes: [], docs: [], backups: false };
   }, [selectedDate, eventDates]);
 
   // Upcoming licitações (next 30 days)
