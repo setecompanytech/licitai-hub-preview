@@ -55,29 +55,52 @@ export default function LicitacaoSelector({
   const [filterNumero, setFilterNumero] = useState('');
   const [filterOrgao, setFilterOrgao] = useState('');
 
-  // Load user licitacoes
+  const [favoritosKeys, setFavoritosKeys] = useState<Set<string>>(new Set());
+
+  // Load licitações vinculadas ao fluxo (monitoramento/favoritos/gestão)
   const fetchLicitacoes = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    let query = supabase
-      .from('licitacoes')
-      .select('id, numero, orgao, objeto, modalidade, valor_estimado')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(200);
 
-    const { data, error } = await query;
-    if (error) {
-      console.error('Erro ao buscar licitações:', error);
+    const [licitacoesResp, favoritosResp] = await Promise.all([
+      supabase
+        .from('licitacoes')
+        .select('id, numero, orgao, objeto, modalidade, valor_estimado, url_edital')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(200),
+      supabase
+        .from('editais_favoritos')
+        .select('numero, orgao')
+        .eq('user_id', user.id),
+    ]);
+
+    if (licitacoesResp.error) {
+      console.error('Erro ao buscar licitações:', licitacoesResp.error);
     } else {
-      setLicitacoes((data as unknown as LicitacaoResumo[]) || []);
+      setLicitacoes((licitacoesResp.data as unknown as LicitacaoResumo[]) || []);
     }
+
+    if (favoritosResp.error) {
+      console.error('Erro ao buscar editais marcados:', favoritosResp.error);
+      setFavoritosKeys(new Set());
+    } else {
+      const keys = new Set(
+        (favoritosResp.data || []).map((f) => `${(f.numero || '').trim().toLowerCase()}|${(f.orgao || '').trim().toLowerCase()}`)
+      );
+      setFavoritosKeys(keys);
+    }
+
     setLoading(false);
   }, [user]);
 
   useEffect(() => {
     fetchLicitacoes();
   }, [fetchLicitacoes]);
+
+  const licitacoesMarcadas = favoritosKeys.size > 0
+    ? licitacoes.filter((l) => favoritosKeys.has(`${(l.numero || '').trim().toLowerCase()}|${(l.orgao || '').trim().toLowerCase()}`))
+    : licitacoes;
 
   // Only show results when both filters are active
   const numeroFiltro = filterNumero.trim();
@@ -86,7 +109,7 @@ export default function LicitacaoSelector({
 
   // Filter licitacoes
   const filtered = hasActiveFilter
-    ? licitacoes.filter(l => {
+    ? licitacoesMarcadas.filter(l => {
         const matchNumero = l.numero?.toLowerCase().includes(numeroFiltro.toLowerCase());
         const matchOrgao = l.orgao?.toLowerCase().includes(orgaoFiltro.toLowerCase());
         return matchNumero && matchOrgao;
@@ -94,7 +117,7 @@ export default function LicitacaoSelector({
     : [];
 
   // Unique orgaos for filter
-  const orgaosUnicos = [...new Set(licitacoes.map(l => l.orgao).filter(Boolean))].sort();
+  const orgaosUnicos = [...new Set(licitacoesMarcadas.map(l => l.orgao).filter(Boolean))].sort();
 
   // Select licitacao and load items
   const handleSelect = async (licitacaoId: string) => {
