@@ -95,6 +95,7 @@ interface Props {
   ufNome: string;
   licitacaoNumero: string;
   licitacaoOrgao: string;
+  initialItens?: { descricao: string; quantidade: number; unidade: string; custoUnitario: number }[];
 }
 
 const fmtCur = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
