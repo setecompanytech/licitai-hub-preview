@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/table';
 import {
   Search, Bot, Loader2, ShieldCheck, AlertTriangle, CheckCircle2, ExternalLink,
-  FileText, Scale, Info, Globe, BookOpen, Gavel,
+  FileText, Scale, Info, Globe, BookOpen, Gavel, ChevronDown,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { streamAIChat } from '@/lib/ai-stream';
@@ -68,6 +68,7 @@ export default function AnaliseRegimeTributario({ ufCalculo, ufNome, regime, reg
   const [analiseIA, setAnaliseIA] = useState<AnaliseResultadoItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [consultaManual, setConsultaManual] = useState('');
+  const [panoramaOpen, setPanoramaOpen] = useState(true);
   const [resultadoManual, setResultadoManual] = useState('');
   const [loadingManual, setLoadingManual] = useState(false);
   
@@ -371,55 +372,63 @@ Formato: texto estruturado com tópicos numerados.`;
       {/* ── Panorama tributário do estado ── */}
       {temDados && (
         <div className="bg-card rounded-xl border border-border/50 p-5">
-          <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
-            <FileText className="w-4 h-4 text-accent" />
-            Panorama Tributário — {ufCalculo} ({ufNome})
-          </h4>
-          <div className="overflow-x-auto rounded-lg border border-border/50">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="text-[10px] font-semibold h-8">Categoria</TableHead>
-                  <TableHead className="text-[10px] font-semibold h-8">Tratamento</TableHead>
-                  <TableHead className="text-[10px] font-semibold h-8 text-right">Alíq. Efetiva</TableHead>
-                  <TableHead className="text-[10px] font-semibold h-8">Fundamentação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {regrasUF.filter(r => !r.categoria.startsWith('servicos_')).map((regra, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell className="text-[10px] py-1.5 font-medium">
-                      {getCategoriaLabel(regra.categoria)}
-                    </TableCell>
-                    <TableCell className="text-[10px] py-1.5">
-                      <TratamentoBadge tratamento={regra.tratamento} aliquota={regra.aliquota_efetiva} />
-                    </TableCell>
-                    <TableCell className="text-[10px] py-1.5 text-right font-bold">
-                      {regra.aliquota_efetiva === 0 ? 'Isento' : `${regra.aliquota_efetiva}%`}
-                      {regra.aliquota_st_mva && (
-                        <span className="text-muted-foreground ml-1">(MVA {regra.aliquota_st_mva}%)</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-[10px] py-1.5 text-muted-foreground max-w-[200px] truncate">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger className="text-left">
-                            {regra.fundamentacao.length > 50
-                              ? regra.fundamentacao.substring(0, 50) + '...'
-                              : regra.fundamentacao}
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" className="max-w-xs">
-                            <p className="text-xs">{regra.fundamentacao}</p>
-                            {regra.observacoes && <p className="text-xs mt-1 text-muted-foreground">{regra.observacoes}</p>}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </TableCell>
+          <button
+            onClick={() => setPanoramaOpen(!panoramaOpen)}
+            className="w-full flex items-center justify-between group"
+          >
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <FileText className="w-4 h-4 text-accent" />
+              Panorama Tributário — {ufCalculo} ({ufNome})
+            </h4>
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${panoramaOpen ? 'rotate-0' : '-rotate-90'}`} />
+          </button>
+          {panoramaOpen && (
+            <div className="overflow-x-auto rounded-lg border border-border/50 mt-3">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="text-[10px] font-semibold h-8">Categoria</TableHead>
+                    <TableHead className="text-[10px] font-semibold h-8">Tratamento</TableHead>
+                    <TableHead className="text-[10px] font-semibold h-8 text-right">Alíq. Efetiva</TableHead>
+                    <TableHead className="text-[10px] font-semibold h-8">Fundamentação</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {regrasUF.filter(r => !r.categoria.startsWith('servicos_')).map((regra, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell className="text-[10px] py-1.5 font-medium">
+                        {getCategoriaLabel(regra.categoria)}
+                      </TableCell>
+                      <TableCell className="text-[10px] py-1.5">
+                        <TratamentoBadge tratamento={regra.tratamento} aliquota={regra.aliquota_efetiva} />
+                      </TableCell>
+                      <TableCell className="text-[10px] py-1.5 text-right font-bold">
+                        {regra.aliquota_efetiva === 0 ? 'Isento' : `${regra.aliquota_efetiva}%`}
+                        {regra.aliquota_st_mva && (
+                          <span className="text-muted-foreground ml-1">(MVA {regra.aliquota_st_mva}%)</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-[10px] py-1.5 text-muted-foreground max-w-[200px] truncate">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger className="text-left">
+                              {regra.fundamentacao.length > 50
+                                ? regra.fundamentacao.substring(0, 50) + '...'
+                                : regra.fundamentacao}
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-xs">
+                              <p className="text-xs">{regra.fundamentacao}</p>
+                              {regra.observacoes && <p className="text-xs mt-1 text-muted-foreground">{regra.observacoes}</p>}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </div>
       )}
 
