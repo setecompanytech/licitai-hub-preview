@@ -104,7 +104,7 @@ export default function GestaoContratos() {
     setSaving(true);
     const val = parseFloat(form.valor_global) || 0;
     const consumed = parseFloat(form.valor_consumido) || 0;
-    const { error } = await supabase.from('contratos').insert({
+    const { data: inserted, error } = await supabase.from('contratos').insert({
       user_id: user!.id, numero_contrato: form.numero_contrato, objeto: form.objeto,
       orgao_contratante: form.orgao_contratante, valor_global: val, valor_consumido: consumed,
       data_assinatura: form.data_assinatura || null, data_inicio: form.data_inicio || null,
@@ -113,10 +113,36 @@ export default function GestaoContratos() {
       municipio: form.municipio || null, fiscal_nome: form.fiscal_nome || null,
       fiscal_email: form.fiscal_email || null, fiscal_telefone: form.fiscal_telefone || null,
       observacoes: form.observacoes || null,
-    } as any);
+    } as any).select('id').single();
     setSaving(false);
     if (error) { console.error('Erro ao salvar contrato:', error); toast.error('Erro ao salvar contrato', { description: error.message }); return; }
-    toast.success('Contrato cadastrado!');
+
+    // Auto-insert extracted items if available
+    if (inserted && pendingItens.length > 0) {
+      const itensToInsert = pendingItens.map(item => ({
+        contrato_id: inserted.id,
+        user_id: user!.id,
+        descricao: item.descricao || 'Sem descrição',
+        unidade: item.unidade || 'UN',
+        quantidade_contratada: item.quantidade || 0,
+        valor_unitario: item.valor_unitario || 0,
+        valor_total: item.valor_total || (item.quantidade || 0) * (item.valor_unitario || 0),
+        saldo_quantitativo: item.quantidade || 0,
+        saldo_financeiro: item.valor_total || (item.quantidade || 0) * (item.valor_unitario || 0),
+        codigo_item: item.codigo_item || null,
+      }));
+      const { error: itensError } = await supabase.from('contrato_itens').insert(itensToInsert as any);
+      if (itensError) {
+        console.error('Erro ao salvar itens:', itensError);
+        toast.error('Contrato salvo, mas houve erro ao importar os itens');
+      } else {
+        toast.success(`Contrato cadastrado com ${pendingItens.length} itens importados!`);
+      }
+      setPendingItens([]);
+    } else {
+      toast.success('Contrato cadastrado!');
+    }
+
     setDialogOpen(false);
     setForm({ numero_contrato: '', objeto: '', orgao_contratante: '', valor_global: '', valor_consumido: '0', data_assinatura: '', data_inicio: '', data_fim: '', vigencia_meses: '', status: 'vigente', modalidade: '', uf: '', municipio: '', fiscal_nome: '', fiscal_email: '', fiscal_telefone: '', observacoes: '' });
     loadContratos();
