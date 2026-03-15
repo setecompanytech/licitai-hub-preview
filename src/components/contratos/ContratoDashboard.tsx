@@ -41,17 +41,21 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     load();
   }, [contratoId]);
 
+  const pedidosPorMes = useMemo(() => {
+    if (!data) return [];
+    const pedidosAtivos = data.pedidos.filter((p: any) => p.status !== 'cancelado');
+    const map: Record<string, number> = {};
+    pedidosAtivos.forEach((p: any) => {
+      if (p.data_pedido) {
+        const key = p.data_pedido.substring(0, 7);
+        map[key] = (map[key] || 0) + (p.valor_total || 0);
+      }
+    });
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
+  }, [data]);
+
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!data?.contrato) return <Card className="p-8 text-center text-muted-foreground">Contrato não encontrado</Card>;
-
-  const c = data.contrato;
-  const pedidosAtivos = data.pedidos.filter(p => p.status !== 'cancelado');
-  const faturamento = pedidosAtivos.reduce((s: number, p: any) => s + (p.valor_total || 0), 0);
-  const totalCustos = data.custos.reduce((s: number, cc: any) => s + (cc.valor || 0), 0);
-  const custosDiretos = data.custos.filter((cc: any) => cc.tipo === 'custo_direto').reduce((s: number, cc: any) => s + cc.valor, 0);
-  const tributos = data.custos.filter((cc: any) => cc.tipo === 'tributo').reduce((s: number, cc: any) => s + cc.valor, 0);
-  const frete = data.custos.filter((cc: any) => cc.tipo === 'frete_logistica').reduce((s: number, cc: any) => s + cc.valor, 0);
-  const despAdmin = data.custos.filter((cc: any) => cc.tipo === 'despesa_administrativa').reduce((s: number, cc: any) => s + cc.valor, 0);
   const lucroBruto = faturamento - custosDiretos;
   const lucroLiquido = faturamento - totalCustos;
   const margemBruta = faturamento > 0 ? (lucroBruto / faturamento) * 100 : 0;
