@@ -18,11 +18,21 @@ export async function streamAIChat({
   onError?: (error: string) => void;
 }) {
   try {
+    // Use user's JWT token if available, fallback to anon key for public actions
+    let authToken = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        authToken = session.access_token;
+      }
+    } catch { /* fallback to anon key */ }
+
     const resp = await fetch(AI_CHAT_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        Authorization: `Bearer ${authToken}`,
       },
       body: JSON.stringify({ messages, action, context }),
     });
