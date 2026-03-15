@@ -465,6 +465,9 @@ export default function Configuracoes() {
             {/* CNAEs Secundários */}
             <CnaesSecundarios />
 
+            {/* Backup Programado */}
+            <BackupAgendado />
+
             {/* Exportar Dados */}
             <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-2">
