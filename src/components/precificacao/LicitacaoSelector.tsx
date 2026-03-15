@@ -98,9 +98,14 @@ export default function LicitacaoSelector({
     fetchLicitacoes();
   }, [fetchLicitacoes]);
 
-  const licitacoesMarcadas = favoritosKeys.size > 0
-    ? licitacoes.filter((l) => favoritosKeys.has(`${(l.numero || '').trim().toLowerCase()}|${(l.orgao || '').trim().toLowerCase()}`))
-    : licitacoes;
+  const getLicitacaoKey = (numero?: string, orgao?: string) => `${(numero || '').trim().toLowerCase()}|${(orgao || '').trim().toLowerCase()}`;
+
+  const licitacoesMarcadas = [...licitacoes].sort((a, b) => {
+    const aFav = favoritosKeys.has(getLicitacaoKey(a.numero, a.orgao));
+    const bFav = favoritosKeys.has(getLicitacaoKey(b.numero, b.orgao));
+    if (aFav === bFav) return 0;
+    return aFav ? -1 : 1;
+  });
 
   // Only show results when both filters are active
   const numeroFiltro = filterNumero.trim();
