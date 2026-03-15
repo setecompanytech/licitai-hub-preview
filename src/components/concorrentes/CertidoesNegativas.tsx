@@ -198,6 +198,57 @@ export default function CertidoesNegativas() {
                 </div>
               </div>
 
+              {/* Export button for emissions */}
+              <div className="flex justify-end">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="outline"><Download className="w-3.5 h-3.5 mr-1" /> Exportar Emissão</Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => {
+                      downloadPDF(
+                        `emissao-certidoes-${cnpjInput.replace(/\D/g, '')}`,
+                        `Emissão de Certidões – ${cnpjInput}`,
+                        ['Certidão', 'Status', 'Código', 'Validade', 'Data Emissão', 'Detalhes'],
+                        emissaoResult.resultados.map(r => [
+                          r.certidao,
+                          emissaoStatusConfig[r.status]?.label || r.status,
+                          r.codigo || '—',
+                          r.validade ? new Date(r.validade).toLocaleDateString('pt-BR') : '—',
+                          r.dataEmissao ? new Date(r.dataEmissao).toLocaleString('pt-BR') : '—',
+                          r.detalhes,
+                        ])
+                      );
+                      toast.success('PDF exportado!');
+                    }}><FileText className="w-4 h-4 mr-2" /> PDF</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      downloadCSV(
+                        `emissao-certidoes-${cnpjInput.replace(/\D/g, '')}`,
+                        ['Certidão', 'Status', 'Código', 'Validade', 'Data Emissão', 'Detalhes', 'URL'],
+                        emissaoResult.resultados.map(r => [
+                          r.certidao, emissaoStatusConfig[r.status]?.label || r.status,
+                          r.codigo || '', r.validade || '', r.dataEmissao || '', r.detalhes, r.url || '',
+                        ])
+                      );
+                      toast.success('CSV exportado!');
+                    }}><FileSpreadsheet className="w-4 h-4 mr-2" /> CSV</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      const txt = [
+                        `EMISSÃO DE CERTIDÕES – ${cnpjInput}`,
+                        `Data: ${new Date(emissaoResult.dataConsulta).toLocaleString('pt-BR')}`,
+                        '='.repeat(60), '',
+                        `Resumo: ${emissaoResult.resumo.emitidas} emitidas, ${emissaoResult.resumo.captcha} CAPTCHA, ${emissaoResult.resumo.erros} irregulares`, '',
+                        ...emissaoResult.resultados.map(r =>
+                          `[${emissaoStatusConfig[r.status]?.label}] ${r.certidao}\n  ${r.detalhes}${r.codigo ? `\n  Código: ${r.codigo}` : ''}${r.validade ? `\n  Validade: ${new Date(r.validade).toLocaleDateString('pt-BR')}` : ''}\n`
+                        ),
+                      ].join('\n');
+                      downloadTextReport(`emissao-certidoes-${cnpjInput.replace(/\D/g, '')}`, txt);
+                      toast.success('TXT exportado!');
+                    }}><FileDown className="w-4 h-4 mr-2" /> TXT</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
               {/* Results grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {emissaoResult.resultados.map((r, i) => {

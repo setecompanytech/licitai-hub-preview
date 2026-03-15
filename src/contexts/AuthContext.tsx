@@ -76,10 +76,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let initialLoad = true;
 
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Only update user/session state — never reset loading after initial load
-      // This prevents page unmount when opening new tabs (TOKEN_REFRESHED via localStorage sync)
-      setSession(session);
-      setUser(session?.user ?? null);
+      // Skip redundant updates from cross-tab TOKEN_REFRESHED events
+      // Comparing user IDs avoids new object references triggering re-renders & route unmounts
+      setSession(prev => prev?.user?.id === session?.user?.id && prev?.access_token === session?.access_token ? prev : session);
+      setUser(prev => prev?.id === session?.user?.id ? prev : (session?.user ?? null));
 
       if (initialLoad) {
         setLoading(false);
