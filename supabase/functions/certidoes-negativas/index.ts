@@ -145,7 +145,7 @@ async function consultarReceitaFederal(cnpj: string): Promise<VerificacaoReal> {
     }
     const data = await resp.json();
     if (data.situacao_cadastral === 2) {
-      return { fonte: "Receita Federal", status: "regular", detalhes: `Situação cadastral: ATIVA. Razão Social: ${data.razao_social}. CNAE: ${data.cnae_fiscal_descricao}`, dataConsulta: new Date().toISOString(), url: "https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp" };
+      return { fonte: "Receita Federal", status: "regular", detalhes: `Situação cadastral: ATIVA. Razão Social: ${data.razao_social}. CNAE: ${data.cnae_fiscal_descricao}`, dataConsulta: new Date().toISOString(), url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home" };
     }
     const situacoes: Record<number, string> = { 1: "NULA", 3: "SUSPENSA", 4: "INAPTA", 8: "BAIXADA" };
     return { fonte: "Receita Federal", status: "irregular", detalhes: `Situação cadastral: ${situacoes[data.situacao_cadastral] || data.descricao_situacao_cadastral || "IRREGULAR"}. ${data.motivo_situacao_cadastral || ""}`, dataConsulta: new Date().toISOString(), url: "https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp" };
