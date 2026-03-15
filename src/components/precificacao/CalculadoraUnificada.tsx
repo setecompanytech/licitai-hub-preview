@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { useAuth } from '@/contexts/AuthContext';
