@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/table';
 import {
   Search, Bot, Loader2, ShieldCheck, AlertTriangle, CheckCircle2, ExternalLink,
-  FileText, Scale, Info, Globe, BookOpen, Gavel,
+  FileText, Scale, Info, Globe, BookOpen, Gavel, ChevronDown,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { streamAIChat } from '@/lib/ai-stream';
