@@ -302,6 +302,99 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_config: {
+        Row: {
+          alerta_calendario: boolean
+          ativo: boolean
+          backup_storage: boolean
+          created_at: string
+          dia_mes: number | null
+          dia_semana: number | null
+          email_destino: string | null
+          enviar_email: boolean
+          frequencia: string
+          hora_execucao: string | null
+          id: string
+          proximo_backup: string | null
+          ultimo_backup: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alerta_calendario?: boolean
+          ativo?: boolean
+          backup_storage?: boolean
+          created_at?: string
+          dia_mes?: number | null
+          dia_semana?: number | null
+          email_destino?: string | null
+          enviar_email?: boolean
+          frequencia?: string
+          hora_execucao?: string | null
+          id?: string
+          proximo_backup?: string | null
+          ultimo_backup?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alerta_calendario?: boolean
+          ativo?: boolean
+          backup_storage?: boolean
+          created_at?: string
+          dia_mes?: number | null
+          dia_semana?: number | null
+          email_destino?: string | null
+          enviar_email?: boolean
+          frequencia?: string
+          hora_execucao?: string | null
+          id?: string
+          proximo_backup?: string | null
+          ultimo_backup?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      backup_historico: {
+        Row: {
+          created_at: string
+          erro: string | null
+          id: string
+          registros_total: number | null
+          status: string
+          storage_path: string | null
+          tabelas_exportadas: string[] | null
+          tamanho_bytes: number | null
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          erro?: string | null
+          id?: string
+          registros_total?: number | null
+          status?: string
+          storage_path?: string | null
+          tabelas_exportadas?: string[] | null
+          tamanho_bytes?: number | null
+          tipo?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          erro?: string | null
+          id?: string
+          registros_total?: number | null
+          status?: string
+          storage_path?: string | null
+          tabelas_exportadas?: string[] | null
+          tamanho_bytes?: number | null
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       base_contabil: {
         Row: {
           arquivo_nome: string

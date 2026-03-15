@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   CalendarDays, FileText, AlertTriangle, Clock, CheckCircle2,
-  ChevronRight, Shield, Building2,
+  ChevronRight, Shield, Building2, Database,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -149,34 +149,100 @@ export default function CalendarioLicitacoes() {
     enabled: !!user,
   });
 
+  // Fetch backup config for calendar integration
+  const { data: backupConfig } = useQuery({
+    queryKey: ['calendario-backup-config', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await supabase
+        .from('backup_config' as any)
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('ativo', true)
+        .eq('alerta_calendario', true)
+        .maybeSingle();
+      return data as any;
+    },
+    enabled: !!user,
+  });
+
+  // Generate backup dates for the next 90 days
+  const backupDates = useMemo(() => {
+    if (!backupConfig) return [];
+    const dates: Date[] = [];
+    const freq = backupConfig.frequencia;
+    const start = new Date();
+    const end = addDays(start, 90);
+    const [h, m] = (backupConfig.hora_execucao || '03:00').split(':').map(Number);
+
+    if (freq === 'diario') {
+      let cur = new Date(start);
+      cur.setHours(h, m, 0, 0);
+      if (cur <= start) cur.setDate(cur.getDate() + 1);
+      while (cur <= end) {
+        dates.push(new Date(cur));
+        cur.setDate(cur.getDate() + 1);
+      }
+    } else if (freq === 'semanal') {
+      const targetDay = backupConfig.dia_semana ?? 1;
+      let cur = new Date(start);
+      const daysAhead = ((targetDay - cur.getDay()) + 7) % 7 || 7;
+      cur.setDate(cur.getDate() + daysAhead);
+      cur.setHours(h, m, 0, 0);
+      while (cur <= end) {
+        dates.push(new Date(cur));
+        cur.setDate(cur.getDate() + 7);
+      }
+    } else if (freq === 'mensal') {
+      const targetDia = backupConfig.dia_mes ?? 1;
+      let cur = new Date(start);
+      cur.setDate(targetDia);
+      cur.setHours(h, m, 0, 0);
+      if (cur <= start) cur.setMonth(cur.getMonth() + 1);
+      while (cur <= end) {
+        dates.push(new Date(cur));
+        cur.setMonth(cur.getMonth() + 1);
+      }
+    }
+    return dates;
+  }, [backupConfig]);
+
   // Build calendar markers
   const eventDates = useMemo(() => {
-    const map = new Map<string, { licitacoes: LicitacaoEvento[]; docs: DocValidade[] }>();
+    const map = new Map<string, { licitacoes: LicitacaoEvento[]; docs: DocValidade[]; backups: boolean }>();
+
+    const getEntry = (key: string) => {
+      if (!map.has(key)) map.set(key, { licitacoes: [], docs: [], backups: false });
+      return map.get(key)!;
+    };
 
     licitacoes.forEach((l) => {
       [l.data_abertura, l.data_encerramento].forEach((d) => {
         if (!d) return;
         const key = format(new Date(d), 'yyyy-MM-dd');
-        if (!map.has(key)) map.set(key, { licitacoes: [], docs: [] });
-        const entry = map.get(key)!;
+        const entry = getEntry(key);
         if (!entry.licitacoes.find((x) => x.id === l.id)) entry.licitacoes.push(l);
       });
     });
 
     docsValidade.forEach((doc) => {
       const key = format(new Date(doc.validade), 'yyyy-MM-dd');
-      if (!map.has(key)) map.set(key, { licitacoes: [], docs: [] });
-      map.get(key)!.docs.push(doc);
+      getEntry(key).docs.push(doc);
+    });
+
+    backupDates.forEach((bd) => {
+      const key = format(bd, 'yyyy-MM-dd');
+      getEntry(key).backups = true;
     });
 
     return map;
-  }, [licitacoes, docsValidade]);
+  }, [licitacoes, docsValidade, backupDates]);
 
   // Events for selected date
   const selectedEvents = useMemo(() => {
-    if (!selectedDate) return { licitacoes: [], docs: [] };
+    if (!selectedDate) return { licitacoes: [], docs: [], backups: false };
     const key = format(selectedDate, 'yyyy-MM-dd');
-    return eventDates.get(key) || { licitacoes: [], docs: [] };
+    return eventDates.get(key) || { licitacoes: [], docs: [], backups: false };
   }, [selectedDate, eventDates]);
 
   // Upcoming licitações (next 30 days)
@@ -211,11 +277,13 @@ export default function CalendarioLicitacoes() {
     const licitDates: Date[] = [];
     const docDates: Date[] = [];
     const urgentDates: Date[] = [];
+    const bkpDates: Date[] = [];
 
     eventDates.forEach((val, key) => {
       const d = new Date(key + 'T12:00:00');
       if (val.licitacoes.length > 0) licitDates.push(d);
       if (val.docs.length > 0) docDates.push(d);
+      if (val.backups) bkpDates.push(d);
       if (
         val.licitacoes.some((l) => {
           const dt = l.data_abertura ? new Date(l.data_abertura) : null;
@@ -226,13 +294,14 @@ export default function CalendarioLicitacoes() {
         urgentDates.push(d);
     });
 
-    return { licitacao: licitDates, documento: docDates, urgente: urgentDates };
+    return { licitacao: licitDates, documento: docDates, urgente: urgentDates, backup: bkpDates };
   }, [eventDates]);
 
   const modifiersStyles = {
     licitacao: { backgroundColor: 'hsl(var(--accent) / 0.2)', borderRadius: '50%' },
     documento: { border: '2px solid hsl(var(--warning))', borderRadius: '50%' },
     urgente: { backgroundColor: 'hsl(var(--destructive) / 0.2)', borderRadius: '50%' },
+    backup: { border: '2px solid hsl(var(--info))', borderRadius: '50%' },
   };
 
   const formatCurrency = (v: number) =>
@@ -355,6 +424,9 @@ export default function CalendarioLicitacoes() {
             <span className="flex items-center gap-1">
               <span className="w-3 h-3 rounded-full bg-destructive/20" /> Urgente
             </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full border-2 border-info" /> Backup
+            </span>
           </div>
         </Card>
 
@@ -382,7 +454,7 @@ export default function CalendarioLicitacoes() {
 
             {/* Tab: selected day */}
             <TabsContent value="todos" className="mt-0">
-              {selectedEvents.licitacoes.length === 0 && selectedEvents.docs.length === 0 ? (
+              {selectedEvents.licitacoes.length === 0 && selectedEvents.docs.length === 0 && !selectedEvents.backups ? (
                 <div className="text-center py-8 text-muted-foreground text-sm">
                   <CalendarDays className="w-10 h-10 mx-auto mb-2 opacity-30" />
                   Nenhum evento nesta data
@@ -457,6 +529,22 @@ export default function CalendarioLicitacoes() {
                       </Badge>
                     </div>
                   ))}
+                  {selectedEvents.backups && (
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-info/30 bg-info/5">
+                      <div className="flex items-center gap-2">
+                        <Database className="w-4 h-4 text-info" />
+                        <div>
+                          <p className="text-sm font-medium">Backup programado</p>
+                          <p className="text-xs text-muted-foreground">
+                            Backup automático agendado para esta data
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="text-[10px] text-info border-info/30">
+                        Agendado
+                      </Badge>
+                    </div>
+                  )}
                 </div>
               )}
             </TabsContent>
