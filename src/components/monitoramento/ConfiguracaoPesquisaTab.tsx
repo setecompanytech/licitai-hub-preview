@@ -251,19 +251,19 @@ export default function ConfiguracaoPesquisaTab() {
   const removeCnae = (idx: number) => setCnaesSecundarios(prev => prev.filter((_, i) => i !== idx));
 
   return (
-    <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-6">
+    <div className="bg-card rounded-xl border border-border/50 p-3 sm:p-5 shadow-sm space-y-5 sm:space-y-6">
       <h3 className="text-sm font-semibold">Configuração de Pesquisa Automática</h3>
 
       {/* ── Localização Sede ── */}
-      <div className="rounded-lg border border-accent/30 bg-accent/5 p-4 space-y-3">
+      <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 sm:p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-accent" />
+          <MapPin className="w-4 h-4 text-accent flex-shrink-0" />
           <h4 className="text-sm font-semibold text-accent">Prioridade por Localização (Sede)</h4>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground leading-relaxed">
           O sistema prioriza editais na região metropolitana da sede da sua empresa, conforme endereço do CNPJ.
         </p>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div>
             <label className="text-xs text-muted-foreground">UF da Sede</label>
             <Input value={ufSede || empresaAtiva?.uf || ''} onChange={e => setUfSede(e.target.value.toUpperCase().slice(0, 2))} placeholder="Ex: PA" className="mt-1" maxLength={2} />
@@ -272,22 +272,22 @@ export default function ConfiguracaoPesquisaTab() {
             <label className="text-xs text-muted-foreground">Município</label>
             <Input value={municipioSede || empresaAtiva?.municipio || ''} onChange={e => setMunicipioSede(e.target.value)} placeholder="Ex: Belém" className="mt-1" />
           </div>
-          <div className="flex items-end">
+          <div className="col-span-2 sm:col-span-1 flex items-end">
             <div className="flex items-center gap-2">
               <Switch checked={priorizarRegiaoSede} onCheckedChange={setPriorizarRegiaoSede} />
-              <Label className="text-xs">Priorizar região da sede</Label>
+              <Label className="text-xs leading-tight">Priorizar região da sede</Label>
             </div>
           </div>
         </div>
       </div>
 
       {/* ── Segmentos/Ramos de Prioridade ── */}
-      <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+      <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 sm:p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-primary" />
+          <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
           <h4 className="text-sm font-semibold text-primary">Segmentos Prioritários</h4>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground leading-relaxed">
           Defina os ramos/segmentos que deseja priorizar. O sistema enviará alertas quando editais compatíveis forem publicados.
         </p>
         <div className="flex flex-wrap gap-1.5 min-h-[32px]">
@@ -301,7 +301,7 @@ export default function ConfiguracaoPesquisaTab() {
         <div className="flex gap-2">
           <Input value={segmentoInput} onChange={e => setSegmentoInput(e.target.value)} placeholder="Ex: Material Hospitalar, TI, Construção Civil"
             className="flex-1 h-8 text-xs" onKeyDown={e => e.key === 'Enter' && addSegmento()} />
-          <Button size="sm" variant="outline" onClick={() => addSegmento()} className="h-8 text-xs">
+          <Button size="sm" variant="outline" onClick={() => addSegmento()} className="h-8 text-xs flex-shrink-0">
             <Plus className="w-3 h-3 mr-1" /> Adicionar
           </Button>
         </div>
@@ -316,34 +316,34 @@ export default function ConfiguracaoPesquisaTab() {
       </div>
 
       {/* ── Canais de Alerta ── */}
-      <div className="rounded-lg border border-info/30 bg-info/5 p-4 space-y-3">
+      <div className="rounded-lg border border-info/30 bg-info/5 p-3 sm:p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <Bell className="w-4 h-4 text-info" />
+          <Bell className="w-4 h-4 text-info flex-shrink-0" />
           <h4 className="text-sm font-semibold text-info">Canais de Alerta de Licitações</h4>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground leading-relaxed">
           Escolha como deseja receber avisos quando forem encontrados editais compatíveis com seus segmentos e CNAEs.
         </p>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
           <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-card">
-            <Bell className="w-5 h-5 text-primary" />
-            <div className="flex-1">
+            <Bell className="w-5 h-5 text-primary flex-shrink-0" />
+            <div className="flex-1 min-w-0">
               <Label className="text-xs font-medium">Sistema</Label>
               <p className="text-[10px] text-muted-foreground">Notificações no app</p>
             </div>
             <Switch checked={alertaSistema} onCheckedChange={setAlertaSistema} />
           </div>
           <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-card">
-            <Mail className="w-5 h-5 text-accent" />
-            <div className="flex-1">
+            <Mail className="w-5 h-5 text-accent flex-shrink-0" />
+            <div className="flex-1 min-w-0">
               <Label className="text-xs font-medium">E-mail</Label>
               <p className="text-[10px] text-muted-foreground">Alertas por e-mail</p>
             </div>
             <Switch checked={alertaEmail} onCheckedChange={setAlertaEmail} />
           </div>
           <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-card">
-            <MessageCircle className="w-5 h-5 text-success" />
-            <div className="flex-1">
+            <MessageCircle className="w-5 h-5 text-success flex-shrink-0" />
+            <div className="flex-1 min-w-0">
               <Label className="text-xs font-medium">WhatsApp</Label>
               <p className="text-[10px] text-muted-foreground">Alertas via WhatsApp</p>
             </div>
@@ -354,18 +354,19 @@ export default function ConfiguracaoPesquisaTab() {
 
       <Separator />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="text-xs text-muted-foreground">CNAE Principal</label>
           <div className="flex gap-2 mt-1">
-            <Input value={empresaAtiva?.cnae_principal || 'Nenhuma empresa selecionada'} readOnly className="flex-1" />
-            <Button size="sm" variant="outline" onClick={handleSyncFromEmpresa} disabled={!empresaAtiva}>
-              <RefreshCw className="w-4 h-4 mr-1" /> Sincronizar CNPJ
+            <Input value={empresaAtiva?.cnae_principal || 'Nenhuma empresa selecionada'} readOnly className="flex-1 text-xs" />
+            <Button size="sm" variant="outline" onClick={handleSyncFromEmpresa} disabled={!empresaAtiva} className="flex-shrink-0 text-xs">
+              <RefreshCw className="w-4 h-4 sm:mr-1" />
+              <span className="hidden sm:inline">Sincronizar CNPJ</span>
             </Button>
           </div>
           {empresaAtiva && (
-            <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
-              <Building2 className="w-3 h-3" /> {empresaAtiva.razao_social} – CNPJ: {empresaAtiva.cnpj}
+            <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1 break-all">
+              <Building2 className="w-3 h-3 flex-shrink-0" /> {empresaAtiva.razao_social} – CNPJ: {empresaAtiva.cnpj}
             </p>
           )}
         </div>
@@ -384,9 +385,9 @@ export default function ConfiguracaoPesquisaTab() {
 
       {/* Palavras-chave */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-xs text-muted-foreground">Palavras-chave ({palavrasChave.length})</label>
-          <Button size="sm" variant="outline" onClick={handleExtractKeywords} disabled={!empresaAtiva && cnaesSecundarios.length === 0} className="h-7 text-xs">
+        <div className="flex items-center justify-between mb-2 gap-2">
+          <label className="text-xs text-muted-foreground flex-shrink-0">Palavras-chave ({palavrasChave.length})</label>
+          <Button size="sm" variant="outline" onClick={handleExtractKeywords} disabled={!empresaAtiva && cnaesSecundarios.length === 0} className="h-7 text-xs flex-shrink-0">
             <Sparkles className="w-3 h-3 mr-1" /> Extrair dos CNAEs
           </Button>
         </div>
@@ -402,7 +403,7 @@ export default function ConfiguracaoPesquisaTab() {
           <Input value={palavraManual} onChange={e => setPalavraManual(e.target.value)}
             placeholder="Adicionar palavra-chave (separe por vírgula)" className="flex-1 h-8 text-xs"
             onKeyDown={e => e.key === 'Enter' && addPalavraManual()} />
-          <Button size="sm" variant="outline" onClick={addPalavraManual} className="h-8 text-xs">Adicionar</Button>
+          <Button size="sm" variant="outline" onClick={addPalavraManual} className="h-8 text-xs flex-shrink-0">Adicionar</Button>
         </div>
       </div>
 
@@ -415,9 +416,9 @@ export default function ConfiguracaoPesquisaTab() {
             <Button size="sm" variant="ghost" onClick={deselectAllUfs} className="h-6 text-[10px] px-2">Limpar</Button>
           </div>
         </div>
-        <div className="grid grid-cols-9 gap-1.5 p-3 rounded-lg border border-border/50 bg-muted/20">
+        <div className="grid grid-cols-5 sm:grid-cols-9 gap-1 sm:gap-1.5 p-2 sm:p-3 rounded-lg border border-border/50 bg-muted/20">
           {ALL_UFS.map(uf => (
-            <label key={uf.sigla} className={`flex items-center gap-1.5 p-1.5 rounded-md cursor-pointer transition-colors text-xs
+            <label key={uf.sigla} className={`flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-md cursor-pointer transition-colors text-[10px] sm:text-xs
               ${selectedUfs.has(uf.sigla)
                 ? 'bg-accent/15 text-accent border border-accent/30'
                 : 'bg-card border border-border/30 text-muted-foreground hover:border-accent/50'}`} title={uf.nome}>
@@ -428,7 +429,7 @@ export default function ConfiguracaoPesquisaTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div>
           <label className="text-xs text-muted-foreground">Frequência de busca</label>
           <Input value="A cada 30 minutos" className="mt-1" readOnly />
@@ -445,16 +446,16 @@ export default function ConfiguracaoPesquisaTab() {
 
       <div className="pt-2">
         <h4 className="text-xs font-semibold mb-2 text-muted-foreground">Tipos de documento para buscar</h4>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
           {Object.keys(tipoLabels).map(tipo => (
-            <Badge key={tipo} variant="outline" className={(tipoColors[tipo] || '') + ' cursor-pointer'}>
+            <Badge key={tipo} variant="outline" className={(tipoColors[tipo] || '') + ' cursor-pointer text-[10px] sm:text-xs'}>
               <CheckCircle2 className="w-3 h-3 mr-1" /> {tipoLabels[tipo]}
             </Badge>
           ))}
         </div>
       </div>
 
-      <Button onClick={handleSave} disabled={saving} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+      <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
         {saving ? 'Salvando...' : 'Salvar Configuração'}
       </Button>
     </div>
