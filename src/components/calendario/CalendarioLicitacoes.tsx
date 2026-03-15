@@ -465,7 +465,7 @@ export default function CalendarioLicitacoes() {
                     <div
                       key={l.id}
                       className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => navigate('/licitacoes-estrategicas')}
+                      onClick={() => navigate('/kanban')}
                     >
                       <div className="flex items-start gap-3 min-w-0">
                         <div
@@ -569,7 +569,7 @@ export default function CalendarioLicitacoes() {
                           'flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer hover:bg-muted/50',
                           isUrgent ? 'border-destructive/30 bg-destructive/5' : 'border-border/50'
                         )}
-                        onClick={() => navigate('/licitacoes-estrategicas')}
+                        onClick={() => navigate('/kanban')}
                       >
                         <div className="flex items-start gap-3 min-w-0">
                           <div className="text-center flex-shrink-0 w-12">
