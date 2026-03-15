@@ -185,7 +185,7 @@ export default function MarcarInteresseDialog({ open, onOpenChange, edital, onSu
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleSalvar} disabled={salvando} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            {salvando ? 'Salvando...' : '✅ Confirmar Interesse'}
+            {salvando ? 'Salvando...' : 'Confirmar Interesse'}
           </Button>
         </DialogFooter>
       </DialogContent>
