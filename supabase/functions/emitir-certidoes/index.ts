@@ -172,7 +172,7 @@ async function emitirCRF(cnpj: string, FIRECRAWL_API_KEY: string, LOVABLE_API_KE
 // CND Federal – Receita Federal / PGFN
 // ══════════════════════════════════════════════════════════════
 async function emitirCNDFederal(cnpj: string, FIRECRAWL_API_KEY: string, LOVABLE_API_KEY: string): Promise<EmissaoResult> {
-  const url = "https://solucoes.receita.fazenda.gov.br/Servicos/CertidaoInternet/PJ/Emitir";
+  const url = "https://servicos.receitafederal.gov.br/servico/certidoes/#/home";
 
   try {
     console.log("CND Federal: Tentando emissão via scrape+actions para CNPJ:", cnpj);
@@ -317,7 +317,7 @@ async function consultarSituacaoCadastral(cnpj: string): Promise<EmissaoResult> 
         certidao: "Situação Cadastral (Receita Federal)",
         status: "erro",
         detalhes: "Não foi possível consultar a situação cadastral",
-        url: "https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp",
+        url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home",
       };
     }
     const data = await resp.json();
@@ -328,7 +328,7 @@ async function consultarSituacaoCadastral(cnpj: string): Promise<EmissaoResult> 
         status: "emitida",
         detalhes: `Situação: ATIVA | Razão Social: ${data.razao_social} | CNAE: ${data.cnae_fiscal_descricao}`,
         dataEmissao: new Date().toISOString(),
-        url: "https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp",
+        url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home",
       };
     }
 
@@ -337,7 +337,7 @@ async function consultarSituacaoCadastral(cnpj: string): Promise<EmissaoResult> 
       certidao: "Situação Cadastral (Receita Federal)",
       status: "erro",
       detalhes: `Situação: ${situacoes[data.situacao_cadastral] || "IRREGULAR"} – ${data.motivo_situacao_cadastral || ""}`,
-      url: "https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp",
+      url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home",
     };
   } catch (e) {
     return {
