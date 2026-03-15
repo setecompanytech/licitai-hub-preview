@@ -4408,6 +4408,10 @@ export type Database = {
         Args: { _empresa_id: string; _user_id: string }
         Returns: boolean
       }
+      is_empresa_creator: {
+        Args: { _empresa_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_empresa_member: {
         Args: { _empresa_id: string; _user_id: string }
         Returns: boolean
