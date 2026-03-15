@@ -122,7 +122,20 @@ export default function CertidoesNegativas() {
     if (cnpjLimpo.length !== 14) { setErro('CNPJ deve conter 14 dígitos'); return; }
     setErro(''); setLoadingEmissao(true); setEmissaoResult(null);
     try {
-      const { data, error } = await supabase.functions.invoke('emitir-certidoes', { body: { cnpj: cnpjLimpo } });
+      const { data, error } = await supabase.functions.invoke('emitir-certidoes', {
+        body: {
+          cnpj: cnpjLimpo,
+          uf: ufSelecionada || undefined,
+          municipio: municipioSelecionado || undefined,
+          portaisRegionais: portaisRegionais.map(p => ({
+            nome: p.nome,
+            url: p.url,
+            tipo: p.tipo,
+            descricao: p.descricao,
+            requerLogin: p.requerLogin,
+          })),
+        },
+      });
       if (error) throw error;
       if (data.error) { setErro(data.error); } else {
         setEmissaoResult(data);
