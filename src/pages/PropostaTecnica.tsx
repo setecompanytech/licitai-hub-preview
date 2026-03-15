@@ -32,6 +32,8 @@ import DadosEmpresaUploader, { type ExtractedEmpresaData } from '@/components/pr
 import BancoSelector from '@/components/proposta/BancoSelector';
 import ImportarDoCatalogo from '@/components/proposta/ImportarDoCatalogo';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useRascunho } from '@/hooks/useRascunho';
+import { Save, Clock } from 'lucide-react';
 
 const STEPS = [
   { id: 1, label: 'Edital', icon: FileText, desc: 'Upload e extração IA' },
