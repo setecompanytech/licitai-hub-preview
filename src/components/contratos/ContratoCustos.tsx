@@ -70,12 +70,12 @@ function calcSimplesAliquota(rbt12: number): number {
 }
 
 const tiposCusto = [
-  { value: 'custo_direto', label: 'Custo Direto', icon: '📦', desc: 'Materiais, insumos e custos diretamente ligados à execução' },
-  { value: 'despesa_administrativa', label: 'Despesa Administrativa', icon: '🏢', desc: 'Despesas de gestão, escritório e suporte' },
-  { value: 'frete_logistica', label: 'Frete / Logística', icon: '🚚', desc: 'Custos de transporte e entrega' },
-  { value: 'tributo', label: 'Tributos', icon: '📋', desc: 'Impostos e contribuições calculados automaticamente' },
-  { value: 'mao_de_obra', label: 'Mão de Obra', icon: '👷', desc: 'Salários, encargos e benefícios' },
-  { value: 'outros', label: 'Outros', icon: '📎', desc: 'Custos diversos não classificados' },
+  { value: 'custo_direto', label: 'Custo Direto', Icon: Package, desc: 'Materiais, insumos e custos diretamente ligados à execução' },
+  { value: 'despesa_administrativa', label: 'Despesa Administrativa', Icon: Briefcase, desc: 'Despesas de gestão, escritório e suporte' },
+  { value: 'frete_logistica', label: 'Frete / Logística', Icon: Truck, desc: 'Custos de transporte e entrega' },
+  { value: 'tributo', label: 'Tributos', Icon: FileText, desc: 'Impostos e contribuições calculados automaticamente' },
+  { value: 'mao_de_obra', label: 'Mão de Obra', Icon: HardHat, desc: 'Salários, encargos e benefícios' },
+  { value: 'outros', label: 'Outros', Icon: Paperclip, desc: 'Custos diversos não classificados' },
 ];
 
 const ENCARGOS_SOCIAIS = {
