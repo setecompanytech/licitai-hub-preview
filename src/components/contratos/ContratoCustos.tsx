@@ -16,7 +16,8 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import {
   Plus, Trash2, Loader2, Receipt, DollarSign, TrendingUp, TrendingDown, Percent,
-  Calculator, Building2, AlertTriangle, Info
+  Calculator, Building2, AlertTriangle, Info, Package, Briefcase, Truck, FileText,
+  HardHat, Paperclip
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -69,12 +70,12 @@ function calcSimplesAliquota(rbt12: number): number {
 }
 
 const tiposCusto = [
-  { value: 'custo_direto', label: 'Custo Direto', icon: '📦', desc: 'Materiais, insumos e custos diretamente ligados à execução' },
-  { value: 'despesa_administrativa', label: 'Despesa Administrativa', icon: '🏢', desc: 'Despesas de gestão, escritório e suporte' },
-  { value: 'frete_logistica', label: 'Frete / Logística', icon: '🚚', desc: 'Custos de transporte e entrega' },
-  { value: 'tributo', label: 'Tributos', icon: '📋', desc: 'Impostos e contribuições calculados automaticamente' },
-  { value: 'mao_de_obra', label: 'Mão de Obra', icon: '👷', desc: 'Salários, encargos e benefícios' },
-  { value: 'outros', label: 'Outros', icon: '📎', desc: 'Custos diversos não classificados' },
+  { value: 'custo_direto', label: 'Custo Direto', Icon: Package, desc: 'Materiais, insumos e custos diretamente ligados à execução' },
+  { value: 'despesa_administrativa', label: 'Despesa Administrativa', Icon: Briefcase, desc: 'Despesas de gestão, escritório e suporte' },
+  { value: 'frete_logistica', label: 'Frete / Logística', Icon: Truck, desc: 'Custos de transporte e entrega' },
+  { value: 'tributo', label: 'Tributos', Icon: FileText, desc: 'Impostos e contribuições calculados automaticamente' },
+  { value: 'mao_de_obra', label: 'Mão de Obra', Icon: HardHat, desc: 'Salários, encargos e benefícios' },
+  { value: 'outros', label: 'Outros', Icon: Paperclip, desc: 'Custos diversos não classificados' },
 ];
 
 const ENCARGOS_SOCIAIS = {
@@ -202,7 +203,7 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
           <p className="text-sm font-bold text-warning">{fmt(tributos)}</p>
         </Card>
         <Card className="p-3">
-          <div className="flex items-center gap-1 text-muted-foreground text-[10px] mb-1">🚚 Frete/Logística</div>
+          <div className="flex items-center gap-1 text-muted-foreground text-[10px] mb-1"><Truck className="w-3 h-3" /> Frete/Logística</div>
           <p className="text-sm font-bold text-accent">{fmt(custosPorTipo['frete_logistica'] || 0)}</p>
         </Card>
       </div>
@@ -218,7 +219,7 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
               className="p-3 text-center cursor-pointer hover:border-primary/50 hover:shadow-sm transition-all group"
               onClick={() => openCalculator(t.value)}
             >
-              <span className="text-lg">{t.icon}</span>
+              <t.Icon className="w-5 h-5 text-muted-foreground mx-auto" />
               <p className="text-[10px] font-medium mt-1">{t.label}</p>
               <p className="text-xs font-bold">{fmt(val)}</p>
               <p className="text-[9px] text-muted-foreground">{pct.toFixed(0)}%</p>
@@ -261,7 +262,7 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
           <SelectContent>
             <SelectItem value="all">Todos os tipos</SelectItem>
             {tiposCusto.map(t => (
-              <SelectItem key={t.value} value={t.value}>{t.icon} {t.label}</SelectItem>
+              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -291,7 +292,9 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
                 return (
                   <TableRow key={c.id}>
                     <TableCell className="text-xs">
-                      <Badge variant="outline" className="text-[10px]">{tipoCfg?.icon} {tipoCfg?.label || c.tipo}</Badge>
+                      <Badge variant="outline" className="text-[10px] flex items-center gap-1 w-fit">
+                        {tipoCfg && <tipoCfg.Icon className="w-3 h-3" />} {tipoCfg?.label || c.tipo}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-xs max-w-[200px] truncate">{c.descricao}</TableCell>
                     <TableCell className="text-xs text-right font-medium text-destructive">{fmt(c.valor)}</TableCell>
@@ -338,7 +341,7 @@ function CalculatorDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calculator className="w-5 h-5 text-primary" />
-            {tipoCfg?.icon} {tipoCfg?.label} — Calculadora
+            {tipoCfg && <tipoCfg.Icon className="w-4 h-4 text-muted-foreground" />} {tipoCfg?.label} — Calculadora
           </DialogTitle>
           <p className="text-xs text-muted-foreground">{tipoCfg?.desc}</p>
         </DialogHeader>
