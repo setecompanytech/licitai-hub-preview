@@ -56,7 +56,6 @@ function extractModel(title: string): string {
   return modelMatch ? modelMatch[1] : '';
 }
 
-/** Detects which store a URL belongs to */
 function detectStore(url: string): string {
   const u = url.toLowerCase();
   if (u.includes('mercadolivre') || u.includes('mercadolibre') || u.includes('mlstatic') || u.includes('produto.mercadolivre')) return 'Mercado Livre';
@@ -92,34 +91,22 @@ function detectStore(url: string): string {
   return 'Outros';
 }
 
-/** Check if URL is a search/listing page rather than a product detail */
 function isSearchOrListingPage(url: string): boolean {
   return /\/busca\/|\/search|\/lista\/|\/list\/|catalogsearch|\?s?k=|[?&]q=|[?&]search=|[?&]str=|\/(?:categoria|departamento)\//i.test(url);
 }
 
-/** Check if URL is likely a product detail page */
 function isLikelyProductPage(url: string, loja: string): boolean {
   const u = url.toLowerCase();
-
   if (loja === 'Amazon') return /\/dp\/[a-z0-9]{8,}/i.test(url) || /\/gp\/product\//i.test(url);
-  if (loja === 'Mercado Livre') {
-    // ML uses many URL patterns: /MLB-XXXX, /p/MLBXXXX, /produto/..., etc.
-    return /mlb[-\/]?\d{6,}/i.test(url) || /\/p\/mlb\d+/i.test(url) || /produto\.mercadolivre/i.test(url);
-  }
+  if (loja === 'Mercado Livre') return /mlb[-\/]?\d{6,}/i.test(url) || /\/p\/mlb\d+/i.test(url) || /produto\.mercadolivre/i.test(url);
   if (loja === 'Magazine Luiza') return /\/p\//i.test(u) && !u.includes('/busca/');
   if (loja === 'KaBuM' || loja === 'Terabyte' || loja === 'Pichau') return /\/produto\//i.test(u);
   if (loja === 'Shopee') return /-i\.\d+\.\d+/i.test(url);
   if (loja === 'Casas Bahia' || loja === 'Americanas' || loja === 'Submarino') return /\/produto\//i.test(u) || /\/p\//i.test(u) || /\/\d{6,}\//i.test(u);
-  if (loja === 'Buscapé' || loja === 'Zoom') return true; // aggregators always show product info
-  if (loja === 'Google Shopping') return true;
-
-  // For other stores, accept if it's not a search page
+  if (['Buscapé', 'Zoom', 'Google Shopping'].includes(loja)) return true;
   return !isSearchOrListingPage(url);
 }
 
-/**
- * INTELLIGENT PRICE EXTRACTION
- */
 function extractMainProductPrice(title: string, fullText: string): { preco: number; precoOriginal?: number } | null {
   const prices: { value: number; context: string; lineIdx: number }[] = [];
   const lines = fullText.split('\n');
@@ -162,11 +149,9 @@ function extractMainProductPrice(title: string, fullText: string): { preco: numb
   return { preco, precoOriginal };
 }
 
-/** Score image quality/relevance */
 function scoreImageCandidate(url: string): number {
   const u = url.toLowerCase();
   let score = 0;
-
   if (/m\.media-amazon\.com\/images\/i\//i.test(u)) score += 4;
   if (/http2\.mlstatic\.com\/d_/i.test(u)) score += 4;
   if (/images\.kabum\.com\.br/i.test(u)) score += 3;
@@ -176,21 +161,17 @@ function scoreImageCandidate(url: string): number {
   if (/magazineluiza|magalu/i.test(u)) score += 3;
   if (/americanas|b2w/i.test(u)) score += 3;
   if (/casasbahia/i.test(u)) score += 3;
-
-  if (/thumb|thumbnail/i.test(u)) score -= 1; // thumbs may still be ok
+  if (/thumb|thumbnail/i.test(u)) score -= 1;
   if (/og[_\-.]|social[-_]?share/i.test(u)) score -= 5;
   if (/\/assets\/|\/static\/|\/themes\/|\/template\//i.test(u)) score -= 5;
   if (/\/rating\/|\/stars\//i.test(u)) score -= 4;
   if (/logo|icon|sprite|banner|favicon|badge|selo|stamp|watermark/i.test(u)) score -= 6;
-
   return score;
 }
 
-/** Check if URL looks like a real product image */
 function isProductImage(url: string): boolean {
   if (!url) return false;
   const lower = url.toLowerCase();
-
   if (/logo|icon|sprite|banner|favicon|avatar|badge|selo|stamp|watermark/i.test(lower)) return false;
   if (/1x1|pixel|tracking|analytics/i.test(lower)) return false;
   if (/ad[s]?[_\-\/]|doubleclick|googlesyndication|adsense|adserver|pubmatic|criteo|taboola|outbrain/i.test(lower)) return false;
@@ -199,11 +180,9 @@ function isProductImage(url: string): boolean {
   if (/vlibras|access_popup|shopee-pcmall-live-sg|kalunga\.jpg|og_tb\.png/i.test(lower)) return false;
   if (/_S_\d{2,3}\.\w+$/i.test(lower)) return false;
   if (/_AC_US\d{1,3}_/i.test(lower)) return false;
-
   return /\.(jpg|jpeg|png|webp)(\?.*)?$/i.test(lower);
 }
 
-/** Extract all product image URLs from search result */
 function extractImages(result: any): string[] {
   const markdown = result.markdown || '';
   const candidates: { url: string; score: number }[] = [];
@@ -215,68 +194,39 @@ function extractImages(result: any): string[] {
     candidates.push({ url, score: scoreImageCandidate(url) });
   }
 
-  // 1. ML static images
-  const mlMatches = [...markdown.matchAll(/(https?:\/\/http2\.mlstatic\.com\/D_[^\s"')]+\.(?:jpg|webp|png))/gi)];
-  for (const m of mlMatches) addImg(m[1]);
+  // Store-specific CDN patterns
+  const patterns = [
+    /(https?:\/\/http2\.mlstatic\.com\/D_[^\s"')]+\.(?:jpg|webp|png))/gi,
+    /(https?:\/\/m\.media-amazon\.com\/images\/I\/[^\s"')]+\.(?:jpg|webp|png))/gi,
+    /(https?:\/\/images\.kabum\.com\.br\/[^\s"')]+\.(?:jpg|webp|png))/gi,
+    /(https?:\/\/[^\s"')]*(?:magazineluiza|magalu)[^\s"')]*\.(?:jpg|webp|png))/gi,
+    /(https?:\/\/cf\.shopee\.[^\s"')]+\.(?:jpg|webp|png))/gi,
+  ];
+  for (const pat of patterns) {
+    for (const m of markdown.matchAll(pat)) addImg(m[1]);
+  }
 
-  // 2. Amazon images
-  const amzMatches = [...markdown.matchAll(/(https?:\/\/m\.media-amazon\.com\/images\/I\/[^\s"')]+\.(?:jpg|webp|png))/gi)];
-  for (const m of amzMatches) addImg(m[1]);
+  // Markdown images and raw URLs
+  for (const m of markdown.matchAll(/!\[[^\]]*\]\((https?:\/\/[^\s)]+\.(?:jpg|jpeg|png|webp)[^\s)]*)\)/gi)) addImg(m[1]);
+  for (const m of markdown.matchAll(/(https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp))(?:\?[^\s"'<>]*)?/gi)) addImg(m[1]);
 
-  // 3. Kabum images
-  const kabumMatches = [...markdown.matchAll(/(https?:\/\/images\.kabum\.com\.br\/[^\s"')]+\.(?:jpg|webp|png))/gi)];
-  for (const m of kabumMatches) addImg(m[1]);
-
-  // 4. Magazine Luiza images
-  const magaluMatches = [...markdown.matchAll(/(https?:\/\/[^\s"')]*(?:magazineluiza|magalu)[^\s"')]*\.(?:jpg|webp|png))/gi)];
-  for (const m of magaluMatches) addImg(m[1]);
-
-  // 5. Shopee images
-  const shopeeMatches = [...markdown.matchAll(/(https?:\/\/cf\.shopee\.[^\s"')]+\.(?:jpg|webp|png))/gi)];
-  for (const m of shopeeMatches) addImg(m[1]);
-
-  // 6. Markdown images ![alt](url)
-  const mdImgMatches = [...markdown.matchAll(/!\[[^\]]*\]\((https?:\/\/[^\s)]+\.(?:jpg|jpeg|png|webp)[^\s)]*)\)/gi)];
-  for (const m of mdImgMatches) addImg(m[1]);
-
-  // 7. Raw image URLs
-  const rawMatches = [...markdown.matchAll(/(https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp))(?:\?[^\s"'<>]*)?/gi)];
-  for (const m of rawMatches) addImg(m[1]);
-
-  // 8. OG image as fallback
+  // OG image fallback
   const ogImage = result.metadata?.ogImage || result.metadata?.['og:image'];
   if (ogImage) addImg(ogImage);
 
-  return candidates
-    .sort((a, b) => b.score - a.score)
-    .map(c => c.url)
-    .slice(0, 8);
+  return candidates.sort((a, b) => b.score - a.score).map(c => c.url).slice(0, 5);
 }
 
-/**
- * Validates that the title is for a real product, not an accessory/insurance/listing page
- */
 function isMainProduct(title: string, searchTerm: string, url: string, loja: string): boolean {
   const titleLower = title.toLowerCase();
 
-  // For aggregators (Buscapé, Zoom, Google Shopping), be more permissive
   if (['Buscapé', 'Zoom', 'Google Shopping'].includes(loja)) {
-    // Just check basic relevance
     const searchWords = searchTerm.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-    if (searchWords.length > 0) {
-      const matchCount = searchWords.filter(w => titleLower.includes(w)).length;
-      return matchCount > 0;
-    }
-    return true;
+    return searchWords.length === 0 || searchWords.some(w => titleLower.includes(w));
   }
 
-  // For major marketplaces, accept detail pages and also well-structured search results
-  if (!isLikelyProductPage(url, loja)) {
-    // Only reject if it's clearly a search/listing page with no product info
-    if (isSearchOrListingPage(url)) return false;
-  }
+  if (isSearchOrListingPage(url) && !isLikelyProductPage(url, loja)) return false;
 
-  // Skip items that are clearly accessories/insurance
   const SKIP_PATTERNS = [
     /^seguro\s/i, /^proteç[aã]o\s/i, /^garantia\s*estendida/i,
     /^capa\s*(para|de|do|da)\s/i, /^película\s/i, /^case\s*(para|de|do|da)\s/i,
@@ -285,29 +235,17 @@ function isMainProduct(title: string, searchTerm: string, url: string, loja: str
     /^carregador\s*(para|de|do|da)\s/i, /^mouse\s*pad/i,
     /^skin\s*(para|de|do|da)\s/i, /^adesivo\s*(para|de|do|da)\s/i,
   ];
-
   for (const pattern of SKIP_PATTERNS) {
     if (pattern.test(titleLower)) return false;
   }
 
-  // Skip generic listing titles
-  if (/em promoç[aã]o|com menor preço|na amazon\.com\.br|mercado livre|\| shopee|resultado de busca|categoria/i.test(titleLower)) {
-    return false;
-  }
+  if (/em promoç[aã]o|com menor preço|na amazon\.com\.br|mercado livre|\| shopee|resultado de busca|categoria/i.test(titleLower)) return false;
+  if (/^(eletrodomésticos|eletrônicos|informática|móveis|utilidades)\s*(no\s*atacado|em\s*oferta)/i.test(titleLower)) return false;
+  if (/^(gazin\s*atacado|inicio|home)\s*[:|\-]?\s*$/i.test(titleLower.replace(/\s+/g, ' ').trim())) return false;
 
-  // Skip generic category pages
-  if (/^(eletrodomésticos|eletrônicos|informática|móveis|utilidades)\s*(no\s*atacado|em\s*oferta)/i.test(titleLower)) {
-    return false;
-  }
-  if (/^(gazin\s*atacado|inicio|home)\s*[:|\-]?\s*$/i.test(titleLower.replace(/\s+/g, ' ').trim())) {
-    return false;
-  }
-
-  // Relevance check: at least one significant word from search should appear in title
   const searchWords = searchTerm.toLowerCase().split(/\s+/).filter(w => w.length > 2);
   if (searchWords.length > 0) {
     const matchCount = searchWords.filter(w => titleLower.includes(w)).length;
-    // More lenient: require at least 1 match for short queries, 40% for longer
     const threshold = searchWords.length <= 3 ? 1 : Math.ceil(searchWords.length * 0.4);
     if (matchCount < threshold) return false;
   }
@@ -315,7 +253,6 @@ function isMainProduct(title: string, searchTerm: string, url: string, loja: str
   return true;
 }
 
-/** Parse a Firecrawl search result into product entries */
 function parseSearchResult(result: any, searchTerm: string): ProdutoExtraido | null {
   const url = result.url || '';
   const title = result.title || '';
@@ -326,16 +263,12 @@ function parseSearchResult(result: any, searchTerm: string): ProdutoExtraido | n
   if (!title || title.length < 5) return null;
 
   const loja = detectStore(url);
-
-  if (!isMainProduct(title, searchTerm, url, loja)) {
-    return null;
-  }
+  if (!isMainProduct(title, searchTerm, url, loja)) return null;
 
   const priceResult = extractMainProductPrice(title, fullText);
   if (!priceResult) return null;
 
   const { preco, precoOriginal } = priceResult;
-
   const freteGratis = /frete\s*gr[aá]tis|entrega\s*gr[aá]tis|free.shipping|sem\s*custo\s*de\s*envio/i.test(fullText);
 
   let condicao = 'Novo';
@@ -371,10 +304,13 @@ function parseSearchResult(result: any, searchTerm: string): ProdutoExtraido | n
   };
 }
 
-/** Run a Firecrawl search query */
-async function searchProducts(apiKey: string, query: string, limit = 15): Promise<any[]> {
+/** Run a Firecrawl search with per-query timeout */
+async function searchProducts(apiKey: string, query: string, limit = 10, timeoutMs = 12000): Promise<any[]> {
   try {
     console.log(`Searching: "${query}" (limit ${limit})`);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
     const response = await fetch("https://api.firecrawl.dev/v1/search", {
       method: "POST",
       headers: {
@@ -386,9 +322,12 @@ async function searchProducts(apiKey: string, query: string, limit = 15): Promis
         limit,
         lang: "pt-BR",
         country: "BR",
-        scrapeOptions: { formats: ["markdown", "links"] },
+        scrapeOptions: { formats: ["markdown"] },
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timer);
 
     if (!response.ok) {
       const errText = await response.text();
@@ -399,33 +338,12 @@ async function searchProducts(apiKey: string, query: string, limit = 15): Promis
     const data = await response.json();
     return data?.data || [];
   } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      console.warn(`Search timeout: "${query}"`);
+      return [];
+    }
     console.error("Search error:", e);
     return [];
-  }
-}
-
-/** Scrape a single product page for richer data (images + details) */
-async function scrapeProductPage(apiKey: string, url: string): Promise<any | null> {
-  try {
-    const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        url,
-        formats: ["markdown", "links"],
-        onlyMainContent: true,
-        waitFor: 2000,
-      }),
-    });
-
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data?.data || data || null;
-  } catch {
-    return null;
   }
 }
 
@@ -453,33 +371,23 @@ serve(async (req) => {
     }
 
     console.log(`Pesquisa real para: "${termo}"`);
+    const startTime = Date.now();
 
-    // ─── STRATEGY: Multiple targeted searches with higher limits ───
-    // Use product-focused queries and broader searches
-    const termoEncoded = termo.replace(/\s+/g, '+');
-
+    // ─── OPTIMIZED: 6 consolidated searches instead of 12 ───
+    // Each with a 12s timeout to prevent hanging
     const searches = await Promise.allSettled([
-      // Primary: Mercado Livre (largest BR marketplace) — multiple queries
-      searchProducts(apiKey, `"${termo}" site:mercadolivre.com.br`, 20),
-      searchProducts(apiKey, `${termo} preço site:produto.mercadolivre.com.br`, 15),
-      // Amazon BR
-      searchProducts(apiKey, `"${termo}" comprar site:amazon.com.br`, 15),
-      // Major retail
-      searchProducts(apiKey, `"${termo}" site:magazineluiza.com.br OR site:kabum.com.br OR site:americanas.com.br`, 15),
-      searchProducts(apiKey, `"${termo}" site:casasbahia.com.br OR site:carrefour.com.br OR site:shopee.com.br`, 12),
-      // Atacado / specialty
-      searchProducts(apiKey, `"${termo}" site:gazinatacado.com.br OR site:mirao.com.br OR site:kalunga.com.br`, 10),
-      // Price comparators (Buscapé, Zoom) — great for aggregated prices
-      searchProducts(apiKey, `${termo} site:buscape.com.br OR site:zoom.com.br`, 12),
-      // Webcontinental, Leroy, MadeiraMadeira, Fast Shop
-      searchProducts(apiKey, `"${termo}" site:webcontinental.com.br OR site:leroymerlin.com.br OR site:madeiramadeira.com.br OR site:fastshop.com.br`, 10),
-      // Havan, Colombo
-      searchProducts(apiKey, `"${termo}" site:havan.com.br OR site:colombo.com.br OR site:extra.com.br`, 10),
-      // Medical/special
-      searchProducts(apiKey, `${termo} site:rakaymed.com.br OR site:hospitalardistribuidora.com.br`, 8),
-      // Generic broad search to catch other stores
-      searchProducts(apiKey, `"${termo}" comprar preço loja online Brasil`, 20),
-      searchProducts(apiKey, `${termo} preço atacado distribuidor Brasil`, 15),
+      // 1. Major marketplaces (ML + Amazon)
+      searchProducts(apiKey, `"${termo}" comprar site:mercadolivre.com.br OR site:amazon.com.br`, 10),
+      // 2. Major retail chains
+      searchProducts(apiKey, `"${termo}" site:magazineluiza.com.br OR site:kabum.com.br OR site:americanas.com.br OR site:casasbahia.com.br`, 10),
+      // 3. More retail + specialty
+      searchProducts(apiKey, `"${termo}" site:shopee.com.br OR site:carrefour.com.br OR site:havan.com.br OR site:kalunga.com.br`, 8),
+      // 4. Price comparators (fast, aggregated data)
+      searchProducts(apiKey, `${termo} site:buscape.com.br OR site:zoom.com.br`, 8),
+      // 5. Specialty / wholesale
+      searchProducts(apiKey, `"${termo}" site:leroymerlin.com.br OR site:madeiramadeira.com.br OR site:gazinatacado.com.br OR site:webcontinental.com.br`, 8),
+      // 6. Broad catch-all for other stores
+      searchProducts(apiKey, `"${termo}" comprar preço loja online Brasil`, 10),
     ]);
 
     const allFornecedores: ProdutoExtraido[] = [];
@@ -501,27 +409,10 @@ serve(async (req) => {
       }
     }
 
-    // ─── ENRICHMENT: For top results without images, scrape the product page ───
-    const itemsWithoutImages = allFornecedores.filter(f => !f.image_url && f.url?.startsWith('https://'));
-    const scrapePromises = itemsWithoutImages.slice(0, 8).map(async (item) => {
-      try {
-        const scraped = await scrapeProductPage(apiKey, item.url);
-        if (scraped) {
-          const images = extractImages(scraped);
-          if (images.length > 0) {
-            item.image_url = images[0];
-            item.images = images.length > 1 ? images : undefined;
-          }
-        }
-      } catch { /* ignore */ }
-    });
-
-    await Promise.allSettled(scrapePromises);
-
     // Sort by price
     allFornecedores.sort((a, b) => a.preco - b.preco);
 
-    // POST-PROCESSING: Remove statistical outliers
+    // Remove statistical outliers
     if (allFornecedores.length >= 3) {
       const medianIdx = Math.floor(allFornecedores.length / 2);
       const median = allFornecedores[medianIdx].preco;
@@ -533,7 +424,8 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Total: ${allFornecedores.length} produtos de ${Object.keys(fonteCount).length} fontes`);
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`Total: ${allFornecedores.length} produtos de ${Object.keys(fonteCount).length} fontes em ${elapsed}s`);
     console.log("Fontes:", JSON.stringify(fonteCount));
 
     // Build summary
@@ -560,7 +452,7 @@ serve(async (req) => {
           fornecedor_menor: fornecedorMenor ? `${fornecedorMenor.loja}` : '',
           fornecedor_maior: fornecedorMaior ? `${fornecedorMaior.loja}` : '',
           recomendacao: allFornecedores.length > 0
-            ? `Pesquisa em ${Object.keys(fonteCount).length} fontes com ${allFornecedores.length} resultados válidos. Menor preço: R$ ${menorPreco.toFixed(2)} (${fornecedorMenor?.loja}).`
+            ? `Pesquisa em ${Object.keys(fonteCount).length} fontes com ${allFornecedores.length} resultados válidos. Menor preço: R$ ${menorPreco.toFixed(2)} (${fornecedorMenor?.loja}). Tempo: ${elapsed}s.`
             : 'Nenhum resultado encontrado.',
         },
         fontes_consultadas: fonteCount,
