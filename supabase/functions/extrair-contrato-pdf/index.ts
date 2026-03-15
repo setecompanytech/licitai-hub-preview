@@ -19,7 +19,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const truncated = texto_pdf.slice(0, 30000);
+    const truncated = texto_pdf.slice(0, 60000);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -32,11 +32,11 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `Você é um especialista em contratos públicos brasileiros. Extraia as informações do contrato a partir do texto fornecido. Se uma informação não estiver disponível, retorne null. Para itens do contrato, extraia todos os itens encontrados com descrição, quantidade, unidade, valor unitário e valor total.`
+            content: `Você é um especialista em contratos públicos brasileiros. Extraia TODAS as informações do contrato, especialmente TODOS os itens com suas descrições completas, quantidades, unidades de medida, valores unitários e valores totais. É FUNDAMENTAL que nenhum item seja omitido. Se o contrato tiver uma tabela de itens, extraia cada linha como um item separado. Se uma informação não estiver disponível, retorne null.`
           },
           {
             role: "user",
-            content: `Extraia as informações deste contrato público:\n\n${truncated}`
+            content: `Extraia TODAS as informações deste contrato público, incluindo TODOS os itens da planilha/tabela de preços:\n\n${truncated}`
           }
         ],
         tools: [
