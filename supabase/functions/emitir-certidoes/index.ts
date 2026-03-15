@@ -334,47 +334,6 @@ async function consultarTransparencia(cnpj: string, FIRECRAWL_API_KEY: string, L
   return results;
 }
 
-// ══════════════════════════════════════════════════════════════
-// Receita Federal – Situação Cadastral (via BrasilAPI)
-// ══════════════════════════════════════════════════════════════
-async function consultarSituacaoCadastral(cnpj: string): Promise<EmissaoResult> {
-  try {
-    const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
-    if (!resp.ok) {
-      return {
-        certidao: "Situação Cadastral (Receita Federal)",
-        status: "erro",
-        detalhes: "Não foi possível consultar a situação cadastral",
-        url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home",
-      };
-    }
-    const data = await resp.json();
-
-    if (data.situacao_cadastral === 2) {
-      return {
-        certidao: "Situação Cadastral (Receita Federal)",
-        status: "emitida",
-        detalhes: `Situação: ATIVA | Razão Social: ${data.razao_social} | CNAE: ${data.cnae_fiscal_descricao}`,
-        dataEmissao: new Date().toISOString(),
-        url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home",
-      };
-    }
-
-    const situacoes: Record<number, string> = { 1: "NULA", 3: "SUSPENSA", 4: "INAPTA", 8: "BAIXADA" };
-    return {
-      certidao: "Situação Cadastral (Receita Federal)",
-      status: "erro",
-      detalhes: `Situação: ${situacoes[data.situacao_cadastral] || "IRREGULAR"} – ${data.motivo_situacao_cadastral || ""}`,
-      url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home",
-    };
-  } catch (e) {
-    return {
-      certidao: "Situação Cadastral (Receita Federal)",
-      status: "erro",
-      detalhes: `Erro: ${e.message}`,
-    };
-  }
-}
 
 // ══════════════════════════════════════════════════════════════
 // IA – Extrair dados da certidão do conteúdo scrapeado
