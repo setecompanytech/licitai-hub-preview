@@ -219,7 +219,7 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
               className="p-3 text-center cursor-pointer hover:border-primary/50 hover:shadow-sm transition-all group"
               onClick={() => openCalculator(t.value)}
             >
-              <span className="text-lg">{t.icon}</span>
+              <t.Icon className="w-5 h-5 text-muted-foreground mx-auto" />
               <p className="text-[10px] font-medium mt-1">{t.label}</p>
               <p className="text-xs font-bold">{fmt(val)}</p>
               <p className="text-[9px] text-muted-foreground">{pct.toFixed(0)}%</p>
