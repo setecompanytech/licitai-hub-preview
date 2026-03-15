@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { ano } = await req.json();
+    const { ano, portal_nome, portal_sigla, portal_url, portal_tipo } = await req.json();
     const lovableKey = Deno.env.get('LOVABLE_API_KEY');
 
     if (!lovableKey) {
@@ -20,43 +20,42 @@ Deno.serve(async (req) => {
     }
 
     const targetYear = ano || new Date().getFullYear();
-    console.log('Extraindo dados de transparência PA via IA para ano:', targetYear);
+    const nome = portal_nome || 'Pará';
+    const sigla = portal_sigla || 'PA';
+    const url = portal_url || 'https://www.sistemas.pa.gov.br/portaltransparencia';
+    const tipo = portal_tipo || 'estado';
 
-    const prompt = `Com base em dados públicos do Portal de Transparência do Estado do Pará (https://www.sistemas.pa.gov.br/portaltransparencia), forneça os principais órgãos do governo estadual do Pará que mais realizaram empenhos/despesas no ano de ${targetYear}.
+    const isEstado = tipo === 'estado';
+    const entidadeLabel = isEstado ? `Estado de ${nome} (${sigla})` : `Município de ${nome} (${sigla})`;
 
-Inclua os principais órgãos estaduais como:
-- Secretaria de Estado de Educação (SEDUC)
-- Secretaria de Estado de Saúde Pública (SESPA)
-- Secretaria de Estado de Segurança Pública e Defesa Social (SEGUP)
-- Secretaria de Estado de Infraestrutura e Logística (SEINFRA)
-- Secretaria de Estado de Meio Ambiente e Sustentabilidade (SEMAS)
-- Secretaria de Estado da Fazenda (SEFA)
-- Secretaria de Estado de Administração (SEAD)
-- Secretaria de Estado de Assistência Social, Trabalho, Emprego e Renda (SEASTER)
-- Departamento de Trânsito do Estado do Pará (DETRAN-PA)
-- Instituto de Assistência dos Servidores do Estado do Pará (IASEP)
-- Instituto de Gestão Previdenciária do Estado do Pará (IGEPREV)
-- Assembleia Legislativa do Estado do Pará (ALEPA)
-- Tribunal de Justiça do Estado do Pará (TJPA)
-- Ministério Público do Estado do Pará (MPPA)
-- Defensoria Pública do Estado do Pará
-- Polícia Militar do Estado do Pará
-- Corpo de Bombeiros Militar do Pará
-- Secretaria de Estado de Planejamento e Administração (SEPLAN)
-- Hospital Ophir Loyola
-- Hospital de Clínicas Gaspar Vianna
-- EMATER-PA
-- Companhia de Saneamento do Pará (COSANPA)
+    console.log(`Extraindo dados de transparência via IA para: ${entidadeLabel}, ano: ${targetYear}`);
+
+    const prompt = isEstado
+      ? `Com base em dados públicos do Portal de Transparência do ${entidadeLabel} (${url}), forneça os principais órgãos do governo ${isEstado ? 'estadual' : 'municipal'} que mais realizaram empenhos/despesas no ano de ${targetYear}.
+
+Inclua os principais órgãos como secretarias, autarquias, fundações e empresas públicas do ${entidadeLabel}.
 
 REGRAS:
 - Retorne APENAS um JSON válido, sem markdown code blocks, sem texto adicional
 - Formato: [{"orgao": "Nome Completo do Órgão (SIGLA)", "valor": 1234567890.00, "quantidade": 1500}]
 - "valor" = valor total estimado de empenhos em reais no ano ${targetYear}
 - "quantidade" = número estimado de notas de empenho
-- Valores realistas baseados no orçamento estadual do Pará (LOA ${targetYear})
-- O orçamento total do PA gira em torno de R$ 35-45 bilhões/ano
+- Valores realistas baseados no orçamento ${isEstado ? 'estadual' : 'municipal'} (LOA ${targetYear})
 - Ordene do maior para o menor valor
-- Inclua pelo menos 20 órgãos
+- Inclua pelo menos 15 órgãos
+- Valores numéricos, sem formatação`
+      : `Com base em dados públicos do Portal de Transparência de ${nome} (${url}), forneça os principais órgãos/secretarias da prefeitura que mais realizaram empenhos/despesas no ano de ${targetYear}.
+
+Inclua os principais órgãos como secretarias municipais, autarquias, fundações e empresas públicas de ${nome}.
+
+REGRAS:
+- Retorne APENAS um JSON válido, sem markdown code blocks, sem texto adicional
+- Formato: [{"orgao": "Nome Completo do Órgão (SIGLA)", "valor": 1234567890.00, "quantidade": 1500}]
+- "valor" = valor total estimado de empenhos em reais no ano ${targetYear}
+- "quantidade" = número estimado de notas de empenho
+- Valores realistas baseados no orçamento municipal (LOA ${targetYear})
+- Ordene do maior para o menor valor
+- Inclua pelo menos 15 órgãos
 - Valores numéricos, sem formatação`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -70,7 +69,7 @@ REGRAS:
         messages: [
           {
             role: 'system',
-            content: 'Você é um especialista em finanças públicas e orçamento do Estado do Pará. Responda APENAS com JSON válido. Sem markdown, sem explicações, apenas o array JSON.',
+            content: `Você é um especialista em finanças públicas e orçamento do ${entidadeLabel}. Responda APENAS com JSON válido. Sem markdown, sem explicações, apenas o array JSON.`,
           },
           { role: 'user', content: prompt },
         ],
@@ -91,7 +90,6 @@ REGRAS:
     const data = await response.json();
     let content = data.choices?.[0]?.message?.content || '';
 
-    // Clean markdown artifacts
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
     const jsonMatch = content.match(/\[[\s\S]*\]/);
@@ -113,7 +111,7 @@ REGRAS:
       }))
       .sort((a: any, b: any) => b.valor - a.valor);
 
-    console.log(`IA extraiu ${orgaos.length} órgãos para ${targetYear}`);
+    console.log(`IA extraiu ${orgaos.length} órgãos para ${entidadeLabel} - ${targetYear}`);
 
     return new Response(
       JSON.stringify({ success: true, data: orgaos, source: 'ai-knowledge' }),

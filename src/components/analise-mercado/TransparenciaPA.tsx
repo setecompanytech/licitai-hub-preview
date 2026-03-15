@@ -12,6 +12,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { readExcelFile, writeExcelFromJson } from '@/lib/excel-utils';
+import { TransparenciaPortal } from '@/data/transparencia-portais';
 
 type EmpenhoData = {
   id?: string;
@@ -34,12 +35,20 @@ const formatCurrency = (v: number) => {
 const currentYear = new Date().getFullYear();
 const anos = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
-export default function TransparenciaPA() {
+type Props = {
+  portal: TransparenciaPortal;
+};
+
+export default function TransparenciaPA({ portal }: Props) {
   const [dados, setDados] = useState<EmpenhoData[]>([]);
   const [anoFiltro, setAnoFiltro] = useState<string>('todos');
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(false);
   const [scraping, setScraping] = useState(false);
+
+  const portalLabel = portal.tipo === 'estado'
+    ? `Estado: ${portal.nome} (${portal.sigla})`
+    : `Capital: ${portal.nome} (${portal.sigla})`;
 
   const loadDados = useCallback(async () => {
     setLoading(true);
@@ -73,7 +82,13 @@ export default function TransparenciaPA() {
     setScraping(true);
     try {
       const { data, error } = await supabase.functions.invoke('scrape-transparencia-pa', {
-        body: { ano: anoFiltro !== 'todos' ? parseInt(anoFiltro) : currentYear },
+        body: {
+          ano: anoFiltro !== 'todos' ? parseInt(anoFiltro) : currentYear,
+          portal_nome: portal.nome,
+          portal_sigla: portal.sigla,
+          portal_url: portal.url,
+          portal_tipo: portal.tipo,
+        },
       });
 
       if (error) throw error;
@@ -124,7 +139,6 @@ export default function TransparenciaPA() {
         return;
       }
 
-      // Map columns flexibly
       const rows: EmpenhoData[] = jsonData.map((row) => {
         const orgao = row['Órgão'] || row['ORGAO'] || row['orgao'] || row['Unidade'] || row['UNIDADE'] || Object.values(row)[0] || 'Não identificado';
         const valorStr = String(row['Valor'] || row['VALOR'] || row['valor_total'] || row['Valor Total'] || row['VALOR TOTAL'] || Object.values(row)[1] || '0');
@@ -169,9 +183,11 @@ export default function TransparenciaPA() {
     }
   };
 
+  const dadosFiltrados = dados.filter(d => !busca || d.orgao.toLowerCase().includes(busca.toLowerCase()));
+
   const handleExportCSV = async () => {
     if (dadosFiltrados.length === 0) return;
-    await writeExcelFromJson(`transparencia-pa-${anoFiltro}.xlsx`, 'Transparência PA',
+    await writeExcelFromJson(`transparencia-${portal.sigla.toLowerCase()}-${anoFiltro}.xlsx`, `Transparência ${portal.nome}`,
       dadosFiltrados.map(d => ({
         'Órgão': d.orgao,
         'Ano': d.ano,
@@ -182,14 +198,10 @@ export default function TransparenciaPA() {
     );
   };
 
-  const dadosFiltrados = dados.filter(d => !busca || d.orgao.toLowerCase().includes(busca.toLowerCase()));
-
-  // Aggregate for charts - top 10 by value
   const top10 = [...dadosFiltrados]
     .sort((a, b) => b.valor_total - a.valor_total)
     .slice(0, 10);
 
-  // Aggregate by year
   const porAno = anos.map(ano => {
     const doAno = dados.filter(d => d.ano === ano);
     return {
@@ -205,6 +217,11 @@ export default function TransparenciaPA() {
 
   return (
     <div className="space-y-4">
+      {/* Portal info */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Badge variant="outline">{portalLabel}</Badge>
+      </div>
+
       {/* Header actions */}
       <div className="flex flex-wrap items-center gap-2">
         <Select value={anoFiltro} onValueChange={setAnoFiltro}>
@@ -231,7 +248,7 @@ export default function TransparenciaPA() {
           <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} className="hidden" />
         </label>
 
-        <a href="https://www.sistemas.pa.gov.br/portaltransparencia/empenho/notas" target="_blank" rel="noopener noreferrer">
+        <a href={portal.url} target="_blank" rel="noopener noreferrer">
           <Button variant="ghost" size="sm">
             <ExternalLink className="w-4 h-4 mr-1" /> Abrir Portal
           </Button>
@@ -287,8 +304,8 @@ export default function TransparenciaPA() {
           <Building2 className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
           <h3 className="font-semibold mb-2">Nenhum dado importado</h3>
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-            Clique em <strong>"Extrair do Portal"</strong> para tentar coletar automaticamente, 
-            ou <strong>"Importar Planilha"</strong> para enviar uma planilha baixada do Portal de Transparência do Pará.
+            Clique em <strong>"Extrair do Portal"</strong> para tentar coletar automaticamente do portal de {portal.nome},
+            ou <strong>"Importar Planilha"</strong> para enviar uma planilha baixada do portal.
           </p>
           <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
             <span>Formatos aceitos: .xlsx, .xls, .csv</span>
@@ -298,7 +315,6 @@ export default function TransparenciaPA() {
         </Card>
       ) : (
         <>
-          {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card className="p-5">
               <h3 className="text-sm font-semibold mb-4">Top 10 Órgãos por Volume (R$)</h3>
@@ -347,7 +363,6 @@ export default function TransparenciaPA() {
             )}
           </div>
 
-          {/* Table */}
           <Card className="p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold">Ranking de Órgãos</h3>
