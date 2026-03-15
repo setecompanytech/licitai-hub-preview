@@ -100,7 +100,7 @@ const navGroups: NavGroup[] = [
       { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
       { icon: Calculator, label: 'Apoio Contábil', path: '/apoio-contabil' },
       { icon: TrendingUp, label: 'Índices & Repactuação', path: '/indices-repactuacao' },
-      { icon: BarChart3, label: 'Relatório Contábil', path: '/relatorio-contabil' },
+      
     ],
   },
   {
