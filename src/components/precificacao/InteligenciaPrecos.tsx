@@ -68,6 +68,8 @@ export default function InteligenciaPrecos() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterOportunidade, setFilterOportunidade] = useState<string>('todos');
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
+  const [manualTerms, setManualTerms] = useState('');
+  const [mode, setMode] = useState<'catalog' | 'manual'>('catalog');
 
   // Load catalog items
   useEffect(() => {
@@ -84,13 +86,21 @@ export default function InteligenciaPrecos() {
 
     if (!error && data) {
       setCatalogItems(data);
+      // Auto-switch to manual mode if no catalog items
+      if (data.length === 0) setMode('manual');
     }
   };
 
   // Run price comparison analysis
   const handleAnalyze = async () => {
-    if (catalogItems.length === 0) {
-      toast.error('Nenhum item no catálogo. Precifique itens primeiro na aba Calculadoras.');
+    const isManual = mode === 'manual' || catalogItems.length === 0;
+
+    if (isManual && !manualTerms.trim()) {
+      toast.error('Informe pelo menos um produto para pesquisar.');
+      return;
+    }
+    if (!isManual && catalogItems.length === 0) {
+      toast.error('Nenhum item no catálogo. Use a busca manual ou precifique itens primeiro.');
       return;
     }
 
@@ -100,10 +110,60 @@ export default function InteligenciaPrecos() {
 
     try {
       const results: PriceComparison[] = [];
+      const isManual = mode === 'manual' || catalogItems.length === 0;
 
-      // Analyze up to 20 items from catalog
-      const itemsToAnalyze = catalogItems.slice(0, 20);
-      const batchSize = 5;
+      if (isManual) {
+        // Manual mode: parse comma/newline-separated terms
+        const terms = manualTerms.split(/[,;\n]+/).map(t => t.trim()).filter(t => t.length > 2);
+        const batchSize = 5;
+
+        for (let i = 0; i < terms.length; i += batchSize) {
+          const batch = terms.slice(i, i + batchSize);
+          const promises = batch.map(async (termo) => {
+            try {
+              const { data: mkData } = await supabase.functions.invoke('pesquisa-preco-real', {
+                body: { termo },
+              });
+
+              const { data: govData } = await supabase.functions.invoke('consulta-painel-precos', {
+                body: { termo },
+              });
+
+              const mkPrices = mkData?.data?.fornecedores?.map((f: any) => f.preco).filter((p: number) => p > 0) || [];
+              const govPrices = govData?.resultados?.map((r: any) => r.preco_unitario).filter((p: number) => p > 0) || [];
+              const allPrices = [...mkPrices, ...govPrices];
+              if (allPrices.length === 0) return null;
+
+              const menorMercado = Math.min(...allPrices);
+              const maiorMercado = Math.max(...allPrices);
+              const mediaMercado = allPrices.reduce((a: number, b: number) => a + b, 0) / allPrices.length;
+              const precoGov = govPrices.length > 0 ? govPrices.reduce((a: number, b: number) => a + b, 0) / govPrices.length : null;
+
+              return {
+                descricao: termo,
+                meuPreco: mediaMercado,
+                menorMercado,
+                mediaMercado: Math.round(mediaMercado * 100) / 100,
+                maiorMercado,
+                precoGov,
+                diferenca: 0,
+                oportunidade: 'manter' as const,
+                margemAtual: 0,
+                margemSugerida: 0,
+                economia: 0,
+              } as PriceComparison;
+            } catch { return null; }
+          });
+
+          const batchResults = await Promise.allSettled(promises);
+          for (const r of batchResults) {
+            if (r.status === 'fulfilled' && r.value) results.push(r.value);
+          }
+        }
+      } else {
+        // Catalog mode (original)
+        const itemsToAnalyze = catalogItems.slice(0, 20);
+        const batchSize = 5;
 
       for (let i = 0; i < itemsToAnalyze.length; i += batchSize) {
         const batch = itemsToAnalyze.slice(i, i + batchSize);
@@ -183,8 +243,8 @@ export default function InteligenciaPrecos() {
           }
         }
       }
+      } // close else (catalog mode)
 
-      setComparisons(results);
       setLastUpdate(new Date().toLocaleString('pt-BR'));
 
       if (results.length > 0) {
@@ -309,7 +369,7 @@ Responda APENAS em JSON válido:
             )}
             <Button
               onClick={handleAnalyze}
-              disabled={loading || catalogItems.length === 0}
+              disabled={loading || (mode === 'manual' && !manualTerms.trim())}
               className="bg-primary hover:bg-primary/90"
               size="sm"
             >
@@ -321,10 +381,45 @@ Responda APENAS em JSON válido:
             </Button>
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-4 text-[11px] text-muted-foreground">
-          <span className="flex items-center gap-1"><ShoppingCart className="w-3 h-3" /> Marketplaces</span>
-          <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> Gov.br (PNCP)</span>
-          <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> Catálogo interno ({catalogItems.length} itens)</span>
+
+        {/* Mode selector + manual input */}
+        <div className="mt-3 flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-0.5">
+              <button
+                onClick={() => setMode('catalog')}
+                className={`px-3 py-1 text-[11px] font-medium rounded-md transition-colors ${
+                  mode === 'catalog' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Catálogo ({catalogItems.length})
+              </button>
+              <button
+                onClick={() => setMode('manual')}
+                className={`px-3 py-1 text-[11px] font-medium rounded-md transition-colors ${
+                  mode === 'manual' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Busca Manual
+              </button>
+            </div>
+            <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+              <span className="flex items-center gap-1"><ShoppingCart className="w-3 h-3" /> Marketplaces</span>
+              <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> Gov.br (PNCP)</span>
+            </div>
+          </div>
+
+          {mode === 'manual' && (
+            <div className="flex gap-2">
+              <Input
+                placeholder="Digite os produtos separados por vírgula. Ex: papel A4 500 folhas, toner HP 83A, notebook Dell"
+                value={manualTerms}
+                onChange={(e) => setManualTerms(e.target.value)}
+                className="flex-1 h-9 text-xs"
+                onKeyDown={(e) => e.key === 'Enter' && !loading && handleAnalyze()}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -517,13 +612,14 @@ Responda APENAS em JSON válido:
           <Brain className="w-16 h-16 mx-auto mb-4 opacity-20" />
           <h3 className="text-sm font-semibold mb-1">Inteligência de Preços</h3>
           <p className="text-xs max-w-md mx-auto">
-            Clique em <b>Analisar Mercado</b> para comparar automaticamente seus preços do catálogo com
-            marketplaces e o Painel de Preços Gov.br, identificando oportunidades de margem.
+            {mode === 'manual'
+              ? 'Digite os produtos acima e clique em Analisar Mercado para comparar preços em marketplaces e Gov.br.'
+              : 'Clique em Analisar Mercado para comparar automaticamente seus preços do catálogo com marketplaces e o Painel de Preços Gov.br.'
+            }
           </p>
-          {catalogItems.length === 0 && (
-            <p className="text-xs text-warning mt-3 flex items-center gap-1 justify-center">
-              <AlertTriangle className="w-3.5 h-3.5" />
-              Nenhum item no catálogo. Precifique itens na aba Calculadoras primeiro.
+          {mode === 'catalog' && catalogItems.length === 0 && (
+            <p className="text-xs text-muted-foreground mt-3">
+              Catálogo vazio — use a aba <b>Busca Manual</b> para pesquisar produtos diretamente.
             </p>
           )}
         </div>
