@@ -5,13 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   BarChart3, TrendingUp, TrendingDown, DollarSign, Package,
-  Building2, MapPin, Search, Download, PieChart, Activity, Landmark, FileText
+  Building2, Search, Download, PieChart, Activity, Landmark, FileText
 } from 'lucide-react';
 import TransparenciaPA from '@/components/analise-mercado/TransparenciaPA';
 import ContratosGov from '@/components/analise-mercado/ContratosGov';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RPieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
+import { transparenciaPortais, estadosPortais, capitaisPortais, type TransparenciaPortal } from '@/data/transparencia-portais';
 
 const segmentoData = [
   { segmento: 'Construção Civil', licitacoes: 1245, valor: 890000000 },
@@ -56,6 +58,14 @@ const formatCurrency = (v: number) => (v / 1000000).toFixed(0) + 'M';
 
 export default function AnaliseMercado() {
   const [busca, setBusca] = useState('');
+  const [portalSelecionado, setPortalSelecionado] = useState<string>('estado-PA');
+
+  const portalAtual: TransparenciaPortal = transparenciaPortais.find(p => `${p.tipo}-${p.sigla}-${p.nome}` === portalSelecionado)
+    || transparenciaPortais.find(p => p.tipo === 'estado' && p.sigla === 'PA')!;
+
+  const handlePortalChange = (value: string) => {
+    setPortalSelecionado(value);
+  };
 
   return (
     <AppLayout>
@@ -111,24 +121,50 @@ export default function AnaliseMercado() {
           </div>
         </div>
 
-        <Tabs defaultValue="transparencia-pa" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="transparencia-pa"><Landmark className="w-4 h-4 mr-1" /> Transparência PA</TabsTrigger>
-            <TabsTrigger value="contratos-gov"><FileText className="w-4 h-4 mr-1" /> Contratos Gov</TabsTrigger>
-            <TabsTrigger value="segmentos"><PieChart className="w-4 h-4 mr-1" /> Por Segmento</TabsTrigger>
-            <TabsTrigger value="precos"><TrendingUp className="w-4 h-4 mr-1" /> Preços Praticados</TabsTrigger>
-            <TabsTrigger value="produtos"><Package className="w-4 h-4 mr-1" /> Mais Solicitados</TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="transparencia" className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <TabsList>
+              <TabsTrigger value="transparencia"><Landmark className="w-4 h-4 mr-1" /> Transparência</TabsTrigger>
+              <TabsTrigger value="contratos-gov"><FileText className="w-4 h-4 mr-1" /> Contratos Gov</TabsTrigger>
+              <TabsTrigger value="segmentos"><PieChart className="w-4 h-4 mr-1" /> Por Segmento</TabsTrigger>
+              <TabsTrigger value="precos"><TrendingUp className="w-4 h-4 mr-1" /> Preços Praticados</TabsTrigger>
+              <TabsTrigger value="produtos"><Package className="w-4 h-4 mr-1" /> Mais Solicitados</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="transparencia-pa">
-            <TransparenciaPA />
+            {/* Portal selector - shown next to tabs */}
+            <Select value={portalSelecionado} onValueChange={handlePortalChange}>
+              <SelectTrigger className="w-64 h-9 text-sm">
+                <Landmark className="w-4 h-4 mr-1 text-accent shrink-0" />
+                <SelectValue placeholder="Selecione o portal" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[400px]">
+                <SelectGroup>
+                  <SelectLabel>Estados e Distrito Federal</SelectLabel>
+                  {estadosPortais.map(p => (
+                    <SelectItem key={`estado-${p.sigla}-${p.nome}`} value={`estado-${p.sigla}-${p.nome}`}>
+                      {p.nome} ({p.sigla})
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+                <SelectGroup>
+                  <SelectLabel>Capitais</SelectLabel>
+                  {capitaisPortais.map(p => (
+                    <SelectItem key={`capital-${p.sigla}-${p.nome}`} value={`capital-${p.sigla}-${p.nome}`}>
+                      {p.nome} ({p.sigla})
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <TabsContent value="transparencia">
+            <TransparenciaPA key={portalSelecionado} portal={portalAtual} />
           </TabsContent>
 
           <TabsContent value="contratos-gov">
             <ContratosGov />
           </TabsContent>
-
-
 
           <TabsContent value="segmentos" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
