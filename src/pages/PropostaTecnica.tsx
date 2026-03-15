@@ -446,8 +446,14 @@ export default function PropostaTecnica() {
               <FileText className="w-6 h-6 text-accent" />
               Proposta Comercial
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
               Montagem assistida por IA · Modelo conforme Lei 14.133/2021 e ABNT NBR 14724
+              {lastSaved && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+                  <Clock className="w-3 h-3" />
+                  {saving ? 'Salvando...' : `Salvo ${lastSaved.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
+                </span>
+              )}
             </p>
           </div>
           {!isMobile && (
