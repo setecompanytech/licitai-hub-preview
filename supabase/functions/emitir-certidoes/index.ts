@@ -169,13 +169,36 @@ async function emitirCRF(cnpj: string, FIRECRAWL_API_KEY: string, LOVABLE_API_KE
 }
 
 // ══════════════════════════════════════════════════════════════
-// CND Federal – Receita Federal / PGFN
+// CND Conjunta de Débitos Relativos a Tributos Federais e à Dívida Ativa da União
 // ══════════════════════════════════════════════════════════════
-async function emitirCNDFederal(cnpj: string, FIRECRAWL_API_KEY: string, LOVABLE_API_KEY: string): Promise<EmissaoResult> {
+async function emitirCNDConjunta(cnpj: string, FIRECRAWL_API_KEY: string, LOVABLE_API_KEY: string): Promise<EmissaoResult> {
+  const certidaoNome = "CND Conjunta (Tributos Federais e Dívida Ativa da União)";
   const url = "https://servicos.receitafederal.gov.br/servico/certidoes/#/home";
 
+  // First try BrasilAPI for quick situação cadastral check
+  let situacaoDetalhes = "";
   try {
-    console.log("CND Federal: Tentando emissão via scrape+actions para CNPJ:", cnpj);
+    const brasilResp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+    if (brasilResp.ok) {
+      const brasilData = await brasilResp.json();
+      if (brasilData.situacao_cadastral === 2) {
+        situacaoDetalhes = `Situação Cadastral: ATIVA | Razão Social: ${brasilData.razao_social} | CNAE: ${brasilData.cnae_fiscal_descricao}. `;
+      } else {
+        const situacoes: Record<number, string> = { 1: "NULA", 3: "SUSPENSA", 4: "INAPTA", 8: "BAIXADA" };
+        return {
+          certidao: certidaoNome,
+          status: "erro",
+          detalhes: `Situação Cadastral: ${situacoes[brasilData.situacao_cadastral] || "IRREGULAR"} – ${brasilData.motivo_situacao_cadastral || ""}. Empresa com restrição cadastral, CND provavelmente indisponível.`,
+          url,
+        };
+      }
+    }
+  } catch (e) {
+    console.log("BrasilAPI check failed, continuing with scraping:", e.message);
+  }
+
+  try {
+    console.log("CND Conjunta: Tentando emissão via scrape+actions para CNPJ:", cnpj);
 
     const resp = await fetch("https://api.firecrawl.dev/v1/scrape", {
       method: "POST",
@@ -201,8 +224,13 @@ async function emitirCNDFederal(cnpj: string, FIRECRAWL_API_KEY: string, LOVABLE
 
     if (!resp.ok) {
       const body = await resp.text();
-      console.log("CND Federal scrape error:", resp.status, body);
-      return { certidao: "CND Federal", status: "erro", detalhes: `Erro no scraping: ${resp.status}`, url };
+      console.log("CND Conjunta scrape error:", resp.status, body);
+      return {
+        certidao: certidaoNome,
+        status: situacaoDetalhes ? "pendente" : "erro",
+        detalhes: `${situacaoDetalhes}Erro no scraping do portal: ${resp.status}. Acesse o portal manualmente.`,
+        url,
+      };
     }
 
     const data = await resp.json();
@@ -211,31 +239,31 @@ async function emitirCNDFederal(cnpj: string, FIRECRAWL_API_KEY: string, LOVABLE
 
     if (markdown.toLowerCase().includes("captcha") || markdown.toLowerCase().includes("recaptcha")) {
       return {
-        certidao: "CND Federal",
+        certidao: certidaoNome,
         status: "captcha",
-        detalhes: "Portal requer CAPTCHA. A emissão da CND Federal geralmente exige certificado digital ou gov.br.",
+        detalhes: `${situacaoDetalhes}Portal requer CAPTCHA. A emissão da CND Conjunta geralmente exige certificado digital ou gov.br.`,
         url,
         screenshot,
       };
     }
 
     if (markdown.length > 100) {
-      const aiResult = await extractCertidaoIA(markdown, "CND Federal", formatCnpj(cnpj), LOVABLE_API_KEY);
+      const aiResult = await extractCertidaoIA(markdown, "CND Conjunta (Tributos Federais e Dívida Ativa)", formatCnpj(cnpj), LOVABLE_API_KEY);
       if (aiResult) {
-        return { ...aiResult, certidao: "CND Federal", url, screenshot };
+        return { ...aiResult, certidao: certidaoNome, url, screenshot, detalhes: `${situacaoDetalhes}${aiResult.detalhes || ""}` };
       }
     }
 
     return {
-      certidao: "CND Federal",
+      certidao: certidaoNome,
       status: "pendente",
-      detalhes: "Não foi possível emitir automaticamente. A CND Federal geralmente requer certificado digital ou gov.br.",
+      detalhes: `${situacaoDetalhes}Não foi possível emitir automaticamente. A CND Conjunta geralmente requer certificado digital ou gov.br.`,
       url,
       screenshot,
     };
   } catch (e) {
-    console.error("CND Federal error:", e);
-    return { certidao: "CND Federal", status: "erro", detalhes: `Falha: ${e.message}`, url };
+    console.error("CND Conjunta error:", e);
+    return { certidao: certidaoNome, status: "erro", detalhes: `${situacaoDetalhes}Falha: ${e.message}`, url };
   }
 }
 
@@ -306,47 +334,6 @@ async function consultarTransparencia(cnpj: string, FIRECRAWL_API_KEY: string, L
   return results;
 }
 
-// ══════════════════════════════════════════════════════════════
-// Receita Federal – Situação Cadastral (via BrasilAPI)
-// ══════════════════════════════════════════════════════════════
-async function consultarSituacaoCadastral(cnpj: string): Promise<EmissaoResult> {
-  try {
-    const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
-    if (!resp.ok) {
-      return {
-        certidao: "Situação Cadastral (Receita Federal)",
-        status: "erro",
-        detalhes: "Não foi possível consultar a situação cadastral",
-        url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home",
-      };
-    }
-    const data = await resp.json();
-
-    if (data.situacao_cadastral === 2) {
-      return {
-        certidao: "Situação Cadastral (Receita Federal)",
-        status: "emitida",
-        detalhes: `Situação: ATIVA | Razão Social: ${data.razao_social} | CNAE: ${data.cnae_fiscal_descricao}`,
-        dataEmissao: new Date().toISOString(),
-        url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home",
-      };
-    }
-
-    const situacoes: Record<number, string> = { 1: "NULA", 3: "SUSPENSA", 4: "INAPTA", 8: "BAIXADA" };
-    return {
-      certidao: "Situação Cadastral (Receita Federal)",
-      status: "erro",
-      detalhes: `Situação: ${situacoes[data.situacao_cadastral] || "IRREGULAR"} – ${data.motivo_situacao_cadastral || ""}`,
-      url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home",
-    };
-  } catch (e) {
-    return {
-      certidao: "Situação Cadastral (Receita Federal)",
-      status: "erro",
-      detalhes: `Erro: ${e.message}`,
-    };
-  }
-}
 
 // ══════════════════════════════════════════════════════════════
 // IA – Extrair dados da certidão do conteúdo scrapeado
@@ -463,15 +450,14 @@ serve(async (req) => {
     console.log(`Iniciando emissão de certidões para CNPJ: ${cnpjLimpo}`);
 
     // Execute all emissions in parallel
-    const [cndt, crf, cndFederal, transparencia, situacao] = await Promise.all([
+    const [cndt, crf, cndConjunta, transparencia] = await Promise.all([
       emitirCNDT(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
       emitirCRF(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
-      emitirCNDFederal(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
+      emitirCNDConjunta(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
       consultarTransparencia(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
-      consultarSituacaoCadastral(cnpjLimpo),
     ]);
 
-    const resultados: EmissaoResult[] = [situacao, ...transparencia, cndt, crf, cndFederal];
+    const resultados: EmissaoResult[] = [cndConjunta, ...transparencia, cndt, crf];
 
     const emitidas = resultados.filter(r => r.status === "emitida").length;
     const captcha = resultados.filter(r => r.status === "captcha").length;

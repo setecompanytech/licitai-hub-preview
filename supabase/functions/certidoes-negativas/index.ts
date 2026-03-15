@@ -136,22 +136,23 @@ async function consultarCRF(cnpj: string): Promise<VerificacaoReal> {
   }
 }
 
-// Receita Federal (BrasilAPI)
-async function consultarReceitaFederal(cnpj: string): Promise<VerificacaoReal> {
+// CND Conjunta (Tributos Federais e Dívida Ativa da União) – via BrasilAPI
+async function consultarCNDConjunta(cnpj: string): Promise<VerificacaoReal> {
+  const certNome = "CND Conjunta";
   try {
     const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
     if (!resp.ok) {
-      return { fonte: "Receita Federal", status: "erro", detalhes: "Não foi possível consultar dados cadastrais", dataConsulta: new Date().toISOString(), url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home" };
+      return { fonte: certNome, status: "erro", detalhes: "Não foi possível consultar dados cadastrais", dataConsulta: new Date().toISOString(), url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home" };
     }
     const data = await resp.json();
     if (data.situacao_cadastral === 2) {
-      return { fonte: "Receita Federal", status: "regular", detalhes: `Situação cadastral: ATIVA. Razão Social: ${data.razao_social}. CNAE: ${data.cnae_fiscal_descricao}`, dataConsulta: new Date().toISOString(), url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home" };
+      return { fonte: certNome, status: "regular", detalhes: `Situação cadastral: ATIVA. Razão Social: ${data.razao_social}. CNAE: ${data.cnae_fiscal_descricao}`, dataConsulta: new Date().toISOString(), url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home" };
     }
     const situacoes: Record<number, string> = { 1: "NULA", 3: "SUSPENSA", 4: "INAPTA", 8: "BAIXADA" };
-    return { fonte: "Receita Federal", status: "irregular", detalhes: `Situação cadastral: ${situacoes[data.situacao_cadastral] || data.descricao_situacao_cadastral || "IRREGULAR"}. ${data.motivo_situacao_cadastral || ""}`, dataConsulta: new Date().toISOString(), url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home" };
+    return { fonte: certNome, status: "irregular", detalhes: `Situação cadastral: ${situacoes[data.situacao_cadastral] || data.descricao_situacao_cadastral || "IRREGULAR"}. ${data.motivo_situacao_cadastral || ""}`, dataConsulta: new Date().toISOString(), url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home" };
   } catch (e) {
-    console.error("Erro Receita:", e);
-    return { fonte: "Receita Federal", status: "erro", detalhes: `Erro: ${e.message}`, dataConsulta: new Date().toISOString() };
+    console.error("Erro CND Conjunta:", e);
+    return { fonte: certNome, status: "erro", detalhes: `Erro: ${e.message}`, dataConsulta: new Date().toISOString() };
   }
 }
 
@@ -170,12 +171,12 @@ serve(async (req) => {
 
     // 1. Verificações reais em paralelo
     console.log(`Iniciando verificações reais para CNPJ: ${cnpjLimpo}`);
-    const [ceis, cnep, cepim, cndt, crf, receita] = await Promise.all([
+    const [ceis, cnep, cepim, cndt, crf, cndConjunta] = await Promise.all([
       consultarCEIS(cnpjLimpo), consultarCNEP(cnpjLimpo), consultarCEPIM(cnpjLimpo),
-      consultarCNDT(cnpjLimpo), consultarCRF(cnpjLimpo), consultarReceitaFederal(cnpjLimpo),
+      consultarCNDT(cnpjLimpo), consultarCRF(cnpjLimpo), consultarCNDConjunta(cnpjLimpo),
     ]);
 
-    const verificacoesReais: VerificacaoReal[] = [ceis, cnep, cepim, cndt, crf, receita];
+    const verificacoesReais: VerificacaoReal[] = [ceis, cnep, cepim, cndt, crf, cndConjunta];
     console.log("Verificações reais concluídas:", verificacoesReais.map(v => `${v.fonte}: ${v.status}`));
 
     // 2. Análise complementar com IA
@@ -191,7 +192,7 @@ ${verificacoesTexto}
 
 Com base nesses resultados REAIS, gere uma análise complementar das certidões negativas necessárias para participação em licitações.
 
-Para cada certidão que NÃO foi verificada automaticamente (CND Federal tributária, Certidão Estadual, Certidão Municipal, Certidão de Falência), informe:
+Para cada certidão que NÃO foi verificada automaticamente (Certidão Estadual, Certidão Municipal, Certidão de Falência), informe:
 1. Nome da certidão
 2. Órgão emissor
 3. URL oficial para emissão
@@ -199,7 +200,7 @@ Para cada certidão que NÃO foi verificada automaticamente (CND Federal tribut�
 5. Status como "verificar" (já que não foi verificada automaticamente)
 6. Observações e documentos necessários
 
-NÃO repita as certidões já verificadas automaticamente (CEIS, CNEP, CEPIM, CNDT, CRF, Receita Federal).
+NÃO repita as certidões já verificadas automaticamente (CEIS, CNEP, CEPIM, CNDT, CRF, CND Conjunta).
 
 Responda APENAS com JSON válido:
 {
@@ -256,11 +257,11 @@ Responda APENAS com JSON válido:
             v.fonte === "CEPIM" ? "Certidão CEPIM (Entidades Impedidas)" :
             v.fonte === "CNDT/TST" ? "CNDT – Certidão Negativa de Débitos Trabalhistas" :
             v.fonte === "CRF/FGTS" ? "CRF – Certificado de Regularidade do FGTS" :
-            "Situação Cadastral – Receita Federal",
+            "CND Conjunta de Débitos Relativos a Tributos Federais e à Dívida Ativa da União",
       orgao: v.fonte === "CEIS" || v.fonte === "CNEP" || v.fonte === "CEPIM" ? "Portal da Transparência" :
              v.fonte === "CNDT/TST" ? "Tribunal Superior do Trabalho" :
              v.fonte === "CRF/FGTS" ? "Caixa Econômica Federal" :
-             "Receita Federal do Brasil",
+             "Receita Federal do Brasil / PGFN",
       url: v.url || "#",
       validadeDias: v.fonte === "CNDT/TST" ? 180 : v.fonte === "CRF/FGTS" ? 30 : 0,
       documentosNecessarios: ["CNPJ"],
