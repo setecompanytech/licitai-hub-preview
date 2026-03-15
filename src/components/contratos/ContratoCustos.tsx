@@ -341,7 +341,7 @@ function CalculatorDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calculator className="w-5 h-5 text-primary" />
-            {tipoCfg?.icon} {tipoCfg?.label} — Calculadora
+            {tipoCfg && <tipoCfg.Icon className="w-4 h-4 text-muted-foreground" />} {tipoCfg?.label} — Calculadora
           </DialogTitle>
           <p className="text-xs text-muted-foreground">{tipoCfg?.desc}</p>
         </DialogHeader>
