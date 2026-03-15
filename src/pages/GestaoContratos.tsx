@@ -102,7 +102,7 @@ export default function GestaoContratos() {
       observacoes: form.observacoes || null,
     } as any);
     setSaving(false);
-    if (error) { toast.error('Erro ao salvar contrato'); return; }
+    if (error) { console.error('Erro ao salvar contrato:', error); toast.error('Erro ao salvar contrato', { description: error.message }); return; }
     toast.success('Contrato cadastrado!');
     setDialogOpen(false);
     setForm({ numero_contrato: '', objeto: '', orgao_contratante: '', valor_global: '', valor_consumido: '0', data_assinatura: '', data_inicio: '', data_fim: '', vigencia_meses: '', status: 'vigente', modalidade: '', uf: '', municipio: '', fiscal_nome: '', fiscal_email: '', fiscal_telefone: '', observacoes: '' });
