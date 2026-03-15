@@ -192,7 +192,7 @@ ${verificacoesTexto}
 
 Com base nesses resultados REAIS, gere uma análise complementar das certidões negativas necessárias para participação em licitações.
 
-Para cada certidão que NÃO foi verificada automaticamente (CND Federal tributária, Certidão Estadual, Certidão Municipal, Certidão de Falência), informe:
+Para cada certidão que NÃO foi verificada automaticamente (Certidão Estadual, Certidão Municipal, Certidão de Falência), informe:
 1. Nome da certidão
 2. Órgão emissor
 3. URL oficial para emissão
@@ -200,7 +200,7 @@ Para cada certidão que NÃO foi verificada automaticamente (CND Federal tribut�
 5. Status como "verificar" (já que não foi verificada automaticamente)
 6. Observações e documentos necessários
 
-NÃO repita as certidões já verificadas automaticamente (CEIS, CNEP, CEPIM, CNDT, CRF, Receita Federal).
+NÃO repita as certidões já verificadas automaticamente (CEIS, CNEP, CEPIM, CNDT, CRF, CND Conjunta).
 
 Responda APENAS com JSON válido:
 {
