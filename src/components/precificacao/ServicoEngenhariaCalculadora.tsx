@@ -142,9 +142,18 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
   });
 
   // Itens de custo
-  const [itens, setItens] = useState<ItemCusto[]>([
-    { descricao: '', quantidade: '1', unidade: 'M²', custoUnitario: '' },
-  ]);
+  const [itens, setItens] = useState<ItemCusto[]>(
+    initialItens && initialItens.length > 0
+      ? initialItens.map(i => ({
+          descricao: i.descricao,
+          quantidade: String(i.quantidade),
+          unidade: i.unidade,
+          custoUnitario: i.custoUnitario > 0
+            ? i.custoUnitario.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : '',
+        }))
+      : [{ descricao: '', quantidade: '1', unidade: 'M²', custoUnitario: '' }]
+  );
 
   const [calculado, setCalculado] = useState(false);
 
