@@ -44,9 +44,11 @@ export default function LicitacaoSelector({
   onItensLoaded,
 }: LicitacaoSelectorProps) {
   const { user } = useAuth();
+  const { extrairItensIA } = useEditalExtraction();
   const [licitacoes, setLicitacoes] = useState<LicitacaoResumo[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingItens, setLoadingItens] = useState(false);
+  const [extracting, setExtracting] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [itensCount, setItensCount] = useState<number>(0);
   const [filterNumero, setFilterNumero] = useState('');
