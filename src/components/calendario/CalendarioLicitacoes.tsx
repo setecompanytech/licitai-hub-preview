@@ -149,28 +149,94 @@ export default function CalendarioLicitacoes() {
     enabled: !!user,
   });
 
+  // Fetch backup config for calendar integration
+  const { data: backupConfig } = useQuery({
+    queryKey: ['calendario-backup-config', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await supabase
+        .from('backup_config' as any)
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('ativo', true)
+        .eq('alerta_calendario', true)
+        .maybeSingle();
+      return data as any;
+    },
+    enabled: !!user,
+  });
+
+  // Generate backup dates for the next 90 days
+  const backupDates = useMemo(() => {
+    if (!backupConfig) return [];
+    const dates: Date[] = [];
+    const freq = backupConfig.frequencia;
+    const start = new Date();
+    const end = addDays(start, 90);
+    const [h, m] = (backupConfig.hora_execucao || '03:00').split(':').map(Number);
+
+    if (freq === 'diario') {
+      let cur = new Date(start);
+      cur.setHours(h, m, 0, 0);
+      if (cur <= start) cur.setDate(cur.getDate() + 1);
+      while (cur <= end) {
+        dates.push(new Date(cur));
+        cur.setDate(cur.getDate() + 1);
+      }
+    } else if (freq === 'semanal') {
+      const targetDay = backupConfig.dia_semana ?? 1;
+      let cur = new Date(start);
+      const daysAhead = ((targetDay - cur.getDay()) + 7) % 7 || 7;
+      cur.setDate(cur.getDate() + daysAhead);
+      cur.setHours(h, m, 0, 0);
+      while (cur <= end) {
+        dates.push(new Date(cur));
+        cur.setDate(cur.getDate() + 7);
+      }
+    } else if (freq === 'mensal') {
+      const targetDia = backupConfig.dia_mes ?? 1;
+      let cur = new Date(start);
+      cur.setDate(targetDia);
+      cur.setHours(h, m, 0, 0);
+      if (cur <= start) cur.setMonth(cur.getMonth() + 1);
+      while (cur <= end) {
+        dates.push(new Date(cur));
+        cur.setMonth(cur.getMonth() + 1);
+      }
+    }
+    return dates;
+  }, [backupConfig]);
+
   // Build calendar markers
   const eventDates = useMemo(() => {
-    const map = new Map<string, { licitacoes: LicitacaoEvento[]; docs: DocValidade[] }>();
+    const map = new Map<string, { licitacoes: LicitacaoEvento[]; docs: DocValidade[]; backups: boolean }>();
+
+    const getEntry = (key: string) => {
+      if (!map.has(key)) map.set(key, { licitacoes: [], docs: [], backups: false });
+      return map.get(key)!;
+    };
 
     licitacoes.forEach((l) => {
       [l.data_abertura, l.data_encerramento].forEach((d) => {
         if (!d) return;
         const key = format(new Date(d), 'yyyy-MM-dd');
-        if (!map.has(key)) map.set(key, { licitacoes: [], docs: [] });
-        const entry = map.get(key)!;
+        const entry = getEntry(key);
         if (!entry.licitacoes.find((x) => x.id === l.id)) entry.licitacoes.push(l);
       });
     });
 
     docsValidade.forEach((doc) => {
       const key = format(new Date(doc.validade), 'yyyy-MM-dd');
-      if (!map.has(key)) map.set(key, { licitacoes: [], docs: [] });
-      map.get(key)!.docs.push(doc);
+      getEntry(key).docs.push(doc);
+    });
+
+    backupDates.forEach((bd) => {
+      const key = format(bd, 'yyyy-MM-dd');
+      getEntry(key).backups = true;
     });
 
     return map;
-  }, [licitacoes, docsValidade]);
+  }, [licitacoes, docsValidade, backupDates]);
 
   // Events for selected date
   const selectedEvents = useMemo(() => {
