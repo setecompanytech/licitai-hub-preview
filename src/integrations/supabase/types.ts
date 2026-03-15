@@ -3154,6 +3154,47 @@ export type Database = {
           },
         ]
       }
+      rascunhos: {
+        Row: {
+          created_at: string
+          dados: Json
+          id: string
+          licitacao_id: string | null
+          modulo: string
+          titulo: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dados?: Json
+          id?: string
+          licitacao_id?: string | null
+          modulo: string
+          titulo?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dados?: Json
+          id?: string
+          licitacao_id?: string | null
+          modulo?: string
+          titulo?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rascunhos_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       robo_aceite_termos: {
         Row: {
           aceite_politica_uso: boolean

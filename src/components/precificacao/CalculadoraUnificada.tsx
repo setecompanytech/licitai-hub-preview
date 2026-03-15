@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +28,7 @@ import ComposicaoDeterministica from './ComposicaoDeterministica';
 import ServicoMDOCalculadora from './ServicoMDOCalculadora';
 import ServicoEngenhariaCalculadora from './ServicoEngenhariaCalculadora';
 import LicitacaoSelector, { type LicitacaoItemAutoFill } from './LicitacaoSelector';
+import { useRascunho } from '@/hooks/useRascunho';
 import {
   calcularComposicao,
   type ComposicaoResult,
@@ -228,6 +229,53 @@ export default function CalculadoraUnificada() {
   const [licitacaoOrgao, setLicitacaoOrgao] = useState('');
   const [savingCatalogo, setSavingCatalogo] = useState(false);
   const [engItensAutoFill, setEngItensAutoFill] = useState<{ descricao: string; quantidade: number; unidade: string; custoUnitario: number }[]>([]);
+
+  // ── Rascunho (Draft) ──
+  const { loadRascunho, autoSave, saving, lastSaved, markLoaded } = useRascunho<any>({
+    modulo: 'precificacao',
+    licitacaoId: null,
+    debounceMs: 3000,
+  });
+
+  const collectCalcData = useCallback(() => ({
+    calcTab, receitaBruta, rbt12, atividade, margemLucro, ufCalculo,
+    anexoSelecionado, frete, despesasAdmin, usarBDI, itens,
+    licitacaoNumero, licitacaoOrgao,
+  }), [
+    calcTab, receitaBruta, rbt12, atividade, margemLucro, ufCalculo,
+    anexoSelecionado, frete, despesasAdmin, usarBDI, itens,
+    licitacaoNumero, licitacaoOrgao,
+  ]);
+
+  // Restore draft on mount
+  useEffect(() => {
+    loadRascunho().then(data => {
+      if (data) {
+        if (data.calcTab) setCalcTab(data.calcTab);
+        if (data.receitaBruta) setReceitaBruta(data.receitaBruta);
+        if (data.rbt12) setRbt12(data.rbt12);
+        if (data.atividade) setAtividade(data.atividade);
+        if (data.margemLucro) setMargemLucro(data.margemLucro);
+        if (data.ufCalculo) setUfCalculo(data.ufCalculo);
+        if (data.anexoSelecionado) setAnexoSelecionado(data.anexoSelecionado);
+        if (data.frete) setFrete(data.frete);
+        if (data.despesasAdmin) setDespesasAdmin(data.despesasAdmin);
+        if (typeof data.usarBDI === 'boolean') setUsarBDI(data.usarBDI);
+        if (data.itens?.length > 0) setItens(data.itens);
+        if (data.licitacaoNumero) setLicitacaoNumero(data.licitacaoNumero);
+        if (data.licitacaoOrgao) setLicitacaoOrgao(data.licitacaoOrgao);
+        toast.info('Rascunho da calculadora restaurado.');
+      }
+      markLoaded();
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save on form changes
+  useEffect(() => {
+    const data = collectCalcData();
+    const titulo = licitacaoNumero ? `Precificação — ${licitacaoNumero}` : 'Precificação (sem licitação)';
+    autoSave(data, titulo);
+  }, [collectCalcData, autoSave]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!regime || !config) {
     return (
@@ -482,6 +530,11 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
             </h3>
           </div>
           <div className="flex items-center gap-2">
+            {lastSaved && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+                {saving ? 'Salvando...' : `Salvo ${lastSaved.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
+              </span>
+            )}
             <Badge variant="outline" className="text-[10px]">
               <ShieldCheck className="w-3 h-3 mr-1" /> IA Contábil
             </Badge>
