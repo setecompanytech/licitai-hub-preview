@@ -83,18 +83,18 @@ export default function QuickAccessGrid() {
   const navigate = useNavigate();
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
       {groups.map((group) => (
         <div
           key={group.title}
           className={cn(
-            'rounded-xl border p-3 space-y-2',
+            'rounded-xl border p-2.5 sm:p-3 space-y-1.5 sm:space-y-2',
             group.accent
               ? 'border-accent/30 bg-accent/5'
               : 'border-border/60 bg-card/50'
           )}
         >
-          <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          <h3 className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             {group.title}
           </h3>
           <div className="space-y-0.5">
@@ -104,12 +104,12 @@ export default function QuickAccessGrid() {
                 <button
                   key={item.path + item.label}
                   onClick={() => navigate(item.path)}
-                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors text-left"
+                  className="flex items-center gap-1.5 sm:gap-2 w-full px-1.5 sm:px-2 py-1.5 rounded-md text-[11px] sm:text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors text-left min-h-[32px]"
                 >
                   <Icon className="w-3.5 h-3.5 text-accent flex-shrink-0" />
-                  <span className="truncate">{item.label}</span>
+                  <span className="break-words leading-tight line-clamp-2">{item.label}</span>
                   {item.badge && (
-                    <span className="ml-auto text-[8px] font-bold bg-accent text-accent-foreground px-1.5 py-0.5 rounded-full leading-none">
+                    <span className="ml-auto text-[7px] sm:text-[8px] font-bold bg-accent text-accent-foreground px-1 sm:px-1.5 py-0.5 rounded-full leading-none flex-shrink-0">
                       Novo
                     </span>
                   )}
