@@ -530,6 +530,11 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
             </h3>
           </div>
           <div className="flex items-center gap-2">
+            {lastSaved && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+                {saving ? 'Salvando...' : `Salvo ${lastSaved.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
+              </span>
+            )}
             <Badge variant="outline" className="text-[10px]">
               <ShieldCheck className="w-3 h-3 mr-1" /> IA Contábil
             </Badge>
