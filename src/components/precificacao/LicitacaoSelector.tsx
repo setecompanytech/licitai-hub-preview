@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEditalExtraction } from '@/hooks/useEditalExtraction';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, Search, Loader2, Download, Trash2, CheckCircle } from 'lucide-react';
+import { FileText, Search, Loader2, Download, Trash2, CheckCircle, Brain } from 'lucide-react';
 import { toast } from 'sonner';
 
 type LicitacaoResumo = {
@@ -43,9 +44,11 @@ export default function LicitacaoSelector({
   onItensLoaded,
 }: LicitacaoSelectorProps) {
   const { user } = useAuth();
+  const { extrairItensIA } = useEditalExtraction();
   const [licitacoes, setLicitacoes] = useState<LicitacaoResumo[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingItens, setLoadingItens] = useState(false);
+  const [extracting, setExtracting] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [itensCount, setItensCount] = useState<number>(0);
   const [filterNumero, setFilterNumero] = useState('');
@@ -101,7 +104,7 @@ export default function LicitacaoSelector({
     setLicitacaoNumero(lic.numero || '');
     setLicitacaoOrgao(lic.orgao || '');
 
-    // Fetch items from licitacao_itens
+    // Fetch existing items from licitacao_itens
     setLoadingItens(true);
     const { data: itensData, error } = await supabase
       .from('licitacao_itens')
@@ -117,7 +120,7 @@ export default function LicitacaoSelector({
       return;
     }
 
-    const itens: LicitacaoItemAutoFill[] = ((itensData as any[]) || []).map(i => ({
+    const existingItens: LicitacaoItemAutoFill[] = ((itensData as any[]) || []).map(i => ({
       descricao: i.descricao || '',
       quantidade: i.quantidade || 1,
       unidade: i.unidade || 'UN',
@@ -126,14 +129,78 @@ export default function LicitacaoSelector({
       lote: i.lote || 'Único',
     }));
 
-    setItensCount(itens.length);
     setLoadingItens(false);
 
-    if (itens.length > 0 && onItensLoaded) {
-      onItensLoaded(itens);
-      toast.success(`${itens.length} item(ns) carregados automaticamente da licitação!`);
-    } else if (itens.length === 0) {
-      toast.info('Nenhum item extraído encontrado para esta licitação. Adicione manualmente.');
+    if (existingItens.length > 0) {
+      setItensCount(existingItens.length);
+      if (onItensLoaded) onItensLoaded(existingItens);
+      toast.success(`${existingItens.length} item(ns) carregados automaticamente da licitação!`);
+      return;
+    }
+
+    // No items found — try to auto-extract from edital document
+    toast.info('Nenhum item encontrado. Buscando edital para extração automática via IA...');
+    setExtracting(true);
+
+    try {
+      // Look for edital documents associated with this licitação
+      const { data: docs } = await supabase
+        .from('documentos')
+        .select('arquivo_path, nome, tipo')
+        .eq('licitacao_id', licitacaoId)
+        .eq('user_id', user!.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      let editalText = '';
+
+      if (docs && docs.length > 0) {
+        // Try to download and read the first edital document
+        for (const doc of docs) {
+          if (doc.arquivo_path) {
+            try {
+              const { data: fileData } = await supabase.storage
+                .from('documentos')
+                .download(doc.arquivo_path);
+              if (fileData) {
+                editalText = await fileData.text();
+                if (editalText.length > 100) break;
+              }
+            } catch {
+              // continue to next document
+            }
+          }
+        }
+      }
+
+      // If no document text, use the objeto field as base for extraction
+      if (!editalText || editalText.length < 100) {
+        editalText = `Licitação: ${lic.numero}\nÓrgão: ${lic.orgao}\nObjeto: ${lic.objeto}\nModalidade: ${lic.modalidade || 'N/I'}\nValor Estimado: R$ ${lic.valor_estimado?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || 'N/I'}`;
+      }
+
+      const extracted = await extrairItensIA(licitacaoId, editalText);
+
+      if (extracted.length > 0) {
+        const mappedItens: LicitacaoItemAutoFill[] = extracted.map(i => ({
+          descricao: i.descricao || '',
+          quantidade: i.quantidade || 1,
+          unidade: i.unidade || 'UN',
+          valorUnitario: i.valor_unitario || 0,
+          valorTotal: i.valor_total || 0,
+          lote: i.lote || 'Único',
+        }));
+        setItensCount(mappedItens.length);
+        if (onItensLoaded) onItensLoaded(mappedItens);
+      } else {
+        setItensCount(0);
+        toast.info('Não foi possível extrair itens automaticamente. Adicione manualmente na planilha abaixo.');
+      }
+    } catch (err) {
+      console.error('Erro na extração automática:', err);
+      toast.error('Erro ao tentar extrair itens automaticamente.');
+      setItensCount(0);
+    } finally {
+      setExtracting(false);
     }
   };
 
@@ -161,7 +228,11 @@ export default function LicitacaoSelector({
       {selectedId ? (
         <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 space-y-2">
           <div className="flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 text-accent shrink-0" />
+            {extracting ? (
+              <Loader2 className="w-4 h-4 text-accent shrink-0 animate-spin" />
+            ) : (
+              <CheckCircle className="w-4 h-4 text-accent shrink-0" />
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-foreground truncate">
                 {licitacaoNumero} — {licitacaoOrgao}
@@ -170,13 +241,29 @@ export default function LicitacaoSelector({
                 {licitacoes.find(l => l.id === selectedId)?.objeto?.slice(0, 100)}
               </p>
             </div>
-            <Badge className="bg-accent/20 text-accent border-accent/30 shrink-0">
-              {itensCount} {itensCount === 1 ? 'item' : 'itens'}
-            </Badge>
+            {extracting ? (
+              <Badge className="bg-accent/20 text-accent border-accent/30 shrink-0">
+                <Brain className="w-3 h-3 mr-1" /> Extraindo...
+              </Badge>
+            ) : (
+              <Badge className="bg-accent/20 text-accent border-accent/30 shrink-0">
+                {itensCount} {itensCount === 1 ? 'item' : 'itens'}
+              </Badge>
+            )}
           </div>
-          {itensCount > 0 && (
+          {extracting && (
+            <p className="text-[10px] text-accent">
+              🤖 A IA está extraindo os itens do edital automaticamente. Aguarde...
+            </p>
+          )}
+          {!extracting && itensCount > 0 && (
             <p className="text-[10px] text-accent">
               ✓ Itens preenchidos automaticamente. Você pode editar, adicionar ou excluir itens livremente.
+            </p>
+          )}
+          {!extracting && itensCount === 0 && (
+            <p className="text-[10px] text-muted-foreground">
+              Nenhum item extraído. Adicione manualmente na planilha abaixo.
             </p>
           )}
         </div>
