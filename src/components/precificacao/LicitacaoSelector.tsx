@@ -75,13 +75,18 @@ export default function LicitacaoSelector({
     fetchLicitacoes();
   }, [fetchLicitacoes]);
 
+  // Only show results when at least one filter is active
+  const hasActiveFilter = filterNumero.trim().length > 0 || (filterOrgao && filterOrgao !== '__all__');
+
   // Filter licitacoes
-  const filtered = licitacoes.filter(l => {
-    const matchNumero = !filterNumero || l.numero?.toLowerCase().includes(filterNumero.toLowerCase());
-    const effectiveOrgao = filterOrgao === '__all__' ? '' : filterOrgao;
-    const matchOrgao = !effectiveOrgao || l.orgao?.toLowerCase().includes(effectiveOrgao.toLowerCase());
-    return matchNumero && matchOrgao;
-  });
+  const filtered = hasActiveFilter
+    ? licitacoes.filter(l => {
+        const matchNumero = !filterNumero || l.numero?.toLowerCase().includes(filterNumero.toLowerCase());
+        const effectiveOrgao = filterOrgao === '__all__' ? '' : filterOrgao;
+        const matchOrgao = !effectiveOrgao || l.orgao?.toLowerCase().includes(effectiveOrgao.toLowerCase());
+        return matchNumero && matchOrgao;
+      })
+    : [];
 
   // Unique orgaos for filter
   const orgaosUnicos = [...new Set(licitacoes.map(l => l.orgao).filter(Boolean))].sort();
