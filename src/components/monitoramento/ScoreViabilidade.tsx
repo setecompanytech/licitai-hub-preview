@@ -33,23 +33,30 @@ export default function ScoreViabilidade({ edital, empresaCnae, empresaUf }: Pro
     await streamAIChat({
       messages: [{
         role: 'user',
-        content: `Você é um analista de viabilidade de licitações. Analise o edital abaixo e dê uma nota de 0 a 100 de viabilidade para participação, considerando:
+        content: `Você é um analista técnico de viabilidade de licitações públicas. Elabore um parecer técnico de viabilidade para o processo abaixo, com linguagem formal, objetiva e impessoal, conforme a Lei nº 14.133/2021.
 
-1. Compatibilidade do CNAE da empresa (${empresaCnae || 'não informado'}) com o objeto
-2. Localização: empresa em ${empresaUf || 'não informado'}, edital em ${edital.uf || 'não informado'}/${edital.municipio || 'não informado'}
-3. Valor estimado: competitividade e margem
-4. Modalidade: complexidade e exigências típicas
-5. Risco vs retorno
+REGRAS OBRIGATÓRIAS:
+- NÃO utilize emojis, emoticons ou caracteres decorativos em hipótese alguma.
+- NÃO faça suposições ou hipóteses genéricas. Baseie-se estritamente nos dados fornecidos.
+- Utilize numeração arábica sequencial para seções e alíneas com letras minúsculas para subitens.
+- Mantenha tom técnico, corporativo e impessoal.
 
-Dados do edital:
+CRITÉRIOS DE AVALIAÇÃO:
+1. Compatibilidade do CNAE da empresa (${empresaCnae || 'não informado'}) com o objeto licitado
+2. Análise logística: empresa localizada em ${empresaUf || 'não informado'}, processo em ${edital.uf || 'não informado'}/${edital.municipio || 'não informado'}
+3. Valor estimado: competitividade e margem de operação
+4. Modalidade: grau de complexidade e exigências normativas aplicáveis
+5. Relação risco-retorno
+
+DADOS DO PROCESSO:
 - Número: ${edital.numero}
 - Órgão: ${edital.orgao}
 - Objeto: ${edital.objeto}
 - Modalidade: ${edital.modalidade}
-- Valor: ${edital.valor_estimado ? `R$ ${edital.valor_estimado.toLocaleString('pt-BR')}` : 'Não informado'}
+- Valor Estimado: ${edital.valor_estimado ? `R$ ${edital.valor_estimado.toLocaleString('pt-BR')}` : 'Não informado'}
 - Portal: ${edital.portal}
 
-IMPORTANTE: Comece sua resposta SEMPRE com "SCORE: XX" onde XX é a nota de 0 a 100. Depois forneça a análise detalhada em markdown.`
+IMPORTANTE: Comece sua resposta SEMPRE com "SCORE: XX" onde XX é a nota de 0 a 100. Em seguida, apresente o parecer técnico em markdown com seções numeradas, sem saudações ou apresentações pessoais.`
       }],
       action: 'score_viabilidade',
       onDelta: (chunk) => {

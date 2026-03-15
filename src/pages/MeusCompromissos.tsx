@@ -389,13 +389,24 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
 
                   {/* IA Analysis result */}
                   {(iaResult[p.id] || p.ia_recomendacao) && (
-                    <div className="bg-muted/30 rounded-lg p-3 border border-border/50 text-sm">
-                      <p className="text-xs font-semibold text-accent mb-2 flex items-center gap-1">
-                        <Brain className="w-3.5 h-3.5" /> Análise da IA
-                      </p>
-                      <div className="prose prose-sm dark:prose-invert max-w-none">
-                        <ReactMarkdown>{iaResult[p.id] || p.ia_recomendacao || ''}</ReactMarkdown>
-                      </div>
+                    <div className="bg-muted/30 rounded-lg border border-border/50 text-sm">
+                      <button
+                        className="flex items-center gap-2 w-full text-left p-3"
+                        onClick={() => setExpandedAnalise(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
+                      >
+                        <Brain className="w-3.5 h-3.5 text-accent" />
+                        <span className="text-xs font-semibold text-accent flex-1">Análise da IA</span>
+                        {expandedAnalise[p.id] ? (
+                          <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </button>
+                      {expandedAnalise[p.id] && (
+                        <div className="prose prose-sm dark:prose-invert max-w-none px-3 pb-3">
+                          <ReactMarkdown>{iaResult[p.id] || p.ia_recomendacao || ''}</ReactMarkdown>
+                        </div>
+                      )}
                     </div>
                   )}
                 </Card>
