@@ -16,7 +16,8 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import {
   Plus, Trash2, Loader2, Receipt, DollarSign, TrendingUp, TrendingDown, Percent,
-  Calculator, Building2, AlertTriangle, Info
+  Calculator, Building2, AlertTriangle, Info, Package, Briefcase, Truck, FileText,
+  HardHat, Paperclip
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
