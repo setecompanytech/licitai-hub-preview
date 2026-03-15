@@ -72,6 +72,7 @@ export default function GestaoContratos() {
     status: 'vigente', modalidade: '', uf: '', municipio: '',
     fiscal_nome: '', fiscal_email: '', fiscal_telefone: '', observacoes: '',
   });
+  const [pendingItens, setPendingItens] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) return;
