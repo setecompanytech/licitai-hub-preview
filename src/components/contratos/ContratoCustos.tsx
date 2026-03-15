@@ -292,7 +292,9 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
                 return (
                   <TableRow key={c.id}>
                     <TableCell className="text-xs">
-                      <Badge variant="outline" className="text-[10px]">{tipoCfg?.icon} {tipoCfg?.label || c.tipo}</Badge>
+                      <Badge variant="outline" className="text-[10px] flex items-center gap-1 w-fit">
+                        {tipoCfg && <tipoCfg.Icon className="w-3 h-3" />} {tipoCfg?.label || c.tipo}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-xs max-w-[200px] truncate">{c.descricao}</TableCell>
                     <TableCell className="text-xs text-right font-medium text-destructive">{fmt(c.valor)}</TableCell>
