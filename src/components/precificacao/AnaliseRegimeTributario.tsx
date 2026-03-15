@@ -60,6 +60,7 @@ interface Props {
   regimeLabel: string;
   itens: { descricao: string; ncm?: string }[];
   onAliquotaUpdate?: (idx: number, aliquota: number, tratamento: TratamentoICMS) => void;
+  onNcmUpdate?: (idx: number, ncm: string) => void;
 }
 
 export default function AnaliseRegimeTributario({ ufCalculo, ufNome, regime, regimeLabel, itens, onAliquotaUpdate }: Props) {
