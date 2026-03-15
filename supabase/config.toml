@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.process-email-queue]
 verify_jwt = false
+
+[functions.emitir-certidoes]
+verify_jwt = false
