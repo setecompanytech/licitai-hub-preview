@@ -87,8 +87,8 @@ export default function AgenteTemplateDownload() {
               Template do Agente Externo
             </h3>
             <p className="text-sm text-muted-foreground max-w-xl">
-              Projeto Node.js v2.0 com <strong>8 portais implementados</strong>, setup automático,
-              PM2, Docker Compose e HTTPS. Pronto para deploy em VPS.
+              Projeto Node.js v2.1 com <strong>8 portais implementados</strong>, <strong>multi-sessão paralela</strong>,
+              setup automático, PM2, Docker Compose e HTTPS. Pronto para deploy em VPS.
             </p>
           </div>
           <Button

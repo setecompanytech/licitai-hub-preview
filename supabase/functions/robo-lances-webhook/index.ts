@@ -39,7 +39,7 @@ serve(async (req) => {
         return jsonResponse({ error: "Token inválido" }, 401);
       }
 
-      const { url_base, nome, api_key } = body;
+      const { url_base, nome, api_key, max_sessoes_paralelas } = body;
       if (!url_base) {
         return jsonResponse({ error: "url_base é obrigatório" }, 400);
       }
@@ -53,6 +53,7 @@ serve(async (req) => {
             url_base,
             api_key_hash: api_key || null,
             status: "verificando",
+            max_sessoes_paralelas: max_sessoes_paralelas || 3,
           },
           { onConflict: "user_id,nome" }
         )
@@ -78,6 +79,8 @@ serve(async (req) => {
             ultimo_heartbeat: new Date().toISOString(),
             versao_agente: pingData.version || null,
             capacidades: pingData.capabilities || [],
+            sessoes_ativas: pingData.capacidade?.sessoes_ativas || pingData.sessoes_ativas || 0,
+            ram_mb: pingData.capacidade?.ram_total_mb || null,
           })
           .eq("id", data.id);
 

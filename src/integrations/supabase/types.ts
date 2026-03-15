@@ -20,7 +20,10 @@ export type Database = {
           capacidades: Json | null
           created_at: string
           id: string
+          max_sessoes_paralelas: number
           nome: string
+          ram_mb: number | null
+          sessoes_ativas: number
           status: string
           ultimo_heartbeat: string | null
           updated_at: string
@@ -33,7 +36,10 @@ export type Database = {
           capacidades?: Json | null
           created_at?: string
           id?: string
+          max_sessoes_paralelas?: number
           nome?: string
+          ram_mb?: number | null
+          sessoes_ativas?: number
           status?: string
           ultimo_heartbeat?: string | null
           updated_at?: string
@@ -46,7 +52,10 @@ export type Database = {
           capacidades?: Json | null
           created_at?: string
           id?: string
+          max_sessoes_paralelas?: number
           nome?: string
+          ram_mb?: number | null
+          sessoes_ativas?: number
           status?: string
           ultimo_heartbeat?: string | null
           updated_at?: string
