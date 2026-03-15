@@ -287,12 +287,13 @@ async function buscarPNCP(params: {
 }): Promise<any[]> {
   const resultados: any[] = [];
   const now = new Date();
+  // Default: 30 days past + 30 days future (narrower window for relevant results)
   const dataInicial = params.dataInicio
     ? formatDatePNCP(new Date(params.dataInicio))
-    : formatDatePNCP(new Date(now.getTime() - 90 * 86400000));
+    : formatDatePNCP(new Date(now.getTime() - 30 * 86400000));
   const dataFinal = params.dataFim
     ? formatDatePNCP(new Date(params.dataFim))
-    : formatDatePNCP(new Date(now.getTime() + 90 * 86400000));
+    : formatDatePNCP(new Date(now.getTime() + 30 * 86400000));
 
   const modalidades = params.modalidade
     ? [params.modalidade]
