@@ -287,12 +287,13 @@ async function buscarPNCP(params: {
 }): Promise<any[]> {
   const resultados: any[] = [];
   const now = new Date();
+  // Default: 30 days past + 30 days future (narrower window for relevant results)
   const dataInicial = params.dataInicio
     ? formatDatePNCP(new Date(params.dataInicio))
-    : formatDatePNCP(new Date(now.getTime() - 90 * 86400000));
+    : formatDatePNCP(new Date(now.getTime() - 30 * 86400000));
   const dataFinal = params.dataFim
     ? formatDatePNCP(new Date(params.dataFim))
-    : formatDatePNCP(new Date(now.getTime() + 90 * 86400000));
+    : formatDatePNCP(new Date(now.getTime() + 30 * 86400000));
 
   const modalidades = params.modalidade
     ? [params.modalidade]
@@ -412,6 +413,7 @@ async function buscarComFirecrawl(
         limit: 10,
         lang: "pt",
         country: "br",
+        tbs: "qdr:m", // Last month only — avoid old/stale results
         scrapeOptions: { formats: ["markdown"] },
       }),
     });
@@ -553,8 +555,8 @@ async function enrichWithPncpData(items: any[]): Promise<any[]> {
   for (const kw of keywordArr) {
     try {
       const now = new Date();
-      const dataInicial = formatDatePNCP(new Date(now.getTime() - 180 * 86400000));
-      const dataFinal = formatDatePNCP(new Date(now.getTime() + 90 * 86400000));
+      const dataInicial = formatDatePNCP(new Date(now.getTime() - 60 * 86400000));
+      const dataFinal = formatDatePNCP(new Date(now.getTime() + 30 * 86400000));
 
       for (const mod of ["6", "8", "5"]) {
         const params = new URLSearchParams({
@@ -801,6 +803,16 @@ Deno.serve(async (req) => {
 
     const results = await Promise.all(promises);
     let allItems = results.flat();
+
+    // ── Filter out stale/old results ──────────────────────────────────
+    const cutoffDate = new Date(Date.now() - 60 * 86400000); // 60 days max age
+    allItems = allItems.filter((r) => {
+      const dateStr = r.data_publicacao || r.data_abertura;
+      if (!dateStr) return true; // Keep if no date (can't verify)
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return true; // Keep if invalid date
+      return d >= cutoffDate;
+    });
 
     // Deduplicate by title similarity
     const seen = new Set<string>();
