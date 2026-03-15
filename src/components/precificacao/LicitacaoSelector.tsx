@@ -228,7 +228,11 @@ export default function LicitacaoSelector({
       {selectedId ? (
         <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 space-y-2">
           <div className="flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 text-accent shrink-0" />
+            {extracting ? (
+              <Loader2 className="w-4 h-4 text-accent shrink-0 animate-spin" />
+            ) : (
+              <CheckCircle className="w-4 h-4 text-accent shrink-0" />
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-foreground truncate">
                 {licitacaoNumero} — {licitacaoOrgao}
@@ -237,13 +241,29 @@ export default function LicitacaoSelector({
                 {licitacoes.find(l => l.id === selectedId)?.objeto?.slice(0, 100)}
               </p>
             </div>
-            <Badge className="bg-accent/20 text-accent border-accent/30 shrink-0">
-              {itensCount} {itensCount === 1 ? 'item' : 'itens'}
-            </Badge>
+            {extracting ? (
+              <Badge className="bg-accent/20 text-accent border-accent/30 shrink-0">
+                <Brain className="w-3 h-3 mr-1" /> Extraindo...
+              </Badge>
+            ) : (
+              <Badge className="bg-accent/20 text-accent border-accent/30 shrink-0">
+                {itensCount} {itensCount === 1 ? 'item' : 'itens'}
+              </Badge>
+            )}
           </div>
-          {itensCount > 0 && (
+          {extracting && (
+            <p className="text-[10px] text-accent">
+              🤖 A IA está extraindo os itens do edital automaticamente. Aguarde...
+            </p>
+          )}
+          {!extracting && itensCount > 0 && (
             <p className="text-[10px] text-accent">
               ✓ Itens preenchidos automaticamente. Você pode editar, adicionar ou excluir itens livremente.
+            </p>
+          )}
+          {!extracting && itensCount === 0 && (
+            <p className="text-[10px] text-muted-foreground">
+              Nenhum item extraído. Adicione manualmente na planilha abaixo.
             </p>
           )}
         </div>
