@@ -103,6 +103,11 @@ export default function AnaliseRegimeTributario({ ufCalculo, ufNome, regime, reg
 
       setNcmAutoResults(prev => ({ ...prev, [idx]: data as NcmAutoResult }));
 
+      // Auto-propagate NCM to parent items
+      if (data?.ncm && onNcmUpdate) {
+        onNcmUpdate(idx, data.ncm);
+      }
+
       // Auto-update aliquota if available
       if (data?.icms && onAliquotaUpdate) {
         const aliq = data.icms.isento ? 0 : (data.icms.aliquota_interna || 0);
