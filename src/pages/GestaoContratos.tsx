@@ -13,6 +13,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+
+const formatInputBRL = (value: string): string => {
+  const num = parseFloat(value);
+  if (isNaN(num)) return '';
+  return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const parseBRLInput = (value: string): string => {
+  // Remove tudo exceto dígitos e vírgula, converte vírgula para ponto
+  const clean = value.replace(/\./g, '').replace(',', '.');
+  const num = parseFloat(clean);
+  return isNaN(num) ? '0' : String(num);
+};
 import {
   FileText, Plus, Search, Calendar, DollarSign, AlertTriangle,
   CheckCircle2, Clock, TrendingUp, Building2, Loader2, Trash2,
@@ -214,8 +227,8 @@ export default function GestaoContratos() {
               <div><Label>Nº Contrato *</Label><Input value={form.numero_contrato} onChange={e => setForm(f => ({ ...f, numero_contrato: e.target.value }))} placeholder="CT-001/2025" /></div>
               <div><Label>Órgão Contratante *</Label><Input value={form.orgao_contratante} onChange={e => setForm(f => ({ ...f, orgao_contratante: e.target.value }))} /></div>
               <div className="md:col-span-2"><Label>Objeto *</Label><Textarea value={form.objeto} onChange={e => setForm(f => ({ ...f, objeto: e.target.value }))} rows={2} /></div>
-              <div><Label>Valor Global (R$)</Label><Input type="number" value={form.valor_global} onChange={e => setForm(f => ({ ...f, valor_global: e.target.value }))} /></div>
-              <div><Label>Valor Consumido (R$)</Label><Input type="number" value={form.valor_consumido} onChange={e => setForm(f => ({ ...f, valor_consumido: e.target.value }))} /></div>
+              <div><Label>Valor Global (R$)</Label><Input inputMode="decimal" value={form.valor_global ? formatInputBRL(form.valor_global) : ''} onChange={e => setForm(f => ({ ...f, valor_global: parseBRLInput(e.target.value) }))} placeholder="0,00" /></div>
+              <div><Label>Valor Consumido (R$)</Label><Input inputMode="decimal" value={form.valor_consumido ? formatInputBRL(form.valor_consumido) : ''} onChange={e => setForm(f => ({ ...f, valor_consumido: parseBRLInput(e.target.value) }))} placeholder="0,00" /></div>
               <div><Label>Data Assinatura</Label><Input type="date" value={form.data_assinatura} onChange={e => setForm(f => ({ ...f, data_assinatura: e.target.value }))} /></div>
               <div><Label>Data Início</Label><Input type="date" value={form.data_inicio} onChange={e => setForm(f => ({ ...f, data_inicio: e.target.value }))} /></div>
               <div><Label>Data Fim</Label><Input type="date" value={form.data_fim} onChange={e => setForm(f => ({ ...f, data_fim: e.target.value }))} /></div>
