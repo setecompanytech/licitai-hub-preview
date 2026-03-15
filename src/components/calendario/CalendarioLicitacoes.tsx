@@ -465,7 +465,7 @@ export default function CalendarioLicitacoes() {
                     <div
                       key={l.id}
                       className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => navigate('/licitacoes-estrategicas')}
+                      onClick={() => navigate('/kanban')}
                     >
                       <div className="flex items-start gap-3 min-w-0">
                         <div
