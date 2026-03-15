@@ -60,9 +60,10 @@ interface Props {
   regimeLabel: string;
   itens: { descricao: string; ncm?: string }[];
   onAliquotaUpdate?: (idx: number, aliquota: number, tratamento: TratamentoICMS) => void;
+  onNcmUpdate?: (idx: number, ncm: string) => void;
 }
 
-export default function AnaliseRegimeTributario({ ufCalculo, ufNome, regime, regimeLabel, itens, onAliquotaUpdate }: Props) {
+export default function AnaliseRegimeTributario({ ufCalculo, ufNome, regime, regimeLabel, itens, onAliquotaUpdate, onNcmUpdate }: Props) {
   const [ncmInputs, setNcmInputs] = useState<string[]>(itens.map(i => i.ncm || ''));
   const [analiseIA, setAnaliseIA] = useState<AnaliseResultadoItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -101,6 +102,11 @@ export default function AnaliseRegimeTributario({ ufCalculo, ufNome, regime, reg
       }
 
       setNcmAutoResults(prev => ({ ...prev, [idx]: data as NcmAutoResult }));
+
+      // Auto-propagate NCM to parent items
+      if (data?.ncm && onNcmUpdate) {
+        onNcmUpdate(idx, data.ncm);
+      }
 
       // Auto-update aliquota if available
       if (data?.icms && onAliquotaUpdate) {
@@ -168,13 +174,20 @@ export default function AnaliseRegimeTributario({ ufCalculo, ufNome, regime, reg
       `${idx + 1}. ${item.descricao}${item.ncm ? ` (NCM: ${item.ncm})` : ''}`
     ).join('\n');
 
-    const prompt = `Atue como analista tributário especialista em ICMS. Analise cada item abaixo e determine o TRATAMENTO TRIBUTÁRIO correto para o estado ${ufCalculo} (${ufNome}), considerando o regime ${regimeLabel}.
+    const prompt = `Atue como analista tributário especialista em ICMS e classificação fiscal de mercadorias. Analise cada item abaixo e determine o TRATAMENTO TRIBUTÁRIO correto para o estado ${ufCalculo} (${ufNome}), considerando o regime ${regimeLabel}.
 
 ITENS:
 ${itensTexto}
 
+FONTES OFICIAIS DE NCM QUE VOCÊ DEVE CONSULTAR:
+- TIPI (Tabela de Incidência do IPI) - Decreto 11.158/2022 atualizado
+- Portal Único Siscomex: https://portalunico.siscomex.gov.br/classif/#/sumario?perfil=publico
+- Cosmos / Bluesoft: https://cosmos.bluesoft.com.br/ncms
+- Tabela IBGE/IBPT de NCM
+- AFRFB / Receita Federal - Classificação Fiscal de Mercadorias
+
 Para cada item, determine:
-1. O NCM correto (se não informado, sugira o mais provável)
+1. O NCM CORRETO conforme a TIPI vigente e fontes oficiais acima. O NCM deve ter 8 dígitos no formato 0000.00.00
 2. O tratamento ICMS: ISENTO, ST (Substituição Tributária), REDUCAO_BC (Redução de Base de Cálculo), DIFERIDO, ALIQUOTA_CHEIA ou ALIQUOTA_ESPECIAL
 3. A alíquota efetiva real (%) considerando todos os benefícios fiscais do estado
 4. A categoria fiscal do produto
@@ -182,6 +195,7 @@ Para cada item, determine:
 6. Se for ST, informe o MVA aplicável
 
 REGRAS IMPORTANTES:
+- O NCM deve ser PRECISO e corresponder exatamente ao produto descrito
 - Considere o RICMS do ${ufCalculo} atualizado
 - Verifique Convênios CONFAZ vigentes (especialmente 142/18 para ST)
 - Considere reduções de base de cálculo para cesta básica conforme legislação estadual
@@ -218,13 +232,28 @@ Responda EXCLUSIVAMENTE em JSON:
             if (jsonMatch) {
               const parsed: AnaliseResultadoItem[] = JSON.parse(jsonMatch[0]);
               setAnaliseIA(parsed);
-              // Notify parent of aliquota updates
+              
+              // Auto-fill NCM inputs and propagate to parent
+              const newNcmInputs = [...ncmInputs];
               parsed.forEach((item, idx) => {
-                if (onAliquotaUpdate && idx < itens.length) {
-                  onAliquotaUpdate(idx, item.aliquota_efetiva, item.tratamento);
+                if (idx < itens.length) {
+                  // Update NCM input field
+                  if (item.ncm && item.ncm !== '0000.00.00') {
+                    newNcmInputs[idx] = item.ncm;
+                    // Propagate NCM to parent (Itens de Produto)
+                    if (onNcmUpdate) {
+                      onNcmUpdate(idx, item.ncm);
+                    }
+                  }
+                  // Notify parent of aliquota updates
+                  if (onAliquotaUpdate) {
+                    onAliquotaUpdate(idx, item.aliquota_efetiva, item.tratamento);
+                  }
                 }
               });
-              toast.success(`Análise tributária concluída para ${parsed.length} item(ns)!`);
+              setNcmInputs(newNcmInputs);
+              
+              toast.success(`Análise tributária concluída — ${parsed.length} NCM(s) classificados!`);
             } else {
               toast.error('Não foi possível processar a resposta da IA.');
             }
