@@ -6,7 +6,7 @@ import { INFRA_FILES } from './agent-template/infrastructure';
 const CORE_FILES: Record<string, string> = {
   'package.json': `{
   "name": "agente-lances-externo",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Agente externo para automação de lances em portais de licitação",
   "main": "src/index.js",
   "scripts": {
