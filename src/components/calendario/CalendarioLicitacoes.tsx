@@ -277,11 +277,13 @@ export default function CalendarioLicitacoes() {
     const licitDates: Date[] = [];
     const docDates: Date[] = [];
     const urgentDates: Date[] = [];
+    const bkpDates: Date[] = [];
 
     eventDates.forEach((val, key) => {
       const d = new Date(key + 'T12:00:00');
       if (val.licitacoes.length > 0) licitDates.push(d);
       if (val.docs.length > 0) docDates.push(d);
+      if (val.backups) bkpDates.push(d);
       if (
         val.licitacoes.some((l) => {
           const dt = l.data_abertura ? new Date(l.data_abertura) : null;
@@ -292,7 +294,7 @@ export default function CalendarioLicitacoes() {
         urgentDates.push(d);
     });
 
-    return { licitacao: licitDates, documento: docDates, urgente: urgentDates };
+    return { licitacao: licitDates, documento: docDates, urgente: urgentDates, backup: bkpDates };
   }, [eventDates]);
 
   const modifiersStyles = {
