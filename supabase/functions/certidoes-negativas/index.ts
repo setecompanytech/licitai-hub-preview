@@ -141,7 +141,7 @@ async function consultarReceitaFederal(cnpj: string): Promise<VerificacaoReal> {
   try {
     const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
     if (!resp.ok) {
-      return { fonte: "Receita Federal", status: "erro", detalhes: "Não foi possível consultar dados cadastrais", dataConsulta: new Date().toISOString(), url: "https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp" };
+      return { fonte: "Receita Federal", status: "erro", detalhes: "Não foi possível consultar dados cadastrais", dataConsulta: new Date().toISOString(), url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home" };
     }
     const data = await resp.json();
     if (data.situacao_cadastral === 2) {
