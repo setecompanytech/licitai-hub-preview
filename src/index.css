@@ -130,6 +130,19 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+  /* Improve tap targets on mobile */
+  @media (max-width: 640px) {
+    button, a, [role="button"] {
+      min-height: 32px;
+    }
+    h1 { font-size: 1.25rem; }
+    h2 { font-size: 1.1rem; }
+    h3 { font-size: 0.95rem; }
   }
 }
 
