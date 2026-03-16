@@ -12,6 +12,7 @@ import CnaesSecundarios from '@/components/configuracoes/CnaesSecundarios';
 import PlanoAssinatura from '@/components/configuracoes/PlanoAssinatura';
 import PlanoVerificacao from '@/components/configuracoes/PlanoVerificacao';
 import AnalyseCustosPlanos from '@/components/configuracoes/AnalyseCustosPlanos';
+import AnaliseCNPJAdicional from '@/components/configuracoes/AnaliseCNPJAdicional';
 import RepresentanteUploader, { type ExtractedRepresentanteData } from '@/components/configuracoes/RepresentanteUploader';
 import TimbradoUploader from '@/components/proposta/TimbradoUploader';
 import { supabase } from '@/integrations/supabase/client';
