@@ -49,7 +49,7 @@ const tiposDocumento = [
 
 export default function ContratoPedidos({ contratoId }: { contratoId: string }) {
   const { user } = useAuth();
-  const { empresaAtual } = useEmpresa();
+  const { empresaAtiva } = useEmpresa();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [itens, setItens] = useState<ContratoItem[]>([]);
   const [loading, setLoading] = useState(true);
