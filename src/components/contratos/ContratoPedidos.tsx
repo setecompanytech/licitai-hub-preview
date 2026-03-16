@@ -265,7 +265,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     // If requesting commission
     if (solicitarComissao && user && empresaAtiva) {
       const { error: comErr } = await supabase.from('comissoes_lancamentos' as any).insert({
-        empresa_id: empresaAtual.id,
+        empresa_id: empresaAtiva.id,
         user_id: user.id,
         solicitado_por: user.id,
         tipo: 'nota_fiscal',
