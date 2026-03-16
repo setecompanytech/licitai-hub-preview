@@ -40,9 +40,6 @@ export default function CredenciaisPortalForm() {
   const [portalId, setPortalId] = useState('');
   const [login, setLogin] = useState('');
   const [senha, setSenha] = useState('');
-  const [certFile, setCertFile] = useState<File | null>(null);
-  const [certTipo, setCertTipo] = useState<'pf' | 'pj'>('pj');
-  const [certValidade, setCertValidade] = useState('');
 
   const { data: credenciais = [], isLoading } = useQuery({
     queryKey: ['credenciais-portais', user?.id],
