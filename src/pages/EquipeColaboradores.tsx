@@ -262,6 +262,14 @@ export default function EquipeColaboradores() {
               )}
             </TabsContent>
 
+            <TabsContent value="tarefas">
+              <TarefasColaborador empresaId={empresaAtiva.id} isAdmin={isAdmin} />
+            </TabsContent>
+
+            <TabsContent value="comissoes">
+              <ComissoesColaborador empresaId={empresaAtiva.id} isAdmin={isAdmin} />
+            </TabsContent>
+
             <TabsContent value="relatorio">
               <RelatorioAtividades empresaId={empresaAtiva.id} />
             </TabsContent>
