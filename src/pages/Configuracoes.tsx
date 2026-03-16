@@ -496,6 +496,7 @@ export default function Configuracoes() {
             <PlanoAssinatura />
             <PlanoVerificacao />
             <AnalyseCustosPlanos />
+            <AnaliseCNPJAdicional />
           </TabsContent>
         </Tabs>
       </div>
