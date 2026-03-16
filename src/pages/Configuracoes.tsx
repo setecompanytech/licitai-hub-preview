@@ -496,7 +496,7 @@ export default function Configuracoes() {
           <TabsContent value="plano" className="space-y-6">
             <PlanoAssinatura />
             <PlanoVerificacao />
-            <AnalyseCustosPlanos />
+            {isAdmin && <AnalyseCustosPlanos />}
             <AnaliseCNPJAdicional />
           </TabsContent>
         </Tabs>
