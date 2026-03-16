@@ -9,7 +9,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, CheckCircle2, Clock, AlertTriangle, X, Link2 } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, AlertTriangle, X, Link2, ChevronDown, ChevronRight, ListPlus } from 'lucide-react';
+
+type SubTarefa = {
+  id: string;
+  tarefa_id: string;
+  criado_por: string;
+  titulo: string;
+  status: string;
+  created_at: string;
+  concluida_em: string | null;
+};
 
 type Tarefa = {
   id: string;
@@ -57,11 +67,14 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: string; isAdmin: boolean }) {
   const { user } = useAuth();
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
+  const [subTarefas, setSubTarefas] = useState<SubTarefa[]>([]);
   const [membros, setMembros] = useState<Membro[]>([]);
   const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [filtroStatus, setFiltroStatus] = useState<string>('todas');
+  const [expandedTarefas, setExpandedTarefas] = useState<Set<string>>(new Set());
+  const [newSubTarefa, setNewSubTarefa] = useState<Record<string, string>>({});
 
   // Form state
   const [titulo, setTitulo] = useState('');
@@ -83,9 +96,17 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
       supabase.from('empresa_membros').select('id, user_id, nome, email, papel').eq('empresa_id', empresaId),
       supabase.from('licitacoes').select('id, numero, objeto').limit(50).order('created_at', { ascending: false }),
     ]);
-    setTarefas((tarefasRes.data as any[]) || []);
+    const tarefasList = (tarefasRes.data as any[]) || [];
+    setTarefas(tarefasList);
     setMembros((membrosRes.data as any[]) || []);
     setLicitacoes((licitacoesRes.data as any[]) || []);
+
+    // Load sub-tarefas for all tarefas
+    if (tarefasList.length > 0) {
+      const ids = tarefasList.map((t: any) => t.id);
+      const { data: subs } = await supabase.from('sub_tarefas' as any).select('*').in('tarefa_id', ids).order('created_at', { ascending: true });
+      setSubTarefas((subs as any[]) || []);
+    }
     setLoading(false);
   };
 
@@ -132,6 +153,47 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
     else { toast.success('Tarefa removida'); loadData(); }
   };
 
+  // Sub-tarefa handlers
+  const handleAddSubTarefa = async (tarefaId: string) => {
+    const titulo = newSubTarefa[tarefaId]?.trim();
+    if (!titulo || !user) return;
+    const { error } = await supabase.from('sub_tarefas' as any).insert({
+      tarefa_id: tarefaId,
+      criado_por: user.id,
+      titulo,
+    } as any);
+    if (error) {
+      toast.error('Erro ao criar sub-tarefa');
+    } else {
+      toast.success('Sub-tarefa adicionada');
+      setNewSubTarefa(prev => ({ ...prev, [tarefaId]: '' }));
+      loadData();
+    }
+  };
+
+  const handleToggleSubTarefa = async (subId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'concluida' ? 'pendente' : 'concluida';
+    const updates: any = { status: newStatus };
+    if (newStatus === 'concluida') updates.concluida_em = new Date().toISOString();
+    else updates.concluida_em = null;
+    await supabase.from('sub_tarefas' as any).update(updates).eq('id', subId);
+    loadData();
+  };
+
+  const handleDeleteSubTarefa = async (subId: string) => {
+    await supabase.from('sub_tarefas' as any).delete().eq('id', subId);
+    loadData();
+  };
+
+  const toggleExpand = (tarefaId: string) => {
+    setExpandedTarefas(prev => {
+      const next = new Set(prev);
+      if (next.has(tarefaId)) next.delete(tarefaId);
+      else next.add(tarefaId);
+      return next;
+    });
+  };
+
   const resetForm = () => {
     setTitulo(''); setDescricao(''); setAtribuidoA(''); setPrioridade('media'); setPrazo(''); setLicitacaoId('');
   };
@@ -142,7 +204,6 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
   };
 
   const filtered = filtroStatus === 'todas' ? tarefas : tarefas.filter(t => t.status === filtroStatus);
-  const isVencida = (prazo: string | null) => prazo && new Date(prazo) < new Date() && !['concluida', 'cancelada'].includes('');
 
   return (
     <div className="space-y-4">
@@ -188,41 +249,117 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
             const prio = PRIORIDADE_CONFIG[t.prioridade] || PRIORIDADE_CONFIG.media;
             const st = STATUS_CONFIG[t.status] || STATUS_CONFIG.pendente;
             const vencida = t.prazo && new Date(t.prazo) < new Date() && !['concluida', 'cancelada'].includes(t.status);
+            const subs = subTarefas.filter(s => s.tarefa_id === t.id);
+            const isExpanded = expandedTarefas.has(t.id);
+            const subsCompleted = subs.filter(s => s.status === 'concluida').length;
+            const canManage = user?.id === t.atribuido_a || user?.id === t.criado_por || isAdmin;
+
             return (
-              <div key={t.id} className={`bg-card rounded-lg border p-4 ${vencida ? 'border-destructive/50' : 'border-border/50'}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="font-semibold text-sm">{t.titulo}</span>
-                      <Badge className={`text-[10px] ${prio.color}`}>{prio.label}</Badge>
-                      <Badge className={`text-[10px] ${st.color}`}>{st.label}</Badge>
-                      {t.licitacao_id && <Badge variant="outline" className="text-[10px]"><Link2 className="w-3 h-3 mr-1" />Licitação</Badge>}
-                      {vencida && <Badge className="text-[10px] bg-destructive/15 text-destructive">Vencida</Badge>}
+              <div key={t.id} className={`bg-card rounded-lg border ${vencida ? 'border-destructive/50' : 'border-border/50'}`}>
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        {subs.length > 0 && (
+                          <button onClick={() => toggleExpand(t.id)} className="text-muted-foreground hover:text-foreground">
+                            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </button>
+                        )}
+                        <span className="font-semibold text-sm">{t.titulo}</span>
+                        <Badge className={`text-[10px] ${prio.color}`}>{prio.label}</Badge>
+                        <Badge className={`text-[10px] ${st.color}`}>{st.label}</Badge>
+                        {t.licitacao_id && <Badge variant="outline" className="text-[10px]"><Link2 className="w-3 h-3 mr-1" />Licitação</Badge>}
+                        {vencida && <Badge className="text-[10px] bg-destructive/15 text-destructive">Vencida</Badge>}
+                        {subs.length > 0 && (
+                          <Badge variant="outline" className="text-[10px]">
+                            <ListPlus className="w-3 h-3 mr-1" />{subsCompleted}/{subs.length}
+                          </Badge>
+                        )}
+                      </div>
+                      {t.descricao && <p className="text-xs text-muted-foreground line-clamp-2">{t.descricao}</p>}
+                      <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
+                        <span>→ {getMembroNome(t.atribuido_a)}</span>
+                        {t.prazo && <span>Prazo: {new Date(t.prazo).toLocaleDateString('pt-BR')}</span>}
+                      </div>
                     </div>
-                    {t.descricao && <p className="text-xs text-muted-foreground line-clamp-2">{t.descricao}</p>}
-                    <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
-                      <span>→ {getMembroNome(t.atribuido_a)}</span>
-                      {t.prazo && <span>Prazo: {new Date(t.prazo).toLocaleDateString('pt-BR')}</span>}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {t.status !== 'concluida' && (
+                        <Select value={t.status} onValueChange={v => handleUpdateStatus(t.id, v)}>
+                          <SelectTrigger className="w-[120px] h-7 text-[11px]"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(STATUS_CONFIG).map(([k, v]) => (
+                              <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {isAdmin && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/60 hover:text-destructive" onClick={() => handleDelete(t.id)}>
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    {t.status !== 'concluida' && (
-                      <Select value={t.status} onValueChange={v => handleUpdateStatus(t.id, v)}>
-                        <SelectTrigger className="w-[120px] h-7 text-[11px]"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-                            <SelectItem key={k} value={k}>{v.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                    {isAdmin && (
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/60 hover:text-destructive" onClick={() => handleDelete(t.id)}>
-                        <X className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
                   </div>
                 </div>
+
+                {/* Sub-tarefas section */}
+                {(isExpanded || subs.length === 0) && canManage && (
+                  <div className="border-t border-border/30 px-4 py-3 bg-muted/20">
+                    {subs.map(sub => (
+                      <div key={sub.id} className="flex items-center gap-2 py-1.5 group">
+                        <button
+                          onClick={() => handleToggleSubTarefa(sub.id, sub.status)}
+                          className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
+                            sub.status === 'concluida'
+                              ? 'bg-emerald-500 border-emerald-500 text-white'
+                              : 'border-muted-foreground/40 hover:border-accent'
+                          }`}
+                        >
+                          {sub.status === 'concluida' && <CheckCircle2 className="w-3 h-3" />}
+                        </button>
+                        <span className={`text-xs flex-1 ${sub.status === 'concluida' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                          {sub.titulo}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">{getMembroNome(sub.criado_por)}</span>
+                        <Button
+                          variant="ghost" size="icon"
+                          className="h-5 w-5 opacity-0 group-hover:opacity-100 text-destructive/60"
+                          onClick={() => handleDeleteSubTarefa(sub.id)}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ))}
+                    {/* Add new sub-tarefa inline */}
+                    <div className="flex items-center gap-2 mt-2">
+                      <Input
+                        value={newSubTarefa[t.id] || ''}
+                        onChange={e => setNewSubTarefa(prev => ({ ...prev, [t.id]: e.target.value }))}
+                        placeholder="Nova sub-tarefa..."
+                        className="h-7 text-xs flex-1"
+                        onKeyDown={e => e.key === 'Enter' && handleAddSubTarefa(t.id)}
+                      />
+                      <Button
+                        size="sm" variant="ghost"
+                        className="h-7 px-2 text-xs text-accent"
+                        onClick={() => handleAddSubTarefa(t.id)}
+                        disabled={!newSubTarefa[t.id]?.trim()}
+                      >
+                        <Plus className="w-3 h-3 mr-1" /> Adicionar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Show expand hint when collapsed with subs */}
+                {!isExpanded && subs.length > 0 && (
+                  <button
+                    onClick={() => toggleExpand(t.id)}
+                    className="w-full border-t border-border/30 px-4 py-1.5 text-[10px] text-muted-foreground hover:bg-muted/30 transition-colors text-left"
+                  >
+                    {subs.length} sub-tarefa(s) • {subsCompleted} concluída(s)
+                  </button>
+                )}
               </div>
             );
           })}
