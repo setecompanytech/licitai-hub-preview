@@ -58,10 +58,6 @@ export default function CredenciaisPortalForm() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const cred = credenciais.find((c: any) => c.id === id);
-      if (cred?.certificado_path) {
-        await supabase.storage.from('certificados').remove([cred.certificado_path]);
-      }
       const { error } = await supabase.from('credenciais_portais').delete().eq('id', id);
       if (error) throw error;
     },
