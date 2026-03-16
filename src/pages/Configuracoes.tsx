@@ -25,6 +25,7 @@ import BackupAgendado from '@/components/configuracoes/BackupAgendado';
 export default function Configuracoes() {
   const { empresaAtiva, reloadEmpresas } = useEmpresa();
   const location = useLocation();
+  const { isAdmin } = useUserRole();
   const defaultTab = location.hash === '#plano' ? 'plano' : 'geral';
 
   // Empresa fields
