@@ -11,8 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, FileText, Download } from 'lucide-react';
+import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, FileText, Download, ClipboardList, DollarSign } from 'lucide-react';
 import RelatorioAtividades from '@/components/equipe/RelatorioAtividades';
+import TarefasColaborador from '@/components/equipe/TarefasColaborador';
+import ComissoesColaborador from '@/components/equipe/ComissoesColaborador';
 
 const EQUIPES = [
   { value: 'geral', label: 'Geral', icon: Settings, color: 'bg-muted text-muted-foreground' },
