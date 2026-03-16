@@ -72,9 +72,6 @@ export default function CredenciaisPortalForm() {
     setPortalId('');
     setLogin('');
     setSenha('');
-    setCertFile(null);
-    setCertTipo('pj');
-    setCertValidade('');
   };
 
   const handleSave = async () => {
