@@ -80,19 +80,6 @@ export default function CredenciaisPortalForm() {
 
     try {
       const portal = PORTAIS.find((p) => p.id === portalId);
-      let certPath: string | null = null;
-      let certNome: string | null = null;
-
-      if (certFile) {
-        const ext = certFile.name.split('.').pop();
-        const path = `${user.id}/${portalId}-${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage
-          .from('certificados')
-          .upload(path, certFile);
-        if (upErr) throw upErr;
-        certPath = path;
-        certNome = certFile.name;
-      }
 
       // Simple base64 obfuscation for password (real encryption should be server-side)
       const senhaEncoded = senha ? btoa(senha) : null;
@@ -104,10 +91,6 @@ export default function CredenciaisPortalForm() {
           portal_nome: portal?.nome || portalId,
           login: login || null,
           senha_hash: senhaEncoded,
-          certificado_path: certPath,
-          certificado_tipo: certFile ? certTipo : null,
-          certificado_nome: certNome,
-          validade_certificado: certValidade || null,
           status: 'ativo',
         },
         { onConflict: 'user_id,portal_id' }
