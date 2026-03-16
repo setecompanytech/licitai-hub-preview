@@ -801,6 +801,7 @@ export type Database = {
       comissoes_lancamentos: {
         Row: {
           contrato_id: string | null
+          contrato_pedido_id: string | null
           created_at: string
           desconto_percentual: number | null
           empresa_id: string
@@ -810,6 +811,7 @@ export type Database = {
           observacoes: string | null
           pago_em: string | null
           percentual_comissao: number | null
+          solicitado_por: string | null
           status: string
           tipo: string
           updated_at: string
@@ -819,6 +821,7 @@ export type Database = {
         }
         Insert: {
           contrato_id?: string | null
+          contrato_pedido_id?: string | null
           created_at?: string
           desconto_percentual?: number | null
           empresa_id: string
@@ -828,6 +831,7 @@ export type Database = {
           observacoes?: string | null
           pago_em?: string | null
           percentual_comissao?: number | null
+          solicitado_por?: string | null
           status?: string
           tipo: string
           updated_at?: string
@@ -837,6 +841,7 @@ export type Database = {
         }
         Update: {
           contrato_id?: string | null
+          contrato_pedido_id?: string | null
           created_at?: string
           desconto_percentual?: number | null
           empresa_id?: string
@@ -846,6 +851,7 @@ export type Database = {
           observacoes?: string | null
           pago_em?: string | null
           percentual_comissao?: number | null
+          solicitado_por?: string | null
           status?: string
           tipo?: string
           updated_at?: string
@@ -859,6 +865,13 @@ export type Database = {
             columns: ["contrato_id"]
             isOneToOne: false
             referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comissoes_lancamentos_contrato_pedido_id_fkey"
+            columns: ["contrato_pedido_id"]
+            isOneToOne: false
+            referencedRelation: "contrato_pedidos"
             referencedColumns: ["id"]
           },
           {
@@ -1242,8 +1255,10 @@ export type Database = {
           created_at: string
           data_entrega: string | null
           data_pedido: string | null
+          data_quitacao: string | null
           descricao: string | null
           id: string
+          nf_quitada: boolean | null
           nota_fiscal: string | null
           numero_pedido: string
           observacoes: string | null
@@ -1260,8 +1275,10 @@ export type Database = {
           created_at?: string
           data_entrega?: string | null
           data_pedido?: string | null
+          data_quitacao?: string | null
           descricao?: string | null
           id?: string
+          nf_quitada?: boolean | null
           nota_fiscal?: string | null
           numero_pedido: string
           observacoes?: string | null
@@ -1278,8 +1295,10 @@ export type Database = {
           created_at?: string
           data_entrega?: string | null
           data_pedido?: string | null
+          data_quitacao?: string | null
           descricao?: string | null
           id?: string
+          nf_quitada?: boolean | null
           nota_fiscal?: string | null
           numero_pedido?: string
           observacoes?: string | null
@@ -3736,6 +3755,44 @@ export type Database = {
             columns: ["licitacao_id"]
             isOneToOne: false
             referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sub_tarefas: {
+        Row: {
+          concluida_em: string | null
+          created_at: string
+          criado_por: string
+          id: string
+          status: string
+          tarefa_id: string
+          titulo: string
+        }
+        Insert: {
+          concluida_em?: string | null
+          created_at?: string
+          criado_por: string
+          id?: string
+          status?: string
+          tarefa_id: string
+          titulo: string
+        }
+        Update: {
+          concluida_em?: string | null
+          created_at?: string
+          criado_por?: string
+          id?: string
+          status?: string
+          tarefa_id?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_tarefas_tarefa_id_fkey"
+            columns: ["tarefa_id"]
+            isOneToOne: false
+            referencedRelation: "tarefas_colaborador"
             referencedColumns: ["id"]
           },
         ]

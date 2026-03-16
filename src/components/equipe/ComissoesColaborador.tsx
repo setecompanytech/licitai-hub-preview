@@ -24,6 +24,7 @@ const STATUS_LANCAMENTO: Record<string, { label: string; color: string }> = {
   aprovado: { label: 'Aprovado', color: 'bg-blue-500/15 text-blue-600' },
   pago: { label: 'Pago', color: 'bg-emerald-500/15 text-emerald-600' },
   cancelado: { label: 'Cancelado', color: 'bg-destructive/15 text-destructive' },
+  rejeitado: { label: 'Rejeitado', color: 'bg-destructive/15 text-destructive' },
 };
 
 type Config = {

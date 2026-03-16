@@ -10,12 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import {
   Plus, Trash2, Loader2, ShoppingCart, CheckCircle2, Clock, XCircle,
-  Upload, FileText, AlertTriangle
+  Upload, FileText, AlertTriangle, DollarSign
 } from 'lucide-react';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -26,6 +28,7 @@ type Pedido = {
   contrato_item_id: string | null; quantidade: number; valor_unitario: number;
   valor_total: number; data_pedido: string | null; data_entrega: string | null;
   status: string; nota_fiscal: string | null; observacoes: string | null;
+  nf_quitada: boolean; data_quitacao: string | null;
 };
 
 const statusCfg: Record<string, { label: string; color: string }> = {
@@ -46,6 +49,7 @@ const tiposDocumento = [
 
 export default function ContratoPedidos({ contratoId }: { contratoId: string }) {
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [itens, setItens] = useState<ContratoItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,12 +57,18 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('upload');
 
+  // NF quitada dialog
+  const [nfDialog, setNfDialog] = useState<Pedido | null>(null);
+  const [nfNumero, setNfNumero] = useState('');
+  const [nfData, setNfData] = useState('');
+  const [solicitandoComissao, setSolicitandoComissao] = useState(false);
+
   // Upload state
   const [uploading, setUploading] = useState(false);
   const [extractedData, setExtractedData] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form state for manual or post-extraction editing
+  // Form state
   const [form, setForm] = useState({
     numero_pedido: '', descricao: '', contrato_item_id: '',
     quantidade: '', valor_unitario: '', data_pedido: new Date().toISOString().split('T')[0],
@@ -66,7 +76,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     tipo_documento: 'ordem_fornecimento',
   });
 
-  // Multi-item support for extraction
+  // Multi-item support
   const [extractedItens, setExtractedItens] = useState<Array<{
     key: string; descricao: string; quantidade: string; valor_unitario: string;
     contrato_item_id: string;
@@ -103,47 +113,34 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     setExtractedItens([]);
   };
 
-  // PDF Upload & Extraction
+  // PDF Upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.type !== 'application/pdf') {
-      toast.error('Selecione um arquivo PDF');
-      return;
-    }
+    if (file.type !== 'application/pdf') { toast.error('Selecione um arquivo PDF'); return; }
 
     setUploading(true);
     try {
       const pdfjsLib = await import('pdfjs-dist');
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       let fullText = '';
-      const maxPages = Math.min(pdf.numPages, 30);
-      for (let i = 1; i <= maxPages; i++) {
+      for (let i = 1; i <= Math.min(pdf.numPages, 30); i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
         fullText += content.items.map((item: any) => item.str).join(' ') + '\n';
       }
-
-      if (fullText.trim().length < 30) {
-        toast.error('Não foi possível extrair texto do PDF');
-        setUploading(false);
-        return;
-      }
+      if (fullText.trim().length < 30) { toast.error('Não foi possível extrair texto do PDF'); setUploading(false); return; }
 
       const { data: result, error } = await supabase.functions.invoke('extrair-pedido-pdf', {
         body: { texto_pdf: fullText, tipo_documento: form.tipo_documento },
       });
-
       if (error) throw error;
       if (result?.error) throw new Error(result.error);
 
       const extracted = result.data;
       setExtractedData(extracted);
-
-      // Fill form with extracted data
       setForm(f => ({
         ...f,
         numero_pedido: extracted.numero_documento || f.numero_pedido,
@@ -155,10 +152,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         observacoes: extracted.observacoes || '',
       }));
 
-      // Map extracted items
-      if (extracted.itens && extracted.itens.length > 0) {
-        const mappedItens = extracted.itens.map((ei: any) => {
-          // Try to match with contract items by description
+      if (extracted.itens?.length > 0) {
+        setExtractedItens(extracted.itens.map((ei: any) => {
           const matchedItem = itens.find(ci =>
             ci.descricao.toLowerCase().includes(ei.descricao?.toLowerCase()?.substring(0, 20) || '') ||
             ei.descricao?.toLowerCase()?.includes(ci.descricao.toLowerCase().substring(0, 20))
@@ -170,13 +165,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             valor_unitario: ei.valor_unitario ? String(ei.valor_unitario) : (matchedItem ? String(matchedItem.valor_unitario) : ''),
             contrato_item_id: matchedItem?.id || '',
           };
-        });
-        setExtractedItens(mappedItens);
+        }));
       }
-
-      // Auto-switch to manual tab for review
       setActiveTab('manual');
-      toast.success(`Dados extraídos: ${extracted.itens?.length || 0} itens identificados. Revise e salve.`);
+      toast.success(`Dados extraídos: ${extracted.itens?.length || 0} itens identificados.`);
     } catch (err: any) {
       console.error('Upload error:', err);
       toast.error(err.message || 'Erro ao processar documento');
@@ -186,7 +178,6 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     }
   };
 
-  // Save single pedido (manual mode without extracted items)
   const handleSaveSingle = async () => {
     if (!form.numero_pedido) { toast.error('Informe o número do pedido'); return; }
     const qty = parseFloat(form.quantidade) || 0;
@@ -203,17 +194,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     } as any);
     setSaving(false);
     if (error) { toast.error('Erro ao salvar pedido'); return; }
-    toast.success('Pedido registrado com sucesso.');
+    toast.success('Pedido registrado.');
     setDialogOpen(false);
     resetForm();
     load();
   };
 
-  // Save multiple items from extraction
   const handleSaveBatch = async () => {
     if (!form.numero_pedido) { toast.error('Informe o número do pedido'); return; }
     const validItens = extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0);
-    if (validItens.length === 0) { toast.error('Nenhum item válido para registrar'); return; }
+    if (validItens.length === 0) { toast.error('Nenhum item válido'); return; }
 
     setSaving(true);
     const inserts = validItens.map(ei => {
@@ -221,22 +211,18 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       const unit = parseFloat(ei.valor_unitario) || 0;
       return {
         contrato_id: contratoId, user_id: user!.id,
-        numero_pedido: form.numero_pedido,
-        descricao: ei.descricao,
+        numero_pedido: form.numero_pedido, descricao: ei.descricao,
         contrato_item_id: ei.contrato_item_id || null,
         quantidade: qty, valor_unitario: unit, valor_total: qty * unit,
-        data_pedido: form.data_pedido || null,
-        data_entrega: form.data_entrega || null,
-        status: form.status,
-        nota_fiscal: form.nota_fiscal || null,
+        data_pedido: form.data_pedido || null, data_entrega: form.data_entrega || null,
+        status: form.status, nota_fiscal: form.nota_fiscal || null,
         observacoes: form.observacoes || null,
       };
     });
-
     const { error } = await supabase.from('contrato_pedidos').insert(inserts as any);
     setSaving(false);
     if (error) { toast.error('Erro ao salvar pedidos'); return; }
-    toast.success(`${inserts.length} itens do pedido registrados com sucesso.`);
+    toast.success(`${inserts.length} itens registrados.`);
     setDialogOpen(false);
     resetForm();
     load();
@@ -244,16 +230,68 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
   const handleDelete = async (id: string) => {
     await supabase.from('contrato_pedidos').delete().eq('id', id);
-    toast.success('Pedido excluído. Saldos recalculados.');
+    toast.success('Pedido excluído.');
     load();
   };
 
-  const removeExtractedItem = (key: string) => {
-    setExtractedItens(prev => prev.filter(i => i.key !== key));
+  const removeExtractedItem = (key: string) => setExtractedItens(prev => prev.filter(i => i.key !== key));
+  const updateExtractedItem = (key: string, field: string, value: string) =>
+    setExtractedItens(prev => prev.map(i => i.key === key ? { ...i, [field]: value } : i));
+
+  // NF Quitada + Solicitação de Comissão
+  const openNfDialog = (pedido: Pedido) => {
+    setNfDialog(pedido);
+    setNfNumero(pedido.nota_fiscal || '');
+    setNfData(pedido.data_quitacao || new Date().toISOString().split('T')[0]);
   };
 
-  const updateExtractedItem = (key: string, field: string, value: string) => {
-    setExtractedItens(prev => prev.map(i => i.key === key ? { ...i, [field]: value } : i));
+  const handleMarcarNfQuitada = async (solicitarComissao: boolean) => {
+    if (!nfDialog || !nfNumero.trim()) { toast.error('Informe o número da Nota Fiscal'); return; }
+    setSolicitandoComissao(true);
+
+    // Update pedido with NF quitada
+    const { error: updateErr } = await supabase.from('contrato_pedidos').update({
+      nota_fiscal: nfNumero,
+      nf_quitada: true,
+      data_quitacao: nfData || null,
+    } as any).eq('id', nfDialog.id);
+
+    if (updateErr) {
+      toast.error('Erro ao atualizar NF');
+      setSolicitandoComissao(false);
+      return;
+    }
+
+    // If requesting commission
+    if (solicitarComissao && user && empresaAtiva) {
+      const { error: comErr } = await supabase.from('comissoes_lancamentos' as any).insert({
+        empresa_id: empresaAtiva.id,
+        user_id: user.id,
+        solicitado_por: user.id,
+        tipo: 'nota_fiscal',
+        valor_base: nfDialog.valor_total,
+        desconto_percentual: 0,
+        percentual_comissao: 0,
+        valor_comissao: 0, // Admin will define
+        nota_fiscal: nfNumero,
+        status: 'pendente',
+        contrato_pedido_id: nfDialog.id,
+        observacoes: `Solicitação de comissão referente à NF ${nfNumero} quitada em ${nfData}. Pedido: ${nfDialog.numero_pedido}, Valor: ${fmt(nfDialog.valor_total)}`,
+      } as any);
+
+      if (comErr) {
+        console.error('Erro ao solicitar comissão:', comErr);
+        toast.warning('NF marcada como quitada, mas houve erro ao solicitar comissão.');
+      } else {
+        toast.success('NF quitada registrada e comissão solicitada ao administrador!');
+      }
+    } else {
+      toast.success('Nota Fiscal marcada como quitada.');
+    }
+
+    setSolicitandoComissao(false);
+    setNfDialog(null);
+    load();
   };
 
   const totalPedidos = pedidos.filter(p => p.status !== 'cancelado').reduce((s, p) => s + p.valor_total, 0);
@@ -311,41 +349,23 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
                   <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
                   <p className="text-sm font-medium">Faça upload do documento PDF</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    OF, Nota de Empenho, PRD ou documento similar
-                  </p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                  <Button
-                    variant="outline"
-                    className="mt-3"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                  >
-                    {uploading ? (
-                      <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Processando...</>
-                    ) : (
-                      <><Upload className="w-4 h-4 mr-1" /> Selecionar PDF</>
-                    )}
+                  <p className="text-xs text-muted-foreground mt-1">OF, Nota de Empenho, PRD ou documento similar</p>
+                  <input ref={fileInputRef} type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
+                  <Button variant="outline" className="mt-3" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                    {uploading ? <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Processando...</> : <><Upload className="w-4 h-4 mr-1" /> Selecionar PDF</>}
                   </Button>
                 </div>
 
                 {uploading && (
                   <div className="p-3 rounded-lg bg-muted/50 border text-center">
                     <Loader2 className="w-5 h-5 animate-spin mx-auto mb-1 text-primary" />
-                    <p className="text-xs text-muted-foreground">Extraindo dados com IA, aguarde...</p>
+                    <p className="text-xs text-muted-foreground">Extraindo dados com IA...</p>
                   </div>
                 )}
 
                 <div className="p-3 rounded-lg bg-muted/30 border text-xs text-muted-foreground space-y-1">
                   <p className="font-medium text-foreground">Documentos suportados:</p>
                   <p>Ordem de Fornecimento (OF), Nota de Empenho (Global, Ordinário, Estimativo), PRD</p>
-                  <p>Os dados serão extraídos automaticamente e disponibilizados para revisão antes do salvamento.</p>
                 </div>
               </TabsContent>
 
@@ -354,13 +374,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   <div className="p-3 rounded-lg bg-accent/5 border border-accent/20">
                     <p className="text-xs font-medium flex items-center gap-1.5">
                       <CheckCircle2 className="w-3.5 h-3.5 text-success" />
-                      Dados extraídos do documento — revise e corrija se necessário
+                      Dados extraídos — revise e corrija se necessário
                     </p>
-                    {extractedData.tipo_documento && (
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        Tipo identificado: {tiposDocumento.find(td => td.value === extractedData.tipo_documento)?.label || extractedData.tipo_documento}
-                      </p>
-                    )}
                   </div>
                 )}
 
@@ -406,7 +421,6 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   </div>
                 </div>
 
-                {/* If extracted items exist, show multi-item mode */}
                 {extractedItens.length > 0 ? (
                   <>
                     <Separator />
@@ -475,7 +489,6 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   </>
                 ) : (
                   <>
-                    {/* Single item mode */}
                     <Separator />
                     <div>
                       <Label className="text-xs">Item do Contrato</Label>
@@ -537,7 +550,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <TableHead className="text-xs text-center">Data</TableHead>
                 <TableHead className="text-xs text-center">Status</TableHead>
                 <TableHead className="text-xs">NF</TableHead>
-                <TableHead className="text-xs w-10"></TableHead>
+                <TableHead className="text-xs w-20"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -554,11 +567,31 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     <TableCell className="text-center">
                       <Badge className={`text-[10px] ${cfg.color}`}>{cfg.label}</Badge>
                     </TableCell>
-                    <TableCell className="text-xs">{p.nota_fiscal || '—'}</TableCell>
+                    <TableCell className="text-xs">
+                      {p.nf_quitada ? (
+                        <Badge className="text-[10px] bg-emerald-500/15 text-emerald-600">
+                          <CheckCircle2 className="w-3 h-3 mr-1" /> {p.nota_fiscal}
+                        </Badge>
+                      ) : p.nota_fiscal ? (
+                        <span className="text-muted-foreground">{p.nota_fiscal}</span>
+                      ) : '—'}
+                    </TableCell>
                     <TableCell>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(p.id)}>
-                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                      </Button>
+                      <div className="flex gap-1">
+                        {!p.nf_quitada && p.status === 'entregue' && (
+                          <Button
+                            size="sm" variant="outline"
+                            className="h-7 px-2 text-[10px] text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                            onClick={() => openNfDialog(p)}
+                            title="Informar NF quitada e solicitar comissão"
+                          >
+                            <DollarSign className="w-3 h-3 mr-1" /> NF Quitada
+                          </Button>
+                        )}
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(p.id)}>
+                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -567,6 +600,62 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           </Table>
         </div>
       )}
+
+      {/* NF Quitada + Solicitar Comissão Dialog */}
+      <Dialog open={!!nfDialog} onOpenChange={v => { if (!v) setNfDialog(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-emerald-600" />
+              Registrar NF Quitada
+            </DialogTitle>
+          </DialogHeader>
+          {nfDialog && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-muted/50 border text-xs space-y-1">
+                <p><strong>Pedido:</strong> {nfDialog.numero_pedido}</p>
+                <p><strong>Valor:</strong> {fmt(nfDialog.valor_total)}</p>
+                {nfDialog.descricao && <p><strong>Descrição:</strong> {nfDialog.descricao}</p>}
+              </div>
+
+              <div>
+                <Label>Número da Nota Fiscal *</Label>
+                <Input value={nfNumero} onChange={e => setNfNumero(e.target.value)} placeholder="NF-e 000.000.001" />
+              </div>
+
+              <div>
+                <Label>Data de Quitação</Label>
+                <Input type="date" value={nfData} onChange={e => setNfData(e.target.value)} />
+              </div>
+
+              <div className="p-3 rounded-lg bg-accent/5 border border-accent/20">
+                <p className="text-xs text-muted-foreground">
+                  Ao marcar a NF como quitada, você pode solicitar sua comissão ao administrador. 
+                  O valor será calculado conforme a regra configurada para seu perfil.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={() => handleMarcarNfQuitada(true)}
+                  disabled={solicitandoComissao || !nfNumero.trim()}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  {solicitandoComissao ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <DollarSign className="w-4 h-4 mr-1" />}
+                  Registrar NF e Solicitar Comissão
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleMarcarNfQuitada(false)}
+                  disabled={solicitandoComissao || !nfNumero.trim()}
+                >
+                  Apenas Registrar NF (sem comissão)
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
