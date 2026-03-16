@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useUserRole } from '@/hooks/useUserRole';
 import { useLocation } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,7 @@ import BackupAgendado from '@/components/configuracoes/BackupAgendado';
 export default function Configuracoes() {
   const { empresaAtiva, reloadEmpresas } = useEmpresa();
   const location = useLocation();
+  const { isAdmin } = useUserRole();
   const defaultTab = location.hash === '#plano' ? 'plano' : 'geral';
 
   // Empresa fields
@@ -495,7 +497,7 @@ export default function Configuracoes() {
           <TabsContent value="plano" className="space-y-6">
             <PlanoAssinatura />
             <PlanoVerificacao />
-            <AnalyseCustosPlanos />
+            {isAdmin && <AnalyseCustosPlanos />}
             <AnaliseCNPJAdicional />
           </TabsContent>
         </Tabs>
