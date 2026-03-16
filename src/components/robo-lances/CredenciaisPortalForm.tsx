@@ -181,55 +181,18 @@ export default function CredenciaisPortalForm() {
                 </div>
               </div>
 
-              <div className="border border-border/50 rounded-lg p-4 space-y-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Certificado Digital (opcional)
+              <div className="bg-success/10 border border-success/20 rounded-lg p-3">
+                <p className="text-xs text-success flex items-center gap-1">
+                  <Shield className="w-3 h-3" />
+                  Certificados digitais são gerenciados localmente (via Agente Externo no VPS
+                  ou extensão de navegador). Nunca armazenamos certificados na nuvem.
                 </p>
-                <div>
-                  <Label className="text-xs">Tipo do Certificado</Label>
-                  <Select value={certTipo} onValueChange={(v) => setCertTipo(v as 'pf' | 'pj')}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pf">e-CPF (Pessoa Física)</SelectItem>
-                      <SelectItem value="pj">e-CNPJ (Pessoa Jurídica)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Arquivo do Certificado (.pfx / .p12)</Label>
-                  <div className="mt-1">
-                    <label className="flex items-center gap-2 border border-dashed border-border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors">
-                      <Upload className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        {certFile ? certFile.name : 'Clique para selecionar o certificado'}
-                      </span>
-                      <input
-                        type="file"
-                        accept=".pfx,.p12,.cer,.crt"
-                        className="hidden"
-                        onChange={(e) => setCertFile(e.target.files?.[0] || null)}
-                      />
-                    </label>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs">Validade do Certificado</Label>
-                  <Input
-                    type="date"
-                    value={certValidade}
-                    onChange={(e) => setCertValidade(e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
               </div>
 
               <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
                 <p className="text-xs text-warning flex items-center gap-1">
                   <Shield className="w-3 h-3" />
-                  Suas credenciais são armazenadas de forma segura e criptografada.
-                  Apenas você tem acesso a elas.
+                  Login e senha são armazenados de forma segura. Apenas você tem acesso.
                 </p>
               </div>
 
