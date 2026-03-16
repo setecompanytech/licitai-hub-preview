@@ -165,14 +165,22 @@ export default function EquipeColaboradores() {
           </div>
         ) : (
           <Tabs defaultValue="membros">
-            <TabsList className="mb-4">
+            <TabsList className="mb-4 flex-wrap">
               <TabsTrigger value="membros">
                 <Users className="w-4 h-4 mr-1.5" />
                 Membros ({membros.length})
               </TabsTrigger>
+              <TabsTrigger value="tarefas">
+                <ClipboardList className="w-4 h-4 mr-1.5" />
+                Tarefas
+              </TabsTrigger>
+              <TabsTrigger value="comissoes">
+                <DollarSign className="w-4 h-4 mr-1.5" />
+                Comissões
+              </TabsTrigger>
               <TabsTrigger value="relatorio">
                 <FileText className="w-4 h-4 mr-1.5" />
-                Relatório de Atividades
+                Relatório
               </TabsTrigger>
             </TabsList>
 
