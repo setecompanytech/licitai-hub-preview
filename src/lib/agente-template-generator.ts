@@ -470,9 +470,46 @@ module.exports = { SessionManager };
 
   'src/browser.js': `const puppeteer = require('puppeteer');
 const fs = require('fs');
+const path = require('path');
 
-async function launchBrowser() {
-  const certPath = process.env.CERT_PATH;
+/**
+ * Gerenciador de certificados locais.
+ * Suporta: A1 (arquivo .pfx), Multi-CNPJ, A3 (token/smartcard via PKCS#11).
+ * IMPORTANTE: Os certificados NUNCA saem deste servidor.
+ */
+function getCertConfig(cnpj) {
+  const certMode = process.env.CERT_MODE || 'a1';
+
+  if (certMode === 'a3') {
+    console.log('🔐 Modo A3 (token/smartcard) — usando PKCS#11');
+    return { mode: 'a3', pkcs11Lib: process.env.PKCS11_LIB || '/usr/lib/libeTPkcs11.so' };
+  }
+
+  // Multi-CNPJ: busca certs/<cnpj>.pfx
+  if (cnpj) {
+    const cnpjClean = cnpj.replace(/\\D/g, '');
+    const multiPath = path.join('./certs', cnpjClean + '.pfx');
+    if (fs.existsSync(multiPath)) {
+      let passwords = {};
+      try { passwords = JSON.parse(process.env.CERT_PASSWORDS || '{}'); } catch {}
+      console.log(\`📜 Certificado multi-CNPJ encontrado: \${multiPath}\`);
+      return { mode: 'a1', path: multiPath, password: passwords[cnpjClean] || '' };
+    }
+  }
+
+  // Certificado único padrão
+  const certPath = process.env.CERT_PATH || './certs/certificado.pfx';
+  if (fs.existsSync(certPath)) {
+    console.log(\`📜 Certificado A1 encontrado: \${certPath}\`);
+    return { mode: 'a1', path: certPath, password: process.env.CERT_PASSWORD || '' };
+  }
+
+  console.warn('⚠️ Nenhum certificado encontrado em certs/');
+  return { mode: 'none' };
+}
+
+async function launchBrowser(cnpj) {
+  const cert = getCertConfig(cnpj);
 
   const args = [
     '--no-sandbox',
@@ -482,9 +519,9 @@ async function launchBrowser() {
     '--window-size=1366,768',
   ];
 
-  if (certPath && fs.existsSync(certPath)) {
-    console.log(\`📜 Certificado A1 encontrado: \${certPath}\`);
-    // Para mTLS, configure via proxy ou flags do Chrome 120+
+  // Para certificado A3 via PKCS#11
+  if (cert.mode === 'a3' && cert.pkcs11Lib) {
+    args.push(\`--load-extension=\${cert.pkcs11Lib}\`);
   }
 
   // Criar diretório de screenshots
@@ -505,10 +542,10 @@ async function launchBrowser() {
 
   await page.setViewport({ width: 1366, height: 768 });
 
-  return { browser, page };
+  return { browser, page, cert };
 }
 
-module.exports = { launchBrowser };
+module.exports = { launchBrowser, getCertConfig };
 `,
 
   'src/callback.js': `async function sendCallback(session, tipo, payload) {
