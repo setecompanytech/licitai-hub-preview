@@ -748,6 +748,135 @@ export type Database = {
         }
         Relationships: []
       }
+      comissoes_config: {
+        Row: {
+          ativo: boolean | null
+          created_at: string
+          empresa_id: string
+          id: string
+          percentual: number | null
+          regra_desconto: Json | null
+          tipo_comissao: string
+          updated_at: string
+          user_id: string
+          valor_fixo: number | null
+          visibilidade_publica: boolean | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string
+          empresa_id: string
+          id?: string
+          percentual?: number | null
+          regra_desconto?: Json | null
+          tipo_comissao?: string
+          updated_at?: string
+          user_id: string
+          valor_fixo?: number | null
+          visibilidade_publica?: boolean | null
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          percentual?: number | null
+          regra_desconto?: Json | null
+          tipo_comissao?: string
+          updated_at?: string
+          user_id?: string
+          valor_fixo?: number | null
+          visibilidade_publica?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comissoes_config_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comissoes_lancamentos: {
+        Row: {
+          contrato_id: string | null
+          created_at: string
+          desconto_percentual: number | null
+          empresa_id: string
+          id: string
+          licitacao_id: string | null
+          nota_fiscal: string | null
+          observacoes: string | null
+          pago_em: string | null
+          percentual_comissao: number | null
+          status: string
+          tipo: string
+          updated_at: string
+          user_id: string
+          valor_base: number
+          valor_comissao: number
+        }
+        Insert: {
+          contrato_id?: string | null
+          created_at?: string
+          desconto_percentual?: number | null
+          empresa_id: string
+          id?: string
+          licitacao_id?: string | null
+          nota_fiscal?: string | null
+          observacoes?: string | null
+          pago_em?: string | null
+          percentual_comissao?: number | null
+          status?: string
+          tipo: string
+          updated_at?: string
+          user_id: string
+          valor_base?: number
+          valor_comissao?: number
+        }
+        Update: {
+          contrato_id?: string | null
+          created_at?: string
+          desconto_percentual?: number | null
+          empresa_id?: string
+          id?: string
+          licitacao_id?: string | null
+          nota_fiscal?: string | null
+          observacoes?: string | null
+          pago_em?: string | null
+          percentual_comissao?: number | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+          valor_base?: number
+          valor_comissao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comissoes_lancamentos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comissoes_lancamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comissoes_lancamentos_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       composicoes_custo: {
         Row: {
           created_at: string
@@ -2408,6 +2537,7 @@ export type Database = {
           numero: string
           objeto: string
           observacoes: string | null
+          operador_id: string | null
           orgao: string
           portal: string | null
           resultado: string | null
@@ -2433,6 +2563,7 @@ export type Database = {
           numero: string
           objeto: string
           observacoes?: string | null
+          operador_id?: string | null
           orgao: string
           portal?: string | null
           resultado?: string | null
@@ -2458,6 +2589,7 @@ export type Database = {
           numero?: string
           objeto?: string
           observacoes?: string | null
+          operador_id?: string | null
           orgao?: string
           portal?: string | null
           resultado?: string | null
@@ -3731,6 +3863,69 @@ export type Database = {
           reason?: string
         }
         Relationships: []
+      }
+      tarefas_colaborador: {
+        Row: {
+          atribuido_a: string
+          concluida_em: string | null
+          created_at: string
+          criado_por: string
+          descricao: string | null
+          empresa_id: string
+          id: string
+          licitacao_id: string | null
+          prazo: string | null
+          prioridade: string
+          status: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          atribuido_a: string
+          concluida_em?: string | null
+          created_at?: string
+          criado_por: string
+          descricao?: string | null
+          empresa_id: string
+          id?: string
+          licitacao_id?: string | null
+          prazo?: string | null
+          prioridade?: string
+          status?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          atribuido_a?: string
+          concluida_em?: string | null
+          created_at?: string
+          criado_por?: string
+          descricao?: string | null
+          empresa_id?: string
+          id?: string
+          licitacao_id?: string | null
+          prazo?: string | null
+          prioridade?: string
+          status?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tarefas_colaborador_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tarefas_colaborador_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tickets_suporte: {
         Row: {

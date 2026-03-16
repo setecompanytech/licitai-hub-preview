@@ -11,8 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, FileText, Download } from 'lucide-react';
+import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, FileText, Download, ClipboardList, DollarSign } from 'lucide-react';
 import RelatorioAtividades from '@/components/equipe/RelatorioAtividades';
+import TarefasColaborador from '@/components/equipe/TarefasColaborador';
+import ComissoesColaborador from '@/components/equipe/ComissoesColaborador';
 
 const EQUIPES = [
   { value: 'geral', label: 'Geral', icon: Settings, color: 'bg-muted text-muted-foreground' },
@@ -163,14 +165,22 @@ export default function EquipeColaboradores() {
           </div>
         ) : (
           <Tabs defaultValue="membros">
-            <TabsList className="mb-4">
+            <TabsList className="mb-4 flex-wrap">
               <TabsTrigger value="membros">
                 <Users className="w-4 h-4 mr-1.5" />
                 Membros ({membros.length})
               </TabsTrigger>
+              <TabsTrigger value="tarefas">
+                <ClipboardList className="w-4 h-4 mr-1.5" />
+                Tarefas
+              </TabsTrigger>
+              <TabsTrigger value="comissoes">
+                <DollarSign className="w-4 h-4 mr-1.5" />
+                Comissões
+              </TabsTrigger>
               <TabsTrigger value="relatorio">
                 <FileText className="w-4 h-4 mr-1.5" />
-                Relatório de Atividades
+                Relatório
               </TabsTrigger>
             </TabsList>
 
@@ -250,6 +260,14 @@ export default function EquipeColaboradores() {
                   })}
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="tarefas">
+              <TarefasColaborador empresaId={empresaAtiva.id} isAdmin={isAdmin} />
+            </TabsContent>
+
+            <TabsContent value="comissoes">
+              <ComissoesColaborador empresaId={empresaAtiva.id} isAdmin={isAdmin} />
             </TabsContent>
 
             <TabsContent value="relatorio">
