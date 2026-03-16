@@ -7,7 +7,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
-import { Upload, ShieldCheck, Loader2, Building2, Search } from 'lucide-react';
+import { ShieldCheck, Loader2, Building2, Search, Info } from 'lucide-react';
+import CertificadoModoSeguranca from './CertificadoModoSeguranca';
 
 type Props = {
   onSuccess?: () => void;
@@ -17,8 +18,6 @@ type Props = {
 export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Props) {
   const { user } = useAuth();
   const { addEmpresa } = useEmpresa();
-  const [file, setFile] = useState<File | null>(null);
-  const [tipo, setTipo] = useState<'e-cnpj' | 'e-cpf'>('e-cnpj');
   const [cnpj, setCnpj] = useState('');
   const [razaoSocial, setRazaoSocial] = useState('');
   const [nomeFantasia, setNomeFantasia] = useState('');
@@ -34,26 +33,12 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
   const [inscricaoEstadual, setInscricaoEstadual] = useState('');
   const [validade, setValidade] = useState('');
   const [regimeTributario, setRegimeTributario] = useState('');
-  const [senhaCertificado, setSenhaCertificado] = useState('');
+  const [certTipo, setCertTipo] = useState<'e-cnpj' | 'e-cpf'>('e-cnpj');
+  const [certNome, setCertNome] = useState('');
   const [loading, setLoading] = useState(false);
   const [buscando, setBuscando] = useState(false);
   const [buscandoSintegra, setBuscandoSintegra] = useState(false);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (f) {
-      const ext = f.name.split('.').pop()?.toLowerCase();
-      if (!['pfx', 'p12', 'cer', 'crt', 'pem'].includes(ext || '')) {
-        toast.error('Formato inválido. Use .pfx, .p12, .cer, .crt ou .pem');
-        return;
-      }
-      if (f.size > 10 * 1024 * 1024) {
-        toast.error('Arquivo muito grande. Máximo 10MB.');
-        return;
-      }
-      setFile(f);
-    }
-  };
+  const [showSeguranca, setShowSeguranca] = useState(false);
 
   const handleBuscarCNPJ = async () => {
     const cnpjLimpo = cnpj.replace(/\D/g, '');
@@ -89,7 +74,6 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
       if (data.simples) setRegimeTributario('simples_nacional');
       toast.success('Dados da Receita Federal preenchidos automaticamente!');
 
-      // Auto-trigger SINTEGRA for IE
       if (data.uf) {
         await handleBuscarSintegra(cnpjLimpo, data.uf);
       }
@@ -126,25 +110,13 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !file || !cnpj.trim() || !razaoSocial.trim() || !regimeTributario || !senhaCertificado.trim()) {
-      toast.error('Preencha todos os campos obrigatórios (incluindo senha do certificado e regime tributário)');
+    if (!user || !cnpj.trim() || !razaoSocial.trim() || !regimeTributario) {
+      toast.error('Preencha todos os campos obrigatórios (CNPJ, Razão Social e Regime Tributário)');
       return;
     }
 
     setLoading(true);
     try {
-      const filePath = `${user.id}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from('certificados')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        toast.error(`Erro ao enviar certificado: ${uploadError.message}`);
-        setLoading(false);
-        return;
-      }
-
       const empresa = await addEmpresa({
         cnpj: cnpj.trim(),
         razao_social: razaoSocial.trim(),
@@ -159,9 +131,8 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
         telefone: telefone.trim() || undefined,
         email: email.trim() || undefined,
         inscricao_estadual: inscricaoEstadual.trim() || undefined,
-        certificado_path: filePath,
-        certificado_nome: file.name,
-        certificado_tipo: tipo,
+        certificado_tipo: certTipo,
+        certificado_nome: certNome.trim() || undefined,
         certificado_validade: validade || undefined,
         regime_tributario: regimeTributario,
       });
@@ -175,10 +146,9 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
       toast.success(`Empresa ${razaoSocial} cadastrada com sucesso!`);
       setCnpj(''); setRazaoSocial(''); setNomeFantasia(''); setValidade('');
       setCnaePrincipal(''); setUf(''); setMunicipio(''); setEndereco('');
-      setRegimeTributario(''); setSenhaCertificado(''); setTelefone('');
+      setRegimeTributario(''); setTelefone(''); setCertNome('');
       setEmail(''); setInscricaoEstadual(''); setComplemento('');
       setBairro(''); setCep('');
-      setFile(null);
       onSuccess?.();
     } catch (err: any) {
       console.error('Cadastro error:', err);
@@ -193,49 +163,8 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
       <div className="flex items-center gap-2 mb-2">
         <ShieldCheck className="w-5 h-5 text-accent" />
         <h3 className="text-sm font-semibold">
-          {mode === 'login' ? 'Acessar com Certificado Digital' : 'Cadastrar Empresa via Certificado'}
+          {mode === 'login' ? 'Acessar com Certificado Digital' : 'Cadastrar Empresa'}
         </h3>
-      </div>
-
-      <div>
-        <Label className="text-xs">Tipo de Certificado</Label>
-        <Select value={tipo} onValueChange={(v: 'e-cnpj' | 'e-cpf') => setTipo(v)}>
-          <SelectTrigger className="mt-1">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="e-cnpj">e-CNPJ (Pessoa Jurídica)</SelectItem>
-            <SelectItem value="e-cpf">e-CPF (Pessoa Física)</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div>
-        <Label className="text-xs">Certificado Digital (.pfx, .p12, .cer)</Label>
-        <div className="mt-1">
-          <label className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-border hover:border-accent/50 cursor-pointer transition-colors bg-muted/30">
-            <Upload className="w-5 h-5 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">
-              {file ? file.name : 'Clique para selecionar o certificado'}
-            </span>
-            <input type="file" accept=".pfx,.p12,.cer,.crt,.pem" onChange={handleFileChange} className="hidden" />
-          </label>
-        </div>
-      </div>
-
-      <div>
-        <Label className="text-xs">Senha do Certificado Digital *</Label>
-        <Input
-          type="password"
-          value={senhaCertificado}
-          onChange={e => setSenhaCertificado(e.target.value)}
-          placeholder="Digite a senha do certificado"
-          className="mt-1"
-          required
-        />
-        <p className="text-[10px] text-muted-foreground mt-1">
-          A senha é necessária para validar o certificado. Ela não será armazenada.
-        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -261,13 +190,56 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
             </Button>
           </div>
           <p className="text-[10px] text-muted-foreground mt-1">
-            {buscandoSintegra ? 'Consultando SINTEGRA...' : 'Clique na lupa para preencher automaticamente via Receita Federal + SINTEGRA'}
+            {buscandoSintegra ? 'Consultando SINTEGRA...' : 'Clique na lupa para preencher automaticamente'}
+          </p>
+        </div>
+        <div>
+          <Label className="text-xs">Tipo de Certificado</Label>
+          <Select value={certTipo} onValueChange={(v: 'e-cnpj' | 'e-cpf') => setCertTipo(v)}>
+            <SelectTrigger className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="e-cnpj">e-CNPJ (Pessoa Jurídica)</SelectItem>
+              <SelectItem value="e-cpf">e-CPF (Pessoa Física)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label className="text-xs">Nome do Certificado (referência)</Label>
+          <Input
+            value={certNome}
+            onChange={e => setCertNome(e.target.value)}
+            placeholder="Ex: e-CNPJ A1 - Certisign 2025"
+            className="mt-1"
+          />
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Apenas identificação — o certificado permanece no seu computador/VPS
           </p>
         </div>
         <div>
           <Label className="text-xs">Validade do Certificado</Label>
           <Input type="date" value={validade} onChange={e => setValidade(e.target.value)} className="mt-1" />
         </div>
+      </div>
+
+      <div className="bg-accent/5 border border-accent/20 rounded-lg p-3">
+        <button
+          type="button"
+          className="flex items-center gap-1.5 text-xs text-accent hover:underline"
+          onClick={() => setShowSeguranca(!showSeguranca)}
+        >
+          <Info className="w-3.5 h-3.5" />
+          {showSeguranca ? 'Ocultar' : 'Como configurar'} o certificado digital com segurança?
+        </button>
+        {showSeguranca && (
+          <div className="mt-3">
+            <CertificadoModoSeguranca />
+          </div>
+        )}
       </div>
 
       <div>
@@ -347,7 +319,7 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
         </Select>
       </div>
 
-      <Button type="submit" disabled={loading || !file || !regimeTributario || !senhaCertificado.trim()} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+      <Button type="submit" disabled={loading || !regimeTributario} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
         {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Building2 className="w-4 h-4 mr-2" />}
         {mode === 'login' ? 'Acessar' : 'Cadastrar Empresa'}
       </Button>

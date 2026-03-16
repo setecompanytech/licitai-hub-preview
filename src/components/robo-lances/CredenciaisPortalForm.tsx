@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
-  Key, Upload, Shield, Trash2, Eye, EyeOff, Loader2, FileKey2,
+  Key, Shield, Trash2, Eye, EyeOff, Loader2, FileKey2,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -40,9 +40,6 @@ export default function CredenciaisPortalForm() {
   const [portalId, setPortalId] = useState('');
   const [login, setLogin] = useState('');
   const [senha, setSenha] = useState('');
-  const [certFile, setCertFile] = useState<File | null>(null);
-  const [certTipo, setCertTipo] = useState<'pf' | 'pj'>('pj');
-  const [certValidade, setCertValidade] = useState('');
 
   const { data: credenciais = [], isLoading } = useQuery({
     queryKey: ['credenciais-portais', user?.id],
@@ -61,10 +58,6 @@ export default function CredenciaisPortalForm() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const cred = credenciais.find((c: any) => c.id === id);
-      if (cred?.certificado_path) {
-        await supabase.storage.from('certificados').remove([cred.certificado_path]);
-      }
       const { error } = await supabase.from('credenciais_portais').delete().eq('id', id);
       if (error) throw error;
     },
@@ -79,9 +72,6 @@ export default function CredenciaisPortalForm() {
     setPortalId('');
     setLogin('');
     setSenha('');
-    setCertFile(null);
-    setCertTipo('pj');
-    setCertValidade('');
   };
 
   const handleSave = async () => {
@@ -90,19 +80,6 @@ export default function CredenciaisPortalForm() {
 
     try {
       const portal = PORTAIS.find((p) => p.id === portalId);
-      let certPath: string | null = null;
-      let certNome: string | null = null;
-
-      if (certFile) {
-        const ext = certFile.name.split('.').pop();
-        const path = `${user.id}/${portalId}-${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage
-          .from('certificados')
-          .upload(path, certFile);
-        if (upErr) throw upErr;
-        certPath = path;
-        certNome = certFile.name;
-      }
 
       // Simple base64 obfuscation for password (real encryption should be server-side)
       const senhaEncoded = senha ? btoa(senha) : null;
@@ -114,10 +91,6 @@ export default function CredenciaisPortalForm() {
           portal_nome: portal?.nome || portalId,
           login: login || null,
           senha_hash: senhaEncoded,
-          certificado_path: certPath,
-          certificado_tipo: certFile ? certTipo : null,
-          certificado_nome: certNome,
-          validade_certificado: certValidade || null,
           status: 'ativo',
         },
         { onConflict: 'user_id,portal_id' }
@@ -208,55 +181,18 @@ export default function CredenciaisPortalForm() {
                 </div>
               </div>
 
-              <div className="border border-border/50 rounded-lg p-4 space-y-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Certificado Digital (opcional)
+              <div className="bg-success/10 border border-success/20 rounded-lg p-3">
+                <p className="text-xs text-success flex items-center gap-1">
+                  <Shield className="w-3 h-3" />
+                  Certificados digitais são gerenciados localmente (via Agente Externo no VPS
+                  ou extensão de navegador). Nunca armazenamos certificados na nuvem.
                 </p>
-                <div>
-                  <Label className="text-xs">Tipo do Certificado</Label>
-                  <Select value={certTipo} onValueChange={(v) => setCertTipo(v as 'pf' | 'pj')}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pf">e-CPF (Pessoa Física)</SelectItem>
-                      <SelectItem value="pj">e-CNPJ (Pessoa Jurídica)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Arquivo do Certificado (.pfx / .p12)</Label>
-                  <div className="mt-1">
-                    <label className="flex items-center gap-2 border border-dashed border-border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors">
-                      <Upload className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        {certFile ? certFile.name : 'Clique para selecionar o certificado'}
-                      </span>
-                      <input
-                        type="file"
-                        accept=".pfx,.p12,.cer,.crt"
-                        className="hidden"
-                        onChange={(e) => setCertFile(e.target.files?.[0] || null)}
-                      />
-                    </label>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs">Validade do Certificado</Label>
-                  <Input
-                    type="date"
-                    value={certValidade}
-                    onChange={(e) => setCertValidade(e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
               </div>
 
               <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
                 <p className="text-xs text-warning flex items-center gap-1">
                   <Shield className="w-3 h-3" />
-                  Suas credenciais são armazenadas de forma segura e criptografada.
-                  Apenas você tem acesso a elas.
+                  Login e senha são armazenados de forma segura. Apenas você tem acesso.
                 </p>
               </div>
 
