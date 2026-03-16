@@ -28,15 +28,29 @@ PORT=3500
 AGENT_API_KEY=sua-chave-secreta-aqui
 
 # Sessões paralelas (cada uma consome ~500MB RAM)
-# Padrão: 3 — ajuste conforme a RAM do servidor
 MAX_SESSOES_PARALELAS=3
 
 # URL de callback do sistema (Lovable Cloud)
 CALLBACK_URL=https://sbnlovigyifvrkgsoalj.supabase.co/functions/v1/robo-lances-webhook/callback
 
-# Certificado Digital A1
-CERT_PATH=./certs/certificado.pfx
-CERT_PASSWORD=senha-do-certificado
+# ═══ CERTIFICADOS DIGITAIS (LOCAL) ═══
+# Os certificados NUNCA são enviados para a nuvem.
+# Eles permanecem exclusivamente neste servidor VPS.
+#
+# Modo 1: Certificado único
+# CERT_PATH=./certs/certificado.pfx
+# CERT_PASSWORD=senha-do-certificado
+#
+# Modo 2: Multi-CNPJ (um certificado por empresa)
+# Coloque cada .pfx na pasta certs/ nomeado pelo CNPJ:
+#   certs/12345678000100.pfx
+#   certs/98765432000199.pfx
+# E configure as senhas abaixo:
+# CERT_PASSWORDS={"12345678000100":"senha1","98765432000199":"senha2"}
+#
+# Modo 3: Certificado A3 (token/smartcard)
+# CERT_MODE=a3
+# PKCS11_LIB=/usr/lib/libeTPkcs11.so
 
 # Chrome/Chromium (auto-detectado se não definido)
 # PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
