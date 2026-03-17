@@ -42,6 +42,14 @@ const statusCfg: Record<string, { label: string; color: string; icon: typeof Che
   cancelada: { label: 'Cancelada', color: 'bg-destructive/10 text-destructive', icon: XCircle },
 };
 
+const preNfStatusCfg: Record<string, { label: string; color: string }> = {
+  pendente: { label: 'Aguardando Aprovação', color: 'bg-warning/10 text-warning' },
+  em_revisao: { label: 'Em Revisão', color: 'bg-accent/10 text-accent' },
+  aprovada: { label: 'Aprovada', color: 'bg-success/10 text-success' },
+  rejeitada: { label: 'Rejeitada', color: 'bg-destructive/10 text-destructive' },
+  devolvida: { label: 'Devolvida ao Comercial', color: 'bg-warning/10 text-warning' },
+};
+
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
 
 const CFOPS_SAIDA = [
