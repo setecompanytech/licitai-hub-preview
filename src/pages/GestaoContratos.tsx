@@ -29,13 +29,11 @@ const parseBRLInput = (value: string): string => {
 import {
   FileText, Plus, Search, Calendar, DollarSign, AlertTriangle,
   CheckCircle2, Clock, TrendingUp, Building2, Loader2, Trash2,
-  ArrowLeft, Package, ShoppingCart, Receipt, BarChart3
+  ArrowLeft, Package, ShoppingCart, BarChart3
 } from 'lucide-react';
 import ContratoItens from '@/components/contratos/ContratoItens';
 import ContratoPedidos from '@/components/contratos/ContratoPedidos';
-import ContratoCustos from '@/components/contratos/ContratoCustos';
 import ContratoDashboard from '@/components/contratos/ContratoDashboard';
-import ContratoNotasFiscais from '@/components/contratos/ContratoNotasFiscais';
 import ImportarContratoPDF from '@/components/contratos/ImportarContratoPDF';
 
 const formatCurrency = (v: number) =>
@@ -223,14 +221,10 @@ export default function GestaoContratos() {
             <TabsTrigger value="dashboard"><BarChart3 className="w-3.5 h-3.5 mr-1" /> Dashboard</TabsTrigger>
             <TabsTrigger value="itens"><Package className="w-3.5 h-3.5 mr-1" /> Itens</TabsTrigger>
             <TabsTrigger value="pedidos"><ShoppingCart className="w-3.5 h-3.5 mr-1" /> Pedidos</TabsTrigger>
-            <TabsTrigger value="custos"><Receipt className="w-3.5 h-3.5 mr-1" /> Custos & Financeiro</TabsTrigger>
-            <TabsTrigger value="nf"><FileText className="w-3.5 h-3.5 mr-1" /> Notas Fiscais</TabsTrigger>
           </TabsList>
           <TabsContent value="dashboard"><ContratoDashboard contratoId={c.id} /></TabsContent>
           <TabsContent value="itens"><ContratoItens contratoId={c.id} /></TabsContent>
           <TabsContent value="pedidos"><ContratoPedidos contratoId={c.id} /></TabsContent>
-          <TabsContent value="custos"><ContratoCustos contratoId={c.id} valorFaturado={c.valor_consumido} /></TabsContent>
-          <TabsContent value="nf"><ContratoNotasFiscais contratoId={c.id} /></TabsContent>
         </Tabs>
       </AppLayout>
     );

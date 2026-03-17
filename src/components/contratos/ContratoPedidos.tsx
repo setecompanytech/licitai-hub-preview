@@ -30,6 +30,12 @@ type Pedido = {
   status: string; nota_fiscal: string | null; observacoes: string | null;
   nf_quitada: boolean; data_quitacao: string | null;
 };
+type NotaFiscalSync = {
+  id: string; numero_nf: string | null; tipo: string; status: string | null;
+  valor_total: number | null; data_emissao: string | null; chave_acesso: string | null;
+  contrato_pedido_id: string | null; natureza_operacao: string | null;
+  destinatario_razao_social: string | null;
+};
 
 const statusCfg: Record<string, { label: string; color: string }> = {
   pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning' },
@@ -52,6 +58,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const { empresaAtiva } = useEmpresa();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [itens, setItens] = useState<ContratoItem[]>([]);
+  const [nfsSync, setNfsSync] = useState<NotaFiscalSync[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -84,12 +91,14 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
   const load = async () => {
     setLoading(true);
-    const [pedidosRes, itensRes] = await Promise.all([
+    const [pedidosRes, itensRes, nfsRes] = await Promise.all([
       supabase.from('contrato_pedidos').select('*').eq('contrato_id', contratoId).order('data_pedido', { ascending: false }),
       supabase.from('contrato_itens').select('id, descricao, unidade, valor_unitario').eq('contrato_id', contratoId),
+      supabase.from('notas_fiscais').select('id, numero_nf, tipo, status, valor_total, data_emissao, chave_acesso, contrato_pedido_id, natureza_operacao, destinatario_razao_social').eq('contrato_id', contratoId),
     ]);
     setPedidos((pedidosRes.data as any[]) || []);
     setItens((itensRes.data as any[]) || []);
+    setNfsSync((nfsRes.data as any[]) || []);
     setLoading(false);
   };
 
@@ -538,6 +547,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       ) : pedidos.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground text-sm">Nenhum pedido registrado</Card>
       ) : (
+        <>
         <div className="rounded-lg border overflow-x-auto">
           <Table>
             <TableHeader>
@@ -549,13 +559,15 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <TableHead className="text-xs text-right">Vlr Total</TableHead>
                 <TableHead className="text-xs text-center">Data</TableHead>
                 <TableHead className="text-xs text-center">Status</TableHead>
-                <TableHead className="text-xs">NF</TableHead>
+                <TableHead className="text-xs">NF Comercial</TableHead>
+                <TableHead className="text-xs">NF-e Financeiro</TableHead>
                 <TableHead className="text-xs w-20"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {pedidos.map(p => {
                 const cfg = statusCfg[p.status] || statusCfg.pendente;
+                const linkedNfs = nfsSync.filter(nf => nf.contrato_pedido_id === p.id);
                 return (
                   <TableRow key={p.id}>
                     <TableCell className="text-xs font-mono font-medium">{p.numero_pedido}</TableCell>
@@ -569,19 +581,37 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     </TableCell>
                     <TableCell className="text-xs">
                       {p.nf_quitada ? (
-                        <Badge className="text-[10px] bg-emerald-500/15 text-emerald-600">
+                        <Badge className="text-[10px] bg-success/15 text-success">
                           <CheckCircle2 className="w-3 h-3 mr-1" /> {p.nota_fiscal}
                         </Badge>
                       ) : p.nota_fiscal ? (
                         <span className="text-muted-foreground">{p.nota_fiscal}</span>
                       ) : '—'}
                     </TableCell>
+                    <TableCell className="text-xs">
+                      {linkedNfs.length > 0 ? (
+                        <div className="space-y-1">
+                          {linkedNfs.map(nf => (
+                            <Badge key={nf.id} variant="outline" className={`text-[10px] block w-fit ${
+                              nf.status === 'autorizada' ? 'border-success/30 text-success' :
+                              nf.status === 'rejeitada' ? 'border-destructive/30 text-destructive' :
+                              'border-muted-foreground/30 text-muted-foreground'
+                            }`}>
+                              <FileText className="w-3 h-3 mr-1" />
+                              {nf.numero_nf || 'Rascunho'} • {nf.tipo === 'saida' ? 'Saída' : 'Entrada'} {nf.valor_total ? `• ${fmt(nf.valor_total)}` : ''}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground/50">—</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         {!p.nf_quitada && p.status === 'entregue' && (
                           <Button
                             size="sm" variant="outline"
-                            className="h-7 px-2 text-[10px] text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                            className="h-7 px-2 text-[10px] text-success border-success/30 hover:bg-success/5"
                             onClick={() => openNfDialog(p)}
                             title="Informar NF quitada e solicitar comissão"
                           >
@@ -599,6 +629,40 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             </TableBody>
           </Table>
         </div>
+
+        {nfsSync.length > 0 && (
+          <Card className="p-4 mt-4 border-accent/20">
+            <h4 className="text-xs font-semibold flex items-center gap-2 mb-3">
+              <FileText className="w-4 h-4 text-accent" />
+              Notas Fiscais Sincronizadas do Financeiro
+              <Badge variant="outline" className="text-[10px]">{nfsSync.length} NFs</Badge>
+            </h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+              <div className="text-center p-2 rounded bg-muted/50">
+                <p className="text-[10px] text-muted-foreground">NFs Saída</p>
+                <p className="text-sm font-bold">{nfsSync.filter(n => n.tipo === 'saida').length}</p>
+                <p className="text-[10px] text-muted-foreground">{fmt(nfsSync.filter(n => n.tipo === 'saida').reduce((s, n) => s + (n.valor_total || 0), 0))}</p>
+              </div>
+              <div className="text-center p-2 rounded bg-muted/50">
+                <p className="text-[10px] text-muted-foreground">NFs Entrada</p>
+                <p className="text-sm font-bold">{nfsSync.filter(n => n.tipo === 'entrada').length}</p>
+                <p className="text-[10px] text-muted-foreground">{fmt(nfsSync.filter(n => n.tipo === 'entrada').reduce((s, n) => s + (n.valor_total || 0), 0))}</p>
+              </div>
+              <div className="text-center p-2 rounded bg-muted/50">
+                <p className="text-[10px] text-muted-foreground">Autorizadas</p>
+                <p className="text-sm font-bold text-success">{nfsSync.filter(n => n.status === 'autorizada').length}</p>
+              </div>
+              <div className="text-center p-2 rounded bg-muted/50">
+                <p className="text-[10px] text-muted-foreground">Pendentes</p>
+                <p className="text-sm font-bold text-warning">{nfsSync.filter(n => n.status !== 'autorizada' && n.status !== 'cancelada').length}</p>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground italic">
+              As notas fiscais são emitidas e controladas pelo setor Financeiro. Acesse o módulo Financeiro para emitir ou editar NFs.
+            </p>
+          </Card>
+        )}
+        </>
       )}
 
       {/* NF Quitada + Solicitar Comissão Dialog */}
@@ -606,7 +670,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-emerald-600" />
+              <DollarSign className="w-5 h-5 text-success" />
               Registrar NF Quitada
             </DialogTitle>
           </DialogHeader>
@@ -639,7 +703,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <Button
                   onClick={() => handleMarcarNfQuitada(true)}
                   disabled={solicitandoComissao || !nfNumero.trim()}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="bg-success hover:bg-success/90 text-success-foreground"
                 >
                   {solicitandoComissao ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <DollarSign className="w-4 h-4 mr-1" />}
                   Registrar NF e Solicitar Comissão
