@@ -232,6 +232,10 @@ export default function Configuracoes() {
               <CreditCard className="w-4 h-4" />
               Plano & Assinatura
             </TabsTrigger>
+            <TabsTrigger value="fiscal" className="gap-2">
+              <FileText className="w-4 h-4" />
+              Fiscal / NF
+            </TabsTrigger>
           </TabsList>
 
           {/* ── Tab: Configurações Gerais ── */}
