@@ -43,6 +43,7 @@ import PropostaTecnica from "./pages/PropostaTecnica";
 import HistoricoLicitacoes from "./pages/HistoricoLicitacoes";
 import Ferramentas from "./pages/Ferramentas";
 import GestaoContratos from "./pages/GestaoContratos";
+import Financeiro from "./pages/Financeiro";
 
 
 import WhatsAppCRM from "./pages/WhatsAppCRM";
