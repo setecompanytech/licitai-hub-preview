@@ -8,13 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import {
-  Plus, Trash2, Loader2, ArrowUpCircle, CheckCircle2, Clock,
-  AlertTriangle, Search, DollarSign
+  Plus, Trash2, Loader2, CheckCircle2, Clock,
+  AlertTriangle, Search, CreditCard, SplitSquareVertical
 } from 'lucide-react';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -24,11 +25,15 @@ type ContaReceber = {
   valor_recebido: number; data_vencimento: string; data_recebimento: string | null;
   status: string; categoria: string | null; numero_nf: string | null;
   observacoes: string | null; contrato_id: string | null;
+  parcela_numero: number | null; parcela_total: number | null;
+  juros_percentual: number; multa_percentual: number;
+  valor_juros: number; valor_multa: number; valor_desconto: number;
 };
 
 const statusCfg: Record<string, { label: string; color: string }> = {
   pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning' },
   recebido: { label: 'Recebido', color: 'bg-success/10 text-success' },
+  parcial: { label: 'Parcial', color: 'bg-accent/10 text-accent' },
   atrasado: { label: 'Atrasado', color: 'bg-destructive/10 text-destructive' },
   cancelado: { label: 'Cancelado', color: 'bg-muted text-muted-foreground' },
 };
@@ -39,13 +44,20 @@ export default function ContasReceber() {
   const [contas, setContas] = useState<ContaReceber[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [baixaDialogOpen, setBaixaDialogOpen] = useState(false);
+  const [baixaConta, setBaixaConta] = useState<ContaReceber | null>(null);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('all');
+
   const [form, setForm] = useState({
     descricao: '', cliente: '', valor: '', data_vencimento: '',
     categoria: '', numero_nf: '', observacoes: '',
+    parcelar: false, num_parcelas: '2', intervalo_dias: '30',
+    juros_percentual: '0', multa_percentual: '0',
   });
+
+  const [baixaForm, setBaixaForm] = useState({ valor_recebido: '', data_recebimento: '', desconto: '0' });
 
   useEffect(() => { if (user && empresaAtiva) load(); }, [user, empresaAtiva]);
 
@@ -63,40 +75,102 @@ export default function ContasReceber() {
     setLoading(false);
   };
 
+  const calcEncargos = (conta: ContaReceber) => {
+    if (['recebido', 'cancelado'].includes(conta.status)) return { juros: 0, multa: 0, total: conta.valor };
+    const hoje = new Date();
+    const venc = new Date(conta.data_vencimento + 'T00:00:00');
+    if (hoje <= venc) return { juros: 0, multa: 0, total: conta.valor };
+    const diasAtraso = Math.ceil((hoje.getTime() - venc.getTime()) / 86400000);
+    const juros = conta.valor * (conta.juros_percentual / 100) * (diasAtraso / 30);
+    const multa = diasAtraso > 0 ? conta.valor * (conta.multa_percentual / 100) : 0;
+    return { juros: Math.round(juros * 100) / 100, multa: Math.round(multa * 100) / 100, total: conta.valor + juros + multa };
+  };
+
   const handleSave = async () => {
     if (!form.descricao || !form.valor || !form.data_vencimento) {
       toast.error('Preencha descrição, valor e vencimento'); return;
     }
     setSaving(true);
-    const { error } = await supabase.from('contas_receber').insert({
-      user_id: user!.id, empresa_id: empresaAtiva!.id,
-      descricao: form.descricao, cliente: form.cliente || null,
-      valor: parseFloat(form.valor) || 0, data_vencimento: form.data_vencimento,
-      categoria: form.categoria || null, numero_nf: form.numero_nf || null,
-      observacoes: form.observacoes || null, status: 'pendente',
-    } as any);
+    const valorTotal = parseFloat(form.valor) || 0;
+
+    if (form.parcelar && parseInt(form.num_parcelas) > 1) {
+      const numParcelas = parseInt(form.num_parcelas);
+      const intervaloDias = parseInt(form.intervalo_dias) || 30;
+      const valorParcela = Math.round((valorTotal / numParcelas) * 100) / 100;
+      const grupoId = crypto.randomUUID();
+      const parcelas = [];
+      for (let i = 0; i < numParcelas; i++) {
+        const dataVenc = new Date(form.data_vencimento + 'T00:00:00');
+        dataVenc.setDate(dataVenc.getDate() + (i * intervaloDias));
+        const valorP = i === numParcelas - 1 ? valorTotal - valorParcela * (numParcelas - 1) : valorParcela;
+        parcelas.push({
+          user_id: user!.id, empresa_id: empresaAtiva!.id,
+          descricao: `${form.descricao} (${i + 1}/${numParcelas})`,
+          cliente: form.cliente || null, valor: valorP,
+          data_vencimento: dataVenc.toISOString().split('T')[0],
+          categoria: form.categoria || null, numero_nf: form.numero_nf || null,
+          observacoes: form.observacoes || null, status: 'pendente',
+          parcela_numero: i + 1, parcela_total: numParcelas, parcela_grupo_id: grupoId,
+          juros_percentual: parseFloat(form.juros_percentual) || 0,
+          multa_percentual: parseFloat(form.multa_percentual) || 0,
+        });
+      }
+      const { error } = await supabase.from('contas_receber').insert(parcelas as any);
+      if (error) { toast.error('Erro ao salvar parcelas'); setSaving(false); return; }
+      toast.success(`${numParcelas} parcelas criadas!`);
+    } else {
+      const { error } = await supabase.from('contas_receber').insert({
+        user_id: user!.id, empresa_id: empresaAtiva!.id,
+        descricao: form.descricao, cliente: form.cliente || null,
+        valor: valorTotal, data_vencimento: form.data_vencimento,
+        categoria: form.categoria || null, numero_nf: form.numero_nf || null,
+        observacoes: form.observacoes || null, status: 'pendente',
+        juros_percentual: parseFloat(form.juros_percentual) || 0,
+        multa_percentual: parseFloat(form.multa_percentual) || 0,
+      } as any);
+      if (error) { toast.error('Erro ao salvar'); setSaving(false); return; }
+      toast.success('Conta a receber registrada!');
+    }
     setSaving(false);
-    if (error) { toast.error('Erro ao salvar'); return; }
-    toast.success('Conta a receber registrada!');
     setDialogOpen(false);
-    setForm({ descricao: '', cliente: '', valor: '', data_vencimento: '', categoria: '', numero_nf: '', observacoes: '' });
+    setForm({ descricao: '', cliente: '', valor: '', data_vencimento: '', categoria: '', numero_nf: '', observacoes: '', parcelar: false, num_parcelas: '2', intervalo_dias: '30', juros_percentual: '0', multa_percentual: '0' });
     load();
   };
 
-  const handleReceber = async (id: string) => {
-    const conta = contas.find(c => c.id === id);
-    await supabase.from('contas_receber').update({
-      status: 'recebido', data_recebimento: new Date().toISOString().split('T')[0],
-      valor_recebido: conta?.valor || 0,
-    } as any).eq('id', id);
-    toast.success('Marcado como recebido');
+  const openBaixa = (conta: ContaReceber) => {
+    const enc = calcEncargos(conta);
+    const saldo = enc.total - (conta.valor_recebido || 0);
+    setBaixaConta(conta);
+    setBaixaForm({ valor_recebido: saldo.toFixed(2), data_recebimento: new Date().toISOString().split('T')[0], desconto: '0' });
+    setBaixaDialogOpen(true);
+  };
+
+  const handleBaixa = async () => {
+    if (!baixaConta) return;
+    const valorRec = parseFloat(baixaForm.valor_recebido) || 0;
+    const desconto = parseFloat(baixaForm.desconto) || 0;
+    const totalJaRecebido = (baixaConta.valor_recebido || 0) + valorRec;
+    const enc = calcEncargos(baixaConta);
+    const saldoRestante = enc.total - totalJaRecebido - desconto;
+    const novoStatus = saldoRestante <= 0.01 ? 'recebido' : 'parcial';
+
+    const { error } = await supabase.from('contas_receber').update({
+      status: novoStatus,
+      data_recebimento: baixaForm.data_recebimento,
+      valor_recebido: totalJaRecebido,
+      valor_desconto: (baixaConta.valor_desconto || 0) + desconto,
+      valor_juros: enc.juros, valor_multa: enc.multa,
+    } as any).eq('id', baixaConta.id);
+
+    if (error) { toast.error('Erro ao registrar baixa'); return; }
+    toast.success(novoStatus === 'recebido' ? 'Conta quitada!' : 'Baixa parcial registrada!');
+    setBaixaDialogOpen(false);
     load();
   };
 
   const handleDelete = async (id: string) => {
     await supabase.from('contas_receber').delete().eq('id', id);
-    toast.success('Excluído');
-    load();
+    toast.success('Excluído'); load();
   };
 
   const filtered = contas.filter(c => {
@@ -105,9 +179,9 @@ export default function ContasReceber() {
     return matchSearch && matchStatus;
   });
 
-  const totalPendente = contas.filter(c => c.status === 'pendente').reduce((s, c) => s + c.valor, 0);
+  const totalPendente = contas.filter(c => ['pendente', 'parcial'].includes(c.status)).reduce((s, c) => s + c.valor - (c.valor_recebido || 0), 0);
   const totalAtrasado = contas.filter(c => c.status === 'atrasado').reduce((s, c) => s + c.valor, 0);
-  const totalRecebido = contas.filter(c => c.status === 'recebido').reduce((s, c) => s + c.valor_recebido, 0);
+  const totalRecebido = contas.filter(c => c.status === 'recebido').reduce((s, c) => s + (c.valor_recebido || 0), 0);
 
   if (!empresaAtiva) return <Card className="p-8 text-center text-muted-foreground text-sm">Selecione uma empresa ativa.</Card>;
 
@@ -126,24 +200,43 @@ export default function ContasReceber() {
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="pendente">Pendente</SelectItem>
+            <SelectItem value="parcial">Parcial</SelectItem>
             <SelectItem value="atrasado">Atrasado</SelectItem>
             <SelectItem value="recebido">Recebido</SelectItem>
           </SelectContent>
         </Select>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild><Button size="sm"><Plus className="w-3.5 h-3.5 mr-1" /> Nova Conta</Button></DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Conta a Receber</DialogTitle></DialogHeader>
             <div className="space-y-3 mt-2">
               <div><Label className="text-xs">Descrição *</Label><Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label className="text-xs">Cliente / Órgão</Label><Input value={form.cliente} onChange={e => setForm(f => ({ ...f, cliente: e.target.value }))} /></div>
-                <div><Label className="text-xs">Valor (R$) *</Label><Input type="number" step="0.01" value={form.valor} onChange={e => setForm(f => ({ ...f, valor: e.target.value }))} /></div>
+                <div><Label className="text-xs">Valor Total (R$) *</Label><Input type="number" step="0.01" value={form.valor} onChange={e => setForm(f => ({ ...f, valor: e.target.value }))} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label className="text-xs">Vencimento *</Label><Input type="date" value={form.data_vencimento} onChange={e => setForm(f => ({ ...f, data_vencimento: e.target.value }))} /></div>
                 <div><Label className="text-xs">Nº NF</Label><Input value={form.numero_nf} onChange={e => setForm(f => ({ ...f, numero_nf: e.target.value }))} /></div>
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label className="text-xs">Juros ao mês (%)</Label><Input type="number" step="0.01" value={form.juros_percentual} onChange={e => setForm(f => ({ ...f, juros_percentual: e.target.value }))} /></div>
+                <div><Label className="text-xs">Multa por atraso (%)</Label><Input type="number" step="0.01" value={form.multa_percentual} onChange={e => setForm(f => ({ ...f, multa_percentual: e.target.value }))} /></div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border">
+                <Switch checked={form.parcelar} onCheckedChange={v => setForm(f => ({ ...f, parcelar: v }))} />
+                <div className="flex-1">
+                  <Label className="text-xs font-medium flex items-center gap-1"><SplitSquareVertical className="w-3.5 h-3.5" /> Parcelar</Label>
+                  {form.parcelar && (
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div><Label className="text-[10px]">Nº Parcelas</Label><Input type="number" min="2" max="48" value={form.num_parcelas} onChange={e => setForm(f => ({ ...f, num_parcelas: e.target.value }))} className="h-8 text-xs" /></div>
+                      <div><Label className="text-[10px]">Intervalo (dias)</Label><Input type="number" min="7" max="90" value={form.intervalo_dias} onChange={e => setForm(f => ({ ...f, intervalo_dias: e.target.value }))} className="h-8 text-xs" /></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div><Label className="text-xs">Observações</Label><Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} /></div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
@@ -167,27 +260,35 @@ export default function ContasReceber() {
                 <TableHead className="text-xs">Descrição</TableHead>
                 <TableHead className="text-xs">Cliente</TableHead>
                 <TableHead className="text-xs text-right">Valor</TableHead>
+                <TableHead className="text-xs text-right">Recebido</TableHead>
                 <TableHead className="text-xs text-center">Vencimento</TableHead>
-                <TableHead className="text-xs">NF</TableHead>
-                <TableHead className="text-xs w-20"></TableHead>
+                <TableHead className="text-xs w-24"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map(c => {
                 const cfg = statusCfg[c.status] || statusCfg.pendente;
+                const enc = calcEncargos(c);
+                const temEncargos = enc.juros > 0 || enc.multa > 0;
                 return (
                   <TableRow key={c.id}>
-                    <TableCell><Badge className={`${cfg.color} text-[10px]`}>{cfg.label}</Badge></TableCell>
+                    <TableCell>
+                      <Badge className={`${cfg.color} text-[10px]`}>{cfg.label}</Badge>
+                      {c.parcela_numero && <span className="text-[9px] text-muted-foreground ml-1">{c.parcela_numero}/{c.parcela_total}</span>}
+                    </TableCell>
                     <TableCell className="text-xs max-w-[200px] truncate">{c.descricao}</TableCell>
                     <TableCell className="text-xs">{c.cliente || '—'}</TableCell>
-                    <TableCell className="text-xs text-right font-medium">{fmt(c.valor)}</TableCell>
+                    <TableCell className="text-xs text-right">
+                      <span className="font-medium">{fmt(c.valor)}</span>
+                      {temEncargos && <span className="block text-[9px] text-success">+{fmt(enc.juros + enc.multa)} encargos</span>}
+                    </TableCell>
+                    <TableCell className="text-xs text-right">{c.valor_recebido ? fmt(c.valor_recebido) : '—'}</TableCell>
                     <TableCell className="text-xs text-center">{new Date(c.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
-                    <TableCell className="text-xs">{c.numero_nf || '—'}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        {c.status !== 'recebido' && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleReceber(c.id)} title="Marcar como recebido">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                        {!['recebido', 'cancelado'].includes(c.status) && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openBaixa(c)} title="Baixa">
+                            <CreditCard className="w-3.5 h-3.5 text-success" />
                           </Button>
                         )}
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(c.id)}>
@@ -202,6 +303,36 @@ export default function ContasReceber() {
           </Table>
         </div>
       )}
+
+      {/* Baixa Dialog */}
+      <Dialog open={baixaDialogOpen} onOpenChange={setBaixaDialogOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><CreditCard className="w-5 h-5 text-primary" /> Registrar Recebimento</DialogTitle></DialogHeader>
+          {baixaConta && (
+            <div className="space-y-3 mt-2">
+              <Card className="p-3 bg-muted/30">
+                <p className="text-xs text-muted-foreground">Conta: <span className="font-medium text-foreground">{baixaConta.descricao}</span></p>
+                <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
+                  <div><span className="text-muted-foreground">Original:</span><br/><span className="font-bold">{fmt(baixaConta.valor)}</span></div>
+                  <div><span className="text-muted-foreground">Já recebido:</span><br/><span className="font-bold text-success">{fmt(baixaConta.valor_recebido || 0)}</span></div>
+                  {(() => { const e = calcEncargos(baixaConta); return e.juros + e.multa > 0 ? (
+                    <div><span className="text-muted-foreground">Encargos:</span><br/><span className="font-bold text-accent">{fmt(e.juros + e.multa)}</span></div>
+                  ) : null; })()}
+                </div>
+              </Card>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label className="text-xs">Valor Recebido (R$)</Label><Input type="number" step="0.01" value={baixaForm.valor_recebido} onChange={e => setBaixaForm(f => ({ ...f, valor_recebido: e.target.value }))} /></div>
+                <div><Label className="text-xs">Data Recebimento</Label><Input type="date" value={baixaForm.data_recebimento} onChange={e => setBaixaForm(f => ({ ...f, data_recebimento: e.target.value }))} /></div>
+              </div>
+              <div><Label className="text-xs">Desconto (R$)</Label><Input type="number" step="0.01" value={baixaForm.desconto} onChange={e => setBaixaForm(f => ({ ...f, desconto: e.target.value }))} /></div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setBaixaDialogOpen(false)}>Cancelar</Button>
+                <Button onClick={handleBaixa}>Confirmar Recebimento</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
