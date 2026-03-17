@@ -337,6 +337,39 @@ export default function NFSaida() {
   const totalEmitido = notas.filter(n => n.status === 'autorizada').reduce((s, n) => s + n.valor_total, 0);
   const totalPendente = notas.filter(n => ['rascunho', 'enviada'].includes(n.status)).reduce((s, n) => s + n.valor_total, 0);
 
+  const loadPreNotaItens = async (preNotaId: string) => {
+    if (preNotaItens[preNotaId]) return;
+    const { data } = await supabase.from('pre_nota_itens' as any).select('*').eq('pre_nota_id', preNotaId);
+    setPreNotaItens(prev => ({ ...prev, [preNotaId]: (data as any[]) || [] }));
+  };
+
+  const handlePreNotaAction = async (preNotaId: string, action: 'aprovar' | 'rejeitar' | 'devolver' | 'em_revisao') => {
+    if ((action === 'rejeitar' || action === 'devolver') && !reviewMotivo.trim()) {
+      toast.error(`Informe o motivo para ${action === 'rejeitar' ? 'rejeição' : 'devolução'}`);
+      return;
+    }
+
+    const updates: any = { revisado_por: user!.id, data_revisao: new Date().toISOString() };
+    if (action === 'aprovar') updates.status = 'aprovada';
+    else if (action === 'rejeitar') { updates.status = 'rejeitada'; updates.motivo_rejeicao = reviewMotivo; }
+    else if (action === 'devolver') { updates.status = 'devolvida'; updates.motivo_devolucao = reviewMotivo; }
+    else if (action === 'em_revisao') updates.status = 'em_revisao';
+
+    const { error } = await supabase.from('pre_notas_fiscais' as any).update(updates).eq('id', preNotaId);
+    if (error) { toast.error('Erro ao processar ação'); return; }
+
+    toast.success(
+      action === 'aprovar' ? 'Pré-NF aprovada! Prossiga com a emissão da NF-e.' :
+      action === 'rejeitar' ? 'Pré-NF rejeitada. O comercial será notificado.' :
+      action === 'devolver' ? 'Pré-NF devolvida ao comercial para correção.' :
+      'Pré-NF marcada como em revisão.'
+    );
+    setReviewAction(null);
+    setReviewMotivo('');
+    setPreNotaExpanded(null);
+    loadAll();
+  };
+
   if (!empresaAtiva) return <Card className="p-8 text-center text-muted-foreground text-sm">Selecione uma empresa ativa.</Card>;
 
   return (
