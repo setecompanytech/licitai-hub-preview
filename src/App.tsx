@@ -131,7 +131,7 @@ const App = () => (
               <Route path="/indices-repactuacao" element={<PlanPages><IndicesRepactuacao /></PlanPages>} />
               <Route path="/relatorio-contabil" element={<ProtectedPages><RelatorioContabil /></ProtectedPages>} />
               <Route path="/gestao-contratos" element={<PlanPages><GestaoContratos /></PlanPages>} />
-              <Route path="/financeiro" element={<ProtectedPages><AdminOnlyGuard><Financeiro /></AdminOnlyGuard></ProtectedPages>} />
+              <Route path="/financeiro" element={<ProtectedPages><AdminGuard><Financeiro /></AdminGuard></ProtectedPages>} />
               <Route path="/equipe" element={<PlanPages><EquipeColaboradores /></PlanPages>} />
               <Route path="/termos-de-uso" element={<TermosDeUso />} />
               <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />
