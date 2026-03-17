@@ -65,6 +65,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('upload');
 
+  // Pré-NF dialog
+  const [preNfDialogOpen, setPreNfDialogOpen] = useState(false);
+  const [preNotas, setPreNotas] = useState<any[]>([]);
+
   // NF quitada dialog
   const [nfDialog, setNfDialog] = useState<Pedido | null>(null);
   const [nfNumero, setNfNumero] = useState('');
