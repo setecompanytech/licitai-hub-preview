@@ -547,6 +547,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       ) : pedidos.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground text-sm">Nenhum pedido registrado</Card>
       ) : (
+        <>
         <div className="rounded-lg border overflow-x-auto">
           <Table>
             <TableHeader>
@@ -629,7 +630,6 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           </Table>
         </div>
 
-        {/* NFs sincronizadas do Financeiro */}
         {nfsSync.length > 0 && (
           <Card className="p-4 mt-4 border-accent/20">
             <h4 className="text-xs font-semibold flex items-center gap-2 mb-3">
@@ -662,6 +662,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             </p>
           </Card>
         )}
+        </>
       )}
 
       {/* NF Quitada + Solicitar Comissão Dialog */}
