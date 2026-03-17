@@ -703,7 +703,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <Button
                   onClick={() => handleMarcarNfQuitada(true)}
                   disabled={solicitandoComissao || !nfNumero.trim()}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="bg-success hover:bg-success/90 text-success-foreground"
                 >
                   {solicitandoComissao ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <DollarSign className="w-4 h-4 mr-1" />}
                   Registrar NF e Solicitar Comissão
