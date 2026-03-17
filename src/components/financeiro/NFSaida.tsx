@@ -90,7 +90,11 @@ export default function NFSaida() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [apiConfigured, setApiConfigured] = useState(false);
-
+  const [preNotas, setPreNotas] = useState<any[]>([]);
+  const [preNotaItens, setPreNotaItens] = useState<Record<string, any[]>>({});
+  const [preNotaExpanded, setPreNotaExpanded] = useState<string | null>(null);
+  const [reviewAction, setReviewAction] = useState<{ id: string; action: string } | null>(null);
+  const [reviewMotivo, setReviewMotivo] = useState('');
   // Wizard step
   const [step, setStep] = useState(0);
   const [stepErrors, setStepErrors] = useState<string[]>([]);
