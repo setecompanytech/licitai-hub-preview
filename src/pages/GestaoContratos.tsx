@@ -29,7 +29,7 @@ const parseBRLInput = (value: string): string => {
 import {
   FileText, Plus, Search, Calendar, DollarSign, AlertTriangle,
   CheckCircle2, Clock, TrendingUp, Building2, Loader2, Trash2,
-  ArrowLeft, Package, ShoppingCart, Receipt, BarChart3
+  ArrowLeft, Package, ShoppingCart, BarChart3
 } from 'lucide-react';
 import ContratoItens from '@/components/contratos/ContratoItens';
 import ContratoPedidos from '@/components/contratos/ContratoPedidos';
