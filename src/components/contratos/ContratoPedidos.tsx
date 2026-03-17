@@ -732,6 +732,61 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Pré-Notas Fiscais */}
+      {preNotas.length > 0 && (
+        <Card className="p-4 border-primary/20">
+          <h4 className="text-xs font-semibold flex items-center gap-2 mb-3">
+            <Receipt className="w-4 h-4 text-primary" />
+            Pré-Notas Fiscais Solicitadas
+            <Badge variant="outline" className="text-[10px]">{preNotas.length}</Badge>
+          </h4>
+          <div className="space-y-2">
+            {preNotas.map((pn: any) => {
+              const statusMap: Record<string, { label: string; color: string }> = {
+                pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning' },
+                em_revisao: { label: 'Em Revisão', color: 'bg-accent/10 text-accent' },
+                aprovada: { label: 'Aprovada', color: 'bg-success/10 text-success' },
+                rejeitada: { label: 'Rejeitada', color: 'bg-destructive/10 text-destructive' },
+                devolvida: { label: 'Devolvida', color: 'bg-warning/10 text-warning' },
+              };
+              const st = statusMap[pn.status] || statusMap.pendente;
+              return (
+                <div key={pn.id} className="flex items-center justify-between p-2 rounded border bg-muted/30 text-xs">
+                  <div className="flex items-center gap-2">
+                    <Badge className={`text-[10px] ${st.color}`}>{st.label}</Badge>
+                    <span>{pn.natureza_operacao}</span>
+                    <span className="font-medium">{fmt(pn.valor_total)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">{new Date(pn.created_at).toLocaleDateString('pt-BR')}</span>
+                    {pn.motivo_devolucao && (
+                      <Badge variant="outline" className="text-[10px] text-warning" title={pn.motivo_devolucao}>
+                        <AlertTriangle className="w-3 h-3 mr-1" /> Devolvida
+                      </Badge>
+                    )}
+                    {pn.motivo_rejeicao && (
+                      <Badge variant="outline" className="text-[10px] text-destructive" title={pn.motivo_rejeicao}>
+                        <XCircle className="w-3 h-3 mr-1" /> Rejeitada
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Gerar Pré-NF Dialog */}
+      <GerarPreNotaDialog
+        open={preNfDialogOpen}
+        onOpenChange={setPreNfDialogOpen}
+        contratoId={contratoId}
+        pedidos={pedidos}
+        itens={itens}
+        onCreated={load}
+      />
     </div>
   );
 }
