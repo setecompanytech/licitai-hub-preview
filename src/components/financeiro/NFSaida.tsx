@@ -143,14 +143,16 @@ export default function NFSaida() {
 
   const loadAll = async () => {
     setLoading(true);
-    const [notasRes, contratosRes, configRes] = await Promise.all([
+    const [notasRes, contratosRes, configRes, preNotasRes] = await Promise.all([
       supabase.from('notas_fiscais').select('*').eq('user_id', user!.id).eq('empresa_id', empresaAtiva!.id).order('created_at', { ascending: false }),
       supabase.from('contratos').select('id, numero_contrato, orgao_contratante, valor_global').eq('user_id', user!.id).eq('status', 'vigente'),
       supabase.from('nuvem_fiscal_config').select('ativo').eq('empresa_id', empresaAtiva!.id).eq('user_id', user!.id).maybeSingle(),
+      supabase.from('pre_notas_fiscais' as any).select('*, contratos(numero_contrato, orgao_contratante)').eq('empresa_id', empresaAtiva!.id).in('status', ['pendente', 'em_revisao']).order('created_at', { ascending: false }),
     ]);
     setNotas((notasRes.data as any[]) || []);
     setContratos((contratosRes.data as any[]) || []);
     setApiConfigured(!!configRes.data?.ativo);
+    setPreNotas((preNotasRes.data as any[]) || []);
     setLoading(false);
   };
 
