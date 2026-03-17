@@ -328,7 +328,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             {pedidos.length} pedidos | Total: {fmt(totalPedidos)}
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setPreNfDialogOpen(true)} disabled={pedidos.filter(p => p.status !== 'cancelado').length === 0}>
+            <Receipt className="w-3.5 h-3.5 mr-1" /> Gerar Pré-NF
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="w-3.5 h-3.5 mr-1" /> Novo Pedido</Button>
           </DialogTrigger>
