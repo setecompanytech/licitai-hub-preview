@@ -81,7 +81,6 @@ const navGroups: NavGroup[] = [
       { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
       { icon: Archive, label: 'Histórico', path: '/historico-licitacoes' },
       { icon: FileText, label: 'Contratos', path: '/gestao-contratos' },
-      { icon: DollarSign, label: 'Financeiro', path: '/financeiro' },
     ],
   },
   {
@@ -126,7 +125,8 @@ const navGroups: NavGroup[] = [
 
 const adminItems: NavItem[] = [
   { icon: ShieldCheck, label: 'Templates IA', path: '/admin/templates' },
-  { icon: DollarSign, label: 'Financeiro', path: '/admin/financeiro' },
+  { icon: DollarSign, label: 'Financeiro Admin', path: '/admin/financeiro' },
+  { icon: DollarSign, label: 'Financeiro', path: '/financeiro' },
   { icon: Target, label: 'Fontes Fabricantes', path: '/admin/fontes-fabricantes' },
   { icon: TrendingUp, label: 'Marketing', path: '/admin/marketing' },
   { icon: BarChart3, label: 'Relatório Contábil', path: '/relatorio-contabil' },
