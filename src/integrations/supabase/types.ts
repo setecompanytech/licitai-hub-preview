@@ -635,6 +635,131 @@ export type Database = {
         }
         Relationships: []
       }
+      boletos: {
+        Row: {
+          api_response: Json | null
+          codigo_barras: string | null
+          conta_bancaria_id: string | null
+          conta_receber_id: string | null
+          contrato_id: string | null
+          created_at: string
+          data_emissao: string | null
+          data_pagamento: string | null
+          data_vencimento: string
+          empresa_id: string | null
+          id: string
+          instrucoes: string | null
+          linha_digitavel: string | null
+          nosso_numero: string | null
+          numero_documento: string | null
+          observacoes: string | null
+          sacado_cep: string | null
+          sacado_cidade: string | null
+          sacado_cnpj_cpf: string | null
+          sacado_endereco: string | null
+          sacado_nome: string | null
+          sacado_uf: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          valor_desconto: number | null
+          valor_juros: number | null
+          valor_multa: number | null
+          valor_nominal: number
+        }
+        Insert: {
+          api_response?: Json | null
+          codigo_barras?: string | null
+          conta_bancaria_id?: string | null
+          conta_receber_id?: string | null
+          contrato_id?: string | null
+          created_at?: string
+          data_emissao?: string | null
+          data_pagamento?: string | null
+          data_vencimento: string
+          empresa_id?: string | null
+          id?: string
+          instrucoes?: string | null
+          linha_digitavel?: string | null
+          nosso_numero?: string | null
+          numero_documento?: string | null
+          observacoes?: string | null
+          sacado_cep?: string | null
+          sacado_cidade?: string | null
+          sacado_cnpj_cpf?: string | null
+          sacado_endereco?: string | null
+          sacado_nome?: string | null
+          sacado_uf?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          valor_desconto?: number | null
+          valor_juros?: number | null
+          valor_multa?: number | null
+          valor_nominal?: number
+        }
+        Update: {
+          api_response?: Json | null
+          codigo_barras?: string | null
+          conta_bancaria_id?: string | null
+          conta_receber_id?: string | null
+          contrato_id?: string | null
+          created_at?: string
+          data_emissao?: string | null
+          data_pagamento?: string | null
+          data_vencimento?: string
+          empresa_id?: string | null
+          id?: string
+          instrucoes?: string | null
+          linha_digitavel?: string | null
+          nosso_numero?: string | null
+          numero_documento?: string | null
+          observacoes?: string | null
+          sacado_cep?: string | null
+          sacado_cidade?: string | null
+          sacado_cnpj_cpf?: string | null
+          sacado_endereco?: string | null
+          sacado_nome?: string | null
+          sacado_uf?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          valor_desconto?: number | null
+          valor_juros?: number | null
+          valor_multa?: number | null
+          valor_nominal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boletos_conta_bancaria_id_fkey"
+            columns: ["conta_bancaria_id"]
+            isOneToOne: false
+            referencedRelation: "contas_bancarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boletos_conta_receber_id_fkey"
+            columns: ["conta_receber_id"]
+            isOneToOne: false
+            referencedRelation: "contas_receber"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boletos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boletos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalogo_itens_precificados: {
         Row: {
           bdi_percentual: number | null
@@ -980,6 +1105,62 @@ export type Database = {
           },
         ]
       }
+      conciliacao_regras: {
+        Row: {
+          acao: string
+          ativo: boolean | null
+          categoria_destino: string | null
+          created_at: string
+          empresa_id: string | null
+          id: string
+          nome: string
+          padrao_texto: string
+          prioridade: number | null
+          tipo_match: string
+          updated_at: string
+          user_id: string
+          vezes_aplicada: number | null
+        }
+        Insert: {
+          acao?: string
+          ativo?: boolean | null
+          categoria_destino?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          nome: string
+          padrao_texto: string
+          prioridade?: number | null
+          tipo_match?: string
+          updated_at?: string
+          user_id: string
+          vezes_aplicada?: number | null
+        }
+        Update: {
+          acao?: string
+          ativo?: boolean | null
+          categoria_destino?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+          padrao_texto?: string
+          prioridade?: number | null
+          tipo_match?: string
+          updated_at?: string
+          user_id?: string
+          vezes_aplicada?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conciliacao_regras_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       concorrentes: {
         Row: {
           capital_social: number | null
@@ -1180,13 +1361,21 @@ export type Database = {
           empresa_id: string
           fornecedor: string | null
           id: string
+          juros_percentual: number | null
+          multa_percentual: number | null
           nota_fiscal: string | null
           observacoes: string | null
+          parcela_grupo_id: string | null
+          parcela_numero: number | null
+          parcela_total: number | null
           recorrente: boolean | null
           status: string | null
           updated_at: string
           user_id: string
           valor: number
+          valor_desconto: number | null
+          valor_juros: number | null
+          valor_multa: number | null
           valor_pago: number | null
         }
         Insert: {
@@ -1200,13 +1389,21 @@ export type Database = {
           empresa_id: string
           fornecedor?: string | null
           id?: string
+          juros_percentual?: number | null
+          multa_percentual?: number | null
           nota_fiscal?: string | null
           observacoes?: string | null
+          parcela_grupo_id?: string | null
+          parcela_numero?: number | null
+          parcela_total?: number | null
           recorrente?: boolean | null
           status?: string | null
           updated_at?: string
           user_id: string
           valor?: number
+          valor_desconto?: number | null
+          valor_juros?: number | null
+          valor_multa?: number | null
           valor_pago?: number | null
         }
         Update: {
@@ -1220,13 +1417,21 @@ export type Database = {
           empresa_id?: string
           fornecedor?: string | null
           id?: string
+          juros_percentual?: number | null
+          multa_percentual?: number | null
           nota_fiscal?: string | null
           observacoes?: string | null
+          parcela_grupo_id?: string | null
+          parcela_numero?: number | null
+          parcela_total?: number | null
           recorrente?: boolean | null
           status?: string | null
           updated_at?: string
           user_id?: string
           valor?: number
+          valor_desconto?: number | null
+          valor_juros?: number | null
+          valor_multa?: number | null
           valor_pago?: number | null
         }
         Relationships: [
@@ -1266,13 +1471,21 @@ export type Database = {
           descricao: string
           empresa_id: string
           id: string
+          juros_percentual: number | null
+          multa_percentual: number | null
           nota_fiscal_id: string | null
           numero_nf: string | null
           observacoes: string | null
+          parcela_grupo_id: string | null
+          parcela_numero: number | null
+          parcela_total: number | null
           status: string | null
           updated_at: string
           user_id: string
           valor: number
+          valor_desconto: number | null
+          valor_juros: number | null
+          valor_multa: number | null
           valor_recebido: number | null
         }
         Insert: {
@@ -1287,13 +1500,21 @@ export type Database = {
           descricao: string
           empresa_id: string
           id?: string
+          juros_percentual?: number | null
+          multa_percentual?: number | null
           nota_fiscal_id?: string | null
           numero_nf?: string | null
           observacoes?: string | null
+          parcela_grupo_id?: string | null
+          parcela_numero?: number | null
+          parcela_total?: number | null
           status?: string | null
           updated_at?: string
           user_id: string
           valor?: number
+          valor_desconto?: number | null
+          valor_juros?: number | null
+          valor_multa?: number | null
           valor_recebido?: number | null
         }
         Update: {
@@ -1308,13 +1529,21 @@ export type Database = {
           descricao?: string
           empresa_id?: string
           id?: string
+          juros_percentual?: number | null
+          multa_percentual?: number | null
           nota_fiscal_id?: string | null
           numero_nf?: string | null
           observacoes?: string | null
+          parcela_grupo_id?: string | null
+          parcela_numero?: number | null
+          parcela_total?: number | null
           status?: string | null
           updated_at?: string
           user_id?: string
           valor?: number
+          valor_desconto?: number | null
+          valor_juros?: number | null
+          valor_multa?: number | null
           valor_recebido?: number | null
         }
         Relationships: [
@@ -2002,6 +2231,50 @@ export type Database = {
             columns: ["licitacao_id"]
             isOneToOne: false
             referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dre_categorias: {
+        Row: {
+          ativo: boolean | null
+          created_at: string
+          empresa_id: string | null
+          grupo: string
+          id: string
+          nome: string
+          ordem: number | null
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string
+          empresa_id?: string | null
+          grupo?: string
+          id?: string
+          nome: string
+          ordem?: number | null
+          tipo?: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string
+          empresa_id?: string | null
+          grupo?: string
+          id?: string
+          nome?: string
+          ordem?: number | null
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dre_categorias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
         ]
