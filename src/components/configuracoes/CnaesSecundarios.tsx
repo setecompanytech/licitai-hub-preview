@@ -57,11 +57,18 @@ Retorne APENAS um JSON puro (sem markdown, sem crases) neste formato:
 
 Use códigos CNAE reais da tabela IBGE/CONCLA. Não invente códigos.`;
 
+      // Use user JWT for authenticated AI calls
+      let authToken = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) authToken = session.access_token;
+      } catch { /* fallback to anon key */ }
+
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           messages: [{ role: 'user', content: prompt }],
