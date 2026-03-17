@@ -506,6 +506,11 @@ export default function Configuracoes() {
             {isAdmin && <AnalyseCustosPlanos />}
             <AnaliseCNPJAdicional />
           </TabsContent>
+
+          {/* ── Tab: Fiscal / NF ── */}
+          <TabsContent value="fiscal" className="space-y-6">
+            <NuvemFiscalConfig />
+          </TabsContent>
         </Tabs>
       </div>
     </AppLayout>
