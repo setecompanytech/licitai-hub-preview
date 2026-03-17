@@ -3761,6 +3761,158 @@ export type Database = {
         }
         Relationships: []
       }
+      pre_nota_itens: {
+        Row: {
+          contrato_item_id: string | null
+          contrato_pedido_id: string | null
+          created_at: string
+          descricao: string
+          id: string
+          pre_nota_id: string
+          quantidade: number
+          unidade: string | null
+          valor_total: number
+          valor_unitario: number
+        }
+        Insert: {
+          contrato_item_id?: string | null
+          contrato_pedido_id?: string | null
+          created_at?: string
+          descricao: string
+          id?: string
+          pre_nota_id: string
+          quantidade?: number
+          unidade?: string | null
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Update: {
+          contrato_item_id?: string | null
+          contrato_pedido_id?: string | null
+          created_at?: string
+          descricao?: string
+          id?: string
+          pre_nota_id?: string
+          quantidade?: number
+          unidade?: string | null
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pre_nota_itens_contrato_item_id_fkey"
+            columns: ["contrato_item_id"]
+            isOneToOne: false
+            referencedRelation: "contrato_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pre_nota_itens_contrato_pedido_id_fkey"
+            columns: ["contrato_pedido_id"]
+            isOneToOne: false
+            referencedRelation: "contrato_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pre_nota_itens_pre_nota_id_fkey"
+            columns: ["pre_nota_id"]
+            isOneToOne: false
+            referencedRelation: "pre_notas_fiscais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pre_notas_fiscais: {
+        Row: {
+          contrato_id: string | null
+          created_at: string
+          data_revisao: string | null
+          empresa_id: string
+          endereco_entrega: string | null
+          frete_modalidade: string | null
+          frete_valor: number | null
+          id: string
+          justificativa: string | null
+          motivo_devolucao: string | null
+          motivo_rejeicao: string | null
+          natureza_operacao: string
+          nota_fiscal_id: string | null
+          observacoes: string | null
+          revisado_por: string | null
+          status: string
+          transportadora: string | null
+          updated_at: string
+          user_id: string
+          valor_total: number
+        }
+        Insert: {
+          contrato_id?: string | null
+          created_at?: string
+          data_revisao?: string | null
+          empresa_id: string
+          endereco_entrega?: string | null
+          frete_modalidade?: string | null
+          frete_valor?: number | null
+          id?: string
+          justificativa?: string | null
+          motivo_devolucao?: string | null
+          motivo_rejeicao?: string | null
+          natureza_operacao: string
+          nota_fiscal_id?: string | null
+          observacoes?: string | null
+          revisado_por?: string | null
+          status?: string
+          transportadora?: string | null
+          updated_at?: string
+          user_id: string
+          valor_total?: number
+        }
+        Update: {
+          contrato_id?: string | null
+          created_at?: string
+          data_revisao?: string | null
+          empresa_id?: string
+          endereco_entrega?: string | null
+          frete_modalidade?: string | null
+          frete_valor?: number | null
+          id?: string
+          justificativa?: string | null
+          motivo_devolucao?: string | null
+          motivo_rejeicao?: string | null
+          natureza_operacao?: string
+          nota_fiscal_id?: string | null
+          observacoes?: string | null
+          revisado_por?: string | null
+          status?: string
+          transportadora?: string | null
+          updated_at?: string
+          user_id?: string
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pre_notas_fiscais_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pre_notas_fiscais_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pre_notas_fiscais_nota_fiscal_id_fkey"
+            columns: ["nota_fiscal_id"]
+            isOneToOne: false
+            referencedRelation: "notas_fiscais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       precificacao: {
         Row: {
           bdi_percentual: number | null

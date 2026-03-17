@@ -17,8 +17,9 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import {
   Plus, Trash2, Loader2, ShoppingCart, CheckCircle2, Clock, XCircle,
-  Upload, FileText, AlertTriangle, DollarSign
+  Upload, FileText, AlertTriangle, DollarSign, Receipt
 } from 'lucide-react';
+import GerarPreNotaDialog from './GerarPreNotaDialog';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -64,6 +65,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('upload');
 
+  // Pré-NF dialog
+  const [preNfDialogOpen, setPreNfDialogOpen] = useState(false);
+  const [preNotas, setPreNotas] = useState<any[]>([]);
+
   // NF quitada dialog
   const [nfDialog, setNfDialog] = useState<Pedido | null>(null);
   const [nfNumero, setNfNumero] = useState('');
@@ -91,14 +96,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
   const load = async () => {
     setLoading(true);
-    const [pedidosRes, itensRes, nfsRes] = await Promise.all([
+    const [pedidosRes, itensRes, nfsRes, preNotasRes] = await Promise.all([
       supabase.from('contrato_pedidos').select('*').eq('contrato_id', contratoId).order('data_pedido', { ascending: false }),
       supabase.from('contrato_itens').select('id, descricao, unidade, valor_unitario').eq('contrato_id', contratoId),
       supabase.from('notas_fiscais').select('id, numero_nf, tipo, status, valor_total, data_emissao, chave_acesso, contrato_pedido_id, natureza_operacao, destinatario_razao_social').eq('contrato_id', contratoId),
+      supabase.from('pre_notas_fiscais' as any).select('id, status, natureza_operacao, valor_total, created_at, motivo_rejeicao, motivo_devolucao').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
     ]);
     setPedidos((pedidosRes.data as any[]) || []);
     setItens((itensRes.data as any[]) || []);
     setNfsSync((nfsRes.data as any[]) || []);
+    setPreNotas((preNotasRes.data as any[]) || []);
     setLoading(false);
   };
 
@@ -321,7 +328,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             {pedidos.length} pedidos | Total: {fmt(totalPedidos)}
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setPreNfDialogOpen(true)} disabled={pedidos.filter(p => p.status !== 'cancelado').length === 0}>
+            <Receipt className="w-3.5 h-3.5 mr-1" /> Gerar Pré-NF
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="w-3.5 h-3.5 mr-1" /> Novo Pedido</Button>
           </DialogTrigger>
@@ -540,6 +551,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             </Tabs>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {loading ? (
@@ -720,6 +732,61 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Pré-Notas Fiscais */}
+      {preNotas.length > 0 && (
+        <Card className="p-4 border-primary/20">
+          <h4 className="text-xs font-semibold flex items-center gap-2 mb-3">
+            <Receipt className="w-4 h-4 text-primary" />
+            Pré-Notas Fiscais Solicitadas
+            <Badge variant="outline" className="text-[10px]">{preNotas.length}</Badge>
+          </h4>
+          <div className="space-y-2">
+            {preNotas.map((pn: any) => {
+              const statusMap: Record<string, { label: string; color: string }> = {
+                pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning' },
+                em_revisao: { label: 'Em Revisão', color: 'bg-accent/10 text-accent' },
+                aprovada: { label: 'Aprovada', color: 'bg-success/10 text-success' },
+                rejeitada: { label: 'Rejeitada', color: 'bg-destructive/10 text-destructive' },
+                devolvida: { label: 'Devolvida', color: 'bg-warning/10 text-warning' },
+              };
+              const st = statusMap[pn.status] || statusMap.pendente;
+              return (
+                <div key={pn.id} className="flex items-center justify-between p-2 rounded border bg-muted/30 text-xs">
+                  <div className="flex items-center gap-2">
+                    <Badge className={`text-[10px] ${st.color}`}>{st.label}</Badge>
+                    <span>{pn.natureza_operacao}</span>
+                    <span className="font-medium">{fmt(pn.valor_total)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">{new Date(pn.created_at).toLocaleDateString('pt-BR')}</span>
+                    {pn.motivo_devolucao && (
+                      <Badge variant="outline" className="text-[10px] text-warning" title={pn.motivo_devolucao}>
+                        <AlertTriangle className="w-3 h-3 mr-1" /> Devolvida
+                      </Badge>
+                    )}
+                    {pn.motivo_rejeicao && (
+                      <Badge variant="outline" className="text-[10px] text-destructive" title={pn.motivo_rejeicao}>
+                        <XCircle className="w-3 h-3 mr-1" /> Rejeitada
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Gerar Pré-NF Dialog */}
+      <GerarPreNotaDialog
+        open={preNfDialogOpen}
+        onOpenChange={setPreNfDialogOpen}
+        contratoId={contratoId}
+        pedidos={pedidos}
+        itens={itens}
+        onCreated={load}
+      />
     </div>
   );
 }

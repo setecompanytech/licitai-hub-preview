@@ -18,7 +18,8 @@ import { toast } from 'sonner';
 import {
   Plus, Trash2, Loader2, FileText, Search, CheckCircle2,
   XCircle, Clock, Send, AlertTriangle, DollarSign,
-  Building2, ChevronRight, ChevronLeft, Package, MapPin, Calculator
+  Building2, ChevronRight, ChevronLeft, Package, MapPin, Calculator,
+  RotateCcw, Eye, ThumbsUp, ThumbsDown, Undo2
 } from 'lucide-react';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -40,6 +41,14 @@ const statusCfg: Record<string, { label: string; color: string; icon: typeof Che
   autorizada: { label: 'Autorizada', color: 'bg-success/10 text-success', icon: CheckCircle2 },
   rejeitada: { label: 'Rejeitada', color: 'bg-destructive/10 text-destructive', icon: XCircle },
   cancelada: { label: 'Cancelada', color: 'bg-destructive/10 text-destructive', icon: XCircle },
+};
+
+const preNfStatusCfg: Record<string, { label: string; color: string }> = {
+  pendente: { label: 'Aguardando Aprovação', color: 'bg-warning/10 text-warning' },
+  em_revisao: { label: 'Em Revisão', color: 'bg-accent/10 text-accent' },
+  aprovada: { label: 'Aprovada', color: 'bg-success/10 text-success' },
+  rejeitada: { label: 'Rejeitada', color: 'bg-destructive/10 text-destructive' },
+  devolvida: { label: 'Devolvida ao Comercial', color: 'bg-warning/10 text-warning' },
 };
 
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
@@ -81,7 +90,11 @@ export default function NFSaida() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [apiConfigured, setApiConfigured] = useState(false);
-
+  const [preNotas, setPreNotas] = useState<any[]>([]);
+  const [preNotaItens, setPreNotaItens] = useState<Record<string, any[]>>({});
+  const [preNotaExpanded, setPreNotaExpanded] = useState<string | null>(null);
+  const [reviewAction, setReviewAction] = useState<{ id: string; action: string } | null>(null);
+  const [reviewMotivo, setReviewMotivo] = useState('');
   // Wizard step
   const [step, setStep] = useState(0);
   const [stepErrors, setStepErrors] = useState<string[]>([]);
@@ -130,14 +143,16 @@ export default function NFSaida() {
 
   const loadAll = async () => {
     setLoading(true);
-    const [notasRes, contratosRes, configRes] = await Promise.all([
+    const [notasRes, contratosRes, configRes, preNotasRes] = await Promise.all([
       supabase.from('notas_fiscais').select('*').eq('user_id', user!.id).eq('empresa_id', empresaAtiva!.id).order('created_at', { ascending: false }),
       supabase.from('contratos').select('id, numero_contrato, orgao_contratante, valor_global').eq('user_id', user!.id).eq('status', 'vigente'),
       supabase.from('nuvem_fiscal_config').select('ativo').eq('empresa_id', empresaAtiva!.id).eq('user_id', user!.id).maybeSingle(),
+      supabase.from('pre_notas_fiscais' as any).select('*, contratos(numero_contrato, orgao_contratante)').eq('empresa_id', empresaAtiva!.id).in('status', ['pendente', 'em_revisao']).order('created_at', { ascending: false }),
     ]);
     setNotas((notasRes.data as any[]) || []);
     setContratos((contratosRes.data as any[]) || []);
     setApiConfigured(!!configRes.data?.ativo);
+    setPreNotas((preNotasRes.data as any[]) || []);
     setLoading(false);
   };
 
@@ -322,6 +337,39 @@ export default function NFSaida() {
   const totalEmitido = notas.filter(n => n.status === 'autorizada').reduce((s, n) => s + n.valor_total, 0);
   const totalPendente = notas.filter(n => ['rascunho', 'enviada'].includes(n.status)).reduce((s, n) => s + n.valor_total, 0);
 
+  const loadPreNotaItens = async (preNotaId: string) => {
+    if (preNotaItens[preNotaId]) return;
+    const { data } = await supabase.from('pre_nota_itens' as any).select('*').eq('pre_nota_id', preNotaId);
+    setPreNotaItens(prev => ({ ...prev, [preNotaId]: (data as any[]) || [] }));
+  };
+
+  const handlePreNotaAction = async (preNotaId: string, action: 'aprovar' | 'rejeitar' | 'devolver' | 'em_revisao') => {
+    if ((action === 'rejeitar' || action === 'devolver') && !reviewMotivo.trim()) {
+      toast.error(`Informe o motivo para ${action === 'rejeitar' ? 'rejeição' : 'devolução'}`);
+      return;
+    }
+
+    const updates: any = { revisado_por: user!.id, data_revisao: new Date().toISOString() };
+    if (action === 'aprovar') updates.status = 'aprovada';
+    else if (action === 'rejeitar') { updates.status = 'rejeitada'; updates.motivo_rejeicao = reviewMotivo; }
+    else if (action === 'devolver') { updates.status = 'devolvida'; updates.motivo_devolucao = reviewMotivo; }
+    else if (action === 'em_revisao') updates.status = 'em_revisao';
+
+    const { error } = await supabase.from('pre_notas_fiscais' as any).update(updates).eq('id', preNotaId);
+    if (error) { toast.error('Erro ao processar ação'); return; }
+
+    toast.success(
+      action === 'aprovar' ? 'Pré-NF aprovada! Prossiga com a emissão da NF-e.' :
+      action === 'rejeitar' ? 'Pré-NF rejeitada. O comercial será notificado.' :
+      action === 'devolver' ? 'Pré-NF devolvida ao comercial para correção.' :
+      'Pré-NF marcada como em revisão.'
+    );
+    setReviewAction(null);
+    setReviewMotivo('');
+    setPreNotaExpanded(null);
+    loadAll();
+  };
+
   if (!empresaAtiva) return <Card className="p-8 text-center text-muted-foreground text-sm">Selecione uma empresa ativa.</Card>;
 
   return (
@@ -337,6 +385,125 @@ export default function NFSaida() {
             : <Badge variant="outline" className="text-[10px] text-warning mt-1"><AlertTriangle className="w-3 h-3 mr-1" /> Não config.</Badge>}
         </Card>
       </div>
+
+      {/* Pré-NFs Pendentes do Comercial */}
+      {preNotas.length > 0 && (
+        <Card className="p-4 border-warning/30 bg-warning/5">
+          <h4 className="text-xs font-semibold flex items-center gap-2 mb-3">
+            <AlertTriangle className="w-4 h-4 text-warning" />
+            Pré-Notas Fiscais Aguardando Aprovação
+            <Badge className="bg-warning/20 text-warning text-[10px]">{preNotas.length}</Badge>
+          </h4>
+          <div className="space-y-2">
+            {preNotas.map((pn: any) => {
+              const st = preNfStatusCfg[pn.status] || preNfStatusCfg.pendente;
+              const isExpanded = preNotaExpanded === pn.id;
+              const contrato = pn.contratos;
+              return (
+                <Card key={pn.id} className="p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className={`text-[10px] ${st.color}`}>{st.label}</Badge>
+                      <span className="text-xs font-medium">{pn.natureza_operacao}</span>
+                      {contrato && <span className="text-[10px] text-muted-foreground">Contrato: {contrato.numero_contrato} — {contrato.orgao_contratante}</span>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-primary">{fmt(pn.valor_total)}</span>
+                      <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => {
+                        setPreNotaExpanded(isExpanded ? null : pn.id);
+                        if (!isExpanded) loadPreNotaItens(pn.id);
+                      }}>
+                        <Eye className="w-3 h-3 mr-1" /> {isExpanded ? 'Fechar' : 'Detalhes'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {pn.observacoes && <p className="text-[11px] text-muted-foreground bg-muted/50 rounded p-2">💬 {pn.observacoes}</p>}
+                  {pn.justificativa && <p className="text-[11px] text-muted-foreground bg-muted/50 rounded p-2">📋 {pn.justificativa}</p>}
+
+                  {isExpanded && (
+                    <div className="space-y-3 pt-2 border-t">
+                      {/* Itens */}
+                      <div>
+                        <p className="text-[10px] font-semibold text-muted-foreground mb-1">ITENS DA PRÉ-NF</p>
+                        {(preNotaItens[pn.id] || []).length === 0 ? (
+                          <p className="text-[10px] text-muted-foreground">Carregando itens...</p>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-[10px]">Descrição</TableHead>
+                                <TableHead className="text-[10px] text-right">Qtd</TableHead>
+                                <TableHead className="text-[10px]">Und</TableHead>
+                                <TableHead className="text-[10px] text-right">Unit.</TableHead>
+                                <TableHead className="text-[10px] text-right">Total</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {(preNotaItens[pn.id] || []).map((item: any) => (
+                                <TableRow key={item.id}>
+                                  <TableCell className="text-[10px]">{item.descricao}</TableCell>
+                                  <TableCell className="text-[10px] text-right">{item.quantidade}</TableCell>
+                                  <TableCell className="text-[10px]">{item.unidade}</TableCell>
+                                  <TableCell className="text-[10px] text-right">{fmt(item.valor_unitario)}</TableCell>
+                                  <TableCell className="text-[10px] text-right font-medium">{fmt(item.valor_total)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </div>
+
+                      {/* Transporte */}
+                      {(pn.frete_modalidade !== '9' || pn.transportadora || pn.endereco_entrega) && (
+                        <div className="text-[11px] space-y-1">
+                          <p className="font-semibold text-muted-foreground">TRANSPORTE</p>
+                          {pn.frete_modalidade !== '9' && <p>Frete: {pn.frete_modalidade === '0' ? 'Emitente' : pn.frete_modalidade === '1' ? 'Destinatário' : 'Terceiros'} — {fmt(pn.frete_valor || 0)}</p>}
+                          {pn.transportadora && <p>Transportadora: {pn.transportadora}</p>}
+                          {pn.endereco_entrega && <p>Entrega: {pn.endereco_entrega}</p>}
+                        </div>
+                      )}
+
+                      {/* Review action dialog */}
+                      {reviewAction?.id === pn.id ? (
+                        <div className="p-3 rounded bg-muted/50 border space-y-2">
+                          <p className="text-xs font-medium">
+                            {reviewAction.action === 'rejeitar' ? '❌ Motivo da Rejeição' : '↩️ Motivo da Devolução'}
+                          </p>
+                          <Textarea value={reviewMotivo} onChange={e => setReviewMotivo(e.target.value)} rows={2} placeholder="Informe o motivo..." className="text-xs" />
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={() => { setReviewAction(null); setReviewMotivo(''); }}>Cancelar</Button>
+                            <Button size="sm" variant="destructive" onClick={() => handlePreNotaAction(pn.id, reviewAction.action as any)}>
+                              Confirmar {reviewAction.action === 'rejeitar' ? 'Rejeição' : 'Devolução'}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2 flex-wrap">
+                          {pn.status === 'pendente' && (
+                            <Button size="sm" variant="outline" className="text-[10px] h-7" onClick={() => handlePreNotaAction(pn.id, 'em_revisao')}>
+                              <Eye className="w-3 h-3 mr-1" /> Iniciar Revisão
+                            </Button>
+                          )}
+                          <Button size="sm" className="text-[10px] h-7 bg-success hover:bg-success/90 text-success-foreground" onClick={() => handlePreNotaAction(pn.id, 'aprovar')}>
+                            <ThumbsUp className="w-3 h-3 mr-1" /> Aprovar
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-[10px] h-7 text-destructive border-destructive/30" onClick={() => setReviewAction({ id: pn.id, action: 'rejeitar' })}>
+                            <ThumbsDown className="w-3 h-3 mr-1" /> Rejeitar
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-[10px] h-7 text-warning border-warning/30" onClick={() => setReviewAction({ id: pn.id, action: 'devolver' })}>
+                            <Undo2 className="w-3 h-3 mr-1" /> Devolver
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-2">
