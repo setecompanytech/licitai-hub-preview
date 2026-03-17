@@ -17,8 +17,9 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import {
   Plus, Trash2, Loader2, ShoppingCart, CheckCircle2, Clock, XCircle,
-  Upload, FileText, AlertTriangle, DollarSign
+  Upload, FileText, AlertTriangle, DollarSign, Receipt
 } from 'lucide-react';
+import GerarPreNotaDialog from './GerarPreNotaDialog';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
