@@ -721,6 +721,39 @@ export type Database = {
           },
         ]
       }
+      categorias_financeiras: {
+        Row: {
+          ativo: boolean | null
+          cor: string | null
+          created_at: string
+          icone: string | null
+          id: string
+          nome: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          cor?: string | null
+          created_at?: string
+          icone?: string | null
+          id?: string
+          nome: string
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean | null
+          cor?: string | null
+          created_at?: string
+          icone?: string | null
+          id?: string
+          nome?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -1075,6 +1108,252 @@ export type Database = {
           valor_minimo?: number | null
         }
         Relationships: []
+      }
+      contas_bancarias: {
+        Row: {
+          agencia: string | null
+          ativo: boolean | null
+          banco_codigo: string | null
+          banco_nome: string
+          conta: string | null
+          created_at: string
+          descricao: string | null
+          empresa_id: string
+          id: string
+          saldo_atual: number | null
+          saldo_inicial: number | null
+          tipo: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agencia?: string | null
+          ativo?: boolean | null
+          banco_codigo?: string | null
+          banco_nome: string
+          conta?: string | null
+          created_at?: string
+          descricao?: string | null
+          empresa_id: string
+          id?: string
+          saldo_atual?: number | null
+          saldo_inicial?: number | null
+          tipo?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agencia?: string | null
+          ativo?: boolean | null
+          banco_codigo?: string | null
+          banco_nome?: string
+          conta?: string | null
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string
+          id?: string
+          saldo_atual?: number | null
+          saldo_inicial?: number | null
+          tipo?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contas_bancarias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contas_pagar: {
+        Row: {
+          categoria: string | null
+          conta_bancaria_id: string | null
+          contrato_id: string | null
+          created_at: string
+          data_pagamento: string | null
+          data_vencimento: string
+          descricao: string
+          empresa_id: string
+          fornecedor: string | null
+          id: string
+          nota_fiscal: string | null
+          observacoes: string | null
+          recorrente: boolean | null
+          status: string | null
+          updated_at: string
+          user_id: string
+          valor: number
+          valor_pago: number | null
+        }
+        Insert: {
+          categoria?: string | null
+          conta_bancaria_id?: string | null
+          contrato_id?: string | null
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento: string
+          descricao: string
+          empresa_id: string
+          fornecedor?: string | null
+          id?: string
+          nota_fiscal?: string | null
+          observacoes?: string | null
+          recorrente?: boolean | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+          valor?: number
+          valor_pago?: number | null
+        }
+        Update: {
+          categoria?: string | null
+          conta_bancaria_id?: string | null
+          contrato_id?: string | null
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento?: string
+          descricao?: string
+          empresa_id?: string
+          fornecedor?: string | null
+          id?: string
+          nota_fiscal?: string | null
+          observacoes?: string | null
+          recorrente?: boolean | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+          valor?: number
+          valor_pago?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contas_pagar_conta_bancaria_id_fkey"
+            columns: ["conta_bancaria_id"]
+            isOneToOne: false
+            referencedRelation: "contas_bancarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contas_pagar_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contas_pagar_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contas_receber: {
+        Row: {
+          categoria: string | null
+          cliente: string | null
+          conta_bancaria_id: string | null
+          contrato_id: string | null
+          contrato_pedido_id: string | null
+          created_at: string
+          data_recebimento: string | null
+          data_vencimento: string
+          descricao: string
+          empresa_id: string
+          id: string
+          nota_fiscal_id: string | null
+          numero_nf: string | null
+          observacoes: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+          valor: number
+          valor_recebido: number | null
+        }
+        Insert: {
+          categoria?: string | null
+          cliente?: string | null
+          conta_bancaria_id?: string | null
+          contrato_id?: string | null
+          contrato_pedido_id?: string | null
+          created_at?: string
+          data_recebimento?: string | null
+          data_vencimento: string
+          descricao: string
+          empresa_id: string
+          id?: string
+          nota_fiscal_id?: string | null
+          numero_nf?: string | null
+          observacoes?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+          valor?: number
+          valor_recebido?: number | null
+        }
+        Update: {
+          categoria?: string | null
+          cliente?: string | null
+          conta_bancaria_id?: string | null
+          contrato_id?: string | null
+          contrato_pedido_id?: string | null
+          created_at?: string
+          data_recebimento?: string | null
+          data_vencimento?: string
+          descricao?: string
+          empresa_id?: string
+          id?: string
+          nota_fiscal_id?: string | null
+          numero_nf?: string | null
+          observacoes?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+          valor?: number
+          valor_recebido?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contas_receber_conta_bancaria_id_fkey"
+            columns: ["conta_bancaria_id"]
+            isOneToOne: false
+            referencedRelation: "contas_bancarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contas_receber_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contas_receber_contrato_pedido_id_fkey"
+            columns: ["contrato_pedido_id"]
+            isOneToOne: false
+            referencedRelation: "contrato_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contas_receber_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contas_receber_nota_fiscal_id_fkey"
+            columns: ["nota_fiscal_id"]
+            isOneToOne: false
+            referencedRelation: "notas_fiscais"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contrato_aditivos: {
         Row: {
@@ -4315,6 +4594,80 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      transacoes_bancarias: {
+        Row: {
+          categoria: string | null
+          conciliado: boolean | null
+          conciliado_com_id: string | null
+          conciliado_com_tipo: string | null
+          conciliado_em: string | null
+          conciliado_por: string | null
+          conta_bancaria_id: string
+          created_at: string
+          data_transacao: string
+          descricao: string
+          documento: string | null
+          hash_transacao: string | null
+          historico: string | null
+          id: string
+          origem: string | null
+          tipo: string | null
+          updated_at: string
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          categoria?: string | null
+          conciliado?: boolean | null
+          conciliado_com_id?: string | null
+          conciliado_com_tipo?: string | null
+          conciliado_em?: string | null
+          conciliado_por?: string | null
+          conta_bancaria_id: string
+          created_at?: string
+          data_transacao: string
+          descricao: string
+          documento?: string | null
+          hash_transacao?: string | null
+          historico?: string | null
+          id?: string
+          origem?: string | null
+          tipo?: string | null
+          updated_at?: string
+          user_id: string
+          valor: number
+        }
+        Update: {
+          categoria?: string | null
+          conciliado?: boolean | null
+          conciliado_com_id?: string | null
+          conciliado_com_tipo?: string | null
+          conciliado_em?: string | null
+          conciliado_por?: string | null
+          conta_bancaria_id?: string
+          created_at?: string
+          data_transacao?: string
+          descricao?: string
+          documento?: string | null
+          hash_transacao?: string | null
+          historico?: string | null
+          id?: string
+          origem?: string | null
+          tipo?: string | null
+          updated_at?: string
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transacoes_bancarias_conta_bancaria_id_fkey"
+            columns: ["conta_bancaria_id"]
+            isOneToOne: false
+            referencedRelation: "contas_bancarias"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transparencia_empenhos: {
         Row: {
