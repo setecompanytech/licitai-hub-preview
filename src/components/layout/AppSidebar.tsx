@@ -81,7 +81,6 @@ const navGroups: NavGroup[] = [
       { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
       { icon: Archive, label: 'Histórico', path: '/historico-licitacoes' },
       { icon: FileText, label: 'Contratos', path: '/gestao-contratos' },
-      { icon: DollarSign, label: 'Financeiro', path: '/financeiro' },
     ],
   },
   {
