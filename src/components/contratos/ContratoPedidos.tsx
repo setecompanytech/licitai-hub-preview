@@ -58,6 +58,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const { empresaAtiva } = useEmpresa();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [itens, setItens] = useState<ContratoItem[]>([]);
+  const [nfsSync, setNfsSync] = useState<NotaFiscalSync[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
