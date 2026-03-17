@@ -386,6 +386,125 @@ export default function NFSaida() {
         </Card>
       </div>
 
+      {/* Pré-NFs Pendentes do Comercial */}
+      {preNotas.length > 0 && (
+        <Card className="p-4 border-warning/30 bg-warning/5">
+          <h4 className="text-xs font-semibold flex items-center gap-2 mb-3">
+            <AlertTriangle className="w-4 h-4 text-warning" />
+            Pré-Notas Fiscais Aguardando Aprovação
+            <Badge className="bg-warning/20 text-warning text-[10px]">{preNotas.length}</Badge>
+          </h4>
+          <div className="space-y-2">
+            {preNotas.map((pn: any) => {
+              const st = preNfStatusCfg[pn.status] || preNfStatusCfg.pendente;
+              const isExpanded = preNotaExpanded === pn.id;
+              const contrato = pn.contratos;
+              return (
+                <Card key={pn.id} className="p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className={`text-[10px] ${st.color}`}>{st.label}</Badge>
+                      <span className="text-xs font-medium">{pn.natureza_operacao}</span>
+                      {contrato && <span className="text-[10px] text-muted-foreground">Contrato: {contrato.numero_contrato} — {contrato.orgao_contratante}</span>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-primary">{fmt(pn.valor_total)}</span>
+                      <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => {
+                        setPreNotaExpanded(isExpanded ? null : pn.id);
+                        if (!isExpanded) loadPreNotaItens(pn.id);
+                      }}>
+                        <Eye className="w-3 h-3 mr-1" /> {isExpanded ? 'Fechar' : 'Detalhes'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {pn.observacoes && <p className="text-[11px] text-muted-foreground bg-muted/50 rounded p-2">💬 {pn.observacoes}</p>}
+                  {pn.justificativa && <p className="text-[11px] text-muted-foreground bg-muted/50 rounded p-2">📋 {pn.justificativa}</p>}
+
+                  {isExpanded && (
+                    <div className="space-y-3 pt-2 border-t">
+                      {/* Itens */}
+                      <div>
+                        <p className="text-[10px] font-semibold text-muted-foreground mb-1">ITENS DA PRÉ-NF</p>
+                        {(preNotaItens[pn.id] || []).length === 0 ? (
+                          <p className="text-[10px] text-muted-foreground">Carregando itens...</p>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-[10px]">Descrição</TableHead>
+                                <TableHead className="text-[10px] text-right">Qtd</TableHead>
+                                <TableHead className="text-[10px]">Und</TableHead>
+                                <TableHead className="text-[10px] text-right">Unit.</TableHead>
+                                <TableHead className="text-[10px] text-right">Total</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {(preNotaItens[pn.id] || []).map((item: any) => (
+                                <TableRow key={item.id}>
+                                  <TableCell className="text-[10px]">{item.descricao}</TableCell>
+                                  <TableCell className="text-[10px] text-right">{item.quantidade}</TableCell>
+                                  <TableCell className="text-[10px]">{item.unidade}</TableCell>
+                                  <TableCell className="text-[10px] text-right">{fmt(item.valor_unitario)}</TableCell>
+                                  <TableCell className="text-[10px] text-right font-medium">{fmt(item.valor_total)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </div>
+
+                      {/* Transporte */}
+                      {(pn.frete_modalidade !== '9' || pn.transportadora || pn.endereco_entrega) && (
+                        <div className="text-[11px] space-y-1">
+                          <p className="font-semibold text-muted-foreground">TRANSPORTE</p>
+                          {pn.frete_modalidade !== '9' && <p>Frete: {pn.frete_modalidade === '0' ? 'Emitente' : pn.frete_modalidade === '1' ? 'Destinatário' : 'Terceiros'} — {fmt(pn.frete_valor || 0)}</p>}
+                          {pn.transportadora && <p>Transportadora: {pn.transportadora}</p>}
+                          {pn.endereco_entrega && <p>Entrega: {pn.endereco_entrega}</p>}
+                        </div>
+                      )}
+
+                      {/* Review action dialog */}
+                      {reviewAction?.id === pn.id ? (
+                        <div className="p-3 rounded bg-muted/50 border space-y-2">
+                          <p className="text-xs font-medium">
+                            {reviewAction.action === 'rejeitar' ? '❌ Motivo da Rejeição' : '↩️ Motivo da Devolução'}
+                          </p>
+                          <Textarea value={reviewMotivo} onChange={e => setReviewMotivo(e.target.value)} rows={2} placeholder="Informe o motivo..." className="text-xs" />
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={() => { setReviewAction(null); setReviewMotivo(''); }}>Cancelar</Button>
+                            <Button size="sm" variant="destructive" onClick={() => handlePreNotaAction(pn.id, reviewAction.action as any)}>
+                              Confirmar {reviewAction.action === 'rejeitar' ? 'Rejeição' : 'Devolução'}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2 flex-wrap">
+                          {pn.status === 'pendente' && (
+                            <Button size="sm" variant="outline" className="text-[10px] h-7" onClick={() => handlePreNotaAction(pn.id, 'em_revisao')}>
+                              <Eye className="w-3 h-3 mr-1" /> Iniciar Revisão
+                            </Button>
+                          )}
+                          <Button size="sm" className="text-[10px] h-7 bg-success hover:bg-success/90 text-success-foreground" onClick={() => handlePreNotaAction(pn.id, 'aprovar')}>
+                            <ThumbsUp className="w-3 h-3 mr-1" /> Aprovar
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-[10px] h-7 text-destructive border-destructive/30" onClick={() => setReviewAction({ id: pn.id, action: 'rejeitar' })}>
+                            <ThumbsDown className="w-3 h-3 mr-1" /> Rejeitar
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-[10px] h-7 text-warning border-warning/30" onClick={() => setReviewAction({ id: pn.id, action: 'devolver' })}>
+                            <Undo2 className="w-3 h-3 mr-1" /> Devolver
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar NF por número, destinatário..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" /></div>
