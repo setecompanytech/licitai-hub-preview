@@ -670,7 +670,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-emerald-600" />
+              <DollarSign className="w-5 h-5 text-success" />
               Registrar NF Quitada
             </DialogTitle>
           </DialogHeader>
