@@ -2736,6 +2736,246 @@ export type Database = {
         }
         Relationships: []
       }
+      nota_fiscal_itens: {
+        Row: {
+          cfop: string | null
+          codigo_produto: string | null
+          cofins_aliquota: number | null
+          cofins_valor: number | null
+          created_at: string
+          descricao: string
+          icms_aliquota: number | null
+          icms_valor: number | null
+          id: string
+          ipi_aliquota: number | null
+          ipi_valor: number | null
+          iss_aliquota: number | null
+          iss_valor: number | null
+          ncm: string | null
+          nota_fiscal_id: string
+          numero_item: number | null
+          pis_aliquota: number | null
+          pis_valor: number | null
+          quantidade: number | null
+          unidade: string | null
+          valor_total: number | null
+          valor_unitario: number | null
+        }
+        Insert: {
+          cfop?: string | null
+          codigo_produto?: string | null
+          cofins_aliquota?: number | null
+          cofins_valor?: number | null
+          created_at?: string
+          descricao: string
+          icms_aliquota?: number | null
+          icms_valor?: number | null
+          id?: string
+          ipi_aliquota?: number | null
+          ipi_valor?: number | null
+          iss_aliquota?: number | null
+          iss_valor?: number | null
+          ncm?: string | null
+          nota_fiscal_id: string
+          numero_item?: number | null
+          pis_aliquota?: number | null
+          pis_valor?: number | null
+          quantidade?: number | null
+          unidade?: string | null
+          valor_total?: number | null
+          valor_unitario?: number | null
+        }
+        Update: {
+          cfop?: string | null
+          codigo_produto?: string | null
+          cofins_aliquota?: number | null
+          cofins_valor?: number | null
+          created_at?: string
+          descricao?: string
+          icms_aliquota?: number | null
+          icms_valor?: number | null
+          id?: string
+          ipi_aliquota?: number | null
+          ipi_valor?: number | null
+          iss_aliquota?: number | null
+          iss_valor?: number | null
+          ncm?: string | null
+          nota_fiscal_id?: string
+          numero_item?: number | null
+          pis_aliquota?: number | null
+          pis_valor?: number | null
+          quantidade?: number | null
+          unidade?: string | null
+          valor_total?: number | null
+          valor_unitario?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nota_fiscal_itens_nota_fiscal_id_fkey"
+            columns: ["nota_fiscal_id"]
+            isOneToOne: false
+            referencedRelation: "notas_fiscais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notas_fiscais: {
+        Row: {
+          base_calculo_icms: number | null
+          cfop: string | null
+          chave_acesso: string | null
+          contrato_id: string | null
+          contrato_pedido_id: string | null
+          created_at: string
+          data_emissao: string | null
+          destinatario_cnpj: string | null
+          destinatario_endereco: string | null
+          destinatario_ie: string | null
+          destinatario_municipio: string | null
+          destinatario_nome_fantasia: string | null
+          destinatario_razao_social: string | null
+          destinatario_uf: string | null
+          empresa_id: string | null
+          id: string
+          informacoes_complementares: string | null
+          modelo: string | null
+          motivo_rejeicao: string | null
+          natureza_operacao: string | null
+          numero_nf: string | null
+          nuvem_fiscal_id: string | null
+          nuvem_fiscal_status: string | null
+          observacoes: string | null
+          pdf_danfe_path: string | null
+          protocolo_autorizacao: string | null
+          serie: string | null
+          status: string | null
+          tipo: string
+          updated_at: string
+          user_id: string
+          valor_cofins: number | null
+          valor_desconto: number | null
+          valor_frete: number | null
+          valor_icms: number | null
+          valor_iss: number | null
+          valor_pis: number | null
+          valor_produtos: number | null
+          valor_servicos: number | null
+          valor_total: number | null
+          xml_envio: string | null
+          xml_retorno: string | null
+        }
+        Insert: {
+          base_calculo_icms?: number | null
+          cfop?: string | null
+          chave_acesso?: string | null
+          contrato_id?: string | null
+          contrato_pedido_id?: string | null
+          created_at?: string
+          data_emissao?: string | null
+          destinatario_cnpj?: string | null
+          destinatario_endereco?: string | null
+          destinatario_ie?: string | null
+          destinatario_municipio?: string | null
+          destinatario_nome_fantasia?: string | null
+          destinatario_razao_social?: string | null
+          destinatario_uf?: string | null
+          empresa_id?: string | null
+          id?: string
+          informacoes_complementares?: string | null
+          modelo?: string | null
+          motivo_rejeicao?: string | null
+          natureza_operacao?: string | null
+          numero_nf?: string | null
+          nuvem_fiscal_id?: string | null
+          nuvem_fiscal_status?: string | null
+          observacoes?: string | null
+          pdf_danfe_path?: string | null
+          protocolo_autorizacao?: string | null
+          serie?: string | null
+          status?: string | null
+          tipo?: string
+          updated_at?: string
+          user_id: string
+          valor_cofins?: number | null
+          valor_desconto?: number | null
+          valor_frete?: number | null
+          valor_icms?: number | null
+          valor_iss?: number | null
+          valor_pis?: number | null
+          valor_produtos?: number | null
+          valor_servicos?: number | null
+          valor_total?: number | null
+          xml_envio?: string | null
+          xml_retorno?: string | null
+        }
+        Update: {
+          base_calculo_icms?: number | null
+          cfop?: string | null
+          chave_acesso?: string | null
+          contrato_id?: string | null
+          contrato_pedido_id?: string | null
+          created_at?: string
+          data_emissao?: string | null
+          destinatario_cnpj?: string | null
+          destinatario_endereco?: string | null
+          destinatario_ie?: string | null
+          destinatario_municipio?: string | null
+          destinatario_nome_fantasia?: string | null
+          destinatario_razao_social?: string | null
+          destinatario_uf?: string | null
+          empresa_id?: string | null
+          id?: string
+          informacoes_complementares?: string | null
+          modelo?: string | null
+          motivo_rejeicao?: string | null
+          natureza_operacao?: string | null
+          numero_nf?: string | null
+          nuvem_fiscal_id?: string | null
+          nuvem_fiscal_status?: string | null
+          observacoes?: string | null
+          pdf_danfe_path?: string | null
+          protocolo_autorizacao?: string | null
+          serie?: string | null
+          status?: string | null
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+          valor_cofins?: number | null
+          valor_desconto?: number | null
+          valor_frete?: number | null
+          valor_icms?: number | null
+          valor_iss?: number | null
+          valor_pis?: number | null
+          valor_produtos?: number | null
+          valor_servicos?: number | null
+          valor_total?: number | null
+          xml_envio?: string | null
+          xml_retorno?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notas_fiscais_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notas_fiscais_contrato_pedido_id_fkey"
+            columns: ["contrato_pedido_id"]
+            isOneToOne: false
+            referencedRelation: "contrato_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notas_fiscais_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notificacoes: {
         Row: {
           created_at: string
@@ -2768,6 +3008,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      nuvem_fiscal_config: {
+        Row: {
+          ambiente: string | null
+          api_key_encrypted: string | null
+          ativo: boolean | null
+          certificado_path: string | null
+          certificado_validade: string | null
+          created_at: string
+          empresa_id: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ambiente?: string | null
+          api_key_encrypted?: string | null
+          ativo?: boolean | null
+          certificado_path?: string | null
+          certificado_validade?: string | null
+          created_at?: string
+          empresa_id: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ambiente?: string | null
+          api_key_encrypted?: string | null
+          ativo?: boolean | null
+          certificado_path?: string | null
+          certificado_validade?: string | null
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nuvem_fiscal_config_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       offers_normalized: {
         Row: {
