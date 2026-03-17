@@ -30,6 +30,12 @@ type Pedido = {
   status: string; nota_fiscal: string | null; observacoes: string | null;
   nf_quitada: boolean; data_quitacao: string | null;
 };
+type NotaFiscalSync = {
+  id: string; numero_nf: string | null; tipo: string; status: string | null;
+  valor_total: number | null; data_emissao: string | null; chave_acesso: string | null;
+  contrato_pedido_id: string | null; natureza_operacao: string | null;
+  destinatario_razao_social: string | null;
+};
 
 const statusCfg: Record<string, { label: string; color: string }> = {
   pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning' },
