@@ -43,6 +43,7 @@ import PropostaTecnica from "./pages/PropostaTecnica";
 import HistoricoLicitacoes from "./pages/HistoricoLicitacoes";
 import Ferramentas from "./pages/Ferramentas";
 import GestaoContratos from "./pages/GestaoContratos";
+import Financeiro from "./pages/Financeiro";
 
 
 import WhatsAppCRM from "./pages/WhatsAppCRM";
@@ -129,6 +130,7 @@ const App = () => (
               <Route path="/indices-repactuacao" element={<PlanPages><IndicesRepactuacao /></PlanPages>} />
               <Route path="/relatorio-contabil" element={<ProtectedPages><RelatorioContabil /></ProtectedPages>} />
               <Route path="/gestao-contratos" element={<PlanPages><GestaoContratos /></PlanPages>} />
+              <Route path="/financeiro" element={<PlanPages><Financeiro /></PlanPages>} />
               <Route path="/equipe" element={<PlanPages><EquipeColaboradores /></PlanPages>} />
               <Route path="/termos-de-uso" element={<TermosDeUso />} />
               <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />
