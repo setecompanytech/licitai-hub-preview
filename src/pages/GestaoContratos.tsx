@@ -35,6 +35,7 @@ import ContratoItens from '@/components/contratos/ContratoItens';
 import ContratoPedidos from '@/components/contratos/ContratoPedidos';
 import ContratoCustos from '@/components/contratos/ContratoCustos';
 import ContratoDashboard from '@/components/contratos/ContratoDashboard';
+import ContratoNotasFiscais from '@/components/contratos/ContratoNotasFiscais';
 import ImportarContratoPDF from '@/components/contratos/ImportarContratoPDF';
 
 const formatCurrency = (v: number) =>
