@@ -551,6 +551,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             </Tabs>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {loading ? (
