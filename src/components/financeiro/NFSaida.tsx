@@ -18,7 +18,8 @@ import { toast } from 'sonner';
 import {
   Plus, Trash2, Loader2, FileText, Search, CheckCircle2,
   XCircle, Clock, Send, AlertTriangle, DollarSign,
-  Building2, ChevronRight, ChevronLeft, Package, MapPin, Calculator
+  Building2, ChevronRight, ChevronLeft, Package, MapPin, Calculator,
+  RotateCcw, Eye, ThumbsUp, ThumbsDown, Undo2
 } from 'lucide-react';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
