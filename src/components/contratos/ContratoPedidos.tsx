@@ -91,12 +91,14 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
   const load = async () => {
     setLoading(true);
-    const [pedidosRes, itensRes] = await Promise.all([
+    const [pedidosRes, itensRes, nfsRes] = await Promise.all([
       supabase.from('contrato_pedidos').select('*').eq('contrato_id', contratoId).order('data_pedido', { ascending: false }),
       supabase.from('contrato_itens').select('id, descricao, unidade, valor_unitario').eq('contrato_id', contratoId),
+      supabase.from('notas_fiscais').select('id, numero_nf, tipo, status, valor_total, data_emissao, chave_acesso, contrato_pedido_id, natureza_operacao, destinatario_razao_social').eq('contrato_id', contratoId),
     ]);
     setPedidos((pedidosRes.data as any[]) || []);
     setItens((itensRes.data as any[]) || []);
+    setNfsSync((nfsRes.data as any[]) || []);
     setLoading(false);
   };
 
