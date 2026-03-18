@@ -592,9 +592,11 @@ export default function MuralLicitacoes() {
               {d?.valor_total_homologado && d.valor_total_homologado > 0 && (
                 <InfoField icon={<DollarSign className="w-4 h-4" />} label="Valor Total Homologado" value={formatCurrency(d.valor_total_homologado)} highlight />
               )}
-              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Início de Recebimento de Propostas" value={formatDate(d?.data_abertura_proposta || lic.data_abertura)} />
-              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Fim de Recebimento de Propostas" value={formatDate(d?.data_encerramento_proposta || lic.data_encerramento)} />
-              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Publicação no PNCP" value={formatDate(d?.data_publicacao_pncp || lic.data_publicacao)} />
+              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Início de Recebimento de Propostas" value={formatDate(d?.data_publicacao_pncp || lic.data_publicacao)} />
+              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Fim de Recebimento de Propostas" value={formatDate(d?.data_abertura_proposta || lic.data_abertura)} />
+              {d?.data_encerramento_proposta && (
+                <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Encerramento da Sessão" value={formatDate(d.data_encerramento_proposta)} />
+              )}
               <InfoField icon={<Globe className="w-4 h-4" />} label="Portal" value={lic.portal} />
               {(d?.numero_controle_pncp || lic.pncpNumero) && (
                 <InfoField icon={<FileText className="w-4 h-4" />} label="Nº Controle PNCP" value={d?.numero_controle_pncp || lic.pncpNumero!} />
