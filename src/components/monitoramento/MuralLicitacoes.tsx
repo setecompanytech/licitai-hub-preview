@@ -137,6 +137,8 @@ export default function MuralLicitacoes() {
   const [searchSubmitted, setSearchSubmitted] = useState('');
   const [dataInicio, setDataInicio] = useState<Date | undefined>(undefined);
   const [dataFim, setDataFim] = useState<Date | undefined>(undefined);
+  const [uasgTerm, setUasgTerm] = useState('');
+  const [uasgSubmitted, setUasgSubmitted] = useState('');
 
   // Ficha detail
   const [fichaAberta, setFichaAberta] = useState<LicitacaoMural | null>(null);
