@@ -83,8 +83,14 @@ export default function EditalUploader({ onExtracted, isExtracting, setIsExtract
     setProgress('Lendo documento...');
     let content = '';
 
-    const text = await editalFile.text();
-    const truncated = text.slice(0, 15000);
+    const text = await extractTextFromFile(editalFile);
+    if (!text || text.trim().length < 50) {
+      toast.error('Não foi possível extrair texto do documento. Verifique se o arquivo não está protegido ou corrompido.');
+      setIsExtracting(false);
+      setProgress('');
+      return;
+    }
+    const truncated = text.slice(0, 20000);
 
     setProgress('Analisando edital com IA...');
 

@@ -74,8 +74,13 @@ export default function CotacaoEditalAutoIA() {
     setItens([]);
 
     try {
-      const text = await file.text();
-      const truncated = text.slice(0, 20000);
+      const text = await extractTextFromFile(file);
+      if (!text || text.trim().length < 50) {
+        toast.error('Não foi possível extrair texto do documento. Verifique se o arquivo não está protegido.');
+        setIsExtracting(false);
+        return;
+      }
+      const truncated = text.slice(0, 25000);
       let content = '';
 
       await streamAIChat({
