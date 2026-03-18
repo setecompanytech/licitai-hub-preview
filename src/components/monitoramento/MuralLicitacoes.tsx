@@ -248,6 +248,7 @@ export default function MuralLicitacoes() {
     e.preventDefault();
     setPagina(1);
     setSearchSubmitted(searchTerm);
+    setUasgSubmitted(uasgTerm);
   };
 
   const handleIniciarProcesso = async (lic: LicitacaoMural) => {
