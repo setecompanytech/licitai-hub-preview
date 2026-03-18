@@ -1097,7 +1097,14 @@ export default function MuralLicitacoes() {
                   </div>
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                     <Clock className="w-3 h-3" />
-                    {lic.data_abertura ? new Date(lic.data_abertura).toLocaleDateString('pt-BR') : 'N/I'}
+                    {(() => {
+                      const ds = lic.data_encerramento || lic.data_abertura;
+                      if (!ds) return 'N/I';
+                      let norm = ds;
+                      if (/^\d{4}-\d{2}-\d{2}$/.test(ds)) norm = ds + 'T12:00:00-03:00';
+                      else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(ds) && !ds.includes('+') && !ds.includes('Z') && !/\-\d{2}:\d{2}$/.test(ds)) norm = ds + '-03:00';
+                      return new Date(norm).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
+                    })()}
                   </div>
                 </div>
 
