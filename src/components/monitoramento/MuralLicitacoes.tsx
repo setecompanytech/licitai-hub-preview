@@ -200,6 +200,7 @@ export default function MuralLicitacoes() {
             modalidade: modalidadeFiltro !== 'all' ? modalidadeFiltro : undefined,
             dataInicio: dataInicio ? dataInicio.toISOString().split('T')[0] : undefined,
             dataFim: dataFim ? dataFim.toISOString().split('T')[0] : undefined,
+            cnpjOrgao: uasgSubmitted || undefined,
             pagina,
             mural: true,
           }),
