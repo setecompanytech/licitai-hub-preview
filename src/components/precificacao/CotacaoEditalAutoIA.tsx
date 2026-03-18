@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import { supabase } from '@/integrations/supabase/client';
+import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 
