@@ -264,33 +264,85 @@ export default function LicitacoesTab() {
     if (summaryContent[lic.id]) return;
 
     setLoadingSummary(lic.id);
+
+    // ── Step 1: Fetch REAL detailed data from PNCP API ──
+    let detalheInfo = '';
+    let itensInfo = '';
+    if (lic.cnpjOrgao && lic.anoCompra && lic.sequencialCompra) {
+      try {
+        const session = await supabase.auth.getSession();
+        const resp = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/detalhe-licitacao-pncp`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.data.session?.access_token}` },
+            body: JSON.stringify({ cnpjOrgao: lic.cnpjOrgao, anoCompra: lic.anoCompra, sequencialCompra: lic.sequencialCompra }),
+          }
+        );
+        if (resp.ok) {
+          const d = await resp.json();
+          if (d.success) {
+            detalheInfo = `
+- Modo de Disputa: ${d.modo_disputa || 'Não informado'}
+- Critério de Julgamento: ${d.criterio_julgamento || 'Não informado'}
+- Tipo de Contratação: ${d.tipo_contratacao || 'Não informado'}
+- Instrumento Convocatório: ${d.tipo_instrumento_convocatorio || 'Não informado'}
+- Sistema de Registro de Preços (SRP): ${d.srp ? 'Sim' : 'Não'}
+- Processo Administrativo: ${d.processo_administrativo || 'N/I'}
+- Situação Real: ${d.situacao || 'N/I'}
+- Data Abertura Proposta: ${d.data_abertura_proposta || 'N/I'}
+- Data Encerramento Proposta: ${d.data_encerramento_proposta || 'N/I'}
+- Data Publicação PNCP: ${d.data_publicacao_pncp || 'N/I'}
+- Valor Total Estimado: ${d.valor_total_estimado ? `R$ ${d.valor_total_estimado.toLocaleString('pt-BR')}` : 'N/I'}
+- Valor Homologado: ${d.valor_total_homologado ? `R$ ${d.valor_total_homologado.toLocaleString('pt-BR')}` : 'N/I'}
+- Informação Complementar: ${d.informacao_complementar || 'Nenhuma'}`;
+            if (d.itens?.length > 0) {
+              itensInfo = `\n\nITENS DO EDITAL (${d.total_itens} itens — dados reais PNCP):\n` +
+                d.itens.slice(0, 30).map((item: any) =>
+                  `Item ${item.numero}: ${item.descricao} | Qtd: ${item.quantidade} ${item.unidade_medida} | Vlr Unit: R$ ${item.valor_unitario_estimado?.toLocaleString('pt-BR') || '0'} | Total: R$ ${item.valor_total?.toLocaleString('pt-BR') || '0'} | Situação: ${item.situacao || '-'}`
+                ).join('\n');
+            }
+          }
+        }
+      } catch (err) { console.error('Erro ao buscar detalhes PNCP para análise IA:', err); }
+    }
+
+    // ── Step 2: AI analysis with REAL data ──
     let content = '';
     await streamAIChat({
       messages: [{
         role: 'user',
-        content: `Analise este edital de licitação e forneça um resumo executivo completo para o fornecedor, incluindo:
+        content: `Analise esta licitação e forneça um resumo executivo BASEADO EXCLUSIVAMENTE nos dados fornecidos abaixo. NÃO FAÇA SUPOSIÇÕES. Se uma informação não estiver disponível, diga explicitamente "Dado não disponível no PNCP".
 
-1. **RESUMO DO OBJETO**: Descrição clara e objetiva do que está sendo licitado
+INSTRUÇÕES OBRIGATÓRIAS:
+- Use APENAS os dados fornecidos — não invente valores, datas, exigências ou requisitos
+- Informe CLARAMENTE o modo de disputa (aberto, fechado, aberto-fechado) e o critério de julgamento (menor preço por item, por lote, global, etc.)
+- Se os itens estiverem disponíveis, liste os principais com valores
+- Identifique se é SRP (Sistema de Registro de Preços)
+
+ESTRUTURA DO RESUMO:
+1. **OBJETO**: Descrição exata conforme PNCP
 2. **DADOS DO PROCESSO**: Número, modalidade, órgão, UF/Município
-3. **VALOR ESTIMADO**: Valor e condições financeiras
-4. **PRAZO E CRONOGRAMA**: Datas importantes (abertura, encerramento, vigência)
-5. **REQUISITOS DE HABILITAÇÃO**: Documentos e certidões exigidas (se identificáveis)
-6. **PONTOS DE ATENÇÃO**: Riscos, cláusulas restritivas, exigências técnicas especiais
-7. **RECOMENDAÇÃO ESTRATÉGICA**: Indicação de viabilidade para participação
+3. **MODO DE DISPUTA E JULGAMENTO**: Modo de disputa e critério de julgamento (dados reais)
+4. **VALORES**: Valor estimado e/ou homologado
+5. **CRONOGRAMA**: Datas reais de publicação, abertura e encerramento de propostas
+6. **ITENS PRINCIPAIS**: Listar os itens mais relevantes com valores (se disponíveis)
+7. **PONTOS DE ATENÇÃO**: Baseados nos dados reais, não em suposições
 
-Dados do edital:
+DADOS REAIS DO PNCP:
 - Número: ${lic.numero}
 - Órgão: ${lic.orgao}
 - Objeto: ${lic.objeto}
 - Modalidade: ${lic.modalidade}
 - Portal: ${lic.portal}
 - UF: ${lic.uf || 'N/I'} / Município: ${lic.municipio || 'N/I'}
+- Status: ${lic.status}
+- URL: ${lic.url || 'N/I'}${detalheInfo || `
 - Valor estimado: ${lic.valor_estimado ? formatCurrency(lic.valor_estimado) : 'Não informado'}
 - Encerramento: ${lic.data_encerramento ? new Date(lic.data_encerramento).toLocaleDateString('pt-BR') : 'N/I'}
-- Status: ${lic.status}
-- URL: ${lic.url || 'N/I'}
+⚠️ ATENÇÃO: Dados detalhados do PNCP não disponíveis. Limite-se aos dados básicos acima.`}${itensInfo}
 
-Seja objetivo, direto e formate em Markdown. Use emojis para indicar alertas (⚠️) e pontos positivos (✅).`
+Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirmados pelos dados.`
       }],
       action: 'resumo_edital',
       onDelta: (chunk) => {
