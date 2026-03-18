@@ -243,7 +243,7 @@ export default function MuralLicitacoes() {
       if (!response.ok) throw new Error(`Erro ${response.status}`);
       const data = await response.json();
 
-      const items: LicitacaoMural[] = (data.items || []).map((item: any) => ({
+      let items: LicitacaoMural[] = (data.items || []).map((item: any) => ({
         id: item.id,
         numero: item.numero || '-',
         orgao: item.orgao || '-',
@@ -261,10 +261,34 @@ export default function MuralLicitacoes() {
         cnpjOrgao: item.cnpjOrgao,
         anoCompra: item.anoCompra,
         sequencialCompra: item.sequencialCompra,
+        esferaNome: item.esferaNome || null,
+        tipoInstrumentoNome: item.tipoInstrumentoNome || null,
+        unidadeOrgao: item.unidadeOrgao || null,
       }));
 
+      // Filtros client-side para campos não suportados diretamente pela API
+      if (esferaFiltro !== 'all') {
+        items = items.filter(i => i.esferaNome?.toLowerCase().includes(esferaFiltro.toLowerCase()));
+      }
+      if (tipoInstrumentoFiltro !== 'all') {
+        const tipoLabel = TIPOS_INSTRUMENTO.find(t => t.value === tipoInstrumentoFiltro)?.label || '';
+        items = items.filter(i => i.tipoInstrumentoNome?.toLowerCase().includes(tipoLabel.toLowerCase()));
+      }
+      if (municipioFiltro.trim()) {
+        const term = municipioFiltro.trim().toLowerCase();
+        items = items.filter(i => i.municipio?.toLowerCase().includes(term));
+      }
+      if (unidadeFiltro.trim()) {
+        const term = unidadeFiltro.trim().toLowerCase();
+        items = items.filter(i => i.unidadeOrgao?.toLowerCase().includes(term));
+      }
+      if (orgaoFiltro.trim()) {
+        const term = orgaoFiltro.trim().toLowerCase();
+        items = items.filter(i => i.orgao?.toLowerCase().includes(term));
+      }
+
       setLicitacoes(items);
-      setTotalResultados(data.total || items.length);
+      setTotalResultados(items.length);
     } catch (err) {
       console.error(err);
       setError('Erro ao carregar licitações do PNCP. Tente novamente.');
