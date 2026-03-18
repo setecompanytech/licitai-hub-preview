@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { requireAuth } from "../_shared/auth-rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,6 +8,13 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  try {
+    await requireAuth(req, { functionName: "consulta-painel-precos", maxRequests: 20, windowMinutes: 5 });
+  } catch (authResp) {
+    if (authResp instanceof Response) return authResp;
+    throw authResp;
+  }
 
   try {
     const { termo, pagina = 1 } = await req.json();

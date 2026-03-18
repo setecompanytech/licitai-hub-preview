@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { requireAuth } from "../_shared/auth-rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -160,6 +161,12 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    try {
+      await requireAuth(req, { functionName: "certidoes-negativas", maxRequests: 10, windowMinutes: 5 });
+    } catch (authResp) {
+      if (authResp instanceof Response) return authResp;
+      throw authResp;
+    }
     const { cnpj, razaoSocial } = await req.json();
     if (!cnpj) {
       return new Response(JSON.stringify({ error: "CNPJ é obrigatório" }), {

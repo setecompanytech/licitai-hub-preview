@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { requireAuth } from "../_shared/auth-rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -74,6 +75,13 @@ function extractAmazonImages(html: string): { titulo: string; image_url: string 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    await requireAuth(req, { functionName: "busca-imagens-produto", maxRequests: 20, windowMinutes: 5 });
+  } catch (authResp) {
+    if (authResp instanceof Response) return authResp;
+    throw authResp;
   }
 
   try {

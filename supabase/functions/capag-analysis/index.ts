@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { requireAuth } from "../_shared/auth-rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -82,6 +83,12 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    try {
+      await requireAuth(req, { functionName: "capag-analysis", maxRequests: 10, windowMinutes: 5 });
+    } catch (authResp) {
+      if (authResp instanceof Response) return authResp;
+      throw authResp;
+    }
     const { orgao, uf, municipio } = await req.json();
     if (!orgao) {
       return new Response(JSON.stringify({ error: "Órgão é obrigatório" }), {
