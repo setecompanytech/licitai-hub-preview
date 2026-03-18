@@ -363,17 +363,65 @@ export default function MuralLicitacoes() {
     } catch { toast.error('Erro ao favoritar'); }
   };
 
-  // ── Ficha view (TCMPA-style detail card) ──
+  // ── Fetch detalhe PNCP when ficha opens ──
+  useEffect(() => {
+    if (!fichaAberta || !fichaAberta.cnpjOrgao || !fichaAberta.anoCompra || !fichaAberta.sequencialCompra) {
+      setDetalhePncp(null);
+      return;
+    }
+
+    const fetchDetalhe = async () => {
+      setLoadingDetalhe(true);
+      setDetalhePncp(null);
+      try {
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+        const resp = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/detalhe-licitacao-pncp`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              cnpjOrgao: fichaAberta.cnpjOrgao,
+              anoCompra: fichaAberta.anoCompra,
+              sequencialCompra: fichaAberta.sequencialCompra,
+            }),
+          }
+        );
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.success) setDetalhePncp(data);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar detalhes PNCP:', err);
+      } finally {
+        setLoadingDetalhe(false);
+      }
+    };
+
+    fetchDetalhe();
+  }, [fichaAberta]);
+
+  // ── Ficha view with REAL PNCP data ──
   if (fichaAberta) {
     const lic = fichaAberta;
     const isFav = favoritos.has(`${lic.numero}|${lic.orgao}`);
     const pncpUrl = buildPncpUrl(lic);
     const portalUrl = lic.url || pncpUrl;
     const isDownloading = downloading === lic.id;
+    const d = detalhePncp; // shorthand for detail data
+
+    const formatDate = (dateStr: string | null) => {
+      if (!dateStr) return 'Não informada';
+      try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      } catch { return dateStr; }
+    };
 
     return (
       <div className="space-y-4 animate-fade-in">
-        <Button variant="ghost" size="sm" onClick={() => setFichaAberta(null)} className="gap-1.5 text-sm">
+        <Button variant="ghost" size="sm" onClick={() => { setFichaAberta(null); setDetalhePncp(null); }} className="gap-1.5 text-sm">
           <ChevronLeft className="w-4 h-4" /> Voltar ao Mural
         </Button>
 
@@ -387,11 +435,15 @@ export default function MuralLicitacoes() {
                 </div>
                 <div>
                   <h2 className="font-bold text-lg">Ficha da Licitação</h2>
-                  <p className="text-xs text-muted-foreground">Dados extraídos em tempo real do PNCP</p>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-success" />
+                    Dados extraídos em tempo real da API oficial do PNCP
+                    {d && <Badge className="bg-success/10 text-success border-success/30 text-[9px] ml-1">Verificado ✓</Badge>}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge className={cn('text-xs', statusColor(lic.status))}>{lic.status}</Badge>
+                <Badge className={cn('text-xs', statusColor(d?.situacao || lic.status))}>{d?.situacao || lic.status}</Badge>
                 <button onClick={() => toggleFavorito(lic)} className={cn('p-2 rounded-md transition-colors', isFav ? 'text-warning bg-warning/10' : 'text-muted-foreground hover:text-warning')}>
                   {isFav ? <Star className="w-5 h-5 fill-current" /> : <StarOff className="w-5 h-5" />}
                 </button>
@@ -401,40 +453,163 @@ export default function MuralLicitacoes() {
 
           {/* Body */}
           <div className="p-6 space-y-6">
+            {/* Loading indicator */}
+            {loadingDetalhe && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Consultando dados detalhados do PNCP...
+              </div>
+            )}
+
             {/* Objeto */}
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Objeto</label>
-              <p className="text-sm mt-1 leading-relaxed">{lic.objeto}</p>
+              <p className="text-sm mt-1 leading-relaxed">{d?.objeto || lic.objeto}</p>
             </div>
 
-            {/* Grid dados */}
+            {/* ── DADOS CRÍTICOS DO PROCESSO (novos, vindos da API detalhada) ── */}
+            {d && (d.modo_disputa || d.criterio_julgamento || d.srp || d.tipo_instrumento_convocatorio) && (
+              <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-3">
+                <h3 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                  <Scale className="w-4 h-4" /> Dados do Processo Licitatório
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {d.modo_disputa && (
+                    <InfoField icon={<Scale className="w-4 h-4" />} label="Modo de Disputa" value={d.modo_disputa} highlight />
+                  )}
+                  {d.criterio_julgamento && (
+                    <InfoField icon={<Gavel className="w-4 h-4" />} label="Critério de Julgamento" value={d.criterio_julgamento} highlight />
+                  )}
+                  {d.tipo_instrumento_convocatorio && (
+                    <InfoField icon={<FileText className="w-4 h-4" />} label="Instrumento Convocatório" value={d.tipo_instrumento_convocatorio} />
+                  )}
+                  {d.tipo_contratacao && (
+                    <InfoField icon={<Package className="w-4 h-4" />} label="Tipo de Contratação" value={d.tipo_contratacao} />
+                  )}
+                  <InfoField icon={<ListOrdered className="w-4 h-4" />} label="Registro de Preços (SRP)" value={d.srp ? 'Sim — Sistema de Registro de Preços' : 'Não'} highlight={d.srp} />
+                  {d.processo_administrativo && (
+                    <InfoField icon={<FileText className="w-4 h-4" />} label="Processo Administrativo" value={d.processo_administrativo} />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Grid dados básicos */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <InfoField icon={<FileText className="w-4 h-4" />} label="Número" value={lic.numero} />
-              <InfoField icon={<Building2 className="w-4 h-4" />} label="Órgão" value={lic.orgao} />
-              <InfoField icon={<Gavel className="w-4 h-4" />} label="Modalidade" value={lic.modalidade} />
-              <InfoField icon={<MapPin className="w-4 h-4" />} label="Localização" value={lic.municipio && lic.uf ? `${lic.municipio}/${lic.uf}` : lic.uf || 'Não informada'} />
-              <InfoField icon={<DollarSign className="w-4 h-4" />} label="Valor Estimado" value={lic.valor_estimado ? formatCurrency(lic.valor_estimado) : 'Não informado'} highlight={!!lic.valor_estimado} />
-              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Data de Abertura" value={lic.data_abertura ? new Date(lic.data_abertura).toLocaleDateString('pt-BR') : 'Não informada'} />
-              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Data de Publicação" value={lic.data_publicacao ? new Date(lic.data_publicacao).toLocaleDateString('pt-BR') : 'Não informada'} />
+              <InfoField icon={<FileText className="w-4 h-4" />} label="Número da Compra" value={d?.numero_compra || lic.numero} />
+              <InfoField icon={<Building2 className="w-4 h-4" />} label="Órgão" value={d?.orgao || lic.orgao} />
+              <InfoField icon={<Gavel className="w-4 h-4" />} label="Modalidade" value={d?.modalidade || lic.modalidade} />
+              <InfoField icon={<MapPin className="w-4 h-4" />} label="Localização" value={
+                (d?.municipio || lic.municipio) && (d?.uf || lic.uf)
+                  ? `${d?.municipio || lic.municipio}/${d?.uf || lic.uf}`
+                  : d?.uf || lic.uf || 'Não informada'
+              } />
+              <InfoField icon={<DollarSign className="w-4 h-4" />} label="Valor Total Estimado" value={
+                (d?.valor_total_estimado || lic.valor_estimado) ? formatCurrency(d?.valor_total_estimado || lic.valor_estimado!) : 'Não informado'
+              } highlight={!!(d?.valor_total_estimado || lic.valor_estimado)} />
+              {d?.valor_total_homologado && d.valor_total_homologado > 0 && (
+                <InfoField icon={<DollarSign className="w-4 h-4" />} label="Valor Total Homologado" value={formatCurrency(d.valor_total_homologado)} highlight />
+              )}
+              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Abertura de Propostas" value={formatDate(d?.data_abertura_proposta || lic.data_abertura)} />
+              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Encerramento de Propostas" value={formatDate(d?.data_encerramento_proposta || null)} />
+              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Publicação no PNCP" value={formatDate(d?.data_publicacao_pncp || lic.data_publicacao)} />
               <InfoField icon={<Globe className="w-4 h-4" />} label="Portal" value={lic.portal} />
-              {lic.pncpNumero && <InfoField icon={<FileText className="w-4 h-4" />} label="Nº Controle PNCP" value={lic.pncpNumero} />}
-              {lic.cnpjOrgao && <InfoField icon={<Building2 className="w-4 h-4" />} label="CNPJ do Órgão" value={lic.cnpjOrgao.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')} />}
+              {(d?.numero_controle_pncp || lic.pncpNumero) && (
+                <InfoField icon={<FileText className="w-4 h-4" />} label="Nº Controle PNCP" value={d?.numero_controle_pncp || lic.pncpNumero!} />
+              )}
+              {(d?.cnpj_orgao || lic.cnpjOrgao) && (
+                <InfoField icon={<Building2 className="w-4 h-4" />} label="CNPJ do Órgão" value={(d?.cnpj_orgao || lic.cnpjOrgao!).replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')} />
+              )}
+              {d?.unidade_orgao && (
+                <InfoField icon={<Building2 className="w-4 h-4" />} label="Unidade Compradora" value={d.unidade_orgao} />
+              )}
             </div>
+
+            {/* Informação complementar */}
+            {d?.informacao_complementar && (
+              <div className="bg-muted/30 rounded-lg p-4">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                  <Info className="w-3.5 h-3.5" /> Informação Complementar
+                </label>
+                <p className="text-xs leading-relaxed whitespace-pre-wrap">{d.informacao_complementar}</p>
+              </div>
+            )}
+
+            {/* ── ITENS DA LICITAÇÃO (dados reais do PNCP) ── */}
+            {d && d.itens.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <Package className="w-4 h-4 text-accent" />
+                  Itens da Licitação ({d.total_itens} {d.total_itens === 1 ? 'item' : 'itens'})
+                  <Badge className="bg-success/10 text-success border-success/30 text-[9px]">Dados reais PNCP</Badge>
+                </h3>
+                <div className="border border-border/50 rounded-lg overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-muted/50 border-b border-border/50">
+                          <th className="px-3 py-2 text-left font-semibold text-muted-foreground">#</th>
+                          <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Descrição</th>
+                          <th className="px-3 py-2 text-right font-semibold text-muted-foreground">Qtd</th>
+                          <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Unid</th>
+                          <th className="px-3 py-2 text-right font-semibold text-muted-foreground">Vlr. Unit. Est.</th>
+                          <th className="px-3 py-2 text-right font-semibold text-muted-foreground">Vlr. Total</th>
+                          <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Situação</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {d.itens.slice(0, 50).map((item, idx) => (
+                          <tr key={idx} className="border-b border-border/20 hover:bg-muted/20">
+                            <td className="px-3 py-2 font-mono text-muted-foreground">{item.numero}</td>
+                            <td className="px-3 py-2 max-w-[300px]">
+                              <span className="line-clamp-2">{item.descricao}</span>
+                              {item.marca && <span className="text-muted-foreground ml-1">(Marca: {item.marca})</span>}
+                            </td>
+                            <td className="px-3 py-2 text-right">{item.quantidade?.toLocaleString('pt-BR')}</td>
+                            <td className="px-3 py-2">{item.unidade_medida}</td>
+                            <td className="px-3 py-2 text-right font-mono">
+                              {item.valor_unitario_estimado > 0 ? formatCurrency(item.valor_unitario_estimado) : '-'}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono font-semibold">
+                              {item.valor_total > 0 ? formatCurrency(item.valor_total) : '-'}
+                            </td>
+                            <td className="px-3 py-2">
+                              <Badge variant="outline" className="text-[9px]">{item.situacao || '-'}</Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {d.itens.length > 50 && (
+                    <div className="px-3 py-2 text-xs text-muted-foreground bg-muted/30 text-center">
+                      Exibindo 50 de {d.total_itens} itens. Acesse o PNCP para ver todos.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Links diretos */}
-            {(portalUrl || pncpUrl) && (
+            {(portalUrl || pncpUrl || d?.link_sistema_origem) && (
               <div className="bg-muted/30 rounded-lg p-4 space-y-2">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                   <Link2 className="w-3.5 h-3.5" /> Links Diretos
                 </label>
                 <div className="space-y-1">
-                  {pncpUrl && (
-                    <a href={pncpUrl} target="_blank" rel="noopener noreferrer"
+                  {(d?.url_pncp || pncpUrl) && (
+                    <a href={d?.url_pncp || pncpUrl!} target="_blank" rel="noopener noreferrer"
                        className="text-xs text-accent hover:underline flex items-center gap-1.5 break-all">
-                      <Globe className="w-3.5 h-3.5 flex-shrink-0" /> {pncpUrl}
+                      <Globe className="w-3.5 h-3.5 flex-shrink-0" /> {d?.url_pncp || pncpUrl}
                     </a>
                   )}
-                  {lic.url && lic.url !== pncpUrl && (
+                  {d?.link_sistema_origem && d.link_sistema_origem !== (d?.url_pncp || pncpUrl) && (
+                    <a href={d.link_sistema_origem} target="_blank" rel="noopener noreferrer"
+                       className="text-xs text-accent hover:underline flex items-center gap-1.5 break-all">
+                      <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" /> {d.link_sistema_origem}
+                    </a>
+                  )}
+                  {lic.url && lic.url !== (d?.url_pncp || pncpUrl) && lic.url !== d?.link_sistema_origem && (
                     <a href={lic.url} target="_blank" rel="noopener noreferrer"
                        className="text-xs text-accent hover:underline flex items-center gap-1.5 break-all">
                       <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" /> {lic.url}
@@ -444,9 +619,16 @@ export default function MuralLicitacoes() {
               </div>
             )}
 
+            {/* Fonte e timestamp */}
+            {d && (
+              <div className="text-[10px] text-muted-foreground/60 flex items-center gap-2 pt-2">
+                <ShieldCheck className="w-3 h-3" />
+                Fonte: {d.fonte} • Consultado em: {new Date(d.consultado_em).toLocaleString('pt-BR')}
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex flex-wrap gap-3 pt-4 border-t border-border/50">
-              {/* Download Edital - Primary Action */}
               <Button
                 className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2"
                 onClick={() => handleDownloadEdital(lic)}
@@ -496,8 +678,6 @@ export default function MuralLicitacoes() {
       </div>
     );
   }
-
-  // ── Mural list view ──
   return (
     <div className="space-y-4">
       {/* Header */}
