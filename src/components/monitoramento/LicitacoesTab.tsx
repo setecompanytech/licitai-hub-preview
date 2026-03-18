@@ -1477,7 +1477,6 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
           </div>
         </div>
       </TooltipProvider>
-      </div>
 
       {/* Marcar Interesse Dialog */}
       {editalInteresse && (
