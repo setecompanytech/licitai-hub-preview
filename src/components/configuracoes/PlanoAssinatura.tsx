@@ -125,7 +125,7 @@ export default function PlanoAssinatura() {
       }
 
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId: stripeConfig.price_id },
+        body: { priceId: stripeConfig.prices[cycle] },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
