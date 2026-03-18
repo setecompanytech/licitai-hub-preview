@@ -477,9 +477,15 @@ export default function MuralLicitacoes() {
     const formatDate = (dateStr: string | null) => {
       if (!dateStr) return 'Não informada';
       try {
-        // PNCP returns dates in Brasília time (UTC-3) without timezone indicator.
-        // Append offset so JS Date doesn't treat it as UTC and shift hours/day.
         let normalized = dateStr;
+        // Date-only string (e.g. "2026-03-16") — treat as Brasília local date, show without time
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          // Append T12:00 to avoid midnight UTC→previous day issue, then show date only
+          const d = new Date(dateStr + 'T12:00:00-03:00');
+          if (isNaN(d.getTime())) return dateStr;
+          return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
+        }
+        // PNCP returns datetimes in Brasília time without timezone indicator.
         if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dateStr) && !dateStr.includes('+') && !dateStr.includes('Z') && !/\-\d{2}:\d{2}$/.test(dateStr)) {
           normalized = dateStr + '-03:00'; // Brasília UTC-3
         }
