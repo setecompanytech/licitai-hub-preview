@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Calendar } from '@/components/ui/calendar';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -1226,192 +1227,256 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
       </div>
 
       {/* Table */}
-      <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border/50 bg-muted/30">
-                <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 w-10">
-                  <Star className="w-3.5 h-3.5 mx-auto text-warning" />
-                </th>
-                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Nº / Objeto</th>
-                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Órgão</th>
-                <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Portal</th>
-                <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>
-                <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Encerramento</th>
-                <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
-                <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3">Ações</th>
-                <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Download</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 && !loading && (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                  {filtroFavoritos
-                    ? 'Nenhum edital favorito. Clique na ⭐ para salvar editais.'
-                    : modoResultados === 'local'
-                    ? 'Nenhuma licitação salva. Use a busca acima para encontrar oportunidades.'
-                    : 'Nenhum resultado encontrado. Tente ampliar os termos ou selecionar mais portais.'}
-                </td></tr>
-              )}
-              {filtered.map((lic, i) => {
-                const st = statusConfig[lic.status] || { label: lic.status, className: 'bg-muted text-muted-foreground' };
-                const isFav = favoritos.has(`${lic.numero}|${lic.orgao}`);
-                const isExpanded = expandedSummary === lic.id;
-                return (
-                  <React.Fragment key={lic.id}>
-                    <tr
-                      className="border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer animate-fade-in"
-                      style={{ animationDelay: `${i * 30}ms` }}
-                      onClick={() => lic.url && window.open(lic.url, '_blank')}
-                    >
-                      <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
-                        <button
-                          onClick={() => toggleFavorito(lic)}
-                          disabled={favoritando === lic.id}
-                          className={cn(
-                            'p-1 rounded-md transition-colors hover:bg-warning/10',
-                            isFav ? 'text-warning' : 'text-muted-foreground/40 hover:text-warning/70'
-                          )}
-                          title={isFav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
-                        >
-                          {isFav ? <Star className="w-4 h-4 fill-current" /> : <StarOff className="w-4 h-4" />}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs font-mono text-muted-foreground block">{lic.numero}</span>
-                        <span className="text-sm font-medium line-clamp-1">{lic.objeto}</span>
-                        <button
-                          onClick={e => { e.stopPropagation(); handleExpandSummary(lic); }}
-                          className="text-[10px] text-accent hover:underline flex items-center gap-1 mt-1"
-                        >
-                          <Brain className="w-3 h-3" />
-                          {isExpanded ? 'Ocultar resumo IA' : 'Resumo IA do Edital'}
-                          {loadingSummary === lic.id && <Loader2 className="w-3 h-3 animate-spin" />}
-                          {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5 text-sm">
-                          <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                          <span className="line-clamp-1">{lic.orgao}</span>
-                        </div>
-                        {lic.municipio && lic.uf && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                            <MapPin className="w-3 h-3" />{lic.municipio}/{lic.uf}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge variant="outline" className="text-[10px] px-2 py-0.5">{lic.portal || '-'}</Badge>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right font-semibold">{lic.valor_estimado ? formatCurrency(lic.valor_estimado) : '-'}</td>
-                      <td className="px-4 py-3 text-center">
-                        {lic.data_encerramento ? (
-                          <span className="text-sm flex items-center justify-center gap-1">
-                            <CalendarIcon2 className="w-3.5 h-3.5 text-muted-foreground" />
-                            {new Date(lic.data_encerramento).toLocaleDateString('pt-BR')}
-                          </span>
-                        ) : '-'}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', st.className)}>{st.label}</Badge>
-                      </td>
-                      <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-2 text-[10px] gap-1 bg-success/10 text-success border-success/30 hover:bg-success/20"
-                            onClick={() => {
-                              setEditalInteresse(lic);
-                              setShowInteresseDialog(true);
-                            }}
-                            title="Marcar interesse e adicionar aos compromissos"
+      <TooltipProvider delayDuration={300}>
+        <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed">
+              <thead>
+                <tr className="border-b border-border/50 bg-muted/30">
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 w-[40px]">
+                    <Star className="w-3.5 h-3.5 mx-auto text-warning" />
+                  </th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3 w-[40%]">Nº / Objeto</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3 w-[18%]">Órgão</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 w-[60px]">Portal</th>
+                  <th className="text-right text-xs font-semibold text-muted-foreground px-3 py-3 w-[12%]">Valor</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 w-[90px]">Encerra</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 w-[80px]">Status</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 w-[140px]">Ações</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 w-[70px]">Download</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && !loading && (
+                  <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    {filtroFavoritos
+                      ? 'Nenhum edital favorito. Clique na ⭐ para salvar editais.'
+                      : modoResultados === 'local'
+                      ? 'Nenhuma licitação salva. Use a busca acima para encontrar oportunidades.'
+                      : 'Nenhum resultado encontrado. Tente ampliar os termos ou selecionar mais portais.'}
+                  </td></tr>
+                )}
+                {filtered.map((lic, i) => {
+                  const st = statusConfig[lic.status] || { label: lic.status, className: 'bg-muted text-muted-foreground' };
+                  const isFav = favoritos.has(`${lic.numero}|${lic.orgao}`);
+                  const isExpanded = expandedSummary === lic.id;
+                  const valorFormatted = lic.valor_estimado ? formatCurrency(lic.valor_estimado) : '-';
+                  const orgaoComLocal = lic.municipio && lic.uf ? `${lic.orgao} — ${lic.municipio}/${lic.uf}` : lic.orgao;
+                  return (
+                    <React.Fragment key={lic.id}>
+                      <tr
+                        className="border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer animate-fade-in"
+                        style={{ animationDelay: `${i * 30}ms` }}
+                        onClick={() => lic.url && window.open(lic.url, '_blank')}
+                      >
+                        {/* Favorito */}
+                        <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={() => toggleFavorito(lic)}
+                            disabled={favoritando === lic.id}
+                            className={cn(
+                              'p-1 rounded-md transition-colors hover:bg-warning/10',
+                              isFav ? 'text-warning' : 'text-muted-foreground/40 hover:text-warning/70'
+                            )}
+                            title={isFav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
                           >
-                            <CheckCircle2 className="w-3 h-3" /> Interesse
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-2 text-[10px] gap-1 bg-accent/10 text-accent border-accent/30 hover:bg-accent/20"
-                            onClick={() => handleIniciarProcesso(lic)}
-                            disabled={iniciandoProcesso === lic.id}
+                            {isFav ? <Star className="w-4 h-4 fill-current" /> : <StarOff className="w-4 h-4" />}
+                          </button>
+                        </td>
+
+                        {/* Nº / Objeto — com tooltip */}
+                        <td className="px-3 py-3">
+                          <span className="text-xs font-mono text-muted-foreground block">{lic.numero}</span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-sm font-medium line-clamp-2 block cursor-default">{lic.objeto}</span>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" align="start" className="max-w-[450px] text-xs leading-relaxed whitespace-normal">
+                              {lic.objeto}
+                            </TooltipContent>
+                          </Tooltip>
+                          <button
+                            onClick={e => { e.stopPropagation(); handleExpandSummary(lic); }}
+                            className="text-[10px] text-accent hover:underline flex items-center gap-1 mt-1"
                           >
-                            {iniciandoProcesso === lic.id ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <><FileText className="w-3 h-3" /> Iniciar</>
-                            )}
-                          </Button>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] gap-1">
-                              <Download className="w-3 h-3" /> Baixar
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {hasEditalDownload(lic) && (
-                              <>
-                                <DropdownMenuItem
-                                  onClick={() => handleDownloadEditalPortal(lic)}
-                                  className="gap-2 text-xs font-semibold text-accent"
-                                  disabled={downloadingEdital === lic.id}
-                                >
-                                  {downloadingEdital === lic.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
-                                  Edital Completo (Portal)
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleDownloadAnexos(lic)}
-                                  className="gap-2 text-xs text-accent"
-                                  disabled={downloadingAnexos === lic.id}
-                                >
-                                  {downloadingAnexos === lic.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileArchive className="w-3.5 h-3.5" />}
-                                  Todos os Anexos
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'csv')} className="gap-2 text-xs"><FileSpreadsheet className="w-3.5 h-3.5" /> CSV</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'pdf')} className="gap-2 text-xs"><FileText className="w-3.5 h-3.5" /> PDF</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'json')} className="gap-2 text-xs"><FileJson className="w-3.5 h-3.5" /> JSON</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'zip')} className="gap-2 text-xs"><FileArchive className="w-3.5 h-3.5" /> ZIP</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                    {isExpanded && (
-                      <tr className="animate-fade-in">
-                        <td colSpan={9} className="px-4 py-0">
-                          <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 my-2">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Brain className="w-4 h-4 text-accent" />
-                              <span className="text-xs font-semibold">Resumo Executivo por IA</span>
-                              <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-[10px]">Inteligência Artificial</Badge>
-                            </div>
-                            {summaryContent[lic.id] ? (
-                              <div className="prose prose-sm dark:prose-invert max-w-none text-xs">
-                                <ReactMarkdown>{summaryContent[lic.id]}</ReactMarkdown>
+                            <Brain className="w-3 h-3" />
+                            {isExpanded ? 'Ocultar resumo IA' : 'Resumo IA do Edital'}
+                            {loadingSummary === lic.id && <Loader2 className="w-3 h-3 animate-spin" />}
+                            {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          </button>
+                        </td>
+
+                        {/* Órgão — com tooltip */}
+                        <td className="px-3 py-3">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="cursor-default">
+                                <div className="flex items-center gap-1.5 text-sm">
+                                  <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                                  <span className="line-clamp-1">{lic.orgao}</span>
+                                </div>
+                                {lic.municipio && lic.uf && (
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                    <MapPin className="w-3 h-3 flex-shrink-0" />{lic.municipio}/{lic.uf}
+                                  </span>
+                                )}
                               </div>
-                            ) : (
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Loader2 className="w-4 h-4 animate-spin text-accent" />
-                                Analisando edital com IA...
-                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-[350px] text-xs whitespace-normal">
+                              {orgaoComLocal}
+                            </TooltipContent>
+                          </Tooltip>
+                        </td>
+
+                        {/* Portal */}
+                        <td className="px-2 py-3 text-center">
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">{lic.portal || '-'}</Badge>
+                        </td>
+
+                        {/* Valor — com tooltip */}
+                        <td className="px-3 py-3 text-right">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-sm font-semibold cursor-default whitespace-nowrap">{valorFormatted}</span>
+                            </TooltipTrigger>
+                            {lic.valor_estimado && (
+                              <TooltipContent side="left" className="text-xs">
+                                Valor estimado: {valorFormatted}
+                              </TooltipContent>
                             )}
+                          </Tooltip>
+                        </td>
+
+                        {/* Encerramento */}
+                        <td className="px-2 py-3 text-center">
+                          {lic.data_encerramento ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="text-xs flex items-center justify-center gap-1 cursor-default whitespace-nowrap">
+                                  <CalendarIcon2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                                  {new Date(lic.data_encerramento).toLocaleDateString('pt-BR')}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="text-xs">
+                                Data de encerramento: {new Date(lic.data_encerramento).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : <span className="text-xs text-muted-foreground">-</span>}
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-2 py-3 text-center">
+                          <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5 whitespace-nowrap', st.className)}>{st.label}</Badge>
+                        </td>
+
+                        {/* Ações */}
+                        <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2 text-[10px] gap-1 bg-success/10 text-success border-success/30 hover:bg-success/20"
+                                  onClick={() => {
+                                    setEditalInteresse(lic);
+                                    setShowInteresseDialog(true);
+                                  }}
+                                >
+                                  <CheckCircle2 className="w-3 h-3" /> Interesse
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent className="text-xs">Marcar interesse e adicionar aos compromissos</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2 text-[10px] gap-1 bg-accent/10 text-accent border-accent/30 hover:bg-accent/20"
+                                  onClick={() => handleIniciarProcesso(lic)}
+                                  disabled={iniciandoProcesso === lic.id}
+                                >
+                                  {iniciandoProcesso === lic.id ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <><FileText className="w-3 h-3" /> Iniciar</>
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent className="text-xs">Iniciar processo licitatório no Kanban</TooltipContent>
+                            </Tooltip>
                           </div>
                         </td>
+
+                        {/* Download */}
+                        <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] gap-1">
+                                <Download className="w-3 h-3" /> Baixar
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {hasEditalDownload(lic) && (
+                                <>
+                                  <DropdownMenuItem
+                                    onClick={() => handleDownloadEditalPortal(lic)}
+                                    className="gap-2 text-xs font-semibold text-accent"
+                                    disabled={downloadingEdital === lic.id}
+                                  >
+                                    {downloadingEdital === lic.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
+                                    Edital Completo (Portal)
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleDownloadAnexos(lic)}
+                                    className="gap-2 text-xs text-accent"
+                                    disabled={downloadingAnexos === lic.id}
+                                  >
+                                    {downloadingAnexos === lic.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileArchive className="w-3.5 h-3.5" />}
+                                    Todos os Anexos
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'csv')} className="gap-2 text-xs"><FileSpreadsheet className="w-3.5 h-3.5" /> CSV</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'pdf')} className="gap-2 text-xs"><FileText className="w-3.5 h-3.5" /> PDF</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'json')} className="gap-2 text-xs"><FileJson className="w-3.5 h-3.5" /> JSON</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDownloadItem(lic, 'zip')} className="gap-2 text-xs"><FileArchive className="w-3.5 h-3.5" /> ZIP</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
                       </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+                      {isExpanded && (
+                        <tr className="animate-fade-in">
+                          <td colSpan={9} className="px-4 py-0">
+                            <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 my-2">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Brain className="w-4 h-4 text-accent" />
+                                <span className="text-xs font-semibold">Resumo Executivo por IA</span>
+                                <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-[10px]">Inteligência Artificial</Badge>
+                              </div>
+                              {summaryContent[lic.id] ? (
+                                <div className="prose prose-sm dark:prose-invert max-w-none text-xs">
+                                  <ReactMarkdown>{summaryContent[lic.id]}</ReactMarkdown>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                                  Analisando edital com IA...
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      </TooltipProvider>
 
       {/* Marcar Interesse Dialog */}
       {editalInteresse && (
