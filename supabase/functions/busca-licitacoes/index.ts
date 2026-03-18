@@ -43,7 +43,7 @@ serve(async (req) => {
       throw authResp;
     }
     const body = await req.json();
-    const { query, uf, modalidade, pagina, portal, dataInicio, dataFim, mural } = body;
+    const { query, uf, modalidade, pagina, portal, dataInicio, dataFim, mural, cnpjOrgao } = body;
 
     const allItems: any[] = [];
 
