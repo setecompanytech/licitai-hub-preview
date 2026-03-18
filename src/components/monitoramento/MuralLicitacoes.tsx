@@ -921,7 +921,7 @@ export default function MuralLicitacoes() {
                 </div>
                 <div className="flex gap-2 items-end">
                   <div className="flex-1">
-                    <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Data Inicial Processo</label>
+                    <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Data de início de recebimento de propostas</label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("w-full h-10 justify-start text-left text-xs font-normal", !dataInicio && "text-muted-foreground")}>
