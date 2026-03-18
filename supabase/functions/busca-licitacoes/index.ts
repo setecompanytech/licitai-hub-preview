@@ -53,6 +53,89 @@ serve(async (req) => {
       const dataInicialDate = dataInicio ? new Date(dataInicio) : new Date(now.getTime() - 90 * 86400000);
       const dataFinalDate = dataFim ? new Date(dataFim) : new Date(now.getTime() + 90 * 86400000);
 
+      // Clean CNPJ/UASG input — strip dots, slashes, dashes
+      const cleanCnpjOrgao = cnpjOrgao ? cnpjOrgao.replace(/[.\-\/\s]/g, '') : null;
+
+      // If searching by CNPJ, use the dedicated PNCP endpoint
+      if (cleanCnpjOrgao && cleanCnpjOrgao.length >= 6) {
+        // PNCP supports searching by CNPJ directly
+        const fetchByCnpj = async () => {
+          const params = new URLSearchParams();
+          params.set("dataInicial", formatDatePNCP(dataInicialDate));
+          params.set("dataFinal", formatDatePNCP(dataFinalDate));
+          params.set("pagina", String(pagina || 1));
+          params.set("tamanhoPagina", "50");
+          if (uf) params.set("uf", uf);
+          params.set("cnpj", cleanCnpjOrgao);
+          if (query) params.set("q", query.substring(0, 100));
+          if (modalidade) {
+            const cod = MODALIDADES_PNCP[modalidade.toLowerCase().trim()];
+            if (cod) params.set("codigoModalidadeContratacao", String(cod));
+          }
+
+          const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params.toString()}`;
+          console.log(`PNCP API (CNPJ filter): ${url}`);
+
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 10000);
+          try {
+            const response = await fetch(url, {
+              headers: {
+                Accept: "application/json",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+              },
+              signal: controller.signal,
+            });
+            clearTimeout(timeout);
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.log(`PNCP CNPJ API error ${response.status}: ${errorText.substring(0, 300)}`);
+              return [];
+            }
+
+            const data = await response.json();
+            const pncpArray = data.data || [];
+            console.log(`PNCP CNPJ=${cleanCnpjOrgao}: ${pncpArray.length} resultados`);
+
+            return pncpArray.map((item: any) => {
+              const itemCnpj = item.orgaoEntidade?.cnpj || "";
+              const anoCompra = item.anoCompra || "";
+              const seqCompra = item.sequencialCompra || "";
+              let urlPncp = "";
+              if (itemCnpj && anoCompra && seqCompra) {
+                urlPncp = `https://pncp.gov.br/app/editais/${itemCnpj}/${anoCompra}/${seqCompra}`;
+              }
+              return {
+                numero: item.numeroCompra || item.numeroControlePNCP || "-",
+                orgao: item.orgaoEntidade?.razaoSocial || "-",
+                objeto: item.objetoCompra || "-",
+                modalidade: item.modalidadeNome || "Pregão - Eletrônico",
+                status: item.situacaoCompraNome || "Publicado",
+                valor_estimado: item.valorTotalEstimado || item.valorTotalHomologado || null,
+                uf: item.unidadeOrgao?.ufSigla || uf || null,
+                municipio: item.unidadeOrgao?.municipioNome || null,
+                data_abertura: item.dataEncerramentoProposta?.split("T")[0] || item.dataAberturaProposta?.split("T")[0] || null,
+                data_publicacao: item.dataPublicacaoPncp?.split("T")[0] || null,
+                portal: "PNCP",
+                url: item.linkSistemaOrigem || urlPncp,
+                pncpNumero: item.numeroControlePNCP || null,
+                cnpjOrgao: itemCnpj || null,
+                anoCompra: anoCompra || null,
+                sequencialCompra: seqCompra || null,
+                isMock: false,
+              };
+            });
+          } catch (e) {
+            clearTimeout(timeout);
+            console.log(`PNCP CNPJ timeout/error:`, e);
+            return [];
+          }
+        };
+
+        const cnpjResults = await fetchByCnpj();
+        allItems.push(...cnpjResults);
+      } else {
       // For "mural" mode, search multiple modalidades in parallel for speed
       const modalidades = mural
         ? [6, 4, 5, 8, 7, 11]
@@ -67,6 +150,76 @@ serve(async (req) => {
         params.set("codigoModalidadeContratacao", String(codModalidade));
         if (uf) params.set("uf", uf);
         if (query) params.set("q", query.substring(0, 100));
+
+        const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params.toString()}`;
+        console.log(`PNCP API: ${url}`);
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        try {
+          const response = await fetch(url, {
+            headers: {
+              Accept: "application/json",
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            },
+            signal: controller.signal,
+          });
+          clearTimeout(timeout);
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.log(`PNCP API error ${response.status}: ${errorText.substring(0, 300)}`);
+            return [];
+          }
+
+          const data = await response.json();
+          const pncpArray = data.data || [];
+          console.log(`PNCP mod=${codModalidade}: ${pncpArray.length} resultados`);
+
+          return pncpArray.map((item: any) => {
+            const cnpjOrgaoItem = item.orgaoEntidade?.cnpj || "";
+            const anoCompra = item.anoCompra || "";
+            const seqCompra = item.sequencialCompra || "";
+            let urlPncp = "";
+            if (cnpjOrgaoItem && anoCompra && seqCompra) {
+              urlPncp = `https://pncp.gov.br/app/editais/${cnpjOrgaoItem}/${anoCompra}/${seqCompra}`;
+            }
+            return {
+              numero: item.numeroCompra || item.numeroControlePNCP || "-",
+              orgao: item.orgaoEntidade?.razaoSocial || "-",
+              objeto: item.objetoCompra || "-",
+              modalidade: item.modalidadeNome || "Pregão - Eletrônico",
+              status: item.situacaoCompraNome || "Publicado",
+              valor_estimado: item.valorTotalEstimado || item.valorTotalHomologado || null,
+              uf: item.unidadeOrgao?.ufSigla || uf || null,
+              municipio: item.unidadeOrgao?.municipioNome || null,
+              data_abertura: item.dataEncerramentoProposta?.split("T")[0] || item.dataAberturaProposta?.split("T")[0] || null,
+              data_publicacao: item.dataPublicacaoPncp?.split("T")[0] || null,
+              portal: "PNCP",
+              url: item.linkSistemaOrigem || urlPncp,
+              pncpNumero: item.numeroControlePNCP || null,
+              cnpjOrgao: cnpjOrgaoItem || null,
+              anoCompra: anoCompra || null,
+              sequencialCompra: seqCompra || null,
+              isMock: false,
+            };
+          });
+        } catch (e) {
+          clearTimeout(timeout);
+          console.log(`PNCP mod=${codModalidade} timeout/error:`, e);
+          return [];
+        }
+      };
+
+      // Run all modalidade fetches in parallel for speed
+      const results = await Promise.allSettled(modalidades.map(fetchModalidade));
+      for (const result of results) {
+        if (result.status === "fulfilled") {
+          allItems.push(...result.value);
+          if (mural && allItems.length >= 50) break;
+        }
+      }
+      }
 
         const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params.toString()}`;
         console.log(`PNCP API: ${url}`);
