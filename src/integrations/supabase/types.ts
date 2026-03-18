@@ -404,6 +404,36 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_verificacao: {
+        Row: {
+          created_at: string
+          detalhes: Json | null
+          erros: string[] | null
+          id: string
+          registros_verificados: number | null
+          status: string
+          tabelas_verificadas: string[] | null
+        }
+        Insert: {
+          created_at?: string
+          detalhes?: Json | null
+          erros?: string[] | null
+          id?: string
+          registros_verificados?: number | null
+          status?: string
+          tabelas_verificadas?: string[] | null
+        }
+        Update: {
+          created_at?: string
+          detalhes?: Json | null
+          erros?: string[] | null
+          id?: string
+          registros_verificados?: number | null
+          status?: string
+          tabelas_verificadas?: string[] | null
+        }
+        Relationships: []
+      }
       base_contabil: {
         Row: {
           arquivo_nome: string
@@ -4346,6 +4376,27 @@ export type Database = {
           },
         ]
       }
+      rate_limit_log: {
+        Row: {
+          created_at: string
+          function_name: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          function_name: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          function_name?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       robo_aceite_termos: {
         Row: {
           aceite_politica_uso: boolean
@@ -5756,6 +5807,16 @@ export type Database = {
     }
     Functions: {
       check_lead_rate_limit: { Args: { p_email: string }; Returns: boolean }
+      check_rate_limit: {
+        Args: {
+          p_function_name: string
+          p_max_requests?: number
+          p_user_id: string
+          p_window_minutes?: number
+        }
+        Returns: boolean
+      }
+      cleanup_rate_limit_log: { Args: never; Returns: undefined }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
