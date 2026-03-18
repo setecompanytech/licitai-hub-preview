@@ -146,6 +146,10 @@ export default function MuralLicitacoes() {
   // Download state
   const [downloading, setDownloading] = useState<string | null>(null);
 
+  // Detalhes PNCP
+  const [detalhePncp, setDetalhePncp] = useState<DetalhePNCP | null>(null);
+  const [loadingDetalhe, setLoadingDetalhe] = useState(false);
+
   // Favoritos
   const [favoritos, setFavoritos] = useState<Set<string>>(new Set());
 
