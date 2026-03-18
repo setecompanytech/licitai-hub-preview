@@ -155,7 +155,7 @@ export default function MuralLicitacoes() {
   const [pagina, setPagina] = useState(1);
   const [totalResultados, setTotalResultados] = useState(0);
 
-  // Filtros
+  // Filtros principais
   const [ufFiltro, setUfFiltro] = useState<string>('all');
   const [modalidadeFiltro, setModalidadeFiltro] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -164,6 +164,14 @@ export default function MuralLicitacoes() {
   const [dataFim, setDataFim] = useState<Date | undefined>(undefined);
   const [uasgTerm, setUasgTerm] = useState('');
   const [uasgSubmitted, setUasgSubmitted] = useState('');
+
+  // Filtros avançados (estilo PNCP)
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [tipoInstrumentoFiltro, setTipoInstrumentoFiltro] = useState<string>('all');
+  const [esferaFiltro, setEsferaFiltro] = useState<string>('all');
+  const [municipioFiltro, setMunicipioFiltro] = useState('');
+  const [unidadeFiltro, setUnidadeFiltro] = useState('');
+  const [orgaoFiltro, setOrgaoFiltro] = useState('');
 
   // Ficha detail
   const [fichaAberta, setFichaAberta] = useState<LicitacaoMural | null>(null);
