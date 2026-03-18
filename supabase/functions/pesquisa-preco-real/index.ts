@@ -354,6 +354,13 @@ serve(async (req) => {
   }
 
   try {
+    await requireAuth(req, { functionName: "pesquisa-preco-real", maxRequests: 15, windowMinutes: 5 });
+  } catch (authResp) {
+    if (authResp instanceof Response) return authResp;
+    throw authResp;
+  }
+
+  try {
     const { termo } = await req.json();
 
     if (!termo) {

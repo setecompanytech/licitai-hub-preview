@@ -67,6 +67,13 @@ serve(async (req) => {
   }
 
   try {
+    await requireAuth(req, { functionName: "ficha-tecnica-produto", maxRequests: 15, windowMinutes: 5 });
+  } catch (authResp) {
+    if (authResp instanceof Response) return authResp;
+    throw authResp;
+  }
+
+  try {
     const { url, produto_nome } = await req.json();
 
     if (!url && !produto_nome) {

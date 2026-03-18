@@ -526,6 +526,12 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    try {
+      await requireAuth(req, { functionName: "emitir-certidoes", maxRequests: 5, windowMinutes: 5 });
+    } catch (authResp) {
+      if (authResp instanceof Response) return authResp;
+      throw authResp;
+    }
     const { cnpj, uf, municipio, portaisRegionais } = await req.json();
     if (!cnpj) {
       return new Response(JSON.stringify({ error: "CNPJ é obrigatório" }), {

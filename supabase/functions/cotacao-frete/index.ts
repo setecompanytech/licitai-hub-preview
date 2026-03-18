@@ -157,6 +157,13 @@ serve(async (req) => {
   }
 
   try {
+    await requireAuth(req, { functionName: "cotacao-frete", maxRequests: 20, windowMinutes: 5 });
+  } catch (authResp) {
+    if (authResp instanceof Response) return authResp;
+    throw authResp;
+  }
+
+  try {
     const { cep_origem, cep_destino, peso, valor_produto } = await req.json();
 
     if (!cep_origem || !cep_destino) {

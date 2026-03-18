@@ -78,6 +78,13 @@ serve(async (req) => {
   }
 
   try {
+    await requireAuth(req, { functionName: "busca-imagens-produto", maxRequests: 20, windowMinutes: 5 });
+  } catch (authResp) {
+    if (authResp instanceof Response) return authResp;
+    throw authResp;
+  }
+
+  try {
     const { termo } = await req.json();
 
     if (!termo) {
