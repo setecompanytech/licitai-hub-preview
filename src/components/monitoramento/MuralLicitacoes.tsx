@@ -137,6 +137,8 @@ export default function MuralLicitacoes() {
   const [searchSubmitted, setSearchSubmitted] = useState('');
   const [dataInicio, setDataInicio] = useState<Date | undefined>(undefined);
   const [dataFim, setDataFim] = useState<Date | undefined>(undefined);
+  const [uasgTerm, setUasgTerm] = useState('');
+  const [uasgSubmitted, setUasgSubmitted] = useState('');
 
   // Ficha detail
   const [fichaAberta, setFichaAberta] = useState<LicitacaoMural | null>(null);
@@ -198,6 +200,7 @@ export default function MuralLicitacoes() {
             modalidade: modalidadeFiltro !== 'all' ? modalidadeFiltro : undefined,
             dataInicio: dataInicio ? dataInicio.toISOString().split('T')[0] : undefined,
             dataFim: dataFim ? dataFim.toISOString().split('T')[0] : undefined,
+            cnpjOrgao: uasgSubmitted || undefined,
             pagina,
             mural: true,
           }),
@@ -235,7 +238,7 @@ export default function MuralLicitacoes() {
     } finally {
       setLoading(false);
     }
-  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim]);
+  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted]);
 
   useEffect(() => {
     if (user) carregarMural();
@@ -245,6 +248,7 @@ export default function MuralLicitacoes() {
     e.preventDefault();
     setPagina(1);
     setSearchSubmitted(searchTerm);
+    setUasgSubmitted(uasgTerm);
   };
 
   const handleIniciarProcesso = async (lic: LicitacaoMural) => {
@@ -714,6 +718,16 @@ export default function MuralLicitacoes() {
                 disabled={loading}
               />
             </div>
+            <div className="relative w-[180px]">
+              <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="UASG / CNPJ do Órgão"
+                value={uasgTerm}
+                onChange={e => setUasgTerm(e.target.value)}
+                className="pl-9 text-sm"
+                disabled={loading}
+              />
+            </div>
             <Button type="submit" disabled={loading} className="bg-accent hover:bg-accent/90 text-accent-foreground gap-1.5">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
               Buscar
@@ -732,12 +746,12 @@ export default function MuralLicitacoes() {
             </SelectContent>
           </Select>
 
-          {/* Date range filters */}
+          {/* Date range filters - terminology matching government portals */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("w-[150px] h-10 justify-start text-left text-xs font-normal", !dataInicio && "text-muted-foreground")}>
+              <Button variant="outline" className={cn("w-[170px] h-10 justify-start text-left text-xs font-normal", !dataInicio && "text-muted-foreground")}>
                 <CalendarDays className="w-3 h-3 mr-1.5" />
-                {dataInicio ? format(dataInicio, "dd/MM/yyyy") : "Data início"}
+                {dataInicio ? format(dataInicio, "dd/MM/yyyy") : "Data Inicial Processo"}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -754,9 +768,9 @@ export default function MuralLicitacoes() {
 
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("w-[150px] h-10 justify-start text-left text-xs font-normal", !dataFim && "text-muted-foreground")}>
+              <Button variant="outline" className={cn("w-[170px] h-10 justify-start text-left text-xs font-normal", !dataFim && "text-muted-foreground")}>
                 <CalendarDays className="w-3 h-3 mr-1.5" />
-                {dataFim ? format(dataFim, "dd/MM/yyyy") : "Data fim"}
+                {dataFim ? format(dataFim, "dd/MM/yyyy") : "Data Final Processo"}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -789,14 +803,24 @@ export default function MuralLicitacoes() {
           </Select>
         </div>
 
-        {searchSubmitted && (
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="gap-1 text-xs">
-              Pesquisa: "{searchSubmitted}"
-              <button onClick={() => { setSearchSubmitted(''); setSearchTerm(''); setPagina(1); }}>
-                <X className="w-3 h-3" />
-              </button>
-            </Badge>
+        {(searchSubmitted || uasgSubmitted) && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {searchSubmitted && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                Pesquisa: "{searchSubmitted}"
+                <button onClick={() => { setSearchSubmitted(''); setSearchTerm(''); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {uasgSubmitted && (
+              <Badge variant="outline" className="gap-1 text-xs bg-primary/5 border-primary/20">
+                <Building2 className="w-3 h-3" /> UASG/CNPJ: {uasgSubmitted}
+                <button onClick={() => { setUasgSubmitted(''); setUasgTerm(''); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
           </div>
         )}
       </div>
