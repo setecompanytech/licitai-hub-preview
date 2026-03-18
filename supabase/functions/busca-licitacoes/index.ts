@@ -48,10 +48,11 @@ function mapPncpItem(item: any, uf: string | null) {
     valor_estimado: item.valorTotalEstimado || item.valorTotalHomologado || null,
     uf: item.unidadeOrgao?.ufSigla || uf || null,
     municipio: item.unidadeOrgao?.municipioNome || null,
-    // data_abertura = dataAberturaProposta = FIM de recebimento de propostas (deadline)
+    // data_abertura = dataAberturaProposta = INÍCIO de recebimento de propostas (sistema abre)
     data_abertura: item.dataAberturaProposta || null,
+    // data_encerramento = dataEncerramentoProposta = FIM de recebimento de propostas (prazo limite)
     data_encerramento: item.dataEncerramentoProposta || null,
-    // data_publicacao = dataPublicacaoPncp = INÍCIO de recebimento de propostas (publicação)
+    // data_publicacao = dataPublicacaoPncp = data de publicação do instrumento convocatório
     data_publicacao: item.dataPublicacaoPncp || null,
     portal: "PNCP",
     url: item.linkSistemaOrigem || urlPncp,

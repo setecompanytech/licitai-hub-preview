@@ -1099,7 +1099,7 @@ export default function MuralLicitacoes() {
                     <Clock className="w-3 h-3" />
                     <span title="Fim de recebimento de propostas">
                     {(() => {
-                      const ds = lic.data_abertura || lic.data_encerramento;
+                      const ds = lic.data_encerramento || lic.data_abertura;
                       if (!ds) return 'N/I';
                       let norm = ds;
                       if (/^\d{4}-\d{2}-\d{2}$/.test(ds)) norm = ds + 'T12:00:00-03:00';
