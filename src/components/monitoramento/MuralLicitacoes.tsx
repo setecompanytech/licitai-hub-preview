@@ -14,7 +14,8 @@ import {
   Search, MapPin, Building2, CalendarDays, RefreshCw, Globe, Loader2,
   ExternalLink, DollarSign, FileText, ChevronLeft, ChevronRight, Eye,
   X, AlertTriangle, CheckCircle2, Clock, Gavel, Star, StarOff, Download,
-  FileDown, Link2, Package, Scale, ShieldCheck, Info, ListOrdered
+  FileDown, Link2, Package, Scale, ShieldCheck, Info, ListOrdered,
+  SlidersHorizontal, ChevronDown, ChevronUp, Landmark
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -84,6 +85,10 @@ type LicitacaoMural = {
   cnpjOrgao: string | null;
   anoCompra: string | null;
   sequencialCompra: string | null;
+  // Campos adicionais para filtros client-side
+  esferaNome: string | null;
+  tipoInstrumentoNome: string | null;
+  unidadeOrgao: string | null;
 };
 
 const UFS_BRASIL = [
@@ -92,12 +97,33 @@ const UFS_BRASIL = [
 ];
 
 const MODALIDADES = [
-  { value: 'pregão eletrônico', label: 'Pregão Eletrônico' },
-  { value: 'concorrência', label: 'Concorrência' },
-  { value: 'concorrência - eletrônica', label: 'Concorrência Eletrônica' },
-  { value: 'dispensa de licitação', label: 'Dispensa de Licitação' },
-  { value: 'inexigibilidade', label: 'Inexigibilidade' },
-  { value: 'credenciamento', label: 'Credenciamento' },
+  { value: 'pregão eletrônico', label: 'Pregão Eletrônico', cod: 6 },
+  { value: 'concorrência', label: 'Concorrência', cod: 4 },
+  { value: 'concorrência - eletrônica', label: 'Concorrência Eletrônica', cod: 5 },
+  { value: 'dispensa de licitação', label: 'Dispensa de Licitação', cod: 7 },
+  { value: 'inexigibilidade', label: 'Inexigibilidade', cod: 8 },
+  { value: 'credenciamento', label: 'Credenciamento', cod: 11 },
+  { value: 'leilão', label: 'Leilão', cod: 1 },
+  { value: 'diálogo competitivo', label: 'Diálogo Competitivo', cod: 2 },
+  { value: 'concurso', label: 'Concurso', cod: 3 },
+  { value: 'manifestação de interesse', label: 'Manifestação de Interesse', cod: 9 },
+  { value: 'pré-qualificação', label: 'Pré-qualificação', cod: 10 },
+  { value: 'leilão - eletrônico', label: 'Leilão Eletrônico', cod: 12 },
+  { value: 'concurso - eletrônico', label: 'Concurso Eletrônico', cod: 13 },
+];
+
+const TIPOS_INSTRUMENTO = [
+  { value: 'edital', label: 'Edital' },
+  { value: 'aviso_contratacao_direta', label: 'Aviso de Contratação Direta' },
+  { value: 'ato_adesao', label: 'Ato que Autoriza Adesão' },
+  { value: 'aviso_dispensa', label: 'Aviso de Dispensa de Licitação' },
+];
+
+const ESFERAS = [
+  { value: 'federal', label: 'Federal' },
+  { value: 'estadual', label: 'Estadual' },
+  { value: 'municipal', label: 'Municipal' },
+  { value: 'distrital', label: 'Distrital' },
 ];
 
 const formatCurrency = (v: number) =>
@@ -130,7 +156,7 @@ export default function MuralLicitacoes() {
   const [pagina, setPagina] = useState(1);
   const [totalResultados, setTotalResultados] = useState(0);
 
-  // Filtros
+  // Filtros principais
   const [ufFiltro, setUfFiltro] = useState<string>('all');
   const [modalidadeFiltro, setModalidadeFiltro] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -139,6 +165,14 @@ export default function MuralLicitacoes() {
   const [dataFim, setDataFim] = useState<Date | undefined>(undefined);
   const [uasgTerm, setUasgTerm] = useState('');
   const [uasgSubmitted, setUasgSubmitted] = useState('');
+
+  // Filtros avançados (estilo PNCP)
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [tipoInstrumentoFiltro, setTipoInstrumentoFiltro] = useState<string>('all');
+  const [esferaFiltro, setEsferaFiltro] = useState<string>('all');
+  const [municipioFiltro, setMunicipioFiltro] = useState('');
+  const [unidadeFiltro, setUnidadeFiltro] = useState('');
+  const [orgaoFiltro, setOrgaoFiltro] = useState('');
 
   // Ficha detail
   const [fichaAberta, setFichaAberta] = useState<LicitacaoMural | null>(null);
@@ -210,7 +244,7 @@ export default function MuralLicitacoes() {
       if (!response.ok) throw new Error(`Erro ${response.status}`);
       const data = await response.json();
 
-      const items: LicitacaoMural[] = (data.items || []).map((item: any) => ({
+      let items: LicitacaoMural[] = (data.items || []).map((item: any) => ({
         id: item.id,
         numero: item.numero || '-',
         orgao: item.orgao || '-',
@@ -228,17 +262,41 @@ export default function MuralLicitacoes() {
         cnpjOrgao: item.cnpjOrgao,
         anoCompra: item.anoCompra,
         sequencialCompra: item.sequencialCompra,
+        esferaNome: item.esferaNome || null,
+        tipoInstrumentoNome: item.tipoInstrumentoNome || null,
+        unidadeOrgao: item.unidadeOrgao || null,
       }));
 
+      // Filtros client-side para campos não suportados diretamente pela API
+      if (esferaFiltro !== 'all') {
+        items = items.filter(i => i.esferaNome?.toLowerCase().includes(esferaFiltro.toLowerCase()));
+      }
+      if (tipoInstrumentoFiltro !== 'all') {
+        const tipoLabel = TIPOS_INSTRUMENTO.find(t => t.value === tipoInstrumentoFiltro)?.label || '';
+        items = items.filter(i => i.tipoInstrumentoNome?.toLowerCase().includes(tipoLabel.toLowerCase()));
+      }
+      if (municipioFiltro.trim()) {
+        const term = municipioFiltro.trim().toLowerCase();
+        items = items.filter(i => i.municipio?.toLowerCase().includes(term));
+      }
+      if (unidadeFiltro.trim()) {
+        const term = unidadeFiltro.trim().toLowerCase();
+        items = items.filter(i => i.unidadeOrgao?.toLowerCase().includes(term));
+      }
+      if (orgaoFiltro.trim()) {
+        const term = orgaoFiltro.trim().toLowerCase();
+        items = items.filter(i => i.orgao?.toLowerCase().includes(term));
+      }
+
       setLicitacoes(items);
-      setTotalResultados(data.total || items.length);
+      setTotalResultados(items.length);
     } catch (err) {
       console.error(err);
       setError('Erro ao carregar licitações do PNCP. Tente novamente.');
     } finally {
       setLoading(false);
     }
-  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted]);
+  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, esferaFiltro, tipoInstrumentoFiltro, municipioFiltro, unidadeFiltro, orgaoFiltro]);
 
   useEffect(() => {
     if (user) carregarMural();
@@ -716,106 +774,208 @@ export default function MuralLicitacoes() {
           </Button>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-[200px]">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Pesquisar por objeto, órgão..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="pl-9 text-sm"
-                disabled={loading}
-              />
+        {/* Keyword + UASG search bar */}
+        <form onSubmit={handleSearch} className="flex flex-wrap gap-2 mb-3">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Palavra-chave"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="pl-9 text-sm"
+              disabled={loading}
+            />
+          </div>
+          <div className="relative w-[200px]">
+            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="UASG / CNPJ do Órgão"
+              value={uasgTerm}
+              onChange={e => setUasgTerm(e.target.value)}
+              className="pl-9 text-sm"
+              disabled={loading}
+            />
+          </div>
+          <Button type="submit" disabled={loading} className="bg-accent hover:bg-accent/90 text-accent-foreground gap-1.5">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            Buscar
+          </Button>
+        </form>
+
+        {/* ═══ FILTROS (estilo PNCP) ═══ */}
+        <div className="bg-card border border-border/50 rounded-xl overflow-hidden">
+          <button
+            onClick={() => setFiltrosAbertos(!filtrosAbertos)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
+          >
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <SlidersHorizontal className="w-4 h-4 text-accent" />
+              FILTROS
+              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || dataInicio || dataFim) && (
+                <Badge className="bg-accent/10 text-accent border-accent/20 text-[9px]">Ativos</Badge>
+              )}
             </div>
-            <div className="relative w-[180px]">
-              <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="UASG / CNPJ do Órgão"
-                value={uasgTerm}
-                onChange={e => setUasgTerm(e.target.value)}
-                className="pl-9 text-sm"
-                disabled={loading}
-              />
+            {filtrosAbertos ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+          </button>
+
+          {filtrosAbertos && (
+            <div className="px-4 pb-4 pt-1 space-y-4 border-t border-border/30">
+              {/* Row 1: Tipo Instrumento + Modalidade */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Tipos de Instrumento Convocatório</label>
+                  <Select value={tipoInstrumentoFiltro} onValueChange={v => { setTipoInstrumentoFiltro(v); setPagina(1); }}>
+                    <SelectTrigger className="w-full h-10 text-xs">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      {TIPOS_INSTRUMENTO.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Modalidades da Contratação</label>
+                  <Select value={modalidadeFiltro} onValueChange={v => { setModalidadeFiltro(v); setPagina(1); }}>
+                    <SelectTrigger className="w-full h-10 text-xs">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas modalidades</SelectItem>
+                      {MODALIDADES.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Row 2: Órgãos + Unidades */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Órgãos</label>
+                  <Input
+                    placeholder="Digite o nome do órgão..."
+                    value={orgaoFiltro}
+                    onChange={e => setOrgaoFiltro(e.target.value)}
+                    className="text-xs h-10"
+                    disabled={loading}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Unidades</label>
+                  <Input
+                    placeholder="Digite o nome da unidade..."
+                    value={unidadeFiltro}
+                    onChange={e => setUnidadeFiltro(e.target.value)}
+                    className="text-xs h-10"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: UFs + Municípios */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">UFs</label>
+                  <Select value={ufFiltro} onValueChange={v => { setUfFiltro(v); setPagina(1); }}>
+                    <SelectTrigger className="w-full h-10 text-xs">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os estados</SelectItem>
+                      {UFS_BRASIL.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Municípios</label>
+                  <Input
+                    placeholder="Digite o nome do município..."
+                    value={municipioFiltro}
+                    onChange={e => setMunicipioFiltro(e.target.value)}
+                    className="text-xs h-10"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              {/* Row 4: Esferas + Datas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Esferas</label>
+                  <Select value={esferaFiltro} onValueChange={v => { setEsferaFiltro(v); setPagina(1); }}>
+                    <SelectTrigger className="w-full h-10 text-xs">
+                      <Landmark className="w-3 h-3 mr-1 text-muted-foreground" />
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas as esferas</SelectItem>
+                      {ESFERAS.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Data Inicial Processo</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("w-full h-10 justify-start text-left text-xs font-normal", !dataInicio && "text-muted-foreground")}>
+                          <CalendarDays className="w-3 h-3 mr-1.5" />
+                          {dataInicio ? format(dataInicio, "dd/MM/yyyy") : "Selecione"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={dataInicio} onSelect={(d) => { setDataInicio(d); setPagina(1); }} locale={ptBR} initialFocus className={cn("p-3 pointer-events-auto")} />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Data Final Processo</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("w-full h-10 justify-start text-left text-xs font-normal", !dataFim && "text-muted-foreground")}>
+                          <CalendarDays className="w-3 h-3 mr-1.5" />
+                          {dataFim ? format(dataFim, "dd/MM/yyyy") : "Selecione"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={dataFim} onSelect={(d) => { setDataFim(d); setPagina(1); }} locale={ptBR} disabled={(date) => dataInicio ? date < dataInicio : false} initialFocus className={cn("p-3 pointer-events-auto")} />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  {(dataInicio || dataFim) && (
+                    <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground flex-shrink-0" onClick={() => { setDataInicio(undefined); setDataFim(undefined); setPagina(1); }}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Clear all filters */}
+              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || dataInicio || dataFim) && (
+                <div className="flex justify-end pt-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs gap-1.5 text-destructive hover:text-destructive"
+                    onClick={() => {
+                      setTipoInstrumentoFiltro('all'); setModalidadeFiltro('all');
+                      setOrgaoFiltro(''); setUnidadeFiltro('');
+                      setUfFiltro('all'); setMunicipioFiltro('');
+                      setEsferaFiltro('all'); setDataInicio(undefined); setDataFim(undefined);
+                      setPagina(1);
+                    }}
+                  >
+                    <X className="w-3 h-3" /> Limpar todos os filtros
+                  </Button>
+                </div>
+              )}
             </div>
-            <Button type="submit" disabled={loading} className="bg-accent hover:bg-accent/90 text-accent-foreground gap-1.5">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-              Buscar
-            </Button>
-          </form>
-        </div>
-
-        <div className="flex flex-wrap gap-2 mb-3">
-          <Select value={ufFiltro} onValueChange={v => { setUfFiltro(v); setPagina(1); }}>
-            <SelectTrigger className="w-[120px] h-10 text-xs">
-              <MapPin className="w-3 h-3 mr-1 text-muted-foreground" /><SelectValue placeholder="UF" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos UFs</SelectItem>
-              {UFS_BRASIL.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
-            </SelectContent>
-          </Select>
-
-          {/* Date range filters - terminology matching government portals */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("w-[170px] h-10 justify-start text-left text-xs font-normal", !dataInicio && "text-muted-foreground")}>
-                <CalendarDays className="w-3 h-3 mr-1.5" />
-                {dataInicio ? format(dataInicio, "dd/MM/yyyy") : "Data Inicial Processo"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={dataInicio}
-                onSelect={(d) => { setDataInicio(d); setPagina(1); }}
-                locale={ptBR}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("w-[170px] h-10 justify-start text-left text-xs font-normal", !dataFim && "text-muted-foreground")}>
-                <CalendarDays className="w-3 h-3 mr-1.5" />
-                {dataFim ? format(dataFim, "dd/MM/yyyy") : "Data Final Processo"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={dataFim}
-                onSelect={(d) => { setDataFim(d); setPagina(1); }}
-                locale={ptBR}
-                disabled={(date) => dataInicio ? date < dataInicio : false}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
-
-          {(dataInicio || dataFim) && (
-            <Button variant="ghost" size="sm" className="h-10 text-xs gap-1 text-muted-foreground" onClick={() => { setDataInicio(undefined); setDataFim(undefined); setPagina(1); }}>
-              <X className="w-3 h-3" /> Limpar datas
-            </Button>
           )}
-
-          <Select value={modalidadeFiltro} onValueChange={v => { setModalidadeFiltro(v); setPagina(1); }}>
-            <SelectTrigger className="w-[180px] h-10 text-xs">
-              <Gavel className="w-3 h-3 mr-1 text-muted-foreground" /><SelectValue placeholder="Modalidade" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas modalidades</SelectItem>
-              {MODALIDADES.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
         </div>
 
+        {/* Active filter badges */}
         {(searchSubmitted || uasgSubmitted) && (
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap mt-3">
             {searchSubmitted && (
               <Badge variant="outline" className="gap-1 text-xs">
                 Pesquisa: "{searchSubmitted}"
