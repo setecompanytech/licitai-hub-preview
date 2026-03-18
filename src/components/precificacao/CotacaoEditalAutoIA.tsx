@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import { supabase } from '@/integrations/supabase/client';
+import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 
@@ -73,28 +74,37 @@ export default function CotacaoEditalAutoIA() {
     setItens([]);
 
     try {
-      const text = await file.text();
-      const truncated = text.slice(0, 20000);
+      const text = await extractTextFromFile(file);
+      if (!text || text.trim().length < 50) {
+        toast.error('Não foi possível extrair texto do documento. Verifique se o arquivo não está protegido.');
+        setIsExtracting(false);
+        return;
+      }
+      const truncated = text.slice(0, 25000);
       let content = '';
 
       await streamAIChat({
         messages: [{
           role: 'user',
-          content: `Analise o edital/termo de referência abaixo e extraia TODOS os itens para cotação de preços.
+        content: `Você é um extrator de dados de editais de licitação. Analise o texto REAL do documento abaixo e extraia TODOS os itens para cotação.
 
-Retorne APENAS um JSON array, sem markdown, sem explicações:
+IMPORTANTE: Extraia SOMENTE os itens que REALMENTE existem no texto. NÃO invente, NÃO suponha, NÃO adivinhe itens.
+Se o edital pede "Papel A4", retorne "Papel A4". Se pede "Toner HP 83A", retorne "Toner HP 83A".
+NÃO substitua por produtos diferentes do que está escrito no documento.
+
+Retorne APENAS um JSON array válido, sem markdown, sem explicações:
 [
-  {"item": "1", "descricao": "descrição completa do produto/serviço", "quantidade": 10, "unidade": "UN"},
+  {"item": "1", "descricao": "descrição EXATA conforme o documento", "quantidade": 10, "unidade": "UN"},
   {"item": "2", "descricao": "...", "quantidade": 5, "unidade": "CX"}
 ]
 
 REGRAS:
-- Extraia TODOS os itens/lotes listados no documento
-- A descrição deve ser detalhada o suficiente para buscar o produto exato no mercado (incluir marca, modelo, especificações quando disponíveis)
-- Quantidade e unidade devem ser exatos conforme o edital
-- Se não encontrar itens, retorne []
+- Copie a descrição FIELMENTE do documento, incluindo especificações técnicas, marcas e modelos mencionados
+- Quantidade e unidade devem ser EXATOS conforme o edital
+- Se não encontrar itens estruturados, retorne []
+- NUNCA invente itens que não estão no documento
 
-DOCUMENTO:
+TEXTO DO DOCUMENTO:
 ${truncated}`
         }],
         action: 'analise_edital',

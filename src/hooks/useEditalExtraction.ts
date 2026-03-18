@@ -157,23 +157,22 @@ export function useEditalExtraction() {
       streamAIChat({
         messages: [{
           role: 'user',
-          content: `Analise o Edital ou Termo de Referência abaixo e extraia TODOS os itens/lotes com os valores de referência.
+          content: `Você é um extrator de dados de editais de licitação. Analise o texto REAL abaixo e extraia TODOS os itens/lotes com valores de referência.
+
+REGRA FUNDAMENTAL: Extraia SOMENTE os itens que REALMENTE existem no texto. NÃO invente, NÃO suponha, NÃO adivinhe.
 
 Retorne APENAS um JSON array, sem markdown, sem explicações:
 [
-  {"item": "1", "descricao": "descrição completa", "quantidade": 10, "unidade": "UN", "valor_unitario": 150.00, "valor_total": 1500.00, "lote": "Lote 1", "marca": "", "fabricante": "", "modelo": ""}
+  {"item": "1", "descricao": "descrição FIEL ao documento", "quantidade": 10, "unidade": "UN", "valor_unitario": 150.00, "valor_total": 1500.00, "lote": "Lote 1", "marca": "", "fabricante": "", "modelo": ""}
 ]
 
 REGRAS:
-- Extraia TODOS os itens/lotes do Termo de Referência ou Edital
+- Copie descrições FIELMENTE do documento
 - "item" = número sequencial conforme edital
-- "descricao" completa com especificações técnicas
-- "quantidade" e "unidade" exatamente como no edital
-- "valor_unitario" = valor unitário de referência (R$)
-- "valor_total" = valor_unitario × quantidade
+- "quantidade" e "unidade" EXATOS conforme o edital
+- "valor_unitario" e "valor_total" EXATOS se mencionados, senão use 0
 - "lote" conforme edital; se não houver lotes, use "Único"
-- "marca", "fabricante", "modelo" se mencionados, senão ""
-- Se valores não explícitos, use 0
+- NÃO substitua por produtos diferentes do que está escrito
 - Retorne [] se não encontrar itens
 
 DOCUMENTO:

@@ -5,6 +5,7 @@ import { Upload, FileText, Loader2, X, CheckCircle, Sparkles, AlertCircle, Downl
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import { useEditalExtraction } from '@/hooks/useEditalExtraction';
+import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 
 interface EditalUploaderProps {
   onExtracted: (data: ExtractedEditalData) => void;
@@ -82,50 +83,59 @@ export default function EditalUploader({ onExtracted, isExtracting, setIsExtract
     setProgress('Lendo documento...');
     let content = '';
 
-    const text = await editalFile.text();
-    const truncated = text.slice(0, 15000);
+    const text = await extractTextFromFile(editalFile);
+    if (!text || text.trim().length < 50) {
+      toast.error('Não foi possível extrair texto do documento. Verifique se o arquivo não está protegido ou corrompido.');
+      setIsExtracting(false);
+      setProgress('');
+      return;
+    }
+    const truncated = text.slice(0, 20000);
 
     setProgress('Analisando edital com IA...');
 
     await streamAIChat({
       messages: [{
         role: 'user',
-        content: `Analise minuciosamente o texto do edital de licitação abaixo e extraia TODOS os dados disponíveis no formato JSON:
+        content: `Você é um extrator de dados de editais de licitação pública. Analise o texto REAL do documento abaixo e extraia os dados estruturados.
 
+REGRA FUNDAMENTAL: Extraia SOMENTE informações que REALMENTE existem no texto. NÃO invente dados. NÃO suponha valores. Se uma informação não está no documento, use string vazia "".
+
+Retorne APENAS JSON válido, sem explicações:
 {
-  "numeroLicitacao": "número completo do pregão/licitação (ex: PE 001/2026)",
-  "orgao": "órgão gerenciador / licitante (nome completo)",
-  "modalidade": "modalidade (Pregão Eletrônico, Concorrência, Dispensa, etc)",
-  "objeto": "descrição completa do objeto da licitação",
-  "valorEstimado": "valor estimado/referência se disponível (apenas número formatado)",
-  "prazoValidade": "prazo de validade da proposta (ex: 60 dias corridos)",
-  "prazoPagamento": "condições/prazo de pagamento após recebimento (ex: Até 30 dias após recebimento definitivo e apresentação da Nota Fiscal)",
-  "prazoEntrega": "prazo de entrega dos bens/serviços (ex: Até 15 dias úteis após emissão da Ordem de Fornecimento)",
-  "localEntrega": "local e endereço de entrega dos bens/serviços",
-  "liquidacaoNfe": "condições de liquidação e nota fiscal",
+  "numeroLicitacao": "número completo do pregão/licitação conforme o documento",
+  "orgao": "nome EXATO do órgão licitante conforme o documento",
+  "modalidade": "modalidade EXATA (Pregão Eletrônico, Concorrência, Dispensa, etc)",
+  "objeto": "descrição EXATA do objeto conforme escrito no edital",
+  "valorEstimado": "valor estimado EXATO se mencionado no documento",
+  "prazoValidade": "prazo de validade da proposta conforme o edital",
+  "prazoPagamento": "condições/prazo de pagamento EXATOS conforme o edital",
+  "prazoEntrega": "prazo de entrega EXATO conforme o edital",
+  "localEntrega": "local de entrega EXATO conforme o edital",
+  "liquidacaoNfe": "condições de liquidação e NF conforme o edital",
   "itens": [
     {
       "item": "1",
-      "descricao": "descrição completa do item/produto/serviço",
-      "quantidade": "quantidade solicitada",
-      "unidade": "unidade de medida (UN, CX, PCT, KG, etc)",
-      "marca": "marca se especificada ou vazio",
+      "descricao": "descrição FIEL ao documento, incluindo especificações técnicas",
+      "quantidade": "quantidade EXATA conforme o edital",
+      "unidade": "unidade de medida EXATA (UN, CX, PCT, KG, etc)",
+      "marca": "marca se especificada no edital ou vazio",
       "fabricante": "fabricante se especificado ou vazio",
       "modelo": "modelo se especificado ou vazio",
-      "valorUnitario": "valor unitário de referência se disponível",
-      "valorTotal": "valor total se disponível"
+      "valorUnitario": "valor unitário de referência se mencionado",
+      "valorTotal": "valor total se mencionado"
     }
   ]
 }
 
-REGRAS IMPORTANTES:
-- Extraia TODOS os itens da planilha/tabela de preços do edital
-- Para cada item, preencha descrição completa incluindo especificações técnicas
-- Se houver marca/fabricante/modelo de referência, inclua
+REGRAS CRÍTICAS:
+- Copie descrições FIELMENTE do documento. Se o edital diz "Papel A4 75g/m²", retorne exatamente isso
+- NÃO substitua por produtos diferentes do que está escrito
+- NÃO invente valores de referência que não existem no documento
 - Se não encontrar um campo, use string vazia ""
-- Retorne APENAS o JSON válido, sem explicações ou comentários
+- Retorne APENAS JSON válido
 
-TEXTO DO EDITAL:
+TEXTO DO DOCUMENTO:
 ${truncated}`
       }],
       action: 'analise_edital',
