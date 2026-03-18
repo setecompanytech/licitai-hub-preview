@@ -14,13 +14,56 @@ import {
   Search, MapPin, Building2, CalendarDays, RefreshCw, Globe, Loader2,
   ExternalLink, DollarSign, FileText, ChevronLeft, ChevronRight, Eye,
   X, AlertTriangle, CheckCircle2, Clock, Gavel, Star, StarOff, Download,
-  FileDown, Link2
+  FileDown, Link2, Package, Scale, ShieldCheck, Info, ListOrdered
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import MarcarInteresseDialog from '@/components/compromissos/MarcarInteresseDialog';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
+
+type DetalhePNCP = {
+  success: boolean;
+  objeto: string;
+  orgao: string;
+  cnpj_orgao: string;
+  unidade_orgao: string;
+  modalidade: string;
+  modo_disputa: string | null;
+  criterio_julgamento: string | null;
+  tipo_contratacao: string | null;
+  tipo_instrumento_convocatorio: string | null;
+  srp: boolean;
+  informacao_complementar: string | null;
+  processo_administrativo: string | null;
+  situacao: string;
+  valor_total_estimado: number | null;
+  valor_total_homologado: number | null;
+  data_publicacao_pncp: string | null;
+  data_abertura_proposta: string | null;
+  data_encerramento_proposta: string | null;
+  uf: string;
+  municipio: string;
+  link_sistema_origem: string | null;
+  numero_compra: string;
+  numero_controle_pncp: string;
+  itens: Array<{
+    numero: number;
+    descricao: string;
+    quantidade: number;
+    unidade_medida: string;
+    valor_unitario_estimado: number;
+    valor_total: number;
+    criterio_julgamento_item: string | null;
+    situacao: string;
+    tipo_beneficio: string | null;
+    fornecedor_nome: string | null;
+    marca: string | null;
+  }>;
+  total_itens: number;
+  url_pncp: string;
+  consultado_em: string;
+};
 
 type LicitacaoMural = {
   id: string;
