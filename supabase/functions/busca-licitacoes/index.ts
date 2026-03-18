@@ -48,8 +48,10 @@ function mapPncpItem(item: any, uf: string | null) {
     valor_estimado: item.valorTotalEstimado || item.valorTotalHomologado || null,
     uf: item.unidadeOrgao?.ufSigla || uf || null,
     municipio: item.unidadeOrgao?.municipioNome || null,
+    // data_abertura = dataAberturaProposta = FIM de recebimento de propostas (deadline)
     data_abertura: item.dataAberturaProposta || null,
     data_encerramento: item.dataEncerramentoProposta || null,
+    // data_publicacao = dataPublicacaoPncp = INÍCIO de recebimento de propostas (publicação)
     data_publicacao: item.dataPublicacaoPncp || null,
     portal: "PNCP",
     url: item.linkSistemaOrigem || urlPncp,
@@ -109,6 +111,7 @@ serve(async (req) => {
 
     try {
       const now = new Date();
+      // dataInicio/dataFim filtram por data de PUBLICAÇÃO no PNCP (= início de recebimento de propostas)
       const dataInicialDate = dataInicio ? new Date(dataInicio) : new Date(now.getTime() - 90 * 86400000);
       const dataFinalDate = dataFim ? new Date(dataFim) : new Date(now.getTime() + 90 * 86400000);
       const cleanCnpj = cnpjOrgao ? cnpjOrgao.replace(/[.\-\/\s]/g, "") : null;

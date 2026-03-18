@@ -321,7 +321,7 @@ export default function MuralLicitacoes() {
       valor_estimado: lic.valor_estimado,
       uf: lic.uf,
       municipio: lic.municipio,
-      data_encerramento: lic.data_abertura,
+      data_encerramento: lic.data_abertura, // data_abertura = fim de recebimento de propostas (dataAberturaProposta do PNCP)
       portal: lic.portal,
       url: lic.url || undefined,
     });
@@ -592,9 +592,11 @@ export default function MuralLicitacoes() {
               {d?.valor_total_homologado && d.valor_total_homologado > 0 && (
                 <InfoField icon={<DollarSign className="w-4 h-4" />} label="Valor Total Homologado" value={formatCurrency(d.valor_total_homologado)} highlight />
               )}
-              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Início de Recebimento de Propostas" value={formatDate(d?.data_abertura_proposta || lic.data_abertura)} />
-              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Fim de Recebimento de Propostas" value={formatDate(d?.data_encerramento_proposta || lic.data_encerramento)} />
-              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Publicação no PNCP" value={formatDate(d?.data_publicacao_pncp || lic.data_publicacao)} />
+              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Início de Recebimento de Propostas" value={formatDate(d?.data_publicacao_pncp || lic.data_publicacao)} />
+              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Fim de Recebimento de Propostas" value={formatDate(d?.data_abertura_proposta || lic.data_abertura)} />
+              {d?.data_encerramento_proposta && (
+                <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Encerramento da Sessão" value={formatDate(d.data_encerramento_proposta)} />
+              )}
               <InfoField icon={<Globe className="w-4 h-4" />} label="Portal" value={lic.portal} />
               {(d?.numero_controle_pncp || lic.pncpNumero) && (
                 <InfoField icon={<FileText className="w-4 h-4" />} label="Nº Controle PNCP" value={d?.numero_controle_pncp || lic.pncpNumero!} />
@@ -1097,14 +1099,16 @@ export default function MuralLicitacoes() {
                   </div>
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                     <Clock className="w-3 h-3" />
+                    <span title="Fim de recebimento de propostas">
                     {(() => {
-                      const ds = lic.data_encerramento || lic.data_abertura;
+                      const ds = lic.data_abertura || lic.data_encerramento;
                       if (!ds) return 'N/I';
                       let norm = ds;
                       if (/^\d{4}-\d{2}-\d{2}$/.test(ds)) norm = ds + 'T12:00:00-03:00';
                       else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(ds) && !ds.includes('+') && !ds.includes('Z') && !/\-\d{2}:\d{2}$/.test(ds)) norm = ds + '-03:00';
                       return new Date(norm).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
                     })()}
+                    </span>
                   </div>
                 </div>
 
