@@ -13,6 +13,13 @@ serve(async (req) => {
   }
 
   try {
+    await requireAuth(req, { functionName: "consulta-ncm", maxRequests: 20, windowMinutes: 5 });
+  } catch (authResp) {
+    if (authResp instanceof Response) return authResp;
+    throw authResp;
+  }
+
+  try {
     const { ncm, descricao, uf, regime } = await req.json();
 
     if (!ncm && !descricao) {

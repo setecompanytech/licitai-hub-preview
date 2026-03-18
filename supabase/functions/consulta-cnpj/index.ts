@@ -70,6 +70,13 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // Auth + rate limit: 20 requests per 5 minutes
+    try {
+      await requireAuth(req, { functionName: "consulta-cnpj", maxRequests: 20, windowMinutes: 5 });
+    } catch (authResp) {
+      if (authResp instanceof Response) return authResp;
+      throw authResp;
+    }
     const { cnpj } = await req.json();
     if (!cnpj || cnpj.replace(/\D/g, "").length !== 14) {
       return new Response(JSON.stringify({ error: "CNPJ inválido" }), {

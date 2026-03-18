@@ -36,6 +36,12 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    try {
+      await requireAuth(req, { functionName: "busca-licitacoes", maxRequests: 30, windowMinutes: 5 });
+    } catch (authResp) {
+      if (authResp instanceof Response) return authResp;
+      throw authResp;
+    }
     const body = await req.json();
     const { query, uf, modalidade, pagina, portal, dataInicio, dataFim, mural } = body;
 

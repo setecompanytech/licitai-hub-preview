@@ -10,6 +10,13 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    await requireAuth(req, { functionName: "consulta-painel-precos", maxRequests: 20, windowMinutes: 5 });
+  } catch (authResp) {
+    if (authResp instanceof Response) return authResp;
+    throw authResp;
+  }
+
+  try {
     const { termo, pagina = 1 } = await req.json();
     if (!termo) {
       return new Response(JSON.stringify({ error: "Termo de busca é obrigatório" }), {
