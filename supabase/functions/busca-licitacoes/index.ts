@@ -289,6 +289,7 @@ serve(async (req) => {
           if (mural && allItems.length >= 50) break;
         }
       }
+      } // end else (no cnpjOrgao)
     } catch (e) {
       console.log("PNCP API error:", e);
     }
