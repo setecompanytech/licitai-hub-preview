@@ -48,6 +48,9 @@ type DetalhePNCP = {
   link_sistema_origem: string | null;
   numero_compra: string;
   numero_controle_pncp: string;
+  amparo_legal: string | null;
+  fonte_orcamentaria: string | null;
+  fonte_sistema: string | null;
   itens: Array<{
     numero: number;
     descricao: string;
