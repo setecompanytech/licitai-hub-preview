@@ -256,6 +256,7 @@ export default function MuralLicitacoes() {
         uf: item.uf,
         municipio: item.municipio,
         data_abertura: item.data_abertura,
+        data_encerramento: item.data_encerramento || null,
         data_publicacao: item.data_publicacao,
         portal: item.portal || 'PNCP',
         url: item.url,
