@@ -111,6 +111,7 @@ serve(async (req) => {
 
     try {
       const now = new Date();
+      // dataInicio/dataFim filtram por data de PUBLICAÇÃO no PNCP (= início de recebimento de propostas)
       const dataInicialDate = dataInicio ? new Date(dataInicio) : new Date(now.getTime() - 90 * 86400000);
       const dataFinalDate = dataFim ? new Date(dataFim) : new Date(now.getTime() + 90 * 86400000);
       const cleanCnpj = cnpjOrgao ? cnpjOrgao.replace(/[.\-\/\s]/g, "") : null;
