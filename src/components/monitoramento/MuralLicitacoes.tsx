@@ -78,6 +78,7 @@ type LicitacaoMural = {
   uf: string | null;
   municipio: string | null;
   data_abertura: string | null;
+  data_encerramento: string | null;
   data_publicacao: string | null;
   portal: string;
   url: string | null;
