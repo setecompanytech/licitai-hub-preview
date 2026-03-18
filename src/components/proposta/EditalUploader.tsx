@@ -5,6 +5,7 @@ import { Upload, FileText, Loader2, X, CheckCircle, Sparkles, AlertCircle, Downl
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import { useEditalExtraction } from '@/hooks/useEditalExtraction';
+import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 
 interface EditalUploaderProps {
   onExtracted: (data: ExtractedEditalData) => void;
