@@ -238,7 +238,7 @@ export default function MuralLicitacoes() {
     } finally {
       setLoading(false);
     }
-  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim]);
+  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted]);
 
   useEffect(() => {
     if (user) carregarMural();
