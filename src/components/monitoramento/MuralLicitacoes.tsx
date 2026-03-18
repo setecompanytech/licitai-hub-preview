@@ -78,6 +78,7 @@ type LicitacaoMural = {
   uf: string | null;
   municipio: string | null;
   data_abertura: string | null;
+  data_encerramento: string | null;
   data_publicacao: string | null;
   portal: string;
   url: string | null;
@@ -255,6 +256,7 @@ export default function MuralLicitacoes() {
         uf: item.uf,
         municipio: item.municipio,
         data_abertura: item.data_abertura,
+        data_encerramento: item.data_encerramento || null,
         data_publicacao: item.data_publicacao,
         portal: item.portal || 'PNCP',
         url: item.url,
@@ -477,9 +479,15 @@ export default function MuralLicitacoes() {
     const formatDate = (dateStr: string | null) => {
       if (!dateStr) return 'Não informada';
       try {
-        // PNCP returns dates in Brasília time (UTC-3) without timezone indicator.
-        // Append offset so JS Date doesn't treat it as UTC and shift hours/day.
         let normalized = dateStr;
+        // Date-only string (e.g. "2026-03-16") — treat as Brasília local date, show without time
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          // Append T12:00 to avoid midnight UTC→previous day issue, then show date only
+          const d = new Date(dateStr + 'T12:00:00-03:00');
+          if (isNaN(d.getTime())) return dateStr;
+          return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
+        }
+        // PNCP returns datetimes in Brasília time without timezone indicator.
         if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dateStr) && !dateStr.includes('+') && !dateStr.includes('Z') && !/\-\d{2}:\d{2}$/.test(dateStr)) {
           normalized = dateStr + '-03:00'; // Brasília UTC-3
         }
@@ -584,8 +592,8 @@ export default function MuralLicitacoes() {
               {d?.valor_total_homologado && d.valor_total_homologado > 0 && (
                 <InfoField icon={<DollarSign className="w-4 h-4" />} label="Valor Total Homologado" value={formatCurrency(d.valor_total_homologado)} highlight />
               )}
-              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Abertura de Propostas" value={formatDate(d?.data_abertura_proposta || lic.data_abertura)} />
-              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Encerramento de Propostas" value={formatDate(d?.data_encerramento_proposta || null)} />
+              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Início de Recebimento de Propostas" value={formatDate(d?.data_abertura_proposta || lic.data_abertura)} />
+              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Fim de Recebimento de Propostas" value={formatDate(d?.data_encerramento_proposta || lic.data_encerramento)} />
               <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Publicação no PNCP" value={formatDate(d?.data_publicacao_pncp || lic.data_publicacao)} />
               <InfoField icon={<Globe className="w-4 h-4" />} label="Portal" value={lic.portal} />
               {(d?.numero_controle_pncp || lic.pncpNumero) && (
@@ -915,7 +923,7 @@ export default function MuralLicitacoes() {
                 </div>
                 <div className="flex gap-2 items-end">
                   <div className="flex-1">
-                    <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Data Inicial Processo</label>
+                    <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Data de início de recebimento de propostas</label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("w-full h-10 justify-start text-left text-xs font-normal", !dataInicio && "text-muted-foreground")}>
@@ -929,7 +937,7 @@ export default function MuralLicitacoes() {
                     </Popover>
                   </div>
                   <div className="flex-1">
-                    <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Data Final Processo</label>
+                    <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Data fim de recebimento de propostas</label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("w-full h-10 justify-start text-left text-xs font-normal", !dataFim && "text-muted-foreground")}>
@@ -1089,7 +1097,14 @@ export default function MuralLicitacoes() {
                   </div>
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                     <Clock className="w-3 h-3" />
-                    {lic.data_abertura ? new Date(lic.data_abertura).toLocaleDateString('pt-BR') : 'N/I'}
+                    {(() => {
+                      const ds = lic.data_encerramento || lic.data_abertura;
+                      if (!ds) return 'N/I';
+                      let norm = ds;
+                      if (/^\d{4}-\d{2}-\d{2}$/.test(ds)) norm = ds + 'T12:00:00-03:00';
+                      else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(ds) && !ds.includes('+') && !ds.includes('Z') && !/\-\d{2}:\d{2}$/.test(ds)) norm = ds + '-03:00';
+                      return new Date(norm).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
+                    })()}
                   </div>
                 </div>
 
