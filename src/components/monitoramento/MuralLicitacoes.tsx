@@ -321,7 +321,7 @@ export default function MuralLicitacoes() {
       valor_estimado: lic.valor_estimado,
       uf: lic.uf,
       municipio: lic.municipio,
-      data_encerramento: lic.data_abertura,
+      data_encerramento: lic.data_abertura, // data_abertura = fim de recebimento de propostas (dataAberturaProposta do PNCP)
       portal: lic.portal,
       url: lic.url || undefined,
     });
