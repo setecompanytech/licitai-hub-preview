@@ -295,7 +295,7 @@ export default function MuralLicitacoes() {
     } finally {
       setLoading(false);
     }
-  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted]);
+  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, esferaFiltro, tipoInstrumentoFiltro, municipioFiltro, unidadeFiltro, orgaoFiltro]);
 
   useEffect(() => {
     if (user) carregarMural();
