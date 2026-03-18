@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Upload, FileText, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 
 type ExtractedData = {
   numero_contrato?: string;
@@ -37,6 +38,24 @@ interface ImportarContratoPDFProps {
   onExtracted: (data: ExtractedData) => void;
 }
 
+const ACCEPTED_MIME_TYPES = [
+  'application/pdf',
+  'text/plain',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+];
+
+function isAcceptedDocument(file: File) {
+  const name = file.name.toLowerCase();
+  return (
+    ACCEPTED_MIME_TYPES.includes(file.type) ||
+    name.endsWith('.pdf') ||
+    name.endsWith('.txt') ||
+    name.endsWith('.doc') ||
+    name.endsWith('.docx')
+  );
+}
+
 export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDFProps) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'upload' | 'extracting' | 'done' | 'error'>('upload');
@@ -54,31 +73,12 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
     setErrorMsg('');
   };
 
-  const extractTextFromPDF = async (file: File): Promise<string> => {
-    const pdfjsLib = await import('pdfjs-dist');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const pages: string[] = [];
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      const text = content.items.map((item: any) => item.str).join(' ');
-      pages.push(text);
-      setProgress(Math.round((i / pdf.numPages) * 50));
-    }
-
-    return pages.join('\n\n');
-  };
-
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.type !== 'application/pdf') {
-      toast.error('Selecione um arquivo PDF');
+    if (!isAcceptedDocument(file)) {
+      toast.error('Selecione um arquivo PDF, DOC, DOCX ou TXT');
       return;
     }
 
@@ -89,21 +89,23 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
 
     setFileName(file.name);
     setStep('extracting');
-    setProgress(5);
+    setProgress(10);
 
     try {
-      // Step 1: Extract text from PDF
-      const texto = await extractTextFromPDF(file);
+      const texto = await extractTextFromFile(file, 80);
       setProgress(55);
 
-      if (texto.trim().length < 50) {
-        throw new Error('Não foi possível extrair texto do PDF. Verifique se o arquivo não é uma imagem escaneada.');
+      if (!texto || texto.trim().length < 80) {
+        throw new Error('Não foi possível extrair texto legível do documento. Verifique se o arquivo está protegido, corrompido ou contém apenas imagens.');
       }
 
-      // Step 2: Send to AI for structured extraction
-      setProgress(60);
+      setProgress(65);
       const { data, error } = await supabase.functions.invoke('extrair-contrato-pdf', {
-        body: { texto_pdf: texto },
+        body: {
+          texto_pdf: texto,
+          nome_arquivo: file.name,
+          tipo_arquivo: file.type || file.name.split('.').pop() || 'desconhecido',
+        },
       });
 
       if (error) throw new Error(error.message);
@@ -114,11 +116,10 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
       setStep('done');
     } catch (err: any) {
       console.error('Extraction error:', err);
-      setErrorMsg(err.message || 'Erro ao processar o PDF');
+      setErrorMsg(err.message || 'Erro ao processar o documento');
       setStep('error');
     }
 
-    // Reset file input
     if (fileRef.current) fileRef.current.value = '';
   };
 
@@ -140,13 +141,13 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <Upload className="w-4 h-4 mr-2" /> Importar PDF
+          <Upload className="w-4 h-4 mr-2" /> Importar Contrato
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" /> Importar Contrato via PDF
+            <FileText className="w-5 h-5" /> Importar Contrato por Documento
           </DialogTitle>
         </DialogHeader>
 
@@ -157,14 +158,14 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
               className="flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 cursor-pointer hover:border-primary/50 transition-colors"
             >
               <Upload className="w-10 h-10 text-muted-foreground/50 mb-3" />
-              <p className="text-sm font-medium">Clique ou arraste o PDF do contrato</p>
-              <p className="text-xs text-muted-foreground mt-1">PDF até 20MB</p>
+              <p className="text-sm font-medium">Clique ou arraste o documento do contrato</p>
+              <p className="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX ou TXT até 20MB</p>
             </label>
             <input
               id="pdf-upload"
               ref={fileRef}
               type="file"
-              accept=".pdf"
+              accept=".pdf,.doc,.docx,.txt"
               className="hidden"
               onChange={handleFile}
             />
@@ -178,7 +179,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
               <div className="flex-1">
                 <p className="text-sm font-medium">Processando: {fileName}</p>
                 <p className="text-xs text-muted-foreground">
-                  {progress < 50 ? 'Extraindo texto do PDF...' : 'Analisando contrato com IA...'}
+                  {progress < 60 ? 'Lendo o conteúdo real do documento...' : 'Extraindo dados estruturados do contrato...'}
                 </p>
               </div>
             </div>
@@ -206,12 +207,26 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
               {extracted.valor_global != null && (
                 <div><span className="text-muted-foreground">Valor Global:</span> <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(extracted.valor_global)}</strong></div>
               )}
+              {(extracted.data_assinatura || extracted.data_inicio || extracted.data_fim) && (
+                <div>
+                  <span className="text-muted-foreground">Vigência:</span>{' '}
+                  <strong>{extracted.data_assinatura || '—'}</strong>
+                  <span className="text-muted-foreground"> assinatura</span>
+                  {' · '}
+                  <strong>{extracted.data_inicio || '—'}</strong>
+                  <span className="text-muted-foreground"> início</span>
+                  {' · '}
+                  <strong>{extracted.data_fim || '—'}</strong>
+                  <span className="text-muted-foreground"> fim</span>
+                </div>
+              )}
               {extracted.modalidade && (
                 <div><span className="text-muted-foreground">Modalidade:</span> {extracted.modalidade}</div>
               )}
-              <div className="flex gap-2 pt-1">
+              <div className="flex gap-2 pt-1 flex-wrap">
                 <Badge variant="secondary" className="text-[10px]">{filledFields} campos extraídos</Badge>
                 {totalItens > 0 && <Badge variant="secondary" className="text-[10px]">{totalItens} itens encontrados</Badge>}
+                {extracted.vigencia_meses != null && <Badge variant="secondary" className="text-[10px]">{extracted.vigencia_meses} meses</Badge>}
               </div>
             </div>
 

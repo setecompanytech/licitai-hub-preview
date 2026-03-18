@@ -155,16 +155,38 @@ export default function GestaoContratos() {
   };
 
   const handleImportExtracted = (data: any) => {
+    const itensNormalizados = Array.isArray(data.itens)
+      ? data.itens
+          .map((item: any, index: number) => {
+            const quantidade = Number(item.quantidade);
+            const valorUnitario = Number(item.valor_unitario);
+            const valorTotalInformado = Number(item.valor_total);
+            const valorTotal = Number.isFinite(valorTotalInformado)
+              ? valorTotalInformado
+              : (Number.isFinite(quantidade) && Number.isFinite(valorUnitario) ? quantidade * valorUnitario : 0);
+
+            return {
+              codigo_item: item.codigo_item || String(index + 1),
+              descricao: item.descricao || '',
+              quantidade: Number.isFinite(quantidade) ? quantidade : 0,
+              unidade: item.unidade || 'UN',
+              valor_unitario: Number.isFinite(valorUnitario) ? valorUnitario : 0,
+              valor_total: valorTotal,
+            };
+          })
+          .filter((item: any) => item.descricao.trim().length > 0)
+      : [];
+
     setForm({
       numero_contrato: data.numero_contrato || '',
       objeto: data.objeto || '',
       orgao_contratante: data.orgao_contratante || '',
-      valor_global: data.valor_global?.toString() || '',
+      valor_global: data.valor_global != null ? String(data.valor_global) : '',
       valor_consumido: '0',
       data_assinatura: data.data_assinatura || '',
       data_inicio: data.data_inicio || '',
       data_fim: data.data_fim || '',
-      vigencia_meses: data.vigencia_meses?.toString() || '',
+      vigencia_meses: data.vigencia_meses != null ? String(data.vigencia_meses) : '',
       status: 'vigente',
       modalidade: data.modalidade || '',
       uf: data.uf || '',
@@ -174,12 +196,10 @@ export default function GestaoContratos() {
       fiscal_telefone: data.fiscal_telefone || '',
       observacoes: data.observacoes || '',
     });
-    // Store extracted items to be saved with the contract
-    if (data.itens && Array.isArray(data.itens) && data.itens.length > 0) {
-      setPendingItens(data.itens);
-      toast.info(`${data.itens.length} itens extraídos do contrato serão importados automaticamente ao salvar.`);
-    } else {
-      setPendingItens([]);
+
+    setPendingItens(itensNormalizados);
+    if (itensNormalizados.length > 0) {
+      toast.info(`${itensNormalizados.length} itens extraídos do contrato serão importados automaticamente ao salvar.`);
     }
     setDialogOpen(true);
   };
