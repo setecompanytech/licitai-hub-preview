@@ -107,7 +107,10 @@ serve(async (req) => {
       criterio_julgamento_id: detalhe.criterioJulgamentoId || null,
       tipo_contratacao: detalhe.tipoContratacao || null,
       tipo_instrumento_convocatorio: detalhe.tipoInstrumentoConvocatorioNome || null,
-      srp: detalhe.srp || false, // Sistema de Registro de Preços
+      srp: detalhe.srp || false,
+      amparo_legal: detalhe.amparoLegal?.descricao || detalhe.amparoLegalNome || null,
+      fonte_orcamentaria: detalhe.fonteOrcamentaria || null,
+      fonte_sistema: detalhe.linkSistemaOrigem ? 'Compras.gov.br' : null,
       informacao_complementar: detalhe.informacaoComplementar || null,
       processo_administrativo: detalhe.processo || detalhe.processoAdministrativo || null,
       

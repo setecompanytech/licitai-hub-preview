@@ -48,6 +48,9 @@ type DetalhePNCP = {
   link_sistema_origem: string | null;
   numero_compra: string;
   numero_controle_pncp: string;
+  amparo_legal: string | null;
+  fonte_orcamentaria: string | null;
+  fonte_sistema: string | null;
   itens: Array<{
     numero: number;
     descricao: string;
@@ -549,61 +552,84 @@ export default function MuralLicitacoes() {
               <p className="text-sm mt-1 leading-relaxed">{d?.objeto || lic.objeto}</p>
             </div>
 
-            {/* ── DADOS CRÍTICOS DO PROCESSO (novos, vindos da API detalhada) ── */}
-            {d && (d.modo_disputa || d.criterio_julgamento || d.srp || d.tipo_instrumento_convocatorio) && (
-              <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-3">
-                <h3 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
-                  <Scale className="w-4 h-4" /> Dados do Processo Licitatório
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {d.modo_disputa && (
-                    <InfoField icon={<Scale className="w-4 h-4" />} label="Modo de Disputa" value={d.modo_disputa} highlight />
-                  )}
-                  {d.criterio_julgamento && (
-                    <InfoField icon={<Gavel className="w-4 h-4" />} label="Critério de Julgamento" value={d.criterio_julgamento} highlight />
-                  )}
-                  {d.tipo_instrumento_convocatorio && (
-                    <InfoField icon={<FileText className="w-4 h-4" />} label="Instrumento Convocatório" value={d.tipo_instrumento_convocatorio} />
-                  )}
-                  {d.tipo_contratacao && (
-                    <InfoField icon={<Package className="w-4 h-4" />} label="Tipo de Contratação" value={d.tipo_contratacao} />
-                  )}
-                  <InfoField icon={<ListOrdered className="w-4 h-4" />} label="Registro de Preços (SRP)" value={d.srp ? 'Sim — Sistema de Registro de Preços' : 'Não'} highlight={d.srp} />
-                  {d.processo_administrativo && (
-                    <InfoField icon={<FileText className="w-4 h-4" />} label="Processo Administrativo" value={d.processo_administrativo} />
-                  )}
-                </div>
+            {/* ── Layout espelhando o PNCP ── */}
+            <div className="space-y-2.5 text-sm">
+              {/* Local e Órgão */}
+              <div className="flex flex-wrap gap-x-8 gap-y-1">
+                <div><span className="font-bold">Local:</span> {(d?.municipio || lic.municipio) && (d?.uf || lic.uf) ? `${d?.municipio || lic.municipio}/${d?.uf || lic.uf}` : d?.uf || lic.uf || 'Não informado'}</div>
+                <div><span className="font-bold">Órgão:</span> {d?.orgao || lic.orgao}</div>
               </div>
-            )}
 
-            {/* Grid dados básicos */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <InfoField icon={<FileText className="w-4 h-4" />} label="Número da Compra" value={d?.numero_compra || lic.numero} />
-              <InfoField icon={<Building2 className="w-4 h-4" />} label="Órgão" value={d?.orgao || lic.orgao} />
-              <InfoField icon={<Gavel className="w-4 h-4" />} label="Modalidade" value={d?.modalidade || lic.modalidade} />
-              <InfoField icon={<MapPin className="w-4 h-4" />} label="Localização" value={
-                (d?.municipio || lic.municipio) && (d?.uf || lic.uf)
-                  ? `${d?.municipio || lic.municipio}/${d?.uf || lic.uf}`
-                  : d?.uf || lic.uf || 'Não informada'
-              } />
-              <InfoField icon={<DollarSign className="w-4 h-4" />} label="Valor Total Estimado" value={
-                (d?.valor_total_estimado || lic.valor_estimado) ? formatCurrency(d?.valor_total_estimado || lic.valor_estimado!) : 'Não informado'
-              } highlight={!!(d?.valor_total_estimado || lic.valor_estimado)} />
-              {d?.valor_total_homologado && d.valor_total_homologado > 0 && (
-                <InfoField icon={<DollarSign className="w-4 h-4" />} label="Valor Total Homologado" value={formatCurrency(d.valor_total_homologado)} highlight />
+              {/* Unidade compradora */}
+              {(d?.unidade_orgao) && (
+                <div><span className="font-bold">Unidade compradora:</span> {d.unidade_orgao}</div>
               )}
-              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Publicação no PNCP" value={formatDate(d?.data_publicacao_pncp || lic.data_publicacao)} />
-              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Início de Recebimento de Propostas" value={formatDate(d?.data_abertura_proposta || lic.data_abertura)} />
-              <InfoField icon={<CalendarDays className="w-4 h-4" />} label="Fim de Recebimento de Propostas" value={formatDate(d?.data_encerramento_proposta || lic.data_encerramento)} />
-              <InfoField icon={<Globe className="w-4 h-4" />} label="Portal" value={lic.portal} />
-              {(d?.numero_controle_pncp || lic.pncpNumero) && (
-                <InfoField icon={<FileText className="w-4 h-4" />} label="Nº Controle PNCP" value={d?.numero_controle_pncp || lic.pncpNumero!} />
+
+              {/* Modalidade, Amparo legal, Tipo, Modo de disputa */}
+              <div className="flex flex-wrap gap-x-8 gap-y-1">
+                <div><span className="font-bold">Modalidade da contratação:</span> {d?.modalidade || lic.modalidade}</div>
+                {d?.amparo_legal && (
+                  <div><span className="font-bold">Amparo legal:</span> {d.amparo_legal}</div>
+                )}
+                {d?.tipo_instrumento_convocatorio && (
+                  <div><span className="font-bold">Tipo:</span> {d.tipo_instrumento_convocatorio}</div>
+                )}
+                {d?.modo_disputa && (
+                  <div><span className="font-bold">Modo de disputa:</span> {d.modo_disputa}</div>
+                )}
+              </div>
+
+              {/* Registro de preço e Fonte orçamentária */}
+              <div className="flex flex-wrap gap-x-8 gap-y-1">
+                {d && (
+                  <div><span className="font-bold">Registro de preço:</span> {d.srp ? 'Sim' : 'Não'}</div>
+                )}
+                <div><span className="font-bold">Fonte orçamentária:</span> {d?.fonte_orcamentaria || 'Não informada'}</div>
+              </div>
+
+              {/* Data de divulgação e Situação */}
+              <div className="flex flex-wrap gap-x-8 gap-y-1">
+                <div><span className="font-bold">Data de divulgação no PNCP:</span> {formatDate(d?.data_publicacao_pncp || lic.data_publicacao)}</div>
+                <div><span className="font-bold">Situação:</span> <Badge className={`${statusColor(d?.situacao || lic.status)} text-[10px] px-2`}>{d?.situacao || lic.status}</Badge></div>
+              </div>
+
+              {/* Datas de recebimento de propostas */}
+              <div>
+                <span className="font-bold">Data de início de recebimento de propostas:</span>{' '}
+                {formatDate(d?.data_abertura_proposta || lic.data_abertura)}
+                <span className="text-muted-foreground text-xs ml-1">(horário de Brasília)</span>
+              </div>
+              <div>
+                <span className="font-bold">Data fim de recebimento de propostas:</span>{' '}
+                {formatDate(d?.data_encerramento_proposta || lic.data_encerramento)}
+                <span className="text-muted-foreground text-xs ml-1">(horário de Brasília)</span>
+              </div>
+
+              {/* Id contratação PNCP e Fonte */}
+              <div className="flex flex-wrap gap-x-8 gap-y-1">
+                {(d?.numero_controle_pncp || lic.pncpNumero) && (
+                  <div><span className="font-bold">Id contratação PNCP:</span> {d?.numero_controle_pncp || lic.pncpNumero}</div>
+                )}
+                <div><span className="font-bold">Fonte:</span> {d?.fonte_sistema || d?.link_sistema_origem ? 'Compras.gov.br' : lic.portal}</div>
+              </div>
+
+              {/* Dados adicionais */}
+              {d?.criterio_julgamento && (
+                <div><span className="font-bold">Critério de julgamento:</span> {d.criterio_julgamento}</div>
+              )}
+              {d?.processo_administrativo && (
+                <div><span className="font-bold">Processo administrativo:</span> {d.processo_administrativo}</div>
               )}
               {(d?.cnpj_orgao || lic.cnpjOrgao) && (
-                <InfoField icon={<Building2 className="w-4 h-4" />} label="CNPJ do Órgão" value={(d?.cnpj_orgao || lic.cnpjOrgao!).replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')} />
+                <div><span className="font-bold">CNPJ do Órgão:</span> {(d?.cnpj_orgao || lic.cnpjOrgao!).replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')}</div>
               )}
-              {d?.unidade_orgao && (
-                <InfoField icon={<Building2 className="w-4 h-4" />} label="Unidade Compradora" value={d.unidade_orgao} />
+
+              {/* Valores */}
+              {(d?.valor_total_estimado || lic.valor_estimado) && (
+                <div><span className="font-bold">Valor total estimado:</span> <span className="text-success font-semibold">{formatCurrency(d?.valor_total_estimado || lic.valor_estimado!)}</span></div>
+              )}
+              {d?.valor_total_homologado && d.valor_total_homologado > 0 && (
+                <div><span className="font-bold">Valor total homologado:</span> <span className="text-success font-semibold">{formatCurrency(d.valor_total_homologado)}</span></div>
               )}
             </div>
 
