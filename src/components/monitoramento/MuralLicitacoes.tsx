@@ -84,6 +84,10 @@ type LicitacaoMural = {
   cnpjOrgao: string | null;
   anoCompra: string | null;
   sequencialCompra: string | null;
+  // Campos adicionais para filtros client-side
+  esferaNome: string | null;
+  tipoInstrumentoNome: string | null;
+  unidadeOrgao: string | null;
 };
 
 const UFS_BRASIL = [
@@ -92,12 +96,33 @@ const UFS_BRASIL = [
 ];
 
 const MODALIDADES = [
-  { value: 'pregão eletrônico', label: 'Pregão Eletrônico' },
-  { value: 'concorrência', label: 'Concorrência' },
-  { value: 'concorrência - eletrônica', label: 'Concorrência Eletrônica' },
-  { value: 'dispensa de licitação', label: 'Dispensa de Licitação' },
-  { value: 'inexigibilidade', label: 'Inexigibilidade' },
-  { value: 'credenciamento', label: 'Credenciamento' },
+  { value: 'pregão eletrônico', label: 'Pregão Eletrônico', cod: 6 },
+  { value: 'concorrência', label: 'Concorrência', cod: 4 },
+  { value: 'concorrência - eletrônica', label: 'Concorrência Eletrônica', cod: 5 },
+  { value: 'dispensa de licitação', label: 'Dispensa de Licitação', cod: 7 },
+  { value: 'inexigibilidade', label: 'Inexigibilidade', cod: 8 },
+  { value: 'credenciamento', label: 'Credenciamento', cod: 11 },
+  { value: 'leilão', label: 'Leilão', cod: 1 },
+  { value: 'diálogo competitivo', label: 'Diálogo Competitivo', cod: 2 },
+  { value: 'concurso', label: 'Concurso', cod: 3 },
+  { value: 'manifestação de interesse', label: 'Manifestação de Interesse', cod: 9 },
+  { value: 'pré-qualificação', label: 'Pré-qualificação', cod: 10 },
+  { value: 'leilão - eletrônico', label: 'Leilão Eletrônico', cod: 12 },
+  { value: 'concurso - eletrônico', label: 'Concurso Eletrônico', cod: 13 },
+];
+
+const TIPOS_INSTRUMENTO = [
+  { value: 'edital', label: 'Edital' },
+  { value: 'aviso_contratacao_direta', label: 'Aviso de Contratação Direta' },
+  { value: 'ato_adesao', label: 'Ato que Autoriza Adesão' },
+  { value: 'aviso_dispensa', label: 'Aviso de Dispensa de Licitação' },
+];
+
+const ESFERAS = [
+  { value: 'federal', label: 'Federal' },
+  { value: 'estadual', label: 'Estadual' },
+  { value: 'municipal', label: 'Municipal' },
+  { value: 'distrital', label: 'Distrital' },
 ];
 
 const formatCurrency = (v: number) =>

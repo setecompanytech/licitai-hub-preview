@@ -28,6 +28,17 @@ function mapPncpItem(item: any, uf: string | null) {
   const seq = item.sequencialCompra || "";
   const urlPncp = cnpj && ano && seq
     ? `https://pncp.gov.br/app/editais/${cnpj}/${ano}/${seq}` : "";
+  
+  // Determine esfera from orgaoEntidade
+  const esferaId = item.orgaoEntidade?.esferaId || item.orgaoEntidade?.poderId || null;
+  let esferaNome: string | null = null;
+  if (item.orgaoEntidade?.esferaNome) {
+    esferaNome = item.orgaoEntidade.esferaNome;
+  } else if (esferaId) {
+    const esferaMap: Record<string, string> = { "F": "Federal", "E": "Estadual", "M": "Municipal", "D": "Distrital" };
+    esferaNome = esferaMap[esferaId] || null;
+  }
+
   return {
     numero: item.numeroCompra || item.numeroControlePNCP || "-",
     orgao: item.orgaoEntidade?.razaoSocial || "-",
@@ -46,6 +57,11 @@ function mapPncpItem(item: any, uf: string | null) {
     anoCompra: ano || null,
     sequencialCompra: seq || null,
     isMock: false,
+    // Campos adicionais para filtros
+    esferaNome: esferaNome,
+    tipoInstrumentoNome: item.tipoInstrumentoConvocatorioNome || null,
+    unidadeOrgao: item.unidadeOrgao?.nomeUnidade || null,
+    municipioIbge: item.unidadeOrgao?.codigoIbge || null,
   };
 }
 
