@@ -62,6 +62,7 @@ type DetalhePNCP = {
   }>;
   total_itens: number;
   url_pncp: string;
+  fonte: string;
   consultado_em: string;
 };
 
