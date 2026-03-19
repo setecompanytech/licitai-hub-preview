@@ -180,11 +180,12 @@ serve(async (req) => {
           if (uf) params.set("uf", uf);
           if (query) params.set("q", query.substring(0, 100));
           
-          // For single modalidade search, support pagination across pages
-          if (modalidades.length === 1) {
-            return fetchPncpAllPages(params, `mod=${cod}`, 3);
+          // For single modalidade or UASG search, fetch multiple pages for completeness
+          if (modalidades.length === 1 || isUasg) {
+            const maxPages = isUasg ? 5 : 3;
+            return fetchPncpAllPages(params, `mod=${cod}`, maxPages);
           } else {
-            // For multi-modalidade (mural without filter), fetch page 1 with large page size
+            // For multi-modalidade (mural without filter), fetch page 1
             params.set("pagina", String(pagina || 1));
             return fetchPncp(params, `mod=${cod}`);
           }
