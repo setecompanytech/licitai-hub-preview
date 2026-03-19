@@ -76,6 +76,8 @@ export function useAuditLog() {
       rodada: number | null;
       nivel_automacao: number;
       created_at: string;
+      hash_registro: string | null;
+      hash_anterior: string | null;
     }>;
   }, [user]);
 

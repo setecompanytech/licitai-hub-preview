@@ -37,6 +37,9 @@ import PainelRisco from '@/components/robo-lances/PainelRisco';
 import KillSwitchButton from '@/components/robo-lances/KillSwitchButton';
 import AuditTrailViewer from '@/components/robo-lances/AuditTrailViewer';
 import AutorizacaoLanceDialog from '@/components/robo-lances/AutorizacaoLanceDialog';
+import DisputaRealtimePanel from '@/components/robo-lances/DisputaRealtimePanel';
+import PortalHealthcheck from '@/components/robo-lances/PortalHealthcheck';
+import EstrategiaIAPanel from '@/components/robo-lances/EstrategiaIAPanel';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
@@ -690,6 +693,7 @@ export default function RoboLances() {
         {/* ── PORTAIS TAB ── */}
         <TabsContent value="portais" className="flex-1 m-0 overflow-auto p-6 space-y-6">
           <CredenciaisPortalForm />
+          <PortalHealthcheck />
         </TabsContent>
 
         {/* ── AGENTE EXTERNO TAB ── */}
@@ -701,6 +705,8 @@ export default function RoboLances() {
         {/* ── CONFIGURAÇÕES TAB ── */}
         <TabsContent value="configuracoes" className="flex-1 m-0 overflow-auto p-6 space-y-6">
           <NivelAutomacaoSelector nivel={nivelAutomacao} onChange={handleNivelChange} />
+          <EstrategiaIAPanel lance={selectedLance} />
+          <DisputaRealtimePanel />
 
           <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4 max-w-2xl">
             <h3 className="text-sm font-semibold flex items-center gap-2">

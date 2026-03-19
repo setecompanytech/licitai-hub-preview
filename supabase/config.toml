@@ -50,3 +50,5 @@ project_id = "sbnlovigyifvrkgsoalj"
     verify_jwt = false
   [functions.whatsapp-envio]
     verify_jwt = false
+  [functions.portal-healthcheck]
+    verify_jwt = false
