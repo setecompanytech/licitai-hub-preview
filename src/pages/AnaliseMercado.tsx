@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import TransparenciaPA from '@/components/analise-mercado/TransparenciaPA';
 import ContratosGov from '@/components/analise-mercado/ContratosGov';
+import ContratosTransparencia from '@/components/analise-mercado/ContratosTransparencia';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RPieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
 import { transparenciaPortais, estadosPortais, capitaisPortais, type TransparenciaPortal } from '@/data/transparencia-portais';
 
