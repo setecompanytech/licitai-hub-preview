@@ -198,7 +198,20 @@ serve(async (req) => {
         }
       }
 
-      // ── Deduplicate by CNPJ + ano + sequencial ──
+      // ── UASG post-filter: filter by codigoUnidade when 6-digit UASG is provided ──
+      if (isUasg && allItems.length > 0) {
+        const beforeCount = allItems.length;
+        const uasgFiltered = allItems.filter((item: any) => item.codigoUnidade === cleanCnpj);
+        if (uasgFiltered.length > 0) {
+          allItems.length = 0;
+          allItems.push(...uasgFiltered);
+          console.log(`UASG ${cleanCnpj} filtro: ${beforeCount} → ${allItems.length} resultados`);
+        } else {
+          console.log(`UASG ${cleanCnpj} não encontrado em codigoUnidade, mantendo ${allItems.length} resultados sem filtro UASG`);
+        }
+      }
+
+
       const seen = new Set<string>();
       for (let idx = allItems.length - 1; idx >= 0; idx--) {
         const item = allItems[idx];
