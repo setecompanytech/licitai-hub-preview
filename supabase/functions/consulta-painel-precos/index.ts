@@ -98,18 +98,22 @@ async function searchContratacoes(
   const all: any[] = [];
   const maxPages = 3;
 
+  // Convert YYYY-MM-DD to YYYYMMDD format required by PNCP API
+  const dataInicioFmt = dataInicio.replace(/-/g, "");
+  const dataFimFmt = dataFim.replace(/-/g, "");
+
   for (let page = 1; page <= maxPages; page++) {
     try {
       const params = new URLSearchParams({
         q: termo,
         pagina: String(page),
         tamanhoPagina: "50",
-        dataPublicacaoPncpInicio: dataInicio,
-        dataPublicacaoPncpFim: dataFim,
-        ordenacao: "-dataPublicacaoPncp",
+        dataInicial: dataInicioFmt,
+        dataFinal: dataFimFmt,
       });
 
       const url = `${PNCP_BASE}/consulta/v1/contratacoes/publicacao?${params}`;
+      console.log(`[painel-precos] Fetching page ${page}: ${url}`);
       const resp = await fetch(url, {
         headers: { Accept: "application/json" },
         signal: AbortSignal.timeout(FETCH_TIMEOUT),
