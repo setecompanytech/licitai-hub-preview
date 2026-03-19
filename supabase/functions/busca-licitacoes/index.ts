@@ -138,8 +138,11 @@ serve(async (req) => {
         ? (MODALIDADES_PNCP[modalidade.toLowerCase().trim()] || null)
         : null;
 
-      if (cleanCnpj && cleanCnpj.length >= 6) {
-        // ── Search by CNPJ/UASG ──
+      // Only use CNPJ search path for valid CNPJ (14 digits) or CPF (11 digits)
+      const isCnpjValido = cleanCnpj && (cleanCnpj.length === 14 || cleanCnpj.length === 11);
+      
+      if (isCnpjValido) {
+        // ── Search by CNPJ ──
         const params = new URLSearchParams();
         params.set("dataInicial", formatDatePNCP(dataInicialDate));
         params.set("dataFinal", formatDatePNCP(dataFinalDate));
@@ -151,7 +154,15 @@ serve(async (req) => {
         if (userModalidadeCod) params.set("codigoModalidadeContratacao", String(userModalidadeCod));
         const results = await fetchPncp(params, `CNPJ=${cleanCnpj}`);
         allItems.push(...results.map((i: any) => mapPncpItem(i, uf)));
-      } else {
+        
+        // If CNPJ search returned nothing, fall through to normal search
+        if (allItems.length === 0) {
+          console.log(`CNPJ ${cleanCnpj} retornou 0 resultados, tentando busca normal...`);
+        }
+      }
+      
+      // Normal search: when no CNPJ provided, CNPJ was invalid, or CNPJ returned 0 results
+      if (!isCnpjValido || allItems.length === 0) {
         // ── Determine which modalidades to search ──
         // If user selected a specific modalidade, respect it even in mural mode
         const modalidades = userModalidadeCod
