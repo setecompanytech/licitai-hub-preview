@@ -285,6 +285,7 @@ export default function MuralLicitacoes() {
             dataInicio: dataInicio ? dataInicio.toISOString().split('T')[0] : undefined,
             dataFim: dataFim ? dataFim.toISOString().split('T')[0] : undefined,
             cnpjOrgao: uasgSubmitted || undefined,
+            municipio: municipioFiltro.trim() || undefined,
             pagina,
             mural: true,
           }),
