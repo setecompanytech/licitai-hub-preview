@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
