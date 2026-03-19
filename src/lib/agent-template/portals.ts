@@ -681,6 +681,7 @@ module.exports = { BNCPortal };
   'src/portals/index.js': `/**
  * Registry de portais suportados.
  * O session-manager usa este mapa para instanciar o portal correto.
+ * Cada portal tem seu módulo dedicado com seletores e fluxos específicos.
  */
 const { ComprasGovPortal } = require('./comprasgov');
 const { BLLPortal } = require('./bll');
@@ -690,44 +691,60 @@ const { BECSPPortal } = require('./bec-sp');
 const { LicitanetPortal } = require('./licitanet');
 const { PortalComprasPortal } = require('./portal-compras');
 const { BNCPortal } = require('./bnc');
+// Portais individuais dedicados (sem módulo genérico)
 const { BanparanetPortal } = require('./banparanet');
 const { ComprasBRPortal } = require('./comprasbr');
 const { BBMNetPortal } = require('./bbmnet');
 const { LicitarDigitalPortal } = require('./licitar-digital');
-const { ComprasNetEstadualPortal, PORTAIS_ESTADUAIS } = require('./comprasnet-estadual');
+const { ComprasNetBAPortal } = require('./comprasnet-ba');
+const { ComprasNetGOPortal } = require('./comprasnet-go');
+const { ComprasMGPortal } = require('./compras-mg');
+const { PEIntegradoPortal } = require('./pe-integrado');
+const { ComprasRJPortal } = require('./compras-rj');
+const { ComprasPRPortal } = require('./compras-pr');
+const { ComprasRSPortal } = require('./compras-rs');
+const { ComprasSCPortal } = require('./compras-sc');
+const { EComprasDFPortal } = require('./ecompras-df');
+const { EComprasAMPortal } = require('./ecompras-am');
+const { ComprasCEPortal } = require('./compras-ce');
 
 const PORTALS = {
+  // Federais
   'comprasgov': ComprasGovPortal,
+  'pncp': PNCPPortal,
+
+  // Bolsas Eletrônicas
   'bll': BLLPortal,
   'licitacoes-e': LicitacoesEPortal,
-  'pncp': PNCPPortal,
   'bec-sp': BECSPPortal,
   'licitanet': LicitanetPortal,
   'portal-compras': PortalComprasPortal,
   'bnc': BNCPortal,
-  'banparanet': BanparanetPortal,
   'comprasbr': ComprasBRPortal,
   'bbmnet': BBMNetPortal,
   'licitar-digital': LicitarDigitalPortal,
-};
 
-// Add all state portals dynamically
-Object.keys(PORTAIS_ESTADUAIS).forEach(id => {
-  PORTALS[id] = function(page, credenciais) {
-    return new ComprasNetEstadualPortal(page, credenciais, id);
-  };
-});
+  // Portais estaduais dedicados
+  'banparanet': BanparanetPortal,
+  'comprasnet-ba': ComprasNetBAPortal,
+  'comprasnet-go': ComprasNetGOPortal,
+  'compras-mg': ComprasMGPortal,
+  'compras-pe': PEIntegradoPortal,
+  'compras-rj': ComprasRJPortal,
+  'compras-pr': ComprasPRPortal,
+  'compras-rs': ComprasRSPortal,
+  'compras-sc': ComprasSCPortal,
+  'compras-df': EComprasDFPortal,
+  'e-compras-am': EComprasAMPortal,
+  'portal-compras-ce': ComprasCEPortal,
+};
 
 function getPortal(portalId, page, credenciais) {
   const PortalClass = PORTALS[portalId];
   if (!PortalClass) {
     throw new Error(\\\`Portal "\\\${portalId}" não suportado. Disponíveis: \\\${Object.keys(PORTALS).join(', ')}\\\`);
   }
-  // Check if it's a constructor or a factory function
-  if (PortalClass.prototype && PortalClass.prototype.constructor) {
-    return new PortalClass(page, credenciais);
-  }
-  return PortalClass(page, credenciais);
+  return new PortalClass(page, credenciais);
 }
 
 module.exports = { PORTALS, getPortal };
