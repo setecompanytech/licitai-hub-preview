@@ -135,7 +135,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { query, uf, modalidade, pagina, portal, dataInicio, dataFim, mural, cnpjOrgao } = body;
+    const { query, uf, modalidade, pagina, portal, dataInicio, dataFim, mural, cnpjOrgao, municipio } = body;
     const allItems: any[] = [];
 
     try {
@@ -144,6 +144,7 @@ serve(async (req) => {
       const dataFinalDate = dataFim ? new Date(dataFim) : new Date(now.getTime() + 30 * 86400000);
       const cleanCnpj = cnpjOrgao ? cnpjOrgao.replace(/[.\-\/\s]/g, "") : null;
       const userFilteredByDate = !!(dataInicio || dataFim);
+      const cleanMunicipio = municipio ? municipio.trim().toLowerCase() : null;
 
       // Resolve modalidade code from user input
       const userModalidadeCod = modalidade
@@ -181,7 +182,10 @@ serve(async (req) => {
           ? [userModalidadeCod]
           : (mural ? MURAL_MODALIDADES : [6]);
 
-        console.log(`Buscando modalidades: ${modalidades.join(', ')} | mural=${mural} | userMod=${modalidade || 'none'}`);
+        console.log(`Buscando modalidades: ${modalidades.join(', ')} | mural=${mural} | userMod=${modalidade || 'none'} | municipio=${cleanMunicipio || 'none'}`);
+
+        // Fetch more pages when filtering by municipality or UASG (since API doesn't support server-side municipality filter)
+        const needsDeepFetch = !!(cleanMunicipio || isUasg);
 
         const fetches = modalidades.map((cod) => {
           const params = new URLSearchParams();
@@ -192,9 +196,9 @@ serve(async (req) => {
           if (uf) params.set("uf", uf);
           if (query) params.set("q", query.substring(0, 100));
           
-          // For single modalidade or UASG search, fetch multiple pages for completeness
-          if (modalidades.length === 1 || isUasg) {
-            const maxPages = isUasg ? 5 : 3;
+          // For municipality, UASG, or single modalidade: fetch multiple pages for completeness
+          if (modalidades.length === 1 || needsDeepFetch) {
+            const maxPages = needsDeepFetch ? 5 : 3;
             return fetchPncpAllPages(params, `mod=${cod}`, maxPages);
           } else {
             // For multi-modalidade (mural without filter), fetch page 1
@@ -224,6 +228,18 @@ serve(async (req) => {
         }
       }
 
+
+      // ── Municipality post-filter: filter by municipioNome when municipality is provided ──
+      if (cleanMunicipio && allItems.length > 0) {
+        const beforeCount = allItems.length;
+        const munFiltered = allItems.filter((item: any) => {
+          const mun = (item.municipio || "").toLowerCase();
+          return mun.includes(cleanMunicipio);
+        });
+        allItems.length = 0;
+        allItems.push(...munFiltered);
+        console.log(`Município "${cleanMunicipio}" filtro: ${beforeCount} → ${allItems.length} resultados`);
+      }
 
       const seen = new Set<string>();
       for (let idx = allItems.length - 1; idx >= 0; idx--) {

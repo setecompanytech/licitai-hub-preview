@@ -285,6 +285,7 @@ export default function MuralLicitacoes() {
             dataInicio: dataInicio ? dataInicio.toISOString().split('T')[0] : undefined,
             dataFim: dataFim ? dataFim.toISOString().split('T')[0] : undefined,
             cnpjOrgao: uasgSubmitted || undefined,
+            municipio: municipioFiltro.trim() || undefined,
             pagina,
             mural: true,
           }),
@@ -325,7 +326,7 @@ export default function MuralLicitacoes() {
     } finally {
       setLoading(false);
     }
-  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted]);
+  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro]);
 
   // Busca em portais externos via Firecrawl (busca-editais-ia)
   const carregarExternos = useCallback(async () => {
@@ -402,10 +403,7 @@ export default function MuralLicitacoes() {
       const tipoLabel = TIPOS_INSTRUMENTO.find(t => t.value === tipoInstrumentoFiltro)?.label || '';
       items = items.filter(i => i.tipoInstrumentoNome?.toLowerCase().includes(tipoLabel.toLowerCase()));
     }
-    if (municipioFiltro.trim()) {
-      const term = municipioFiltro.trim().toLowerCase();
-      items = items.filter(i => i.municipio?.toLowerCase().includes(term));
-    }
+    // municipio filter is now server-side (sent to edge function)
     if (unidadeFiltro.trim()) {
       const term = unidadeFiltro.trim().toLowerCase();
       items = items.filter(i => i.unidadeOrgao?.toLowerCase().includes(term));
@@ -428,7 +426,7 @@ export default function MuralLicitacoes() {
     }
 
     return items;
-  }, [licitacoesRaw, licitacoesExternas, esferaFiltro, tipoInstrumentoFiltro, municipioFiltro, unidadeFiltro, orgaoFiltro, segmentosPrioritarios]);
+  }, [licitacoesRaw, licitacoesExternas, esferaFiltro, tipoInstrumentoFiltro, unidadeFiltro, orgaoFiltro, segmentosPrioritarios]);
 
   // Sincronizar licitacoes e totalResultados com os dados filtrados
   useEffect(() => {
