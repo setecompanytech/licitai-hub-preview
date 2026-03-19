@@ -30,16 +30,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 import PainelPrecosGov from '@/components/precificacao/PainelPrecosGov';
-import CotacaoFornecedorUpload from '@/components/precificacao/CotacaoFornecedorUpload';
-import ComparativoDashboard from '@/components/precificacao/ComparativoDashboard';
 import CotacaoEditalAutoIA from '@/components/precificacao/CotacaoEditalAutoIA';
 import CalculadoraUnificada from '@/components/precificacao/CalculadoraUnificada';
 import CatalogoPrecificados from '@/components/precificacao/CatalogoPrecificados';
 import FontesManager from '@/components/precificacao/FontesManager';
-import ListasCompras from '@/components/precificacao/ListasCompras';
-import CotacoesManager from '@/components/precificacao/CotacoesManager';
-import ImportacoesManager from '@/components/precificacao/ImportacoesManager';
-import InteligenciaPrecos from '@/components/precificacao/InteligenciaPrecos';
+import CotacoesUnificado from '@/components/precificacao/CotacoesUnificado';
+import InteligenciaUnificada from '@/components/precificacao/InteligenciaUnificada';
 
 type FontePreco = {
   fonte: string;
@@ -659,31 +655,16 @@ Responda APENAS em JSON, sem markdown:
               <ShoppingCart className="w-3.5 h-3.5" /> Pesquisa de Preços
             </TabsTrigger>
             <TabsTrigger value="govbr" className="gap-1.5">
-              <Building2 className="w-3.5 h-3.5" /> Painel de Preços Gov.br
+              <Building2 className="w-3.5 h-3.5" /> Painel Gov.br
             </TabsTrigger>
-            <TabsTrigger value="fornecedores" className="gap-1.5">
-              <Upload className="w-3.5 h-3.5" /> Cotações de Fornecedores
-            </TabsTrigger>
-            <TabsTrigger value="comparativo" className="gap-1.5">
-              <BarChart3 className="w-3.5 h-3.5" /> Comparativo
+            <TabsTrigger value="cotacoes-listas" className="gap-1.5">
+              <FileText className="w-3.5 h-3.5" /> Cotações & Listas
             </TabsTrigger>
             <TabsTrigger value="calculadora" className="gap-1.5">
               <Calculator className="w-3.5 h-3.5" /> Calculadoras
             </TabsTrigger>
             <TabsTrigger value="catalogo" className="gap-1.5">
               <Package className="w-3.5 h-3.5" /> Catálogo
-            </TabsTrigger>
-            <TabsTrigger value="fontes" className="gap-1.5">
-              <Globe className="w-3.5 h-3.5" /> Fontes
-            </TabsTrigger>
-            <TabsTrigger value="listas" className="gap-1.5">
-              <ShoppingCart className="w-3.5 h-3.5" /> Listas
-            </TabsTrigger>
-            <TabsTrigger value="cotacoes" className="gap-1.5">
-              <FileText className="w-3.5 h-3.5" /> Cotações
-            </TabsTrigger>
-            <TabsTrigger value="importacoes" className="gap-1.5">
-              <Upload className="w-3.5 h-3.5" /> Importações
             </TabsTrigger>
             <TabsTrigger value="inteligencia" className="gap-1.5">
               <Bot className="w-3.5 h-3.5" /> Inteligência de Preços
@@ -1268,6 +1249,17 @@ Responda APENAS em JSON, sem markdown:
             </div>
           ))}
         </div>
+
+          {/* Fontes de Pesquisa - integrado na aba de Pesquisa */}
+          <details className="mt-6">
+            <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2">
+              <Globe className="w-4 h-4" />
+              Ver todas as fontes de pesquisa ({'>'}80 fontes cadastradas)
+            </summary>
+            <div className="mt-3">
+              <FontesManager />
+            </div>
+          </details>
           </TabsContent>
 
           <TabsContent value="govbr">
@@ -1279,55 +1271,15 @@ Responda APENAS em JSON, sem markdown:
 
 
 
-          <TabsContent value="fornecedores">
+          <TabsContent value="cotacoes-listas">
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <CotacaoFornecedorUpload />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="comparativo">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <ComparativoDashboard />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="calculadora">
-            <CalculadoraUnificada />
-          </TabsContent>
-
-          <TabsContent value="catalogo">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <CatalogoPrecificados />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="fontes">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <FontesManager />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="listas">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <ListasCompras />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="cotacoes">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <CotacoesManager />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="importacoes">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <ImportacoesManager />
+              <CotacoesUnificado />
             </div>
           </TabsContent>
 
           <TabsContent value="inteligencia">
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <InteligenciaPrecos />
+              <InteligenciaUnificada />
             </div>
           </TabsContent>
         </Tabs>
