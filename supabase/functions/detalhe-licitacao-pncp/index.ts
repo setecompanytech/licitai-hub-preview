@@ -11,6 +11,9 @@ const FETCH_HEADERS = {
   Accept: "application/json",
 };
 
+const PNCP_ITEMS_PAGE_SIZE = 100;
+const PNCP_ITEMS_MAX_PAGES = 10;
+
 async function fetchJsonWithTimeout(url: string, timeoutMs = 8000) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -31,6 +34,59 @@ async function fetchJsonWithTimeout(url: string, timeoutMs = 8000) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function extractItensArray(payload: unknown): Record<string, unknown>[] {
+  if (Array.isArray(payload)) {
+    return payload.filter((item): item is Record<string, unknown> => !!item && typeof item === "object");
+  }
+
+  if (payload && typeof payload === "object") {
+    const data = payload as Record<string, unknown>;
+
+    if (Array.isArray(data.data)) {
+      return data.data.filter((item): item is Record<string, unknown> => !!item && typeof item === "object");
+    }
+
+    if (Array.isArray(data.itens)) {
+      return data.itens.filter((item): item is Record<string, unknown> => !!item && typeof item === "object");
+    }
+  }
+
+  return [];
+}
+
+async function fetchPncpItens(cnpj: string, ano: string, seq: string) {
+  const baseUrl = `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${ano}/${seq}/itens`;
+
+  try {
+    const collected: Record<string, unknown>[] = [];
+    const seen = new Set<string>();
+
+    for (let page = 1; page <= PNCP_ITEMS_MAX_PAGES; page += 1) {
+      const pageUrl = `${baseUrl}?pagina=${page}&tamanhoPagina=${PNCP_ITEMS_PAGE_SIZE}`;
+      const pageItems = extractItensArray(await fetchJsonWithTimeout(pageUrl, 8000));
+
+      if (pageItems.length === 0) break;
+
+      for (const item of pageItems) {
+        const dedupKey = String(item.numeroItem ?? item.id ?? `${page}-${collected.length}`);
+        if (seen.has(dedupKey)) continue;
+        seen.add(dedupKey);
+        collected.push(item);
+      }
+
+      if (pageItems.length < PNCP_ITEMS_PAGE_SIZE) break;
+    }
+
+    if (collected.length > 0) {
+      return collected;
+    }
+  } catch (error) {
+    console.warn("Falha ao paginar itens do PNCP, usando fallback simples:", error);
+  }
+
+  return extractItensArray(await fetchJsonWithTimeout(baseUrl, 5000));
 }
 
 function formatFonteOrcamentaria(fontes: unknown): string | null {
@@ -114,11 +170,10 @@ serve(async (req) => {
     console.log(`Buscando detalhes PNCP: ${cnpj}/${ano}/${seq}`);
 
     const detalheUrl = `https://pncp.gov.br/api/consulta/v1/orgaos/${cnpj}/compras/${ano}/${seq}`;
-    const itensUrl = `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${ano}/${seq}/itens`;
 
     const [detalheResult, itensResult] = await Promise.allSettled([
       fetchJsonWithTimeout(detalheUrl, 15000),
-      fetchJsonWithTimeout(itensUrl, 5000),
+      fetchPncpItens(cnpj, ano, seq),
     ]);
 
     if (detalheResult.status !== "fulfilled") {
@@ -134,10 +189,9 @@ serve(async (req) => {
 
     const detalhe = detalheResult.value as Record<string, unknown>;
 
-    let itens: any[] = [];
+    let itens: Record<string, unknown>[] = [];
     if (itensResult.status === "fulfilled") {
-      const itensData = itensResult.value;
-      itens = Array.isArray(itensData) ? itensData : (itensData?.data || itensData?.itens || []);
+      itens = itensResult.value;
     } else {
       console.warn("Itens PNCP indisponíveis para esta contratação:", itensResult.reason);
     }
