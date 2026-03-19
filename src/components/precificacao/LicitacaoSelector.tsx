@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileText, Search, Loader2, Download, Trash2, CheckCircle, Brain } from 'lucide-react';
 import { toast } from 'sonner';
+import { extractTextFromBlob } from '@/lib/pdf-text-extractor';
 
 type LicitacaoResumo = {
   id: string;
@@ -18,6 +19,17 @@ type LicitacaoResumo = {
   modalidade: string | null;
   valor_estimado: number | null;
   url_edital?: string | null;
+};
+
+type DownloadEditalResponse = {
+  success?: boolean;
+  error?: string;
+  tipo?: 'arquivo_direto' | 'download_urls';
+  arquivo?: {
+    nome?: string;
+    conteudo_base64?: string;
+    content_type?: string;
+  };
 };
 
 export type LicitacaoItemAutoFill = {
@@ -37,6 +49,17 @@ interface LicitacaoSelectorProps {
   onItensLoaded?: (itens: LicitacaoItemAutoFill[]) => void;
 }
 
+function base64ToBlob(base64: string, contentType = 'application/pdf'): Blob {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+
+  return new Blob([new Uint8Array(byteNumbers)], { type: contentType });
+}
+
 export default function LicitacaoSelector({
   licitacaoNumero,
   setLicitacaoNumero,
@@ -45,7 +68,7 @@ export default function LicitacaoSelector({
   onItensLoaded,
 }: LicitacaoSelectorProps) {
   const { user } = useAuth();
-  const { extrairItensIA } = useEditalExtraction();
+  const { extrairItensIA, deleteAllItens } = useEditalExtraction();
   const [licitacoes, setLicitacoes] = useState<LicitacaoResumo[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingItens, setLoadingItens] = useState(false);
@@ -54,10 +77,8 @@ export default function LicitacaoSelector({
   const [itensCount, setItensCount] = useState<number>(0);
   const [filterNumero, setFilterNumero] = useState('');
   const [filterOrgao, setFilterOrgao] = useState('');
-
   const [favoritosKeys, setFavoritosKeys] = useState<Set<string>>(new Set());
 
-  // Load licitações vinculadas ao fluxo (monitoramento/favoritos/gestão)
   const fetchLicitacoes = useCallback(async () => {
     if (!user) return;
     setLoading(true);
@@ -107,14 +128,12 @@ export default function LicitacaoSelector({
     return aFav ? -1 : 1;
   });
 
-  // Show results when órgão is selected (número is optional refinement)
   const numeroFiltro = filterNumero.trim();
   const orgaoFiltro = filterOrgao.trim();
   const hasActiveFilter = orgaoFiltro.length > 0;
 
-  // Filter licitacoes by órgão (required) + número (optional)
   const filtered = hasActiveFilter
-    ? licitacoesMarcadas.filter(l => {
+    ? licitacoesMarcadas.filter((l) => {
         const matchOrgao = l.orgao?.toLowerCase().includes(orgaoFiltro.toLowerCase());
         if (!matchOrgao) return false;
         if (numeroFiltro.length > 0) {
@@ -124,11 +143,10 @@ export default function LicitacaoSelector({
       })
     : [];
 
-  // Unique orgaos for filter
-  const orgaosUnicos = [...new Set(licitacoesMarcadas.map(l => l.orgao).filter(Boolean))].sort();
+  const orgaosUnicos = [...new Set(licitacoesMarcadas.map((l) => l.orgao).filter(Boolean))].sort();
 
   const mapItensToAutofill = (itensData: any[]): LicitacaoItemAutoFill[] => {
-    return (itensData || []).map(i => ({
+    return (itensData || []).map((i) => ({
       descricao: i.descricao || '',
       quantidade: i.quantidade || 1,
       unidade: i.unidade || 'UN',
@@ -138,102 +156,96 @@ export default function LicitacaoSelector({
     }));
   };
 
-  const extractTextFromBlob = async (blob: Blob): Promise<string> => {
-    const contentType = blob.type?.toLowerCase() || '';
+  const tryDownloadOfficialEdital = useCallback(async (lic: LicitacaoResumo): Promise<string> => {
+    if (!lic.url_edital) return '';
 
-    if (contentType.includes('pdf')) {
-      try {
-        const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-        const buffer = await blob.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-        const maxPages = Math.min(pdf.numPages, 30);
-        const pages: string[] = [];
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) return '';
 
-        for (let p = 1; p <= maxPages; p++) {
-          const page = await pdf.getPage(p);
-          const content = await page.getTextContent();
-          const text = content.items
-            .map((item: any) => (typeof item?.str === 'string' ? item.str : ''))
-            .join(' ')
-            .trim();
-          if (text) pages.push(text);
-        }
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-edital`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          numero: lic.numero,
+          url: lic.url_edital,
+          orgao: lic.orgao,
+          objeto: lic.objeto,
+        }),
+      });
 
-        return pages.join('\n').slice(0, 50000);
-      } catch {
+      const data = (await response.json()) as DownloadEditalResponse;
+      if (!response.ok || !data?.success || data.tipo !== 'arquivo_direto' || !data.arquivo?.conteudo_base64) {
         return '';
       }
+
+      const fileBlob = base64ToBlob(data.arquivo.conteudo_base64, data.arquivo.content_type || 'application/pdf');
+      return extractTextFromBlob(fileBlob, data.arquivo.nome || 'edital.pdf');
+    } catch (error) {
+      console.error('Erro ao baixar edital oficial para extração:', error);
+      return '';
     }
+  }, []);
 
-    return (await blob.text()).slice(0, 50000);
-  };
-
-  // Select licitacao and load items
   const handleSelect = async (licitacaoId: string) => {
     if (!user) return;
 
-    const lic = licitacoesMarcadas.find(l => l.id === licitacaoId);
+    const lic = licitacoesMarcadas.find((item) => item.id === licitacaoId);
     if (!lic) return;
 
     setSelectedId(licitacaoId);
     setLicitacaoNumero(lic.numero || '');
     setLicitacaoOrgao(lic.orgao || '');
-
-    // 1) Load linked source documents first so we can validate existing IA items
     setLoadingItens(true);
-    const { data: docs, error: docsError } = await supabase
-      .from('documentos')
-      .select('id, arquivo_path, nome, tipo, created_at')
-      .eq('licitacao_id', licitacaoId)
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(10);
 
-    if (docsError) {
-      console.error('Erro ao buscar documentos da licitação:', docsError);
-    }
-
-    const hasLinkedDocument = Boolean(docs?.some((doc) => doc.arquivo_path));
-
-    // 2) Reuse existing structured items only when they have a trustworthy source
-    const { data: itensData, error } = await supabase
-      .from('licitacao_itens')
-      .select('descricao, quantidade, unidade, valor_unitario, valor_total, lote, origem')
-      .eq('licitacao_id', licitacaoId)
-      .eq('user_id', user.id)
-      .order('numero', { ascending: true });
+    const [docsResp, itensResp] = await Promise.all([
+      supabase
+        .from('documentos')
+        .select('id, arquivo_path, nome, tipo, created_at')
+        .eq('licitacao_id', licitacaoId)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10),
+      supabase
+        .from('licitacao_itens')
+        .select('descricao, quantidade, unidade, valor_unitario, valor_total, lote, origem')
+        .eq('licitacao_id', licitacaoId)
+        .eq('user_id', user.id)
+        .order('numero', { ascending: true }),
+    ]);
 
     setLoadingItens(false);
 
-    if (error) {
-      console.error('Erro ao buscar itens:', error);
+    if (docsResp.error) {
+      console.error('Erro ao buscar documentos da licitação:', docsResp.error);
+    }
+
+    if (itensResp.error) {
+      console.error('Erro ao buscar itens:', itensResp.error);
       toast.error('Erro ao buscar itens da licitação.');
       return;
     }
 
-    const rawExistingItens = (itensData as any[]) || [];
+    const docs = docsResp.data || [];
+    const hasLinkedDocument = docs.some((doc) => doc.arquivo_path);
+    const rawExistingItens = (itensResp.data as any[]) || [];
     const existingItens = mapItensToAutofill(rawExistingItens);
     const existingAreOnlyAi = rawExistingItens.length > 0 && rawExistingItens.every((item) => item.origem === 'ia');
+    const shouldPurgeStaleAiItems = existingItens.length > 0 && existingAreOnlyAi && !hasLinkedDocument;
 
-    if (existingItens.length > 0) {
-      if (!hasLinkedDocument && existingAreOnlyAi) {
-        setItensCount(0);
-        onItensLoaded?.([]);
-        toast.warning('Itens automáticos antigos foram ignorados porque esta licitação não possui edital vinculado no sistema.');
-      } else {
-        setItensCount(existingItens.length);
-        if (onItensLoaded) onItensLoaded(existingItens);
-        toast.success(`${existingItens.length} item(ns) carregados automaticamente da licitação!`);
-        return;
-      }
-    }
-
-    // 3) If empty, extract only from a real edital stored in the system
-    if (!hasLinkedDocument) {
+    if (shouldPurgeStaleAiItems) {
+      await deleteAllItens(licitacaoId);
       setItensCount(0);
       onItensLoaded?.([]);
-      toast.error('Não há edital/termo de referência vinculado a esta licitação. Para evitar itens incorretos, o preenchimento automático foi bloqueado.');
+      toast.warning('Itens automáticos antigos foram removidos porque não havia um edital confiável vinculado.');
+    } else if (existingItens.length > 0) {
+      setItensCount(existingItens.length);
+      onItensLoaded?.(existingItens);
+      toast.success(`${existingItens.length} item(ns) carregados automaticamente da licitação!`);
       return;
     }
 
@@ -243,45 +255,48 @@ export default function LicitacaoSelector({
     try {
       let editalText = '';
 
-      if (docs?.length) {
-        for (const doc of docs) {
-          if (!doc.arquivo_path) continue;
-          try {
-            const { data: fileData } = await supabase.storage.from('documentos').download(doc.arquivo_path);
-            if (!fileData) continue;
+      for (const doc of docs) {
+        if (!doc.arquivo_path) continue;
 
-            const extractedText = await extractTextFromBlob(fileData);
-            if (extractedText.length > 500) {
-              editalText = extractedText;
-              break;
-            }
-          } catch {
-            // tenta próximo documento
+        try {
+          const { data: fileData } = await supabase.storage.from('documentos').download(doc.arquivo_path);
+          if (!fileData) continue;
+
+          const extractedText = await extractTextFromBlob(fileData, doc.nome || doc.arquivo_path);
+          if (extractedText.length >= 500) {
+            editalText = extractedText;
+            break;
           }
+        } catch (error) {
+          console.error('Erro ao ler documento vinculado:', error);
         }
+      }
+
+      if (!editalText.trim()) {
+        editalText = await tryDownloadOfficialEdital(lic);
       }
 
       if (!editalText || editalText.trim().length < 500) {
         setItensCount(0);
         onItensLoaded?.([]);
-        toast.error('Não foi possível localizar texto legível suficiente do edital vinculado para uma extração fiel.');
+        toast.error('Não foi possível obter texto legível do edital real; os itens antigos não serão mais reaproveitados.');
         return;
       }
 
       const extracted = await extrairItensIA(licitacaoId, editalText, { forceReExtract: true });
 
       if (extracted.length > 0) {
-        const mappedItens: LicitacaoItemAutoFill[] = extracted.map(i => ({
-          descricao: i.descricao || '',
-          quantidade: i.quantidade || 1,
-          unidade: i.unidade || 'UN',
-          valorUnitario: i.valor_unitario || 0,
-          valorTotal: i.valor_total || 0,
-          lote: i.lote || 'Único',
+        const mappedItens: LicitacaoItemAutoFill[] = extracted.map((item) => ({
+          descricao: item.descricao || '',
+          quantidade: item.quantidade || 1,
+          unidade: item.unidade || 'UN',
+          valorUnitario: item.valor_unitario || 0,
+          valorTotal: item.valor_total || 0,
+          lote: item.lote || 'Único',
         }));
 
         setItensCount(mappedItens.length);
-        if (onItensLoaded) onItensLoaded(mappedItens);
+        onItensLoaded?.(mappedItens);
       } else {
         setItensCount(0);
         onItensLoaded?.([]);
@@ -302,6 +317,7 @@ export default function LicitacaoSelector({
     setLicitacaoNumero('');
     setLicitacaoOrgao('');
     setItensCount(0);
+    onItensLoaded?.([]);
   };
 
   return (
