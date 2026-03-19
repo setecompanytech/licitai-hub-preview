@@ -149,7 +149,8 @@ export function useEditalExtraction() {
       await deleteAllItens(licitacaoId);
     }
 
-    const truncated = fileText.slice(0, 25000);
+    // Use up to 80K chars to capture large item lists (110+ items)
+    const truncated = fileText.slice(0, 80000);
 
     return new Promise((resolve) => {
       let content = '';
@@ -159,7 +160,7 @@ export function useEditalExtraction() {
           role: 'user',
           content: `Você é um extrator de dados de editais de licitação. Analise o texto REAL abaixo e extraia TODOS os itens/lotes com valores de referência.
 
-REGRA FUNDAMENTAL: Extraia SOMENTE os itens que REALMENTE existem no texto. NÃO invente, NÃO suponha, NÃO adivinhe.
+REGRA FUNDAMENTAL: Extraia SOMENTE os itens que REALMENTE existem no texto. NÃO invente, NÃO suponha, NÃO adivinhe. Extraia TODOS os itens — não pare antes de chegar ao último.
 
 Retorne APENAS um JSON array, sem markdown, sem explicações:
 [
@@ -167,12 +168,14 @@ Retorne APENAS um JSON array, sem markdown, sem explicações:
 ]
 
 REGRAS:
-- Copie descrições FIELMENTE do documento
-- "item" = número sequencial conforme edital
+- Copie descrições FIELMENTE do documento, na MESMA ORDEM em que aparecem
+- "item" = número do item EXATO conforme edital (não reordene alfabeticamente)
 - "quantidade" e "unidade" EXATOS conforme o edital
 - "valor_unitario" e "valor_total" EXATOS se mencionados, senão use 0
 - "lote" conforme edital; se não houver lotes, use "Único"
 - NÃO substitua por produtos diferentes do que está escrito
+- NÃO reordene os itens — mantenha a sequência original do documento
+- NÃO pare a extração no meio — extraia do primeiro ao último item
 - Retorne [] se não encontrar itens
 
 DOCUMENTO:
