@@ -693,6 +693,7 @@ export default function RoboLances() {
         {/* ── PORTAIS TAB ── */}
         <TabsContent value="portais" className="flex-1 m-0 overflow-auto p-6 space-y-6">
           <CredenciaisPortalForm />
+          <PortalHealthcheck />
         </TabsContent>
 
         {/* ── AGENTE EXTERNO TAB ── */}
