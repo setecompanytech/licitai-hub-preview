@@ -1262,7 +1262,9 @@ export default function MuralLicitacoes() {
                     >
                       {isFav ? <Star className="w-3.5 h-3.5 fill-current" /> : <StarOff className="w-3.5 h-3.5" />}
                     </button>
-                    <Badge variant="outline" className="text-[9px]">{lic.portal}</Badge>
+                    <Badge variant="outline" className={cn('text-[9px]', lic.id.startsWith('ext-') ? 'bg-accent/10 text-accent border-accent/30' : '')}>
+                      {lic.id.startsWith('ext-') ? '🌐 Externo' : lic.portal}
+                    </Badge>
                   </div>
                 </div>
 
