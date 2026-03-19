@@ -1196,11 +1196,21 @@ export default function MuralLicitacoes() {
       {/* Stats */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {loading ? 'Consultando PNCP...' : `${totalResultados} licitações encontradas`}
+          {loading && loadingExternos ? 'Consultando PNCP + portais externos...' :
+           loading ? 'Consultando PNCP...' :
+           loadingExternos ? `${licitacoesRaw.length} do PNCP • Buscando portais externos...` :
+           `${totalResultados} licitações encontradas${licitacoesExternas.length > 0 ? ` (${licitacoesRaw.length} PNCP + ${licitacoesExternas.length} externos)` : ''}`}
         </p>
-        <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/30 gap-1">
-          <Globe className="w-3 h-3" /> Fonte: PNCP (dados oficiais)
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/30 gap-1">
+            <Globe className="w-3 h-3" /> PNCP Oficial
+          </Badge>
+          {incluirExternos && licitacoesExternas.length > 0 && (
+            <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent border-accent/30 gap-1">
+              <Sparkles className="w-3 h-3" /> Portais Externos
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Error */}
