@@ -159,7 +159,10 @@ serve(async (req) => {
         if (allItems.length === 0) {
           console.log(`CNPJ ${cleanCnpj} retornou 0 resultados, tentando busca normal...`);
         }
-      } else {
+      }
+      
+      // Normal search: when no CNPJ provided, CNPJ was invalid, or CNPJ returned 0 results
+      if (!isCnpjValido || allItems.length === 0) {
         // ── Determine which modalidades to search ──
         // If user selected a specific modalidade, respect it even in mural mode
         const modalidades = userModalidadeCod
