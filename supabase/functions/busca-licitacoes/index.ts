@@ -112,12 +112,13 @@ serve(async (req) => {
 
     try {
       const now = new Date();
-      // dataInicio/dataFim = filtro por data de publicação no PNCP
-      // Início recebimento de propostas ≈ data de publicação (sistema abre para propostas)
-      // Fim recebimento = dataAberturaProposta (prazo limite para envio)
-      const dataInicialDate = dataInicio ? new Date(dataInicio) : new Date(now.getTime() - 90 * 86400000);
-      const dataFinalDate = dataFim ? new Date(dataFim) : new Date(now.getTime() + 90 * 86400000);
+      // Default: últimos 30 dias até +30 dias (janela reduzida para evitar resultados obsoletos)
+      const dataInicialDate = dataInicio ? new Date(dataInicio) : new Date(now.getTime() - 30 * 86400000);
+      const dataFinalDate = dataFim ? new Date(dataFim) : new Date(now.getTime() + 30 * 86400000);
       const cleanCnpj = cnpjOrgao ? cnpjOrgao.replace(/[.\-\/\s]/g, "") : null;
+
+      // Determine se o usuário forneceu filtros de data explícitos
+      const userFilteredByDate = !!(dataInicio || dataFim);
 
       if (cleanCnpj && cleanCnpj.length >= 6) {
         // ── Search by CNPJ/UASG ──
@@ -158,6 +159,59 @@ serve(async (req) => {
           if (result.status === "fulfilled") {
             allItems.push(...result.value.map((i: any) => mapPncpItem(i, uf)));
             if (mural && allItems.length >= 50) break;
+          }
+        }
+      }
+
+      // ── Pós-processamento: filtrar por datas de propostas quando usuário definiu filtros ──
+      if (userFilteredByDate) {
+        const inicioMs = dataInicio ? new Date(dataInicio).getTime() : 0;
+        const fimMs = dataFim ? new Date(dataFim + "T23:59:59").getTime() : Infinity;
+
+        // Remove itens fora da janela de propostas do usuário
+        for (let idx = allItems.length - 1; idx >= 0; idx--) {
+          const item = allItems[idx];
+          // Usar data_abertura (início recebimento) e data_encerramento (fim recebimento)
+          const aberturaStr = item.data_abertura || item.data_publicacao;
+          const encerramentoStr = item.data_encerramento;
+          
+          let dentroJanela = true;
+
+          if (dataInicio && aberturaStr) {
+            const aberturaDate = new Date(aberturaStr).getTime();
+            // A data de abertura não deve ser anterior ao filtro de início
+            if (aberturaDate < inicioMs - 7 * 86400000) dentroJanela = false;
+          }
+
+          if (dataFim && encerramentoStr) {
+            const encerramentoDate = new Date(encerramentoStr).getTime();
+            // O encerramento não pode ser posterior ao filtro + margem
+            if (encerramentoDate > fimMs + 7 * 86400000) dentroJanela = false;
+          }
+
+          // Se não tem data de encerramento e a publicação é muito antiga, remover
+          if (!encerramentoStr && aberturaStr) {
+            const aberturaDate = new Date(aberturaStr).getTime();
+            const agora = now.getTime();
+            // Se publicou há mais de 60 dias e não tem encerramento, provavelmente obsoleto
+            if (agora - aberturaDate > 60 * 86400000) dentroJanela = false;
+          }
+
+          if (!dentroJanela) {
+            allItems.splice(idx, 1);
+          }
+        }
+        console.log(`Pós-filtro temporal: ${allItems.length} resultados dentro da janela`);
+      }
+
+      // ── Filtro padrão: remover licitações com encerramento > 60 dias atrás ──
+      const limiteObsoleto = now.getTime() - 60 * 86400000;
+      for (let idx = allItems.length - 1; idx >= 0; idx--) {
+        const enc = allItems[idx].data_encerramento;
+        if (enc) {
+          const encDate = new Date(enc).getTime();
+          if (encDate < limiteObsoleto) {
+            allItems.splice(idx, 1);
           }
         }
       }
