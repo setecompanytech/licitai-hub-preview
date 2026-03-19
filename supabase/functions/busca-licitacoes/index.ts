@@ -84,7 +84,18 @@ async function fetchPncp(params: URLSearchParams, label: string): Promise<any[]>
       console.log(`PNCP ${label} error ${response.status}: ${t.substring(0, 300)}`);
       return [];
     }
-    const data = await response.json();
+    const text = await response.text();
+    if (!text || text.trim().length === 0) {
+      console.log(`PNCP ${label}: empty response body`);
+      return [];
+    }
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (parseErr) {
+      console.log(`PNCP ${label}: JSON parse error, body length=${text.length}, preview=${text.substring(0, 200)}`);
+      return [];
+    }
     console.log(`PNCP ${label}: ${(data.data || []).length} resultados de ${data.totalRegistros || '?'} total`);
     return data.data || [];
   } catch (e) {
