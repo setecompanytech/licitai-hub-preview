@@ -212,9 +212,8 @@ export default function MuralLicitacoes() {
         setSegmentosPrioritarios(segs);
         if (priorizar) {
           const ufSede = data.uf_sede;
-          const munSede = data.municipio_sede;
           if (ufSede && ufFiltro === 'all') setUfFiltro(ufSede);
-          if (munSede && !municipioFiltro) setMunicipioFiltro(munSede);
+          // Município da sede NÃO é auto-aplicado como filtro para não restringir demais os resultados
         }
       }
       setConfigCarregada(true);
