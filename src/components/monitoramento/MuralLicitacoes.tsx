@@ -9,13 +9,14 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import {
   Search, MapPin, Building2, CalendarDays, RefreshCw, Globe, Loader2,
   ExternalLink, DollarSign, FileText, ChevronLeft, ChevronRight, Eye,
   X, AlertTriangle, CheckCircle2, Clock, Gavel, Star, StarOff, Download,
   FileDown, Link2, Package, Scale, ShieldCheck, Info, ListOrdered,
-  SlidersHorizontal, ChevronDown, ChevronUp, Landmark
+  SlidersHorizontal, ChevronDown, ChevronUp, Landmark, Sparkles
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
