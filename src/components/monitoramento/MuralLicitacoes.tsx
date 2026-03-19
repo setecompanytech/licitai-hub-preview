@@ -403,10 +403,7 @@ export default function MuralLicitacoes() {
       const tipoLabel = TIPOS_INSTRUMENTO.find(t => t.value === tipoInstrumentoFiltro)?.label || '';
       items = items.filter(i => i.tipoInstrumentoNome?.toLowerCase().includes(tipoLabel.toLowerCase()));
     }
-    if (municipioFiltro.trim()) {
-      const term = municipioFiltro.trim().toLowerCase();
-      items = items.filter(i => i.municipio?.toLowerCase().includes(term));
-    }
+    // municipio filter is now server-side (sent to edge function)
     if (unidadeFiltro.trim()) {
       const term = unidadeFiltro.trim().toLowerCase();
       items = items.filter(i => i.unidadeOrgao?.toLowerCase().includes(term));
