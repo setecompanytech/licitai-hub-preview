@@ -180,6 +180,15 @@ export default function MuralLicitacoes() {
   const [unidadeFiltro, setUnidadeFiltro] = useState('');
   const [orgaoFiltro, setOrgaoFiltro] = useState('');
 
+  const municipiosUfSelecionada = useMemo(() => {
+    if (!ufFiltro || ufFiltro === 'all') return [];
+    for (const regiao of Object.values(REGIOES_ESTADOS)) {
+      const estado = regiao.estados.find(e => e.uf === ufFiltro);
+      if (estado) return estado.cidades.sort((a, b) => a.localeCompare(b));
+    }
+    return [];
+  }, [ufFiltro]);
+
   // Ficha detail
   const [fichaAberta, setFichaAberta] = useState<LicitacaoMural | null>(null);
   const [interesseDialog, setInteresseDialog] = useState(false);
