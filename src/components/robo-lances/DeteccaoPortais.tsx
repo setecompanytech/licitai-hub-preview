@@ -125,34 +125,47 @@ export default function DeteccaoPortais() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        {portais.map((p) => (
-          <div
-            key={p.id}
-            className={`flex items-center gap-2 rounded-lg border p-2.5 text-xs ${
-              p.temCredencial
-                ? 'border-success/30 bg-success/5'
-                : 'border-border/50 bg-muted/30'
-            }`}
-          >
-            {p.temCredencial ? (
-              <CheckCircle2 className="w-3.5 h-3.5 text-success shrink-0" />
-            ) : (
-              <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            )}
-            <div className="min-w-0">
-              <p className="font-medium truncate">{p.nome}</p>
-              <p className="text-[10px] text-muted-foreground">
-                {p.temCredencial
-                  ? p.temCertificado
-                    ? 'Login + Cert.'
-                    : 'Apenas login'
-                  : 'Sem credencial'}
-              </p>
+      {['federal', 'privado', 'estadual'].map(cat => {
+        const portalsCat = portais.filter(p => {
+          const config = PORTAIS_CONHECIDOS.find(pk => pk.id === p.id);
+          return config?.categoria === cat;
+        });
+        if (portalsCat.length === 0) return null;
+        const catLabel = cat === 'federal' ? '🏛️ Federais' : cat === 'privado' ? '🏢 Bolsas Eletrônicas' : '🗺️ Estaduais';
+        return (
+          <div key={cat} className="space-y-2">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{catLabel}</p>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              {portalsCat.map((p) => (
+                <div
+                  key={p.id}
+                  className={`flex items-center gap-2 rounded-lg border p-2.5 text-xs ${
+                    p.temCredencial
+                      ? 'border-success/30 bg-success/5'
+                      : 'border-border/50 bg-muted/30'
+                  }`}
+                >
+                  {p.temCredencial ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-success shrink-0" />
+                  ) : (
+                    <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{p.nome}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {p.temCredencial
+                        ? p.temCertificado
+                          ? 'Login + Cert.'
+                          : 'Apenas login'
+                        : 'Sem credencial'}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
-      </div>
+        );
+      })}
 
       {comCredencial === 0 && (
         <p className="text-xs text-muted-foreground text-center">
