@@ -332,6 +332,18 @@ export default function MuralLicitacoes() {
         items = items.filter(i => i.orgao?.toLowerCase().includes(term));
       }
 
+      // Priorizar por segmentos prioritários (mover matches para o topo)
+      if (segmentosPrioritarios.length > 0) {
+        const termsLower = segmentosPrioritarios.map(s => s.toLowerCase());
+        items.sort((a, b) => {
+          const aMatch = termsLower.some(t => a.objeto?.toLowerCase().includes(t) || a.orgao?.toLowerCase().includes(t));
+          const bMatch = termsLower.some(t => b.objeto?.toLowerCase().includes(t) || b.orgao?.toLowerCase().includes(t));
+          if (aMatch && !bMatch) return -1;
+          if (!aMatch && bMatch) return 1;
+          return 0;
+        });
+      }
+
       setLicitacoes(items);
       setTotalResultados(items.length);
     } catch (err) {
