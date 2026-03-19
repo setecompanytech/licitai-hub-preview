@@ -912,7 +912,7 @@ export default function MuralLicitacoes() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">UFs</label>
-                  <Select value={ufFiltro} onValueChange={v => { setUfFiltro(v); setPagina(1); }}>
+                  <Select value={ufFiltro} onValueChange={v => { setUfFiltro(v); setMunicipioFiltro(''); setPagina(1); }}>
                     <SelectTrigger className="w-full h-10 text-xs">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
@@ -924,13 +924,21 @@ export default function MuralLicitacoes() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Municípios</label>
-                  <Input
-                    placeholder="Digite o nome do município..."
+                  <Select
                     value={municipioFiltro}
-                    onChange={e => setMunicipioFiltro(e.target.value)}
-                    className="text-xs h-10"
-                    disabled={loading}
-                  />
+                    onValueChange={v => { setMunicipioFiltro(v === 'all' ? '' : v); setPagina(1); }}
+                    disabled={loading || ufFiltro === 'all'}
+                  >
+                    <SelectTrigger className="w-full h-10 text-xs">
+                      <SelectValue placeholder={ufFiltro === 'all' ? 'Selecione uma UF primeiro' : 'Todos os municípios'} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      <SelectItem value="all">Todos os municípios</SelectItem>
+                      {municipiosUfSelecionada.map(m => (
+                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
