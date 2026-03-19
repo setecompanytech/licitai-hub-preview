@@ -943,9 +943,24 @@ export default function MuralLicitacoes() {
               Dados em tempo real da API oficial do Portal Nacional de Contratações Públicas
             </p>
           </div>
-          <Button size="sm" variant="outline" onClick={carregarMural} disabled={loading} className="gap-1.5">
-            <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} /> Atualizar
-          </Button>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-card border border-border/50 rounded-lg px-3 py-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-accent" />
+              <label htmlFor="toggle-externos" className="text-xs font-medium cursor-pointer select-none">
+                Incluir portais externos
+              </label>
+              <Switch
+                id="toggle-externos"
+                checked={incluirExternos}
+                onCheckedChange={setIncluirExternos}
+                className="scale-90"
+              />
+              {loadingExternos && <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" />}
+            </div>
+            <Button size="sm" variant="outline" onClick={carregarMural} disabled={loading} className="gap-1.5">
+              <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} /> Atualizar
+            </Button>
+          </div>
         </div>
 
         {/* Keyword + UASG search bar */}
