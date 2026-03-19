@@ -4,6 +4,7 @@ import ConsultaCNPJ from '@/components/concorrentes/ConsultaCNPJ';
 import ConsultaSintegra from '@/components/concorrentes/ConsultaSintegra';
 import CertidoesNegativas from '@/components/concorrentes/CertidoesNegativas';
 import AnaliseDocsConcorrente from '@/components/documentos/AnaliseDocsConcorrente';
+import VerificacaoIdoneidade from '@/components/concorrentes/VerificacaoIdoneidade';
 
 export default function Concorrentes() {
 
