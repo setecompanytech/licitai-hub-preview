@@ -94,7 +94,7 @@ async function fetchPncp(params: URLSearchParams, label: string): Promise<any[]>
 }
 
 // Fetch multiple pages from PNCP for a single modalidade to get comprehensive results
-async function fetchPncpAllPages(baseParams: URLSearchParams, label: string, maxPages = 3): Promise<any[]> {
+async function fetchPncpAllPages(baseParams: URLSearchParams, label: string, maxPages = 5): Promise<any[]> {
   const allResults: any[] = [];
   
   for (let page = 1; page <= maxPages; page++) {
@@ -104,9 +104,8 @@ async function fetchPncpAllPages(baseParams: URLSearchParams, label: string, max
     const results = await fetchPncp(params, `${label} pg${page}`);
     allResults.push(...results);
     
-    // If fewer results than page size, we've reached the end
-    const pageSize = parseInt(params.get("tamanhoPagina") || "500");
-    if (results.length < pageSize) break;
+    // PNCP max page size is 50; if fewer, we've reached the end
+    if (results.length < 50) break;
   }
   
   return allResults;
@@ -145,7 +144,7 @@ serve(async (req) => {
         params.set("dataInicial", formatDatePNCP(dataInicialDate));
         params.set("dataFinal", formatDatePNCP(dataFinalDate));
         params.set("pagina", String(pagina || 1));
-        params.set("tamanhoPagina", "500");
+        params.set("tamanhoPagina", "50");
         params.set("cnpj", cleanCnpj);
         if (uf) params.set("uf", uf);
         if (query) params.set("q", query.substring(0, 100));
@@ -165,7 +164,7 @@ serve(async (req) => {
           const params = new URLSearchParams();
           params.set("dataInicial", formatDatePNCP(dataInicialDate));
           params.set("dataFinal", formatDatePNCP(dataFinalDate));
-          params.set("tamanhoPagina", "500");
+          params.set("tamanhoPagina", "50");
           params.set("codigoModalidadeContratacao", String(cod));
           if (uf) params.set("uf", uf);
           if (query) params.set("q", query.substring(0, 100));
