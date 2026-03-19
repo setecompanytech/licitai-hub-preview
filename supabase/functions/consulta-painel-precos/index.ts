@@ -3,8 +3,12 @@ import { requireAuth } from "../_shared/auth-rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const PNCP_BASE = "https://pncp.gov.br/api";
+const FETCH_TIMEOUT = 12_000;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -17,177 +21,255 @@ serve(async (req) => {
   }
 
   try {
-    const { termo, pagina = 1 } = await req.json();
+    const { termo, anoInicio, anoFim } = await req.json();
     if (!termo) {
-      return new Response(JSON.stringify({ error: "Termo de busca é obrigatório" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return json({ error: "Termo de busca é obrigatório" }, 400);
+    }
+
+    const now = new Date();
+    const yearEnd = anoFim || now.getFullYear();
+    const yearStart = anoInicio || yearEnd - 2; // últimos 3 anos por padrão
+
+    const dataPublicacaoInicio = `${yearStart}-01-01`;
+    const dataPublicacaoFim = `${yearEnd}-12-31`;
+
+    console.log(`[painel-precos] Buscando "${termo}" de ${dataPublicacaoInicio} a ${dataPublicacaoFim}`);
+
+    // Step 1: Search PNCP for procurements matching the term within date range
+    const contratacoes = await searchContratacoes(termo, dataPublicacaoInicio, dataPublicacaoFim);
+    console.log(`[painel-precos] ${contratacoes.length} contratações encontradas no PNCP`);
+
+    if (contratacoes.length === 0) {
+      return json({
+        success: true,
+        termo,
+        resultados: [],
+        resumo: null,
+        mensagem: "Nenhuma contratação encontrada no PNCP para o período.",
       });
     }
 
-    const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
-    if (!FIRECRAWL_API_KEY) {
-      return new Response(JSON.stringify({ error: "FIRECRAWL_API_KEY não configurada" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Step 2: For each contratação, fetch items and filter by matching description
+    const itemResults = await fetchItemsParallel(contratacoes, termo);
+    console.log(`[painel-precos] ${itemResults.length} itens com preço unitário encontrados`);
 
-    console.log(`Buscando preços Gov.br para: "${termo}"`);
-
-    // Strategy 1: Search PNCP API for recent procurement prices
-    const pncpResults = await searchPNCP(termo);
-
-    // Strategy 2: Use Firecrawl to search Painel de Preços / ComprasNet
-    const firecrawlResults = await searchWithFirecrawl(termo, FIRECRAWL_API_KEY);
-
-    // Combine results
-    const allResults = [...pncpResults, ...firecrawlResults];
-
-    // Deduplicate and sort by date
-    const deduped = deduplicateResults(allResults);
-    const sorted = deduped.sort((a: any, b: any) => 
-      new Date(b.data_compra || '2020-01-01').getTime() - new Date(a.data_compra || '2020-01-01').getTime()
+    // Step 3: Sort by date descending
+    const sorted = itemResults.sort(
+      (a: any, b: any) =>
+        new Date(b.data_compra || "2020-01-01").getTime() - new Date(a.data_compra || "2020-01-01").getTime()
     );
 
-    // Calculate stats
+    // Step 4: Calculate stats from unit prices
     const precos = sorted.filter((r: any) => r.preco_unitario > 0).map((r: any) => r.preco_unitario);
-    const resumo = precos.length > 0 ? {
-      menor_preco: Math.min(...precos),
-      maior_preco: Math.max(...precos),
-      preco_medio: precos.reduce((a: number, b: number) => a + b, 0) / precos.length,
-      total_registros: sorted.length,
-      fontes: [...new Set(sorted.map((r: any) => r.fonte))],
-    } : null;
+    const resumo =
+      precos.length > 0
+        ? {
+            menor_preco: Math.min(...precos),
+            maior_preco: Math.max(...precos),
+            preco_medio: +(precos.reduce((a: number, b: number) => a + b, 0) / precos.length).toFixed(2),
+            mediana: calcMediana(precos),
+            total_registros: sorted.length,
+            periodo: `${yearStart}-${yearEnd}`,
+            fontes: ["PNCP - Portal Nacional de Contratações Públicas"],
+          }
+        : null;
 
-    return new Response(JSON.stringify({
+    return json({
       success: true,
       termo,
-      resultados: sorted.slice(0, 50),
+      resultados: sorted.slice(0, 100),
       resumo,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e) {
-    console.error("Erro consulta painel:", e);
-    return new Response(JSON.stringify({ error: e.message || "Erro interno" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  } catch (e: any) {
+    console.error("[painel-precos] Erro:", e);
+    return json({ error: e.message || "Erro interno" }, 500);
   }
 });
 
-async function searchPNCP(termo: string): Promise<any[]> {
-  try {
-    const encoded = encodeURIComponent(termo);
-    const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?q=${encoded}&pagina=1&tamanhoPagina=20`;
-    
-    const resp = await fetch(url, {
-      headers: { "Accept": "application/json" },
-    });
+/**
+ * Search PNCP for procurements matching the term.
+ * Fetches multiple pages to get comprehensive coverage.
+ */
+async function searchContratacoes(
+  termo: string,
+  dataInicio: string,
+  dataFim: string
+): Promise<any[]> {
+  const all: any[] = [];
+  const maxPages = 3;
 
-    if (!resp.ok) {
-      console.log(`PNCP returned ${resp.status}`);
-      return [];
+  for (let page = 1; page <= maxPages; page++) {
+    try {
+      const params = new URLSearchParams({
+        q: termo,
+        pagina: String(page),
+        tamanhoPagina: "50",
+        dataPublicacaoPncpInicio: dataInicio,
+        dataPublicacaoPncpFim: dataFim,
+        ordenacao: "-dataPublicacaoPncp",
+      });
+
+      const url = `${PNCP_BASE}/consulta/v1/contratacoes/publicacao?${params}`;
+      const resp = await fetch(url, {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT),
+      });
+
+      if (!resp.ok) {
+        console.log(`[painel-precos] PNCP page ${page} returned ${resp.status}`);
+        break;
+      }
+
+      const data = await resp.json();
+      const items = data?.data || [];
+      if (!Array.isArray(items) || items.length === 0) break;
+
+      all.push(...items);
+    } catch (e) {
+      console.error(`[painel-precos] Erro page ${page}:`, e);
+      break;
     }
-
-    const data = await resp.json();
-    const items = data?.data || data?.content || [];
-    if (!Array.isArray(items)) return [];
-
-    return items.slice(0, 15).map((item: any) => ({
-      descricao: item.objetoCompra || item.descricao || termo,
-      orgao: item.orgaoEntidade?.razaoSocial || item.nomeUnidadeCompradora || 'Órgão Federal',
-      preco_unitario: item.valorTotalEstimado || item.valorTotalHomologado || 0,
-      quantidade: item.quantidadeItens || 1,
-      unidade: 'UN',
-      data_compra: item.dataPublicacaoPncp || item.dataAbertura || '',
-      modalidade: item.modalidadeNome || item.modalidade || 'Licitação',
-      uf: item.uf || item.orgaoEntidade?.uf || '',
-      fonte: 'PNCP',
-      url: `https://pncp.gov.br/app/editais/${item.codigoUnidadeCompradora || ''}/${item.anoCompra || ''}/${item.sequencialCompra || ''}`,
-      numero_compra: item.numeroCompra || '',
-    }));
-  } catch (e) {
-    console.error("Erro PNCP:", e);
-    return [];
   }
+
+  return all;
 }
 
-async function searchWithFirecrawl(termo: string, apiKey: string): Promise<any[]> {
-  try {
-    const query = `"${termo}" preço compras governamentais site:gov.br OR site:comprasnet.gov.br`;
-    
-    const resp = await fetch("https://api.firecrawl.dev/v1/search", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        query,
-        limit: 10,
-        lang: "pt-br",
-        country: "BR",
-        scrapeOptions: { formats: ["markdown"] },
-      }),
-    });
+/**
+ * For each contratação, fetch its items from PNCP and filter those matching the search term.
+ * Runs in parallel batches of 10 for speed.
+ */
+async function fetchItemsParallel(contratacoes: any[], termo: string): Promise<any[]> {
+  const results: any[] = [];
+  const termoLower = termo.toLowerCase();
+  const termoWords = termoLower.split(/\s+/).filter((w) => w.length > 2);
 
-    if (!resp.ok) {
-      console.log(`Firecrawl search returned ${resp.status}`);
-      return [];
-    }
+  // Process in batches of 10
+  const batchSize = 10;
+  for (let i = 0; i < contratacoes.length; i += batchSize) {
+    const batch = contratacoes.slice(i, i + batchSize);
+    const promises = batch.map((c) => fetchContratacaoItems(c, termoWords, termoLower));
+    const batchResults = await Promise.allSettled(promises);
 
-    const data = await resp.json();
-    const results = data?.data || [];
-    if (!Array.isArray(results)) return [];
-
-    // Parse scraped results to extract price information
-    const parsed: any[] = [];
-    for (const r of results) {
-      const markdown = r.markdown || r.description || '';
-      const priceMatches = markdown.match(/R\$\s*([\d.,]+)/g) || [];
-      const prices = priceMatches
-        .map((p: string) => parseFloat(p.replace('R$', '').replace(/\./g, '').replace(',', '.').trim()))
-        .filter((p: number) => p > 0 && p < 10000000);
-      
-      if (prices.length > 0) {
-        parsed.push({
-          descricao: r.title || termo,
-          orgao: extractOrgao(r.url || ''),
-          preco_unitario: prices[0],
-          quantidade: 1,
-          unidade: 'UN',
-          data_compra: '',
-          modalidade: 'Compra Pública',
-          uf: '',
-          fonte: 'Compras Gov.br',
-          url: r.url || '',
-          numero_compra: '',
-        });
+    for (const r of batchResults) {
+      if (r.status === "fulfilled" && r.value.length > 0) {
+        results.push(...r.value);
       }
     }
 
-    return parsed;
+    // Stop early if we have enough results
+    if (results.length >= 80) break;
+  }
+
+  return results;
+}
+
+/**
+ * Fetch items for a single contratação and return matching items with unit prices.
+ */
+async function fetchContratacaoItems(
+  contratacao: any,
+  termoWords: string[],
+  termoLower: string
+): Promise<any[]> {
+  try {
+    const cnpj = contratacao.orgaoEntidade?.cnpj;
+    const ano = contratacao.anoCompra;
+    const seq = contratacao.sequencialCompra;
+
+    if (!cnpj || !ano || !seq) return [];
+
+    const url = `${PNCP_BASE}/pncp/v1/orgaos/${cnpj}/compras/${ano}/${seq}/itens?pagina=1&tamanhoPagina=50`;
+    const resp = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!resp.ok) return [];
+
+    const items = await resp.json();
+    if (!Array.isArray(items)) return [];
+
+    const matched: any[] = [];
+
+    for (const item of items) {
+      const desc = (item.descricao || item.materialOuServico || "").toLowerCase();
+      
+      // Check if the item description matches the search term
+      const matchScore = calcMatchScore(desc, termoWords, termoLower);
+      if (matchScore < 0.5) continue;
+
+      // Prefer homologated price, then estimated
+      const precoUnitario =
+        item.valorUnitarioHomologado ||
+        item.valorUnitarioEstimado ||
+        0;
+
+      if (precoUnitario <= 0) continue;
+
+      // Determine type: ATA (SRP) or Contrato
+      const isSRP = contratacao.srp === true || 
+        (contratacao.objetoCompra || "").toLowerCase().includes("registro de preço") ||
+        (contratacao.objetoCompra || "").toLowerCase().includes("ata de registro");
+
+      const tipoRegistro = isSRP ? "ATA/SRP" : "Contrato";
+      const isHomologado = !!item.valorUnitarioHomologado;
+
+      matched.push({
+        descricao: item.descricao || item.materialOuServico || contratacao.objetoCompra || "",
+        orgao: contratacao.orgaoEntidade?.razaoSocial || contratacao.nomeUnidadeCompradora || "Órgão Federal",
+        preco_unitario: precoUnitario,
+        quantidade: item.quantidade || 1,
+        unidade: item.unidadeMedida || "UN",
+        data_compra: contratacao.dataPublicacaoPncp || contratacao.dataAbertura || "",
+        modalidade: contratacao.modalidadeNome || "Licitação",
+        uf: contratacao.orgaoEntidade?.uf || contratacao.uf || "",
+        fonte: "PNCP",
+        url: `https://pncp.gov.br/app/editais/${cnpj}/${ano}/${seq}`,
+        numero_compra: contratacao.numeroCompra || `${ano}/${seq}`,
+        tipo_registro: tipoRegistro,
+        situacao: isHomologado ? "Homologado" : "Estimado",
+        cnpj_orgao: cnpj,
+        match_score: matchScore,
+      });
+    }
+
+    return matched;
   } catch (e) {
-    console.error("Erro Firecrawl Gov:", e);
+    // Silently skip individual failures
     return [];
   }
 }
 
-function extractOrgao(url: string): string {
-  if (url.includes('comprasnet')) return 'ComprasNet';
-  if (url.includes('pncp')) return 'PNCP';
-  if (url.includes('gov.br')) return 'Portal Gov.br';
-  return 'Órgão Público';
+/**
+ * Calculate how well an item description matches the search term.
+ * Returns 0-1 score.
+ */
+function calcMatchScore(descricao: string, termoWords: string[], termoLower: string): number {
+  if (!descricao) return 0;
+
+  // Exact match gets max score
+  if (descricao.includes(termoLower)) return 1.0;
+
+  // Count how many search words appear in the description
+  let matchedWords = 0;
+  for (const word of termoWords) {
+    if (descricao.includes(word)) matchedWords++;
+  }
+
+  if (termoWords.length === 0) return 0;
+  return matchedWords / termoWords.length;
 }
 
-function deduplicateResults(results: any[]): any[] {
-  const seen = new Set<string>();
-  return results.filter((r) => {
-    const key = `${r.descricao}-${r.preco_unitario}-${r.orgao}`.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+function calcMediana(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : +((sorted[mid - 1] + sorted[mid]) / 2).toFixed(2);
+}
+
+function json(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
