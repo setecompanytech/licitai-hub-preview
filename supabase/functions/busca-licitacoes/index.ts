@@ -144,7 +144,7 @@ serve(async (req) => {
         params.set("dataInicial", formatDatePNCP(dataInicialDate));
         params.set("dataFinal", formatDatePNCP(dataFinalDate));
         params.set("pagina", String(pagina || 1));
-        params.set("tamanhoPagina", "500");
+        params.set("tamanhoPagina", "50");
         params.set("cnpj", cleanCnpj);
         if (uf) params.set("uf", uf);
         if (query) params.set("q", query.substring(0, 100));
