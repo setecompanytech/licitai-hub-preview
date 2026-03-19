@@ -85,6 +85,9 @@ export default function FloatingChat({ isLanding = false }: FloatingChatProps) {
     'Como monitorar editais?',
     'O que é o Robô de Lances?',
     'Como gerar uma proposta?',
+    'Pare o robô no pregão',
+    'Qual minha posição na disputa?',
+    'Sugira um decremento ideal',
   ];
 
   return (

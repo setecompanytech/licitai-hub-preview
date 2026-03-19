@@ -166,6 +166,11 @@ export default function AuditTrailViewer({ sessaoId }: Props) {
                       {entry.rodada && (
                         <span className="text-muted-foreground">R{entry.rodada}</span>
                       )}
+                      {entry.hash_registro && (
+                        <span className="font-mono text-[8px] text-muted-foreground/60 truncate max-w-[100px]" title={`Hash: ${entry.hash_registro}\nAnterior: ${entry.hash_anterior}`}>
+                          🔗 #{entry.hash_registro.slice(0, 12)}
+                        </span>
+                      )}
                     </div>
                     {Object.keys(entry.detalhes).length > 0 && (
                       <p className="text-[10px] text-muted-foreground truncate mt-0.5">
