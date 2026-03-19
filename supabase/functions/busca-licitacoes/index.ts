@@ -161,46 +161,8 @@ serve(async (req) => {
         }
       }
       
-      if (isUasg) {
-        // ── Search by UASG: use codigoUnidadeAdministrativa parameter ──
-        console.log(`Buscando por UASG: ${cleanCnpj}`);
-        const modalidades = userModalidadeCod
-          ? [userModalidadeCod]
-          : (mural ? MURAL_MODALIDADES : [6]);
-        
-        const fetches = modalidades.map((cod) => {
-          const params = new URLSearchParams();
-          params.set("dataInicial", formatDatePNCP(dataInicialDate));
-          params.set("dataFinal", formatDatePNCP(dataFinalDate));
-          params.set("tamanhoPagina", "50");
-          params.set("codigoModalidadeContratacao", String(cod));
-          params.set("codigoUnidadeAdministrativa", cleanCnpj);
-          if (uf) params.set("uf", uf);
-          if (query) params.set("q", query.substring(0, 100));
-          
-          if (modalidades.length === 1) {
-            return fetchPncpAllPages(params, `UASG=${cleanCnpj} mod=${cod}`, 3);
-          } else {
-            params.set("pagina", String(pagina || 1));
-            return fetchPncp(params, `UASG=${cleanCnpj} mod=${cod}`);
-          }
-        });
-        
-        const results = await Promise.allSettled(fetches);
-        for (const result of results) {
-          if (result.status === "fulfilled") {
-            allItems.push(...result.value.map((i: any) => mapPncpItem(i, uf)));
-          }
-        }
-        
-        // If UASG returned nothing, fall through to normal search
-        if (allItems.length === 0) {
-          console.log(`UASG ${cleanCnpj} retornou 0 resultados, tentando busca normal...`);
-        }
-      }
-      
-      // Normal search: when no CNPJ/UASG provided, or they returned 0 results
-      if ((!isCnpjValido && !isUasg) || allItems.length === 0) {
+      // Normal search (also handles UASG - post-filtered by codigoUnidade)
+      if (!isCnpjValido || allItems.length === 0) {
         // ── Determine which modalidades to search ──
         // If user selected a specific modalidade, respect it even in mural mode
         const modalidades = userModalidadeCod
