@@ -27,18 +27,21 @@ type ProdutoExtraido = {
 
 /* ─── Known brands ─── */
 const KNOWN_BRANDS = [
-  'Dell', 'HP', 'Lenovo', 'Samsung', 'Apple', 'LG', 'Sony', 'Asus', 'Acer',
-  'Philips', 'Panasonic', 'Motorola', 'Xiaomi', 'Intel', 'AMD', 'Corsair',
-  'Logitech', 'Microsoft', 'Epson', 'Canon', 'Brother', 'Multilaser', 'Positivo',
-  'Intelbras', 'Electrolux', 'Brastemp', 'Consul', 'Fischer', 'Cadence',
-  'Mondial', 'Britânia', 'Tramontina', 'Vonder', 'Makita', 'Bosch', 'DeWalt',
-  'Suvinil', 'Coral', 'Sherwin-Williams', 'Tigre', 'Amanco', 'Quartzolit',
-  'Kingston', 'HyperX', 'Redragon', 'JBL', 'Edifier', 'TP-Link', 'Nvidia',
-  'Gigabyte', 'MSI', 'Razer', 'SteelSeries', 'AOC', 'BenQ', 'ViewSonic',
-  'Chamex', 'Report', 'Suzano', 'International Paper', 'Navigator', 'Copimax',
-  '3M', 'Faber-Castell', 'BIC', 'Pilot', 'Staedtler', 'Pentel',
-  'Caterpillar', 'John Deere', 'Komatsu', 'Volvo', 'Scania',
-  'Havaianas', 'Alpargatas', 'Grendene', 'Nike', 'Adidas', 'Puma',
+  'Dell','HP','Lenovo','Samsung','Apple','LG','Sony','Asus','Acer',
+  'Philips','Panasonic','Motorola','Xiaomi','Intel','AMD','Corsair',
+  'Logitech','Microsoft','Epson','Canon','Brother','Multilaser','Positivo',
+  'Intelbras','Electrolux','Brastemp','Consul','Fischer','Cadence',
+  'Mondial','Britânia','Tramontina','Vonder','Makita','Bosch','DeWalt',
+  'Suvinil','Coral','Sherwin-Williams','Tigre','Amanco','Quartzolit',
+  'Kingston','HyperX','Redragon','JBL','Edifier','TP-Link','Nvidia',
+  'Gigabyte','MSI','Razer','SteelSeries','AOC','BenQ','ViewSonic',
+  'Chamex','Report','Suzano','International Paper','Navigator','Copimax',
+  '3M','Faber-Castell','BIC','Pilot','Staedtler','Pentel',
+  'Caterpillar','John Deere','Komatsu','Volvo','Scania',
+  'Havaianas','Alpargatas','Grendene','Nike','Adidas','Puma',
+  'Nestlé','Unilever','P&G','Ambev','BRF','JBS','Seara','Sadia','Perdigão',
+  'Ypê','Bombril','Bettanin','Limppano','Reckitt','Johnson','Kimberly-Clark',
+  'Dixie','Descarpack','Talge','Santher','Mili','Personal','Neve',
 ];
 
 function extractBrand(title: string): string {
@@ -59,36 +62,52 @@ function extractModel(title: string): string {
 
 function detectStore(url: string): string {
   const u = url.toLowerCase();
-  if (u.includes('mercadolivre') || u.includes('mercadolibre') || u.includes('mlstatic') || u.includes('produto.mercadolivre')) return 'Mercado Livre';
-  if (u.includes('amazon.com.br')) return 'Amazon';
-  if (u.includes('magazineluiza') || u.includes('magalu')) return 'Magazine Luiza';
-  if (u.includes('kabum.com.br')) return 'KaBuM';
-  if (u.includes('americanas.com.br')) return 'Americanas';
-  if (u.includes('casasbahia.com.br')) return 'Casas Bahia';
-  if (u.includes('submarino.com.br')) return 'Submarino';
-  if (u.includes('carrefour.com.br')) return 'Carrefour';
-  if (u.includes('shopee.com.br')) return 'Shopee';
-  if (u.includes('aliexpress.com')) return 'AliExpress';
-  if (u.includes('pichau.com.br')) return 'Pichau';
-  if (u.includes('terabyteshop.com.br')) return 'Terabyte';
-  if (u.includes('havan.com.br')) return 'Havan';
-  if (u.includes('gazinatacado.com.br')) return 'Gazin Atacado';
-  if (u.includes('webcontinental.com.br')) return 'Webcontinental';
-  if (u.includes('pontofrio.com.br')) return 'Ponto Frio';
-  if (u.includes('rakaymed.com.br')) return 'Rakay Med';
-  if (u.includes('hospitalardistribuidora.com.br')) return 'Hospitalar Distribuidora';
-  if (u.includes('google.com/shopping') || u.includes('google.com.br/shopping')) return 'Google Shopping';
-  if (u.includes('buscape.com.br')) return 'Buscapé';
-  if (u.includes('zoom.com.br')) return 'Zoom';
-  if (u.includes('leroymerlin.com.br')) return 'Leroy Merlin';
-  if (u.includes('madeiramadeira.com.br')) return 'MadeiraMadeira';
-  if (u.includes('fastshop.com.br')) return 'Fast Shop';
-  if (u.includes('mirao.com.br')) return 'Mirão Atacado';
-  if (u.includes('kalunga.com.br')) return 'Kalunga';
-  if (u.includes('staples.com.br')) return 'Staples';
-  if (u.includes('extra.com.br')) return 'Extra';
-  if (u.includes('colombo.com.br')) return 'Colombo';
-  if (u.includes('centauro.com.br')) return 'Centauro';
+  const map: [RegExp, string][] = [
+    [/mercadoli[vb]re|mercadolibre|mlstatic|produto\.mercadolivre/, 'Mercado Livre'],
+    [/amazon\.com\.br/, 'Amazon'],
+    [/magazineluiza|magalu/, 'Magazine Luiza'],
+    [/kabum\.com\.br/, 'KaBuM'],
+    [/americanas\.com\.br/, 'Americanas'],
+    [/casasbahia\.com\.br/, 'Casas Bahia'],
+    [/submarino\.com\.br/, 'Submarino'],
+    [/carrefour\.com\.br/, 'Carrefour'],
+    [/shopee\.com\.br/, 'Shopee'],
+    [/aliexpress\.com/, 'AliExpress'],
+    [/pichau\.com\.br/, 'Pichau'],
+    [/terabyteshop\.com\.br/, 'Terabyte'],
+    [/havan\.com\.br/, 'Havan'],
+    [/gazinatacado\.com\.br/, 'Gazin Atacado'],
+    [/webcontinental\.com\.br/, 'Webcontinental'],
+    [/pontofrio\.com\.br/, 'Ponto Frio'],
+    [/google\.com.*\/shopping/, 'Google Shopping'],
+    [/buscape\.com\.br/, 'Buscapé'],
+    [/zoom\.com\.br/, 'Zoom'],
+    [/leroymerlin\.com\.br/, 'Leroy Merlin'],
+    [/madeiramadeira\.com\.br/, 'MadeiraMadeira'],
+    [/fastshop\.com\.br/, 'Fast Shop'],
+    [/kalunga\.com\.br/, 'Kalunga'],
+    [/extra\.com\.br/, 'Extra'],
+    [/colombo\.com\.br/, 'Colombo'],
+    [/centauro\.com\.br/, 'Centauro'],
+    [/atacadao\.com\.br/, 'Atacadão'],
+    [/assai\.com\.br/, 'Assaí'],
+    [/samsclub\.com\.br/, "Sam's Club"],
+    [/makro\.com\.br/, 'Makro'],
+    [/lojadomecanico\.com\.br/, 'Loja do Mecânico'],
+    [/cobasi\.com\.br/, 'Cobasi'],
+    [/drogasil\.com\.br/, 'Drogasil'],
+    [/drogaraia\.com\.br/, 'Droga Raia'],
+    [/ultrafarma\.com\.br/, 'Ultrafarma'],
+    [/paguemenos\.com\.br/, 'Pague Menos'],
+    [/obramax\.com\.br/, 'Obramax'],
+    [/telhanorte\.com\.br/, 'Telha Norte'],
+    [/dutramaquinas\.com\.br/, 'Dutra Máquinas'],
+    [/jfriosistemas\.com\.br/, 'JFrio'],
+    [/multioffice\.com\.br/, 'Multi Office'],
+  ];
+  for (const [re, name] of map) {
+    if (re.test(u)) return name;
+  }
   return 'Outros';
 }
 
@@ -195,7 +214,6 @@ function extractImages(result: any): string[] {
     candidates.push({ url, score: scoreImageCandidate(url) });
   }
 
-  // Store-specific CDN patterns
   const patterns = [
     /(https?:\/\/http2\.mlstatic\.com\/D_[^\s"')]+\.(?:jpg|webp|png))/gi,
     /(https?:\/\/m\.media-amazon\.com\/images\/I\/[^\s"')]+\.(?:jpg|webp|png))/gi,
@@ -207,11 +225,9 @@ function extractImages(result: any): string[] {
     for (const m of markdown.matchAll(pat)) addImg(m[1]);
   }
 
-  // Markdown images and raw URLs
   for (const m of markdown.matchAll(/!\[[^\]]*\]\((https?:\/\/[^\s)]+\.(?:jpg|jpeg|png|webp)[^\s)]*)\)/gi)) addImg(m[1]);
   for (const m of markdown.matchAll(/(https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp))(?:\?[^\s"'<>]*)?/gi)) addImg(m[1]);
 
-  // OG image fallback
   const ogImage = result.metadata?.ogImage || result.metadata?.['og:image'];
   if (ogImage) addImg(ogImage);
 
@@ -305,8 +321,187 @@ function parseSearchResult(result: any, searchTerm: string): ProdutoExtraido | n
   };
 }
 
+/* ─── Category detection for smart search routing ─── */
+type ProductCategory = 'alimentos' | 'informatica' | 'eletrodomesticos' | 'moveis' | 'descartaveis' | 'higiene_limpeza' | 'escritorio' | 'construcao' | 'ferramentas' | 'geral';
+
+function detectCategory(termo: string): ProductCategory {
+  const t = termo.toLowerCase();
+  if (/aliment|comida|bebida|arroz|feijão|açúcar|café|óleo|farinha|leite|carne|frango|macarrão|biscoito|suco|água\s*mineral|sal\s*refin|margarina|manteiga|queijo|presunto|iogurte|cereal|conserva|molho|tempero|vinagre|azeite/i.test(t)) return 'alimentos';
+  if (/notebook|computador|monitor|impressora|teclado|mouse|ssd|hd\s*externo|pendrive|roteador|switch|servidor|nobreak|scanner|webcam|headset|placa|memória\s*ram|processador|gabinete|fonte\s*\d+w/i.test(t)) return 'informatica';
+  if (/geladeira|refrigerador|fogão|microondas|lavadora|máquina\s*de\s*lavar|ar\s*condicionado|ventilador|liquidificador|batedeira|cafeteira|forno|freezer|purificador|bebedouro|climatizador|aspirador/i.test(t)) return 'eletrodomesticos';
+  if (/mesa|cadeira|armário|estante|gaveteiro|arquivo|sofá|poltrona|bancada|balcão|escrivaninha|rack|painel|prateleira|longarina/i.test(t)) return 'moveis';
+  if (/descartáv|copo\s*descart|prato\s*descart|talher\s*descart|guardanapo|papel\s*toalha|saco\s*de\s*lixo|luva\s*descart|máscara\s*descart|avental\s*descart|touca\s*descart/i.test(t)) return 'descartaveis';
+  if (/detergente|desinfetante|água\s*sanit|sabão|limpador|alvejante|esponja|vassoura|rodo|pano\s*de\s*chão|papel\s*higiênico|sabonete|shampoo|álcool|higien|limpeza|desodorizador/i.test(t)) return 'higiene_limpeza';
+  if (/papel\s*(a4|sulfit|ofício)|caneta|lápis|borracha|grampeador|clips|pasta|envelope|fita\s*adesiva|cola|tesoura|régua|carimbo|toner|cartucho|etiqueta/i.test(t)) return 'escritorio';
+  if (/cimento|tijolo|argamassa|tinta\s*(acrílica|latex)|piso|azulejo|tubo|conexão|fio\s*elétrico|disjuntor|tomada|interruptor|registro|torneira|vaso\s*sanitário/i.test(t)) return 'construcao';
+  if (/furadeira|parafusadeira|serra|martelo|chave\s*(de\s*fenda|phillips|allen|combinada)|alicate|trena|nível|broca|disco\s*de\s*corte|lixadeira|compressor|solda/i.test(t)) return 'ferramentas';
+  return 'geral';
+}
+
+/** Build an array of 20-30 targeted search queries based on product category */
+function buildSearchQueries(termo: string, categoria: ProductCategory): { query: string; limit: number }[] {
+  const queries: { query: string; limit: number }[] = [];
+
+  // ── UNIVERSAL searches (always included — 8 queries) ──
+  // 1-2. Two biggest BR marketplaces
+  queries.push({ query: `${termo} site:mercadolivre.com.br`, limit: 10 });
+  queries.push({ query: `${termo} site:amazon.com.br`, limit: 8 });
+  // 3. Google Shopping aggregator
+  queries.push({ query: `${termo} site:google.com.br/shopping OR site:shopping.google.com.br`, limit: 8 });
+  // 4-5. Major retail chains (split to avoid OR overload)
+  queries.push({ query: `"${termo}" site:magazineluiza.com.br OR site:casasbahia.com.br`, limit: 6 });
+  queries.push({ query: `"${termo}" site:americanas.com.br OR site:submarino.com.br`, limit: 6 });
+  // 6. Shopee + Carrefour
+  queries.push({ query: `"${termo}" site:shopee.com.br OR site:carrefour.com.br`, limit: 6 });
+  // 7. Price comparators
+  queries.push({ query: `${termo} site:buscape.com.br OR site:zoom.com.br`, limit: 6 });
+  // 8. Broad catch-all
+  queries.push({ query: `"${termo}" comprar preço loja online Brasil`, limit: 6 });
+
+  // ── CATEGORY-SPECIFIC searches (10-22 additional queries) ──
+  switch (categoria) {
+    case 'alimentos':
+      queries.push({ query: `"${termo}" site:atacadao.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:assai.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:samsclub.com.br OR site:makro.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:havan.com.br OR site:gazinatacado.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:paodeacucar.com`, limit: 5 });
+      queries.push({ query: `"${termo}" site:supermercadosnow.com.br OR site:ifood.com.br/mercado`, limit: 5 });
+      queries.push({ query: `"${termo}" atacado distribuidor alimentos preço`, limit: 6 });
+      queries.push({ query: `"${termo}" site:savegnago.com.br OR site:supermuffato.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:coren.com.br OR site:bondfaro.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" cesta básica cotação atacado`, limit: 5 });
+      queries.push({ query: `"${termo}" site:extraplus.com.br OR site:bigbom.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" preço kg litro unidade supermercado`, limit: 5 });
+      break;
+
+    case 'informatica':
+      queries.push({ query: `"${termo}" site:kabum.com.br`, limit: 8 });
+      queries.push({ query: `"${termo}" site:pichau.com.br OR site:terabyteshop.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:fastshop.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:dell.com.br OR site:hp.com.br OR site:lenovo.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:colombo.com.br OR site:webcontinental.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:havan.com.br OR site:gazintacado.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:waz.com.br OR site:hardplus.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:eletrum.com.br OR site:ibyte.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:mega10.com.br OR site:shoploko.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" distribuidor informática atacado preço`, limit: 5 });
+      queries.push({ query: `"${termo}" licitação informática fornecedor governo`, limit: 5 });
+      queries.push({ query: `"${termo}" site:kalunga.com.br OR site:staples.com.br`, limit: 5 });
+      break;
+
+    case 'eletrodomesticos':
+      queries.push({ query: `"${termo}" site:colombo.com.br OR site:webcontinental.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:havan.com.br OR site:gazinatacado.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:fastshop.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:pontofrio.com.br OR site:extra.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:electrolux.com.br OR site:consul.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:brastemp.com.br OR site:lg.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:samsung.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:climatrio.com.br OR site:gelfriosistemas.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" eletrodoméstico preço atacado distribuidor`, limit: 5 });
+      queries.push({ query: `"${termo}" loja eletrodomésticos menor preço`, limit: 5 });
+      break;
+
+    case 'moveis':
+      queries.push({ query: `"${termo}" site:madeiramadeira.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:leroymerlin.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:tokstok.com.br OR site:mobly.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:flexform.com.br OR site:marelli.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:moveisparaescritorio.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:havan.com.br OR site:colombo.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:casamob.com.br OR site:lojasdemoveis.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" móveis escritório corporativo atacado`, limit: 5 });
+      queries.push({ query: `"${termo}" mobiliário escolar institucional preço`, limit: 5 });
+      queries.push({ query: `"${termo}" site:planaltomoveis.com.br OR site:moveiskappesberg.com.br`, limit: 5 });
+      break;
+
+    case 'descartaveis':
+      queries.push({ query: `"${termo}" site:atacadao.com.br OR site:assai.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:samsclub.com.br OR site:makro.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:gazinatacado.com.br OR site:havan.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" descartável atacado distribuidor embalagem`, limit: 6 });
+      queries.push({ query: `"${termo}" site:lojacatalao.com.br OR site:centraldeembalagens.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:destakcasa.com.br OR site:embalatudo.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:sylvamo.com.br OR site:copobras.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:descarpack.com.br OR site:talge.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" copo prato talher descartável preço caixa`, limit: 5 });
+      queries.push({ query: `"${termo}" site:webarcondicionado.com.br OR site:embalagemdireto.com.br`, limit: 5 });
+      break;
+
+    case 'higiene_limpeza':
+      queries.push({ query: `"${termo}" site:atacadao.com.br OR site:assai.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:samsclub.com.br OR site:makro.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:gazinatacado.com.br OR site:havan.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:kalunga.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" higiene limpeza atacado distribuidor preço`, limit: 6 });
+      queries.push({ query: `"${termo}" site:catarinense.com OR site:distribuidora.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:drogaraia.com.br OR site:drogasil.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:paguemenos.com.br OR site:ultrafarma.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:ype.ind.br OR site:bombril.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" papel higiênico sabão detergente preço caixa`, limit: 5 });
+      break;
+
+    case 'escritorio':
+      queries.push({ query: `"${termo}" site:kalunga.com.br`, limit: 8 });
+      queries.push({ query: `"${termo}" site:staples.com.br OR site:gimba.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:papelariauniversal.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:multioffice.com.br OR site:officemax.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:havan.com.br OR site:colombo.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" papelaria escritório atacado distribuidor`, limit: 6 });
+      queries.push({ query: `"${termo}" site:chies.com.br OR site:acrimet.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:mania-de-papelaria.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" papel A4 toner cartucho preço resma caixa`, limit: 5 });
+      queries.push({ query: `"${termo}" site:3m.com.br OR site:bfranca.com.br`, limit: 5 });
+      break;
+
+    case 'construcao':
+      queries.push({ query: `"${termo}" site:leroymerlin.com.br`, limit: 8 });
+      queries.push({ query: `"${termo}" site:madeiramadeira.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:obramax.com.br OR site:telhanorte.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:amoedo.com.br OR site:hfraga.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:havan.com.br OR site:gazinatacado.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:chatuba.com.br OR site:sodimac.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" material construção distribuidora atacado preço`, limit: 6 });
+      queries.push({ query: `"${termo}" site:tigre.com.br OR site:amanco.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:quartzolit.com.br OR site:votoran.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" cimento tinta piso azulejo preço saco`, limit: 5 });
+      break;
+
+    case 'ferramentas':
+      queries.push({ query: `"${termo}" site:leroymerlin.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:lojadomecanico.com.br OR site:dutramaquinas.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:palaciodasferramentas.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:ferramentaskennedy.com.br OR site:maxferramentas.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:havan.com.br OR site:gazinatacado.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:makita.com.br OR site:dewalt.com.br OR site:bosch-professional.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" ferramenta elétrica manual atacado preço`, limit: 5 });
+      queries.push({ query: `"${termo}" site:obramax.com.br OR site:telhanorte.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:nafrente.com.br OR site:ferramentaskennedy.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" ferramenta profissional distribuidor governo`, limit: 5 });
+      break;
+
+    default: // 'geral'
+      queries.push({ query: `"${termo}" site:havan.com.br OR site:gazinatacado.com.br`, limit: 6 });
+      queries.push({ query: `"${termo}" site:webcontinental.com.br OR site:colombo.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:leroymerlin.com.br OR site:madeiramadeira.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:fastshop.com.br OR site:centauro.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:kabum.com.br OR site:pichau.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:kalunga.com.br OR site:staples.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:atacadao.com.br OR site:assai.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:cobasi.com.br OR site:petlove.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" distribuidor atacado preço cotação Brasil`, limit: 6 });
+      queries.push({ query: `"${termo}" fornecedor governo licitação menor preço`, limit: 5 });
+      queries.push({ query: `"${termo}" site:pontofrio.com.br OR site:extra.com.br`, limit: 5 });
+      queries.push({ query: `"${termo}" site:drogaraia.com.br OR site:drogasil.com.br`, limit: 5 });
+      break;
+  }
+
+  return queries;
+}
+
 /** Run a Firecrawl search with per-query timeout */
-async function searchProducts(apiKey: string, query: string, limit = 10, timeoutMs = 12000): Promise<any[]> {
+async function searchProducts(apiKey: string, query: string, limit = 10, timeoutMs = 8000): Promise<any[]> {
   try {
     console.log(`Searching: "${query}" (limit ${limit})`);
     const controller = new AbortController();
@@ -381,26 +576,18 @@ serve(async (req) => {
     console.log(`Pesquisa real para: "${termo}"`);
     const startTime = Date.now();
 
-    // ─── OPTIMIZED: 8 targeted searches for maximum coverage ───
-    // Each with a 12s timeout to prevent hanging
-    const searches = await Promise.allSettled([
-      // 1. Mercado Livre (dedicated - largest marketplace in BR)
-      searchProducts(apiKey, `${termo} site:mercadolivre.com.br`, 12),
-      // 2. Amazon BR
-      searchProducts(apiKey, `${termo} site:amazon.com.br`, 10),
-      // 3. Google Shopping (price comparison aggregator)
-      searchProducts(apiKey, `${termo} site:google.com.br/shopping OR site:shopping.google.com.br`, 8),
-      // 4. Major retail chains
-      searchProducts(apiKey, `"${termo}" site:magazineluiza.com.br OR site:kabum.com.br OR site:americanas.com.br OR site:casasbahia.com.br`, 10),
-      // 5. More retail + specialty
-      searchProducts(apiKey, `"${termo}" site:shopee.com.br OR site:carrefour.com.br OR site:havan.com.br OR site:kalunga.com.br`, 8),
-      // 6. Price comparators (Buscapé, Zoom - aggregated data)
-      searchProducts(apiKey, `${termo} site:buscape.com.br OR site:zoom.com.br`, 8),
-      // 7. Specialty / wholesale / construction
-      searchProducts(apiKey, `"${termo}" site:leroymerlin.com.br OR site:madeiramadeira.com.br OR site:gazinatacado.com.br OR site:webcontinental.com.br`, 8),
-      // 8. Broad catch-all for other stores not covered above
-      searchProducts(apiKey, `"${termo}" comprar preço loja online Brasil -site:mercadolivre.com.br -site:amazon.com.br`, 8),
-    ]);
+    // ─── SMART CATEGORY DETECTION ───
+    const categoria = detectCategory(termo);
+    console.log(`Categoria detectada: ${categoria}`);
+
+    // ─── BUILD 20-30 TARGETED QUERIES ───
+    const queryList = buildSearchQueries(termo, categoria);
+    console.log(`Total de buscas paralelas: ${queryList.length}`);
+
+    // ─── EXECUTE ALL IN PARALLEL with 8s per-query timeout ───
+    const searches = await Promise.allSettled(
+      queryList.map(q => searchProducts(apiKey, q.query, q.limit, 8000))
+    );
 
     const allFornecedores: ProdutoExtraido[] = [];
     const seenUrls = new Set<string>();
@@ -454,7 +641,7 @@ serve(async (req) => {
       data: {
         produto: termo,
         data_pesquisa: new Date().toLocaleDateString('pt-BR'),
-        categoria: 'Pesquisa de Mercado',
+        categoria: categoria === 'geral' ? 'Pesquisa de Mercado' : categoria.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
         fornecedores: allFornecedores,
         resumo: {
           menor_preco: menorPreco,
@@ -463,8 +650,10 @@ serve(async (req) => {
           variacao,
           fornecedor_menor: fornecedorMenor ? `${fornecedorMenor.loja}` : '',
           fornecedor_maior: fornecedorMaior ? `${fornecedorMaior.loja}` : '',
+          total_fontes: Object.keys(fonteCount).length,
+          total_buscas: queryList.length,
           recomendacao: allFornecedores.length > 0
-            ? `Pesquisa em ${Object.keys(fonteCount).length} fontes com ${allFornecedores.length} resultados válidos. Menor preço: R$ ${menorPreco.toFixed(2)} (${fornecedorMenor?.loja}). Tempo: ${elapsed}s.`
+            ? `Pesquisa em ${Object.keys(fonteCount).length} fontes (${queryList.length} buscas paralelas) com ${allFornecedores.length} resultados válidos. Categoria: ${categoria}. Menor preço: R$ ${menorPreco.toFixed(2)} (${fornecedorMenor?.loja}). Tempo: ${elapsed}s.`
             : 'Nenhum resultado encontrado.',
         },
         fontes_consultadas: fonteCount,
