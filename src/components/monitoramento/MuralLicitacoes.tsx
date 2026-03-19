@@ -259,6 +259,9 @@ export default function MuralLicitacoes() {
     };
   }, [user]);
 
+  // Dados brutos da API (sem filtros client-side)
+  const [licitacoesRaw, setLicitacoesRaw] = useState<LicitacaoMural[]>([]);
+
   const carregarMural = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -287,7 +290,7 @@ export default function MuralLicitacoes() {
       if (!response.ok) throw new Error(`Erro ${response.status}`);
       const data = await response.json();
 
-      let items: LicitacaoMural[] = (data.items || []).map((item: any) => ({
+      const items: LicitacaoMural[] = (data.items || []).map((item: any) => ({
         id: item.id,
         numero: item.numero || '-',
         orgao: item.orgao || '-',
@@ -311,48 +314,59 @@ export default function MuralLicitacoes() {
         unidadeOrgao: item.unidadeOrgao || null,
       }));
 
-      // Filtros client-side para campos não suportados diretamente pela API
-      if (esferaFiltro !== 'all') {
-        items = items.filter(i => i.esferaNome?.toLowerCase().includes(esferaFiltro.toLowerCase()));
-      }
-      if (tipoInstrumentoFiltro !== 'all') {
-        const tipoLabel = TIPOS_INSTRUMENTO.find(t => t.value === tipoInstrumentoFiltro)?.label || '';
-        items = items.filter(i => i.tipoInstrumentoNome?.toLowerCase().includes(tipoLabel.toLowerCase()));
-      }
-      if (municipioFiltro.trim()) {
-        const term = municipioFiltro.trim().toLowerCase();
-        items = items.filter(i => i.municipio?.toLowerCase().includes(term));
-      }
-      if (unidadeFiltro.trim()) {
-        const term = unidadeFiltro.trim().toLowerCase();
-        items = items.filter(i => i.unidadeOrgao?.toLowerCase().includes(term));
-      }
-      if (orgaoFiltro.trim()) {
-        const term = orgaoFiltro.trim().toLowerCase();
-        items = items.filter(i => i.orgao?.toLowerCase().includes(term));
-      }
-
-      // Priorizar por segmentos prioritários (mover matches para o topo)
-      if (segmentosPrioritarios.length > 0) {
-        const termsLower = segmentosPrioritarios.map(s => s.toLowerCase());
-        items.sort((a, b) => {
-          const aMatch = termsLower.some(t => a.objeto?.toLowerCase().includes(t) || a.orgao?.toLowerCase().includes(t));
-          const bMatch = termsLower.some(t => b.objeto?.toLowerCase().includes(t) || b.orgao?.toLowerCase().includes(t));
-          if (aMatch && !bMatch) return -1;
-          if (!aMatch && bMatch) return 1;
-          return 0;
-        });
-      }
-
-      setLicitacoes(items);
-      setTotalResultados(items.length);
+      setLicitacoesRaw(items);
     } catch (err) {
       console.error(err);
       setError('Erro ao carregar licitações do PNCP. Tente novamente.');
     } finally {
       setLoading(false);
     }
-  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, esferaFiltro, tipoInstrumentoFiltro, municipioFiltro, unidadeFiltro, orgaoFiltro]);
+  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted]);
+
+  // Filtros client-side aplicados sobre os dados já carregados (sem re-fetch)
+  const licitacoesFiltradas = useMemo(() => {
+    let items = [...licitacoesRaw];
+
+    if (esferaFiltro !== 'all') {
+      items = items.filter(i => i.esferaNome?.toLowerCase().includes(esferaFiltro.toLowerCase()));
+    }
+    if (tipoInstrumentoFiltro !== 'all') {
+      const tipoLabel = TIPOS_INSTRUMENTO.find(t => t.value === tipoInstrumentoFiltro)?.label || '';
+      items = items.filter(i => i.tipoInstrumentoNome?.toLowerCase().includes(tipoLabel.toLowerCase()));
+    }
+    if (municipioFiltro.trim()) {
+      const term = municipioFiltro.trim().toLowerCase();
+      items = items.filter(i => i.municipio?.toLowerCase().includes(term));
+    }
+    if (unidadeFiltro.trim()) {
+      const term = unidadeFiltro.trim().toLowerCase();
+      items = items.filter(i => i.unidadeOrgao?.toLowerCase().includes(term));
+    }
+    if (orgaoFiltro.trim()) {
+      const term = orgaoFiltro.trim().toLowerCase();
+      items = items.filter(i => i.orgao?.toLowerCase().includes(term));
+    }
+
+    // Priorizar por segmentos prioritários
+    if (segmentosPrioritarios.length > 0) {
+      const termsLower = segmentosPrioritarios.map(s => s.toLowerCase());
+      items.sort((a, b) => {
+        const aMatch = termsLower.some(t => a.objeto?.toLowerCase().includes(t) || a.orgao?.toLowerCase().includes(t));
+        const bMatch = termsLower.some(t => b.objeto?.toLowerCase().includes(t) || b.orgao?.toLowerCase().includes(t));
+        if (aMatch && !bMatch) return -1;
+        if (!aMatch && bMatch) return 1;
+        return 0;
+      });
+    }
+
+    return items;
+  }, [licitacoesRaw, esferaFiltro, tipoInstrumentoFiltro, municipioFiltro, unidadeFiltro, orgaoFiltro, segmentosPrioritarios]);
+
+  // Sincronizar licitacoes e totalResultados com os dados filtrados
+  useEffect(() => {
+    setLicitacoes(licitacoesFiltradas);
+    setTotalResultados(licitacoesFiltradas.length);
+  }, [licitacoesFiltradas]);
 
   useEffect(() => {
     if (user) carregarMural();
