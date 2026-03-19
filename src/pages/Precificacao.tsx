@@ -1260,55 +1260,15 @@ Responda APENAS em JSON, sem markdown:
 
 
 
-          <TabsContent value="fornecedores">
+          <TabsContent value="cotacoes-listas">
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <CotacaoFornecedorUpload />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="comparativo">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <ComparativoDashboard />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="calculadora">
-            <CalculadoraUnificada />
-          </TabsContent>
-
-          <TabsContent value="catalogo">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <CatalogoPrecificados />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="fontes">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <FontesManager />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="listas">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <ListasCompras />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="cotacoes">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <CotacoesManager />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="importacoes">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <ImportacoesManager />
+              <CotacoesUnificado />
             </div>
           </TabsContent>
 
           <TabsContent value="inteligencia">
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <InteligenciaPrecos />
+              <InteligenciaUnificada />
             </div>
           </TabsContent>
         </Tabs>
