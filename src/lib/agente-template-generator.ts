@@ -1,6 +1,7 @@
 // Generates a downloadable ZIP with the Node.js agent template
 import JSZip from 'jszip';
 import { PORTAL_FILES } from './agent-template/portals';
+import { PORTAL_ESTADUAIS_FILES } from './agent-template/portals-estaduais';
 import { INFRA_FILES } from './agent-template/infrastructure';
 
 const CORE_FILES: Record<string, string> = {
