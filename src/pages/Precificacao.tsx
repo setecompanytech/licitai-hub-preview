@@ -27,6 +27,7 @@ import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
 import { PesquisaResultML, type PesquisaMLResult } from '@/components/precificacao/ProdutoCardML';
 import { useAuth } from '@/contexts/AuthContext';
+import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 import PainelPrecosGov from '@/components/precificacao/PainelPrecosGov';
 import CotacaoFornecedorUpload from '@/components/precificacao/CotacaoFornecedorUpload';
