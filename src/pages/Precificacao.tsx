@@ -1277,6 +1277,18 @@ Responda APENAS em JSON, sem markdown:
             </div>
           </TabsContent>
 
+          <TabsContent value="calculadora">
+            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+              <CalculadoraUnificada />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="catalogo">
+            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+              <CatalogoPrecificados />
+            </div>
+          </TabsContent>
+
           <TabsContent value="inteligencia">
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
               <InteligenciaUnificada />
