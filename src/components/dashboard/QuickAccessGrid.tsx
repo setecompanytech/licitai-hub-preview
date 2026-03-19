@@ -7,6 +7,7 @@ import {
   FileBarChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface QuickItem {
   icon: React.ElementType;
@@ -101,19 +102,25 @@ export default function QuickAccessGrid() {
             {group.items.map((item) => {
               const Icon = item.icon;
               return (
-                <button
-                  key={item.path + item.label}
-                  onClick={() => navigate(item.path)}
-                  className="flex items-center gap-1.5 sm:gap-2 w-full px-1.5 sm:px-2 py-1.5 rounded-md text-[11px] sm:text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors text-left min-h-[32px]"
-                >
-                  <Icon className="w-3.5 h-3.5 text-accent flex-shrink-0" />
-                  <span className="break-words leading-tight line-clamp-2">{item.label}</span>
-                  {item.badge && (
-                    <span className="ml-auto text-[7px] sm:text-[8px] font-bold bg-accent text-accent-foreground px-1 sm:px-1.5 py-0.5 rounded-full leading-none flex-shrink-0">
-                      Novo
-                    </span>
-                  )}
-                </button>
+                <Tooltip key={item.path + item.label} delayDuration={400}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => navigate(item.path)}
+                      className="flex items-center gap-1.5 sm:gap-2 w-full px-1.5 sm:px-2 py-1.5 rounded-md text-[11px] sm:text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors text-left min-h-[32px]"
+                    >
+                      <Icon className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+                      <span className="break-words leading-tight line-clamp-2">{item.label}</span>
+                      {item.badge && (
+                        <span className="ml-auto text-[7px] sm:text-[8px] font-bold bg-accent text-accent-foreground px-1 sm:px-1.5 py-0.5 rounded-full leading-none flex-shrink-0">
+                          Novo
+                        </span>
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    {item.label}
+                  </TooltipContent>
+                </Tooltip>
               );
             })}
           </div>

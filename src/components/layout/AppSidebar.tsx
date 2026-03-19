@@ -173,7 +173,6 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
           isActive ? 'sidebar-item-active' : 'sidebar-item-idle',
           locked && 'opacity-60'
         )}
-        title={isCollapsed ? item.label : undefined}
       >
         <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
         {!isCollapsed && (
@@ -185,12 +184,12 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
       </button>
     );
 
-    if (locked && isCollapsed) {
+    if (isCollapsed) {
       return (
-        <Tooltip key={item.path}>
+        <Tooltip key={item.path} delayDuration={200}>
           <TooltipTrigger asChild>{button}</TooltipTrigger>
-          <TooltipContent side="right">
-            <p className="text-xs">{item.label} 🔒</p>
+          <TooltipContent side="right" className="text-xs font-medium">
+            {item.label}{locked ? ' 🔒' : ''}
           </TooltipContent>
         </Tooltip>
       );
