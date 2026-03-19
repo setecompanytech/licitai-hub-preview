@@ -197,9 +197,7 @@ export default function MonitoramentoEditais() {
             <MuralLicitacoes />
           </TabsContent>
 
-          <TabsContent value="licitacoes">
-            <LicitacoesTab />
-          </TabsContent>
+
 
           <TabsContent value="dispensa">
             <DispensaEletronicaTab />
