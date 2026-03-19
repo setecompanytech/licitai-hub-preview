@@ -189,6 +189,34 @@ export default function MuralLicitacoes() {
     return [];
   }, [ufFiltro]);
 
+  // Configurações de pesquisa automática
+  const [configCarregada, setConfigCarregada] = useState(false);
+  const [segmentosPrioritarios, setSegmentosPrioritarios] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!user || configCarregada) return;
+    const loadConfig = async () => {
+      const { data } = await supabase
+        .from('configuracoes')
+        .select('uf_sede, municipio_sede, priorizar_regiao_sede, segmentos_prioridade')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (data) {
+        const priorizar = (data as any).priorizar_regiao_sede ?? false;
+        const segs: string[] = (data as any).segmentos_prioridade || [];
+        setSegmentosPrioritarios(segs);
+        if (priorizar) {
+          const ufSede = data.uf_sede;
+          const munSede = data.municipio_sede;
+          if (ufSede && ufFiltro === 'all') setUfFiltro(ufSede);
+          if (munSede && !municipioFiltro) setMunicipioFiltro(munSede);
+        }
+      }
+      setConfigCarregada(true);
+    };
+    loadConfig();
+  }, [user]);
+
   // Ficha detail
   const [fichaAberta, setFichaAberta] = useState<LicitacaoMural | null>(null);
   const [interesseDialog, setInteresseDialog] = useState(false);
@@ -302,6 +330,18 @@ export default function MuralLicitacoes() {
       if (orgaoFiltro.trim()) {
         const term = orgaoFiltro.trim().toLowerCase();
         items = items.filter(i => i.orgao?.toLowerCase().includes(term));
+      }
+
+      // Priorizar por segmentos prioritários (mover matches para o topo)
+      if (segmentosPrioritarios.length > 0) {
+        const termsLower = segmentosPrioritarios.map(s => s.toLowerCase());
+        items.sort((a, b) => {
+          const aMatch = termsLower.some(t => a.objeto?.toLowerCase().includes(t) || a.orgao?.toLowerCase().includes(t));
+          const bMatch = termsLower.some(t => b.objeto?.toLowerCase().includes(t) || b.orgao?.toLowerCase().includes(t));
+          if (aMatch && !bMatch) return -1;
+          if (!aMatch && bMatch) return 1;
+          return 0;
+        });
       }
 
       setLicitacoes(items);

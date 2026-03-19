@@ -95,6 +95,26 @@ export default function BuscaInteligenteTab() {
   const [downloadingUrl, setDownloadingUrl] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Carregar configurações de pesquisa automática
+  useEffect(() => {
+    const loadConfig = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const { data } = await supabase
+        .from('configuracoes')
+        .select('uf_sede, priorizar_regiao_sede')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      if (data) {
+        const priorizar = (data as any).priorizar_regiao_sede ?? false;
+        if (priorizar && data.uf_sede && !uf) {
+          setUf(data.uf_sede);
+        }
+      }
+    };
+    loadConfig();
+  }, []);
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
