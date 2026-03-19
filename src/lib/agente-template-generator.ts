@@ -596,6 +596,11 @@ export async function generateAgentTemplate(): Promise<Blob> {
     root.file(path, content);
   }
 
+  // State/regional portal modules
+  for (const [path, content] of Object.entries(PORTAL_ESTADUAIS_FILES)) {
+    root.file(path, content);
+  }
+
   // Infrastructure files
   for (const [path, content] of Object.entries(INFRA_FILES)) {
     root.file(path, content);

@@ -690,6 +690,11 @@ const { BECSPPortal } = require('./bec-sp');
 const { LicitanetPortal } = require('./licitanet');
 const { PortalComprasPortal } = require('./portal-compras');
 const { BNCPortal } = require('./bnc');
+const { BanparanetPortal } = require('./banparanet');
+const { ComprasBRPortal } = require('./comprasbr');
+const { BBMNetPortal } = require('./bbmnet');
+const { LicitarDigitalPortal } = require('./licitar-digital');
+const { ComprasNetEstadualPortal, PORTAIS_ESTADUAIS } = require('./comprasnet-estadual');
 
 const PORTALS = {
   'comprasgov': ComprasGovPortal,
@@ -700,14 +705,29 @@ const PORTALS = {
   'licitanet': LicitanetPortal,
   'portal-compras': PortalComprasPortal,
   'bnc': BNCPortal,
+  'banparanet': BanparanetPortal,
+  'comprasbr': ComprasBRPortal,
+  'bbmnet': BBMNetPortal,
+  'licitar-digital': LicitarDigitalPortal,
 };
+
+// Add all state portals dynamically
+Object.keys(PORTAIS_ESTADUAIS).forEach(id => {
+  PORTALS[id] = function(page, credenciais) {
+    return new ComprasNetEstadualPortal(page, credenciais, id);
+  };
+});
 
 function getPortal(portalId, page, credenciais) {
   const PortalClass = PORTALS[portalId];
   if (!PortalClass) {
-    throw new Error(\`Portal "\${portalId}" não suportado. Disponíveis: \${Object.keys(PORTALS).join(', ')}\`);
+    throw new Error(\\\`Portal "\\\${portalId}" não suportado. Disponíveis: \\\${Object.keys(PORTALS).join(', ')}\\\`);
   }
-  return new PortalClass(page, credenciais);
+  // Check if it's a constructor or a factory function
+  if (PortalClass.prototype && PortalClass.prototype.constructor) {
+    return new PortalClass(page, credenciais);
+  }
+  return PortalClass(page, credenciais);
 }
 
 module.exports = { PORTALS, getPortal };
