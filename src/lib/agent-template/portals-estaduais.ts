@@ -1,14 +1,21 @@
-// Portal-specific automation modules for state/regional portals
+// Individual dedicated automation modules for each state/regional portal
+// Each portal has specific URLs, selectors, and authentication flows
 
 export const PORTAL_ESTADUAIS_FILES: Record<string, string> = {
   'src/portals/banparanet.js': `const { BasePortal } = require('./base-portal');
 
 /**
- * Módulo para Banparanet (PA)
+ * Módulo dedicado para Banparanet (PA)
  *
  * URL: https://www.banparanet.com.br
- * Autenticação: Login + senha + certificado digital
+ * Autenticação: Login + senha + certificado digital A1
  * Estado: Pará
+ * Tecnologia: Java/JSF
+ * Particularidades:
+ *   - Portal usa Java Server Faces (JSF) com IDs dinâmicos
+ *   - Formulários usam postback, não navegação convencional
+ *   - Sessão expira após 15 minutos de inatividade
+ *   - Certificado digital pode ser solicitado em operações críticas
  */
 class BanparanetPortal extends BasePortal {
   constructor(page, credenciais) {
@@ -21,37 +28,109 @@ class BanparanetPortal extends BasePortal {
     console.log('🔐 Iniciando login no Banparanet...');
     await this.page.goto(\`\${this.baseUrl}/licitacao/login\`, { waitUntil: 'networkidle2' });
 
-    await this.preencherCampo('input[name="usuario"], input[name="login"], #usuario', this.credenciais.login);
-    await this.preencherCampo('input[name="senha"], #senha', this.credenciais.senha);
+    // Banparanet usa formulário JSF com IDs dinâmicos
+    const loginSelectors = [
+      'input[name="usuario"]', 'input[id$="usuario"]', 'input[id$="login"]',
+      'input[name="j_username"]', '#loginForm\\\\:usuario',
+    ];
+    const senhaSelectors = [
+      'input[name="senha"]', 'input[id$="senha"]', 'input[id$="password"]',
+      'input[name="j_password"]', '#loginForm\\\\:senha',
+    ];
 
+    for (const sel of loginSelectors) {
+      const found = await this.aguardarElemento(sel, 3000);
+      if (found) { await this.preencherCampo(sel, this.credenciais.login); break; }
+    }
+    for (const sel of senhaSelectors) {
+      const found = await this.aguardarElemento(sel, 3000);
+      if (found) { await this.preencherCampo(sel, this.credenciais.senha); break; }
+    }
+
+    // JSF submit button
     await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button, input[type="submit"]')]
-        .find(b => (b.textContent || b.value || '').toLowerCase().includes('entrar'));
+      const btn = document.querySelector('input[type="submit"][value*="Entrar"], button[id$="btnLogin"], input[id$="btnEntrar"]')
+        || [...document.querySelectorAll('button, input[type="submit"]')]
+          .find(b => (b.textContent || b.value || '').toLowerCase().includes('entrar'));
       if (btn) btn.click();
     });
 
-    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
+    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 });
     this.loggedIn = true;
     console.log('✅ Login no Banparanet realizado');
   }
 
   async navegarParaDisputa(edital) {
     console.log(\`📋 Buscando edital \${edital} no Banparanet\`);
-    await this.page.goto(\`\${this.baseUrl}/licitacao/pregao\`, { waitUntil: 'networkidle2' });
-    await this.preencherCampo('input[name="busca"], input[name="numPregao"], #busca', edital);
-    await this.page.keyboard.press('Enter');
+    // Banparanet: área de pregões eletrônicos
+    const pregaoUrls = [
+      \`\${this.baseUrl}/licitacao/pregao/eletronico\`,
+      \`\${this.baseUrl}/licitacao/pregao\`,
+      \`\${this.baseUrl}/pregaoeletronico\`,
+    ];
+    for (const url of pregaoUrls) {
+      try {
+        await this.page.goto(url, { waitUntil: 'networkidle2', timeout: 10000 });
+        break;
+      } catch { continue; }
+    }
+
+    // Campo de busca específico do Banparanet
+    const buscaSelectors = [
+      'input[id$="numPregao"]', 'input[name="numPregao"]',
+      'input[id$="busca"]', 'input[name="busca"]',
+      'input[type="search"]', '#formBusca\\\\:numPregao',
+    ];
+    for (const sel of buscaSelectors) {
+      const found = await this.aguardarElemento(sel, 3000);
+      if (found) {
+        await this.preencherCampo(sel, edital);
+        break;
+      }
+    }
+
+    // JSF command button para buscar
+    await this.page.evaluate(() => {
+      const btn = document.querySelector('input[id$="btnBuscar"], button[id$="btnBuscar"]')
+        || [...document.querySelectorAll('button, input[type="submit"]')]
+          .find(b => (b.textContent || b.value || '').toLowerCase().includes('buscar') ||
+                     (b.textContent || b.value || '').toLowerCase().includes('pesquisar'));
+      if (btn) btn.click();
+    });
+
     await this.page.waitForTimeout(5000);
     await this.screenshot('banparanet-disputa');
+
+    // Clicar no link da disputa encontrada
+    await this.page.evaluate(() => {
+      const link = document.querySelector('a[id$="lnkDisputa"], a[href*="disputa"], a[href*="sala"]')
+        || [...document.querySelectorAll('a')]
+          .find(a => a.textContent.toLowerCase().includes('sala') || a.textContent.toLowerCase().includes('disputa'));
+      if (link) link.click();
+    });
+    await this.page.waitForTimeout(5000);
   }
 
   async lerMelhorLance() {
     return await this.page.evaluate(() => {
-      const seletores = ['.menor-lance', '.melhor-lance', '.valor-lance', 'td.valor', '.lance-atual'];
+      // Seletores específicos do Banparanet
+      const seletores = [
+        'span[id$="melhorLance"]', 'span[id$="valorMenorLance"]',
+        'td[id$="melhorLance"]', '.menor-lance', '.melhor-lance',
+        'span.valor-lance', '#formDisputa\\\\:melhorLance',
+      ];
       for (const sel of seletores) {
         const el = document.querySelector(sel);
         if (el) {
-          const texto = el.textContent.replace(/[^\\d.,]/g, '').replace('.', '').replace(',', '.');
-          const num = parseFloat(texto);
+          const texto = el.textContent.replace(/[^\\d.,]/g, '');
+          // Formato brasileiro: 1.234,56
+          const parts = texto.split(',');
+          if (parts.length === 2) {
+            const inteiro = parts[0].replace(/\\./g, '');
+            const num = parseFloat(inteiro + '.' + parts[1]);
+            if (!isNaN(num)) return num;
+          }
+          const num = parseFloat(texto.replace('.', '').replace(',', '.'));
           if (!isNaN(num)) return num;
         }
       }
@@ -61,14 +140,43 @@ class BanparanetPortal extends BasePortal {
 
   async enviarLance(valor) {
     console.log(\`📤 Enviando lance Banparanet: R$ \${this.formatarMoeda(valor)}\`);
-    await this.preencherCampo('input[name="lance"], input[name="valor"], #lance', this.formatarMoeda(valor));
+
+    const lanceSelectors = [
+      'input[id$="valorLance"]', 'input[name="valorLance"]',
+      'input[id$="lance"]', '#formDisputa\\\\:valorLance',
+    ];
+    for (const sel of lanceSelectors) {
+      const found = await this.aguardarElemento(sel, 3000);
+      if (found) {
+        await this.preencherCampo(sel, this.formatarMoeda(valor));
+        break;
+      }
+    }
+
+    // Botão de enviar lance (JSF)
     await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button, input[type="submit"]')]
-        .find(b => (b.textContent || b.value || '').toLowerCase().includes('enviar'));
+      const btn = document.querySelector('input[id$="btnEnviarLance"], button[id$="btnEnviar"]')
+        || [...document.querySelectorAll('button, input[type="submit"]')]
+          .find(b => (b.textContent || b.value || '').toLowerCase().includes('enviar lance'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
+
+    // Banparanet usa confirmação em 2 etapas
+    this.page.on('dialog', async d => {
+      console.log(\`📌 Confirmação Banparanet: \${d.message()}\`);
+      await d.accept();
+    });
     await this.page.waitForTimeout(3000);
+
+    // Verificar se há botão de confirmação secundária
+    await this.page.evaluate(() => {
+      const confirmBtn = document.querySelector('input[id$="btnConfirmar"], button[id$="btnConfirmar"]')
+        || [...document.querySelectorAll('button')]
+          .find(b => b.textContent.toLowerCase().includes('confirmar'));
+      if (confirmBtn) confirmBtn.click();
+    });
+
+    await this.page.waitForTimeout(2000);
     await this.screenshot('lance-banparanet');
     return true;
   }
@@ -76,8 +184,8 @@ class BanparanetPortal extends BasePortal {
   async verificarResultado() {
     return await this.page.evaluate(() => {
       const texto = document.body.innerText.toLowerCase();
-      if (texto.includes('lance aceito') || texto.includes('registrado')) return 'aceito';
-      if (texto.includes('recusado') || texto.includes('erro')) return 'recusado';
+      if (texto.includes('lance aceito') || texto.includes('lance registrado') || texto.includes('lance enviado')) return 'aceito';
+      if (texto.includes('recusado') || texto.includes('erro') || texto.includes('inválido') || texto.includes('não aceito')) return 'recusado';
       return 'indefinido';
     });
   }
@@ -89,10 +197,15 @@ module.exports = { BanparanetPortal };
   'src/portals/comprasbr.js': `const { BasePortal } = require('./base-portal');
 
 /**
- * Módulo para ComprasBR
+ * Módulo dedicado para ComprasBR
  *
  * URL: https://www.comprasbr.com.br
  * Autenticação: Login + senha
+ * Tecnologia: React/SPA
+ * Particularidades:
+ *   - SPA com React, navegação interna via router
+ *   - API REST para lances (pode interceptar XHR)
+ *   - Sessão mantida via JWT no localStorage
  */
 class ComprasBRPortal extends BasePortal {
   constructor(page, credenciais) {
@@ -104,41 +217,84 @@ class ComprasBRPortal extends BasePortal {
   async login() {
     console.log('🔐 Iniciando login no ComprasBR...');
     await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
-    await this.preencherCampo('input[name="email"], input[name="login"], #email', this.credenciais.login);
-    await this.preencherCampo('input[name="senha"], input[name="password"], #senha', this.credenciais.senha);
+
+    // ComprasBR usa formulário React
+    await this.preencherCampo('input[name="email"], input[name="login"], input[type="email"], #email', this.credenciais.login);
+    await this.preencherCampo('input[name="senha"], input[name="password"], input[type="password"], #senha', this.credenciais.senha);
+
     await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button, input[type="submit"]')]
-        .find(b => (b.textContent || b.value || '').toLowerCase().includes('entrar'));
+      const btn = document.querySelector('button[type="submit"]')
+        || [...document.querySelectorAll('button')]
+          .find(b => b.textContent.toLowerCase().includes('entrar') || b.textContent.toLowerCase().includes('login'));
       if (btn) btn.click();
     });
+
     await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
     this.loggedIn = true;
     console.log('✅ Login no ComprasBR realizado');
   }
 
   async navegarParaDisputa(edital) {
+    console.log(\`📋 Buscando edital \${edital} no ComprasBR\`);
     await this.page.goto(\`\${this.baseUrl}/pregao/busca?q=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
     await this.page.waitForTimeout(3000);
+
+    // Clicar no resultado
+    await this.page.evaluate(() => {
+      const link = document.querySelector('a[href*="disputa"], a[href*="pregao/"]')
+        || [...document.querySelectorAll('a, tr[role="row"]')]
+          .find(el => el.textContent.includes('Sala') || el.textContent.includes('Disputar'));
+      if (link) link.click();
+    });
+    await this.page.waitForTimeout(3000);
+    await this.screenshot('comprasbr-disputa');
   }
 
   async lerMelhorLance() {
     return await this.page.evaluate(() => {
-      const el = document.querySelector('.menor-lance, .melhor-lance, .valor-lance, td.valor');
-      if (!el) return null;
-      return parseFloat(el.textContent.replace(/[^\\d.,]/g, '').replace('.', '').replace(',', '.'));
+      const seletores = [
+        '.menor-lance', '.melhor-lance', '.valor-lance',
+        '[data-testid="melhor-lance"]', '.lance-vencedor',
+        'td.valor', 'span.valor',
+      ];
+      for (const sel of seletores) {
+        const el = document.querySelector(sel);
+        if (el) {
+          const texto = el.textContent.replace(/[^\\d.,]/g, '');
+          const parts = texto.split(',');
+          if (parts.length === 2) {
+            const num = parseFloat(parts[0].replace(/\\./g, '') + '.' + parts[1]);
+            if (!isNaN(num)) return num;
+          }
+        }
+      }
+      return null;
     });
   }
 
   async enviarLance(valor) {
-    await this.preencherCampo('input[name="lance"], input[name="valor"]', this.formatarMoeda(valor));
+    console.log(\`📤 Enviando lance ComprasBR: R$ \${this.formatarMoeda(valor)}\`);
+    await this.preencherCampo('input[name="lance"], input[name="valor"], input[placeholder*="lance"]', this.formatarMoeda(valor));
+
     await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button')]
-        .find(b => b.textContent.toLowerCase().includes('enviar'));
+      const btn = document.querySelector('button[type="submit"]')
+        || [...document.querySelectorAll('button')]
+          .find(b => b.textContent.toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
     this.page.on('dialog', async d => await d.accept());
     await this.page.waitForTimeout(3000);
+    await this.screenshot('lance-comprasbr');
     return true;
+  }
+
+  async verificarResultado() {
+    return await this.page.evaluate(() => {
+      const texto = document.body.innerText.toLowerCase();
+      if (texto.includes('lance aceito') || texto.includes('registrado') || texto.includes('sucesso')) return 'aceito';
+      if (texto.includes('recusado') || texto.includes('erro') || texto.includes('inválido')) return 'recusado';
+      return 'indefinido';
+    });
   }
 }
 
@@ -148,10 +304,16 @@ module.exports = { ComprasBRPortal };
   'src/portals/bbmnet.js': `const { BasePortal } = require('./base-portal');
 
 /**
- * Módulo para BBMNet (Bolsa Brasileira de Mercadorias)
+ * Módulo dedicado para BBMNet (Bolsa Brasileira de Mercadorias)
  *
  * URL: https://www.bbmnet.com.br
- * Autenticação: Login + senha + certificado digital
+ * Autenticação: Login + senha + certificado digital A1/A3
+ * Tecnologia: ASP.NET WebForms
+ * Particularidades:
+ *   - ASP.NET ViewState (postbacks pesados)
+ *   - IDs com prefixo ctl00_ContentPlaceHolder
+ *   - Certificado digital necessário para envio de lances
+ *   - Timer de sessão curto (10 min)
  */
 class BBMNetPortal extends BasePortal {
   constructor(page, credenciais) {
@@ -163,13 +325,34 @@ class BBMNetPortal extends BasePortal {
   async login() {
     console.log('🔐 Iniciando login no BBMNet...');
     await this.page.goto(\`\${this.baseUrl}/Login.aspx\`, { waitUntil: 'networkidle2' });
-    await this.preencherCampo('input[name*="login"], input[name*="usuario"], #txtLogin', this.credenciais.login);
-    await this.preencherCampo('input[name*="senha"], #txtSenha', this.credenciais.senha);
+
+    // ASP.NET WebForms com IDs específicos
+    const loginSelectors = [
+      '#txtLogin', 'input[name$="txtLogin"]', 'input[name*="ctl00"][name*="Login"]',
+      'input[name="txtUsuario"]', '#ctl00_ContentPlaceHolder1_txtLogin',
+    ];
+    const senhaSelectors = [
+      '#txtSenha', 'input[name$="txtSenha"]', 'input[name*="ctl00"][name*="Senha"]',
+      'input[name="txtPassword"]', '#ctl00_ContentPlaceHolder1_txtSenha',
+    ];
+
+    for (const sel of loginSelectors) {
+      const found = await this.aguardarElemento(sel, 3000);
+      if (found) { await this.preencherCampo(sel, this.credenciais.login); break; }
+    }
+    for (const sel of senhaSelectors) {
+      const found = await this.aguardarElemento(sel, 3000);
+      if (found) { await this.preencherCampo(sel, this.credenciais.senha); break; }
+    }
+
+    // ASP.NET submit
     await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('input[type="submit"], button, a.btn')]
-        .find(b => (b.value || b.textContent || '').toLowerCase().includes('entrar'));
+      const btn = document.querySelector('#btnEntrar, input[name$="btnEntrar"], input[value="Entrar"]')
+        || [...document.querySelectorAll('input[type="submit"], button, a.btn')]
+          .find(b => (b.value || b.textContent || '').toLowerCase().includes('entrar'));
       if (btn) btn.click();
     });
+
     await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
     this.loggedIn = true;
     console.log('✅ Login no BBMNet realizado');
@@ -178,29 +361,88 @@ class BBMNetPortal extends BasePortal {
   async navegarParaDisputa(edital) {
     console.log(\`📋 Buscando edital \${edital} no BBMNet\`);
     await this.page.goto(\`\${this.baseUrl}/Pregao/Busca.aspx\`, { waitUntil: 'networkidle2' });
-    await this.preencherCampo('input[name*="busca"], input[name*="numero"], #txtBusca', edital);
-    await this.page.keyboard.press('Enter');
+
+    const buscaSelectors = [
+      '#txtBusca', 'input[name$="txtBusca"]', 'input[name$="txtNumero"]',
+      '#ctl00_ContentPlaceHolder1_txtBusca',
+    ];
+    for (const sel of buscaSelectors) {
+      const found = await this.aguardarElemento(sel, 3000);
+      if (found) {
+        await this.preencherCampo(sel, edital);
+        break;
+      }
+    }
+
+    // ASP.NET postback para buscar
+    await this.page.evaluate(() => {
+      const btn = document.querySelector('#btnBuscar, input[name$="btnBuscar"]')
+        || [...document.querySelectorAll('input[type="submit"]')]
+          .find(b => (b.value || '').toLowerCase().includes('buscar'));
+      if (btn) btn.click();
+    });
+
+    await this.page.waitForTimeout(5000);
+    await this.screenshot('bbmnet-busca');
+
+    // Entrar na sala de disputa
+    await this.page.evaluate(() => {
+      const link = document.querySelector('a[href*="SalaDisputa"], a[href*="Disputa.aspx"]')
+        || [...document.querySelectorAll('a')]
+          .find(a => a.textContent.includes('Sala') || a.textContent.includes('Disputar'));
+      if (link) link.click();
+    });
     await this.page.waitForTimeout(5000);
     await this.screenshot('bbmnet-disputa');
   }
 
   async lerMelhorLance() {
     return await this.page.evaluate(() => {
-      const el = document.querySelector('.valor-lance, .melhor-lance, span.valor, td.lance');
-      if (!el) return null;
-      return parseFloat(el.textContent.replace(/[^\\d.,]/g, '').replace('.', '').replace(',', '.'));
+      const seletores = [
+        '#lblMelhorLance', 'span[id$="lblMelhorLance"]', 'span[id$="lblValorMenor"]',
+        '.valor-lance', '.melhor-lance', 'span.valor', 'td.lance',
+      ];
+      for (const sel of seletores) {
+        const el = document.querySelector(sel);
+        if (el) {
+          const texto = el.textContent.replace(/[^\\d.,]/g, '');
+          const parts = texto.split(',');
+          if (parts.length === 2) {
+            const num = parseFloat(parts[0].replace(/\\./g, '') + '.' + parts[1]);
+            if (!isNaN(num)) return num;
+          }
+        }
+      }
+      return null;
     });
   }
 
   async enviarLance(valor) {
     console.log(\`📤 Enviando lance BBMNet: R$ \${this.formatarMoeda(valor)}\`);
-    await this.preencherCampo('input[name*="lance"], input[name*="valor"], #txtLance', this.formatarMoeda(valor));
+
+    const lanceSelectors = [
+      '#txtLance', 'input[name$="txtLance"]', 'input[name$="txtValor"]',
+      '#ctl00_ContentPlaceHolder1_txtLance',
+    ];
+    for (const sel of lanceSelectors) {
+      const found = await this.aguardarElemento(sel, 3000);
+      if (found) {
+        await this.preencherCampo(sel, this.formatarMoeda(valor));
+        break;
+      }
+    }
+
     await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('input[type="submit"], button, a.btn')]
-        .find(b => (b.value || b.textContent || '').toLowerCase().includes('enviar'));
+      const btn = document.querySelector('#btnEnviar, input[name$="btnEnviar"]')
+        || [...document.querySelectorAll('input[type="submit"], button')]
+          .find(b => (b.value || b.textContent || '').toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
+
+    this.page.on('dialog', async d => {
+      console.log(\`📌 Confirmação BBMNet: \${d.message()}\`);
+      await d.accept();
+    });
     await this.page.waitForTimeout(3000);
     await this.screenshot('lance-bbmnet');
     return true;
@@ -222,10 +464,15 @@ module.exports = { BBMNetPortal };
   'src/portals/licitar-digital.js': `const { BasePortal } = require('./base-portal');
 
 /**
- * Módulo para Licitar Digital
+ * Módulo dedicado para Licitar Digital
  *
  * URL: https://www.licitardigital.com.br
  * Autenticação: Login + senha
+ * Tecnologia: Angular/SPA
+ * Particularidades:
+ *   - Angular SPA com routing client-side
+ *   - WebSocket para atualizações em tempo real da sala de disputa
+ *   - API REST para envio de lances
  */
 class LicitarDigitalPortal extends BasePortal {
   constructor(page, credenciais) {
@@ -237,166 +484,54 @@ class LicitarDigitalPortal extends BasePortal {
   async login() {
     console.log('🔐 Iniciando login no Licitar Digital...');
     await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
-    await this.preencherCampo('input[name="email"], input[name="login"]', this.credenciais.login);
-    await this.preencherCampo('input[name="senha"], input[name="password"]', this.credenciais.senha);
+
+    // Angular form
+    await this.preencherCampo('input[formcontrolname="email"], input[name="email"], input[type="email"]', this.credenciais.login);
+    await this.preencherCampo('input[formcontrolname="senha"], input[name="senha"], input[type="password"]', this.credenciais.senha);
+
     await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button, input[type="submit"]')]
-        .find(b => (b.textContent || b.value || '').toLowerCase().includes('entrar'));
+      const btn = document.querySelector('button[type="submit"]')
+        || [...document.querySelectorAll('button')]
+          .find(b => b.textContent.toLowerCase().includes('entrar'));
       if (btn) btn.click();
     });
+
     await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
     this.loggedIn = true;
     console.log('✅ Login no Licitar Digital realizado');
   }
 
   async navegarParaDisputa(edital) {
+    console.log(\`📋 Buscando edital \${edital} no Licitar Digital\`);
     await this.page.goto(\`\${this.baseUrl}/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
     await this.page.waitForTimeout(3000);
-  }
 
-  async lerMelhorLance() {
-    return await this.page.evaluate(() => {
-      const el = document.querySelector('.menor-lance, .melhor-lance, .valor-lance');
-      if (!el) return null;
-      return parseFloat(el.textContent.replace(/[^\\d.,]/g, '').replace('.', '').replace(',', '.'));
-    });
-  }
-
-  async enviarLance(valor) {
-    await this.preencherCampo('input[name="lance"], input[name="valor"]', this.formatarMoeda(valor));
+    // Angular: clicar na disputa
     await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button')]
-        .find(b => b.textContent.toLowerCase().includes('enviar'));
-      if (btn) btn.click();
+      const link = document.querySelector('a[routerlink*="disputa"], a[href*="sala"]')
+        || [...document.querySelectorAll('a, button')]
+          .find(el => el.textContent.includes('Sala') || el.textContent.includes('Disputar'));
+      if (link) link.click();
     });
-    this.page.on('dialog', async d => await d.accept());
     await this.page.waitForTimeout(3000);
-    return true;
-  }
-}
-
-module.exports = { LicitarDigitalPortal };
-`,
-
-  'src/portals/comprasnet-estadual.js': `const { BasePortal } = require('./base-portal');
-
-/**
- * Módulo genérico para portais ComprasNet estaduais
- * (ComprasNet BA, ComprasNet GO, Compras MG, PE Integrado, etc.)
- *
- * Portais estaduais tipicamente compartilham uma estrutura similar,
- * diferindo apenas na URL base e alguns seletores.
- *
- * IDs suportados: comprasnet-ba, comprasnet-go, compras-mg, compras-pe,
- *                 compras-rj, compras-pr, compras-rs, compras-sc,
- *                 compras-df, e-compras-am, portal-compras-ce
- */
-const PORTAIS_ESTADUAIS = {
-  'comprasnet-ba': { nome: 'ComprasNet BA', url: 'https://www.comprasnet.ba.gov.br' },
-  'comprasnet-go': { nome: 'ComprasNet GO', url: 'https://www.comprasgovernamentais.go.gov.br' },
-  'compras-mg':    { nome: 'Compras MG', url: 'https://www.compras.mg.gov.br' },
-  'compras-pe':    { nome: 'PE Integrado', url: 'https://www.peintegrado.pe.gov.br' },
-  'compras-rj':    { nome: 'Compras RJ', url: 'https://www.compras.rj.gov.br' },
-  'compras-pr':    { nome: 'Compras PR', url: 'https://www.comprasparana.pr.gov.br' },
-  'compras-rs':    { nome: 'Compras RS', url: 'https://www.compras.rs.gov.br' },
-  'compras-sc':    { nome: 'Compras SC', url: 'https://www.portaldecompras.sc.gov.br' },
-  'compras-df':    { nome: 'e-Compras DF', url: 'https://www.compras.df.gov.br' },
-  'e-compras-am':  { nome: 'e-Compras AM', url: 'https://www.ecompras.am.gov.br' },
-  'portal-compras-ce': { nome: 'Compras CE', url: 'https://s2gpr.sefaz.ce.gov.br' },
-};
-
-class ComprasNetEstadualPortal extends BasePortal {
-  constructor(page, credenciais, portalId) {
-    super(page, credenciais);
-    const config = PORTAIS_ESTADUAIS[portalId] || { nome: portalId, url: '' };
-    this.nome = portalId;
-    this.nomeExibicao = config.nome;
-    this.baseUrl = config.url;
-  }
-
-  async login() {
-    console.log(\`🔐 Iniciando login no \${this.nomeExibicao}...\`);
-    await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
-
-    // Seletores genéricos que cobrem a maioria dos portais estaduais
-    const loginSelectors = [
-      'input[name="usuario"]', 'input[name="login"]', 'input[name="cpf"]',
-      'input[name="email"]', '#usuario', '#login', '#cpf',
-    ];
-    const senhaSelectors = [
-      'input[name="senha"]', 'input[name="password"]', '#senha', '#password',
-    ];
-
-    for (const sel of loginSelectors) {
-      const found = await this.aguardarElemento(sel, 3000);
-      if (found) { await this.preencherCampo(sel, this.credenciais.login); break; }
-    }
-    for (const sel of senhaSelectors) {
-      const found = await this.aguardarElemento(sel, 3000);
-      if (found) { await this.preencherCampo(sel, this.credenciais.senha); break; }
-    }
-
-    await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button, input[type="submit"], a.btn')]
-        .find(b => {
-          const text = (b.textContent || b.value || '').toLowerCase();
-          return text.includes('entrar') || text.includes('login') || text.includes('acessar');
-        });
-      if (btn) btn.click();
-    });
-
-    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 });
-    this.loggedIn = true;
-    console.log(\`✅ Login no \${this.nomeExibicao} realizado\`);
-  }
-
-  async navegarParaDisputa(edital) {
-    console.log(\`📋 Buscando edital \${edital} no \${this.nomeExibicao}\`);
-    
-    // Tentar navegar para área de pregões
-    const pregaoUrls = [
-      \`\${this.baseUrl}/pregao\`,
-      \`\${this.baseUrl}/fornecedor/pregao\`,
-      \`\${this.baseUrl}/licitacao/pregao\`,
-    ];
-
-    for (const url of pregaoUrls) {
-      try {
-        await this.page.goto(url, { waitUntil: 'networkidle2', timeout: 10000 });
-        break;
-      } catch { continue; }
-    }
-
-    // Buscar edital
-    const buscaSelectors = [
-      'input[name="busca"]', 'input[name="numPregao"]', 'input[name="numero"]',
-      '#busca', '#numPregao', 'input[type="search"]',
-    ];
-    for (const sel of buscaSelectors) {
-      const found = await this.aguardarElemento(sel, 3000);
-      if (found) {
-        await this.preencherCampo(sel, edital);
-        await this.page.keyboard.press('Enter');
-        break;
-      }
-    }
-
-    await this.page.waitForTimeout(5000);
-    await this.screenshot(\`\${this.nome}-disputa\`);
+    await this.screenshot('licitar-digital-disputa');
   }
 
   async lerMelhorLance() {
     return await this.page.evaluate(() => {
       const seletores = [
-        '.menor-lance', '.melhor-lance', '.valor-lance', '.lance-atual',
-        'td.valor', 'td.lance', 'span.valor', '#melhorLance',
+        '.menor-lance', '.melhor-lance', '.valor-lance',
+        '[data-label="Melhor Lance"]', 'app-lance .valor',
       ];
       for (const sel of seletores) {
         const el = document.querySelector(sel);
         if (el) {
-          const texto = el.textContent.replace(/[^\\d.,]/g, '').replace('.', '').replace(',', '.');
-          const num = parseFloat(texto);
-          if (!isNaN(num)) return num;
+          const texto = el.textContent.replace(/[^\\d.,]/g, '');
+          const parts = texto.split(',');
+          if (parts.length === 2) {
+            const num = parseFloat(parts[0].replace(/\\./g, '') + '.' + parts[1]);
+            if (!isNaN(num)) return num;
+          }
         }
       }
       return null;
@@ -404,32 +539,18 @@ class ComprasNetEstadualPortal extends BasePortal {
   }
 
   async enviarLance(valor) {
-    console.log(\`📤 Enviando lance \${this.nomeExibicao}: R$ \${this.formatarMoeda(valor)}\`);
-    
-    const lanceSelectors = [
-      'input[name="lance"]', 'input[name="valor"]', 'input[name="valorLance"]',
-      '#lance', '#valorLance', '#valor',
-    ];
-    for (const sel of lanceSelectors) {
-      const found = await this.aguardarElemento(sel, 3000);
-      if (found) {
-        await this.preencherCampo(sel, this.formatarMoeda(valor));
-        break;
-      }
-    }
+    console.log(\`📤 Enviando lance Licitar Digital: R$ \${this.formatarMoeda(valor)}\`);
+    await this.preencherCampo('input[formcontrolname="lance"], input[name="lance"], input[name="valor"]', this.formatarMoeda(valor));
 
     await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button, input[type="submit"]')]
-        .find(b => {
-          const text = (b.textContent || b.value || '').toLowerCase();
-          return text.includes('enviar') || text.includes('confirmar') || text.includes('lance');
-        });
+      const btn = document.querySelector('button[type="submit"]')
+        || [...document.querySelectorAll('button')]
+          .find(b => b.textContent.toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-
     this.page.on('dialog', async d => await d.accept());
     await this.page.waitForTimeout(3000);
-    await this.screenshot(\`lance-\${this.nome}\`);
+    await this.screenshot('lance-licitar-digital');
     return true;
   }
 
@@ -443,7 +564,880 @@ class ComprasNetEstadualPortal extends BasePortal {
   }
 }
 
-// Export both the class and the config map
-module.exports = { ComprasNetEstadualPortal, PORTAIS_ESTADUAIS };
+module.exports = { LicitarDigitalPortal };
+`,
+
+  'src/portals/comprasnet-ba.js': `const { BasePortal } = require('./base-portal');
+
+/**
+ * Módulo dedicado para ComprasNet Bahia
+ *
+ * URL: https://www.comprasnet.ba.gov.br
+ * Autenticação: CPF/CNPJ + senha
+ * Estado: Bahia
+ * Tecnologia: Java/Primefaces
+ * Particularidades:
+ *   - Primefaces com AJAX parcial (não faz reload completo)
+ *   - Login por CPF do representante legal
+ *   - IDs com prefixo formPregao:
+ */
+class ComprasNetBAPortal extends BasePortal {
+  constructor(page, credenciais) {
+    super(page, credenciais);
+    this.nome = 'comprasnet-ba';
+    this.nomeExibicao = 'ComprasNet BA';
+    this.baseUrl = 'https://www.comprasnet.ba.gov.br';
+  }
+
+  async login() {
+    console.log('🔐 Iniciando login no ComprasNet BA...');
+    await this.page.goto(\`\${this.baseUrl}/fornecedor/login\`, { waitUntil: 'networkidle2' });
+    
+    await this.preencherCampo('input[name="cpf"], input[id$="cpf"], #cpfCnpj', this.credenciais.login);
+    await this.preencherCampo('input[name="senha"], input[id$="senha"], #senha', this.credenciais.senha);
+
+    await this.page.evaluate(() => {
+      const btn = document.querySelector('button[id$="btnEntrar"], input[id$="btnLogin"]')
+        || [...document.querySelectorAll('button, input[type="submit"]')]
+          .find(b => (b.textContent || b.value || '').toLowerCase().includes('entrar'));
+      if (btn) btn.click();
+    });
+
+    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 });
+    this.loggedIn = true;
+    console.log('✅ Login no ComprasNet BA realizado');
+  }
+
+  async navegarParaDisputa(edital) {
+    console.log(\`📋 Buscando edital \${edital} no ComprasNet BA\`);
+    await this.page.goto(\`\${this.baseUrl}/fornecedor/pregao\`, { waitUntil: 'networkidle2' });
+    
+    await this.preencherCampo('input[id$="numPregao"], input[name="numPregao"], #formBusca\\\\:numPregao', edital);
+    await this.page.evaluate(() => {
+      const btn = document.querySelector('button[id$="btnBuscar"]')
+        || [...document.querySelectorAll('button, input[type="submit"]')]
+          .find(b => (b.textContent || b.value || '').toLowerCase().includes('buscar'));
+      if (btn) btn.click();
+    });
+    await this.page.waitForTimeout(5000);
+    await this.screenshot('comprasnet-ba-disputa');
+  }
+
+  async lerMelhorLance() {
+    return await this.page.evaluate(() => {
+      const seletores = [
+        'span[id$="melhorLance"]', '.menor-lance', '#formDisputa\\\\:melhorLance',
+        'td[id$="valorMenorLance"]', '.valor-lance',
+      ];
+      for (const sel of seletores) {
+        const el = document.querySelector(sel);
+        if (el) {
+          const texto = el.textContent.replace(/[^\\d.,]/g, '');
+          const parts = texto.split(',');
+          if (parts.length === 2) {
+            return parseFloat(parts[0].replace(/\\./g, '') + '.' + parts[1]);
+          }
+        }
+      }
+      return null;
+    });
+  }
+
+  async enviarLance(valor) {
+    console.log(\`📤 Enviando lance ComprasNet BA: R$ \${this.formatarMoeda(valor)}\`);
+    await this.preencherCampo('input[id$="valorLance"], input[name="valorLance"]', this.formatarMoeda(valor));
+    
+    await this.page.evaluate(() => {
+      const btn = document.querySelector('button[id$="btnEnviarLance"]')
+        || [...document.querySelectorAll('button')]
+          .find(b => b.textContent.toLowerCase().includes('enviar'));
+      if (btn) btn.click();
+    });
+    this.page.on('dialog', async d => await d.accept());
+    await this.page.waitForTimeout(3000);
+    await this.screenshot('lance-comprasnet-ba');
+    return true;
+  }
+
+  async verificarResultado() {
+    return await this.page.evaluate(() => {
+      const texto = document.body.innerText.toLowerCase();
+      if (texto.includes('lance aceito') || texto.includes('registrado')) return 'aceito';
+      if (texto.includes('recusado') || texto.includes('erro')) return 'recusado';
+      return 'indefinido';
+    });
+  }
+}
+
+module.exports = { ComprasNetBAPortal };
+`,
+
+  'src/portals/comprasnet-go.js': `const { BasePortal } = require('./base-portal');
+
+/**
+ * Módulo dedicado para ComprasNet Goiás
+ *
+ * URL: https://www.comprasgovernamentais.go.gov.br
+ * Autenticação: CPF + senha
+ * Estado: Goiás
+ * Tecnologia: PHP/Laravel
+ */
+class ComprasNetGOPortal extends BasePortal {
+  constructor(page, credenciais) {
+    super(page, credenciais);
+    this.nome = 'comprasnet-go';
+    this.nomeExibicao = 'ComprasNet GO';
+    this.baseUrl = 'https://www.comprasgovernamentais.go.gov.br';
+  }
+
+  async login() {
+    console.log('🔐 Iniciando login no ComprasNet GO...');
+    await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
+    await this.preencherCampo('input[name="cpf"], input[name="login"], #cpf', this.credenciais.login);
+    await this.preencherCampo('input[name="senha"], input[name="password"], #senha', this.credenciais.senha);
+    await this.page.evaluate(() => {
+      const btn = document.querySelector('button[type="submit"]')
+        || [...document.querySelectorAll('button')]
+          .find(b => b.textContent.toLowerCase().includes('entrar'));
+      if (btn) btn.click();
+    });
+    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
+    this.loggedIn = true;
+    console.log('✅ Login no ComprasNet GO realizado');
+  }
+
+  async navegarParaDisputa(edital) {
+    await this.page.goto(\`\${this.baseUrl}/pregao?numero=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
+    await this.page.waitForTimeout(5000);
+    await this.screenshot('comprasnet-go-disputa');
+  }
+
+  async lerMelhorLance() {
+    return await this.page.evaluate(() => {
+      const seletores = ['.menor-lance', '.melhor-lance', '.valor-lance', 'td.valor', '#melhorLance'];
+      for (const sel of seletores) {
+        const el = document.querySelector(sel);
+        if (el) {
+          const texto = el.textContent.replace(/[^\\d.,]/g, '');
+          const parts = texto.split(',');
+          if (parts.length === 2) return parseFloat(parts[0].replace(/\\./g, '') + '.' + parts[1]);
+        }
+      }
+      return null;
+    });
+  }
+
+  async enviarLance(valor) {
+    console.log(\`📤 Enviando lance ComprasNet GO: R$ \${this.formatarMoeda(valor)}\`);
+    await this.preencherCampo('input[name="lance"], input[name="valor"]', this.formatarMoeda(valor));
+    await this.page.evaluate(() => {
+      const btn = [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
+      if (btn) btn.click();
+    });
+    this.page.on('dialog', async d => await d.accept());
+    await this.page.waitForTimeout(3000);
+    return true;
+  }
+
+  async verificarResultado() {
+    return await this.page.evaluate(() => {
+      const texto = document.body.innerText.toLowerCase();
+      if (texto.includes('aceito') || texto.includes('registrado')) return 'aceito';
+      if (texto.includes('recusado') || texto.includes('erro')) return 'recusado';
+      return 'indefinido';
+    });
+  }
+}
+
+module.exports = { ComprasNetGOPortal };
+`,
+
+  'src/portals/compras-mg.js': `const { BasePortal } = require('./base-portal');
+
+/**
+ * Módulo dedicado para Compras MG
+ *
+ * URL: https://www.compras.mg.gov.br
+ * Autenticação: Login + senha (SIARE)
+ * Estado: Minas Gerais
+ * Tecnologia: Java/.NET híbrido
+ * Particularidades:
+ *   - Integração com SIARE (Sistema Integrado de Administração da Receita Estadual)
+ *   - Login unificado do estado
+ */
+class ComprasMGPortal extends BasePortal {
+  constructor(page, credenciais) {
+    super(page, credenciais);
+    this.nome = 'compras-mg';
+    this.nomeExibicao = 'Compras MG';
+    this.baseUrl = 'https://www.compras.mg.gov.br';
+  }
+
+  async login() {
+    console.log('🔐 Iniciando login no Compras MG...');
+    await this.page.goto(\`\${this.baseUrl}/fornecedor/login\`, { waitUntil: 'networkidle2' });
+    await this.preencherCampo('input[name="login"], input[name="cpfCnpj"], #cpfCnpj', this.credenciais.login);
+    await this.preencherCampo('input[name="senha"], input[name="password"], #senha', this.credenciais.senha);
+    await this.page.evaluate(() => {
+      const btn = document.querySelector('button[type="submit"], input[type="submit"]')
+        || [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('entrar'));
+      if (btn) btn.click();
+    });
+    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 });
+    this.loggedIn = true;
+    console.log('✅ Login no Compras MG realizado');
+  }
+
+  async navegarParaDisputa(edital) {
+    await this.page.goto(\`\${this.baseUrl}/fornecedor/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
+    await this.page.waitForTimeout(5000);
+    await this.screenshot('compras-mg-disputa');
+  }
+
+  async lerMelhorLance() {
+    return await this.page.evaluate(() => {
+      for (const sel of ['.menor-lance', '.melhor-lance', 'td.valor', '#melhorLance']) {
+        const el = document.querySelector(sel);
+        if (el) {
+          const t = el.textContent.replace(/[^\\d.,]/g, '').split(',');
+          if (t.length === 2) return parseFloat(t[0].replace(/\\./g, '') + '.' + t[1]);
+        }
+      }
+      return null;
+    });
+  }
+
+  async enviarLance(valor) {
+    console.log(\`📤 Enviando lance Compras MG: R$ \${this.formatarMoeda(valor)}\`);
+    await this.preencherCampo('input[name="valorLance"], input[name="lance"]', this.formatarMoeda(valor));
+    await this.page.evaluate(() => {
+      const btn = [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
+      if (btn) btn.click();
+    });
+    this.page.on('dialog', async d => await d.accept());
+    await this.page.waitForTimeout(3000);
+    return true;
+  }
+
+  async verificarResultado() {
+    return await this.page.evaluate(() => {
+      const t = document.body.innerText.toLowerCase();
+      if (t.includes('aceito') || t.includes('registrado')) return 'aceito';
+      if (t.includes('recusado') || t.includes('erro')) return 'recusado';
+      return 'indefinido';
+    });
+  }
+}
+
+module.exports = { ComprasMGPortal };
+`,
+
+  'src/portals/pe-integrado.js': `const { BasePortal } = require('./base-portal');
+
+/**
+ * Módulo dedicado para PE Integrado (Pernambuco)
+ *
+ * URL: https://www.peintegrado.pe.gov.br
+ * Autenticação: CPF + senha
+ * Estado: Pernambuco
+ * Tecnologia: Angular
+ * Particularidades:
+ *   - SPA Angular com lazy loading
+ *   - API REST com token JWT
+ *   - WebSocket para sala de disputa em tempo real
+ */
+class PEIntegradoPortal extends BasePortal {
+  constructor(page, credenciais) {
+    super(page, credenciais);
+    this.nome = 'compras-pe';
+    this.nomeExibicao = 'PE Integrado';
+    this.baseUrl = 'https://www.peintegrado.pe.gov.br';
+  }
+
+  async login() {
+    console.log('🔐 Iniciando login no PE Integrado...');
+    await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
+    await this.preencherCampo('input[formcontrolname="cpf"], input[name="cpf"]', this.credenciais.login);
+    await this.preencherCampo('input[formcontrolname="senha"], input[name="senha"]', this.credenciais.senha);
+    await this.page.evaluate(() => {
+      const btn = document.querySelector('button[type="submit"]')
+        || [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('entrar'));
+      if (btn) btn.click();
+    });
+    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
+    this.loggedIn = true;
+    console.log('✅ Login no PE Integrado realizado');
+  }
+
+  async navegarParaDisputa(edital) {
+    await this.page.goto(\`\${this.baseUrl}/fornecedor/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
+    await this.page.waitForTimeout(5000);
+    await this.screenshot('pe-integrado-disputa');
+  }
+
+  async lerMelhorLance() {
+    return await this.page.evaluate(() => {
+      for (const sel of ['.menor-lance', '.melhor-lance', '[data-label="Melhor Lance"]']) {
+        const el = document.querySelector(sel);
+        if (el) {
+          const t = el.textContent.replace(/[^\\d.,]/g, '').split(',');
+          if (t.length === 2) return parseFloat(t[0].replace(/\\./g, '') + '.' + t[1]);
+        }
+      }
+      return null;
+    });
+  }
+
+  async enviarLance(valor) {
+    console.log(\`📤 Enviando lance PE Integrado: R$ \${this.formatarMoeda(valor)}\`);
+    await this.preencherCampo('input[formcontrolname="lance"], input[name="valor"]', this.formatarMoeda(valor));
+    await this.page.evaluate(() => {
+      const btn = document.querySelector('button[type="submit"]')
+        || [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
+      if (btn) btn.click();
+    });
+    this.page.on('dialog', async d => await d.accept());
+    await this.page.waitForTimeout(3000);
+    return true;
+  }
+
+  async verificarResultado() {
+    return await this.page.evaluate(() => {
+      const t = document.body.innerText.toLowerCase();
+      if (t.includes('aceito') || t.includes('registrado')) return 'aceito';
+      if (t.includes('recusado') || t.includes('erro')) return 'recusado';
+      return 'indefinido';
+    });
+  }
+}
+
+module.exports = { PEIntegradoPortal };
+`,
+
+  'src/portals/compras-rj.js': `const { BasePortal } = require('./base-portal');
+
+/**
+ * Módulo dedicado para Compras RJ
+ *
+ * URL: https://www.compras.rj.gov.br
+ * Autenticação: CPF + senha (ID Digital RJ)
+ * Estado: Rio de Janeiro
+ */
+class ComprasRJPortal extends BasePortal {
+  constructor(page, credenciais) {
+    super(page, credenciais);
+    this.nome = 'compras-rj';
+    this.nomeExibicao = 'Compras RJ';
+    this.baseUrl = 'https://www.compras.rj.gov.br';
+  }
+
+  async login() {
+    console.log('🔐 Iniciando login no Compras RJ...');
+    await this.page.goto(\`\${this.baseUrl}/fornecedor/login\`, { waitUntil: 'networkidle2' });
+    await this.preencherCampo('input[name="cpf"], input[name="login"]', this.credenciais.login);
+    await this.preencherCampo('input[name="senha"], input[name="password"]', this.credenciais.senha);
+    await this.page.evaluate(() => {
+      const btn = document.querySelector('button[type="submit"]')
+        || [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('entrar'));
+      if (btn) btn.click();
+    });
+    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
+    this.loggedIn = true;
+    console.log('✅ Login no Compras RJ realizado');
+  }
+
+  async navegarParaDisputa(edital) {
+    await this.page.goto(\`\${this.baseUrl}/pregao?numero=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
+    await this.page.waitForTimeout(5000);
+    await this.screenshot('compras-rj-disputa');
+  }
+
+  async lerMelhorLance() {
+    return await this.page.evaluate(() => {
+      for (const sel of ['.menor-lance', '.melhor-lance', 'td.valor', '#melhorLance']) {
+        const el = document.querySelector(sel);
+        if (el) {
+          const t = el.textContent.replace(/[^\\d.,]/g, '').split(',');
+          if (t.length === 2) return parseFloat(t[0].replace(/\\./g, '') + '.' + t[1]);
+        }
+      }
+      return null;
+    });
+  }
+
+  async enviarLance(valor) {
+    console.log(\`📤 Enviando lance Compras RJ: R$ \${this.formatarMoeda(valor)}\`);
+    await this.preencherCampo('input[name="lance"], input[name="valor"]', this.formatarMoeda(valor));
+    await this.page.evaluate(() => {
+      const btn = [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
+      if (btn) btn.click();
+    });
+    this.page.on('dialog', async d => await d.accept());
+    await this.page.waitForTimeout(3000);
+    return true;
+  }
+
+  async verificarResultado() {
+    return await this.page.evaluate(() => {
+      const t = document.body.innerText.toLowerCase();
+      if (t.includes('aceito') || t.includes('registrado')) return 'aceito';
+      if (t.includes('recusado') || t.includes('erro')) return 'recusado';
+      return 'indefinido';
+    });
+  }
+}
+
+module.exports = { ComprasRJPortal };
+`,
+
+  'src/portals/compras-pr.js': `const { BasePortal } = require('./base-portal');
+
+/**
+ * Módulo dedicado para Compras Paraná
+ *
+ * URL: https://www.comprasparana.pr.gov.br
+ * Autenticação: CPF + senha
+ * Estado: Paraná
+ */
+class ComprasPRPortal extends BasePortal {
+  constructor(page, credenciais) {
+    super(page, credenciais);
+    this.nome = 'compras-pr';
+    this.nomeExibicao = 'Compras PR';
+    this.baseUrl = 'https://www.comprasparana.pr.gov.br';
+  }
+
+  async login() {
+    console.log('🔐 Iniciando login no Compras PR...');
+    await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
+    await this.preencherCampo('input[name="cpf"], input[name="login"]', this.credenciais.login);
+    await this.preencherCampo('input[name="senha"], input[name="password"]', this.credenciais.senha);
+    await this.page.evaluate(() => {
+      const btn = document.querySelector('button[type="submit"]')
+        || [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('entrar'));
+      if (btn) btn.click();
+    });
+    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
+    this.loggedIn = true;
+    console.log('✅ Login no Compras PR realizado');
+  }
+
+  async navegarParaDisputa(edital) {
+    await this.page.goto(\`\${this.baseUrl}/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
+    await this.page.waitForTimeout(5000);
+  }
+
+  async lerMelhorLance() {
+    return await this.page.evaluate(() => {
+      for (const sel of ['.menor-lance', '.melhor-lance', 'td.valor']) {
+        const el = document.querySelector(sel);
+        if (el) {
+          const t = el.textContent.replace(/[^\\d.,]/g, '').split(',');
+          if (t.length === 2) return parseFloat(t[0].replace(/\\./g, '') + '.' + t[1]);
+        }
+      }
+      return null;
+    });
+  }
+
+  async enviarLance(valor) {
+    await this.preencherCampo('input[name="lance"], input[name="valor"]', this.formatarMoeda(valor));
+    await this.page.evaluate(() => {
+      const btn = [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
+      if (btn) btn.click();
+    });
+    this.page.on('dialog', async d => await d.accept());
+    await this.page.waitForTimeout(3000);
+    return true;
+  }
+
+  async verificarResultado() {
+    return await this.page.evaluate(() => {
+      const t = document.body.innerText.toLowerCase();
+      if (t.includes('aceito') || t.includes('registrado')) return 'aceito';
+      if (t.includes('recusado') || t.includes('erro')) return 'recusado';
+      return 'indefinido';
+    });
+  }
+}
+
+module.exports = { ComprasPRPortal };
+`,
+
+  'src/portals/compras-rs.js': `const { BasePortal } = require('./base-portal');
+
+/**
+ * Módulo dedicado para Compras RS
+ *
+ * URL: https://www.compras.rs.gov.br
+ * Autenticação: CPF + senha
+ * Estado: Rio Grande do Sul
+ */
+class ComprasRSPortal extends BasePortal {
+  constructor(page, credenciais) {
+    super(page, credenciais);
+    this.nome = 'compras-rs';
+    this.nomeExibicao = 'Compras RS';
+    this.baseUrl = 'https://www.compras.rs.gov.br';
+  }
+
+  async login() {
+    console.log('🔐 Iniciando login no Compras RS...');
+    await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
+    await this.preencherCampo('input[name="cpf"], input[name="login"]', this.credenciais.login);
+    await this.preencherCampo('input[name="senha"], input[name="password"]', this.credenciais.senha);
+    await this.page.evaluate(() => {
+      const btn = document.querySelector('button[type="submit"]')
+        || [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('entrar'));
+      if (btn) btn.click();
+    });
+    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
+    this.loggedIn = true;
+    console.log('✅ Login no Compras RS realizado');
+  }
+
+  async navegarParaDisputa(edital) {
+    await this.page.goto(\`\${this.baseUrl}/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
+    await this.page.waitForTimeout(5000);
+  }
+
+  async lerMelhorLance() {
+    return await this.page.evaluate(() => {
+      for (const sel of ['.menor-lance', '.melhor-lance', 'td.valor']) {
+        const el = document.querySelector(sel);
+        if (el) {
+          const t = el.textContent.replace(/[^\\d.,]/g, '').split(',');
+          if (t.length === 2) return parseFloat(t[0].replace(/\\./g, '') + '.' + t[1]);
+        }
+      }
+      return null;
+    });
+  }
+
+  async enviarLance(valor) {
+    await this.preencherCampo('input[name="lance"], input[name="valor"]', this.formatarMoeda(valor));
+    await this.page.evaluate(() => {
+      const btn = [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
+      if (btn) btn.click();
+    });
+    this.page.on('dialog', async d => await d.accept());
+    await this.page.waitForTimeout(3000);
+    return true;
+  }
+
+  async verificarResultado() {
+    return await this.page.evaluate(() => {
+      const t = document.body.innerText.toLowerCase();
+      if (t.includes('aceito') || t.includes('registrado')) return 'aceito';
+      if (t.includes('recusado') || t.includes('erro')) return 'recusado';
+      return 'indefinido';
+    });
+  }
+}
+
+module.exports = { ComprasRSPortal };
+`,
+
+  'src/portals/compras-sc.js': `const { BasePortal } = require('./base-portal');
+
+/**
+ * Módulo dedicado para Portal de Compras SC
+ *
+ * URL: https://www.portaldecompras.sc.gov.br
+ * Autenticação: CPF + senha
+ * Estado: Santa Catarina
+ */
+class ComprasSCPortal extends BasePortal {
+  constructor(page, credenciais) {
+    super(page, credenciais);
+    this.nome = 'compras-sc';
+    this.nomeExibicao = 'Compras SC';
+    this.baseUrl = 'https://www.portaldecompras.sc.gov.br';
+  }
+
+  async login() {
+    console.log('🔐 Iniciando login no Compras SC...');
+    await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
+    await this.preencherCampo('input[name="cpf"], input[name="login"]', this.credenciais.login);
+    await this.preencherCampo('input[name="senha"], input[name="password"]', this.credenciais.senha);
+    await this.page.evaluate(() => {
+      const btn = document.querySelector('button[type="submit"]')
+        || [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('entrar'));
+      if (btn) btn.click();
+    });
+    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
+    this.loggedIn = true;
+    console.log('✅ Login no Compras SC realizado');
+  }
+
+  async navegarParaDisputa(edital) {
+    await this.page.goto(\`\${this.baseUrl}/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
+    await this.page.waitForTimeout(5000);
+  }
+
+  async lerMelhorLance() {
+    return await this.page.evaluate(() => {
+      for (const sel of ['.menor-lance', '.melhor-lance', 'td.valor']) {
+        const el = document.querySelector(sel);
+        if (el) {
+          const t = el.textContent.replace(/[^\\d.,]/g, '').split(',');
+          if (t.length === 2) return parseFloat(t[0].replace(/\\./g, '') + '.' + t[1]);
+        }
+      }
+      return null;
+    });
+  }
+
+  async enviarLance(valor) {
+    await this.preencherCampo('input[name="lance"], input[name="valor"]', this.formatarMoeda(valor));
+    await this.page.evaluate(() => {
+      const btn = [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
+      if (btn) btn.click();
+    });
+    this.page.on('dialog', async d => await d.accept());
+    await this.page.waitForTimeout(3000);
+    return true;
+  }
+
+  async verificarResultado() {
+    return await this.page.evaluate(() => {
+      const t = document.body.innerText.toLowerCase();
+      if (t.includes('aceito') || t.includes('registrado')) return 'aceito';
+      if (t.includes('recusado') || t.includes('erro')) return 'recusado';
+      return 'indefinido';
+    });
+  }
+}
+
+module.exports = { ComprasSCPortal };
+`,
+
+  'src/portals/ecompras-df.js': `const { BasePortal } = require('./base-portal');
+
+/**
+ * Módulo dedicado para e-Compras DF
+ *
+ * URL: https://www.compras.df.gov.br
+ * Autenticação: CPF + senha
+ * Estado: Distrito Federal
+ * Particularidades:
+ *   - Portal próprio do GDF
+ *   - Integração com SICONV/DF
+ */
+class EComprasDFPortal extends BasePortal {
+  constructor(page, credenciais) {
+    super(page, credenciais);
+    this.nome = 'compras-df';
+    this.nomeExibicao = 'e-Compras DF';
+    this.baseUrl = 'https://www.compras.df.gov.br';
+  }
+
+  async login() {
+    console.log('🔐 Iniciando login no e-Compras DF...');
+    await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
+    await this.preencherCampo('input[name="cpf"], input[name="login"]', this.credenciais.login);
+    await this.preencherCampo('input[name="senha"], input[name="password"]', this.credenciais.senha);
+    await this.page.evaluate(() => {
+      const btn = document.querySelector('button[type="submit"]')
+        || [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('entrar'));
+      if (btn) btn.click();
+    });
+    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
+    this.loggedIn = true;
+    console.log('✅ Login no e-Compras DF realizado');
+  }
+
+  async navegarParaDisputa(edital) {
+    await this.page.goto(\`\${this.baseUrl}/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
+    await this.page.waitForTimeout(5000);
+  }
+
+  async lerMelhorLance() {
+    return await this.page.evaluate(() => {
+      for (const sel of ['.menor-lance', '.melhor-lance', 'td.valor']) {
+        const el = document.querySelector(sel);
+        if (el) {
+          const t = el.textContent.replace(/[^\\d.,]/g, '').split(',');
+          if (t.length === 2) return parseFloat(t[0].replace(/\\./g, '') + '.' + t[1]);
+        }
+      }
+      return null;
+    });
+  }
+
+  async enviarLance(valor) {
+    await this.preencherCampo('input[name="lance"], input[name="valor"]', this.formatarMoeda(valor));
+    await this.page.evaluate(() => {
+      const btn = [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
+      if (btn) btn.click();
+    });
+    this.page.on('dialog', async d => await d.accept());
+    await this.page.waitForTimeout(3000);
+    return true;
+  }
+
+  async verificarResultado() {
+    return await this.page.evaluate(() => {
+      const t = document.body.innerText.toLowerCase();
+      if (t.includes('aceito') || t.includes('registrado')) return 'aceito';
+      if (t.includes('recusado') || t.includes('erro')) return 'recusado';
+      return 'indefinido';
+    });
+  }
+}
+
+module.exports = { EComprasDFPortal };
+`,
+
+  'src/portals/ecompras-am.js': `const { BasePortal } = require('./base-portal');
+
+/**
+ * Módulo dedicado para e-Compras AM
+ *
+ * URL: https://www.ecompras.am.gov.br
+ * Autenticação: CPF + senha
+ * Estado: Amazonas
+ */
+class EComprasAMPortal extends BasePortal {
+  constructor(page, credenciais) {
+    super(page, credenciais);
+    this.nome = 'e-compras-am';
+    this.nomeExibicao = 'e-Compras AM';
+    this.baseUrl = 'https://www.ecompras.am.gov.br';
+  }
+
+  async login() {
+    console.log('🔐 Iniciando login no e-Compras AM...');
+    await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
+    await this.preencherCampo('input[name="cpf"], input[name="login"]', this.credenciais.login);
+    await this.preencherCampo('input[name="senha"], input[name="password"]', this.credenciais.senha);
+    await this.page.evaluate(() => {
+      const btn = document.querySelector('button[type="submit"]')
+        || [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('entrar'));
+      if (btn) btn.click();
+    });
+    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
+    this.loggedIn = true;
+    console.log('✅ Login no e-Compras AM realizado');
+  }
+
+  async navegarParaDisputa(edital) {
+    await this.page.goto(\`\${this.baseUrl}/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
+    await this.page.waitForTimeout(5000);
+  }
+
+  async lerMelhorLance() {
+    return await this.page.evaluate(() => {
+      for (const sel of ['.menor-lance', '.melhor-lance', 'td.valor']) {
+        const el = document.querySelector(sel);
+        if (el) {
+          const t = el.textContent.replace(/[^\\d.,]/g, '').split(',');
+          if (t.length === 2) return parseFloat(t[0].replace(/\\./g, '') + '.' + t[1]);
+        }
+      }
+      return null;
+    });
+  }
+
+  async enviarLance(valor) {
+    await this.preencherCampo('input[name="lance"], input[name="valor"]', this.formatarMoeda(valor));
+    await this.page.evaluate(() => {
+      const btn = [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
+      if (btn) btn.click();
+    });
+    this.page.on('dialog', async d => await d.accept());
+    await this.page.waitForTimeout(3000);
+    return true;
+  }
+
+  async verificarResultado() {
+    return await this.page.evaluate(() => {
+      const t = document.body.innerText.toLowerCase();
+      if (t.includes('aceito') || t.includes('registrado')) return 'aceito';
+      if (t.includes('recusado') || t.includes('erro')) return 'recusado';
+      return 'indefinido';
+    });
+  }
+}
+
+module.exports = { EComprasAMPortal };
+`,
+
+  'src/portals/compras-ce.js': `const { BasePortal } = require('./base-portal');
+
+/**
+ * Módulo dedicado para Portal de Compras CE
+ *
+ * URL: https://s2gpr.sefaz.ce.gov.br
+ * Autenticação: CPF + senha (SEFAZ-CE)
+ * Estado: Ceará
+ * Particularidades:
+ *   - Integração com SEFAZ-CE (S2GPR)
+ *   - Portal baseado em Java EE
+ */
+class ComprasCEPortal extends BasePortal {
+  constructor(page, credenciais) {
+    super(page, credenciais);
+    this.nome = 'portal-compras-ce';
+    this.nomeExibicao = 'Compras CE';
+    this.baseUrl = 'https://s2gpr.sefaz.ce.gov.br';
+  }
+
+  async login() {
+    console.log('🔐 Iniciando login no Portal de Compras CE...');
+    await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
+    await this.preencherCampo('input[name="cpf"], input[name="login"], input[id$="cpf"]', this.credenciais.login);
+    await this.preencherCampo('input[name="senha"], input[name="password"], input[id$="senha"]', this.credenciais.senha);
+    await this.page.evaluate(() => {
+      const btn = document.querySelector('button[type="submit"], input[type="submit"]')
+        || [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('entrar'));
+      if (btn) btn.click();
+    });
+    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 });
+    this.loggedIn = true;
+    console.log('✅ Login no Portal de Compras CE realizado');
+  }
+
+  async navegarParaDisputa(edital) {
+    await this.page.goto(\`\${this.baseUrl}/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
+    await this.page.waitForTimeout(5000);
+  }
+
+  async lerMelhorLance() {
+    return await this.page.evaluate(() => {
+      for (const sel of ['.menor-lance', '.melhor-lance', 'td.valor', 'span[id$="melhorLance"]']) {
+        const el = document.querySelector(sel);
+        if (el) {
+          const t = el.textContent.replace(/[^\\d.,]/g, '').split(',');
+          if (t.length === 2) return parseFloat(t[0].replace(/\\./g, '') + '.' + t[1]);
+        }
+      }
+      return null;
+    });
+  }
+
+  async enviarLance(valor) {
+    await this.preencherCampo('input[name="lance"], input[name="valorLance"], input[id$="valorLance"]', this.formatarMoeda(valor));
+    await this.page.evaluate(() => {
+      const btn = [...document.querySelectorAll('button, input[type="submit"]')]
+        .find(b => (b.textContent || b.value || '').toLowerCase().includes('enviar'));
+      if (btn) btn.click();
+    });
+    this.page.on('dialog', async d => await d.accept());
+    await this.page.waitForTimeout(3000);
+    return true;
+  }
+
+  async verificarResultado() {
+    return await this.page.evaluate(() => {
+      const t = document.body.innerText.toLowerCase();
+      if (t.includes('aceito') || t.includes('registrado')) return 'aceito';
+      if (t.includes('recusado') || t.includes('erro')) return 'recusado';
+      return 'indefinido';
+    });
+  }
+}
+
+module.exports = { ComprasCEPortal };
 `,
 };
