@@ -5,29 +5,29 @@ import { Badge } from '@/components/ui/badge';
 import { Globe, CheckCircle2, XCircle, Loader2, Building2 } from 'lucide-react';
 
 const PORTAIS_CONHECIDOS = [
-  { id: 'pncp', nome: 'PNCP' },
-  { id: 'compras-gov', nome: 'Compras Governamentais' },
-  { id: 'bll', nome: 'BLL Compras' },
-  { id: 'licitanet', nome: 'Licitanet' },
-  { id: 'licitacoes-e', nome: 'Licitações-e (BB)' },
-  { id: 'portal-compras', nome: 'Portal de Compras Públicas' },
-  { id: 'bnc', nome: 'Bolsa Nacional de Compras' },
-  { id: 'banparanet', nome: 'Banparanet (PA)' },
-  { id: 'bec-sp', nome: 'BEC/SP' },
-  { id: 'compras-rj', nome: 'Compras Públicas RJ' },
-  { id: 'comprasnet-ba', nome: 'ComprasNet BA' },
-  { id: 'portal-compras-ce', nome: 'Portal Compras CE' },
-  { id: 'compras-pe', nome: 'PE Integrado' },
-  { id: 'comprasnet-go', nome: 'ComprasNet GO' },
-  { id: 'compras-mg', nome: 'Compras MG' },
-  { id: 'e-compras-am', nome: 'e-Compras AM' },
-  { id: 'compras-pr', nome: 'Compras PR' },
-  { id: 'compras-rs', nome: 'Compras RS' },
-  { id: 'compras-sc', nome: 'Compras SC' },
-  { id: 'compras-df', nome: 'e-Compras DF' },
-  { id: 'bbmnet', nome: 'BBMNet' },
-  { id: 'comprasbr', nome: 'ComprasBR' },
-  { id: 'licitar-digital', nome: 'Licitar Digital' },
+  { id: 'compras-gov', nome: 'Compras.gov.br', categoria: 'federal' },
+  { id: 'pncp', nome: 'PNCP', categoria: 'federal' },
+  { id: 'bll', nome: 'BLL Compras', categoria: 'privado' },
+  { id: 'licitacoes-e', nome: 'Licitações-e (BB)', categoria: 'privado' },
+  { id: 'bnc', nome: 'Bolsa Nacional de Compras', categoria: 'privado' },
+  { id: 'portal-compras', nome: 'Portal de Compras Públicas', categoria: 'privado' },
+  { id: 'licitanet', nome: 'Licitanet', categoria: 'privado' },
+  { id: 'bbmnet', nome: 'BBMNet', categoria: 'privado' },
+  { id: 'comprasbr', nome: 'ComprasBR', categoria: 'privado' },
+  { id: 'licitar-digital', nome: 'Licitar Digital', categoria: 'privado' },
+  { id: 'bec-sp', nome: 'BEC/SP', categoria: 'estadual' },
+  { id: 'banparanet', nome: 'Banparanet (PA)', categoria: 'estadual' },
+  { id: 'comprasnet-ba', nome: 'ComprasNet BA', categoria: 'estadual' },
+  { id: 'comprasnet-go', nome: 'ComprasNet GO', categoria: 'estadual' },
+  { id: 'compras-mg', nome: 'Compras MG', categoria: 'estadual' },
+  { id: 'compras-pe', nome: 'PE Integrado', categoria: 'estadual' },
+  { id: 'compras-rj', nome: 'Compras RJ', categoria: 'estadual' },
+  { id: 'compras-pr', nome: 'Compras PR', categoria: 'estadual' },
+  { id: 'compras-rs', nome: 'Compras RS', categoria: 'estadual' },
+  { id: 'compras-sc', nome: 'Compras SC', categoria: 'estadual' },
+  { id: 'compras-df', nome: 'e-Compras DF', categoria: 'estadual' },
+  { id: 'e-compras-am', nome: 'e-Compras AM', categoria: 'estadual' },
+  { id: 'portal-compras-ce', nome: 'Portal Compras CE', categoria: 'estadual' },
 ];
 
 type PortalStatus = {
@@ -125,34 +125,47 @@ export default function DeteccaoPortais() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        {portais.map((p) => (
-          <div
-            key={p.id}
-            className={`flex items-center gap-2 rounded-lg border p-2.5 text-xs ${
-              p.temCredencial
-                ? 'border-success/30 bg-success/5'
-                : 'border-border/50 bg-muted/30'
-            }`}
-          >
-            {p.temCredencial ? (
-              <CheckCircle2 className="w-3.5 h-3.5 text-success shrink-0" />
-            ) : (
-              <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            )}
-            <div className="min-w-0">
-              <p className="font-medium truncate">{p.nome}</p>
-              <p className="text-[10px] text-muted-foreground">
-                {p.temCredencial
-                  ? p.temCertificado
-                    ? 'Login + Cert.'
-                    : 'Apenas login'
-                  : 'Sem credencial'}
-              </p>
+      {['federal', 'privado', 'estadual'].map(cat => {
+        const portalsCat = portais.filter(p => {
+          const config = PORTAIS_CONHECIDOS.find(pk => pk.id === p.id);
+          return config?.categoria === cat;
+        });
+        if (portalsCat.length === 0) return null;
+        const catLabel = cat === 'federal' ? '🏛️ Federais' : cat === 'privado' ? '🏢 Bolsas Eletrônicas' : '🗺️ Estaduais';
+        return (
+          <div key={cat} className="space-y-2">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{catLabel}</p>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              {portalsCat.map((p) => (
+                <div
+                  key={p.id}
+                  className={`flex items-center gap-2 rounded-lg border p-2.5 text-xs ${
+                    p.temCredencial
+                      ? 'border-success/30 bg-success/5'
+                      : 'border-border/50 bg-muted/30'
+                  }`}
+                >
+                  {p.temCredencial ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-success shrink-0" />
+                  ) : (
+                    <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{p.nome}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {p.temCredencial
+                        ? p.temCertificado
+                          ? 'Login + Cert.'
+                          : 'Apenas login'
+                        : 'Sem credencial'}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
-      </div>
+        );
+      })}
 
       {comCredencial === 0 && (
         <p className="text-xs text-muted-foreground text-center">

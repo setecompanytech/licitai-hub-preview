@@ -18,16 +18,29 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const PORTAIS = [
-  { id: 'pncp', nome: 'PNCP' },
-  { id: 'compras-gov', nome: 'Compras Governamentais' },
-  { id: 'bll', nome: 'BLL Compras' },
-  { id: 'licitanet', nome: 'Licitanet' },
-  { id: 'licitacoes-e', nome: 'Licitações-e (BB)' },
-  { id: 'portal-compras', nome: 'Portal de Compras Públicas' },
-  { id: 'bnc', nome: 'Bolsa Nacional de Compras' },
-  { id: 'banparanet', nome: 'Banparanet (PA)' },
-  { id: 'bec-sp', nome: 'BEC/SP' },
-  { id: 'compras-rj', nome: 'Compras Públicas RJ' },
+  { id: 'compras-gov', nome: 'Compras.gov.br', auth: 'certificado', prioridade: 1 },
+  { id: 'bll', nome: 'BLL Compras', auth: 'login', prioridade: 2 },
+  { id: 'licitacoes-e', nome: 'Licitações-e (BB)', auth: 'login', prioridade: 3 },
+  { id: 'bnc', nome: 'Bolsa Nacional de Compras', auth: 'login', prioridade: 4 },
+  { id: 'portal-compras', nome: 'Portal de Compras Públicas', auth: 'login', prioridade: 5 },
+  { id: 'bec-sp', nome: 'BEC/SP', auth: 'login+cert', prioridade: 6 },
+  { id: 'banparanet', nome: 'Banparanet (PA)', auth: 'login+cert', prioridade: 7 },
+  { id: 'pncp', nome: 'PNCP', auth: 'certificado', prioridade: 8 },
+  { id: 'licitanet', nome: 'Licitanet', auth: 'login', prioridade: 9 },
+  { id: 'bbmnet', nome: 'BBMNet', auth: 'login+cert', prioridade: 10 },
+  { id: 'comprasbr', nome: 'ComprasBR', auth: 'login', prioridade: 11 },
+  { id: 'licitar-digital', nome: 'Licitar Digital', auth: 'login', prioridade: 12 },
+  { id: 'compras-rj', nome: 'Compras Públicas RJ', auth: 'login', prioridade: 13 },
+  { id: 'comprasnet-ba', nome: 'ComprasNet BA', auth: 'login', prioridade: 14 },
+  { id: 'comprasnet-go', nome: 'ComprasNet GO', auth: 'login', prioridade: 15 },
+  { id: 'compras-mg', nome: 'Compras MG', auth: 'login', prioridade: 16 },
+  { id: 'compras-pe', nome: 'PE Integrado', auth: 'login', prioridade: 17 },
+  { id: 'compras-pr', nome: 'Compras PR', auth: 'login', prioridade: 18 },
+  { id: 'compras-rs', nome: 'Compras RS', auth: 'login', prioridade: 19 },
+  { id: 'compras-sc', nome: 'Compras SC', auth: 'login', prioridade: 20 },
+  { id: 'compras-df', nome: 'e-Compras DF', auth: 'login', prioridade: 21 },
+  { id: 'e-compras-am', nome: 'e-Compras AM', auth: 'login', prioridade: 22 },
+  { id: 'portal-compras-ce', nome: 'Portal Compras CE', auth: 'login', prioridade: 23 },
 ];
 
 export default function CredenciaisPortalForm() {
@@ -138,10 +151,15 @@ export default function CredenciaisPortalForm() {
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Selecione o portal" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-72">
                     {PORTAIS.map((p) => (
                       <SelectItem key={p.id} value={p.id} disabled={portalJaCadastrado(p.id)}>
-                        {p.nome} {portalJaCadastrado(p.id) ? '(já cadastrado)' : ''}
+                        <span className="flex items-center gap-2">
+                          {p.nome}
+                          {p.auth === 'certificado' && <Badge variant="outline" className="text-[9px] scale-75 bg-warning/10 text-warning border-warning/30">Cert. Digital</Badge>}
+                          {p.auth === 'login+cert' && <Badge variant="outline" className="text-[9px] scale-75 bg-info/10 text-info border-info/30">Login+Cert</Badge>}
+                          {portalJaCadastrado(p.id) && <span className="text-muted-foreground">(já cadastrado)</span>}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -1,6 +1,7 @@
 // Generates a downloadable ZIP with the Node.js agent template
 import JSZip from 'jszip';
 import { PORTAL_FILES } from './agent-template/portals';
+import { PORTAL_ESTADUAIS_FILES } from './agent-template/portals-estaduais';
 import { INFRA_FILES } from './agent-template/infrastructure';
 
 const CORE_FILES: Record<string, string> = {
@@ -103,16 +104,40 @@ O agente v2.1 suporta **múltiplas disputas simultâneas**:
 
 ## Portais Suportados
 
+### Federais
 | Portal | ID | Autenticação |
 |---|---|---|
 | Compras.gov.br | comprasgov | Certificado A1 (gov.br) |
+| PNCP | pncp | Certificado A1 (gov.br) |
+
+### Privados (Bolsas Eletrônicas)
+| Portal | ID | Autenticação |
+|---|---|---|
 | BLL | bll | Login + Senha |
 | Licitações-e (BB) | licitacoes-e | Login + Senha |
-| PNCP | pncp | Certificado A1 (gov.br) |
-| BEC-SP | bec-sp | Login + Senha + Certificado |
-| Licitanet | licitanet | Login + Senha |
-| Portal de Compras | portal-compras | Login + Senha |
 | BNC | bnc | Login + Senha |
+| Portal de Compras | portal-compras | Login + Senha |
+| Licitanet | licitanet | Login + Senha |
+| BBMNet | bbmnet | Login + Senha + Certificado |
+| ComprasBR | comprasbr | Login + Senha |
+| Licitar Digital | licitar-digital | Login + Senha |
+
+### Estaduais
+| Portal | ID | Autenticação |
+|---|---|---|
+| BEC-SP | bec-sp | Login + Senha + Certificado |
+| Banparanet (PA) | banparanet | Login + Senha + Certificado |
+| ComprasNet BA | comprasnet-ba | Login + Senha |
+| ComprasNet GO | comprasnet-go | Login + Senha |
+| Compras MG | compras-mg | Login + Senha |
+| PE Integrado | compras-pe | Login + Senha |
+| Compras RJ | compras-rj | Login + Senha |
+| Compras PR | compras-pr | Login + Senha |
+| Compras RS | compras-rs | Login + Senha |
+| Compras SC | compras-sc | Login + Senha |
+| e-Compras DF | compras-df | Login + Senha |
+| e-Compras AM | e-compras-am | Login + Senha |
+| Portal Compras CE | portal-compras-ce | Login + Senha |
 
 ## Instalação Rápida (Ubuntu/Debian)
 
@@ -592,6 +617,11 @@ export async function generateAgentTemplate(): Promise<Blob> {
 
   // Portal modules
   for (const [path, content] of Object.entries(PORTAL_FILES)) {
+    root.file(path, content);
+  }
+
+  // State/regional portal modules
+  for (const [path, content] of Object.entries(PORTAL_ESTADUAIS_FILES)) {
     root.file(path, content);
   }
 
