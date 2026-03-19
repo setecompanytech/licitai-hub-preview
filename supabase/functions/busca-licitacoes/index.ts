@@ -138,8 +138,9 @@ serve(async (req) => {
         ? (MODALIDADES_PNCP[modalidade.toLowerCase().trim()] || null)
         : null;
 
-      // Only use CNPJ search path for valid CNPJ (14 digits) or CPF (11 digits)
+      // Detect input type: CNPJ (14 digits), CPF (11 digits), or UASG (6 digits)
       const isCnpjValido = cleanCnpj && (cleanCnpj.length === 14 || cleanCnpj.length === 11);
+      const isUasg = cleanCnpj && cleanCnpj.length === 6 && /^\d{6}$/.test(cleanCnpj);
       
       if (isCnpjValido) {
         // ── Search by CNPJ ──
@@ -155,14 +156,51 @@ serve(async (req) => {
         const results = await fetchPncp(params, `CNPJ=${cleanCnpj}`);
         allItems.push(...results.map((i: any) => mapPncpItem(i, uf)));
         
-        // If CNPJ search returned nothing, fall through to normal search
         if (allItems.length === 0) {
           console.log(`CNPJ ${cleanCnpj} retornou 0 resultados, tentando busca normal...`);
         }
       }
       
-      // Normal search: when no CNPJ provided, CNPJ was invalid, or CNPJ returned 0 results
-      if (!isCnpjValido || allItems.length === 0) {
+      if (isUasg) {
+        // ── Search by UASG: use codigoUnidadeAdministrativa parameter ──
+        console.log(`Buscando por UASG: ${cleanCnpj}`);
+        const modalidades = userModalidadeCod
+          ? [userModalidadeCod]
+          : (mural ? MURAL_MODALIDADES : [6]);
+        
+        const fetches = modalidades.map((cod) => {
+          const params = new URLSearchParams();
+          params.set("dataInicial", formatDatePNCP(dataInicialDate));
+          params.set("dataFinal", formatDatePNCP(dataFinalDate));
+          params.set("tamanhoPagina", "50");
+          params.set("codigoModalidadeContratacao", String(cod));
+          params.set("codigoUnidadeAdministrativa", cleanCnpj);
+          if (uf) params.set("uf", uf);
+          if (query) params.set("q", query.substring(0, 100));
+          
+          if (modalidades.length === 1) {
+            return fetchPncpAllPages(params, `UASG=${cleanCnpj} mod=${cod}`, 3);
+          } else {
+            params.set("pagina", String(pagina || 1));
+            return fetchPncp(params, `UASG=${cleanCnpj} mod=${cod}`);
+          }
+        });
+        
+        const results = await Promise.allSettled(fetches);
+        for (const result of results) {
+          if (result.status === "fulfilled") {
+            allItems.push(...result.value.map((i: any) => mapPncpItem(i, uf)));
+          }
+        }
+        
+        // If UASG returned nothing, fall through to normal search
+        if (allItems.length === 0) {
+          console.log(`UASG ${cleanCnpj} retornou 0 resultados, tentando busca normal...`);
+        }
+      }
+      
+      // Normal search: when no CNPJ/UASG provided, or they returned 0 results
+      if ((!isCnpjValido && !isUasg) || allItems.length === 0) {
         // ── Determine which modalidades to search ──
         // If user selected a specific modalidade, respect it even in mural mode
         const modalidades = userModalidadeCod
