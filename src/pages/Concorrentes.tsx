@@ -4,6 +4,7 @@ import ConsultaCNPJ from '@/components/concorrentes/ConsultaCNPJ';
 import ConsultaSintegra from '@/components/concorrentes/ConsultaSintegra';
 import CertidoesNegativas from '@/components/concorrentes/CertidoesNegativas';
 import AnaliseDocsConcorrente from '@/components/documentos/AnaliseDocsConcorrente';
+import VerificacaoIdoneidade from '@/components/concorrentes/VerificacaoIdoneidade';
 
 export default function Concorrentes() {
 
@@ -17,9 +18,10 @@ export default function Concorrentes() {
       </div>
 
       <Tabs defaultValue="analise-docs" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="analise-docs">Análise de Documentos</TabsTrigger>
           <TabsTrigger value="consulta-cnpj">Consulta CNPJ</TabsTrigger>
+          <TabsTrigger value="idoneidade">Idoneidade (CEIS/CNEP)</TabsTrigger>
           <TabsTrigger value="sintegra">SINTEGRA</TabsTrigger>
           <TabsTrigger value="certidoes">Certidões Negativas</TabsTrigger>
         </TabsList>
@@ -30,6 +32,10 @@ export default function Concorrentes() {
 
         <TabsContent value="consulta-cnpj">
           <ConsultaCNPJ />
+        </TabsContent>
+
+        <TabsContent value="idoneidade">
+          <VerificacaoIdoneidade />
         </TabsContent>
 
         <TabsContent value="sintegra">

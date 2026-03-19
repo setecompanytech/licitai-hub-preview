@@ -8,10 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   BarChart3, TrendingUp, TrendingDown, DollarSign, Package,
-  Building2, Search, Download, PieChart, Activity, Landmark, FileText
+  Building2, Search, Download, PieChart, Activity, Landmark, FileText, Shield
 } from 'lucide-react';
 import TransparenciaPA from '@/components/analise-mercado/TransparenciaPA';
 import ContratosGov from '@/components/analise-mercado/ContratosGov';
+import ContratosTransparencia from '@/components/analise-mercado/ContratosTransparencia';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RPieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
 import { transparenciaPortais, estadosPortais, capitaisPortais, type TransparenciaPortal } from '@/data/transparencia-portais';
 
@@ -126,6 +127,7 @@ export default function AnaliseMercado() {
             <TabsList>
               <TabsTrigger value="transparencia"><Landmark className="w-4 h-4 mr-1" /> Transparência</TabsTrigger>
               <TabsTrigger value="contratos-gov"><FileText className="w-4 h-4 mr-1" /> Contratos Gov</TabsTrigger>
+              <TabsTrigger value="transparencia-federal"><Shield className="w-4 h-4 mr-1" /> Federal (API)</TabsTrigger>
               <TabsTrigger value="segmentos"><PieChart className="w-4 h-4 mr-1" /> Por Segmento</TabsTrigger>
               <TabsTrigger value="precos"><TrendingUp className="w-4 h-4 mr-1" /> Preços Praticados</TabsTrigger>
               <TabsTrigger value="produtos"><Package className="w-4 h-4 mr-1" /> Mais Solicitados</TabsTrigger>
@@ -164,6 +166,10 @@ export default function AnaliseMercado() {
 
           <TabsContent value="contratos-gov">
             <ContratosGov />
+          </TabsContent>
+
+          <TabsContent value="transparencia-federal">
+            <ContratosTransparencia />
           </TabsContent>
 
           <TabsContent value="segmentos" className="space-y-4">
