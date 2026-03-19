@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import MarcarInteresseDialog from '@/components/compromissos/MarcarInteresseDialog';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
+import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 
 type DetalhePNCP = {
   success: boolean;
@@ -178,6 +179,15 @@ export default function MuralLicitacoes() {
   const [municipioFiltro, setMunicipioFiltro] = useState('');
   const [unidadeFiltro, setUnidadeFiltro] = useState('');
   const [orgaoFiltro, setOrgaoFiltro] = useState('');
+
+  const municipiosUfSelecionada = useMemo(() => {
+    if (!ufFiltro || ufFiltro === 'all') return [];
+    for (const regiao of Object.values(REGIOES_ESTADOS)) {
+      const estado = regiao.estados.find(e => e.uf === ufFiltro);
+      if (estado) return estado.cidades.sort((a, b) => a.localeCompare(b));
+    }
+    return [];
+  }, [ufFiltro]);
 
   // Ficha detail
   const [fichaAberta, setFichaAberta] = useState<LicitacaoMural | null>(null);
@@ -911,7 +921,7 @@ export default function MuralLicitacoes() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">UFs</label>
-                  <Select value={ufFiltro} onValueChange={v => { setUfFiltro(v); setPagina(1); }}>
+                  <Select value={ufFiltro} onValueChange={v => { setUfFiltro(v); setMunicipioFiltro(''); setPagina(1); }}>
                     <SelectTrigger className="w-full h-10 text-xs">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
@@ -923,13 +933,21 @@ export default function MuralLicitacoes() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Municípios</label>
-                  <Input
-                    placeholder="Digite o nome do município..."
+                  <Select
                     value={municipioFiltro}
-                    onChange={e => setMunicipioFiltro(e.target.value)}
-                    className="text-xs h-10"
-                    disabled={loading}
-                  />
+                    onValueChange={v => { setMunicipioFiltro(v === 'all' ? '' : v); setPagina(1); }}
+                    disabled={loading || ufFiltro === 'all'}
+                  >
+                    <SelectTrigger className="w-full h-10 text-xs">
+                      <SelectValue placeholder={ufFiltro === 'all' ? 'Selecione uma UF primeiro' : 'Todos os municípios'} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      <SelectItem value="all">Todos os municípios</SelectItem>
+                      {municipiosUfSelecionada.map(m => (
+                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
