@@ -64,8 +64,8 @@ function mapPncpItem(item: any, uf: string | null) {
     tipoInstrumentoNome: item.tipoInstrumentoConvocatorioNome || null,
     unidadeOrgao: item.unidadeOrgao?.nomeUnidade || null,
     municipioIbge: item.unidadeOrgao?.codigoIbge || null,
+    codigoUnidade: item.unidadeOrgao?.codigoUnidade || null,
   };
-}
 
 async function fetchPncp(params: URLSearchParams, label: string): Promise<any[]> {
   const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params.toString()}`;
@@ -138,8 +138,9 @@ serve(async (req) => {
         ? (MODALIDADES_PNCP[modalidade.toLowerCase().trim()] || null)
         : null;
 
-      // Only use CNPJ search path for valid CNPJ (14 digits) or CPF (11 digits)
+      // Detect input type: CNPJ (14 digits), CPF (11 digits), or UASG (6 digits)
       const isCnpjValido = cleanCnpj && (cleanCnpj.length === 14 || cleanCnpj.length === 11);
+      const isUasg = cleanCnpj && cleanCnpj.length === 6 && /^\d{6}$/.test(cleanCnpj);
       
       if (isCnpjValido) {
         // ── Search by CNPJ ──
@@ -155,13 +156,12 @@ serve(async (req) => {
         const results = await fetchPncp(params, `CNPJ=${cleanCnpj}`);
         allItems.push(...results.map((i: any) => mapPncpItem(i, uf)));
         
-        // If CNPJ search returned nothing, fall through to normal search
         if (allItems.length === 0) {
           console.log(`CNPJ ${cleanCnpj} retornou 0 resultados, tentando busca normal...`);
         }
       }
       
-      // Normal search: when no CNPJ provided, CNPJ was invalid, or CNPJ returned 0 results
+      // Normal search (also handles UASG - post-filtered by codigoUnidade)
       if (!isCnpjValido || allItems.length === 0) {
         // ── Determine which modalidades to search ──
         // If user selected a specific modalidade, respect it even in mural mode
@@ -180,11 +180,12 @@ serve(async (req) => {
           if (uf) params.set("uf", uf);
           if (query) params.set("q", query.substring(0, 100));
           
-          // For single modalidade search, support pagination across pages
-          if (modalidades.length === 1) {
-            return fetchPncpAllPages(params, `mod=${cod}`, 3);
+          // For single modalidade or UASG search, fetch multiple pages for completeness
+          if (modalidades.length === 1 || isUasg) {
+            const maxPages = isUasg ? 5 : 3;
+            return fetchPncpAllPages(params, `mod=${cod}`, maxPages);
           } else {
-            // For multi-modalidade (mural without filter), fetch page 1 with large page size
+            // For multi-modalidade (mural without filter), fetch page 1
             params.set("pagina", String(pagina || 1));
             return fetchPncp(params, `mod=${cod}`);
           }
@@ -198,7 +199,20 @@ serve(async (req) => {
         }
       }
 
-      // ── Deduplicate by CNPJ + ano + sequencial ──
+      // ── UASG post-filter: filter by codigoUnidade when 6-digit UASG is provided ──
+      if (isUasg && allItems.length > 0) {
+        const beforeCount = allItems.length;
+        const uasgFiltered = allItems.filter((item: any) => item.codigoUnidade === cleanCnpj);
+        if (uasgFiltered.length > 0) {
+          allItems.length = 0;
+          allItems.push(...uasgFiltered);
+          console.log(`UASG ${cleanCnpj} filtro: ${beforeCount} → ${allItems.length} resultados`);
+        } else {
+          console.log(`UASG ${cleanCnpj} não encontrado em codigoUnidade, mantendo ${allItems.length} resultados sem filtro UASG`);
+        }
+      }
+
+
       const seen = new Set<string>();
       for (let idx = allItems.length - 1; idx >= 0; idx--) {
         const item = allItems[idx];
