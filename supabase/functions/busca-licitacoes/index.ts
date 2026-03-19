@@ -229,6 +229,18 @@ serve(async (req) => {
       }
 
 
+      // ── Municipality post-filter: filter by municipioNome when municipality is provided ──
+      if (cleanMunicipio && allItems.length > 0) {
+        const beforeCount = allItems.length;
+        const munFiltered = allItems.filter((item: any) => {
+          const mun = (item.municipio || "").toLowerCase();
+          return mun.includes(cleanMunicipio);
+        });
+        allItems.length = 0;
+        allItems.push(...munFiltered);
+        console.log(`Município "${cleanMunicipio}" filtro: ${beforeCount} → ${allItems.length} resultados`);
+      }
+
       const seen = new Set<string>();
       for (let idx = allItems.length - 1; idx >= 0; idx--) {
         const item = allItems[idx];
