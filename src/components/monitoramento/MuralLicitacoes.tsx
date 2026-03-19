@@ -1098,13 +1098,27 @@ export default function MuralLicitacoes() {
                 <p className="text-[10px] font-mono text-muted-foreground mb-1">{lic.numero}</p>
 
                 {/* Objeto */}
-                <p className="text-sm font-medium line-clamp-2 mb-3 group-hover:text-accent transition-colors cursor-pointer" onClick={() => setFichaAberta(lic)}>{lic.objeto}</p>
+                <Tooltip delayDuration={400}>
+                  <TooltipTrigger asChild>
+                    <p className="text-sm font-medium line-clamp-2 mb-3 group-hover:text-accent transition-colors cursor-pointer" onClick={() => setFichaAberta(lic)}>{lic.objeto}</p>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs text-xs">
+                    {lic.objeto}
+                  </TooltipContent>
+                </Tooltip>
 
                 {/* Órgão */}
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                  <Building2 className="w-3 h-3 flex-shrink-0" />
-                  <span className="line-clamp-1">{lic.orgao}</span>
-                </div>
+                <Tooltip delayDuration={400}>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                      <Building2 className="w-3 h-3 flex-shrink-0" />
+                      <span className="line-clamp-1">{lic.orgao}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs text-xs">
+                    {lic.orgao}
+                  </TooltipContent>
+                </Tooltip>
 
                 {/* Localização */}
                 {(lic.municipio || lic.uf) && (
