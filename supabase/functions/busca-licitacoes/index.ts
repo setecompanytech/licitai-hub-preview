@@ -135,7 +135,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { query, uf, modalidade, pagina, portal, dataInicio, dataFim, mural, cnpjOrgao } = body;
+    const { query, uf, modalidade, pagina, portal, dataInicio, dataFim, mural, cnpjOrgao, municipio } = body;
     const allItems: any[] = [];
 
     try {
