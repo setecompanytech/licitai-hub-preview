@@ -30,7 +30,7 @@ import {
   ShieldCheck,
   Gavel,
 } from "lucide-react";
-import LicitacoesTab from "@/components/monitoramento/LicitacoesTab";
+// LicitacoesTab removed — integrated into MuralLicitacoes via "Incluir portais externos" toggle
 import DiariosOficiaisTab from "@/components/monitoramento/DiariosOficiaisTab";
 import ConfiguracaoPesquisaTab from "@/components/monitoramento/ConfiguracaoPesquisaTab";
 import DispensaEletronicaTab from "@/components/monitoramento/DispensaEletronicaTab";
@@ -178,10 +178,6 @@ export default function MonitoramentoEditais() {
               <Gavel className="w-4 h-4 mr-1" />
               Mural (Tempo Real)
             </TabsTrigger>
-            <TabsTrigger value="licitacoes">
-              <List className="w-4 h-4 mr-1" />
-              Busca Inteligente
-            </TabsTrigger>
             <TabsTrigger value="dispensa">
               <Zap className="w-4 h-4 mr-1" />
               Dispensa Eletrônica
@@ -201,9 +197,7 @@ export default function MonitoramentoEditais() {
             <MuralLicitacoes />
           </TabsContent>
 
-          <TabsContent value="licitacoes">
-            <LicitacoesTab />
-          </TabsContent>
+
 
           <TabsContent value="dispensa">
             <DispensaEletronicaTab />

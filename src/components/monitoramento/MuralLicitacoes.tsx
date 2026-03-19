@@ -9,13 +9,14 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import {
   Search, MapPin, Building2, CalendarDays, RefreshCw, Globe, Loader2,
   ExternalLink, DollarSign, FileText, ChevronLeft, ChevronRight, Eye,
   X, AlertTriangle, CheckCircle2, Clock, Gavel, Star, StarOff, Download,
   FileDown, Link2, Package, Scale, ShieldCheck, Info, ListOrdered,
-  SlidersHorizontal, ChevronDown, ChevronUp, Landmark
+  SlidersHorizontal, ChevronDown, ChevronUp, Landmark, Sparkles
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
@@ -180,6 +181,10 @@ export default function MuralLicitacoes() {
   const [unidadeFiltro, setUnidadeFiltro] = useState('');
   const [orgaoFiltro, setOrgaoFiltro] = useState('');
 
+  // Toggle portais externos (Firecrawl)
+  const [incluirExternos, setIncluirExternos] = useState(false);
+  const [loadingExternos, setLoadingExternos] = useState(false);
+  const [licitacoesExternas, setLicitacoesExternas] = useState<LicitacaoMural[]>([]);
   const municipiosUfSelecionada = useMemo(() => {
     if (!ufFiltro || ufFiltro === 'all') return [];
     for (const regiao of Object.values(REGIOES_ESTADOS)) {
@@ -323,9 +328,73 @@ export default function MuralLicitacoes() {
     }
   }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted]);
 
+  // Busca em portais externos via Firecrawl (busca-editais-ia)
+  const carregarExternos = useCallback(async () => {
+    if (!incluirExternos) { setLicitacoesExternas([]); return; }
+    const queryText = searchSubmitted || (modalidadeFiltro !== 'all' ? modalidadeFiltro : '') || 'licitações';
+    setLoadingExternos(true);
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/busca-editais-ia`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            query: queryText,
+            uf: ufFiltro !== 'all' ? ufFiltro : undefined,
+            portais: ['pncp', 'bll', 'bnc', 'portalcompras', 'licitacoese', 'comprasnet'],
+            com_analise_ia: false,
+            limite: 20,
+          }),
+        }
+      );
+      if (!resp.ok) throw new Error(`Erro ${resp.status}`);
+      const data = await resp.json();
+      if (data.success && data.resultados?.length > 0) {
+        const externItems: LicitacaoMural[] = data.resultados.map((r: any, idx: number) => ({
+          id: `ext-${idx}-${Date.now()}`,
+          numero: r.numero || '-',
+          orgao: r.orgao || '-',
+          objeto: r.titulo || '-',
+          modalidade: r.modalidade || 'Não informada',
+          status: r.status || 'Publicado',
+          valor_estimado: r.valor_estimado,
+          uf: r.uf,
+          municipio: r.municipio,
+          data_abertura: r.data_abertura,
+          data_encerramento: null,
+          data_publicacao: r.data_publicacao,
+          portal: r.portal || 'Portal Externo',
+          url: r.url,
+          pncpNumero: r.pncp_numero || null,
+          cnpjOrgao: r.cnpj_orgao || null,
+          anoCompra: r.ano_compra || null,
+          sequencialCompra: r.seq_compra || null,
+          esferaNome: null,
+          tipoInstrumentoNome: null,
+          unidadeOrgao: null,
+        }));
+        setLicitacoesExternas(externItems);
+        toast.success(`${externItems.length} resultado(s) de portais externos`);
+      } else {
+        setLicitacoesExternas([]);
+      }
+    } catch (err) {
+      console.error('Erro portais externos:', err);
+      setLicitacoesExternas([]);
+    } finally {
+      setLoadingExternos(false);
+    }
+  }, [incluirExternos, searchSubmitted, ufFiltro, modalidadeFiltro]);
+
   // Filtros client-side aplicados sobre os dados já carregados (sem re-fetch)
   const licitacoesFiltradas = useMemo(() => {
-    let items = [...licitacoesRaw];
+    // Merge PNCP + external results, deduplicating by numero+orgao
+    const pncpKeys = new Set(licitacoesRaw.map(i => `${i.numero}|${i.orgao}`));
+    const externasDedup = licitacoesExternas.filter(e => !pncpKeys.has(`${e.numero}|${e.orgao}`));
+    let items = [...licitacoesRaw, ...externasDedup];
 
     if (esferaFiltro !== 'all') {
       items = items.filter(i => i.esferaNome?.toLowerCase().includes(esferaFiltro.toLowerCase()));
@@ -360,7 +429,7 @@ export default function MuralLicitacoes() {
     }
 
     return items;
-  }, [licitacoesRaw, esferaFiltro, tipoInstrumentoFiltro, municipioFiltro, unidadeFiltro, orgaoFiltro, segmentosPrioritarios]);
+  }, [licitacoesRaw, licitacoesExternas, esferaFiltro, tipoInstrumentoFiltro, municipioFiltro, unidadeFiltro, orgaoFiltro, segmentosPrioritarios]);
 
   // Sincronizar licitacoes e totalResultados com os dados filtrados
   useEffect(() => {
@@ -371,6 +440,12 @@ export default function MuralLicitacoes() {
   useEffect(() => {
     if (user) carregarMural();
   }, [carregarMural, user]);
+
+  // Trigger external search when toggle is on and search changes
+  useEffect(() => {
+    if (user && incluirExternos) carregarExternos();
+    else setLicitacoesExternas([]);
+  }, [carregarExternos, user, incluirExternos]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -868,9 +943,24 @@ export default function MuralLicitacoes() {
               Dados em tempo real da API oficial do Portal Nacional de Contratações Públicas
             </p>
           </div>
-          <Button size="sm" variant="outline" onClick={carregarMural} disabled={loading} className="gap-1.5">
-            <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} /> Atualizar
-          </Button>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-card border border-border/50 rounded-lg px-3 py-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-accent" />
+              <label htmlFor="toggle-externos" className="text-xs font-medium cursor-pointer select-none">
+                Incluir portais externos
+              </label>
+              <Switch
+                id="toggle-externos"
+                checked={incluirExternos}
+                onCheckedChange={setIncluirExternos}
+                className="scale-90"
+              />
+              {loadingExternos && <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" />}
+            </div>
+            <Button size="sm" variant="outline" onClick={carregarMural} disabled={loading} className="gap-1.5">
+              <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} /> Atualizar
+            </Button>
+          </div>
         </div>
 
         {/* Keyword + UASG search bar */}
@@ -1106,11 +1196,21 @@ export default function MuralLicitacoes() {
       {/* Stats */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {loading ? 'Consultando PNCP...' : `${totalResultados} licitações encontradas`}
+          {loading && loadingExternos ? 'Consultando PNCP + portais externos...' :
+           loading ? 'Consultando PNCP...' :
+           loadingExternos ? `${licitacoesRaw.length} do PNCP • Buscando portais externos...` :
+           `${totalResultados} licitações encontradas${licitacoesExternas.length > 0 ? ` (${licitacoesRaw.length} PNCP + ${licitacoesExternas.length} externos)` : ''}`}
         </p>
-        <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/30 gap-1">
-          <Globe className="w-3 h-3" /> Fonte: PNCP (dados oficiais)
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/30 gap-1">
+            <Globe className="w-3 h-3" /> PNCP Oficial
+          </Badge>
+          {incluirExternos && licitacoesExternas.length > 0 && (
+            <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent border-accent/30 gap-1">
+              <Sparkles className="w-3 h-3" /> Portais Externos
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Error */}
@@ -1162,7 +1262,9 @@ export default function MuralLicitacoes() {
                     >
                       {isFav ? <Star className="w-3.5 h-3.5 fill-current" /> : <StarOff className="w-3.5 h-3.5" />}
                     </button>
-                    <Badge variant="outline" className="text-[9px]">{lic.portal}</Badge>
+                    <Badge variant="outline" className={cn('text-[9px]', lic.id.startsWith('ext-') ? 'bg-accent/10 text-accent border-accent/30' : '')}>
+                      {lic.id.startsWith('ext-') ? '🌐 Externo' : lic.portal}
+                    </Badge>
                   </div>
                 </div>
 
