@@ -107,17 +107,20 @@ export default function LicitacaoSelector({
     return aFav ? -1 : 1;
   });
 
-  // Only show results when both filters are active
+  // Show results when órgão is selected (número is optional refinement)
   const numeroFiltro = filterNumero.trim();
   const orgaoFiltro = filterOrgao.trim();
-  const hasActiveFilter = numeroFiltro.length > 0 && orgaoFiltro.length > 0;
+  const hasActiveFilter = orgaoFiltro.length > 0;
 
-  // Filter licitacoes
+  // Filter licitacoes by órgão (required) + número (optional)
   const filtered = hasActiveFilter
     ? licitacoesMarcadas.filter(l => {
-        const matchNumero = l.numero?.toLowerCase().includes(numeroFiltro.toLowerCase());
         const matchOrgao = l.orgao?.toLowerCase().includes(orgaoFiltro.toLowerCase());
-        return matchNumero && matchOrgao;
+        if (!matchOrgao) return false;
+        if (numeroFiltro.length > 0) {
+          return l.numero?.toLowerCase().includes(numeroFiltro.toLowerCase());
+        }
+        return true;
       })
     : [];
 
