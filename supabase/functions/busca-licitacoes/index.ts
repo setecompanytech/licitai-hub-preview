@@ -164,7 +164,7 @@ serve(async (req) => {
           const params = new URLSearchParams();
           params.set("dataInicial", formatDatePNCP(dataInicialDate));
           params.set("dataFinal", formatDatePNCP(dataFinalDate));
-          params.set("tamanhoPagina", "500");
+          params.set("tamanhoPagina", "50");
           params.set("codigoModalidadeContratacao", String(cod));
           if (uf) params.set("uf", uf);
           if (query) params.set("q", query.substring(0, 100));
