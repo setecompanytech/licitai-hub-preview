@@ -115,6 +115,10 @@ export default function BuscaInteligenteTab() {
     loadConfig();
   }, []);
 
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   const togglePortal = (id: string) => {
     setPortaisSelecionados(prev =>
       prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
