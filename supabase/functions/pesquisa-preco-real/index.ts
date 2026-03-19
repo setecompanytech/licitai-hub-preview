@@ -128,45 +128,120 @@ function isLikelyProductPage(url: string, loja: string): boolean {
 }
 
 function extractMainProductPrice(title: string, fullText: string): { preco: number; precoOriginal?: number } | null {
-  const prices: { value: number; context: string; lineIdx: number }[] = [];
   const lines = fullText.split('\n');
+
+  // ── Strategy 1: Detect explicit "de R$X por R$Y" / "de R$X R$Y" patterns ──
+  // These are the most reliable — "por" is the CURRENT price, "de" is the OLD price
+  const dePorPatterns = [
+    /(?:de|era|antes)\s*R\$\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})\s*(?:por|agora|hoje)?\s*R\$\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})/gi,
+    /R\$\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})\s*~~[^~]*~~\s*R\$\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})/gi,
+    /~~R\$\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})~~\s*R\$\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})/gi,
+    /-\d{1,2}%\s*R\$\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})\s*(?:De:?\s*)?R\$\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})/gi,
+  ];
+
+  let dePorPrice: { current: number; original: number } | null = null;
+  for (const pat of dePorPatterns) {
+    for (const m of fullText.matchAll(pat)) {
+      const p1 = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
+      const p2 = parseFloat(m[2].replace(/\./g, '').replace(',', '.'));
+      if (p1 > 0 && p2 > 0 && p1 !== p2) {
+        // The higher is the original, the lower is the current
+        const current = Math.min(p1, p2);
+        const original = Math.max(p1, p2);
+        // But in "de X por Y" pattern, p1=old, p2=current
+        // In strikethrough pattern, p1=old, p2=current
+        dePorPrice = { current: p2, original: p1 };
+        break;
+      }
+    }
+    if (dePorPrice) break;
+  }
+
+  // ── Strategy 2: Collect ALL prices with context scoring ──
+  const allPrices: { value: number; context: string; lineIdx: number; score: number }[] = [];
+
+  const ACCESSORY_KEYWORDS = /seguro|proteç[aã]o|garantia\s*estendida|capa\s*protetora|película|case\s*para|acessório|carregador\s*para|fone\s*para|suporte\s*para|adaptador\s*para|cabo\s*para|mouse\s*pad|kit\s*de\s*limp/i;
+  const PRICE_LABEL_CONTEXT = /preço|price|valor|custa|comprar|pagar|oferta|promoção|à\s*vista|no\s*pix|no\s*boleto|parcel/i;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const matches = line.matchAll(/R\$\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})/gi);
     for (const m of matches) {
       const val = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
-      if (!isNaN(val) && val > 1 && val < 500000) {
-        prices.push({ value: val, context: line, lineIdx: i });
-      }
+      if (isNaN(val) || val <= 1 || val >= 500000) continue;
+
+      const contextWindow = lines.slice(Math.max(0, i - 2), Math.min(lines.length, i + 3)).join(' ');
+      
+      // Score this price by context quality
+      let score = 0;
+
+      // Penalize accessory contexts heavily
+      if (ACCESSORY_KEYWORDS.test(contextWindow)) score -= 20;
+      
+      // Boost prices near product-related labels
+      if (PRICE_LABEL_CONTEXT.test(line)) score += 5;
+      
+      // Boost prices that appear early in the document (closer to title)
+      if (i < 10) score += 3;
+      else if (i < 30) score += 1;
+      
+      // Boost prices near title keywords
+      const titleWords = title.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      const nearbyText = contextWindow.toLowerCase();
+      const titleMatchCount = titleWords.filter(w => nearbyText.includes(w)).length;
+      if (titleMatchCount >= 2) score += 4;
+      
+      // Penalize strikethrough/old prices
+      if (/~~.*R\$|de\s*R\$/i.test(line) && line.indexOf(m[0]) < line.indexOf('~~')) score -= 10;
+      
+      // Penalize "a partir de" prices (minimum advertised)
+      if (/a\s*partir\s*de/i.test(line)) score -= 5;
+
+      // Penalize installment prices (parcela values are lower than real price)
+      if (/\d+x\s*(de\s*)?R\$/i.test(line)) score -= 8;
+
+      allPrices.push({ value: val, context: line, lineIdx: i, score });
     }
   }
 
-  if (prices.length === 0) return null;
+  if (allPrices.length === 0 && !dePorPrice) return null;
 
-  const ACCESSORY_KEYWORDS = /seguro|proteç[aã]o|garantia\s*estendida|capa\s*protetora|película|case\s*para|acessório|carregador\s*para|fone\s*para|suporte\s*para|adaptador\s*para|cabo\s*para|mouse\s*pad|kit\s*de\s*limp/i;
+  // ── Determine final price ──
+  
+  // If we found "de/por" pattern, trust it as the most reliable
+  if (dePorPrice && dePorPrice.current > 1) {
+    return { preco: dePorPrice.current, precoOriginal: dePorPrice.original };
+  }
 
-  const mainPrices = prices.filter(p => {
-    const contextWindow = lines.slice(Math.max(0, p.lineIdx - 2), Math.min(lines.length, p.lineIdx + 3)).join(' ');
-    if (ACCESSORY_KEYWORDS.test(contextWindow)) return false;
-    return true;
-  });
+  // Filter out accessory-context prices
+  const mainPrices = allPrices.filter(p => p.score >= -5);
+  const validPrices = mainPrices.length > 0 ? mainPrices : allPrices;
 
-  const validPrices = mainPrices.length > 0 ? mainPrices : prices;
-  const sortedValues = validPrices.map(p => p.value).sort((a, b) => a - b);
+  // Sort by score descending, then by position (earlier = better)
+  validPrices.sort((a, b) => b.score - a.score || a.lineIdx - b.lineIdx);
 
-  if (sortedValues.length === 1) return { preco: sortedValues[0] };
+  // Get unique price values sorted
+  const uniqueValues = [...new Set(validPrices.map(p => p.value))].sort((a, b) => a - b);
 
-  const median = sortedValues[Math.floor(sortedValues.length / 2)];
-  const reasonablePrices = sortedValues.filter(p => p >= median * 0.15);
+  if (uniqueValues.length === 0) return null;
+  if (uniqueValues.length === 1) return { preco: uniqueValues[0] };
 
-  if (reasonablePrices.length === 0) return { preco: sortedValues[0] };
+  // Use MEDIAN as the reference price (not the lowest!)
+  // The lowest is often a cached/promotional/snippet price
+  const median = uniqueValues[Math.floor(uniqueValues.length / 2)];
+  
+  // The best price is the highest-scored one that's within reasonable range of median
+  const bestScored = validPrices[0]; // highest score
+  
+  // If best-scored price is within 50% of median, use it
+  if (bestScored && bestScored.value >= median * 0.5 && bestScored.value <= median * 2) {
+    const precoOriginal = uniqueValues.find(p => p > bestScored.value * 1.05);
+    return { preco: bestScored.value, precoOriginal };
+  }
 
-  const firstReasonable = validPrices.find(p => reasonablePrices.includes(p.value));
-  const preco = firstReasonable?.value || reasonablePrices[0];
-  const precoOriginal = sortedValues.find(p => p > preco * 1.05) || undefined;
-
-  return { preco, precoOriginal };
+  // Fallback: use median
+  const precoOriginal = uniqueValues.find(p => p > median * 1.05);
+  return { preco: median, precoOriginal };
 }
 
 function scoreImageCandidate(url: string): number {
