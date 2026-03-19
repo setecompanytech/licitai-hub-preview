@@ -107,17 +107,20 @@ export default function LicitacaoSelector({
     return aFav ? -1 : 1;
   });
 
-  // Only show results when both filters are active
+  // Show results when órgão is selected (número is optional refinement)
   const numeroFiltro = filterNumero.trim();
   const orgaoFiltro = filterOrgao.trim();
-  const hasActiveFilter = numeroFiltro.length > 0 && orgaoFiltro.length > 0;
+  const hasActiveFilter = orgaoFiltro.length > 0;
 
-  // Filter licitacoes
+  // Filter licitacoes by órgão (required) + número (optional)
   const filtered = hasActiveFilter
     ? licitacoesMarcadas.filter(l => {
-        const matchNumero = l.numero?.toLowerCase().includes(numeroFiltro.toLowerCase());
         const matchOrgao = l.orgao?.toLowerCase().includes(orgaoFiltro.toLowerCase());
-        return matchNumero && matchOrgao;
+        if (!matchOrgao) return false;
+        if (numeroFiltro.length > 0) {
+          return l.numero?.toLowerCase().includes(numeroFiltro.toLowerCase());
+        }
+        return true;
       })
     : [];
 
@@ -309,25 +312,13 @@ export default function LicitacaoSelector({
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-3">
         <div>
-          <Label className="text-xs">Filtrar por Nº da Licitação</Label>
-          <div className="relative mt-1">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              value={filterNumero}
-              onChange={e => setFilterNumero(e.target.value)}
-              placeholder="Ex: PE 001/2026"
-              className="pl-8"
-            />
-          </div>
-        </div>
-        <div>
-          <Label className="text-xs">Filtrar por Órgão</Label>
+          <Label className="text-xs">1. Selecione o Órgão</Label>
           {orgaosUnicos.length > 0 ? (
-            <Select value={filterOrgao} onValueChange={setFilterOrgao}>
+            <Select value={filterOrgao} onValueChange={(v) => { setFilterOrgao(v); setFilterNumero(''); }}>
               <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Selecione o órgão" />
+                <SelectValue placeholder="Selecione o órgão para ver os processos vinculados" />
               </SelectTrigger>
               <SelectContent>
                 {orgaosUnicos.map(o => (
@@ -344,6 +335,20 @@ export default function LicitacaoSelector({
             />
           )}
         </div>
+        {hasActiveFilter && filtered.length > 1 && (
+          <div>
+            <Label className="text-xs">2. Refinar por Nº (opcional)</Label>
+            <div className="relative mt-1">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={filterNumero}
+                onChange={e => setFilterNumero(e.target.value)}
+                placeholder="Ex: PE 001/2026"
+                className="pl-8"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Results */}
@@ -358,8 +363,7 @@ export default function LicitacaoSelector({
       ) : !hasActiveFilter ? (
         <div className="text-center py-4 border border-dashed border-border/50 rounded-lg">
           <Search className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
-          <p className="text-xs text-muted-foreground">Preencha os dois filtros para localizar a licitação desejada.</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Após filtrar por Nº e Órgão, o processo aparecerá abaixo.</p>
+          <p className="text-xs text-muted-foreground">Selecione um órgão acima para visualizar os processos vinculados.</p>
         </div>
       ) : filtered.length > 0 ? (
         <div className="max-h-48 overflow-y-auto space-y-1.5 border border-border/30 rounded-lg p-2">
