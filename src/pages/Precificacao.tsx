@@ -655,31 +655,16 @@ Responda APENAS em JSON, sem markdown:
               <ShoppingCart className="w-3.5 h-3.5" /> Pesquisa de Preços
             </TabsTrigger>
             <TabsTrigger value="govbr" className="gap-1.5">
-              <Building2 className="w-3.5 h-3.5" /> Painel de Preços Gov.br
+              <Building2 className="w-3.5 h-3.5" /> Painel Gov.br
             </TabsTrigger>
-            <TabsTrigger value="fornecedores" className="gap-1.5">
-              <Upload className="w-3.5 h-3.5" /> Cotações de Fornecedores
-            </TabsTrigger>
-            <TabsTrigger value="comparativo" className="gap-1.5">
-              <BarChart3 className="w-3.5 h-3.5" /> Comparativo
+            <TabsTrigger value="cotacoes-listas" className="gap-1.5">
+              <FileText className="w-3.5 h-3.5" /> Cotações & Listas
             </TabsTrigger>
             <TabsTrigger value="calculadora" className="gap-1.5">
               <Calculator className="w-3.5 h-3.5" /> Calculadoras
             </TabsTrigger>
             <TabsTrigger value="catalogo" className="gap-1.5">
               <Package className="w-3.5 h-3.5" /> Catálogo
-            </TabsTrigger>
-            <TabsTrigger value="fontes" className="gap-1.5">
-              <Globe className="w-3.5 h-3.5" /> Fontes
-            </TabsTrigger>
-            <TabsTrigger value="listas" className="gap-1.5">
-              <ShoppingCart className="w-3.5 h-3.5" /> Listas
-            </TabsTrigger>
-            <TabsTrigger value="cotacoes" className="gap-1.5">
-              <FileText className="w-3.5 h-3.5" /> Cotações
-            </TabsTrigger>
-            <TabsTrigger value="importacoes" className="gap-1.5">
-              <Upload className="w-3.5 h-3.5" /> Importações
             </TabsTrigger>
             <TabsTrigger value="inteligencia" className="gap-1.5">
               <Bot className="w-3.5 h-3.5" /> Inteligência de Preços
