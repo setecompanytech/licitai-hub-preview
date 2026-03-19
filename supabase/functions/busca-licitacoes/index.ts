@@ -64,7 +64,7 @@ function mapPncpItem(item: any, uf: string | null) {
     tipoInstrumentoNome: item.tipoInstrumentoConvocatorioNome || null,
     unidadeOrgao: item.unidadeOrgao?.nomeUnidade || null,
     municipioIbge: item.unidadeOrgao?.codigoIbge || null,
-  };
+    codigoUnidade: item.unidadeOrgao?.codigoUnidade || null,
 }
 
 async function fetchPncp(params: URLSearchParams, label: string): Promise<any[]> {
