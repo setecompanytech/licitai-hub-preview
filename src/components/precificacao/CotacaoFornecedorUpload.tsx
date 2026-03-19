@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { streamAIChat } from '@/lib/ai-stream';
+import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 
 type CotacaoItem = {
   descricao: string;
@@ -80,7 +81,19 @@ export default function CotacaoFornecedorUpload() {
     if (!file || !user) return;
     setIsExtracting(true);
 
-    const text = await file.text();
+    let text: string;
+    try {
+      text = await extractTextFromFile(file);
+      if (!text || text.trim().length < 30) {
+        toast.error('Não foi possível extrair texto do documento. Verifique se o arquivo não está protegido.');
+        setIsExtracting(false);
+        return;
+      }
+    } catch {
+      toast.error('Erro ao ler o arquivo.');
+      setIsExtracting(false);
+      return;
+    }
     const truncated = text.slice(0, 15000);
     let content = '';
 

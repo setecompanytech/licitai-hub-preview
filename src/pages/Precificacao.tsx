@@ -27,6 +27,7 @@ import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
 import { PesquisaResultML, type PesquisaMLResult } from '@/components/precificacao/ProdutoCardML';
 import { useAuth } from '@/contexts/AuthContext';
+import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 import PainelPrecosGov from '@/components/precificacao/PainelPrecosGov';
 import CotacaoFornecedorUpload from '@/components/precificacao/CotacaoFornecedorUpload';
@@ -114,16 +115,16 @@ export default function Precificacao() {
   const handleSpecSearch = async () => {
     let textToAnalyze = specText.trim();
 
-    // If file uploaded, extract text from it first
+    // If file uploaded, extract text using proper PDF/DOCX parser
     if (specFile && !textToAnalyze) {
       setIsExtractingSpec(true);
       try {
-        const reader = new FileReader();
-        textToAnalyze = await new Promise<string>((resolve, reject) => {
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsText(specFile);
-        });
+        textToAnalyze = await extractTextFromFile(specFile);
+        if (!textToAnalyze || textToAnalyze.trim().length < 30) {
+          toast.error('Não foi possível extrair texto do documento. Verifique se o arquivo não está protegido.');
+          setIsExtractingSpec(false);
+          return;
+        }
       } catch {
         toast.error('Erro ao ler o arquivo. Tente colar o texto diretamente.');
         setIsExtractingSpec(false);

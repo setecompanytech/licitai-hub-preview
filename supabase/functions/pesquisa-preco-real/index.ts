@@ -381,21 +381,25 @@ serve(async (req) => {
     console.log(`Pesquisa real para: "${termo}"`);
     const startTime = Date.now();
 
-    // ─── OPTIMIZED: 6 consolidated searches instead of 12 ───
+    // ─── OPTIMIZED: 8 targeted searches for maximum coverage ───
     // Each with a 12s timeout to prevent hanging
     const searches = await Promise.allSettled([
-      // 1. Major marketplaces (ML + Amazon)
-      searchProducts(apiKey, `"${termo}" comprar site:mercadolivre.com.br OR site:amazon.com.br`, 10),
-      // 2. Major retail chains
+      // 1. Mercado Livre (dedicated - largest marketplace in BR)
+      searchProducts(apiKey, `${termo} site:mercadolivre.com.br`, 12),
+      // 2. Amazon BR
+      searchProducts(apiKey, `${termo} site:amazon.com.br`, 10),
+      // 3. Google Shopping (price comparison aggregator)
+      searchProducts(apiKey, `${termo} site:google.com.br/shopping OR site:shopping.google.com.br`, 8),
+      // 4. Major retail chains
       searchProducts(apiKey, `"${termo}" site:magazineluiza.com.br OR site:kabum.com.br OR site:americanas.com.br OR site:casasbahia.com.br`, 10),
-      // 3. More retail + specialty
+      // 5. More retail + specialty
       searchProducts(apiKey, `"${termo}" site:shopee.com.br OR site:carrefour.com.br OR site:havan.com.br OR site:kalunga.com.br`, 8),
-      // 4. Price comparators (fast, aggregated data)
+      // 6. Price comparators (Buscapé, Zoom - aggregated data)
       searchProducts(apiKey, `${termo} site:buscape.com.br OR site:zoom.com.br`, 8),
-      // 5. Specialty / wholesale
+      // 7. Specialty / wholesale / construction
       searchProducts(apiKey, `"${termo}" site:leroymerlin.com.br OR site:madeiramadeira.com.br OR site:gazinatacado.com.br OR site:webcontinental.com.br`, 8),
-      // 6. Broad catch-all for other stores
-      searchProducts(apiKey, `"${termo}" comprar preço loja online Brasil`, 10),
+      // 8. Broad catch-all for other stores not covered above
+      searchProducts(apiKey, `"${termo}" comprar preço loja online Brasil -site:mercadolivre.com.br -site:amazon.com.br`, 8),
     ]);
 
     const allFornecedores: ProdutoExtraido[] = [];
