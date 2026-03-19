@@ -705,6 +705,8 @@ export default function RoboLances() {
         {/* ── CONFIGURAÇÕES TAB ── */}
         <TabsContent value="configuracoes" className="flex-1 m-0 overflow-auto p-6 space-y-6">
           <NivelAutomacaoSelector nivel={nivelAutomacao} onChange={handleNivelChange} />
+          <EstrategiaIAPanel lance={selectedLance} />
+          <DisputaRealtimePanel />
 
           <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4 max-w-2xl">
             <h3 className="text-sm font-semibold flex items-center gap-2">
