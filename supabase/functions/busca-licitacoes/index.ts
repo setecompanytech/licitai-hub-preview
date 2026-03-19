@@ -65,7 +65,7 @@ function mapPncpItem(item: any, uf: string | null) {
     unidadeOrgao: item.unidadeOrgao?.nomeUnidade || null,
     municipioIbge: item.unidadeOrgao?.codigoIbge || null,
     codigoUnidade: item.unidadeOrgao?.codigoUnidade || null,
-}
+  };
 
 async function fetchPncp(params: URLSearchParams, label: string): Promise<any[]> {
   const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params.toString()}`;
