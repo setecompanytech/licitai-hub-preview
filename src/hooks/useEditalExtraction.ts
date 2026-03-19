@@ -141,7 +141,6 @@ export function useEditalExtraction() {
   ): Promise<LicitacaoItem[]> => {
     if (!user) return [];
 
-    // Check if items already exist
     if (!opts?.forceReExtract) {
       const existing = await fetchItens(licitacaoId);
       if (existing.length > 0) return existing;
@@ -149,95 +148,76 @@ export function useEditalExtraction() {
       await deleteAllItens(licitacaoId);
     }
 
-    // Use up to 80K chars to capture large item lists (110+ items)
-    const truncated = fileText.slice(0, 80000);
+    const normalizedText = fileText.replace(/\s+/g, ' ').trim();
+    const lowerText = normalizedText.toLowerCase();
+    const extractionMarkers = [
+      'item',
+      'lote',
+      'quantidade',
+      'unidade',
+      'descrição',
+      'descricao',
+      'termo de referência',
+      'termo de referencia',
+      'especificação',
+      'especificacao',
+      'planilha',
+      'anexo',
+    ];
+    const markerHits = extractionMarkers.filter((marker) => lowerText.includes(marker)).length;
 
-    return new Promise((resolve) => {
-      let content = '';
+    if (normalizedText.length < 500 || markerHits < 2) {
+      toast.error('Não há texto real suficiente do edital para extrair itens com fidelidade.');
+      return [];
+    }
 
-      streamAIChat({
-        messages: [{
-          role: 'user',
-          content: `Você é um extrator de dados de editais de licitação. Analise o texto REAL abaixo e extraia TODOS os itens/lotes com valores de referência.
+    const truncated = fileText.slice(0, 120000);
 
-REGRA FUNDAMENTAL: Extraia SOMENTE os itens que REALMENTE existem no texto. NÃO invente, NÃO suponha, NÃO adivinhe. Extraia TODOS os itens — não pare antes de chegar ao último.
-
-Retorne APENAS um JSON array, sem markdown, sem explicações:
-[
-  {"item": "1", "descricao": "descrição FIEL ao documento", "quantidade": 10, "unidade": "UN", "valor_unitario": 150.00, "valor_total": 1500.00, "lote": "Lote 1", "marca": "", "fabricante": "", "modelo": ""}
-]
-
-REGRAS:
-- Copie descrições FIELMENTE do documento, na MESMA ORDEM em que aparecem
-- "item" = número do item EXATO conforme edital (não reordene alfabeticamente)
-- "quantidade" e "unidade" EXATOS conforme o edital
-- "valor_unitario" e "valor_total" EXATOS se mencionados, senão use 0
-- "lote" conforme edital; se não houver lotes, use "Único"
-- NÃO substitua por produtos diferentes do que está escrito
-- NÃO reordene os itens — mantenha a sequência original do documento
-- NÃO pare a extração no meio — extraia do primeiro ao último item
-- Retorne [] se não encontrar itens
-
-DOCUMENTO:
-${truncated}`
-        }],
-        action: 'analise_edital',
-        onDelta: (chunk) => { content += chunk; },
-        onDone: async () => {
-          try {
-            const jsonMatch = content.match(/\[[\s\S]*\]/);
-            if (!jsonMatch) {
-              toast.error('Não foi possível extrair itens do edital.');
-              resolve([]);
-              return;
-            }
-            const parsed = JSON.parse(jsonMatch[0]) as Array<{
-              item: string;
-              descricao: string;
-              quantidade: number;
-              unidade: string;
-              valor_unitario: number;
-              valor_total: number;
-              lote?: string;
-              marca?: string;
-              fabricante?: string;
-              modelo?: string;
-            }>;
-
-            if (parsed.length === 0) {
-              toast.warning('Nenhum item encontrado no documento.');
-              resolve([]);
-              return;
-            }
-
-            const itemsToSave: Partial<LicitacaoItemInsert>[] = parsed.map((p, idx) => ({
-              numero: parseInt(p.item) || (idx + 1),
-              descricao: p.descricao,
-              quantidade: p.quantidade || 1,
-              unidade: p.unidade || 'UN',
-              valor_unitario: p.valor_unitario || 0,
-              valor_total: p.valor_total || (p.valor_unitario || 0) * (p.quantidade || 1),
-              lote: p.lote || 'Único',
-              marca: p.marca || null,
-              fabricante: p.fabricante || null,
-              modelo: p.modelo || null,
-              origem: 'ia',
-            }));
-
-            const saved = await saveItensManual(licitacaoId, itemsToSave);
-            toast.success(`${saved.length} itens extraídos e salvos!`);
-            resolve(saved);
-          } catch {
-            toast.error('Erro ao processar itens do edital.');
-            resolve([]);
-          }
-        },
-        onError: (err) => {
-          toast.error(err);
-          resolve([]);
-        },
-      });
+    const { data, error } = await supabase.functions.invoke('extrair-itens-edital', {
+      body: { texto_edital: truncated },
     });
+
+    if (error || !data?.success) {
+      console.error('Erro ao extrair itens do edital:', error || data);
+      toast.error(data?.error || 'Não foi possível extrair itens do edital.');
+      return [];
+    }
+
+    const parsed = (Array.isArray(data.data) ? data.data : []) as Array<{
+      item?: string | number;
+      descricao?: string;
+      quantidade?: number;
+      unidade?: string;
+      valor_unitario?: number;
+      valor_total?: number;
+      lote?: string;
+      marca?: string;
+      fabricante?: string;
+      modelo?: string;
+    }>;
+
+    if (parsed.length === 0) {
+      toast.warning('Nenhum item encontrado no documento.');
+      return [];
+    }
+
+    const itemsToSave: Partial<LicitacaoItemInsert>[] = parsed.map((p, idx) => ({
+      numero: parseInt(String(p.item ?? idx + 1), 10) || (idx + 1),
+      descricao: p.descricao || '',
+      quantidade: p.quantidade || 1,
+      unidade: p.unidade || 'UN',
+      valor_unitario: p.valor_unitario || 0,
+      valor_total: p.valor_total || (p.valor_unitario || 0) * (p.quantidade || 1),
+      lote: p.lote || 'Único',
+      marca: p.marca || null,
+      fabricante: p.fabricante || null,
+      modelo: p.modelo || null,
+      origem: 'ia',
+    }));
+
+    const saved = await saveItensManual(licitacaoId, itemsToSave);
+    toast.success(`${saved.length} itens extraídos e salvos!`);
+    return saved;
   }, [user, fetchItens, saveItensManual, deleteAllItens]);
 
   return {

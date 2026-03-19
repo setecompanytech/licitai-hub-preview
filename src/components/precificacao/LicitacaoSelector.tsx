@@ -180,45 +180,67 @@ export default function LicitacaoSelector({
     setLicitacaoNumero(lic.numero || '');
     setLicitacaoOrgao(lic.orgao || '');
 
-    // 1) Try existing structured items first
+    // 1) Load linked source documents first so we can validate existing IA items
     setLoadingItens(true);
+    const { data: docs, error: docsError } = await supabase
+      .from('documentos')
+      .select('id, arquivo_path, nome, tipo, created_at')
+      .eq('licitacao_id', licitacaoId)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (docsError) {
+      console.error('Erro ao buscar documentos da licitação:', docsError);
+    }
+
+    const hasLinkedDocument = Boolean(docs?.some((doc) => doc.arquivo_path));
+
+    // 2) Reuse existing structured items only when they have a trustworthy source
     const { data: itensData, error } = await supabase
       .from('licitacao_itens')
-      .select('descricao, quantidade, unidade, valor_unitario, valor_total, lote')
+      .select('descricao, quantidade, unidade, valor_unitario, valor_total, lote, origem')
       .eq('licitacao_id', licitacaoId)
       .eq('user_id', user.id)
       .order('numero', { ascending: true });
 
+    setLoadingItens(false);
+
     if (error) {
       console.error('Erro ao buscar itens:', error);
       toast.error('Erro ao buscar itens da licitação.');
-      setLoadingItens(false);
       return;
     }
 
-    const existingItens = mapItensToAutofill((itensData as any[]) || []);
-    setLoadingItens(false);
+    const rawExistingItens = (itensData as any[]) || [];
+    const existingItens = mapItensToAutofill(rawExistingItens);
+    const existingAreOnlyAi = rawExistingItens.length > 0 && rawExistingItens.every((item) => item.origem === 'ia');
 
     if (existingItens.length > 0) {
-      setItensCount(existingItens.length);
-      if (onItensLoaded) onItensLoaded(existingItens);
-      toast.success(`${existingItens.length} item(ns) carregados automaticamente da licitação!`);
+      if (!hasLinkedDocument && existingAreOnlyAi) {
+        setItensCount(0);
+        onItensLoaded?.([]);
+        toast.warning('Itens automáticos antigos foram ignorados porque esta licitação não possui edital vinculado no sistema.');
+      } else {
+        setItensCount(existingItens.length);
+        if (onItensLoaded) onItensLoaded(existingItens);
+        toast.success(`${existingItens.length} item(ns) carregados automaticamente da licitação!`);
+        return;
+      }
+    }
+
+    // 3) If empty, extract only from a real edital stored in the system
+    if (!hasLinkedDocument) {
+      setItensCount(0);
+      onItensLoaded?.([]);
+      toast.error('Não há edital/termo de referência vinculado a esta licitação. Para evitar itens incorretos, o preenchimento automático foi bloqueado.');
       return;
     }
 
-    // 2) If empty, auto-extract from edital already stored/linked in system
-    toast.info('Nenhum item estruturado encontrado. Iniciando extração automática do edital...');
+    toast.info('Nenhum item estruturado confiável foi encontrado. Iniciando extração automática do edital...');
     setExtracting(true);
 
     try {
-      const { data: docs } = await supabase
-        .from('documentos')
-        .select('arquivo_path, nome, tipo, created_at')
-        .eq('licitacao_id', licitacaoId)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
       let editalText = '';
 
       if (docs?.length) {
@@ -229,7 +251,7 @@ export default function LicitacaoSelector({
             if (!fileData) continue;
 
             const extractedText = await extractTextFromBlob(fileData);
-            if (extractedText.length > 100) {
+            if (extractedText.length > 500) {
               editalText = extractedText;
               break;
             }
@@ -239,18 +261,14 @@ export default function LicitacaoSelector({
         }
       }
 
-      if (!editalText || editalText.length < 100) {
-        editalText = [
-          `Licitação: ${lic.numero}`,
-          `Órgão: ${lic.orgao}`,
-          `Objeto: ${lic.objeto}`,
-          `Modalidade: ${lic.modalidade || 'N/I'}`,
-          `Valor estimado: ${lic.valor_estimado ? `R$ ${lic.valor_estimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'N/I'}`,
-          `URL do edital: ${lic.url_edital || 'N/I'}`,
-        ].join('\n');
+      if (!editalText || editalText.trim().length < 500) {
+        setItensCount(0);
+        onItensLoaded?.([]);
+        toast.error('Não foi possível localizar texto legível suficiente do edital vinculado para uma extração fiel.');
+        return;
       }
 
-      const extracted = await extrairItensIA(licitacaoId, editalText);
+      const extracted = await extrairItensIA(licitacaoId, editalText, { forceReExtract: true });
 
       if (extracted.length > 0) {
         const mappedItens: LicitacaoItemAutoFill[] = extracted.map(i => ({
@@ -266,12 +284,14 @@ export default function LicitacaoSelector({
         if (onItensLoaded) onItensLoaded(mappedItens);
       } else {
         setItensCount(0);
-        toast.info('Não foi possível extrair itens automaticamente deste processo marcado. Você pode preencher manualmente.');
+        onItensLoaded?.([]);
+        toast.info('Não foi possível extrair itens automaticamente desta licitação com fidelidade.');
       }
     } catch (err) {
       console.error('Erro na extração automática:', err);
       toast.error('Erro ao tentar extrair itens automaticamente.');
       setItensCount(0);
+      onItensLoaded?.([]);
     } finally {
       setExtracting(false);
     }
