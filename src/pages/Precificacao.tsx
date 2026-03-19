@@ -30,16 +30,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 import PainelPrecosGov from '@/components/precificacao/PainelPrecosGov';
-import CotacaoFornecedorUpload from '@/components/precificacao/CotacaoFornecedorUpload';
-import ComparativoDashboard from '@/components/precificacao/ComparativoDashboard';
 import CotacaoEditalAutoIA from '@/components/precificacao/CotacaoEditalAutoIA';
 import CalculadoraUnificada from '@/components/precificacao/CalculadoraUnificada';
 import CatalogoPrecificados from '@/components/precificacao/CatalogoPrecificados';
 import FontesManager from '@/components/precificacao/FontesManager';
-import ListasCompras from '@/components/precificacao/ListasCompras';
-import CotacoesManager from '@/components/precificacao/CotacoesManager';
-import ImportacoesManager from '@/components/precificacao/ImportacoesManager';
-import InteligenciaPrecos from '@/components/precificacao/InteligenciaPrecos';
+import CotacoesUnificado from '@/components/precificacao/CotacoesUnificado';
+import InteligenciaUnificada from '@/components/precificacao/InteligenciaUnificada';
 
 type FontePreco = {
   fonte: string;
