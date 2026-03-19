@@ -328,9 +328,73 @@ export default function MuralLicitacoes() {
     }
   }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted]);
 
+  // Busca em portais externos via Firecrawl (busca-editais-ia)
+  const carregarExternos = useCallback(async () => {
+    if (!incluirExternos) { setLicitacoesExternas([]); return; }
+    const queryText = searchSubmitted || (modalidadeFiltro !== 'all' ? modalidadeFiltro : '') || 'licitações';
+    setLoadingExternos(true);
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/busca-editais-ia`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            query: queryText,
+            uf: ufFiltro !== 'all' ? ufFiltro : undefined,
+            portais: ['pncp', 'bll', 'bnc', 'portalcompras', 'licitacoese', 'comprasnet'],
+            com_analise_ia: false,
+            limite: 20,
+          }),
+        }
+      );
+      if (!resp.ok) throw new Error(`Erro ${resp.status}`);
+      const data = await resp.json();
+      if (data.success && data.resultados?.length > 0) {
+        const externItems: LicitacaoMural[] = data.resultados.map((r: any, idx: number) => ({
+          id: `ext-${idx}-${Date.now()}`,
+          numero: r.numero || '-',
+          orgao: r.orgao || '-',
+          objeto: r.titulo || '-',
+          modalidade: r.modalidade || 'Não informada',
+          status: r.status || 'Publicado',
+          valor_estimado: r.valor_estimado,
+          uf: r.uf,
+          municipio: r.municipio,
+          data_abertura: r.data_abertura,
+          data_encerramento: null,
+          data_publicacao: r.data_publicacao,
+          portal: r.portal || 'Portal Externo',
+          url: r.url,
+          pncpNumero: r.pncp_numero || null,
+          cnpjOrgao: r.cnpj_orgao || null,
+          anoCompra: r.ano_compra || null,
+          sequencialCompra: r.seq_compra || null,
+          esferaNome: null,
+          tipoInstrumentoNome: null,
+          unidadeOrgao: null,
+        }));
+        setLicitacoesExternas(externItems);
+        toast.success(`${externItems.length} resultado(s) de portais externos`);
+      } else {
+        setLicitacoesExternas([]);
+      }
+    } catch (err) {
+      console.error('Erro portais externos:', err);
+      setLicitacoesExternas([]);
+    } finally {
+      setLoadingExternos(false);
+    }
+  }, [incluirExternos, searchSubmitted, ufFiltro, modalidadeFiltro]);
+
   // Filtros client-side aplicados sobre os dados já carregados (sem re-fetch)
   const licitacoesFiltradas = useMemo(() => {
-    let items = [...licitacoesRaw];
+    // Merge PNCP + external results, deduplicating by numero+orgao
+    const pncpKeys = new Set(licitacoesRaw.map(i => `${i.numero}|${i.orgao}`));
+    const externasDedup = licitacoesExternas.filter(e => !pncpKeys.has(`${e.numero}|${e.orgao}`));
+    let items = [...licitacoesRaw, ...externasDedup];
 
     if (esferaFiltro !== 'all') {
       items = items.filter(i => i.esferaNome?.toLowerCase().includes(esferaFiltro.toLowerCase()));
@@ -365,7 +429,7 @@ export default function MuralLicitacoes() {
     }
 
     return items;
-  }, [licitacoesRaw, esferaFiltro, tipoInstrumentoFiltro, municipioFiltro, unidadeFiltro, orgaoFiltro, segmentosPrioritarios]);
+  }, [licitacoesRaw, licitacoesExternas, esferaFiltro, tipoInstrumentoFiltro, municipioFiltro, unidadeFiltro, orgaoFiltro, segmentosPrioritarios]);
 
   // Sincronizar licitacoes e totalResultados com os dados filtrados
   useEffect(() => {
@@ -376,6 +440,12 @@ export default function MuralLicitacoes() {
   useEffect(() => {
     if (user) carregarMural();
   }, [carregarMural, user]);
+
+  // Trigger external search when toggle is on and search changes
+  useEffect(() => {
+    if (user && incluirExternos) carregarExternos();
+    else setLicitacoesExternas([]);
+  }, [carregarExternos, user, incluirExternos]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
