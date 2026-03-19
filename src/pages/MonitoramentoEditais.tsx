@@ -178,10 +178,6 @@ export default function MonitoramentoEditais() {
               <Gavel className="w-4 h-4 mr-1" />
               Mural (Tempo Real)
             </TabsTrigger>
-            <TabsTrigger value="licitacoes">
-              <List className="w-4 h-4 mr-1" />
-              Busca Inteligente
-            </TabsTrigger>
             <TabsTrigger value="dispensa">
               <Zap className="w-4 h-4 mr-1" />
               Dispensa Eletrônica
