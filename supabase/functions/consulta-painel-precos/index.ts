@@ -161,7 +161,6 @@ async function firecrawlSearch(query: string, apiKey: string, limit: number): Pr
       limit,
       lang: "pt-br",
       country: "BR",
-      tbs: "qdr:y", // last year for freshness
     }),
     signal: AbortSignal.timeout(15000),
   });
