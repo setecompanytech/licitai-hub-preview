@@ -181,6 +181,10 @@ export default function MuralLicitacoes() {
   const [unidadeFiltro, setUnidadeFiltro] = useState('');
   const [orgaoFiltro, setOrgaoFiltro] = useState('');
 
+  // Toggle portais externos (Firecrawl)
+  const [incluirExternos, setIncluirExternos] = useState(false);
+  const [loadingExternos, setLoadingExternos] = useState(false);
+  const [licitacoesExternas, setLicitacoesExternas] = useState<LicitacaoMural[]>([]);
   const municipiosUfSelecionada = useMemo(() => {
     if (!ufFiltro || ufFiltro === 'all') return [];
     for (const regiao of Object.values(REGIOES_ESTADOS)) {
