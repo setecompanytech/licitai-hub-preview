@@ -15,6 +15,9 @@ const MODALIDADES_PNCP: Record<string, number> = {
   "credenciamento": 11, "leilão - eletrônico": 12, "concurso - eletrônico": 13,
 };
 
+// All mural modalidades for broad search
+const MURAL_MODALIDADES = [6, 4, 5, 8, 7, 11];
+
 function formatDatePNCP(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -29,7 +32,6 @@ function mapPncpItem(item: any, uf: string | null) {
   const urlPncp = cnpj && ano && seq
     ? `https://pncp.gov.br/app/editais/${cnpj}/${ano}/${seq}` : "";
   
-  // Determine esfera from orgaoEntidade
   const esferaId = item.orgaoEntidade?.esferaId || item.orgaoEntidade?.poderId || null;
   let esferaNome: string | null = null;
   if (item.orgaoEntidade?.esferaNome) {
@@ -48,11 +50,8 @@ function mapPncpItem(item: any, uf: string | null) {
     valor_estimado: item.valorTotalEstimado || item.valorTotalHomologado || null,
     uf: item.unidadeOrgao?.ufSigla || uf || null,
     municipio: item.unidadeOrgao?.municipioNome || null,
-    // data_abertura = dataAberturaProposta = INÍCIO de recebimento de propostas (sistema abre)
     data_abertura: item.dataAberturaProposta || null,
-    // data_encerramento = dataEncerramentoProposta = FIM de recebimento de propostas (prazo limite)
     data_encerramento: item.dataEncerramentoProposta || null,
-    // data_publicacao = dataPublicacaoPncp = data de publicação do instrumento convocatório
     data_publicacao: item.dataPublicacaoPncp || null,
     portal: "PNCP",
     url: item.linkSistemaOrigem || urlPncp,
@@ -61,7 +60,6 @@ function mapPncpItem(item: any, uf: string | null) {
     anoCompra: ano || null,
     sequencialCompra: seq || null,
     isMock: false,
-    // Campos adicionais para filtros
     esferaNome: esferaNome,
     tipoInstrumentoNome: item.tipoInstrumentoConvocatorioNome || null,
     unidadeOrgao: item.unidadeOrgao?.nomeUnidade || null,
@@ -73,7 +71,7 @@ async function fetchPncp(params: URLSearchParams, label: string): Promise<any[]>
   const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params.toString()}`;
   console.log(`PNCP API (${label}): ${url}`);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
+  const timeout = setTimeout(() => controller.abort(), 15000);
   try {
     const response = await fetch(url, {
       headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
@@ -86,13 +84,32 @@ async function fetchPncp(params: URLSearchParams, label: string): Promise<any[]>
       return [];
     }
     const data = await response.json();
-    console.log(`PNCP ${label}: ${(data.data || []).length} resultados`);
+    console.log(`PNCP ${label}: ${(data.data || []).length} resultados de ${data.totalRegistros || '?'} total`);
     return data.data || [];
   } catch (e) {
     clearTimeout(timeout);
     console.log(`PNCP ${label} timeout/error:`, e);
     return [];
   }
+}
+
+// Fetch multiple pages from PNCP for a single modalidade to get comprehensive results
+async function fetchPncpAllPages(baseParams: URLSearchParams, label: string, maxPages = 3): Promise<any[]> {
+  const allResults: any[] = [];
+  
+  for (let page = 1; page <= maxPages; page++) {
+    const params = new URLSearchParams(baseParams);
+    params.set("pagina", String(page));
+    
+    const results = await fetchPncp(params, `${label} pg${page}`);
+    allResults.push(...results);
+    
+    // If fewer results than page size, we've reached the end
+    const pageSize = parseInt(params.get("tamanhoPagina") || "500");
+    if (results.length < pageSize) break;
+  }
+  
+  return allResults;
 }
 
 serve(async (req) => {
@@ -112,13 +129,15 @@ serve(async (req) => {
 
     try {
       const now = new Date();
-      // Default: últimos 30 dias até +30 dias (janela reduzida para evitar resultados obsoletos)
       const dataInicialDate = dataInicio ? new Date(dataInicio) : new Date(now.getTime() - 30 * 86400000);
       const dataFinalDate = dataFim ? new Date(dataFim) : new Date(now.getTime() + 30 * 86400000);
       const cleanCnpj = cnpjOrgao ? cnpjOrgao.replace(/[.\-\/\s]/g, "") : null;
-
-      // Determine se o usuário forneceu filtros de data explícitos
       const userFilteredByDate = !!(dataInicio || dataFim);
+
+      // Resolve modalidade code from user input
+      const userModalidadeCod = modalidade
+        ? (MODALIDADES_PNCP[modalidade.toLowerCase().trim()] || null)
+        : null;
 
       if (cleanCnpj && cleanCnpj.length >= 6) {
         // ── Search by CNPJ/UASG ──
@@ -126,52 +145,72 @@ serve(async (req) => {
         params.set("dataInicial", formatDatePNCP(dataInicialDate));
         params.set("dataFinal", formatDatePNCP(dataFinalDate));
         params.set("pagina", String(pagina || 1));
-        params.set("tamanhoPagina", "50");
+        params.set("tamanhoPagina", "500");
         params.set("cnpj", cleanCnpj);
         if (uf) params.set("uf", uf);
         if (query) params.set("q", query.substring(0, 100));
-        if (modalidade) {
-          const cod = MODALIDADES_PNCP[modalidade.toLowerCase().trim()];
-          if (cod) params.set("codigoModalidadeContratacao", String(cod));
-        }
+        if (userModalidadeCod) params.set("codigoModalidadeContratacao", String(userModalidadeCod));
         const results = await fetchPncp(params, `CNPJ=${cleanCnpj}`);
         allItems.push(...results.map((i: any) => mapPncpItem(i, uf)));
       } else {
-        // ── Standard multi-modalidade search ──
-        const modalidades = mural
-          ? [6, 4, 5, 8, 7, 11]
-          : [modalidade ? (MODALIDADES_PNCP[modalidade.toLowerCase().trim()] || 6) : 6];
+        // ── Determine which modalidades to search ──
+        // If user selected a specific modalidade, respect it even in mural mode
+        const modalidades = userModalidadeCod
+          ? [userModalidadeCod]
+          : (mural ? MURAL_MODALIDADES : [6]);
+
+        console.log(`Buscando modalidades: ${modalidades.join(', ')} | mural=${mural} | userMod=${modalidade || 'none'}`);
 
         const fetches = modalidades.map((cod) => {
           const params = new URLSearchParams();
           params.set("dataInicial", formatDatePNCP(dataInicialDate));
           params.set("dataFinal", formatDatePNCP(dataFinalDate));
-          params.set("pagina", String(pagina || 1));
-          params.set("tamanhoPagina", mural ? "50" : "20");
+          params.set("tamanhoPagina", "500");
           params.set("codigoModalidadeContratacao", String(cod));
           if (uf) params.set("uf", uf);
           if (query) params.set("q", query.substring(0, 100));
-          return fetchPncp(params, `mod=${cod}`);
+          
+          // For single modalidade search, support pagination across pages
+          if (modalidades.length === 1) {
+            return fetchPncpAllPages(params, `mod=${cod}`, 3);
+          } else {
+            // For multi-modalidade (mural without filter), fetch page 1 with large page size
+            params.set("pagina", String(pagina || 1));
+            return fetchPncp(params, `mod=${cod}`);
+          }
         });
 
         const results = await Promise.allSettled(fetches);
         for (const result of results) {
           if (result.status === "fulfilled") {
             allItems.push(...result.value.map((i: any) => mapPncpItem(i, uf)));
-            if (mural && allItems.length >= 50) break;
           }
         }
       }
 
-      // ── Pós-processamento: filtrar por datas de propostas quando usuário definiu filtros ──
+      // ── Deduplicate by CNPJ + ano + sequencial ──
+      const seen = new Set<string>();
+      for (let idx = allItems.length - 1; idx >= 0; idx--) {
+        const item = allItems[idx];
+        const key = item.cnpjOrgao && item.anoCompra && item.sequencialCompra
+          ? `${item.cnpjOrgao}-${item.anoCompra}-${item.sequencialCompra}`
+          : null;
+        if (key) {
+          if (seen.has(key)) {
+            allItems.splice(idx, 1);
+          } else {
+            seen.add(key);
+          }
+        }
+      }
+
+      // ── Post-processing: filter by proposal dates when user defined date filters ──
       if (userFilteredByDate) {
         const inicioMs = dataInicio ? new Date(dataInicio).getTime() : 0;
         const fimMs = dataFim ? new Date(dataFim + "T23:59:59").getTime() : Infinity;
 
-        // Remove itens fora da janela de propostas do usuário
         for (let idx = allItems.length - 1; idx >= 0; idx--) {
           const item = allItems[idx];
-          // Usar data_abertura (início recebimento) e data_encerramento (fim recebimento)
           const aberturaStr = item.data_abertura || item.data_publicacao;
           const encerramentoStr = item.data_encerramento;
           
@@ -179,21 +218,17 @@ serve(async (req) => {
 
           if (dataInicio && aberturaStr) {
             const aberturaDate = new Date(aberturaStr).getTime();
-            // A data de abertura não deve ser anterior ao filtro de início
             if (aberturaDate < inicioMs - 7 * 86400000) dentroJanela = false;
           }
 
           if (dataFim && encerramentoStr) {
             const encerramentoDate = new Date(encerramentoStr).getTime();
-            // O encerramento não pode ser posterior ao filtro + margem
             if (encerramentoDate > fimMs + 7 * 86400000) dentroJanela = false;
           }
 
-          // Se não tem data de encerramento e a publicação é muito antiga, remover
           if (!encerramentoStr && aberturaStr) {
             const aberturaDate = new Date(aberturaStr).getTime();
             const agora = now.getTime();
-            // Se publicou há mais de 60 dias e não tem encerramento, provavelmente obsoleto
             if (agora - aberturaDate > 60 * 86400000) dentroJanela = false;
           }
 
@@ -204,7 +239,7 @@ serve(async (req) => {
         console.log(`Pós-filtro temporal: ${allItems.length} resultados dentro da janela`);
       }
 
-      // ── Filtro padrão: remover licitações com encerramento > 60 dias atrás ──
+      // ── Default filter: remove procurements with encerramento > 60 days ago ──
       const limiteObsoleto = now.getTime() - 60 * 86400000;
       for (let idx = allItems.length - 1; idx >= 0; idx--) {
         const enc = allItems[idx].data_encerramento;
@@ -215,6 +250,8 @@ serve(async (req) => {
           }
         }
       }
+
+      console.log(`Total final após filtros: ${allItems.length} resultados`);
     } catch (e) {
       console.log("PNCP API error:", e);
     }
