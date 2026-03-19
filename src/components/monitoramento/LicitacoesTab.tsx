@@ -1236,14 +1236,14 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
                   <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 w-[40px]">
                     <Star className="w-3.5 h-3.5 mx-auto text-warning" />
                   </th>
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3 w-[40%]">Nº / Objeto</th>
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3 w-[18%]">Órgão</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3 w-[35%]">Nº / Objeto</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3 w-[16%]">Órgão</th>
                   <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 w-[60px]">Portal</th>
                   <th className="text-right text-xs font-semibold text-muted-foreground px-3 py-3 w-[12%]">Valor</th>
                   <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 w-[90px]">Encerra</th>
                   <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 w-[80px]">Status</th>
-                  <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 w-[140px]">Ações</th>
-                  <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 w-[70px]">Download</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 w-[160px]">Ações</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 w-[80px] whitespace-nowrap">Baixar</th>
                 </tr>
               </thead>
               <tbody>
