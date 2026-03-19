@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { streamAIChat } from '@/lib/ai-stream';
+import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 
 type CotacaoItem = {
   descricao: string;
