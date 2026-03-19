@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-
 export interface LicitacaoItem {
   id: string;
   licitacao_id: string;
@@ -24,6 +23,72 @@ export interface LicitacaoItem {
 }
 
 export type LicitacaoItemInsert = Omit<LicitacaoItem, 'id' | 'created_at' | 'updated_at'>;
+
+type ExtractedItemPayload = {
+  item?: string | number;
+  descricao?: string;
+  quantidade?: number;
+  unidade?: string;
+  valor_unitario?: number;
+  valor_total?: number;
+  lote?: string;
+  marca?: string;
+  fabricante?: string;
+  modelo?: string;
+};
+
+const MIN_TEXT_LENGTH = 500;
+const SINGLE_PASS_LIMIT = 120000;
+const CHUNK_SIZE = 90000;
+const CHUNK_OVERLAP = 5000;
+
+function sanitizeExtractionText(text: string): string {
+  return text.replace(/\u0000/g, '').replace(/\r/g, '').trim();
+}
+
+function buildExtractionChunks(text: string): string[] {
+  const sanitized = sanitizeExtractionText(text);
+
+  if (sanitized.length <= SINGLE_PASS_LIMIT) {
+    return [sanitized.slice(0, SINGLE_PASS_LIMIT)];
+  }
+
+  const chunks: string[] = [];
+  let start = 0;
+
+  while (start < sanitized.length) {
+    let end = Math.min(sanitized.length, start + CHUNK_SIZE);
+
+    if (end < sanitized.length) {
+      const breakIndex = sanitized.lastIndexOf('\n', end);
+      if (breakIndex > start + Math.floor(CHUNK_SIZE * 0.65)) {
+        end = breakIndex;
+      }
+    }
+
+    const chunk = sanitized.slice(start, end).trim();
+    if (chunk.length >= MIN_TEXT_LENGTH) {
+      chunks.push(chunk);
+    }
+
+    if (end >= sanitized.length) {
+      break;
+    }
+
+    start = Math.max(end - CHUNK_OVERLAP, start + 1);
+  }
+
+  return chunks;
+}
+
+function buildItemDedupKey(item: ExtractedItemPayload): string {
+  return [
+    String(item.item ?? ''),
+    (item.descricao || '').toLowerCase().replace(/\s+/g, ' ').trim(),
+    String(item.quantidade ?? ''),
+    (item.unidade || '').toLowerCase().trim(),
+  ].join('|');
+}
 
 export function useEditalExtraction() {
   const { user } = useAuth();
@@ -134,6 +199,18 @@ export function useEditalExtraction() {
     return true;
   }, [user]);
 
+  const invokeExtraction = useCallback(async (textoEdital: string): Promise<ExtractedItemPayload[]> => {
+    const { data, error } = await supabase.functions.invoke('extrair-itens-edital', {
+      body: { texto_edital: textoEdital },
+    });
+
+    if (error || !data?.success) {
+      throw new Error(data?.error || error?.message || 'Não foi possível extrair itens do edital.');
+    }
+
+    return Array.isArray(data.data) ? (data.data as ExtractedItemPayload[]) : [];
+  }, []);
+
   const extrairItensIA = useCallback(async (
     licitacaoId: string,
     fileText: string,
@@ -148,7 +225,7 @@ export function useEditalExtraction() {
       await deleteAllItens(licitacaoId);
     }
 
-    const normalizedText = fileText.replace(/\s+/g, ' ').trim();
+    const normalizedText = sanitizeExtractionText(fileText).replace(/\s+/g, ' ').trim();
     const lowerText = normalizedText.toLowerCase();
     const extractionMarkers = [
       'item',
@@ -166,35 +243,41 @@ export function useEditalExtraction() {
     ];
     const markerHits = extractionMarkers.filter((marker) => lowerText.includes(marker)).length;
 
-    if (normalizedText.length < 500 || markerHits < 2) {
+    if (normalizedText.length < MIN_TEXT_LENGTH || markerHits < 2) {
       toast.error('Não há texto real suficiente do edital para extrair itens com fidelidade.');
       return [];
     }
 
-    const truncated = fileText.slice(0, 120000);
+    const chunks = buildExtractionChunks(fileText);
+    const extractedItems: ExtractedItemPayload[] = [];
+    let hasSuccessfulChunk = false;
 
-    const { data, error } = await supabase.functions.invoke('extrair-itens-edital', {
-      body: { texto_edital: truncated },
-    });
+    for (const chunk of chunks) {
+      try {
+        const chunkItems = await invokeExtraction(chunk);
+        if (chunkItems.length > 0) {
+          extractedItems.push(...chunkItems);
+          hasSuccessfulChunk = true;
+        }
+      } catch (error) {
+        console.error('Erro ao extrair chunk do edital:', error);
+      }
+    }
 
-    if (error || !data?.success) {
-      console.error('Erro ao extrair itens do edital:', error || data);
-      toast.error(data?.error || 'Não foi possível extrair itens do edital.');
+    if (!hasSuccessfulChunk) {
+      toast.error('Não foi possível extrair itens do edital.');
       return [];
     }
 
-    const parsed = (Array.isArray(data.data) ? data.data : []) as Array<{
-      item?: string | number;
-      descricao?: string;
-      quantidade?: number;
-      unidade?: string;
-      valor_unitario?: number;
-      valor_total?: number;
-      lote?: string;
-      marca?: string;
-      fabricante?: string;
-      modelo?: string;
-    }>;
+    const seen = new Set<string>();
+    const parsed = extractedItems.filter((item) => {
+      const descricao = (item.descricao || '').trim();
+      if (!descricao) return false;
+      const key = buildItemDedupKey(item);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 
     if (parsed.length === 0) {
       toast.warning('Nenhum item encontrado no documento.');
@@ -218,7 +301,7 @@ export function useEditalExtraction() {
     const saved = await saveItensManual(licitacaoId, itemsToSave);
     toast.success(`${saved.length} itens extraídos e salvos!`);
     return saved;
-  }, [user, fetchItens, saveItensManual, deleteAllItens]);
+  }, [user, fetchItens, saveItensManual, deleteAllItens, invokeExtraction]);
 
   return {
     fetchItens,

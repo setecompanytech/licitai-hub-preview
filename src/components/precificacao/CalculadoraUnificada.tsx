@@ -636,8 +636,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
         licitacaoOrgao={licitacaoOrgao}
         setLicitacaoOrgao={setLicitacaoOrgao}
         onItensLoaded={(loadedItens: LicitacaoItemAutoFill[]) => {
-          // Auto-fill items into the produto_bdi calculator
-          const newItens: ItemCusto[] = loadedItens.map(li => ({
+          const newItens: ItemCusto[] = loadedItens.map((li) => ({
             descricao: li.descricao,
             quantidade: String(li.quantidade),
             unidade: li.unidade,
@@ -646,11 +645,14 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
               : '',
             ncm: '',
           }));
-          if (newItens.length > 0) {
-            setItens(newItens);
-          }
-          // Store for engineering tab auto-fill
-          setEngItensAutoFill(loadedItens.map(li => ({
+
+          setItens(
+            newItens.length > 0
+              ? newItens
+              : [{ descricao: '', quantidade: '1', unidade: 'UN', custoUnitario: '', ncm: '' }]
+          );
+
+          setEngItensAutoFill(loadedItens.map((li) => ({
             descricao: li.descricao,
             quantidade: li.quantidade,
             unidade: li.unidade,

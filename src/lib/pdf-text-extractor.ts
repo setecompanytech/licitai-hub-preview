@@ -1,41 +1,61 @@
 /**
- * Extracts readable text from a file (PDF, DOC, DOCX, TXT).
- * For PDFs, uses pdfjs-dist to properly parse the binary content.
- * For text files, uses file.text().
+ * Extracts readable text from files/blobs (PDF, DOC, DOCX, TXT).
+ * Keeps more of the original line structure to improve edital item extraction fidelity.
  */
-export async function extractTextFromFile(file: File, maxPages = 50): Promise<string> {
-  const name = file.name.toLowerCase();
+const DEFAULT_MAX_PAGES = 150;
 
-  // Plain text files
-  if (name.endsWith('.txt')) {
-    return file.text();
+function normalizeExtractedText(text: string): string {
+  return text
+    .replace(/\u0000/g, '')
+    .replace(/\r/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+export async function extractTextFromFile(file: File, maxPages = DEFAULT_MAX_PAGES): Promise<string> {
+  return extractTextFromBlob(file, file.name, maxPages);
+}
+
+export async function extractTextFromBlob(
+  blob: Blob,
+  fileName = 'documento.pdf',
+  maxPages = DEFAULT_MAX_PAGES
+): Promise<string> {
+  const name = fileName.toLowerCase();
+  const type = blob.type.toLowerCase();
+
+  if (name.endsWith('.txt') || type.startsWith('text/')) {
+    return normalizeExtractedText(await blob.text());
   }
 
-  // PDF files - must use pdfjs-dist
-  if (name.endsWith('.pdf') || file.type === 'application/pdf') {
-    return extractTextFromPDF(file, maxPages);
+  if (name.endsWith('.pdf') || type.includes('pdf')) {
+    return extractTextFromPDFData(await blob.arrayBuffer(), maxPages);
   }
 
-  // DOC/DOCX - try text extraction (limited but better than nothing)
-  if (name.endsWith('.doc') || name.endsWith('.docx')) {
-    // For DOCX, we can try basic text extraction from the XML inside the zip
+  if (name.endsWith('.docx') || type.includes('officedocument.wordprocessingml.document')) {
     try {
-      return await extractTextFromDocx(file);
+      return extractTextFromDocxArrayBuffer(await blob.arrayBuffer());
     } catch {
-      // Fallback: try raw text (may work for older .doc)
-      return file.text();
+      return normalizeExtractedText(await blob.text());
     }
   }
 
-  // Fallback
-  return file.text();
+  if (name.endsWith('.doc') || type.includes('msword')) {
+    try {
+      return extractTextFromDocxArrayBuffer(await blob.arrayBuffer());
+    } catch {
+      return normalizeExtractedText(await blob.text());
+    }
+  }
+
+  return normalizeExtractedText(await blob.text());
 }
 
-async function extractTextFromPDF(file: File, maxPages: number): Promise<string> {
+async function extractTextFromPDFData(arrayBuffer: ArrayBuffer, maxPages: number): Promise<string> {
   const pdfjsLib = await import('pdfjs-dist');
   pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
-  const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const totalPages = Math.min(pdf.numPages, maxPages);
   const pages: string[] = [];
@@ -44,28 +64,30 @@ async function extractTextFromPDF(file: File, maxPages: number): Promise<string>
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
     const text = content.items
-      .map((item: any) => item.str)
-      .join(' ');
+      .map((item: any) => {
+        const value = typeof item?.str === 'string' ? item.str : '';
+        return item?.hasEOL ? `${value}\n` : value;
+      })
+      .join(' ')
+      .replace(/ *\n */g, '\n');
+
     if (text.trim()) {
       pages.push(text);
     }
   }
 
-  return pages.join('\n\n');
+  return normalizeExtractedText(pages.join('\n\n'));
 }
 
-async function extractTextFromDocx(file: File): Promise<string> {
-  // DOCX is a ZIP containing XML files
+async function extractTextFromDocxArrayBuffer(arrayBuffer: ArrayBuffer): Promise<string> {
   const JSZip = (await import('jszip')).default;
-  const arrayBuffer = await file.arrayBuffer();
   const zip = await JSZip.loadAsync(arrayBuffer);
-  
+
   const docXml = await zip.file('word/document.xml')?.async('text');
   if (!docXml) {
     throw new Error('Not a valid DOCX file');
   }
-  
-  // Strip XML tags to get plain text
+
   const text = docXml
     .replace(/<w:br[^>]*\/>/gi, '\n')
     .replace(/<w:p[^>]*>/gi, '\n')
@@ -74,9 +96,7 @@ async function extractTextFromDocx(file: File): Promise<string> {
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+    .replace(/&apos;/g, "'");
 
-  return text;
+  return normalizeExtractedText(text);
 }
