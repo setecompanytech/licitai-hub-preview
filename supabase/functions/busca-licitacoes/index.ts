@@ -144,6 +144,7 @@ serve(async (req) => {
       const dataFinalDate = dataFim ? new Date(dataFim) : new Date(now.getTime() + 30 * 86400000);
       const cleanCnpj = cnpjOrgao ? cnpjOrgao.replace(/[.\-\/\s]/g, "") : null;
       const userFilteredByDate = !!(dataInicio || dataFim);
+      const cleanMunicipio = municipio ? municipio.trim().toLowerCase() : null;
 
       // Resolve modalidade code from user input
       const userModalidadeCod = modalidade
