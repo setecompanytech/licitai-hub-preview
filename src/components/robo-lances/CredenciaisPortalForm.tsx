@@ -151,10 +151,15 @@ export default function CredenciaisPortalForm() {
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Selecione o portal" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-72">
                     {PORTAIS.map((p) => (
                       <SelectItem key={p.id} value={p.id} disabled={portalJaCadastrado(p.id)}>
-                        {p.nome} {portalJaCadastrado(p.id) ? '(já cadastrado)' : ''}
+                        <span className="flex items-center gap-2">
+                          {p.nome}
+                          {p.auth === 'certificado' && <Badge variant="outline" className="text-[9px] scale-75 bg-warning/10 text-warning border-warning/30">Cert. Digital</Badge>}
+                          {p.auth === 'login+cert' && <Badge variant="outline" className="text-[9px] scale-75 bg-info/10 text-info border-info/30">Login+Cert</Badge>}
+                          {portalJaCadastrado(p.id) && <span className="text-muted-foreground">(já cadastrado)</span>}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
