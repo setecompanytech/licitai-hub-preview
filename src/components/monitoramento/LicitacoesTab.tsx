@@ -1291,7 +1291,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
                             <TooltipTrigger asChild>
                               <span className="text-sm font-medium line-clamp-2 block cursor-default">{lic.objeto}</span>
                             </TooltipTrigger>
-                            <TooltipContent side="bottom" align="start" className="max-w-[450px] text-xs leading-relaxed whitespace-normal">
+                            <TooltipContent side="top" align="start" className="max-w-[500px] text-xs leading-relaxed whitespace-normal z-[100]">
                               {lic.objeto}
                             </TooltipContent>
                           </Tooltip>
