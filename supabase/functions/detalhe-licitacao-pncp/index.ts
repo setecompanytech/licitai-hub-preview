@@ -117,8 +117,8 @@ serve(async (req) => {
     const itensUrl = `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${ano}/${seq}/itens`;
 
     const [detalheResult, itensResult] = await Promise.allSettled([
-      fetchJsonWithTimeout(detalheUrl, 7000),
-      fetchJsonWithTimeout(itensUrl, 7000),
+      fetchJsonWithTimeout(detalheUrl, 15000),
+      fetchJsonWithTimeout(itensUrl, 5000),
     ]);
 
     if (detalheResult.status !== "fulfilled") {
