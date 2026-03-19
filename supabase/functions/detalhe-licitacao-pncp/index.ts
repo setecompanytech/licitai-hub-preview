@@ -11,6 +11,82 @@ const FETCH_HEADERS = {
   Accept: "application/json",
 };
 
+async function fetchJsonWithTimeout(url: string, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      headers: FETCH_HEADERS,
+      signal: controller.signal,
+      redirect: "follow",
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`PNCP ${response.status} em ${url}: ${body.slice(0, 300)}`);
+    }
+
+    return await response.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function formatFonteOrcamentaria(fontes: unknown): string | null {
+  if (!Array.isArray(fontes) || fontes.length === 0) return null;
+
+  const formatted = fontes
+    .map((fonte) => {
+      if (!fonte) return null;
+      if (typeof fonte === "string") return fonte;
+      if (typeof fonte !== "object") return String(fonte);
+
+      const item = fonte as Record<string, unknown>;
+      const parts = [
+        item.codigoFonte ? String(item.codigoFonte) : null,
+        item.descricao ? String(item.descricao) : null,
+        item.nome ? String(item.nome) : null,
+        item.fonte ? String(item.fonte) : null,
+      ].filter(Boolean);
+
+      return parts.length > 0 ? parts.join(" - ") : JSON.stringify(item);
+    })
+    .filter(Boolean);
+
+  return formatted.length > 0 ? formatted.join(" • ") : null;
+}
+
+function resolveFonteSistema(detalhe: Record<string, unknown>): string | null {
+  if (typeof detalhe.usuarioNome === "string" && detalhe.usuarioNome.trim()) {
+    return detalhe.usuarioNome.trim();
+  }
+
+  if (typeof detalhe.linkSistemaOrigem === "string" && detalhe.linkSistemaOrigem) {
+    try {
+      const hostname = new URL(detalhe.linkSistemaOrigem).hostname.toLowerCase();
+      if (hostname.includes("comprasnet") || hostname.includes("compras.gov")) return "Compras.gov.br";
+      return hostname.replace(/^www\./, "");
+    } catch {
+      return detalhe.linkSistemaOrigem;
+    }
+  }
+
+  return null;
+}
+
+function resolveUnidadeOrgao(unidade: unknown): string {
+  if (!unidade || typeof unidade !== "object") return "";
+
+  const unidadeData = unidade as Record<string, unknown>;
+  const codigo = typeof unidadeData.codigoUnidade === "string" || typeof unidadeData.codigoUnidade === "number"
+    ? String(unidadeData.codigoUnidade)
+    : "";
+  const nome = typeof unidadeData.nomeUnidade === "string" ? unidadeData.nomeUnidade : "";
+
+  return [codigo, nome].filter(Boolean).join(" - ");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -37,35 +113,16 @@ serve(async (req) => {
 
     console.log(`Buscando detalhes PNCP: ${cnpj}/${ano}/${seq}`);
 
-    // ── Fetch contratação details + itens in parallel ──
-    const baseUrl = `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${ano}/${seq}`;
+    const detalheUrl = `https://pncp.gov.br/api/consulta/v1/orgaos/${cnpj}/compras/${ano}/${seq}`;
+    const itensUrl = `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${ano}/${seq}/itens`;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-
-    const [detalheResp, itensResp] = await Promise.allSettled([
-      fetch(baseUrl, { headers: FETCH_HEADERS, signal: controller.signal }),
-      fetch(`${baseUrl}/itens`, { headers: FETCH_HEADERS, signal: controller.signal }),
+    const [detalheResult, itensResult] = await Promise.allSettled([
+      fetchJsonWithTimeout(detalheUrl, 7000),
+      fetchJsonWithTimeout(itensUrl, 7000),
     ]);
 
-    clearTimeout(timeout);
-
-    // ── Parse detalhes ──
-    let detalhe: any = null;
-    if (detalheResp.status === "fulfilled" && detalheResp.value.ok) {
-      detalhe = await detalheResp.value.json();
-    } else {
-      // Try alternative endpoint
-      try {
-        const altResp = await fetch(
-          `https://pncp.gov.br/api/consulta/v1/contratacoes/${cnpj}/${ano}/${seq}`,
-          { headers: FETCH_HEADERS }
-        );
-        if (altResp.ok) detalhe = await altResp.json();
-      } catch { /* ignore */ }
-    }
-
-    if (!detalhe) {
+    if (detalheResult.status !== "fulfilled") {
+      console.error("Erro ao buscar detalhe principal do PNCP:", detalheResult.reason);
       return new Response(JSON.stringify({
         success: false,
         error: "Não foi possível obter os detalhes desta licitação no PNCP.",
@@ -75,99 +132,94 @@ serve(async (req) => {
       });
     }
 
-    // ── Parse itens ──
+    const detalhe = detalheResult.value as Record<string, unknown>;
+
     let itens: any[] = [];
-    if (itensResp.status === "fulfilled" && itensResp.value.ok) {
-      const itensData = await itensResp.value.json();
+    if (itensResult.status === "fulfilled") {
+      const itensData = itensResult.value;
       itens = Array.isArray(itensData) ? itensData : (itensData?.data || itensData?.itens || []);
+    } else {
+      console.warn("Itens PNCP indisponíveis para esta contratação:", itensResult.reason);
     }
 
-    // ── Normalize response ──
+    const valorTotalEstimado = typeof detalhe.valorTotalEstimado === "number" && detalhe.valorTotalEstimado > 0
+      ? detalhe.valorTotalEstimado
+      : null;
+    const valorTotalHomologado = typeof detalhe.valorTotalHomologado === "number" && detalhe.valorTotalHomologado > 0
+      ? detalhe.valorTotalHomologado
+      : null;
+
     const resultado = {
       success: true,
-      // Dados básicos
       numero_compra: detalhe.numeroCompra || detalhe.numeroControlePNCP || "",
       numero_controle_pncp: detalhe.numeroControlePNCP || "",
       objeto: detalhe.objetoCompra || detalhe.objeto || "",
-      
-      // Órgão
-      orgao: detalhe.orgaoEntidade?.razaoSocial || detalhe.nomeUnidadeCompradora || "",
-      cnpj_orgao: detalhe.orgaoEntidade?.cnpj || cnpj,
-      orgao_sub_rogado: detalhe.orgaoSubRogado?.razaoSocial || null,
-      unidade_orgao: detalhe.unidadeOrgao?.nomeUnidade || "",
-      
-      // Modalidade e tipo
-      modalidade: detalhe.modalidadeNome || detalhe.modalidade?.descricao || "",
+
+      orgao: (detalhe.orgaoEntidade as Record<string, unknown> | undefined)?.razaoSocial || "",
+      cnpj_orgao: (detalhe.orgaoEntidade as Record<string, unknown> | undefined)?.cnpj || cnpj,
+      orgao_sub_rogado: (detalhe.orgaoSubRogado as Record<string, unknown> | undefined)?.razaoSocial || null,
+      unidade_orgao: resolveUnidadeOrgao(detalhe.unidadeOrgao),
+
+      modalidade: detalhe.modalidadeNome || (detalhe.modalidade as Record<string, unknown> | undefined)?.descricao || "",
       modalidade_id: detalhe.modalidadeId || detalhe.codigoModalidadeContratacao || null,
-      
-      // ── DADOS CRÍTICOS QUE FALTAVAM ──
-      modo_disputa: detalhe.modoDisputaNome || detalhe.modoDisputa?.descricao || null,
+      modo_disputa: detalhe.modoDisputaNome || (detalhe.modoDisputa as Record<string, unknown> | undefined)?.descricao || null,
       modo_disputa_id: detalhe.modoDisputaId || null,
-      criterio_julgamento: detalhe.criterioJulgamentoNome || detalhe.criterioJulgamento?.descricao || null,
+      criterio_julgamento: detalhe.criterioJulgamentoNome || (detalhe.criterioJulgamento as Record<string, unknown> | undefined)?.descricao || null,
       criterio_julgamento_id: detalhe.criterioJulgamentoId || null,
       tipo_contratacao: detalhe.tipoContratacao || null,
       tipo_instrumento_convocatorio: detalhe.tipoInstrumentoConvocatorioNome || null,
       srp: detalhe.srp || false,
-      amparo_legal: detalhe.amparoLegal?.descricao || detalhe.amparoLegalNome || null,
-      fonte_orcamentaria: detalhe.fonteOrcamentaria || null,
-      fonte_sistema: detalhe.linkSistemaOrigem ? 'Compras.gov.br' : null,
+      amparo_legal: (detalhe.amparoLegal as Record<string, unknown> | undefined)?.nome
+        || (detalhe.amparoLegal as Record<string, unknown> | undefined)?.descricao
+        || detalhe.amparoLegalNome
+        || null,
+      fonte_orcamentaria: formatFonteOrcamentaria(detalhe.fontesOrcamentarias || detalhe.fonteOrcamentaria),
+      fonte_sistema: resolveFonteSistema(detalhe),
       informacao_complementar: detalhe.informacaoComplementar || null,
       processo_administrativo: detalhe.processo || detalhe.processoAdministrativo || null,
-      
-      // Situação
-      situacao: detalhe.situacaoCompraNome || detalhe.situacao?.descricao || "",
+
+      situacao: detalhe.situacaoCompraNome || (detalhe.situacao as Record<string, unknown> | undefined)?.descricao || "",
       situacao_id: detalhe.situacaoCompraId || null,
       justificativa: detalhe.justificativa || null,
-      
-      // Valores
-      valor_total_estimado: detalhe.valorTotalEstimado || null,
-      valor_total_homologado: detalhe.valorTotalHomologado || null,
-      
-      // Datas REAIS do PNCP
+
+      valor_total_estimado: valorTotalEstimado,
+      valor_total_homologado: valorTotalHomologado,
+
       data_publicacao_pncp: detalhe.dataPublicacaoPncp || null,
       data_abertura_proposta: detalhe.dataAberturaProposta || null,
       data_encerramento_proposta: detalhe.dataEncerramentoProposta || null,
       data_inclusao: detalhe.dataInclusao || null,
       data_atualizacao: detalhe.dataAtualizacao || null,
-      
-      // Localização
-      uf: detalhe.unidadeOrgao?.ufSigla || detalhe.orgaoEntidade?.ufSigla || "",
-      municipio: detalhe.unidadeOrgao?.municipioNome || "",
-      
-      // Links
+
+      uf: (detalhe.unidadeOrgao as Record<string, unknown> | undefined)?.ufSigla
+        || (detalhe.orgaoEntidade as Record<string, unknown> | undefined)?.ufSigla
+        || "",
+      municipio: (detalhe.unidadeOrgao as Record<string, unknown> | undefined)?.municipioNome || "",
+
       link_sistema_origem: detalhe.linkSistemaOrigem || null,
       link_edital: detalhe.linkEdital || null,
-      
-      // Itens (dados reais extraídos da API, NÃO da IA)
-      itens: itens.map((item: any, idx: number) => ({
+
+      itens: itens.map((item: Record<string, unknown>, idx: number) => ({
         numero: item.numeroItem || (idx + 1),
-        descricao: item.descricao || item.materialServico?.descricao || "",
+        descricao: item.descricao || (item.materialServico as Record<string, unknown> | undefined)?.descricao || "",
         quantidade: item.quantidade || 0,
         unidade_medida: item.unidadeMedida || "",
         valor_unitario_estimado: item.valorUnitarioEstimado || 0,
-        valor_total: item.valorTotal || (item.quantidade || 0) * (item.valorUnitarioEstimado || 0),
-        criterio_julgamento_item: item.criterioJulgamento || null,
+        valor_total: item.valorTotal || (Number(item.quantidade || 0) * Number(item.valorUnitarioEstimado || 0)),
+        criterio_julgamento_item: item.criterioJulgamentoNome || item.criterioJulgamento || null,
         situacao: item.situacaoCompraItemNome || item.situacao || "",
         tipo_beneficio: item.tipoBeneficioNome || null,
-        incentivoProdutivoBasico: item.incentivoProdutivoBasico || false,
-        // Dados do fornecedor vencedor (se homologado)
         fornecedor_nome: item.nomeRazaoSocialFornecedor || null,
-        fornecedor_cnpj: item.cnpjCpfFornecedor || null,
-        valor_unitario_homologado: item.valorUnitarioHomologado || null,
         marca: item.marca || null,
-        fabricante: item.fabricante || null,
-        modelo: item.modelo || null,
       })),
-      
+
       total_itens: itens.length,
-      
-      // Metadados
       fonte: "PNCP API Oficial",
       url_pncp: `https://pncp.gov.br/app/editais/${cnpj}/${ano}/${seq}`,
       consultado_em: new Date().toISOString(),
     };
 
-    console.log(`PNCP detalhe: ${resultado.objeto.substring(0, 80)} | ${resultado.total_itens} itens | modo=${resultado.modo_disputa} | criterio=${resultado.criterio_julgamento}`);
+    console.log(`PNCP detalhe OK: ${String(resultado.numero_controle_pncp)} | itens=${resultado.total_itens} | fonte=${resultado.fonte_sistema}`);
 
     return new Response(JSON.stringify(resultado), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
