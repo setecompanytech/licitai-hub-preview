@@ -271,6 +271,8 @@ export type Database = {
           created_at: string
           detalhes: Json
           evento: string
+          hash_anterior: string | null
+          hash_registro: string | null
           id: string
           ip_address: string | null
           licitacao_id: string | null
@@ -285,6 +287,8 @@ export type Database = {
           created_at?: string
           detalhes?: Json
           evento: string
+          hash_anterior?: string | null
+          hash_registro?: string | null
           id?: string
           ip_address?: string | null
           licitacao_id?: string | null
@@ -299,6 +303,8 @@ export type Database = {
           created_at?: string
           detalhes?: Json
           evento?: string
+          hash_anterior?: string | null
+          hash_registro?: string | null
           id?: string
           ip_address?: string | null
           licitacao_id?: string | null
@@ -2605,6 +2611,68 @@ export type Database = {
         }
         Relationships: []
       }
+      estrategia_ia: {
+        Row: {
+          analise_ia: string | null
+          categoria: string | null
+          confianca: number | null
+          created_at: string
+          decremento_sugerido: number | null
+          desconto_medio: number | null
+          historico_disputas: number | null
+          id: string
+          licitacao_id: string | null
+          objeto: string | null
+          orgao: string | null
+          preco_medio_fechamento: number | null
+          updated_at: string
+          user_id: string
+          valor_minimo_sugerido: number | null
+        }
+        Insert: {
+          analise_ia?: string | null
+          categoria?: string | null
+          confianca?: number | null
+          created_at?: string
+          decremento_sugerido?: number | null
+          desconto_medio?: number | null
+          historico_disputas?: number | null
+          id?: string
+          licitacao_id?: string | null
+          objeto?: string | null
+          orgao?: string | null
+          preco_medio_fechamento?: number | null
+          updated_at?: string
+          user_id: string
+          valor_minimo_sugerido?: number | null
+        }
+        Update: {
+          analise_ia?: string | null
+          categoria?: string | null
+          confianca?: number | null
+          created_at?: string
+          decremento_sugerido?: number | null
+          desconto_medio?: number | null
+          historico_disputas?: number | null
+          id?: string
+          licitacao_id?: string | null
+          objeto?: string | null
+          orgao?: string | null
+          preco_medio_fechamento?: number | null
+          updated_at?: string
+          user_id?: string
+          valor_minimo_sugerido?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estrategia_ia_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       faq: {
         Row: {
           ativo: boolean | null
@@ -3787,6 +3855,48 @@ export type Database = {
           recursos?: Json | null
           slug?: string
           trial_dias?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      portal_healthcheck: {
+        Row: {
+          created_at: string
+          detalhes: Json | null
+          id: string
+          portal_id: string
+          portal_nome: string
+          proximo_check: string | null
+          seletores_falhos: string[] | null
+          seletores_ok: boolean | null
+          status: string
+          ultima_verificacao: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          detalhes?: Json | null
+          id?: string
+          portal_id: string
+          portal_nome: string
+          proximo_check?: string | null
+          seletores_falhos?: string[] | null
+          seletores_ok?: boolean | null
+          status?: string
+          ultima_verificacao?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          detalhes?: Json | null
+          id?: string
+          portal_id?: string
+          portal_nome?: string
+          proximo_check?: string | null
+          seletores_falhos?: string[] | null
+          seletores_ok?: boolean | null
+          status?: string
+          ultima_verificacao?: string | null
           updated_at?: string
         }
         Relationships: []
