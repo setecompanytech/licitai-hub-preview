@@ -1322,7 +1322,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
                                 )}
                               </div>
                             </TooltipTrigger>
-                            <TooltipContent side="bottom" className="max-w-[350px] text-xs whitespace-normal">
+                            <TooltipContent side="top" className="max-w-[350px] text-xs whitespace-normal z-[100]">
                               {orgaoComLocal}
                             </TooltipContent>
                           </Tooltip>
