@@ -30,7 +30,7 @@ import {
   ShieldCheck,
   Gavel,
 } from "lucide-react";
-import LicitacoesTab from "@/components/monitoramento/LicitacoesTab";
+// LicitacoesTab removed — integrated into MuralLicitacoes via "Incluir portais externos" toggle
 import DiariosOficiaisTab from "@/components/monitoramento/DiariosOficiaisTab";
 import ConfiguracaoPesquisaTab from "@/components/monitoramento/ConfiguracaoPesquisaTab";
 import DispensaEletronicaTab from "@/components/monitoramento/DispensaEletronicaTab";
