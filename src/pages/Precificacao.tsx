@@ -1249,6 +1249,17 @@ Responda APENAS em JSON, sem markdown:
             </div>
           ))}
         </div>
+
+          {/* Fontes de Pesquisa - integrado na aba de Pesquisa */}
+          <details className="mt-6">
+            <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2">
+              <Globe className="w-4 h-4" />
+              Ver todas as fontes de pesquisa ({'>'}80 fontes cadastradas)
+            </summary>
+            <div className="mt-3">
+              <FontesManager />
+            </div>
+          </details>
           </TabsContent>
 
           <TabsContent value="govbr">
