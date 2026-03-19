@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   BarChart3, TrendingUp, TrendingDown, DollarSign, Package,
-  Building2, Search, Download, PieChart, Activity, Landmark, FileText
+  Building2, Search, Download, PieChart, Activity, Landmark, FileText, Shield
 } from 'lucide-react';
 import TransparenciaPA from '@/components/analise-mercado/TransparenciaPA';
 import ContratosGov from '@/components/analise-mercado/ContratosGov';
