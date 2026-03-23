@@ -499,9 +499,8 @@ ${context}`,
       {resultado && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-warning" />
-              <h4 className="text-sm font-semibold">Relatório de Análise Jurídico-Contábil</h4>
+          <div className="flex items-center gap-2">
+              <h4 className="text-sm font-semibold">Relatorio de Analise Juridico-Contabil</h4>
             </div>
             <Button size="sm" variant="outline" onClick={handleDownloadRelatorio}>
               <Download className="w-3 h-3 mr-1" /> Baixar .md
