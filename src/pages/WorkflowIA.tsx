@@ -89,7 +89,7 @@ Seja objetivo e formate em Markdown limpo com seções numeradas. NÃO utilize e
           setCompleted(prev => new Set(prev).add(step.key));
         },
         onError: () => {
-          setStepResults(prev => ({ ...prev, [step.key]: '❌ Erro ao executar esta etapa.' }));
+          setStepResults(prev => ({ ...prev, [step.key]: 'Erro ao executar esta etapa.' }));
           setCompleted(prev => new Set(prev).add(step.key));
         },
       });
