@@ -61,6 +61,7 @@ import AdminMarketing from "./pages/AdminMarketing";
 import MeusCompromissos from "./pages/MeusCompromissos";
 import WorkflowIA from "./pages/WorkflowIA";
 import EquipeColaboradores from "./pages/EquipeColaboradores";
+import AssistenteEspecializado from "./pages/AssistenteEspecializado";
 const queryClient = new QueryClient();
 
 const ProtectedPages = ({ children }: { children: React.ReactNode }) => (
