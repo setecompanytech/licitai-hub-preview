@@ -341,7 +341,7 @@ async function extractZipBlob(
   depth = 0,
 ): Promise<ExtractedAnalysisDocument[]> {
   const { default: JSZip } = await import('jszip');
-  const zip = await JSZip.loadAsync(blob);
+  const zip = await JSZip.loadAsync(await blob.arrayBuffer());
   const documents: ExtractedAnalysisDocument[] = [];
   const entries = Object.values(zip.files).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 
