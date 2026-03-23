@@ -432,14 +432,14 @@ export default function CertidoesNegativas() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => {
                         downloadCSV('certidoes-negativas', ['Certidão', 'Órgão', 'Validade', 'Status', 'Fonte', 'URL', 'Observações'],
-                          resultado.certidoes.map(c => [c.nome, c.orgao, String(c.validadeDias), statusConfig[c.statusProvavel]?.label || 'Verificar', c.verificacaoReal ? '✅ API' : '🤖 IA', c.url, c.observacoes]));
+                          resultado.certidoes.map(c => [c.nome, c.orgao, String(c.validadeDias), statusConfig[c.statusProvavel]?.label || 'Verificar', c.verificacaoReal ? 'API' : 'IA', c.url, c.observacoes]));
                         toast.success('CSV exportado!');
                       }}><FileSpreadsheet className="w-4 h-4 mr-2" /> CSV</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => {
                         const txt = [`CERTIDÕES – ${cnpjInput}`, `Gerado: ${new Date().toLocaleString('pt-BR')}`, '='.repeat(60), '',
                           ...(resultado.verificacoesReais || []).map(v => `[${v.status.toUpperCase()}] ${v.fonte}: ${v.detalhes}`),
                           '', resultado.resumo, '',
-                          ...resultado.certidoes.map(c => `${c.verificacaoReal ? '✅' : '🤖'} ${c.nome}\n  Status: ${statusConfig[c.statusProvavel]?.label}\n  URL: ${c.url}\n`),
+                          ...resultado.certidoes.map(c => `${c.verificacaoReal ? '[API]' : '[IA]'} ${c.nome}\n  Status: ${statusConfig[c.statusProvavel]?.label}\n  URL: ${c.url}\n`),
                           '', ...resultado.recomendacoes.map(r => `→ ${r}`),
                         ].join('\n');
                         downloadTextReport('certidoes-negativas', txt); toast.success('TXT exportado!');

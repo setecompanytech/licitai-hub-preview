@@ -132,7 +132,7 @@ export default function MeusCompromissos() {
 
   const handleAprovar = async (id: string) => {
     await supabase.from('processos_interesse').update({ aprovado_usuario: true, status: 'aprovado' }).eq('id', id);
-    toast.success('✅ Processo aprovado!');
+    toast.success('Processo aprovado!');
     carregarProcessos();
   };
 

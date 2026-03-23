@@ -521,7 +521,7 @@ function ResumoPrecos({ resumo }: { resumo: PesquisaMLResult['resumo'] }) {
   return (
     <div className="bg-gradient-to-r from-primary/5 to-success/5 border border-primary/20 rounded-lg p-4 space-y-3">
       <h4 className="text-sm font-semibold flex items-center gap-2 text-foreground">
-        📊 Resumo de Preços
+        Resumo de Preços
       </h4>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="text-center p-2 bg-card rounded-md border border-border/30">
@@ -546,7 +546,7 @@ function ResumoPrecos({ resumo }: { resumo: PesquisaMLResult['resumo'] }) {
       {resumo.recomendacao && (
         <div className="bg-card rounded-md border border-border/30 p-3">
           <p className="text-xs text-muted-foreground">
-            💡 <span className="font-medium text-foreground">Recomendação:</span> {resumo.recomendacao}
+            <span className="font-medium text-foreground">Recomendação:</span> {resumo.recomendacao}
           </p>
         </div>
       )}

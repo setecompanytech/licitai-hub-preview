@@ -36,10 +36,11 @@ export default function ScoreViabilidade({ edital, empresaCnae, empresaUf }: Pro
         content: `Você é um analista técnico de viabilidade de licitações públicas. Elabore um parecer técnico de viabilidade para o processo abaixo, com linguagem formal, objetiva e impessoal, conforme a Lei nº 14.133/2021.
 
 REGRAS OBRIGATÓRIAS:
-- NÃO utilize emojis, emoticons ou caracteres decorativos em hipótese alguma.
+- NÃO utilize emojis, emoticons, figurinhas ou caracteres decorativos em hipótese alguma.
 - NÃO faça suposições ou hipóteses genéricas. Baseie-se estritamente nos dados fornecidos.
 - Utilize numeração arábica sequencial para seções e alíneas com letras minúsculas para subitens.
 - Mantenha tom técnico, corporativo e impessoal.
+- Apresente dados comparativos em tabelas markdown quando aplicável.
 
 CRITÉRIOS DE AVALIAÇÃO:
 1. Compatibilidade do CNAE da empresa (${empresaCnae || 'não informado'}) com o objeto licitado

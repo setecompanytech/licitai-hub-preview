@@ -872,7 +872,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
 
           {/* Demonstração de Resultado */}
           <div className="bg-muted/20 rounded-lg p-4 space-y-2 border border-border/30">
-            <h5 className="text-xs font-bold text-foreground mb-2">📊 DRE Simplificada (Demonstração do Resultado)</h5>
+            <h5 className="text-xs font-bold text-foreground mb-2">DRE Simplificada (Demonstração do Resultado)</h5>
             <div className="flex justify-between text-xs">
               <span>Receita Bruta</span>
               <span className="font-mono font-semibold">{formatCurrency(resultado.receita)}</span>

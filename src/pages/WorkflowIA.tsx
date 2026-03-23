@@ -73,12 +73,12 @@ export default function WorkflowIA() {
 ${i > 0 ? `**Resultado da etapa anterior (${WORKFLOW_STEPS[i - 1].label})**: ${stepResults[WORKFLOW_STEPS[i - 1].key]?.substring(0, 500) || 'N/A'}` : ''}
 
 Forneça:
-1. **Ações executadas** nesta etapa
-2. **Resultados encontrados** (dados concretos)
-3. **Recomendações** para o usuário
-4. **Próximos passos** sugeridos
+1. Ações executadas nesta etapa
+2. Resultados encontrados (dados concretos)
+3. Recomendações para o usuário
+4. Próximos passos sugeridos
 
-Seja objetivo e formate em Markdown. Use emojis para status (✅ concluído, ⚠️ atenção, ❌ problema).`
+Seja objetivo e formate em Markdown limpo com seções numeradas. NÃO utilize emojis, emoticons ou caracteres decorativos.`
         }],
         action: 'workflow_ia_step',
         onDelta: (chunk) => {
@@ -89,7 +89,7 @@ Seja objetivo e formate em Markdown. Use emojis para status (✅ concluído, ⚠
           setCompleted(prev => new Set(prev).add(step.key));
         },
         onError: () => {
-          setStepResults(prev => ({ ...prev, [step.key]: '❌ Erro ao executar esta etapa.' }));
+          setStepResults(prev => ({ ...prev, [step.key]: 'Erro ao executar esta etapa.' }));
           setCompleted(prev => new Set(prev).add(step.key));
         },
       });
@@ -97,7 +97,7 @@ Seja objetivo e formate em Markdown. Use emojis para status (✅ concluído, ⚠
 
     setRunning(false);
     setCurrentStep(-1);
-    toast.success('🤖 Workflow completo! Revise e aprove os processos sugeridos.');
+    toast.success('Workflow completo! Revise e aprove os processos sugeridos.');
   };
 
   const progressPercent = WORKFLOW_STEPS.length > 0 ? (completed.size / WORKFLOW_STEPS.length) * 100 : 0;

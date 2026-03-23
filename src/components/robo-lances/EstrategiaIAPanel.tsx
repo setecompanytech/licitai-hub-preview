@@ -167,7 +167,7 @@ Responda em português, com dados numéricos claros e recomendações práticas.
           {/* AI Analysis */}
           <div className="bg-muted/30 rounded-lg p-3 max-h-48 overflow-y-auto">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              📊 Briefing Estratégico
+              Briefing Estratégico
             </p>
             <div className="prose prose-sm dark:prose-invert max-w-none text-xs [&>p]:mb-1.5 [&>ul]:pl-4 [&>ul]:mb-1.5">
               <ReactMarkdown>{result.analise}</ReactMarkdown>

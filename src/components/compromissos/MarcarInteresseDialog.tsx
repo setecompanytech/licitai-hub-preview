@@ -75,7 +75,7 @@ export default function MarcarInteresseDialog({ open, onOpenChange, edital, onSu
 
       if (error) throw error;
 
-      toast.success('✅ Processo adicionado à sua lista de compromissos!');
+      toast.success('Processo adicionado à sua lista de compromissos.');
       onOpenChange(false);
       onSuccess?.();
     } catch (err) {
