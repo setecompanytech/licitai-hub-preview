@@ -537,7 +537,7 @@ ${context}`,
             </Button>
           </div>
 
-          <div className="bg-card rounded-xl border border-border/50 p-5 max-h-[600px] overflow-y-auto prose prose-sm dark:prose-invert max-w-none">
+          <div className="bg-card rounded-xl border border-border/50 p-5 max-h-[600px] overflow-y-auto prose prose-sm dark:prose-invert max-w-none prose-p:mb-4 prose-li:mb-2 prose-headings:mt-6 prose-headings:mb-3 prose-ul:my-3 prose-ol:my-3 [&_br]:block [&_br]:mb-2">
             <ReactMarkdown>{resultado}</ReactMarkdown>
           </div>
         </div>
