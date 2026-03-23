@@ -432,7 +432,7 @@ export default function CertidoesNegativas() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => {
                         downloadCSV('certidoes-negativas', ['Certidão', 'Órgão', 'Validade', 'Status', 'Fonte', 'URL', 'Observações'],
-                          resultado.certidoes.map(c => [c.nome, c.orgao, String(c.validadeDias), statusConfig[c.statusProvavel]?.label || 'Verificar', c.verificacaoReal ? '✅ API' : '🤖 IA', c.url, c.observacoes]));
+                          resultado.certidoes.map(c => [c.nome, c.orgao, String(c.validadeDias), statusConfig[c.statusProvavel]?.label || 'Verificar', c.verificacaoReal ? 'API' : 'IA', c.url, c.observacoes]));
                         toast.success('CSV exportado!');
                       }}><FileSpreadsheet className="w-4 h-4 mr-2" /> CSV</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => {
