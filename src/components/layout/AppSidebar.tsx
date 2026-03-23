@@ -38,6 +38,7 @@ import {
   FileText,
   ListChecks,
   Lock,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -107,6 +108,7 @@ const navGroups: NavGroup[] = [
     title: 'Ferramentas',
     items: [
       { icon: Bot, label: 'Assistente IA', path: '/assistente' },
+      { icon: Sparkles, label: 'IA Especializada', path: '/assistente-especializado' },
       { icon: GraduationCap, label: 'Tutorial / Guia', path: '/tutorial' },
       { icon: BookOpen, label: 'Blog', path: '/blog' },
       { icon: Download, label: 'E-book', path: '/ebook' },
