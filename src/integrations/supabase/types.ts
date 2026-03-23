@@ -1326,6 +1326,54 @@ export type Database = {
         }
         Relationships: []
       }
+      conhecimento_ia: {
+        Row: {
+          categoria: string
+          confiabilidade: number | null
+          conteudo: string
+          created_at: string
+          fontes: Json | null
+          id: string
+          metadata: Json | null
+          tags: string[] | null
+          tipo: string
+          titulo: string
+          updated_at: string
+          user_id: string
+          verificado: boolean | null
+        }
+        Insert: {
+          categoria?: string
+          confiabilidade?: number | null
+          conteudo: string
+          created_at?: string
+          fontes?: Json | null
+          id?: string
+          metadata?: Json | null
+          tags?: string[] | null
+          tipo?: string
+          titulo: string
+          updated_at?: string
+          user_id: string
+          verificado?: boolean | null
+        }
+        Update: {
+          categoria?: string
+          confiabilidade?: number | null
+          conteudo?: string
+          created_at?: string
+          fontes?: Json | null
+          id?: string
+          metadata?: Json | null
+          tags?: string[] | null
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+          verificado?: boolean | null
+        }
+        Relationships: []
+      }
       contas_bancarias: {
         Row: {
           agencia: string | null
