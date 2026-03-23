@@ -54,6 +54,22 @@ const KEY_LINE_PATTERNS = [
   /municipal/i,
   /estadual/i,
   /sanit[aá]ri/i,
+  /ativo\s+circulante/i,
+  /passivo\s+circulante/i,
+  /patrim[oô]nio\s+l[ií]quido/i,
+  /liquidez/i,
+  /solv[eê]ncia/i,
+  /capital\s+social/i,
+  /balan[cç]o/i,
+  /demonstra[cç][oõ]es/i,
+  /livro\s+di[aá]rio/i,
+  /junta\s+comercial/i,
+  /ativo\s+n[aã]o\s+circulante/i,
+  /passivo\s+n[aã]o\s+circulante/i,
+  /ativo\s+total/i,
+  /passivo\s+total/i,
+  /denominador/i,
+  /[ií]ndice/i,
 ];
 
 function sanitizeText(text: string) {
@@ -118,8 +134,10 @@ function detectDocumentType(text: string, fileName: string) {
   if (sample.includes('sanitari')) return 'Licença / Documento Sanitário';
   if (sample.includes('cndt')) return 'Certidão Trabalhista';
   if (sample.includes('fgts') || sample.includes('crf')) return 'Certidão de Regularidade do FGTS';
-  if (sample.includes('falencia')) return 'Certidão de Falência e Recuperação Judicial';
-  if (sample.includes('balan')) return 'Balanço / Documento Contábil';
+  if (sample.includes('falencia') || sample.includes('recuperação judicial') || sample.includes('recuperacao judicial')) return 'Certidão de Falência e Recuperação Judicial';
+  if (sample.includes('livro diário') || sample.includes('livro diario')) return 'Livro Diário';
+  if (sample.includes('capacidade financeira') || sample.includes('índice') || sample.includes('indice') || sample.includes('liquidez')) return 'Declaração de Capacidade Financeira / Índices Econômicos';
+  if (sample.includes('balanço') || sample.includes('balanco') || sample.includes('ativo circulante') || sample.includes('passivo circulante') || sample.includes('demonstrações contábeis') || sample.includes('demonstracoes contabeis')) return 'Balanço Patrimonial / Demonstração Contábil';
   if (sample.includes('contrato social')) return 'Contrato Social';
   if (sample.includes('certid')) return 'Certidão';
   if (sample.includes('declar')) return 'Declaração';
@@ -407,6 +425,26 @@ REGRAS DECISIVAS DE FIDELIDADE:
 8. Não use tabelas markdown em nenhuma hipótese.
 9. Redija em português brasileiro formal, técnico, auditável e sem frases genéricas.
 
+REGRAS OBRIGATÓRIAS DE ANÁLISE CONTÁBIL E ECONÔMICO-FINANCEIRA:
+
+10. Ao encontrar Balanço Patrimonial, DRE, Declaração de Capacidade Financeira ou Quadro de Índices, aplique TODAS as verificações abaixo:
+
+a) **Verificação de denominadores:** Extraia literalmente os valores de Ativo Circulante (AC), Ativo Não Circulante (ANC), Passivo Circulante (PC), Passivo Não Circulante (PNC) e Patrimônio Líquido (PL) do balanço. Se o PC ou PNC for R$ 0,00 (zero) no balanço, mas os índices tiverem sido calculados usando "1,00" como denominador, aponte como **IRREGULARIDADE GRAVE**: "Denominador artificial de R$ 1,00 utilizado no cálculo dos índices, em desacordo com as demonstrações contábeis que registram passivo de R$ 0,00. Essa prática distorce os índices e não demonstra aptidão econômico-financeira de forma objetiva (art. 69 da Lei nº 14.133/2021)."
+
+b) **Recálculo dos índices:** Sempre recalcule LC, LG e SG a partir dos valores encontrados no balanço:
+   - LC = AC / PC
+   - LG = (AC + Realizável a Longo Prazo) / (PC + PNC)
+   - SG = Ativo Total / (PC + PNC)
+   Se PC = 0 ou (PC + PNC) = 0, declare que o índice é matematicamente indefinido (divisão por zero) e que o uso de denominador artificial de R$ 1,00 constitui artifício sem respaldo normativo.
+
+c) **Confronto índices declarados x recalculados:** Se os índices declarados pelo licitante divergirem dos recalculados, apresente a divergência com valores exatos.
+
+d) **Equação patrimonial:** Verifique se Ativo Total = Passivo Total + PL. Se não bater, aponte a inconsistência.
+
+e) **Livro Diário:** Se presente, verifique autenticação pela Junta Comercial ou registro no CRC, coerência dos lançamentos com o balanço e data de encerramento.
+
+f) **Capital social integralizado:** Se o edital exigir capital mínimo, verifique se o valor integralizado (não apenas subscrito) atende ao limite.
+
 REGRAS OBRIGATÓRIAS DE FORMATAÇÃO (siga rigorosamente):
 
 A. TÍTULOS DE SEÇÃO: use ## para seções principais (## 1. Inventário de documentos identificados). Sempre com linha em branco antes e depois.
@@ -426,6 +464,7 @@ C. SEÇÕES ANALÍTICAS (seções 2 a 10): use parágrafos densos, coerentes e c
    - Status de conformidade: **ATENDIDA**, **NÃO ATENDIDA**, **PARCIALMENTE ATENDIDA**
    - Artigos de lei: **art. 68 da Lei nº 14.133/2021**
    - Datas e valores relevantes
+   - Irregularidades graves: **IRREGULARIDADE GRAVE**, **RESSALVA GRAVE**
 
 D. SUBITENS dentro das seções analíticas: use letras com parêntese (a), b), c)) e cada subitem deve ser um parágrafo próprio com linha em branco de separação:
 
@@ -437,5 +476,5 @@ E. NUNCA junte múltiplos documentos ou subitens em um mesmo parágrafo. Cada do
 
 F. Use referências cruzadas: "(Documento XX)" para vincular cada análise ao documento correspondente do inventário.
 
-G. O CONCLUSÃO (seção 10) deve ser um parecer técnico com no mínimo 3 parágrafos, indicando: (i) resumo geral da conformidade; (ii) falhas sanáveis e prazo para diligência conforme art. 64 da Lei nº 14.133/2021; (iii) vícios insanáveis que ensejam inabilitação.`;
+G. O CONCLUSÃO (seção 10) deve ser um parecer técnico com no mínimo 3 parágrafos, indicando: (i) resumo geral da conformidade; (ii) falhas sanáveis e prazo para diligência conforme art. 64 da Lei nº 14.133/2021; (iii) vícios insanáveis que ensejam inabilitação, incluindo irregularidades contábeis graves como uso de denominadores artificiais nos índices econômico-financeiros.`;
 }
