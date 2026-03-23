@@ -4,7 +4,7 @@ import {
   Kanban, Shield, Building2, MessageSquare, Crosshair, TrendingUp,
   Users, DollarSign, ClipboardCheck, HeadphonesIcon, FileText,
   BarChart3, CalendarDays, ListChecks, Calculator, Workflow, Plug,
-  FileBarChart,
+  FileBarChart, Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
