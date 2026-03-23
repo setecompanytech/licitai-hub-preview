@@ -18,9 +18,16 @@ export type DocumentEvidence = {
   heading: string;
   emissionDate: string | null;
   validityDate: string | null;
+  registrationDate: string | null;
   cnpj: string | null;
   emissionLine: string | null;
   validityLine: string | null;
+  registrationLine: string | null;
+  dateAnchors: Array<{
+    kind: 'emissao' | 'validade' | 'registro' | 'protocolo' | 'referencia' | 'outra';
+    line: string;
+    dates: string[];
+  }>;
   relevantSnippets: string[];
   excerpt: string;
 };
@@ -39,10 +46,14 @@ const KEY_LINE_PATTERNS = [
   /vencimento/i,
   /data\s+de\s+emiss[aã]o/i,
   /emitid[ao]/i,
+  /emitido\s+no\s+dia/i,
   /cnpj/i,
   /cpf/i,
   /objeto/i,
   /per[ií]odo/i,
+  /abertura/i,
+  /protocolo/i,
+  /hor[aá]rio/i,
   /nota\s+fiscal/i,
   /atestado/i,
   /alvar[aá]/i,
@@ -125,6 +136,74 @@ function extractDateByPattern(text: string, patterns: RegExp[]) {
   return null;
 }
 
+function extractDatesFromLine(line: string) {
+  return [...line.matchAll(/\b\d{2}[\/.\-]\d{2}[\/.\-]\d{4}\b/g)]
+    .map((match) => normalizeDate(match[0]))
+    .filter((value): value is string => Boolean(value));
+}
+
+function classifyDateAnchorKind(line: string, label: string): DocumentEvidence['dateAnchors'][number]['kind'] {
+  const normalized = `${label} ${line}`.toLowerCase();
+
+  if (/v[aá]lid[oa]?\s+at[eé]|validade|vig[eê]ncia|vencimento/.test(normalized)) {
+    return 'validade';
+  }
+
+  if (/data\s+de\s+emiss[aã]o|emitid[ao]|emitido\s+no\s+dia|expedi[dç][ao]|gerad[ao]\s+em/.test(normalized)) {
+    return 'emissao';
+  }
+
+  if (/abertura|registr|averba|junta\s+comercial|constitui[cç][aã]o|cart[oó]rio/.test(normalized)) {
+    return 'registro';
+  }
+
+  if (/protocolo|processo|solicita[cç][aã]o/.test(normalized)) {
+    return 'protocolo';
+  }
+
+  if (/exerc[ií]cio|ano[-\s]?base|refer[eê]ncia|compet[eê]ncia|eletr[oô]nico\s+20\d{2}/.test(normalized)) {
+    return 'referencia';
+  }
+
+  return 'outra';
+}
+
+function collectDateAnchors(text: string, label: string) {
+  const seen = new Set<string>();
+
+  return splitMeaningfulLines(text)
+    .filter((line) => /\d{2}[\/.\-]\d{2}[\/.\-]\d{4}/.test(line))
+    .map((line) => ({
+      line,
+      dates: extractDatesFromLine(line),
+      kind: classifyDateAnchorKind(line, label),
+    }))
+    .filter((anchor) => {
+      const key = `${anchor.kind}|${anchor.line}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return anchor.dates.length > 0;
+    })
+    .slice(0, 8);
+}
+
+function describeDateAnchorKind(kind: DocumentEvidence['dateAnchors'][number]['kind']) {
+  switch (kind) {
+    case 'emissao':
+      return 'emissão';
+    case 'validade':
+      return 'validade';
+    case 'registro':
+      return 'registro/abertura';
+    case 'protocolo':
+      return 'protocolo/processo';
+    case 'referencia':
+      return 'referência de exercício';
+    default:
+      return 'outra data contextual';
+  }
+}
+
 function detectDocumentType(text: string, fileName: string) {
   const sample = `${humanizeDocumentLabel(fileName)} ${collapseWhitespace(text).slice(0, 1500)}`.toLowerCase();
   if (sample.includes('atestado de capacidade')) return 'Atestado de Capacidade Técnica';
@@ -200,8 +279,11 @@ export function buildDocumentEvidence(document: ExtractedAnalysisDocument): Docu
   const label = humanizeDocumentLabel(document.name);
   const emissionPatterns = [
     /data\s+de\s+emiss[aã]o\s*(?:[:\-]|\b)\s*(\d{2}[\/.\-]\d{2}[\/.\-]\d{4})/i,
+    /emitid[ao]\s+no\s+dia\s*(\d{2}[\/.\-]\d{2}[\/.\-]\d{4})/i,
     /emitid[ao]\s+em\s*(\d{2}[\/.\-]\d{2}[\/.\-]\d{4})/i,
+    /emitid[ao][^\d]{0,30}(\d{2}[\/.\-]\d{2}[\/.\-]\d{4})/i,
     /emiss[aã]o\s*(?:[:\-]|\b)\s*(\d{2}[\/.\-]\d{2}[\/.\-]\d{4})/i,
+    /expedi[dç][ao]\s*(?:[:\-]|\b)\s*(\d{2}[\/.\-]\d{2}[\/.\-]\d{4})/i,
   ];
   const validityPatterns = [
     /v[aá]lid[oa]?\s+at[eé]\s*(\d{2}[\/.\-]\d{2}[\/.\-]\d{4})/i,
@@ -210,6 +292,12 @@ export function buildDocumentEvidence(document: ExtractedAnalysisDocument): Docu
     /vig[eê]ncia\s*(?:[:\-]|\b)\s*(\d{2}[\/.\-]\d{2}[\/.\-]\d{4})/i,
     /vencimento\s*(?:[:\-]|\b)\s*(\d{2}[\/.\-]\d{2}[\/.\-]\d{4})/i,
   ];
+  const registrationPatterns = [
+    /data\s+de\s+abertura\s*(?:[:\-]|\b)\s*(\d{2}[\/.\-]\d{2}[\/.\-]\d{4})/i,
+    /abertura\s*(?:[:\-]|\b)\s*(\d{2}[\/.\-]\d{2}[\/.\-]\d{4})/i,
+    /registrad[ao][^\d]{0,30}(\d{2}[\/.\-]\d{2}[\/.\-]\d{4})/i,
+    /averbad[ao][^\d]{0,30}(\d{2}[\/.\-]\d{2}[\/.\-]\d{4})/i,
+  ];
 
   return {
     label,
@@ -217,9 +305,12 @@ export function buildDocumentEvidence(document: ExtractedAnalysisDocument): Docu
     heading: chooseHeading(document.text, label),
     emissionDate: extractDateByPattern(document.text, emissionPatterns),
     validityDate: extractDateByPattern(document.text, validityPatterns),
+    registrationDate: extractDateByPattern(document.text, registrationPatterns),
     cnpj: collapseWhitespace(document.text).match(/\b\d{2}\.?\d{3}\.?\d{3}\/\d{4}-?\d{2}\b/)?.[0] ?? null,
-    emissionLine: extractLiteralLine(document.text, [/data\s+de\s+emiss[aã]o/i, /emitid[ao]/i, /emiss[aã]o/i]),
+    emissionLine: extractLiteralLine(document.text, [/data\s+de\s+emiss[aã]o/i, /emitido\s+no\s+dia/i, /emitid[ao]/i, /emiss[aã]o/i, /expedi[dç][ao]/i]),
     validityLine: extractLiteralLine(document.text, [/v[aá]lid[oa]?\s+at[eé]/i, /validade/i, /vig[eê]ncia/i, /vencimento/i]),
+    registrationLine: extractLiteralLine(document.text, [/data\s+de\s+abertura/i, /abertura/i, /registrad/i, /averbad/i, /junta\s+comercial/i]),
+    dateAnchors: collectDateAnchors(document.text, label),
     relevantSnippets: collectRelevantSnippets(document.text),
     excerpt: buildExcerpt(document.text),
   };
@@ -228,12 +319,12 @@ export function buildDocumentEvidence(document: ExtractedAnalysisDocument): Docu
 async function readSupportedBlob(blob: Blob, name: string) {
   const ext = getExtension(name);
 
-  if (['.txt', '.csv', '.xml'].includes(ext)) {
-    return sanitizeText(await blob.text());
+  if (['.txt', '.csv', '.xml', '.doc', '.docx', '.pdf', '.jpg', '.jpeg', '.png', '.webp', '.xlsx', '.xls'].includes(ext)) {
+    return sanitizeText(await extractTextFromBlob(blob, name, 150));
   }
 
-  if (['.pdf', '.docx', '.doc'].includes(ext)) {
-    return sanitizeText(await extractTextFromBlob(blob, name, 150));
+  if (['.txt', '.csv', '.xml'].includes(ext)) {
+    return sanitizeText(await blob.text());
   }
 
   return '';
@@ -279,7 +370,7 @@ async function extractZipBlob(
       continue;
     }
 
-    if (!['.pdf', '.doc', '.docx', '.txt', '.csv', '.xml'].includes(entryExt)) continue;
+    if (!['.pdf', '.doc', '.docx', '.txt', '.csv', '.xml', '.jpg', '.jpeg', '.png', '.webp', '.xlsx', '.xls'].includes(entryExt)) continue;
 
     try {
       const contentBytes = await entry.async('uint8array');
@@ -360,9 +451,15 @@ export function buildConcorrenteAnalysisContext({
         `Cabeçalho relevante: ${evidence.heading}`,
         `Emissão identificada: ${evidence.emissionDate ?? 'Não identificada'}`,
         `Validade identificada: ${evidence.validityDate ?? 'Não identificada'}`,
+        `Registro/abertura identificado: ${evidence.registrationDate ?? 'Não identificado'}`,
         `CNPJ identificado: ${evidence.cnpj ?? 'Não identificado'}`,
         `Linha literal de emissão: ${evidence.emissionLine ?? 'Não identificada'}`,
         `Linha literal de validade: ${evidence.validityLine ?? 'Não identificada'}`,
+        `Linha literal de registro/abertura: ${evidence.registrationLine ?? 'Não identificada'}`,
+        'Âncoras temporais classificadas:',
+        ...(evidence.dateAnchors.length > 0
+          ? evidence.dateAnchors.map((anchor) => `- ${describeDateAnchorKind(anchor.kind)}: ${anchor.line}`)
+          : ['- Nenhuma linha com data localizada.']),
         'Trechos literais prioritários:',
         ...(evidence.relevantSnippets.length > 0
           ? evidence.relevantSnippets.map((snippet) => `- ${snippet}`)
@@ -440,6 +537,10 @@ PROIBIÇÕES:
 - NUNCA agrupe tipos documentais diferentes (contrato social, certidões, alvarás) sob uma mesma conclusão temporal genérica como "todos os documentos têm datas futuras".
 - NUNCA acuse fraude temporal quando o que existe são datas de VALIDADE naturalmente futuras.
 - Somente aponte irregularidade temporal se uma DATA DE EMISSÃO for manifestamente posterior à data atual ou logicamente impossível.
+- A expressão **"Emitido no dia DD/MM/AAAA às HH:MM:SS"** representa data de emissão; o horário é apenas metadado complementar.
+- O ano presente no título do documento (ex.: **"ALVARÁ ELETRÔNICO 2025"**), no número do protocolo (ex.: **"00023151/2025"**) ou em data de abertura cadastral NÃO prova, por si só, emissão futura.
+- Se o contexto trouxer **"Âncoras temporais classificadas"**, trate **referência/protocolo** e **registro/abertura** como categorias acessórias, jamais como substitutas da emissão.
+- Texto mascarado como **"XXXXXXX"** só pode afetar o campo correspondente se estiver literalmente na mesma linha do campo analisado. Ex.: **"Horário especial XXXXXXX"** não invalida a data de emissão.
 
 REGRAS OBRIGATÓRIAS DE ANÁLISE CONTÁBIL E ECONÔMICO-FINANCEIRA:
 
