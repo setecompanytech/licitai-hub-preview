@@ -526,7 +526,7 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
             </div>
           </div>
 
-          <div className="bg-card rounded-xl border border-border/50 p-5 max-h-[600px] overflow-y-auto prose prose-sm dark:prose-invert max-w-none prose-p:mb-4 prose-li:mb-2 prose-headings:mt-6 prose-headings:mb-3 prose-ul:my-3 prose-ol:my-3 [&_br]:block [&_br]:mb-2">
+          <div className="bg-card rounded-xl border border-border/50 p-6 max-h-[700px] overflow-y-auto prose prose-sm dark:prose-invert max-w-none prose-p:mb-5 prose-p:leading-relaxed prose-li:mb-1.5 prose-headings:mt-8 prose-headings:mb-4 prose-headings:font-bold prose-ul:my-4 prose-ol:my-4 prose-h2:text-base prose-h2:border-b prose-h2:border-border/40 prose-h2:pb-2 prose-h3:text-sm prose-strong:text-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_p+p]:mt-5">
             <ReactMarkdown>{resultado}</ReactMarkdown>
           </div>
         </div>

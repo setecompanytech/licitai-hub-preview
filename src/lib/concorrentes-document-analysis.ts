@@ -394,23 +394,48 @@ export function buildConcorrenteAnalysisContext({
 }
 
 export function buildConcorrenteAnalysisUserMessage(hasEdital: boolean) {
-  return `Elabore o RELATÓRIO DE ANÁLISE JURÍDICO-CONTÁBIL completo com 10 seções obrigatórias e com fidelidade estrita aos documentos fornecidos.
+  return `Elabore o RELATÓRIO TÉCNICO DE ANÁLISE DOCUMENTAL completo com 10 seções obrigatórias e com fidelidade estrita aos documentos fornecidos.
 
 REGRAS DECISIVAS DE FIDELIDADE:
 1. Analise um [DOCUMENTO XX] por vez. É proibido transportar datas, CNPJs, status ou observações de um documento para outro.
-2. No inventário documental, use como título principal o campo “Rótulo preferencial do item”.
-3. O item 1 do relatório deve seguir EXATAMENTE este padrão hierárquico:
-   a) NOME DO DOCUMENTO
-     a.1) Tipo: ...
-     a.2) Emissão: ...
-     a.3) Validade: ...
-     a.4) Status: **CONFORME/NAO CONFORME/RESSALVA/AUSENTE/NAO VERIFICAVEL**
-     a.5) Fundamentação: ...
-4. Só informe data de emissão ou validade quando houver correspondência literal no texto do documento ou nas linhas literais já destacadas no contexto.
-5. Quando houver expressão como “VÁLIDO ATÉ”, “DATA DE EMISSÃO”, “VALIDADE” ou “VIGÊNCIA”, reproduza a data exatamente como encontrada. Não deduza validade pelo ano do arquivo, pelo ano do cabeçalho ou por padrão do órgão emissor.
-6. Se um campo não estiver legível ou não existir no documento, escreva “Não identificada”, “Indeterminada” ou **NAO VERIFICAVEL**, conforme o caso.
-7. Em cada conclusão relevante, cite o trecho literal que fundamenta a afirmação.
-8. ${hasEdital ? 'CRUZAMENTO OBRIGATÓRIO: transcreva a exigência do edital, identifique o documento correspondente e aponte precisamente conformidade, ausência, falha sanável ou vício insanável.' : 'Como não há edital, limite o confronto à Lei nº 14.133/2021 e deixe claro quando a conclusão depende de exigência editalícia não fornecida.'}
-9. Não use tabelas markdown. Mantenha espaçamento limpo com uma linha em branco entre cada item e subitem.
-10. Redija em português brasileiro formal, técnico, auditável e sem frases genéricas.`;
+2. No inventário documental, use como título principal o campo "Rótulo preferencial do item".
+3. Só informe data de emissão ou validade quando houver correspondência literal no texto do documento ou nas linhas literais já destacadas no contexto.
+4. Quando houver expressão como "VÁLIDO ATÉ", "DATA DE EMISSÃO", "VALIDADE" ou "VIGÊNCIA", reproduza a data exatamente como encontrada. Não deduza validade pelo ano do arquivo, pelo ano do cabeçalho ou por padrão do órgão emissor.
+5. Se um campo não estiver legível ou não existir no documento, escreva "Não identificada", "Indeterminada" ou **NÃO VERIFICÁVEL**, conforme o caso.
+6. Em cada conclusão relevante, cite o trecho literal que fundamenta a afirmação entre aspas.
+7. ${hasEdital ? 'CRUZAMENTO OBRIGATÓRIO: transcreva a exigência do edital, identifique o documento correspondente e aponte precisamente conformidade, ausência, falha sanável ou vício insanável.' : 'Como não há edital, limite o confronto à Lei nº 14.133/2021 e deixe claro quando a conclusão depende de exigência editalícia não fornecida.'}
+8. Não use tabelas markdown em nenhuma hipótese.
+9. Redija em português brasileiro formal, técnico, auditável e sem frases genéricas.
+
+REGRAS OBRIGATÓRIAS DE FORMATAÇÃO (siga rigorosamente):
+
+A. TÍTULOS DE SEÇÃO: use ## para seções principais (## 1. Inventário de documentos identificados). Sempre com linha em branco antes e depois.
+
+B. INVENTÁRIO (seção 1): cada documento deve ocupar um bloco visual independente separado por linha em branco, no formato:
+
+**a) NOME DO DOCUMENTO EM CAIXA ALTA**
+
+- **Tipo:** Certidão / Alvará / Declaração / Atestado / etc.
+- **Emissão:** DD/MM/AAAA ou "Não identificada"
+- **Validade:** DD/MM/AAAA ou "Indeterminada"
+- **Status:** **CONFORME** / **NÃO CONFORME** / **RESSALVA** / **AUSENTE** / **NÃO VERIFICÁVEL**
+- **Fundamentação:** Texto descritivo com citação literal do trecho do documento que comprova a conclusão. Exemplo: conforme trecho extraído: "VÁLIDO ATÉ 10/03/2026".
+
+C. SEÇÕES ANALÍTICAS (seções 2 a 10): use parágrafos densos, coerentes e com espaçamento entre si. Cada parágrafo deve conter no mínimo 2 frases completas. Use **negrito** para destacar:
+   - Nomes de documentos: **Certidão Negativa de Débitos Trabalhistas**
+   - Status de conformidade: **ATENDIDA**, **NÃO ATENDIDA**, **PARCIALMENTE ATENDIDA**
+   - Artigos de lei: **art. 68 da Lei nº 14.133/2021**
+   - Datas e valores relevantes
+
+D. SUBITENS dentro das seções analíticas: use letras com parêntese (a), b), c)) e cada subitem deve ser um parágrafo próprio com linha em branco de separação:
+
+a) **Regularidade Federal:** Comprovada pela apresentação da "CERTIDÃO POSITIVA COM EFEITOS DE NEGATIVA..." (Documento 11), válida até 20/07/2026. A exigência foi **ATENDIDA**.
+
+b) **Regularidade com o FGTS:** Comprovada pela apresentação do "Certificado de Regularidade do FGTS - CRF" (Documento 13), válido de 09/02/2026 a 10/03/2026. A exigência foi **ATENDIDA**.
+
+E. NUNCA junte múltiplos documentos ou subitens em um mesmo parágrafo. Cada documento = um bloco. Cada subitem = um parágrafo.
+
+F. Use referências cruzadas: "(Documento XX)" para vincular cada análise ao documento correspondente do inventário.
+
+G. O CONCLUSÃO (seção 10) deve ser um parecer técnico com no mínimo 3 parágrafos, indicando: (i) resumo geral da conformidade; (ii) falhas sanáveis e prazo para diligência conforme art. 64 da Lei nº 14.133/2021; (iii) vícios insanáveis que ensejam inabilitação.`;
 }
