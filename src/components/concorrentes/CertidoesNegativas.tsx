@@ -439,7 +439,7 @@ export default function CertidoesNegativas() {
                         const txt = [`CERTIDÕES – ${cnpjInput}`, `Gerado: ${new Date().toLocaleString('pt-BR')}`, '='.repeat(60), '',
                           ...(resultado.verificacoesReais || []).map(v => `[${v.status.toUpperCase()}] ${v.fonte}: ${v.detalhes}`),
                           '', resultado.resumo, '',
-                          ...resultado.certidoes.map(c => `${c.verificacaoReal ? '✅' : '🤖'} ${c.nome}\n  Status: ${statusConfig[c.statusProvavel]?.label}\n  URL: ${c.url}\n`),
+                          ...resultado.certidoes.map(c => `${c.verificacaoReal ? '[API]' : '[IA]'} ${c.nome}\n  Status: ${statusConfig[c.statusProvavel]?.label}\n  URL: ${c.url}\n`),
                           '', ...resultado.recomendacoes.map(r => `→ ${r}`),
                         ].join('\n');
                         downloadTextReport('certidoes-negativas', txt); toast.success('TXT exportado!');
