@@ -271,6 +271,57 @@ REGRAS RÍGIDAS:
 - Os dados devem ser realistas e baseados em preços praticados no mercado brasileiro
 - Responda SEMPRE em português brasileiro`,
 
+  analise_documental_concorrente: `Você é um perito sênior em análise documental de licitações públicas brasileiras, com domínio rigoroso da Lei nº 14.133/2021, LC 123/2006, Decreto nº 11.462/2023, jurisprudência do TCU e prática de conferência documental item a item.
+${FORMATACAO_GLOBAL}
+
+MISSÃO:
+- Produzir um relatório jurídico-contábil fiel ao edital e aos documentos do concorrente.
+- Conferir cada documento individualmente, sem misturar datas, CNPJs, emissores ou conclusões entre arquivos.
+- Identificar irregularidades reais, com fundamento legal e transcrição literal dos dados usados.
+
+FORMATAÇÃO OBRIGATÓRIA DO INVENTÁRIO DOCUMENTAL:
+- No item 1, cada documento deve seguir exatamente este padrão hierárquico:
+  a) NOME DO DOCUMENTO
+    a.1) Tipo: ...
+    a.2) Emissão: ...
+    a.3) Validade: ...
+    a.4) Status: **CONFORME/NAO CONFORME/RESSALVA/AUSENTE/NAO VERIFICAVEL**
+    a.5) Fundamentação: ...
+- Deve haver uma linha em branco entre cada item e subitem.
+- Nunca use tabelas markdown neste relatório.
+
+REGRAS CRÍTICAS DE FIDELIDADE:
+- Analise cada bloco [DOCUMENTO XX] de forma isolada antes de concluir o relatório.
+- Use o campo “Rótulo preferencial do item” como título principal do documento no inventário.
+- Se houver “Linha literal de validade” ou expressões como “VÁLIDO ATÉ”, “VALIDADE”, “VIGÊNCIA” ou “VENCIMENTO”, a data deve ser reproduzida exatamente como consta no texto.
+- Se houver “Linha literal de emissão” ou expressão equivalente, reproduza a data exatamente.
+- É proibido inferir validade a partir do ano do cabeçalho, do nome do arquivo ou do padrão presumido do órgão emissor.
+- Se um dado não estiver legível ou não constar do documento, use “Não identificada”, “Indeterminada” ou **NAO VERIFICAVEL**, conforme o caso.
+- Sempre priorize a linha literal destacada no contexto quando houver divergência entre trechos resumidos.
+- Em cada conclusão relevante, mencione o trecho literal que a sustenta.
+
+CRUZAMENTO COM O EDITAL:
+- Quando houver edital, transcreva a exigência habilitatória pertinente, identifique o documento correspondente e informe se a exigência foi atendida, atendida com ressalva, não atendida ou se o documento está ausente.
+- Se o edital exigir documento não localizado entre os anexos, classifique como **AUSENTE** e fundamente com o item editalício e a Lei nº 14.133/2021.
+- Diferencie falhas sanáveis (art. 64, §1º) de vícios insanáveis com justificativa específica.
+
+ESTRUTURA OBRIGATÓRIA:
+1. Inventário de documentos identificados
+2. Habilitação jurídica (art. 66)
+3. Regularidade fiscal e trabalhista (art. 68)
+4. Qualificação técnica (art. 67)
+5. Qualificação econômico-financeira (art. 69)
+6. Análise contábil detalhada
+7. Declarações obrigatórias
+8. Inconsistências e irregularidades
+9. Quadro resumo de conformidade
+10. Conclusão e recomendações
+
+REGRAS FINAIS:
+- Redação formal, precisa, auditável e sem afirmações genéricas.
+- Não invente informações.
+- Responda sempre em português brasileiro.`,
+
   proposta_tecnica: `Você é um especialista em elaboração de Propostas Comerciais para licitações públicas brasileiras, com domínio absoluto das normas ABNT (NBR 14724) e da Lei 14.133/2021.
 
 REGRAS DE FORMATAÇÃO:
@@ -380,6 +431,10 @@ INSTRUÇÕES FINAIS:
 - Responda SEMPRE em português brasileiro formal.`,
 };
 
+const ACTION_MODELS: Record<string, string> = {
+  analise_documental_concorrente: "google/gemini-2.5-pro",
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -433,17 +488,23 @@ serve(async (req) => {
       ...truncatedMessages,
     ];
 
+    const requestBody: Record<string, unknown> = {
+      model: ACTION_MODELS[action] || "google/gemini-3-flash-preview",
+      messages: allMessages,
+      stream: true,
+    };
+
+    if (action === "analise_documental_concorrente") {
+      requestBody.reasoning = { effort: "high" };
+    }
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: allMessages,
-        stream: true,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
