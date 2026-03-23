@@ -97,7 +97,7 @@ Seja objetivo e formate em Markdown limpo com seções numeradas. NÃO utilize e
 
     setRunning(false);
     setCurrentStep(-1);
-    toast.success('🤖 Workflow completo! Revise e aprove os processos sugeridos.');
+    toast.success('Workflow completo! Revise e aprove os processos sugeridos.');
   };
 
   const progressPercent = WORKFLOW_STEPS.length > 0 ? (completed.size / WORKFLOW_STEPS.length) * 100 : 0;
