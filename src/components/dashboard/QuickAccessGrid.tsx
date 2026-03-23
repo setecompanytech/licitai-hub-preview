@@ -57,7 +57,7 @@ const groups: QuickGroup[] = [
       { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
       { icon: Calculator, label: 'Apoio Contábil', path: '/apoio-contabil' },
       { icon: Shield, label: 'Documentos', path: '/documentos' },
-      { icon: ClipboardCheck, label: 'Assessoria Cadastral', path: '/assessoria-cadastral' },
+      { icon: Sparkles, label: 'IA Especializada', path: '/assistente-especializado', badge: 'novo' },
     ],
   },
   {
