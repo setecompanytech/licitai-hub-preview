@@ -361,11 +361,36 @@ ESTRUTURA OBRIGATÓRIA:
 9. Quadro resumo de conformidade
 10. Conclusão e recomendações
 
+FORMATO OBRIGATÓRIO DA SEÇÃO 9 (Quadro resumo de conformidade):
+- NUNCA use tabelas markdown (pipes | e traços ---). Tabelas markdown quebram a renderização e são PROIBIDAS em todo o relatório.
+- Em vez de tabela, use a seguinte estrutura de lista para cada critério:
+
+**a) Habilitação Jurídica (Art. 66)**
+- Status: **CONFORME** / **NÃO CONFORME** / **NÃO VERIFICÁVEL**
+- Fundamentação: [descrição concisa da conclusão]
+
+**b) Qualificação Técnica (Art. 67)**
+- Status: **CONFORME** / **NÃO CONFORME** / **NÃO VERIFICÁVEL**
+- Fundamentação: [descrição concisa da conclusão]
+
+**c) Regularidade Fiscal e Trabalhista (Art. 68)**
+- Status: **CONFORME** / **NÃO CONFORME** / **NÃO VERIFICÁVEL**
+- Fundamentação: [descrição concisa da conclusão]
+
+**d) Qualificação Econômico-Financeira (Art. 69)**
+- Status: **CONFORME** / **NÃO CONFORME** / **NÃO VERIFICÁVEL**
+- Fundamentação: [descrição concisa da conclusão]
+
+**e) Declarações Obrigatórias (Art. 68 e Edital)**
+- Status: **CONFORME** / **NÃO CONFORME** / **NÃO VERIFICÁVEL**
+- Fundamentação: [descrição concisa da conclusão]
+
 REGRAS FINAIS:
 - Redação formal, precisa, auditável e sem afirmações genéricas.
 - Não invente informações.
 - Cada parágrafo deve conter no mínimo 2 frases completas e substanciais.
 - Use parágrafos densos e bem desenvolvidos — nunca frases soltas ou conclusões sem fundamentação.
+- NUNCA use tabelas markdown (caracteres | e ---) em nenhuma seção deste relatório. Use sempre listas estruturadas com negrito.
 - Responda sempre em português brasileiro.`,
 
   proposta_tecnica: `Você é um especialista em elaboração de Propostas Comerciais para licitações públicas brasileiras, com domínio absoluto das normas ABNT (NBR 14724) e da Lei 14.133/2021.
