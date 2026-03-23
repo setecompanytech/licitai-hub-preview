@@ -455,7 +455,7 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
               <div className="flex flex-wrap gap-1">
                 {indices.slice(0, 6).map(i => (
                   <Badge key={i.id} variant="outline" className="text-[10px]">
-                    📊 {i.sigla}: {fmtPerc(i.acumulado_12m)} (12m)
+                    {i.sigla}: {fmtPerc(i.acumulado_12m)} (12m)
                   </Badge>
                 ))}
                 {indices.length > 6 && <Badge variant="outline" className="text-[10px]">+{indices.length - 6} índices</Badge>}
