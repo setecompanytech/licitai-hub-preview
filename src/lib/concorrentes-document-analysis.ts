@@ -54,6 +54,22 @@ const KEY_LINE_PATTERNS = [
   /municipal/i,
   /estadual/i,
   /sanit[aá]ri/i,
+  /ativo\s+circulante/i,
+  /passivo\s+circulante/i,
+  /patrim[oô]nio\s+l[ií]quido/i,
+  /liquidez/i,
+  /solv[eê]ncia/i,
+  /capital\s+social/i,
+  /balan[cç]o/i,
+  /demonstra[cç][oõ]es/i,
+  /livro\s+di[aá]rio/i,
+  /junta\s+comercial/i,
+  /ativo\s+n[aã]o\s+circulante/i,
+  /passivo\s+n[aã]o\s+circulante/i,
+  /ativo\s+total/i,
+  /passivo\s+total/i,
+  /denominador/i,
+  /[ií]ndice/i,
 ];
 
 function sanitizeText(text: string) {
