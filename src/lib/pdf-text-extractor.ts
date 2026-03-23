@@ -4,8 +4,6 @@
  */
 import * as XLSX from 'xlsx';
 
-import { extractTextFromVisionImages } from '@/lib/document-ocr';
-
 const DEFAULT_MAX_PAGES = 150;
 const PDF_VISION_PAGE_LIMIT = 2;
 const SPREADSHEET_SHEET_LIMIT = 4;
@@ -204,12 +202,12 @@ async function renderPdfPagesToVisionInputs(pdf: any, pagesToRender: number): Pr
 
 async function extractTextFromImageBlob(blob: Blob, fileName: string): Promise<string> {
   const dataUrl = await blobToDataUrl(blob);
-  const text = await extractTextFromVisionImages([{ name: fileName, dataUrl }], fileName);
+  const text = await runVisionExtraction([{ name: fileName, dataUrl }], fileName);
   return normalizeExtractedText(text);
 }
 
 async function extractTextFromSpreadsheetArrayBuffer(arrayBuffer: ArrayBuffer, fileName: string): Promise<string> {
-  const workbook = XLSX.read(arrayBuffer, {
+  const workbook = XLSX.read(new Uint8Array(arrayBuffer), {
     type: 'array',
     cellDates: true,
     dense: false,
@@ -274,4 +272,9 @@ function blobToDataUrl(blob: Blob): Promise<string> {
     reader.onerror = () => reject(reader.error ?? new Error('Falha ao ler imagem.'));
     reader.readAsDataURL(blob);
   });
+}
+
+async function runVisionExtraction(images: VisionImageInput[], fileName: string) {
+  const { extractTextFromVisionImages } = await import('@/lib/document-ocr');
+  return extractTextFromVisionImages(images, fileName);
 }

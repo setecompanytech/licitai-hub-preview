@@ -136,10 +136,15 @@ function extractDateByPattern(text: string, patterns: RegExp[]) {
   return null;
 }
 
-function extractDatesFromLine(line: string) {
-  return [...line.matchAll(/\b\d{2}[\/.\-]\d{2}[\/.\-]\d{4}\b/g)]
+function extractTemporalTokensFromLine(line: string) {
+  const fullDates = [...line.matchAll(/\b\d{2}[\/.\-]\d{2}[\/.\-]\d{4}\b/g)]
     .map((match) => normalizeDate(match[0]))
     .filter((value): value is string => Boolean(value));
+
+  const yearRefs = [...line.matchAll(/(?:\b20\d{2}\b|\d+\/20\d{2})/g)]
+    .map((match) => match[0]);
+
+  return [...new Set([...fullDates, ...yearRefs])];
 }
 
 function classifyDateAnchorKind(line: string, label: string): DocumentEvidence['dateAnchors'][number]['kind'] {
@@ -172,10 +177,10 @@ function collectDateAnchors(text: string, label: string) {
   const seen = new Set<string>();
 
   return splitMeaningfulLines(text)
-    .filter((line) => /\d{2}[\/.\-]\d{2}[\/.\-]\d{4}/.test(line))
+    .filter((line) => /\d{2}[\/.\-]\d{2}[\/.\-]\d{4}|\b20\d{2}\b|\d+\/20\d{2}/.test(line))
     .map((line) => ({
       line,
-      dates: extractDatesFromLine(line),
+      dates: extractTemporalTokensFromLine(line),
       kind: classifyDateAnchorKind(line, label),
     }))
     .filter((anchor) => {
