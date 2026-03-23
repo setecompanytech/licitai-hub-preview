@@ -4,7 +4,7 @@ import {
   Kanban, Shield, Building2, MessageSquare, Crosshair, TrendingUp,
   Users, DollarSign, ClipboardCheck, HeadphonesIcon, FileText,
   BarChart3, CalendarDays, ListChecks, Calculator, Workflow, Plug,
-  FileBarChart,
+  FileBarChart, Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -57,7 +57,7 @@ const groups: QuickGroup[] = [
       { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
       { icon: Calculator, label: 'Apoio Contábil', path: '/apoio-contabil' },
       { icon: Shield, label: 'Documentos', path: '/documentos' },
-      { icon: ClipboardCheck, label: 'Assessoria Cadastral', path: '/assessoria-cadastral' },
+      { icon: Sparkles, label: 'IA Especializada', path: '/assistente-especializado', badge: 'novo' },
     ],
   },
   {
@@ -65,7 +65,7 @@ const groups: QuickGroup[] = [
     items: [
       { icon: Workflow, label: 'Workflow IA', path: '/workflow-ia', badge: 'novo' },
       { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
-      { icon: Bot, label: 'Assistente IA', path: '/assistente' },
+      { icon: ClipboardCheck, label: 'Assessoria Cadastral', path: '/assessoria-cadastral' },
       { icon: MessageSquare, label: 'WhatsApp CRM', path: '/whatsapp-crm' },
     ],
   },
