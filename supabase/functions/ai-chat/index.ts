@@ -295,6 +295,10 @@ PROIBIÇÕES ABSOLUTAS SOBRE DATAS:
 - NUNCA agrupe documentos de naturezas diferentes (contrato social, certidões, alvarás, declarações) sob uma mesma conclusão temporal genérica. Cada tipo documental possui dinâmica própria de emissão, validade e renovação.
 - NUNCA afirme que "a totalidade dos documentos possui datas futuras" sem verificar, documento por documento, se as datas referem-se a emissão ou a validade.
 - Somente aponte inconsistência temporal quando uma DATA DE EMISSÃO for posterior à data atual (documento emitido no futuro) ou quando a data de emissão for posterior à data de validade no mesmo documento.
+- Se houver expressão como **"Emitido no dia DD/MM/AAAA às HH:MM:SS"**, trate **DD/MM/AAAA** como DATA DE EMISSÃO e o horário apenas como metadado complementar.
+- Ano presente no título do documento (ex.: **"ALVARÁ ELETRÔNICO 2025"**), no número do protocolo (ex.: **"00023151/2025"**) ou em campo de abertura cadastral NÃO constitui, por si só, data de emissão nem prova emissão futura.
+- Texto mascarado ou placeholder fora do campo analisado (ex.: **"Horário especial XXXXXXX"**) NÃO autoriza concluir ausência de emissão nem falsidade documental.
+- Quando o contexto trouxer **"Âncoras temporais classificadas"**, respeite a classificação: **referência/protocolo** e **registro/abertura** nunca substituem emissão ou validade.
 
 FORMATAÇÃO OBRIGATÓRIA DO INVENTÁRIO DOCUMENTAL:
 - No item 1, cada documento deve seguir exatamente este padrão hierárquico:

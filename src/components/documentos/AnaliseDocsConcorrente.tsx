@@ -33,6 +33,9 @@ type Licitacao = {
   modalidade: string;
 };
 
+const SUPPORTED_COMPETITOR_EXTENSIONS = ['.pdf', '.zip', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp', '.xlsx', '.xls'];
+const SUPPORTED_EDITAL_EXTENSIONS = ['.pdf', '.doc', '.docx', '.xlsx', '.xls'];
+
 export default function AnaliseDocsConcorrente() {
   const [arquivos, setArquivos] = useState<ArquivoUpload[]>([]);
   const [editalFile, setEditalFile] = useState<ArquivoUpload | null>(null);
@@ -69,8 +72,8 @@ export default function AnaliseDocsConcorrente() {
     const novos: ArquivoUpload[] = [];
     for (const f of Array.from(files)) {
       const ext = f.name.substring(f.name.lastIndexOf('.')).toLowerCase();
-      if (!['.pdf', '.zip'].includes(ext)) {
-        toast.error(`Formato não suportado: ${f.name}. Use PDF ou ZIP.`);
+      if (!SUPPORTED_COMPETITOR_EXTENSIONS.includes(ext)) {
+        toast.error(`Formato não suportado: ${f.name}. Use PDF, ZIP, Word, JPEG/PNG/WebP ou Excel.`);
         continue;
       }
       if (f.size > 150 * 1024 * 1024) {
@@ -93,8 +96,8 @@ export default function AnaliseDocsConcorrente() {
     if (!file) return;
 
     const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-    if (!['.pdf', '.docx'].includes(ext)) {
-      toast.error('O edital deve ser um arquivo PDF ou DOCX.');
+    if (!SUPPORTED_EDITAL_EXTENSIONS.includes(ext)) {
+      toast.error('O edital deve ser um arquivo PDF, Word ou Excel.');
       return;
     }
     if (file.size > 150 * 1024 * 1024) {
@@ -417,7 +420,7 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
         <input
           ref={editalRef}
           type="file"
-          accept=".pdf,.docx"
+          accept=".pdf,.doc,.docx,.xlsx,.xls"
           className="hidden"
           onChange={handleAddEdital}
         />
@@ -438,14 +441,14 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
             Envie documentos do concorrente para análise
           </span>
           <span className="text-xs text-muted-foreground">
-            PDF ou ZIP — Máximo 150MB por arquivo
+            PDF, ZIP, Word, JPEG/PNG/WebP ou Excel — Máximo 150MB por arquivo
           </span>
         </button>
         <input
           ref={fileRef}
           type="file"
           multiple
-          accept=".pdf,.zip"
+          accept=".pdf,.zip,.doc,.docx,.jpg,.jpeg,.png,.webp,.xlsx,.xls"
           className="hidden"
           onChange={handleAddFiles}
         />
