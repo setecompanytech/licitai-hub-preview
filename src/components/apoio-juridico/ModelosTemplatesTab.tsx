@@ -782,7 +782,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                     <div className="space-y-1.5">
                       <p className="font-semibold flex items-center gap-1"><Shield className="w-3 h-3 text-accent" /> Preferência ME/EPP</p>
                       <Badge variant={modalidade.preferenciaMeEpp.aplicavel ? 'default' : 'secondary'} className="text-[10px]">
-                        {modalidade.preferenciaMeEpp.aplicavel ? '✅ Aplicável' : '❌ Não aplicável'}
+                        {modalidade.preferenciaMeEpp.aplicavel ? 'Aplicável' : 'Não aplicável'}
                       </Badge>
                       <p className="text-muted-foreground">{modalidade.preferenciaMeEpp.descricao}</p>
                       {modalidade.preferenciaMeEpp.beneficios.length > 0 && (
