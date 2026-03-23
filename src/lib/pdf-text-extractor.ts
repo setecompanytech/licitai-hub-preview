@@ -111,7 +111,7 @@ async function extractTextFromPDFData(
       return extractedText;
     }
 
-    const visionText = await extractTextFromVisionImages(pageImages, fileName);
+    const visionText = await runVisionExtraction(pageImages, fileName);
     return normalizeExtractedText([extractedText, visionText].filter(Boolean).join('\n\n'));
   } catch {
     return extractedText;
