@@ -134,8 +134,10 @@ function detectDocumentType(text: string, fileName: string) {
   if (sample.includes('sanitari')) return 'Licença / Documento Sanitário';
   if (sample.includes('cndt')) return 'Certidão Trabalhista';
   if (sample.includes('fgts') || sample.includes('crf')) return 'Certidão de Regularidade do FGTS';
-  if (sample.includes('falencia')) return 'Certidão de Falência e Recuperação Judicial';
-  if (sample.includes('balan')) return 'Balanço / Documento Contábil';
+  if (sample.includes('falencia') || sample.includes('recuperação judicial') || sample.includes('recuperacao judicial')) return 'Certidão de Falência e Recuperação Judicial';
+  if (sample.includes('livro diário') || sample.includes('livro diario')) return 'Livro Diário';
+  if (sample.includes('capacidade financeira') || sample.includes('índice') || sample.includes('indice') || sample.includes('liquidez')) return 'Declaração de Capacidade Financeira / Índices Econômicos';
+  if (sample.includes('balanço') || sample.includes('balanco') || sample.includes('ativo circulante') || sample.includes('passivo circulante') || sample.includes('demonstrações contábeis') || sample.includes('demonstracoes contabeis')) return 'Balanço Patrimonial / Demonstração Contábil';
   if (sample.includes('contrato social')) return 'Contrato Social';
   if (sample.includes('certid')) return 'Certidão';
   if (sample.includes('declar')) return 'Declaração';
