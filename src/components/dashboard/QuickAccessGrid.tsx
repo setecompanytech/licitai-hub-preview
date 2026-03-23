@@ -65,7 +65,7 @@ const groups: QuickGroup[] = [
     items: [
       { icon: Workflow, label: 'Workflow IA', path: '/workflow-ia', badge: 'novo' },
       { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
-      { icon: Bot, label: 'Assistente IA', path: '/assistente' },
+      { icon: ClipboardCheck, label: 'Assessoria Cadastral', path: '/assessoria-cadastral' },
       { icon: MessageSquare, label: 'WhatsApp CRM', path: '/whatsapp-crm' },
     ],
   },
