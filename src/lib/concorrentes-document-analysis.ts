@@ -163,6 +163,10 @@ function buildDocDedupKey(doc: ExtractedAnalysisDocument) {
   return `${normalizedName}|${normalizedText}|${doc.text.length}`;
 }
 
+function toPlainArrayBuffer(bytes: Uint8Array) {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+}
+
 function dedupeDocuments(documents: ExtractedAnalysisDocument[]) {
   const seen = new Set<string>();
 
@@ -244,7 +248,7 @@ async function extractZipBlob(
 
       try {
         const nestedBytes = await entry.async('uint8array');
-        const nestedBlob = new Blob([nestedBytes], { type: 'application/zip' });
+        const nestedBlob = new Blob([toPlainArrayBuffer(nestedBytes)], { type: 'application/zip' });
         const nestedDocuments = await extractZipBlob(nestedBlob, qualifiedName, depth + 1);
         documents.push(...nestedDocuments);
       } catch {
@@ -261,7 +265,7 @@ async function extractZipBlob(
 
     try {
       const contentBytes = await entry.async('uint8array');
-      const contentBlob = new Blob([contentBytes]);
+      const contentBlob = new Blob([toPlainArrayBuffer(contentBytes)]);
       const text = await readSupportedBlob(contentBlob, entry.name);
       documents.push({
         name: qualifiedName,
