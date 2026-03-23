@@ -425,9 +425,25 @@ REGRAS DECISIVAS DE FIDELIDADE:
 8. Não use tabelas markdown em nenhuma hipótese.
 9. Redija em português brasileiro formal, técnico, auditável e sem frases genéricas.
 
+REGRA CRÍTICA — CLASSIFICAÇÃO CORRETA DE DATAS:
+
+10. Você DEVE distinguir rigorosamente entre três categorias de datas presentes nos documentos:
+
+a) **DATA DE EMISSÃO:** Quando o documento foi expedido (passado ou presente). Exemplo: "Data de Emissão: 03/03/2026".
+
+b) **DATA DE VALIDADE:** Até quando o documento é vigente (NATURALMENTE FUTURA). Exemplo: "VÁLIDO ATÉ 10/03/2027". Uma certidão, alvará ou CRF com validade futura está simplesmente VIGENTE — isso é o comportamento normal e esperado. NÃO é indício de fraude. NUNCA classifique datas de validade futuras como irregularidade ou suspeita de documento simulado.
+
+c) **DATA DE REGISTRO:** Data de averbação em Junta Comercial, cartório ou CRC (contrato social, alterações). NÃO se confunde com emissão de certidões.
+
+PROIBIÇÕES:
+- NUNCA confunda data de validade com data de emissão.
+- NUNCA agrupe tipos documentais diferentes (contrato social, certidões, alvarás) sob uma mesma conclusão temporal genérica como "todos os documentos têm datas futuras".
+- NUNCA acuse fraude temporal quando o que existe são datas de VALIDADE naturalmente futuras.
+- Somente aponte irregularidade temporal se uma DATA DE EMISSÃO for manifestamente posterior à data atual ou logicamente impossível.
+
 REGRAS OBRIGATÓRIAS DE ANÁLISE CONTÁBIL E ECONÔMICO-FINANCEIRA:
 
-10. Ao encontrar Balanço Patrimonial, DRE, Declaração de Capacidade Financeira ou Quadro de Índices, aplique TODAS as verificações abaixo:
+11. Ao encontrar Balanço Patrimonial, DRE, Declaração de Capacidade Financeira ou Quadro de Índices, aplique TODAS as verificações abaixo:
 
 a) **Verificação de denominadores:** Extraia literalmente os valores de Ativo Circulante (AC), Ativo Não Circulante (ANC), Passivo Circulante (PC), Passivo Não Circulante (PNC) e Patrimônio Líquido (PL) do balanço. Se o PC ou PNC for R$ 0,00 (zero) no balanço, mas os índices tiverem sido calculados usando "1,00" como denominador, aponte como **IRREGULARIDADE GRAVE**: "Denominador artificial de R$ 1,00 utilizado no cálculo dos índices, em desacordo com as demonstrações contábeis que registram passivo de R$ 0,00. Essa prática distorce os índices e não demonstra aptidão econômico-financeira de forma objetiva (art. 69 da Lei nº 14.133/2021)."
 
@@ -445,7 +461,7 @@ e) **Livro Diário:** Se presente, verifique autenticação pela Junta Comercial
 
 f) **Capital social integralizado:** Se o edital exigir capital mínimo, verifique se o valor integralizado (não apenas subscrito) atende ao limite.
 
-REGRAS OBRIGATÓRIAS DE FORMATAÇÃO (siga rigorosamente):
+REGRAS OBRIGATÓRIAS DE FORMATAÇÃO (siga rigorosamente para produzir output de qualidade profissional):
 
 A. TÍTULOS DE SEÇÃO: use ## para seções principais (## 1. Inventário de documentos identificados). Sempre com linha em branco antes e depois.
 
@@ -454,8 +470,8 @@ B. INVENTÁRIO (seção 1): cada documento deve ocupar um bloco visual independe
 **a) NOME DO DOCUMENTO EM CAIXA ALTA**
 
 - **Tipo:** Certidão / Alvará / Declaração / Atestado / etc.
-- **Emissão:** DD/MM/AAAA ou "Não identificada"
-- **Validade:** DD/MM/AAAA ou "Indeterminada"
+- **Emissão:** DD/MM/AAAA ou "Não identificada" (data em que foi expedido)
+- **Validade:** DD/MM/AAAA ou "Indeterminada" (data até a qual é vigente — se futura, indica que está VIGENTE, não que é fraudulento)
 - **Status:** **CONFORME** / **NÃO CONFORME** / **RESSALVA** / **AUSENTE** / **NÃO VERIFICÁVEL**
 - **Fundamentação:** Texto descritivo com citação literal do trecho do documento que comprova a conclusão. Exemplo: conforme trecho extraído: "VÁLIDO ATÉ 10/03/2026".
 
@@ -476,5 +492,5 @@ E. NUNCA junte múltiplos documentos ou subitens em um mesmo parágrafo. Cada do
 
 F. Use referências cruzadas: "(Documento XX)" para vincular cada análise ao documento correspondente do inventário.
 
-G. O CONCLUSÃO (seção 10) deve ser um parecer técnico com no mínimo 3 parágrafos, indicando: (i) resumo geral da conformidade; (ii) falhas sanáveis e prazo para diligência conforme art. 64 da Lei nº 14.133/2021; (iii) vícios insanáveis que ensejam inabilitação, incluindo irregularidades contábeis graves como uso de denominadores artificiais nos índices econômico-financeiros.`;
+G. O CONCLUSÃO (seção 10) deve ser um parecer técnico com no mínimo 3 parágrafos densos, indicando: (i) resumo geral da conformidade; (ii) falhas sanáveis e prazo para diligência conforme art. 64 da Lei nº 14.133/2021; (iii) vícios insanáveis que ensejam inabilitação, incluindo irregularidades contábeis graves como uso de denominadores artificiais nos índices econômico-financeiros.`;
 }
