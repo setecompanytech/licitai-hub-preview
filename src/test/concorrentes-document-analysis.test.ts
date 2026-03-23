@@ -33,11 +33,13 @@ describe('concorrentes document analysis helpers', () => {
   it('reads documents recursively inside nested zip files', async () => {
     const innerZip = new JSZip();
     innerZip.file('doc-interno.txt', 'ALVARÁ\nData de Emissão 03/03/2026\nVÁLIDO ATÉ 10/03/2027');
+    const innerZipBuffer = await innerZip.generateAsync({ type: 'arraybuffer' });
 
     const outerZip = new JSZip();
-    outerZip.file('pasta/documentos.zip', await innerZip.generateAsync({ type: 'uint8array' }));
+    outerZip.file('pasta/documentos.zip', innerZipBuffer);
+    const outerZipBuffer = await outerZip.generateAsync({ type: 'arraybuffer' });
 
-    const zipFile = new File([await outerZip.generateAsync({ type: 'uint8array' })], 'concorrente.zip', {
+    const zipFile = new File([outerZipBuffer], 'concorrente.zip', {
       type: 'application/zip',
     });
 
