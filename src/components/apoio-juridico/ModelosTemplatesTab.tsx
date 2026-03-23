@@ -877,10 +877,10 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
               <Sparkles className="w-5 h-5 text-accent" />
               <h3 className="text-sm font-semibold">Gerar: {activeModelo.titulo}</h3>
               <Badge variant="outline" className="text-[10px]">{activeModelo.fundamentacao}</Badge>
-              {modalidade && <Badge variant="secondary" className="text-[10px]">📋 {modalidade.nome}</Badge>}
-              {etapaFiltro && <Badge variant="secondary" className="text-[10px]">📌 {etapaFiltro}</Badge>}
-              {criterioFiltro && <Badge variant="secondary" className="text-[10px]">🎯 {modalidade?.criteriosJulgamento.find(c => c.id === criterioFiltro)?.nome}</Badge>}
-              {selectedEmpresa && <Badge variant="secondary" className="text-[10px]">🏢 {selectedEmpresa.razao_social.slice(0, 30)}</Badge>}
+              {modalidade && <Badge variant="secondary" className="text-[10px]">{modalidade.nome}</Badge>}
+              {etapaFiltro && <Badge variant="secondary" className="text-[10px]">{etapaFiltro}</Badge>}
+              {criterioFiltro && <Badge variant="secondary" className="text-[10px]">{modalidade?.criteriosJulgamento.find(c => c.id === criterioFiltro)?.nome}</Badge>}
+              {selectedEmpresa && <Badge variant="secondary" className="text-[10px]">{selectedEmpresa.razao_social.slice(0, 30)}</Badge>}
             </div>
             <Button variant="ghost" size="sm" onClick={resetGeneration}>
               <X className="w-4 h-4" />

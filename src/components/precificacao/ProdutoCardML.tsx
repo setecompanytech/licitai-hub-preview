@@ -546,7 +546,7 @@ function ResumoPrecos({ resumo }: { resumo: PesquisaMLResult['resumo'] }) {
       {resumo.recomendacao && (
         <div className="bg-card rounded-md border border-border/30 p-3">
           <p className="text-xs text-muted-foreground">
-            💡 <span className="font-medium text-foreground">Recomendação:</span> {resumo.recomendacao}
+            <span className="font-medium text-foreground">Recomendação:</span> {resumo.recomendacao}
           </p>
         </div>
       )}
