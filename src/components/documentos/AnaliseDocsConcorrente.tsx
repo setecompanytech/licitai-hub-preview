@@ -279,15 +279,15 @@ ${textos.join('\n\n---\n\n')}`;
     const messages: ChatMessage[] = [
       {
         role: 'user',
-        content: `Realize uma ANÁLISE JURÍDICO-CONTÁBIL completa dos documentos do concorrente abaixo conforme a Lei 14.133/2021.
+        content: `Elabore o RELATORIO DE ANALISE JURIDICO-CONTABIL dos documentos de habilitacao do concorrente conforme a estrutura obrigatoria definida nas instrucoes do sistema.
 
-INSTRUÇÕES OBRIGATÓRIAS:
-1. Liste TODOS os documentos identificados dentro dos arquivos enviados em formato de tabela com status de conformidade.
-2. Para cada documento, verifique se está de acordo com as exigências legais e do edital (se fornecido).
-3. Identifique TODAS as inconsistências, irregularidades, documentos vencidos, ausentes ou em desconformidade.
-4. Faça a análise contábil dos índices financeiros quando houver balanço patrimonial.
-5. Gere um relatório técnico completo para fundamentar recursos administrativos e contrarrazões.
-${editalTexto ? '\n6. CRUZE cada exigência do edital com os documentos apresentados, indicando se foi atendida ou não.' : ''}
+Requisitos adicionais:
+a) Identifique e catalogue todos os documentos contidos nos arquivos enviados, mesmo que estejam dentro de arquivos compactados.
+b) Classifique cada documento com status textual (CONFORME, NAO CONFORME, RESSALVA, AUSENTE, NAO VERIFICAVEL).
+c) Apresente os indices financeiros em tabela quando houver balanco patrimonial.
+d) Fundamente cada conclusao com o artigo aplicavel da Lei 14.133/2021.
+e) Diferencie falhas sanaveis (Art. 64, par. 1) de falhas insanaveis.
+${editalTexto ? 'f) Realize o cruzamento sistematico entre cada exigencia habilitatoria do edital e os documentos apresentados, indicando expressamente o atendimento ou nao de cada requisito.' : ''}
 
 ${context}`,
       },
