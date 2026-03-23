@@ -243,7 +243,8 @@ async function extractZipBlob(
       }
 
       try {
-        const nestedBlob = new Blob([await entry.async('arraybuffer')], { type: 'application/zip' });
+        const nestedBytes = await entry.async('uint8array');
+        const nestedBlob = new Blob([nestedBytes], { type: 'application/zip' });
         const nestedDocuments = await extractZipBlob(nestedBlob, qualifiedName, depth + 1);
         documents.push(...nestedDocuments);
       } catch {
@@ -259,7 +260,8 @@ async function extractZipBlob(
     if (!['.pdf', '.doc', '.docx', '.txt', '.csv', '.xml'].includes(entryExt)) continue;
 
     try {
-      const contentBlob = new Blob([await entry.async('arraybuffer')]);
+      const contentBytes = await entry.async('uint8array');
+      const contentBlob = new Blob([contentBytes]);
       const text = await readSupportedBlob(contentBlob, entry.name);
       documents.push({
         name: qualifiedName,
