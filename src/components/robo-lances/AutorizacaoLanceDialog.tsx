@@ -63,7 +63,7 @@ export default function AutorizacaoLanceDialog({
       valorLance: estrategia.valorInicial,
     });
 
-    toast.success('✅ Estratégia autorizada! Sistema executará dentro dos limites.');
+    toast.success('Estratégia autorizada. O sistema executará dentro dos limites definidos.');
     onAutorizar();
     onOpenChange(false);
     setConfirmText('');
