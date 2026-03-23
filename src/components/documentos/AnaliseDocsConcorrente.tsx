@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Upload, FileText, Loader2, X, Search, AlertTriangle,
+  Upload, FileText, Loader2, X, Search,
   FileArchive, Scale, Download, BookOpen
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11,6 +11,7 @@ import { streamAIChat, type ChatMessage } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { extractTextFromBlob } from '@/lib/pdf-text-extractor';
 
 type ArquivoUpload = {
   id: string;
@@ -19,7 +20,7 @@ type ArquivoUpload = {
   file: File;
 };
 
-const SYSTEM_CONTEXT = `Voce e um perito em analise juridico-contabil de licitacoes publicas brasileiras, com dominio absoluto da Lei 14.133/2021.
+const SYSTEM_CONTEXT = `Voce e um perito em analise juridico-contabil de licitacoes publicas brasileiras, com dominio absoluto da Lei 14.133/2021, LC 123/2006, CF/88 Art. 37, Decreto 11.462/2023 e jurisprudencia consolidada do TCU.
 
 DIRETRIZES DE FORMATACAO OBRIGATORIAS:
 
@@ -36,6 +37,17 @@ DIRETRIZES DE FORMATACAO OBRIGATORIAS:
 11. Cada paragrafo deve conter uma ideia completa, com redacao fluida e coerente, evitando frases telegraficas.
 12. Utilize negrito para destacar termos tecnicos e nomes de documentos na primeira mencao.
 
+REGRAS CRITICAS DE ANALISE:
+
+- LEIA e INTERPRETE integralmente o conteudo textual de cada documento enviado.
+- Para cada documento identificado, transcreva o NOME EXATO do documento conforme consta no cabecalho ou titulo do arquivo.
+- Extraia e cite dados especificos: numeros de CNPJ, datas de validade, nomes de signatarios, valores contabeis, numeros de processos.
+- Identifique a NATUREZA de cada documento (certidao, atestado, balanco, declaracao, contrato social, procuracao, etc.).
+- Verifique a VALIDADE temporal de cada certidao em relacao a data provavel de abertura do certame.
+- Quando houver dados numericos (balanco patrimonial, indices financeiros), CALCULE e apresente os indices com a formula utilizada.
+- NAO INVENTE informacoes. Se o conteudo de um documento nao pode ser lido, classifique como **NAO VERIFICAVEL**.
+- Se um documento exigido pelo edital NAO foi encontrado entre os documentos enviados, classifique como **AUSENTE** com a fundamentacao legal.
+
 ESTRUTURA OBRIGATORIA DO RELATORIO:
 
 **RELATORIO DE ANALISE JURIDICO-CONTABIL**
@@ -46,65 +58,65 @@ Iniciar com um paragrafo introdutorio de contextualizacao, indicando o objeto da
 
 Listar cada documento em formato estruturado, um por linha, com a seguinte formatacao:
 
-a) **[Nome do Documento]** — Tipo: [Certidao/Atestado/Balanco/etc.] — Status: **[CONFORME/NAO CONFORME/RESSALVA/AUSENTE/NAO VERIFICAVEL]** — [Observacao fundamentada]
+a) **[Nome do Documento conforme consta no arquivo]** — Tipo: [Certidao/Atestado/Balanco/etc.] — Emissao: [data se identificada] — Validade: [data se identificada] — Status: **[CONFORME/NAO CONFORME/RESSALVA/AUSENTE/NAO VERIFICAVEL]** — [Observacao fundamentada com dados extraidos do documento]
 
-b) **[Nome do Documento]** — Tipo: [tipo] — Status: **[status]** — [Observacao]
+b) [proximo documento...]
 
-E assim sucessivamente para cada documento identificado.
+E assim sucessivamente para CADA documento identificado nos arquivos enviados.
 
 **2. HABILITACAO JURIDICA (Art. 66)**
 
-Analisar em subitens separados por linha em branco:
+a) **Ato constitutivo ou contrato social:** redigir paragrafo completo sobre registro, atualizacao, compatibilidade do objeto social com o certame. Transcrever o objeto social identificado e confrontar com o objeto da licitacao.
 
-a) **Ato constitutivo ou contrato social:** redigir paragrafo completo sobre registro, atualizacao, compatibilidade do objeto social com o certame.
+b) **Qualificacao dos socios e poderes de representacao:** redigir paragrafo sobre identificacao dos socios (nomes e CPFs se identificados), clausula de administracao e poderes.
 
-b) **Qualificacao dos socios e poderes de representacao:** redigir paragrafo sobre identificacao dos socios, clausula de administracao e poderes.
-
-c) **Procuracao:** redigir paragrafo sobre existencia, poderes especificos para licitacoes, identificacao do outorgante e outorgado.
+c) **Procuracao:** redigir paragrafo sobre existencia, poderes especificos para licitacoes, identificacao do outorgante e outorgado com nomes.
 
 **3. REGULARIDADE FISCAL E TRABALHISTA (Art. 68)**
 
-Analisar individualmente cada certidao em subitem separado:
+Analisar individualmente cada certidao em subitem separado, informando dados concretos extraidos:
 
-a) **CND Federal (RFB/PGFN):** redigir paragrafo sobre apresentacao, validade, CNPJ correto e abrangencia previdenciaria.
+a) **CND Federal (RFB/PGFN):** informar se foi apresentada, CNPJ constante, data de emissao, data de validade, e se abrange contribuicoes previdenciarias. Status: **[CONFORME/NAO CONFORME/AUSENTE]**.
 
-b) **CRF/FGTS:** redigir paragrafo sobre apresentacao, validade e autenticidade.
+b) **CRF/FGTS:** informar se foi apresentado, data de emissao, data de validade, situacao de regularidade. Status: **[CONFORME/NAO CONFORME/AUSENTE]**.
 
-c) **CNDT (Justica do Trabalho):** redigir paragrafo sobre apresentacao, validade e orgao emissor.
+c) **CNDT (Justica do Trabalho):** informar se foi apresentada, CNPJ consultado, data de emissao, data de validade. Status: **[CONFORME/NAO CONFORME/AUSENTE]**.
 
-d) **Certidoes Estaduais e Municipais:** redigir paragrafo sobre presenca, tipos identificados e validade.
+d) **Certidoes Estaduais e Municipais:** informar quais foram identificadas, orgaos emissores, datas de validade. Status: **[CONFORME/NAO CONFORME/AUSENTE]**.
 
-e) **Certidoes vencidas:** redigir paragrafo indicando expressamente se foram ou nao identificadas certidoes vencidas na data de abertura do certame.
+e) **Certidoes vencidas:** redigir paragrafo indicando expressamente se foram ou nao identificadas certidoes com validade expirada, informando a data de validade e a data provavel de abertura do certame.
 
 **4. QUALIFICACAO TECNICA (Art. 67)**
 
-a) **Atestados de capacidade tecnica:** redigir paragrafo sobre quantitativos minimos, emissor idoneo, objeto compativel, municipios de execucao.
+a) **Atestados de capacidade tecnica:** informar quantos foram identificados, orgaos ou empresas emissoras, objetos atestados, quantitativos e se sao compativeis com o objeto licitado.
 
-b) **Licencas e registros sanitarios:** redigir paragrafo sobre alvaras, relatorios de inspecao e demais exigencias setoriais, quando aplicavel.
+b) **Licencas e registros:** informar se foram identificados alvaras, licencas sanitarias, registros profissionais, com seus numeros e validades.
 
-c) **Equipe tecnica:** redigir paragrafo sobre vinculo dos responsaveis tecnicos com a licitante e registros profissionais.
+c) **Equipe tecnica:** informar se ha vinculo dos responsaveis tecnicos com a licitante e registros profissionais identificados.
 
 **5. QUALIFICACAO ECONOMICO-FINANCEIRA (Art. 69)**
 
-a) **Balanco patrimonial:** redigir paragrafo sobre ultimo exercicio social, registro na Junta Comercial, tipo de balanco (abertura, exercicio, livro diario).
+a) **Balanco patrimonial:** informar o exercicio social a que se refere, se esta registrado, valores de Ativo Circulante, Passivo Circulante, Ativo Total, Passivo Nao Circulante, Realizavel a Longo Prazo e Patrimonio Liquido extraidos do documento.
 
-b) **Indices financeiros:** listar cada indice em subitem separado com a formula, o valor apurado, o valor exigido no edital e o status. Exemplo:
+b) **Indices financeiros:** calcular cada indice com a formula e os valores extraidos do balanco:
 
-- **Liquidez Corrente (LC):** AC / PC = [valor]. Exigido: [valor]. Status: **CONFORME**.
-- **Liquidez Geral (LG):** (AC + RLP) / (PC + PNC) = [valor]. Exigido: [valor]. Status: **CONFORME**.
-- **Solvencia Geral (SG):** AT / (PC + PNC) = [valor]. Exigido: [valor]. Status: **CONFORME**.
+- **Liquidez Corrente (LC):** AC / PC = [valor calculado]. Exigido pelo edital: [valor se informado]. Status: **[CONFORME/NAO CONFORME]**.
 
-c) **Patrimonio Liquido:** redigir paragrafo sobre valor apresentado versus exigido.
+- **Liquidez Geral (LG):** (AC + RLP) / (PC + PNC) = [valor calculado]. Exigido pelo edital: [valor se informado]. Status: **[CONFORME/NAO CONFORME]**.
 
-d) **Certidao Negativa de Falencia e Recuperacao Judicial:** redigir paragrafo sobre validade e comarca.
+- **Solvencia Geral (SG):** AT / (PC + PNC) = [valor calculado]. Exigido pelo edital: [valor se informado]. Status: **[CONFORME/NAO CONFORME]**.
+
+c) **Patrimonio Liquido:** informar o valor extraido do balanco e confrontar com o valor minimo exigido no edital, se aplicavel.
+
+d) **Certidao Negativa de Falencia e Recuperacao Judicial:** informar se foi apresentada, comarca, data de emissao e validade.
 
 **6. ANALISE CONTABIL DETALHADA**
 
-a) Redigir paragrafo sobre coerencia entre Ativo Circulante, Passivo Circulante, Ativo Total e Passivo Total.
+a) Redigir paragrafo sobre coerencia entre os valores contabeis extraidos: Ativo Circulante, Passivo Circulante, Ativo Total e Passivo Total.
 
 b) Redigir paragrafo sobre ausencia de notas explicativas, quando exigiveis.
 
-c) Redigir paragrafo sobre divergencias contabeis com fundamentacao tecnica.
+c) Redigir paragrafo sobre quaisquer divergencias contabeis identificadas com fundamentacao tecnica.
 
 **7. DECLARACOES OBRIGATORIAS (Art. 63, par. 1)**
 
@@ -114,38 +126,38 @@ a) **[Nome da Declaracao]:** Apresentada: [Sim/Nao]. Assinada: [Sim/Nao]. Status
 
 **8. INCONSISTENCIAS E IRREGULARIDADES**
 
-Para cada irregularidade detectada, apresentar em subitem separado com paragrafos:
+Para cada irregularidade detectada, apresentar em subitem separado com paragrafos completos:
 
-a) **Documento:** [nome do documento]
-**Irregularidade:** [descricao objetiva e detalhada em paragrafo completo]
-**Fundamentacao Legal:** [artigo(s) da Lei 14.133/2021]
+a) **Documento:** [nome do documento conforme identificado]
+**Irregularidade:** [descricao objetiva e detalhada, com transcricao dos dados que evidenciam a irregularidade]
+**Fundamentacao Legal:** [artigo(s), inciso(s) e paragrafo(s) da Lei 14.133/2021]
 **Consequencia juridica:** [inabilitacao, diligencia (Art. 64) ou saneamento]
 **Classificacao:** [falha sanavel (Art. 64, par. 1) ou insanavel]
-**Recomendacao processual:** [recurso administrativo, contrarrazao ou impugnacao]
+**Recomendacao processual:** [recurso administrativo, contrarrazao ou impugnacao, com o prazo legal aplicavel]
 
 **9. QUADRO RESUMO DE CONFORMIDADE**
 
 Listar cada requisito habilitatorio em subitem separado:
 
-a) **[Requisito]:** Exigencia: [descricao]. Documento apresentado: [nome]. Situacao: **[status]**. Fundamentacao: [artigo].
+a) **[Requisito]:** Exigencia: [transcricao da exigencia do edital]. Documento apresentado: [nome]. Situacao: **[status]**. Fundamentacao: [artigo].
 
 **10. CONCLUSAO E RECOMENDACOES**
 
-a) Redigir paragrafo de sintese das irregularidades identificadas, segregando entre sanaveis e insanaveis.
+a) Redigir paragrafo de sintese das irregularidades identificadas, segregando entre sanaveis e insanaveis, com contagem total.
 
-b) Redigir paragrafo com a tese recursal, indicando os artigos aplicaveis.
+b) Redigir paragrafo com a tese recursal, indicando os artigos aplicaveis e a estrategia processual recomendada.
 
-c) Redigir paragrafo com recomendacao objetiva: se cabivel recurso, contrarrazao ou pedido de diligencia.
+c) Redigir paragrafo com recomendacao objetiva: se cabivel recurso (Art. 165), contrarrazao (Art. 165, par. 1) ou pedido de diligencia (Art. 64), indicando o prazo legal.
 
 REGRAS ADICIONAIS:
 
-- Se o EDITAL foi fornecido, CRUZE cada exigencia habilitatoria do edital com os documentos apresentados, indicando expressamente quais foram atendidas e quais nao.
-- Se algum documento exigido no edital nao foi apresentado, classifique como **AUSENTE** com fundamentacao no artigo aplicavel.
+- Se o EDITAL foi fornecido, CRUZE cada exigencia habilitatoria do edital com os documentos apresentados, indicando expressamente quais foram atendidas e quais nao, transcrevendo o item do edital e o documento correspondente.
+- Se algum documento exigido no edital nao foi apresentado, classifique como **AUSENTE** com fundamentacao no artigo aplicavel e transcricao do item editalicio violado.
 - Se o conteudo de um documento nao pode ser verificado (arquivo binario ou ilegivel), classifique como **NAO VERIFICAVEL** e recomende analise manual.
 - NAO invente informacoes. Baseie-se exclusivamente no conteudo extraido dos documentos.
 - Cada paragrafo deve ser redigido de forma completa, coerente e fluida, como um parecer tecnico profissional.
-- NAO utilize frases telegraficas ou listas sem contexto. Cada subitem deve conter uma analise substancial.
-- Priorize a objetividade e a rastreabilidade de cada conclusao.`;
+- NAO utilize frases telegraficas ou listas sem contexto. Cada subitem deve conter uma analise substancial com dados concretos.
+- Priorize a objetividade e a rastreabilidade de cada conclusao aos dados extraidos.`;
 
 type Licitacao = {
   id: string;
@@ -161,6 +173,7 @@ export default function AnaliseDocsConcorrente() {
   const [observacoes, setObservacoes] = useState('');
   const [analisando, setAnalisando] = useState(false);
   const [resultado, setResultado] = useState('');
+  const [progressMsg, setProgressMsg] = useState('');
   const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
   const [licitacaoSelecionada, setLicitacaoSelecionada] = useState<string>('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -214,8 +227,8 @@ export default function AnaliseDocsConcorrente() {
     if (!file) return;
 
     const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-    if (ext !== '.pdf') {
-      toast.error('O edital deve ser um arquivo PDF.');
+    if (!['.pdf', '.docx'].includes(ext)) {
+      toast.error('O edital deve ser um arquivo PDF ou DOCX.');
       return;
     }
     if (file.size > 150 * 1024 * 1024) {
@@ -237,35 +250,54 @@ export default function AnaliseDocsConcorrente() {
     setArquivos(prev => prev.filter(a => a.id !== id));
   };
 
-  const extractFileText = async (file: File, nome: string): Promise<string[]> => {
-    const textos: string[] = [];
+  /** Extract text from a single file using the real PDF/DOCX extractor */
+  const extractFileText = async (file: File, nome: string): Promise<{ name: string; text: string }[]> => {
+    const results: { name: string; text: string }[] = [];
+
     try {
       if (nome.toLowerCase().endsWith('.zip')) {
         const { default: JSZip } = await import('jszip');
         const zip = await JSZip.loadAsync(file);
         const entries = Object.entries(zip.files);
-        for (const [name, entry] of entries) {
-          if (!entry.dir && name.toLowerCase().endsWith('.pdf')) {
-            textos.push(`[Arquivo ZIP > ${name}]: Documento PDF encontrado no arquivo compactado.`);
-          } else if (!entry.dir) {
-            try {
-              const text = await entry.async('text');
-              if (text && text.length > 50) {
-                textos.push(`[Arquivo ZIP > ${name}]:\n${text.slice(0, 8000)}`);
+
+        for (const [entryName, entry] of entries) {
+          if (entry.dir) continue;
+
+          const lowerName = entryName.toLowerCase();
+          try {
+            if (lowerName.endsWith('.pdf') || lowerName.endsWith('.docx') || lowerName.endsWith('.doc')) {
+              const blob = new Blob([await entry.async('arraybuffer')]);
+              const text = await extractTextFromBlob(blob, entryName, 150);
+              if (text && text.length > 30) {
+                results.push({ name: entryName, text });
+              } else {
+                results.push({ name: entryName, text: '[Documento sem conteudo textual extraivel — recomenda-se analise manual]' });
               }
-            } catch {
-              textos.push(`[Arquivo ZIP > ${name}]: Arquivo binário (não textual).`);
+            } else if (lowerName.endsWith('.txt') || lowerName.endsWith('.csv') || lowerName.endsWith('.xml')) {
+              const text = await entry.async('text');
+              if (text && text.length > 30) {
+                results.push({ name: entryName, text: text.slice(0, 15000) });
+              }
+            } else {
+              results.push({ name: entryName, text: '[Arquivo binario — formato nao suportado para extracao textual]' });
             }
+          } catch {
+            results.push({ name: entryName, text: '[Erro na extracao — documento possivelmente protegido ou corrompido]' });
           }
         }
       } else {
-        const text = await file.text();
-        textos.push(`[${nome}]:\n${text.slice(0, 12000)}`);
+        const text = await extractTextFromBlob(file, nome, 150);
+        if (text && text.length > 30) {
+          results.push({ name: nome, text });
+        } else {
+          results.push({ name: nome, text: '[Documento sem conteudo textual extraivel — recomenda-se analise manual]' });
+        }
       }
     } catch {
-      textos.push(`[${nome}]: Não foi possível ler o conteúdo.`);
+      results.push({ name: nome, text: '[Nao foi possivel ler o conteudo do documento]' });
     }
-    return textos;
+
+    return results;
   };
 
   const handleAnalisar = async () => {
@@ -276,48 +308,66 @@ export default function AnaliseDocsConcorrente() {
 
     setAnalisando(true);
     setResultado('');
+    setProgressMsg('Extraindo texto dos documentos...');
 
-    // Extract text from competitor documents
-    const textos: string[] = [];
-    for (const arq of arquivos) {
-      const extracted = await extractFileText(arq.file, arq.nome);
-      textos.push(...extracted);
+    // Extract text from competitor documents using real PDF extractor
+    const allDocs: { name: string; text: string }[] = [];
+    for (let i = 0; i < arquivos.length; i++) {
+      setProgressMsg(`Extraindo texto: ${arquivos[i].nome} (${i + 1}/${arquivos.length})...`);
+      const extracted = await extractFileText(arquivos[i].file, arquivos[i].nome);
+      allDocs.push(...extracted);
     }
 
     // Extract edital text if provided
     let editalTexto = '';
     if (editalFile) {
+      setProgressMsg('Extraindo texto do edital...');
       const editalExtracted = await extractFileText(editalFile.file, editalFile.nome);
-      editalTexto = editalExtracted.join('\n\n');
+      editalTexto = editalExtracted.map(d => `[${d.name}]:\n${d.text}`).join('\n\n');
     }
 
-    const listaArquivos = arquivos.map(a => `- ${a.nome} (${formatSize(a.tamanho)})`).join('\n');
+    setProgressMsg('Enviando para análise pela IA...');
+
+    const listaArquivos = allDocs.map(d => `- ${d.name}`).join('\n');
 
     const licInfo = licitacaoSelecionada && licitacaoSelecionada !== 'none'
       ? licitacoes.find(l => l.id === licitacaoSelecionada)
       : null;
 
-    const context = `DOCUMENTOS DO CONCORRENTE PARA ANÁLISE:
+    const docsContent = allDocs.map(d => `=== DOCUMENTO: ${d.name} ===\n${d.text}`).join('\n\n---SEPARADOR---\n\n');
+
+    const context = `LISTA COMPLETA DE DOCUMENTOS DO CONCORRENTE IDENTIFICADOS:
 ${listaArquivos}
 
-${licInfo ? `PROCESSO LICITATÓRIO VINCULADO:\n- Número: ${licInfo.numero}\n- Modalidade: ${licInfo.modalidade}\n- Órgão: ${licInfo.orgao}\n- Objeto: ${licInfo.objeto}\n` : ''}
-${editalTexto ? `EDITAL DA LICITAÇÃO (para cruzamento de exigências):\n${editalTexto}\n` : ''}
-${observacoes ? `OBSERVAÇÕES ADICIONAIS DO USUÁRIO:\n${observacoes}\n` : ''}
-CONTEÚDO EXTRAÍDO DOS DOCUMENTOS DO CONCORRENTE:
-${textos.join('\n\n---\n\n')}`;
+${licInfo ? `PROCESSO LICITATORIO VINCULADO:\n- Numero: ${licInfo.numero}\n- Modalidade: ${licInfo.modalidade}\n- Orgao: ${licInfo.orgao}\n- Objeto: ${licInfo.objeto}\n` : ''}
+${editalTexto ? `\n========================================\nEDITAL DA LICITACAO (INSTRUMENTO CONVOCATORIO) — UTILIZE PARA CRUZAMENTO DE EXIGENCIAS:\n========================================\n${editalTexto}\n========================================\n` : ''}
+${observacoes ? `OBSERVACOES ADICIONAIS DO USUARIO:\n${observacoes}\n` : ''}
+
+========================================
+CONTEUDO INTEGRAL EXTRAIDO DOS DOCUMENTOS DO CONCORRENTE:
+========================================
+${docsContent}`;
 
     const messages: ChatMessage[] = [
       {
         role: 'user',
-        content: `Elabore o RELATORIO DE ANALISE JURIDICO-CONTABIL dos documentos de habilitacao do concorrente conforme a estrutura obrigatoria definida nas instrucoes do sistema.
+        content: `Elabore o RELATORIO DE ANALISE JURIDICO-CONTABIL completo dos documentos de habilitacao do concorrente, conforme a estrutura obrigatoria de 10 secoes definida nas instrucoes do sistema.
 
-Requisitos adicionais:
-a) Identifique e catalogue todos os documentos contidos nos arquivos enviados, mesmo que estejam dentro de arquivos compactados.
-b) Classifique cada documento com status textual (CONFORME, NAO CONFORME, RESSALVA, AUSENTE, NAO VERIFICAVEL).
-c) Apresente os indices financeiros em tabela quando houver balanco patrimonial.
-d) Fundamente cada conclusao com o artigo aplicavel da Lei 14.133/2021.
-e) Diferencie falhas sanaveis (Art. 64, par. 1) de falhas insanaveis.
-${editalTexto ? 'f) Realize o cruzamento sistematico entre cada exigencia habilitatoria do edital e os documentos apresentados, indicando expressamente o atendimento ou nao de cada requisito.' : ''}
+INSTRUCOES CRITICAS:
+
+1. LEIA INTEGRALMENTE o conteudo textual de CADA documento fornecido abaixo. Extraia dados concretos: nomes, CNPJs, datas, valores, numeros de certidoes.
+
+2. Para cada documento identificado, informe o NOME EXATO conforme consta no cabecalho do documento, a natureza (certidao, atestado, balanco, etc.), a data de emissao/validade e o status de conformidade.
+
+3. Calcule os indices financeiros (LC, LG, SG) com os valores REAIS extraidos do balanco patrimonial, apresentando a formula e os valores utilizados.
+
+4. ${editalTexto ? 'CRUZAMENTO OBRIGATORIO: Para CADA exigencia habilitatoria do edital, verifique se o documento correspondente foi apresentado. Transcreva o item do edital e indique o documento que o atende ou classifique como AUSENTE.' : 'Verifique a conformidade de cada documento com os requisitos da Lei 14.133/2021.'}
+
+5. Identifique TODAS as irregularidades com dados concretos — nao faca afirmacoes genericas. Transcreva o dado que evidencia a irregularidade.
+
+6. Diferencie falhas sanaveis (Art. 64, par. 1) de falhas insanaveis, fundamentando cada classificacao.
+
+7. Na conclusao, apresente a estrategia processual recomendada com o prazo legal aplicavel.
 
 ${context}`,
       },
@@ -328,20 +378,23 @@ ${context}`,
       action: 'assistente',
       context: SYSTEM_CONTEXT,
       onDelta: (chunk) => {
+        setProgressMsg('');
         setResultado(prev => prev + chunk);
       },
       onDone: () => {
         setAnalisando(false);
+        setProgressMsg('');
         toast.success('Análise concluída!');
       },
       onError: (err) => {
         toast.error(err);
         setAnalisando(false);
+        setProgressMsg('');
       },
     });
   };
 
-  const handleDownloadRelatorio = () => {
+  const handleDownloadMD = () => {
     if (!resultado) return;
     const blob = new Blob([resultado], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -350,7 +403,140 @@ ${context}`,
     a.download = 'relatorio-analise-concorrente.md';
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('Relatório baixado!');
+    toast.success('Relatório Markdown baixado!');
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!resultado) return;
+    toast.info('Gerando PDF...');
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      const marginLeft = 20;
+      const marginRight = 20;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const maxWidth = pageWidth - marginLeft - marginRight;
+      let y = 25;
+
+      const addPageIfNeeded = (neededHeight: number) => {
+        if (y + neededHeight > pageHeight - 20) {
+          doc.addPage();
+          y = 20;
+        }
+      };
+
+      // Title
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('RELATÓRIO DE ANÁLISE JURÍDICO-CONTÁBIL', marginLeft, y);
+      y += 8;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(`Data de emissão: ${new Date().toLocaleDateString('pt-BR')} — PRAEFECTUS`, marginLeft, y);
+      y += 10;
+
+      doc.setDrawColor(200);
+      doc.line(marginLeft, y, pageWidth - marginRight, y);
+      y += 8;
+
+      // Process content line by line
+      const lines = resultado.split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+
+        if (!trimmed) {
+          y += 4;
+          continue;
+        }
+
+        // Heading detection
+        if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
+          addPageIfNeeded(10);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(11);
+          const headingText = trimmed.replace(/\*\*/g, '');
+          const wrapped = doc.splitTextToSize(headingText, maxWidth);
+          doc.text(wrapped, marginLeft, y);
+          y += wrapped.length * 5 + 4;
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+          continue;
+        }
+
+        if (trimmed.startsWith('## ') || trimmed.startsWith('### ')) {
+          addPageIfNeeded(10);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(trimmed.startsWith('## ') ? 11 : 10);
+          const headingText = trimmed.replace(/^#{2,3}\s*/, '').replace(/\*\*/g, '');
+          const wrapped = doc.splitTextToSize(headingText, maxWidth);
+          doc.text(wrapped, marginLeft, y);
+          y += wrapped.length * 5 + 4;
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+          continue;
+        }
+
+        // Normal text
+        const cleanText = trimmed
+          .replace(/\*\*/g, '')
+          .replace(/\*/g, '')
+          .replace(/^[-•]\s*/, '  • ');
+
+        doc.setFontSize(9);
+        const wrapped = doc.splitTextToSize(cleanText, maxWidth);
+        addPageIfNeeded(wrapped.length * 4.5);
+        doc.text(wrapped, marginLeft, y);
+        y += wrapped.length * 4.5 + 1.5;
+      }
+
+      // Page numbers
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(7);
+        doc.setTextColor(150);
+        doc.text(`Página ${i} de ${totalPages}`, pageWidth - marginRight, pageHeight - 8, { align: 'right' });
+        doc.text('PRAEFECTUS — Análise Jurídico-Contábil', marginLeft, pageHeight - 8);
+        doc.setTextColor(0);
+      }
+
+      doc.save('relatorio-analise-concorrente.pdf');
+      toast.success('Relatório PDF gerado com sucesso!');
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err);
+      toast.error('Erro ao gerar PDF.');
+    }
+  };
+
+  const handleDownloadDOCX = async () => {
+    if (!resultado) return;
+    toast.info('Gerando documento Word...');
+    try {
+      const content = `RELATÓRIO DE ANÁLISE JURÍDICO-CONTÁBIL
+Data de emissão: ${new Date().toLocaleDateString('pt-BR')} — PRAEFECTUS
+${'='.repeat(60)}
+
+${resultado.replace(/\*\*/g, '').replace(/#{2,3}\s*/g, '').replace(/\*/g, '')}
+
+${'='.repeat(60)}
+Documento gerado automaticamente pelo sistema PRAEFECTUS.
+Este relatório possui finalidade meramente informativa e não substitui parecer jurídico formal.`;
+
+      const blob = new Blob(['\ufeff' + content], { type: 'application/msword;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'relatorio-analise-concorrente.doc';
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Relatório Word gerado com sucesso!');
+    } catch (err) {
+      console.error('Erro ao gerar Word:', err);
+      toast.error('Erro ao gerar documento Word.');
+    }
   };
 
   return (
@@ -365,8 +551,9 @@ ${context}`,
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Envie os documentos de habilitação do concorrente e o edital da licitação. A IA fará o cruzamento das exigências,
-        listando cada documento identificado e seu status de conformidade com a Lei 14.133/2021.
+        Envie os documentos de habilitação do concorrente e o edital da licitação. A IA realizará a leitura integral dos documentos,
+        o cruzamento das exigências editalícias e a análise de conformidade com a Lei 14.133/2021, identificando irregularidades,
+        falhas e vícios com fundamentação legal específica.
       </p>
 
       {/* Seletor de Licitação */}
@@ -398,7 +585,7 @@ ${context}`,
       <div className="space-y-2">
         <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
           <BookOpen className="w-3.5 h-3.5" />
-          Edital da Licitação (opcional — permite cruzamento de exigências)
+          Edital da Licitação (permite cruzamento de exigências)
         </label>
         {editalFile ? (
           <div className="bg-card rounded-xl border border-accent/30 flex items-center gap-3 px-4 py-3">
@@ -424,9 +611,9 @@ ${context}`,
           >
             <Upload className="w-5 h-5 text-accent" />
             <div className="text-left">
-              <span className="text-sm font-medium text-foreground block">Anexar Edital (PDF)</span>
+              <span className="text-sm font-medium text-foreground block">Anexar Edital (PDF/DOCX)</span>
               <span className="text-[11px] text-muted-foreground">
-                A IA cruzará as exigências do edital com os documentos do concorrente
+                A IA cruzará cada exigência do edital com os documentos do concorrente
               </span>
             </div>
           </button>
@@ -434,7 +621,7 @@ ${context}`,
         <input
           ref={editalRef}
           type="file"
-          accept=".pdf"
+          accept=".pdf,.docx"
           className="hidden"
           onChange={handleAddEdital}
         />
@@ -528,13 +715,19 @@ ${context}`,
       {/* Results */}
       {resultado && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-              <h4 className="text-sm font-semibold">Relatorio de Analise Juridico-Contabil</h4>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h4 className="text-sm font-semibold">Relatório de Análise Jurídico-Contábil</h4>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={handleDownloadPDF}>
+                <Download className="w-3 h-3 mr-1" /> PDF
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleDownloadDOCX}>
+                <Download className="w-3 h-3 mr-1" /> Word
+              </Button>
+              <Button size="sm" variant="ghost" onClick={handleDownloadMD}>
+                <Download className="w-3 h-3 mr-1" /> .md
+              </Button>
             </div>
-            <Button size="sm" variant="outline" onClick={handleDownloadRelatorio}>
-              <Download className="w-3 h-3 mr-1" /> Baixar .md
-            </Button>
           </div>
 
           <div className="bg-card rounded-xl border border-border/50 p-5 max-h-[600px] overflow-y-auto prose prose-sm dark:prose-invert max-w-none prose-p:mb-4 prose-li:mb-2 prose-headings:mt-6 prose-headings:mb-3 prose-ul:my-3 prose-ol:my-3 [&_br]:block [&_br]:mb-2">
@@ -546,10 +739,10 @@ ${context}`,
       {analisando && !resultado && (
         <div className="bg-card rounded-xl border border-border/50 p-8 flex flex-col items-center gap-3 text-center">
           <Loader2 className="w-8 h-8 animate-spin text-accent" />
-          <p className="text-sm font-medium">Analisando documentos...</p>
+          <p className="text-sm font-medium">{progressMsg || 'Analisando documentos...'}</p>
           <p className="text-xs text-muted-foreground">
-            A IA está realizando análise jurídico-contábil, verificando conformidade com a Lei 14.133/2021,
-            listando documentos identificados e cruzando com as exigências{editalFile ? ' do edital' : ' legais'}.
+            A IA está realizando leitura integral dos documentos, extração de dados concretos e análise
+            de conformidade com a Lei 14.133/2021{editalFile ? ' e cruzamento com o edital' : ''}.
           </p>
         </div>
       )}
