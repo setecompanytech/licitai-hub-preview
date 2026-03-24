@@ -507,7 +507,11 @@ INSTRUÇÕES FINAIS:
 };
 
 const ACTION_MODELS: Record<string, string> = {
-  analise_documental_concorrente: "google/gemini-2.5-pro",
+  analise_documental_concorrente: "google/gemini-2.5-flash",
+  analise_edital: "google/gemini-2.5-flash",
+  analise_peticao: "google/gemini-2.5-flash",
+  gerador_juridico: "google/gemini-2.5-flash",
+  composicao_custo: "google/gemini-2.5-flash",
 };
 
 serve(async (req) => {
