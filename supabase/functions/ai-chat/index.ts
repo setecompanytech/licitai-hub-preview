@@ -574,7 +574,7 @@ serve(async (req) => {
     };
 
     if (action === "analise_documental_concorrente") {
-      requestBody.reasoning = { effort: "high" };
+      requestBody.reasoning = { effort: "low" };
     }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
