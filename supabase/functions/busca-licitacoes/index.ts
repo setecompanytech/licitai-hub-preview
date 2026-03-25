@@ -106,7 +106,7 @@ async function fetchPncp(params: URLSearchParams, label: string): Promise<any[]>
 }
 
 // Fetch multiple pages from PNCP for a single modalidade to get comprehensive results
-async function fetchPncpAllPages(baseParams: URLSearchParams, label: string, maxPages = 5): Promise<any[]> {
+async function fetchPncpAllPages(baseParams: URLSearchParams, label: string, maxPages = 10): Promise<any[]> {
   const allResults: any[] = [];
   
   for (let page = 1; page <= maxPages; page++) {
