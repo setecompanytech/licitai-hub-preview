@@ -19,7 +19,6 @@ Deno.serve(async (req) => {
     const { data: configs } = await supabase
       .from('configuracoes')
       .select('*')
-      .not('palavras_chave', 'is', null)
 
     if (!configs || configs.length === 0) {
       return new Response(JSON.stringify({ message: 'Nenhuma configuração de pesquisa ativa', resultados: 0 }), {
@@ -33,84 +32,90 @@ Deno.serve(async (req) => {
 
     for (const config of configs) {
       const palavrasChave = config.palavras_chave as string[] || []
+      const cnaes = config.cnaes_monitorados as string[] || []
       const ufs = config.ufs_interesse as string[] || []
       const alertaEmail = config.alerta_email ?? true
       const alertaWhatsapp = config.alerta_whatsapp ?? false
       const alertaSistema = config.alerta_sistema ?? true
+      const valorMinimo = config.valor_minimo ? Number(config.valor_minimo) : null
+      const valorMaximo = config.valor_maximo ? Number(config.valor_maximo) : null
 
-      if (palavrasChave.length === 0) continue
+      // Skip if no keywords and no CNAEs configured
+      if (palavrasChave.length === 0 && cnaes.length === 0) continue
 
-      // Collect new items for this user to batch email/whatsapp
+      // ── Strategy: Query pncp_editais_cache for new bids ──
+      // Find editais inserted/updated in the last 2 hours (covers cron intervals)
+      const since = new Date(Date.now() - 2 * 3600000).toISOString()
+
+      // Build search conditions from keywords
       const novosEditais: Array<{
         titulo: string; orgao: string; uf: string; municipio: string;
         valor: string | null; url: string | null; modalidade: string | null;
         dataAbertura: string | null;
       }> = []
 
-      // Search PNCP API for each keyword
-      for (const termo of palavrasChave.slice(0, 5)) {
-        try {
-          const params = new URLSearchParams({
-            termo,
-            pagina: '1',
-            tamanhoPagina: '10',
-          })
+      // Build OR conditions for keyword matching in objeto field
+      const keywordConditions = palavrasChave.map(kw => `objeto.ilike.%${kw}%`)
+      
+      // Fetch recent cache items matching ANY keyword
+      if (palavrasChave.length > 0) {
+        for (const termo of palavrasChave) {
+          let query = supabase
+            .from('pncp_editais_cache')
+            .select('*')
+            .gte('updated_at', since)
+            .ilike('objeto', `%${termo}%`)
 
-          const response = await fetch(
-            `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params}`,
-            { headers: { Accept: 'application/json' } }
-          )
+          // Apply UF filter
+          if (ufs.length > 0 && ufs.length <= 10) {
+            query = query.in('uf', ufs)
+          }
 
-          if (!response.ok) {
-            await response.text()
+          query = query.order('data_publicacao_pncp', { ascending: false }).limit(50)
+
+          const { data: matchingItems, error } = await query
+          if (error) {
+            console.error(`Erro buscando cache por "${termo}":`, error.message)
             continue
           }
 
-          const data = await response.json()
-          const itens = data?.data || data || []
+          if (!matchingItems || matchingItems.length === 0) continue
 
-          if (!Array.isArray(itens)) continue
-
-          for (const item of itens.slice(0, 5)) {
-            const titulo = item.objetoCompra || item.objeto || termo
-            const orgao = item.nomeUnidadeCompradora || item.orgaoEntidade?.razaoSocial || 'Órgão não informado'
-            const ufItem = item.ufSigla || item.unidadeOrgao?.ufSigla || ''
-            const municipio = item.municipioNome || item.unidadeOrgao?.municipioNome || ''
-            const modalidade = item.modalidadeNome || item.modalidade || null
-
-            // Filter by UF if configured
-            if (ufs.length > 0 && ufItem && !ufs.includes(ufItem)) continue
+          for (const item of matchingItems) {
+            const titulo = item.objeto || termo
+            const orgao = item.orgao || 'Órgão não informado'
+            const ufItem = item.uf || ''
+            const municipio = item.municipio || ''
+            const valorEst = item.valor_total_estimado
 
             // Filter by value range
-            const valorEst = item.valorTotalEstimado || null
-            if (config.valor_minimo && valorEst && Number(valorEst) < Number(config.valor_minimo)) continue
-            if (config.valor_maximo && valorEst && Number(valorEst) > Number(config.valor_maximo)) continue
+            if (valorMinimo && valorEst && Number(valorEst) < valorMinimo) continue
+            if (valorMaximo && valorEst && Number(valorEst) > valorMaximo) continue
 
-            // Check if already notified (avoid duplicates)
-            const identificador = `pncp-${item.codigoCompra || item.sequencialCompra || titulo.slice(0, 50)}`
-            
+            // Check if already notified (use pncp_id as unique identifier)
+            const identificador = `pncp-cache-${item.pncp_id}`
+
             const { data: existente } = await supabase
               .from('notificacoes')
               .select('id')
               .eq('user_id', config.user_id)
-              .ilike('titulo', `%${identificador}%`)
+              .ilike('mensagem', `%${identificador}%`)
               .limit(1)
 
             if (existente && existente.length > 0) continue
 
-            // Also check monitoramento_editais to avoid duplicate inserts
+            // Also check monitoramento_editais
             const { data: existeEdital } = await supabase
               .from('monitoramento_editais')
               .select('id')
               .eq('user_id', config.user_id)
-              .ilike('titulo', `%${titulo.slice(0, 80)}%`)
-              .eq('portal', 'PNCP')
+              .eq('url', item.url_pncp || '')
               .limit(1)
 
             if (existeEdital && existeEdital.length > 0) continue
 
-            const valorFormatado = valorEst 
-              ? `R$ ${Number(valorEst).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
+            const valorFormatado = valorEst
+              ? `R$ ${Number(valorEst).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
               : null
 
             // Create system notification
@@ -120,7 +125,7 @@ Deno.serve(async (req) => {
                 titulo: `Nova licitação: ${titulo.slice(0, 100)}`,
                 mensagem: `${orgao}${ufItem ? ` (${ufItem})` : ''}${municipio ? ` — ${municipio}` : ''} — Termo: "${termo}" [${identificador}]`,
                 tipo: 'monitoramento',
-                link: '/monitoramento',
+                link: '/monitoramento-editais',
               })
             }
 
@@ -132,9 +137,9 @@ Deno.serve(async (req) => {
               uf: ufItem || null,
               municipio: municipio || null,
               portal: 'PNCP',
-              url: item.linkSistemaOrigem || null,
-              data_publicacao: item.dataPublicacao || new Date().toISOString(),
-              data_abertura: item.dataAbertura || null,
+              url: item.url_pncp || null,
+              data_publicacao: item.data_publicacao_pncp || new Date().toISOString(),
+              data_abertura: item.data_abertura_proposta || null,
               valor_estimado: valorEst,
               palavras_chave: [termo],
               status: 'novo',
@@ -147,15 +152,89 @@ Deno.serve(async (req) => {
               uf: ufItem,
               municipio,
               valor: valorFormatado,
-              url: item.linkSistemaOrigem || null,
-              modalidade,
-              dataAbertura: item.dataAbertura || null,
+              url: item.url_pncp || null,
+              modalidade: item.modalidade_nome,
+              dataAbertura: item.data_abertura_proposta || null,
             })
 
             totalNotificacoes++
           }
-        } catch (err) {
-          console.error(`Erro ao buscar termo "${termo}":`, err)
+        }
+      }
+
+      // ── Also search by UFs without keywords (catch-all for configured UFs) ──
+      if (palavrasChave.length === 0 && ufs.length > 0) {
+        let query = supabase
+          .from('pncp_editais_cache')
+          .select('*')
+          .gte('updated_at', since)
+          .in('uf', ufs.slice(0, 10))
+          .order('data_publicacao_pncp', { ascending: false })
+          .limit(100)
+
+        const { data: ufItems } = await query
+        if (ufItems) {
+          for (const item of ufItems) {
+            const titulo = item.objeto || 'Edital sem objeto'
+            const orgao = item.orgao || 'Órgão não informado'
+            const identificador = `pncp-cache-${item.pncp_id}`
+
+            const { data: existente } = await supabase
+              .from('notificacoes')
+              .select('id')
+              .eq('user_id', config.user_id)
+              .ilike('mensagem', `%${identificador}%`)
+              .limit(1)
+
+            if (existente && existente.length > 0) continue
+
+            const valorEst = item.valor_total_estimado
+            if (valorMinimo && valorEst && Number(valorEst) < valorMinimo) continue
+            if (valorMaximo && valorEst && Number(valorEst) > valorMaximo) continue
+
+            const valorFormatado = valorEst
+              ? `R$ ${Number(valorEst).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+              : null
+
+            if (alertaSistema) {
+              await supabase.from('notificacoes').insert({
+                user_id: config.user_id,
+                titulo: `Nova licitação: ${titulo.slice(0, 100)}`,
+                mensagem: `${orgao}${item.uf ? ` (${item.uf})` : ''}${item.municipio ? ` — ${item.municipio}` : ''} [${identificador}]`,
+                tipo: 'monitoramento',
+                link: '/monitoramento-editais',
+              })
+            }
+
+            await supabase.from('monitoramento_editais').insert({
+              user_id: config.user_id,
+              titulo: titulo.slice(0, 200),
+              orgao,
+              uf: item.uf || null,
+              municipio: item.municipio || null,
+              portal: 'PNCP',
+              url: item.url_pncp || null,
+              data_publicacao: item.data_publicacao_pncp || new Date().toISOString(),
+              data_abertura: item.data_abertura_proposta || null,
+              valor_estimado: valorEst,
+              palavras_chave: [],
+              status: 'novo',
+              lido: false,
+            })
+
+            novosEditais.push({
+              titulo: titulo.slice(0, 150),
+              orgao,
+              uf: item.uf || '',
+              municipio: item.municipio || '',
+              valor: valorFormatado,
+              url: item.url_pncp || null,
+              modalidade: item.modalidade_nome,
+              dataAbertura: item.data_abertura_proposta || null,
+            })
+
+            totalNotificacoes++
+          }
         }
       }
 
@@ -186,6 +265,9 @@ Deno.serve(async (req) => {
                     municipio: e.municipio,
                     uf: e.uf,
                     valor: e.valor || '–',
+                    modalidade: e.modalidade || '–',
+                    dataAbertura: e.dataAbertura || '–',
+                    url: e.url || '',
                   })),
                   link: 'https://praefectus.com.br/monitoramento-editais',
                 },
@@ -201,7 +283,6 @@ Deno.serve(async (req) => {
       // ── Send WhatsApp alert if there are new items ──
       if (novosEditais.length > 0 && alertaWhatsapp) {
         try {
-          // Get WhatsApp routing config for licitações sector
           const { data: whatsConfig } = await supabase
             .from('whatsapp_routing')
             .select('numero_whatsapp')
@@ -212,7 +293,7 @@ Deno.serve(async (req) => {
           const telefone = whatsConfig?.numero_whatsapp
           if (telefone) {
             const linhas = novosEditais.slice(0, 5).map((e, i) =>
-              `${i + 1}. *${e.orgao}*${e.uf ? ` (${e.uf})` : ''}\n   ${e.titulo.slice(0, 80)}${e.valor ? `\n   💰 ${e.valor}` : ''}`
+              `${i + 1}. *${e.orgao}*${e.uf ? ` (${e.uf})` : ''}\n   ${e.titulo.slice(0, 80)}${e.valor ? `\n   💰 ${e.valor}` : ''}${e.modalidade ? `\n   📋 ${e.modalidade}` : ''}`
             ).join('\n\n')
 
             const mensagem = `🔔 *PRAEFECTUS — Novas Licitações*\n\n${novosEditais.length} processo(s) encontrado(s):\n\n${linhas}${novosEditais.length > 5 ? `\n\n... e mais ${novosEditais.length - 5} processo(s)` : ''}\n\n📲 Acesse: https://praefectus.com.br/monitoramento-editais`
