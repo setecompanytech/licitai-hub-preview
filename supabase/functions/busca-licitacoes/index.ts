@@ -15,8 +15,8 @@ const MODALIDADES_PNCP: Record<string, number> = {
   "credenciamento": 11, "leilão - eletrônico": 12, "concurso - eletrônico": 13,
 };
 
-// All mural modalidades for broad search
-const MURAL_MODALIDADES = [6, 4, 5, 8, 7, 11];
+// All mural modalidades for broad search (all 13 PNCP codes)
+const MURAL_MODALIDADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
 function formatDatePNCP(date: Date): string {
   const y = date.getFullYear();
