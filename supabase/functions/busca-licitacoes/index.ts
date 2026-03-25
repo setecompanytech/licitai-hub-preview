@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { requireAuth } from "../_shared/auth-rate-limit.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -195,7 +196,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { query, uf, modalidade, pagina, portal, dataInicio, dataFim, mural, cnpjOrgao, municipio } = body;
+    const { query, uf, modalidade, pagina, portal, dataInicio, dataFim, mural, cnpjOrgao, municipio, useCache } = body;
     const allItems: any[] = [];
 
     try {
@@ -397,6 +398,79 @@ serve(async (req) => {
           }
         } else { await fcResp.text(); }
       } catch (e) { console.error(`Firecrawl ${portal} error:`, e); }
+    }
+
+    // ── Complement from cache table ──
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const sb = createClient(supabaseUrl, supabaseServiceKey);
+
+      // Build cache query
+      let cacheQuery = sb.from("pncp_editais_cache").select("*");
+
+      if (uf) cacheQuery = cacheQuery.eq("uf", uf);
+      if (cleanCnpj) cacheQuery = cacheQuery.eq("cnpj_orgao", cleanCnpj);
+      if (cleanMunicipio) cacheQuery = cacheQuery.ilike("municipio", `%${cleanMunicipio}%`);
+      if (query) cacheQuery = cacheQuery.ilike("objeto", `%${query}%`);
+
+      const userModalidadeCod2 = modalidade
+        ? (MODALIDADES_PNCP[modalidade.toLowerCase().trim()] || null)
+        : null;
+      if (userModalidadeCod2) cacheQuery = cacheQuery.eq("modalidade_id", userModalidadeCod2);
+
+      if (dataInicio) cacheQuery = cacheQuery.gte("data_publicacao_pncp", dataInicio);
+      if (dataFim) cacheQuery = cacheQuery.lte("data_publicacao_pncp", dataFim + "T23:59:59");
+
+      cacheQuery = cacheQuery.order("data_publicacao_pncp", { ascending: false }).limit(500);
+
+      const { data: cacheItems } = await cacheQuery;
+
+      if (cacheItems && cacheItems.length > 0) {
+        // Deduplicate: only add items not already in allItems
+        const existingKeys = new Set(
+          allItems.map((i: any) => i.cnpjOrgao && i.anoCompra && i.sequencialCompra
+            ? `${i.cnpjOrgao}-${i.anoCompra}-${i.sequencialCompra}` : null
+          ).filter(Boolean)
+        );
+
+        let cacheAdded = 0;
+        for (const ci of cacheItems) {
+          const key = ci.cnpj_orgao && ci.ano_compra && ci.sequencial_compra
+            ? `${ci.cnpj_orgao}-${ci.ano_compra}-${ci.sequencial_compra}` : null;
+          if (key && existingKeys.has(key)) continue;
+          if (key) existingKeys.add(key);
+
+          allItems.push({
+            numero: ci.numero_compra || "-",
+            orgao: ci.orgao || "-",
+            objeto: ci.objeto || "-",
+            modalidade: ci.modalidade_nome || "Não informada",
+            status: ci.situacao || "Publicado",
+            valor_estimado: ci.valor_total_estimado,
+            uf: ci.uf || null,
+            municipio: ci.municipio || null,
+            data_abertura: ci.data_abertura_proposta || null,
+            data_encerramento: ci.data_encerramento_proposta || null,
+            data_publicacao: ci.data_publicacao_pncp || null,
+            portal: "PNCP",
+            url: ci.url_pncp || null,
+            pncpNumero: ci.numero_controle_pncp || null,
+            cnpjOrgao: ci.cnpj_orgao || null,
+            anoCompra: ci.ano_compra || null,
+            sequencialCompra: ci.sequencial_compra || null,
+            isMock: false,
+            esferaNome: ci.esfera_id === "F" ? "Federal" : ci.esfera_id === "E" ? "Estadual" : ci.esfera_id === "M" ? "Municipal" : ci.esfera_id === "D" ? "Distrital" : null,
+            tipoInstrumentoNome: ci.tipo_instrumento || null,
+            unidadeOrgao: ci.unidade_orgao || null,
+            codigoUnidade: ci.codigo_unidade || null,
+          });
+          cacheAdded++;
+        }
+        console.log(`Cache complementou com ${cacheAdded} editais adicionais`);
+      }
+    } catch (cacheErr) {
+      console.log("Cache query error (non-fatal):", cacheErr);
     }
 
     const itemsComId = allItems.map((item, idx) => ({ ...item, id: `busca-${idx}` }));
