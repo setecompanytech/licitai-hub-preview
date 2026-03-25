@@ -68,59 +68,119 @@ function mapPncpItem(item: any, uf: string | null) {
   };
 }
 
-async function fetchPncp(params: URLSearchParams, label: string): Promise<any[]> {
+const PNCP_PAGE_SIZE = 50;
+const PNCP_TIMEOUT_MS = 45000;
+const PNCP_MAX_RETRIES = 2;
+const PNCP_MODALIDADE_CONCURRENCY = 2;
+const PNCP_PAGE_CONCURRENCY = 2;
+
+type PncpPageResult = {
+  items: any[];
+  totalRegistros: number;
+};
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchPncpPage(params: URLSearchParams, label: string, attempt = 1): Promise<PncpPageResult> {
   const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params.toString()}`;
-  console.log(`PNCP API (${label}): ${url}`);
+  console.log(`PNCP API (${label}) [tentativa ${attempt}]: ${url}`);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 25000);
+  const timeout = setTimeout(() => controller.abort(), PNCP_TIMEOUT_MS);
+
   try {
     const response = await fetch(url, {
       headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
       signal: controller.signal,
     });
     clearTimeout(timeout);
+
     if (!response.ok) {
       const t = await response.text();
       console.log(`PNCP ${label} error ${response.status}: ${t.substring(0, 300)}`);
-      return [];
+      return { items: [], totalRegistros: 0 };
     }
+
     const text = await response.text();
     if (!text || text.trim().length === 0) {
       console.log(`PNCP ${label}: empty response body`);
-      return [];
+      return { items: [], totalRegistros: 0 };
     }
+
     let data;
     try {
       data = JSON.parse(text);
-    } catch (parseErr) {
+    } catch (_parseErr) {
       console.log(`PNCP ${label}: JSON parse error, body length=${text.length}, preview=${text.substring(0, 200)}`);
-      return [];
+      return { items: [], totalRegistros: 0 };
     }
-    console.log(`PNCP ${label}: ${(data.data || []).length} resultados de ${data.totalRegistros || '?'} total`);
-    return data.data || [];
+
+    const items = Array.isArray(data.data) ? data.data : [];
+    const totalRegistros = Number(data.totalRegistros || items.length || 0);
+    console.log(`PNCP ${label}: ${items.length} resultados de ${totalRegistros || '?'} total`);
+    return { items, totalRegistros };
   } catch (e) {
     clearTimeout(timeout);
-    console.log(`PNCP ${label} timeout/error:`, e);
-    return [];
+    console.log(`PNCP ${label} timeout/error na tentativa ${attempt}:`, e);
+
+    if (attempt < PNCP_MAX_RETRIES) {
+      await wait(600 * attempt);
+      return fetchPncpPage(params, label, attempt + 1);
+    }
+
+    return { items: [], totalRegistros: 0 };
   }
 }
 
-// Fetch multiple pages from PNCP for a single modalidade to get comprehensive results
 async function fetchPncpAllPages(baseParams: URLSearchParams, label: string, maxPages = 10): Promise<any[]> {
-  const allResults: any[] = [];
-  
-  for (let page = 1; page <= maxPages; page++) {
-    const params = new URLSearchParams(baseParams);
-    params.set("pagina", String(page));
-    
-    const results = await fetchPncp(params, `${label} pg${page}`);
-    allResults.push(...results);
-    
-    // PNCP max page size is 50; if fewer, we've reached the end
-    if (results.length < 50) break;
+  const firstParams = new URLSearchParams(baseParams);
+  firstParams.set("pagina", "1");
+
+  const firstPage = await fetchPncpPage(firstParams, `${label} pg1`);
+  const allResults: any[] = [...firstPage.items];
+  const totalPages = Math.min(
+    maxPages,
+    Math.max(1, Math.ceil((firstPage.totalRegistros || firstPage.items.length) / PNCP_PAGE_SIZE)),
+  );
+
+  if (totalPages <= 1) return allResults;
+
+  const remainingPages = Array.from({ length: totalPages - 1 }, (_, idx) => idx + 2);
+
+  for (let i = 0; i < remainingPages.length; i += PNCP_PAGE_CONCURRENCY) {
+    const pageBatch = remainingPages.slice(i, i + PNCP_PAGE_CONCURRENCY);
+    const batchResults = await Promise.all(
+      pageBatch.map(async (page) => {
+        const params = new URLSearchParams(baseParams);
+        params.set("pagina", String(page));
+        return fetchPncpPage(params, `${label} pg${page}`);
+      }),
+    );
+
+    for (const result of batchResults) {
+      allResults.push(...result.items);
+    }
+
+    if (batchResults.every((result) => result.items.length === 0)) {
+      console.log(`PNCP ${label}: lote sem resultados após a página ${pageBatch[pageBatch.length - 1]}, interrompendo paginação.`);
+      break;
+    }
   }
-  
+
   return allResults;
+}
+
+async function runWithConcurrency<T>(tasks: Array<() => Promise<T>>, limit: number): Promise<T[]> {
+  const results: T[] = [];
+
+  for (let i = 0; i < tasks.length; i += limit) {
+    const batch = tasks.slice(i, i + limit);
+    const batchResults = await Promise.all(batch.map((task) => task()));
+    results.push(...batchResults);
+  }
+
+  return results;
 }
 
 serve(async (req) => {
@@ -155,18 +215,18 @@ serve(async (req) => {
       const isCnpjValido = cleanCnpj && (cleanCnpj.length === 14 || cleanCnpj.length === 11);
       const isUasg = cleanCnpj && cleanCnpj.length === 6 && /^\d{6}$/.test(cleanCnpj);
       
-      if (isCnpjValido) {
+        if (isCnpjValido) {
         // ── Search by CNPJ ──
         const params = new URLSearchParams();
         params.set("dataInicial", formatDatePNCP(dataInicialDate));
         params.set("dataFinal", formatDatePNCP(dataFinalDate));
-        params.set("pagina", String(pagina || 1));
-        params.set("tamanhoPagina", "50");
+          params.set("tamanhoPagina", String(PNCP_PAGE_SIZE));
         params.set("cnpj", cleanCnpj);
         if (uf) params.set("uf", uf);
         if (query) params.set("q", query.substring(0, 100));
         if (userModalidadeCod) params.set("codigoModalidadeContratacao", String(userModalidadeCod));
-        const results = await fetchPncp(params, `CNPJ=${cleanCnpj}`);
+          const maxPagesCnpj = userFilteredByDate ? 20 : 10;
+          const results = await fetchPncpAllPages(params, `CNPJ=${cleanCnpj}`, maxPagesCnpj);
         allItems.push(...results.map((i: any) => mapPncpItem(i, uf)));
         
         if (allItems.length === 0) {
@@ -188,24 +248,31 @@ serve(async (req) => {
         const needsDeepFetch = !!(cleanMunicipio || isUasg);
 
         // Run fetches in parallel batches to maximize coverage within Edge Function timeout
-        const fetches = modalidades.map((cod) => {
+        const maxPages = needsDeepFetch
+          ? 20
+          : userModalidadeCod && uf
+            ? 15
+            : userModalidadeCod
+              ? 12
+              : uf
+                ? 8
+                : (modalidades.length <= 3 ? 8 : 3);
+
+        const tasks = modalidades.map((cod) => async () => {
           const params = new URLSearchParams();
           params.set("dataInicial", formatDatePNCP(dataInicialDate));
           params.set("dataFinal", formatDatePNCP(dataFinalDate));
-          params.set("tamanhoPagina", "50");
+          params.set("tamanhoPagina", String(PNCP_PAGE_SIZE));
           params.set("codigoModalidadeContratacao", String(cod));
           if (uf) params.set("uf", uf);
           if (query) params.set("q", query.substring(0, 100));
-          
-          // Always fetch multiple pages for better coverage
-          const maxPages = needsDeepFetch ? 10 : (modalidades.length <= 3 ? 8 : 3);
           return fetchPncpAllPages(params, `mod=${cod}`, maxPages);
         });
 
-        const results = await Promise.allSettled(fetches);
-        for (const result of results) {
-          if (result.status === "fulfilled") {
-            allItems.push(...result.value.map((i: any) => mapPncpItem(i, uf)));
+        const results = await runWithConcurrency(tasks, PNCP_MODALIDADE_CONCURRENCY);
+        for (const items of results) {
+          if (items.length > 0) {
+            allItems.push(...items.map((i: any) => mapPncpItem(i, uf)));
           }
         }
       }
