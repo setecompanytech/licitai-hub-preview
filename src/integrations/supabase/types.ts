@@ -3907,6 +3907,102 @@ export type Database = {
         }
         Relationships: []
       }
+      pncp_editais_cache: {
+        Row: {
+          ano_compra: string | null
+          cnpj_orgao: string | null
+          codigo_unidade: string | null
+          created_at: string | null
+          data_abertura_proposta: string | null
+          data_encerramento_proposta: string | null
+          data_publicacao_pncp: string | null
+          esfera_id: string | null
+          id: string
+          link_sistema_origem: string | null
+          modalidade_id: number | null
+          modalidade_nome: string | null
+          municipio: string | null
+          municipio_ibge: string | null
+          numero_compra: string | null
+          numero_controle_pncp: string | null
+          objeto: string | null
+          orgao: string | null
+          pncp_id: string
+          sequencial_compra: string | null
+          situacao: string | null
+          srp: boolean | null
+          tipo_instrumento: string | null
+          uf: string | null
+          unidade_orgao: string | null
+          updated_at: string | null
+          url_pncp: string | null
+          valor_total_estimado: number | null
+          valor_total_homologado: number | null
+        }
+        Insert: {
+          ano_compra?: string | null
+          cnpj_orgao?: string | null
+          codigo_unidade?: string | null
+          created_at?: string | null
+          data_abertura_proposta?: string | null
+          data_encerramento_proposta?: string | null
+          data_publicacao_pncp?: string | null
+          esfera_id?: string | null
+          id?: string
+          link_sistema_origem?: string | null
+          modalidade_id?: number | null
+          modalidade_nome?: string | null
+          municipio?: string | null
+          municipio_ibge?: string | null
+          numero_compra?: string | null
+          numero_controle_pncp?: string | null
+          objeto?: string | null
+          orgao?: string | null
+          pncp_id: string
+          sequencial_compra?: string | null
+          situacao?: string | null
+          srp?: boolean | null
+          tipo_instrumento?: string | null
+          uf?: string | null
+          unidade_orgao?: string | null
+          updated_at?: string | null
+          url_pncp?: string | null
+          valor_total_estimado?: number | null
+          valor_total_homologado?: number | null
+        }
+        Update: {
+          ano_compra?: string | null
+          cnpj_orgao?: string | null
+          codigo_unidade?: string | null
+          created_at?: string | null
+          data_abertura_proposta?: string | null
+          data_encerramento_proposta?: string | null
+          data_publicacao_pncp?: string | null
+          esfera_id?: string | null
+          id?: string
+          link_sistema_origem?: string | null
+          modalidade_id?: number | null
+          modalidade_nome?: string | null
+          municipio?: string | null
+          municipio_ibge?: string | null
+          numero_compra?: string | null
+          numero_controle_pncp?: string | null
+          objeto?: string | null
+          orgao?: string | null
+          pncp_id?: string
+          sequencial_compra?: string | null
+          situacao?: string | null
+          srp?: boolean | null
+          tipo_instrumento?: string | null
+          uf?: string | null
+          unidade_orgao?: string | null
+          updated_at?: string | null
+          url_pncp?: string | null
+          valor_total_estimado?: number | null
+          valor_total_homologado?: number | null
+        }
+        Relationships: []
+      }
       portal_healthcheck: {
         Row: {
           created_at: string
@@ -6019,6 +6115,8 @@ export type Database = {
           read_ct: number
         }[]
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       app_role: "admin" | "user" | "viewer"
