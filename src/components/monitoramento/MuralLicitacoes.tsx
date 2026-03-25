@@ -173,6 +173,11 @@ export default function MuralLicitacoes() {
   const [uasgTerm, setUasgTerm] = useState('');
   const [uasgSubmitted, setUasgSubmitted] = useState('');
 
+  // Busca direta por URL/Número PNCP
+  const [buscaDiretaAberta, setBuscaDiretaAberta] = useState(false);
+  const [buscaDiretaTerm, setBuscaDiretaTerm] = useState('');
+  const [loadingBuscaDireta, setLoadingBuscaDireta] = useState(false);
+
   // Filtros avançados (estilo PNCP)
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [tipoInstrumentoFiltro, setTipoInstrumentoFiltro] = useState<string>('all');
@@ -449,6 +454,83 @@ export default function MuralLicitacoes() {
     setPagina(1);
     setSearchSubmitted(searchTerm);
     setUasgSubmitted(uasgTerm);
+  };
+
+  // ── Busca direta por URL ou número PNCP ──
+  const handleBuscaDireta = async () => {
+    const term = buscaDiretaTerm.trim();
+    if (!term) return;
+
+    // Parse PNCP URL: https://pncp.gov.br/app/editais/CNPJ/ANO/SEQ
+    const urlMatch = term.match(/pncp\.gov\.br\/app\/editais\/(\d{11,14})\/(\d{4})\/(\d+)/);
+    // Parse manual input: CNPJ/ANO/SEQ or CNPJ-ANO-SEQ
+    const manualMatch = !urlMatch ? term.match(/^(\d{11,14})[\/\-](\d{4})[\/\-](\d+)$/) : null;
+    // Parse PNCP control number: CNPJ-1-00000N/ANO
+    const controlMatch = !urlMatch && !manualMatch ? term.match(/^(\d{11,14})-\d+-(\d+)\/(\d{4})$/) : null;
+
+    const match = urlMatch || manualMatch;
+    const cnpj = match?.[1] || controlMatch?.[1];
+    const ano = match?.[2] || controlMatch?.[3];
+    const seq = match?.[3] || controlMatch?.[2];
+
+    if (!cnpj || !ano || !seq) {
+      toast.error('Formato inválido. Use a URL do PNCP (ex: https://pncp.gov.br/app/editais/05054937000163/2026/17) ou CNPJ/ANO/SEQ.');
+      return;
+    }
+
+    setLoadingBuscaDireta(true);
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/detalhe-licitacao-pncp`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ cnpjOrgao: cnpj, anoCompra: ano, sequencialCompra: seq }),
+        }
+      );
+
+      if (!resp.ok) throw new Error(`Erro ${resp.status}`);
+      const data = await resp.json();
+      if (!data.success) throw new Error(data.error || 'Edital não encontrado');
+
+      // Convert detail to LicitacaoMural and open ficha
+      const lic: LicitacaoMural = {
+        id: `direto-${cnpj}-${ano}-${seq}`,
+        numero: data.numero_compra || '-',
+        orgao: data.orgao || '-',
+        objeto: data.objeto || '-',
+        modalidade: data.modalidade || 'Não informada',
+        status: data.situacao || 'Publicado',
+        valor_estimado: data.valor_total_estimado,
+        uf: data.uf || null,
+        municipio: data.municipio || null,
+        data_abertura: data.data_abertura_proposta || null,
+        data_encerramento: data.data_encerramento_proposta || null,
+        data_publicacao: data.data_publicacao_pncp || null,
+        portal: 'PNCP',
+        url: data.url_pncp || `https://pncp.gov.br/app/editais/${cnpj}/${ano}/${seq}`,
+        pncpNumero: data.numero_controle_pncp || null,
+        cnpjOrgao: cnpj,
+        anoCompra: ano,
+        sequencialCompra: seq,
+        esferaNome: null,
+        tipoInstrumentoNome: data.tipo_instrumento_convocatorio || null,
+        unidadeOrgao: data.unidade_orgao || null,
+      };
+
+      setFichaAberta(lic);
+      setDetalhePncp(data);
+      setBuscaDiretaAberta(false);
+      setBuscaDiretaTerm('');
+      toast.success('✅ Edital encontrado e carregado!');
+    } catch (err) {
+      console.error('Busca direta error:', err);
+      toast.error(err instanceof Error ? err.message : 'Edital não encontrado no PNCP.');
+    } finally {
+      setLoadingBuscaDireta(false);
+    }
   };
 
   const handleIniciarProcesso = async (lic: LicitacaoMural) => {
@@ -941,6 +1023,15 @@ export default function MuralLicitacoes() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setBuscaDiretaAberta(!buscaDiretaAberta)}
+              className="gap-1.5 border-accent/30 text-accent hover:bg-accent/10"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              Busca Direta
+            </Button>
             <div className="flex items-center gap-2 bg-card border border-border/50 rounded-lg px-3 py-1.5">
               <Sparkles className="w-3.5 h-3.5 text-accent" />
               <label htmlFor="toggle-externos" className="text-xs font-medium cursor-pointer select-none">
@@ -987,6 +1078,41 @@ export default function MuralLicitacoes() {
             Buscar
           </Button>
         </form>
+
+        {/* ═══ BUSCA DIRETA POR URL/NÚMERO PNCP ═══ */}
+        {buscaDiretaAberta && (
+          <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 mb-3 animate-fade-in">
+            <div className="flex items-center gap-2 mb-3">
+              <Link2 className="w-4 h-4 text-accent" />
+              <h4 className="text-sm font-bold">Busca Direta por Edital</h4>
+              <Badge className="bg-accent/10 text-accent border-accent/20 text-[9px]">PNCP</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Cole a URL do PNCP ou informe o número no formato <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">CNPJ/ANO/SEQUENCIAL</code> para localizar qualquer edital publicado.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Ex: https://pncp.gov.br/app/editais/05054937000163/2026/17 ou 05054937000163/2026/17"
+                value={buscaDiretaTerm}
+                onChange={(e) => setBuscaDiretaTerm(e.target.value)}
+                className="text-xs flex-1"
+                disabled={loadingBuscaDireta}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleBuscaDireta(); }}
+              />
+              <Button
+                onClick={handleBuscaDireta}
+                disabled={loadingBuscaDireta || !buscaDiretaTerm.trim()}
+                className="gap-1.5 bg-accent hover:bg-accent/90 text-accent-foreground"
+              >
+                {loadingBuscaDireta ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                Localizar
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => setBuscaDiretaAberta(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* ═══ FILTROS (estilo PNCP) ═══ */}
         <div className="bg-card border border-border/50 rounded-xl overflow-hidden">
