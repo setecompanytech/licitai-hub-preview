@@ -72,7 +72,7 @@ async function fetchPncp(params: URLSearchParams, label: string): Promise<any[]>
   const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params.toString()}`;
   console.log(`PNCP API (${label}): ${url}`);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const timeout = setTimeout(() => controller.abort(), 25000);
   try {
     const response = await fetch(url, {
       headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
