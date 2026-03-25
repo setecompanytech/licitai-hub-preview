@@ -41,7 +41,7 @@ project_id = "sbnlovigyifvrkgsoalj"
   [functions.licitacoes-cleanup]
     verify_jwt = false
   [functions.process-email-queue]
-    verify_jwt = false
+    verify_jwt = true
   [functions.robo-lances-webhook]
     verify_jwt = false
   [functions.consulta-comprasgov]
