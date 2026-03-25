@@ -28,12 +28,24 @@ Deno.serve(async (req) => {
     }
 
     let totalNotificacoes = 0
+    let totalEmails = 0
+    let totalWhatsapp = 0
 
     for (const config of configs) {
       const palavrasChave = config.palavras_chave as string[] || []
       const ufs = config.ufs_interesse as string[] || []
+      const alertaEmail = config.alerta_email ?? true
+      const alertaWhatsapp = config.alerta_whatsapp ?? false
+      const alertaSistema = config.alerta_sistema ?? true
 
       if (palavrasChave.length === 0) continue
+
+      // Collect new items for this user to batch email/whatsapp
+      const novosEditais: Array<{
+        titulo: string; orgao: string; uf: string; municipio: string;
+        valor: string | null; url: string | null; modalidade: string | null;
+        dataAbertura: string | null;
+      }> = []
 
       // Search PNCP API for each keyword
       for (const termo of palavrasChave.slice(0, 5)) {
@@ -63,9 +75,16 @@ Deno.serve(async (req) => {
             const titulo = item.objetoCompra || item.objeto || termo
             const orgao = item.nomeUnidadeCompradora || item.orgaoEntidade?.razaoSocial || 'Órgão não informado'
             const ufItem = item.ufSigla || item.unidadeOrgao?.ufSigla || ''
+            const municipio = item.municipioNome || item.unidadeOrgao?.municipioNome || ''
+            const modalidade = item.modalidadeNome || item.modalidade || null
 
             // Filter by UF if configured
             if (ufs.length > 0 && ufItem && !ufs.includes(ufItem)) continue
+
+            // Filter by value range
+            const valorEst = item.valorTotalEstimado || null
+            if (config.valor_minimo && valorEst && Number(valorEst) < Number(config.valor_minimo)) continue
+            if (config.valor_maximo && valorEst && Number(valorEst) > Number(config.valor_maximo)) continue
 
             // Check if already notified (avoid duplicates)
             const identificador = `pncp-${item.codigoCompra || item.sequencialCompra || titulo.slice(0, 50)}`
@@ -79,29 +98,58 @@ Deno.serve(async (req) => {
 
             if (existente && existente.length > 0) continue
 
-            // Create notification
-            await supabase.from('notificacoes').insert({
-              user_id: config.user_id,
-              titulo: `Nova licitação: ${titulo.slice(0, 100)}`,
-              mensagem: `${orgao}${ufItem ? ` (${ufItem})` : ''} — Termo: "${termo}" [${identificador}]`,
-              tipo: 'monitoramento',
-              link: '/monitoramento',
-            })
+            // Also check monitoramento_editais to avoid duplicate inserts
+            const { data: existeEdital } = await supabase
+              .from('monitoramento_editais')
+              .select('id')
+              .eq('user_id', config.user_id)
+              .ilike('titulo', `%${titulo.slice(0, 80)}%`)
+              .eq('portal', 'PNCP')
+              .limit(1)
 
-            // Also save to monitoramento_editais
+            if (existeEdital && existeEdital.length > 0) continue
+
+            const valorFormatado = valorEst 
+              ? `R$ ${Number(valorEst).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
+              : null
+
+            // Create system notification
+            if (alertaSistema) {
+              await supabase.from('notificacoes').insert({
+                user_id: config.user_id,
+                titulo: `Nova licitação: ${titulo.slice(0, 100)}`,
+                mensagem: `${orgao}${ufItem ? ` (${ufItem})` : ''}${municipio ? ` — ${municipio}` : ''} — Termo: "${termo}" [${identificador}]`,
+                tipo: 'monitoramento',
+                link: '/monitoramento',
+              })
+            }
+
+            // Save to monitoramento_editais
             await supabase.from('monitoramento_editais').insert({
               user_id: config.user_id,
               titulo: titulo.slice(0, 200),
               orgao,
               uf: ufItem || null,
+              municipio: municipio || null,
               portal: 'PNCP',
               url: item.linkSistemaOrigem || null,
               data_publicacao: item.dataPublicacao || new Date().toISOString(),
               data_abertura: item.dataAbertura || null,
-              valor_estimado: item.valorTotalEstimado || null,
+              valor_estimado: valorEst,
               palavras_chave: [termo],
               status: 'novo',
               lido: false,
+            })
+
+            novosEditais.push({
+              titulo: titulo.slice(0, 150),
+              orgao,
+              uf: ufItem,
+              municipio,
+              valor: valorFormatado,
+              url: item.linkSistemaOrigem || null,
+              modalidade,
+              dataAbertura: item.dataAbertura || null,
             })
 
             totalNotificacoes++
@@ -110,12 +158,90 @@ Deno.serve(async (req) => {
           console.error(`Erro ao buscar termo "${termo}":`, err)
         }
       }
+
+      // ── Send email alert if there are new items ──
+      if (novosEditais.length > 0 && alertaEmail) {
+        try {
+          const { data: authUser } = await supabase.auth.admin.getUserById(config.user_id)
+          const email = authUser?.user?.email
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('nome_completo')
+            .eq('user_id', config.user_id)
+            .single()
+
+          if (email) {
+            await supabase.functions.invoke('send-transactional-email', {
+              body: {
+                template: 'alerta-licitacao-nova',
+                to: email,
+                subject: `🎯 ${novosEditais.length} nova(s) licitação(ões) encontrada(s) — PRAEFECTUS`,
+                label: 'alerta-monitoramento',
+                data: {
+                  nome: profile?.nome_completo || '',
+                  total: novosEditais.length,
+                  editais: novosEditais.slice(0, 10).map(e => ({
+                    titulo: e.titulo,
+                    orgao: e.orgao,
+                    municipio: e.municipio,
+                    uf: e.uf,
+                    valor: e.valor || '–',
+                  })),
+                  link: 'https://praefectus.com.br/monitoramento-editais',
+                },
+              },
+            })
+            totalEmails++
+          }
+        } catch (emailErr) {
+          console.error(`Erro ao enviar e-mail para user ${config.user_id}:`, emailErr)
+        }
+      }
+
+      // ── Send WhatsApp alert if there are new items ──
+      if (novosEditais.length > 0 && alertaWhatsapp) {
+        try {
+          // Get WhatsApp routing config for licitações sector
+          const { data: whatsConfig } = await supabase
+            .from('whatsapp_routing')
+            .select('numero_whatsapp')
+            .eq('user_id', config.user_id)
+            .eq('setor', 'licitações')
+            .maybeSingle()
+
+          const telefone = whatsConfig?.numero_whatsapp
+          if (telefone) {
+            const linhas = novosEditais.slice(0, 5).map((e, i) =>
+              `${i + 1}. *${e.orgao}*${e.uf ? ` (${e.uf})` : ''}\n   ${e.titulo.slice(0, 80)}${e.valor ? `\n   💰 ${e.valor}` : ''}`
+            ).join('\n\n')
+
+            const mensagem = `🔔 *PRAEFECTUS — Novas Licitações*\n\n${novosEditais.length} processo(s) encontrado(s):\n\n${linhas}${novosEditais.length > 5 ? `\n\n... e mais ${novosEditais.length - 5} processo(s)` : ''}\n\n📲 Acesse: https://praefectus.com.br/monitoramento-editais`
+
+            await supabase.functions.invoke('whatsapp-envio', {
+              body: {
+                telefone,
+                setor: 'licitações',
+                tipo: 'alerta',
+                mensagem_custom: mensagem,
+              },
+              headers: {
+                Authorization: `Bearer ${supabaseServiceKey}`,
+              },
+            })
+            totalWhatsapp++
+          }
+        } catch (whatsErr) {
+          console.error(`Erro ao enviar WhatsApp para user ${config.user_id}:`, whatsErr)
+        }
+      }
     }
 
     return new Response(
       JSON.stringify({
         message: `Pesquisa concluída. ${totalNotificacoes} novas licitações encontradas.`,
         resultados: totalNotificacoes,
+        emails_enviados: totalEmails,
+        whatsapp_enviados: totalWhatsapp,
         configs_processadas: configs.length,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
