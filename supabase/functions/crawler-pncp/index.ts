@@ -6,9 +6,16 @@ const corsHeaders = {
 }
 
 const PNCP_PAGE_SIZE = 50
-const MAX_PAGES_PER_MODALIDADE = 30
+const MAX_PAGES_PER_SEGMENT = 40    // Up to 2000 items per UF+modalidade
 const TIMEOUT_MS = 30000
+const RETRY_COUNT = 2
+const RETRY_DELAY_MS = 800
+const CONCURRENCY = 3                // Parallel fetches
 const MODALIDADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+const ALL_UFS = [
+  'AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT',
+  'PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'
+]
 
 function formatDatePNCP(date: Date): string {
   const y = date.getFullYear()
@@ -17,35 +24,110 @@ function formatDatePNCP(date: Date): string {
   return `${y}${m}${d}`
 }
 
-async function fetchPage(url: string): Promise<{ items: any[]; total: number }> {
+function wait(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function fetchPage(url: string, attempt = 1): Promise<{ items: any[]; total: number }> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
     const resp = await fetch(url, {
-      headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
       signal: controller.signal,
     })
     clearTimeout(timeout)
-    if (!resp.ok) { await resp.text(); return { items: [], total: 0 } }
+    if (!resp.ok) {
+      await resp.text()
+      if (attempt < RETRY_COUNT) {
+        await wait(RETRY_DELAY_MS * attempt)
+        return fetchPage(url, attempt + 1)
+      }
+      return { items: [], total: 0 }
+    }
     const data = await resp.json()
     return { items: data.data || [], total: data.totalRegistros || 0 }
   } catch {
     clearTimeout(timeout)
+    if (attempt < RETRY_COUNT) {
+      await wait(RETRY_DELAY_MS * attempt)
+      return fetchPage(url, attempt + 1)
+    }
     return { items: [], total: 0 }
+  }
+}
+
+async function runParallel<T>(tasks: Array<() => Promise<T>>, limit: number): Promise<T[]> {
+  const results: T[] = []
+  for (let i = 0; i < tasks.length; i += limit) {
+    const batch = tasks.slice(i, i + limit)
+    const batchResults = await Promise.all(batch.map(t => t()))
+    results.push(...batchResults)
+  }
+  return results
+}
+
+function mapRow(item: any, uf: string, mod: number) {
+  const cnpj = item.orgaoEntidade?.cnpj || ''
+  const ano = item.anoCompra || ''
+  const seq = item.sequencialCompra || ''
+  const pncpId = cnpj && ano && seq ? `${cnpj}-${ano}-${seq}` : null
+
+  return {
+    pncp_id: pncpId,
+    numero_controle_pncp: item.numeroControlePNCP || null,
+    cnpj_orgao: cnpj || null,
+    ano_compra: ano ? String(ano) : null,
+    sequencial_compra: seq ? String(seq) : null,
+    numero_compra: item.numeroCompra || null,
+    orgao: item.orgaoEntidade?.razaoSocial || null,
+    unidade_orgao: item.unidadeOrgao?.nomeUnidade || null,
+    objeto: item.objetoCompra || null,
+    modalidade_id: item.modalidadeId || mod,
+    modalidade_nome: item.modalidadeNome || null,
+    situacao: item.situacaoCompraNome || null,
+    valor_total_estimado: item.valorTotalEstimado || null,
+    valor_total_homologado: item.valorTotalHomologado || null,
+    uf: item.unidadeOrgao?.ufSigla || uf,
+    municipio: item.unidadeOrgao?.municipioNome || null,
+    municipio_ibge: item.unidadeOrgao?.codigoIbge || null,
+    esfera_id: item.orgaoEntidade?.esferaId || null,
+    data_publicacao_pncp: item.dataPublicacaoPncp || null,
+    data_abertura_proposta: item.dataAberturaProposta || null,
+    data_encerramento_proposta: item.dataEncerramentoProposta || null,
+    link_sistema_origem: item.linkSistemaOrigem || null,
+    url_pncp: cnpj && ano && seq ? `https://pncp.gov.br/app/editais/${cnpj}/${ano}/${seq}` : null,
+    tipo_instrumento: item.tipoInstrumentoConvocatorioNome || null,
+    srp: item.srp ?? null,
+    codigo_unidade: item.unidadeOrgao?.codigoUnidade || null,
   }
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
 
-  // Verify CRON_SECRET
+  // Auth: accept CRON_SECRET or service_role JWT
   const authHeader = req.headers.get('authorization') || ''
   const cronSecret = Deno.env.get('CRON_SECRET')
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+  const isCronAuth = cronSecret && authHeader === `Bearer ${cronSecret}`
+
+  // Also accept supabase service_role or anon key calls (from pg_cron net.http_post)
+  if (!isCronAuth) {
+    // Try to verify as supabase service role
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    if (!authHeader.includes(supabaseServiceKey) && authHeader !== `Bearer ${supabaseServiceKey}`) {
+      // Also allow if called with the anon key (pg_cron uses it)
+      const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
+      if (!authHeader.includes(supabaseAnonKey)) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -56,10 +138,7 @@ Deno.serve(async (req) => {
     let body: any = {}
     try { body = await req.json() } catch { /* empty body OK for cron */ }
 
-    const ufs: string[] = body.ufs || [
-      'AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT',
-      'PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'
-    ]
+    const ufs: string[] = body.ufs || ALL_UFS
     const modalidades: number[] = body.modalidades || MODALIDADES
     const diasAtras = body.dias_atras || 7
     const diasFuturos = body.dias_futuros || 30
@@ -71,89 +150,84 @@ Deno.serve(async (req) => {
     const dataFinalStr = formatDatePNCP(dataFinal)
 
     let totalInseridos = 0
-    let totalDuplicados = 0
+    let totalAtualizados = 0
     let totalErros = 0
 
-    for (const uf of ufs) {
-      for (const mod of modalidades) {
+    // Build all segment tasks (UF x Modalidade)
+    const segmentTasks = ufs.flatMap(uf =>
+      modalidades.map(mod => async () => {
         const baseUrl = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?dataInicial=${dataInicialStr}&dataFinal=${dataFinalStr}&tamanhoPagina=${PNCP_PAGE_SIZE}&codigoModalidadeContratacao=${mod}&uf=${uf}`
 
-        // Fetch first page to get total
         const firstPage = await fetchPage(`${baseUrl}&pagina=1`)
-        if (firstPage.items.length === 0) continue
+        if (firstPage.items.length === 0) return { inserted: 0, updated: 0, errors: 0 }
 
-        const totalPages = Math.min(MAX_PAGES_PER_MODALIDADE, Math.ceil(firstPage.total / PNCP_PAGE_SIZE))
+        const totalPages = Math.min(MAX_PAGES_PER_SEGMENT, Math.ceil(firstPage.total / PNCP_PAGE_SIZE))
         const allItems = [...firstPage.items]
 
-        // Fetch remaining pages sequentially (to not overwhelm PNCP)
-        for (let page = 2; page <= totalPages; page++) {
-          const result = await fetchPage(`${baseUrl}&pagina=${page}`)
-          if (result.items.length === 0) break
-          allItems.push(...result.items)
+        // Fetch remaining pages with concurrency
+        if (totalPages > 1) {
+          const pageTasks = Array.from({ length: totalPages - 1 }, (_, i) => i + 2)
+            .map(page => async () => {
+              const result = await fetchPage(`${baseUrl}&pagina=${page}`)
+              return result.items
+            })
+
+          const pageResults = await runParallel(pageTasks, 2)
+          for (const items of pageResults) {
+            if (items.length > 0) allItems.push(...items)
+          }
         }
 
-        console.log(`UF=${uf} mod=${mod}: ${allItems.length}/${firstPage.total} items fetched`)
+        console.log(`UF=${uf} mod=${mod}: ${allItems.length}/${firstPage.total} items`)
 
-        // Batch insert into cache table
-        const rows = allItems.map((item: any) => {
-          const cnpj = item.orgaoEntidade?.cnpj || ''
-          const ano = item.anoCompra || ''
-          const seq = item.sequencialCompra || ''
-          const pncpId = cnpj && ano && seq ? `${cnpj}-${ano}-${seq}` : null
+        const rows = allItems.map(item => mapRow(item, uf, mod)).filter(r => r.pncp_id)
+        if (rows.length === 0) return { inserted: 0, updated: 0, errors: 0 }
 
-          return {
-            pncp_id: pncpId,
-            numero_controle_pncp: item.numeroControlePNCP || null,
-            cnpj_orgao: cnpj || null,
-            ano_compra: ano ? String(ano) : null,
-            sequencial_compra: seq ? String(seq) : null,
-            numero_compra: item.numeroCompra || null,
-            orgao: item.orgaoEntidade?.razaoSocial || null,
-            unidade_orgao: item.unidadeOrgao?.nomeUnidade || null,
-            objeto: item.objetoCompra || null,
-            modalidade_id: item.modalidadeId || mod,
-            modalidade_nome: item.modalidadeNome || null,
-            situacao: item.situacaoCompraNome || null,
-            valor_total_estimado: item.valorTotalEstimado || null,
-            valor_total_homologado: item.valorTotalHomologado || null,
-            uf: item.unidadeOrgao?.ufSigla || uf,
-            municipio: item.unidadeOrgao?.municipioNome || null,
-            municipio_ibge: item.unidadeOrgao?.codigoIbge || null,
-            esfera_id: item.orgaoEntidade?.esferaId || null,
-            data_publicacao_pncp: item.dataPublicacaoPncp || null,
-            data_abertura_proposta: item.dataAberturaProposta || null,
-            data_encerramento_proposta: item.dataEncerramentoProposta || null,
-            link_sistema_origem: item.linkSistemaOrigem || null,
-            url_pncp: cnpj && ano && seq ? `https://pncp.gov.br/app/editais/${cnpj}/${ano}/${seq}` : null,
-            tipo_instrumento: item.tipoInstrumentoConvocatorioNome || null,
-            srp: item.srp ?? null,
-            codigo_unidade: item.unidadeOrgao?.codigoUnidade || null,
-          }
-        }).filter((r: any) => r.pncp_id)
+        let segInserted = 0
+        let segErrors = 0
 
-        if (rows.length === 0) continue
-
-        // Upsert in batches of 100
-        for (let i = 0; i < rows.length; i += 100) {
-          const batch = rows.slice(i, i + 100)
+        // Upsert in batches of 200
+        for (let i = 0; i < rows.length; i += 200) {
+          const batch = rows.slice(i, i + 200)
           const { error, count } = await supabase
             .from('pncp_editais_cache')
             .upsert(batch, { onConflict: 'pncp_id', ignoreDuplicates: false, count: 'exact' })
 
           if (error) {
             console.error(`Upsert error UF=${uf} mod=${mod}:`, error.message)
-            totalErros += batch.length
+            segErrors += batch.length
           } else {
-            totalInseridos += (count || batch.length)
+            segInserted += (count || batch.length)
           }
         }
-      }
+
+        return { inserted: segInserted, updated: 0, errors: segErrors }
+      })
+    )
+
+    // Run segments with controlled concurrency
+    const segmentResults = await runParallel(segmentTasks, CONCURRENCY)
+    for (const r of segmentResults) {
+      totalInseridos += r.inserted
+      totalAtualizados += r.updated
+      totalErros += r.errors
+    }
+
+    // After crawling, trigger pesquisa-tempo-real to send alerts for new matches
+    try {
+      await supabase.functions.invoke('pesquisa-tempo-real', {
+        body: { source: 'crawler' },
+        headers: { Authorization: `Bearer ${supabaseServiceKey}` },
+      })
+      console.log('pesquisa-tempo-real invocado após crawler')
+    } catch (alertErr) {
+      console.error('Erro ao invocar pesquisa-tempo-real:', alertErr)
     }
 
     const result = {
       message: 'Crawler PNCP concluído',
       total_inseridos: totalInseridos,
-      total_duplicados: totalDuplicados,
+      total_atualizados: totalAtualizados,
       total_erros: totalErros,
       ufs_processadas: ufs.length,
       modalidades_processadas: modalidades.length,
