@@ -60,10 +60,10 @@ O Cloudflare fornecerá dois nameservers (ex: `aria.ns.cloudflare.com` e `tom.ns
 2. Vá em **Alterar Nameservers** (ou "Nameservers" / "DNS")
 3. Substitua os nameservers atuais:
 
-| Campo | Valor anterior | Novo valor (exemplo) |
+| Campo | Valor anterior | Novo valor |
 |-------|---------------|---------------------|
-| NS 1 | `ns1.hostgator.com.br` | `aria.ns.cloudflare.com` |
-| NS 2 | `ns2.hostgator.com.br` | `tom.ns.cloudflare.com` |
+| NS 1 | `ns1.hostgator.com.br` | `lia.ns.cloudflare.com` |
+| NS 2 | `ns2.hostgator.com.br` | `todd.ns.cloudflare.com` |
 
 4. Salve e aguarde propagação (**1h a 24h**, normalmente ~2h)
 
