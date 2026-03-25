@@ -187,6 +187,7 @@ serve(async (req) => {
         // Fetch more pages when filtering by municipality or UASG (since API doesn't support server-side municipality filter)
         const needsDeepFetch = !!(cleanMunicipio || isUasg);
 
+        // Run fetches in parallel batches to maximize coverage within Edge Function timeout
         const fetches = modalidades.map((cod) => {
           const params = new URLSearchParams();
           params.set("dataInicial", formatDatePNCP(dataInicialDate));
@@ -196,15 +197,9 @@ serve(async (req) => {
           if (uf) params.set("uf", uf);
           if (query) params.set("q", query.substring(0, 100));
           
-          // For municipality, UASG, or single modalidade: fetch multiple pages for completeness
-          if (modalidades.length === 1 || needsDeepFetch) {
-            const maxPages = needsDeepFetch ? 5 : 3;
-            return fetchPncpAllPages(params, `mod=${cod}`, maxPages);
-          } else {
-            // For multi-modalidade (mural without filter), fetch page 1
-            params.set("pagina", String(pagina || 1));
-            return fetchPncp(params, `mod=${cod}`);
-          }
+          // Always fetch multiple pages for better coverage
+          const maxPages = needsDeepFetch ? 10 : (modalidades.length <= 3 ? 8 : 3);
+          return fetchPncpAllPages(params, `mod=${cod}`, maxPages);
         });
 
         const results = await Promise.allSettled(fetches);
