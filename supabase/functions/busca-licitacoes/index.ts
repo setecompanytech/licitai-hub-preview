@@ -15,8 +15,8 @@ const MODALIDADES_PNCP: Record<string, number> = {
   "credenciamento": 11, "leilão - eletrônico": 12, "concurso - eletrônico": 13,
 };
 
-// All mural modalidades for broad search
-const MURAL_MODALIDADES = [6, 4, 5, 8, 7, 11];
+// All mural modalidades for broad search (all 13 PNCP codes)
+const MURAL_MODALIDADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
 function formatDatePNCP(date: Date): string {
   const y = date.getFullYear();
@@ -72,7 +72,7 @@ async function fetchPncp(params: URLSearchParams, label: string): Promise<any[]>
   const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params.toString()}`;
   console.log(`PNCP API (${label}): ${url}`);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const timeout = setTimeout(() => controller.abort(), 25000);
   try {
     const response = await fetch(url, {
       headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
@@ -106,7 +106,7 @@ async function fetchPncp(params: URLSearchParams, label: string): Promise<any[]>
 }
 
 // Fetch multiple pages from PNCP for a single modalidade to get comprehensive results
-async function fetchPncpAllPages(baseParams: URLSearchParams, label: string, maxPages = 5): Promise<any[]> {
+async function fetchPncpAllPages(baseParams: URLSearchParams, label: string, maxPages = 10): Promise<any[]> {
   const allResults: any[] = [];
   
   for (let page = 1; page <= maxPages; page++) {
@@ -187,6 +187,7 @@ serve(async (req) => {
         // Fetch more pages when filtering by municipality or UASG (since API doesn't support server-side municipality filter)
         const needsDeepFetch = !!(cleanMunicipio || isUasg);
 
+        // Run fetches in parallel batches to maximize coverage within Edge Function timeout
         const fetches = modalidades.map((cod) => {
           const params = new URLSearchParams();
           params.set("dataInicial", formatDatePNCP(dataInicialDate));
@@ -196,15 +197,9 @@ serve(async (req) => {
           if (uf) params.set("uf", uf);
           if (query) params.set("q", query.substring(0, 100));
           
-          // For municipality, UASG, or single modalidade: fetch multiple pages for completeness
-          if (modalidades.length === 1 || needsDeepFetch) {
-            const maxPages = needsDeepFetch ? 5 : 3;
-            return fetchPncpAllPages(params, `mod=${cod}`, maxPages);
-          } else {
-            // For multi-modalidade (mural without filter), fetch page 1
-            params.set("pagina", String(pagina || 1));
-            return fetchPncp(params, `mod=${cod}`);
-          }
+          // Always fetch multiple pages for better coverage
+          const maxPages = needsDeepFetch ? 10 : (modalidades.length <= 3 ? 8 : 3);
+          return fetchPncpAllPages(params, `mod=${cod}`, maxPages);
         });
 
         const results = await Promise.allSettled(fetches);
