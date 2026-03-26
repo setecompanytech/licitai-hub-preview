@@ -56,6 +56,65 @@ type EmpresaContextType = {
 
 const EmpresaContext = createContext<EmpresaContextType | undefined>(undefined);
 
+const normalizeCnpj = (value?: string | null) => value?.replace(/\D/g, '') ?? '';
+
+const optionalValue = (value?: string | null) => {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+};
+
+const getEmpresaScore = (empresa: Empresa) => {
+  const optionalFields = [
+    empresa.nome_fantasia,
+    empresa.cnae_principal,
+    empresa.uf,
+    empresa.municipio,
+    empresa.endereco,
+    empresa.complemento,
+    empresa.bairro,
+    empresa.cep,
+    empresa.telefone,
+    empresa.email,
+    empresa.inscricao_estadual,
+    empresa.inscricao_municipal,
+    empresa.certificado_nome,
+    empresa.certificado_path,
+    empresa.certificado_tipo,
+    empresa.certificado_validade,
+    empresa.regime_tributario,
+    empresa.timbrado_url,
+    empresa.timbrado_path,
+    empresa.cabecalho_url,
+    empresa.cabecalho_path,
+    empresa.rodape_url,
+    empresa.rodape_path,
+    empresa.rep_nome,
+    empresa.rep_cpf,
+    empresa.rep_rg,
+    empresa.rep_orgao_expedidor,
+    empresa.rep_cargo,
+    empresa.rep_naturalidade,
+    empresa.rep_nacionalidade,
+  ];
+
+  return optionalFields.reduce((score, field) => score + (field ? 1 : 0), 0);
+};
+
+const dedupeEmpresas = (membros: EmpresaMembro[]) => {
+  const uniqueMap = new Map<string, EmpresaMembro>();
+
+  for (const membro of membros) {
+    const key = normalizeCnpj(membro.empresa.cnpj) || membro.empresa_id;
+    const existing = uniqueMap.get(key);
+
+    if (!existing || getEmpresaScore(membro.empresa) > getEmpresaScore(existing.empresa)) {
+      uniqueMap.set(key, membro);
+    }
+  }
+
+  return Array.from(uniqueMap.values());
+};
+
 export function EmpresaProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [empresas, setEmpresas] = useState<EmpresaMembro[]>([]);
@@ -83,7 +142,9 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       papel: m.papel,
       empresa: m.empresas,
     }));
-    setEmpresas(mapped);
+    const deduped = dedupeEmpresas(mapped);
+    const mappedById = new Map(mapped.map((m) => [m.empresa_id, m]));
+    setEmpresas(deduped);
 
     // Load active empresa from profile
     const { data: profile } = await supabase
@@ -93,21 +154,27 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       .single();
 
     if (profile?.empresa_ativa_id) {
-      const active = mapped.find(m => m.empresa_id === profile.empresa_ativa_id);
-      if (active) {
-        setEmpresaAtivaState(active.empresa);
+      const active = deduped.find(m => m.empresa_id === profile.empresa_ativa_id);
+      const activeSource = mappedById.get(profile.empresa_ativa_id);
+      const activeByCnpj = activeSource
+        ? deduped.find((m) => normalizeCnpj(m.empresa.cnpj) === normalizeCnpj(activeSource.empresa.cnpj))
+        : undefined;
+      const resolvedActive = active || activeByCnpj;
+
+      if (resolvedActive) {
+        setEmpresaAtivaState(resolvedActive.empresa);
         setTodasSelecionadas(false);
       } else {
-        setEmpresaAtivaState(mapped[0].empresa);
+        setEmpresaAtivaState(deduped[0].empresa);
         setTodasSelecionadas(false);
       }
-    } else if (mapped.length > 0) {
+    } else if (deduped.length > 0) {
       // No active set — if multiple companies, show "todas"
-      if (mapped.length > 1) {
+      if (deduped.length > 1) {
         setTodasSelecionadas(true);
         setEmpresaAtivaState(null);
       } else {
-        setEmpresaAtivaState(mapped[0].empresa);
+        setEmpresaAtivaState(deduped[0].empresa);
         setTodasSelecionadas(false);
       }
     }
@@ -137,9 +204,56 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
   const addEmpresa = async (data: any) => {
     if (!user) return null;
 
+    const cnpjNormalizado = normalizeCnpj(data.cnpj);
+    if (!cnpjNormalizado) {
+      throw new Error('CNPJ inválido');
+    }
+
+    const payload = {
+      cnpj: cnpjNormalizado,
+      razao_social: data.razao_social.trim(),
+      nome_fantasia: optionalValue(data.nome_fantasia),
+      cnae_principal: optionalValue(data.cnae_principal),
+      uf: optionalValue(data.uf),
+      municipio: optionalValue(data.municipio),
+      endereco: optionalValue(data.endereco),
+      complemento: optionalValue(data.complemento),
+      bairro: optionalValue(data.bairro),
+      cep: optionalValue(data.cep),
+      telefone: optionalValue(data.telefone),
+      email: optionalValue(data.email),
+      inscricao_estadual: optionalValue(data.inscricao_estadual),
+      certificado_path: optionalValue(data.certificado_path),
+      certificado_nome: optionalValue(data.certificado_nome),
+      certificado_tipo: optionalValue(data.certificado_tipo),
+      certificado_validade: optionalValue(data.certificado_validade),
+      regime_tributario: optionalValue(data.regime_tributario),
+    };
+
+    const empresaExistente = empresas.find(
+      ({ empresa }) => normalizeCnpj(empresa.cnpj) === cnpjNormalizado,
+    );
+
+    if (empresaExistente) {
+      const { data: empresaAtualizada, error: updateError } = await supabase
+        .from('empresas')
+        .update(payload)
+        .eq('id', empresaExistente.empresa_id)
+        .select('id')
+        .single();
+
+      if (updateError) {
+        console.error('addEmpresa update error:', updateError);
+        throw new Error(updateError.message || 'Erro ao atualizar empresa existente');
+      }
+
+      await loadEmpresas();
+      return empresaAtualizada;
+    }
+
     const { data: empresa, error } = await supabase
       .from('empresas')
-      .insert({ ...data, created_by: user.id })
+      .insert({ ...payload, created_by: user.id })
       .select('id')
       .single();
 

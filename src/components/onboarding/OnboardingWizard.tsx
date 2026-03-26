@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 
 const ONBOARDING_KEY = 'praefectus_onboarding_done';
@@ -45,6 +46,7 @@ const portaisOpcoes = [
 
 export default function OnboardingWizard({ open, onClose }: Props) {
   const { user } = useAuth();
+  const { addEmpresa, empresas } = useEmpresa();
   const [step, setStep] = useState(0);
   const [empresa, setEmpresa] = useState({ razao_social: '', cnpj: '', email: '' });
   const [portaisSelecionados, setPortaisSelecionados] = useState<string[]>([]);
@@ -65,20 +67,11 @@ export default function OnboardingWizard({ open, onClose }: Props) {
     try {
       // Save empresa if provided
       if (empresa.razao_social && empresa.cnpj) {
-        const { data: emp } = await supabase.from('empresas').insert({
+        await addEmpresa({
           razao_social: empresa.razao_social,
-          cnpj: empresa.cnpj.replace(/\D/g, ''),
-          email: empresa.email || null,
-          created_by: user.id,
-        }).select().single();
-
-        if (emp) {
-          await supabase.from('empresa_membros').insert({
-            empresa_id: emp.id,
-            user_id: user.id,
-            papel: 'admin',
-          });
-        }
+          cnpj: empresa.cnpj,
+          email: empresa.email,
+        });
       }
 
       // Save monitoring config
@@ -166,7 +159,9 @@ export default function OnboardingWizard({ open, onClose }: Props) {
               />
             </div>
             <p className="text-[10px] text-muted-foreground">
-              Você pode pular esta etapa e cadastrar depois em Configurações → Empresas.
+              {empresas.length > 0
+                ? 'Se o CNPJ já existir na sua conta, o sistema atualizará a empresa existente em vez de duplicar.'
+                : 'Você pode pular esta etapa e cadastrar depois em Configurações → Empresas.'}
             </p>
           </div>
         )}
