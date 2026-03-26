@@ -5,7 +5,7 @@
 import ExcelJS from 'exceljs';
 
 const DEFAULT_MAX_PAGES = 150;
-const PDF_VISION_PAGE_LIMIT = 2;
+const PDF_VISION_PAGE_LIMIT = 5;
 const SPREADSHEET_SHEET_LIMIT = 4;
 const SPREADSHEET_ROW_LIMIT = 80;
 const SPREADSHEET_COL_LIMIT = 16;
