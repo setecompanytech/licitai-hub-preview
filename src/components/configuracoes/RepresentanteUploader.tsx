@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Upload, FileText, Loader2, X, CheckCircle, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
+import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 
 export interface ExtractedRepresentanteData {
   repNome?: string;
@@ -28,11 +29,11 @@ export default function RepresentanteUploader({ onExtracted }: RepresentanteUplo
     const f = e.target.files?.[0];
     if (!f) return;
 
-    const allowedExts = ['.pdf', '.doc', '.docx', '.txt', '.xls', '.xlsx'];
+    const allowedExts = ['.pdf', '.doc', '.docx', '.txt', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.webp'];
     const ext = f.name.substring(f.name.lastIndexOf('.')).toLowerCase();
 
     if (!allowedExts.includes(ext)) {
-      toast.error('Formato inválido. Use PDF, Word (DOC/DOCX), Excel ou TXT.');
+      toast.error('Formato inválido. Use PDF, Word, Excel, TXT ou imagem (JPG/PNG).');
       return;
     }
     if (f.size > 10 * 1024 * 1024) {
@@ -49,8 +50,21 @@ export default function RepresentanteUploader({ onExtracted }: RepresentanteUplo
     setIsExtracting(true);
     let content = '';
 
-    const text = await file.text();
-    const truncated = text.slice(0, 12000);
+    let truncated = '';
+    try {
+      const fullText = await extractTextFromFile(file);
+      truncated = fullText.slice(0, 12000);
+    } catch {
+      toast.error('Não foi possível ler o arquivo. Tente outro formato.');
+      setIsExtracting(false);
+      return;
+    }
+
+    if (truncated.length < 20) {
+      toast.error('Nenhum texto legível encontrado no documento. Tente enviar uma imagem (JPG/PNG) do documento.');
+      setIsExtracting(false);
+      return;
+    }
 
     await streamAIChat({
       messages: [{
@@ -141,13 +155,13 @@ ${truncated}`
         >
           <Upload className="w-6 h-6 text-muted-foreground" />
           <span className="text-xs font-medium text-foreground">Upload de documento para extração por IA</span>
-          <span className="text-[10px] text-muted-foreground">Contrato social, procuração, RG/CPF — PDF, Word ou TXT (máx. 10MB)</span>
+          <span className="text-[10px] text-muted-foreground">Contrato social, procuração, RG/CPF, CNH — PDF, Word, TXT ou imagem (máx. 10MB)</span>
         </button>
       )}
       <input
         ref={fileRef}
         type="file"
-        accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.webp"
         className="hidden"
         onChange={handleFileChange}
       />
