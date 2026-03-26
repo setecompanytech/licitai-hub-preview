@@ -29,11 +29,11 @@ export default function RepresentanteUploader({ onExtracted }: RepresentanteUplo
     const f = e.target.files?.[0];
     if (!f) return;
 
-    const allowedExts = ['.pdf', '.doc', '.docx', '.txt', '.xls', '.xlsx'];
+    const allowedExts = ['.pdf', '.doc', '.docx', '.txt', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.webp'];
     const ext = f.name.substring(f.name.lastIndexOf('.')).toLowerCase();
 
     if (!allowedExts.includes(ext)) {
-      toast.error('Formato inválido. Use PDF, Word (DOC/DOCX), Excel ou TXT.');
+      toast.error('Formato inválido. Use PDF, Word, Excel, TXT ou imagem (JPG/PNG).');
       return;
     }
     if (f.size > 10 * 1024 * 1024) {
