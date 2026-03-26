@@ -6,6 +6,10 @@ import { supabase } from '@/integrations/supabase/client';
 
 type JsonRecord = Record<string, unknown>;
 
+const PDF_VISION_PAGE_LIMIT = 5;
+const PDF_RENDER_SCALE = 2.2;
+const PDF_MAX_RENDER_WIDTH = 1800;
+
 export interface ExtractedRepresentanteData {
   repNome?: string;
   repCpf?: string;
@@ -70,8 +74,8 @@ function normalizeRepresentanteData(raw: JsonRecord): ExtractedRepresentanteData
   };
 }
 
-function hasExtractedValues(data: ExtractedRepresentanteData) {
-  return Object.values(data).some((value) => typeof value === 'string' && value.trim().length > 0);
+function hasCoreRepresentanteValues(data: ExtractedRepresentanteData) {
+  return [data.repNome, data.repCpf, data.repRg].some((value) => typeof value === 'string' && value.trim().length > 0);
 }
 
 export default function RepresentanteUploader({ onExtracted }: RepresentanteUploaderProps) {
@@ -154,8 +158,8 @@ export default function RepresentanteUploader({ onExtracted }: RepresentanteUplo
         toast.error('Não foi possível extrair dados estruturados do documento.');
       } else {
         const data = normalizeRepresentanteData(parsed);
-        if (!hasExtractedValues(data)) {
-          toast.error('Não foi possível identificar dados confiáveis no documento enviado.');
+        if (!hasCoreRepresentanteValues(data)) {
+          toast.error('Não foi possível identificar nome, CPF ou RG com segurança no documento enviado.');
         } else {
           onExtracted(data);
           setExtracted(true);
@@ -244,12 +248,16 @@ async function renderPdfToImages(file: File): Promise<{ name: string; dataUrl: s
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const pagesToRender = Math.min(pdf.numPages, 3);
+    const pagesToRender = Math.min(pdf.numPages, PDF_VISION_PAGE_LIMIT);
     const results: { name: string; dataUrl: string }[] = [];
 
     for (let i = 1; i <= pagesToRender; i++) {
       const page = await pdf.getPage(i);
-      const viewport = page.getViewport({ scale: 2.0 });
+      const previewViewport = page.getViewport({ scale: PDF_RENDER_SCALE });
+      const scaleFactor = previewViewport.width > PDF_MAX_RENDER_WIDTH
+        ? PDF_MAX_RENDER_WIDTH / previewViewport.width
+        : 1;
+      const viewport = page.getViewport({ scale: PDF_RENDER_SCALE * scaleFactor });
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) continue;
@@ -260,7 +268,7 @@ async function renderPdfToImages(file: File): Promise<{ name: string; dataUrl: s
 
       results.push({
         name: `page-${i}.jpg`,
-        dataUrl: canvas.toDataURL('image/jpeg', 0.9),
+        dataUrl: canvas.toDataURL('image/jpeg', 0.84),
       });
     }
     return results;
