@@ -71,15 +71,42 @@ const UFS_DISPONIVEIS = [
 
 const FONTES_DIARIOS = [
   { id: 'todos', label: 'Todas as fontes', url: '' },
+  { id: 'pncp', label: 'PNCP (Nacional)', url: 'https://pncp.gov.br/app/editais?pagina=1' },
   { id: 'dou', label: 'DOU (Federal)', url: 'https://www.in.gov.br/servicos/diario-oficial-da-uniao' },
-  { id: 'ioepa', label: 'IOEPA (Estadual)', url: 'https://www.ioepa.com.br/portal/' },
-  { id: 'tcmpa', label: 'TCMPA (Municípios)', url: 'https://www.tcmpa.tc.br/portalsc/LISTAGEM_GRID/' },
-  { id: 'doesp', label: 'DOE/SP', url: 'https://doe.sp.gov.br/' },
-  { id: 'ioerj', label: 'IOERJ', url: 'https://portal.ioerj.com.br/' },
-  { id: 'dodf', label: 'DODF.e (Distrito Federal)', url: 'https://dodf.df.gov.br/' },
+  { id: 'compras_gov', label: 'Compras Gov (Federal)', url: 'https://www.gov.br/compras/pt-br' },
+  { id: 'gov_br', label: 'Gov.br (Geral)', url: '' },
+  // DOEs Estaduais
+  { id: 'doe_ac', label: 'DOE Acre', url: 'https://diario.ac.gov.br' },
+  { id: 'doe_al', label: 'DOE Alagoas', url: 'https://imprensaoficialdealagoas.com.br' },
+  { id: 'doe_am', label: 'DOE Amazonas', url: 'https://diario.imprensaoficial.am.gov.br' },
+  { id: 'doe_ap', label: 'DOE Amapá', url: 'https://diariooficial.ap.gov.br' },
+  { id: 'doe_ba', label: 'DOE Bahia', url: 'https://diariooficial.egba.ba.gov.br' },
+  { id: 'doe_ce', label: 'DOE Ceará', url: 'https://doe.seplag.ce.gov.br' },
+  { id: 'dodf', label: 'DODF (Distrito Federal)', url: 'https://dodf.df.gov.br' },
+  { id: 'doe_es', label: 'DOE Espírito Santo', url: 'https://ioes.dio.es.gov.br' },
+  { id: 'doe_go', label: 'DOE Goiás', url: 'https://diariooficial.abc.go.gov.br' },
+  { id: 'doe_ma', label: 'DOE Maranhão', url: 'https://diariooficial.ma.gov.br' },
+  { id: 'doe_mg', label: 'DOE Minas Gerais', url: 'https://iof.mg.gov.br' },
+  { id: 'doe_ms', label: 'DOE Mato Grosso do Sul', url: 'https://diariooficial.ms.gov.br' },
+  { id: 'doe_mt', label: 'DOE Mato Grosso', url: 'https://iomat.mt.gov.br' },
+  { id: 'ioepa', label: 'IOEPA (Pará)', url: 'https://www.ioepa.com.br/portal/' },
+  { id: 'doe_pb', label: 'DOE Paraíba', url: 'https://diariooficial.pb.gov.br' },
+  { id: 'doe_pe', label: 'DOE Pernambuco', url: 'https://cepe.com.br' },
+  { id: 'doe_pi', label: 'DOE Piauí', url: 'https://diariooficial.pi.gov.br' },
+  { id: 'doe_pr', label: 'DOE Paraná', url: 'https://dioe.pr.gov.br' },
+  { id: 'ioerj', label: 'IOERJ (Rio de Janeiro)', url: 'https://ioerj.com.br' },
+  { id: 'doe_rn', label: 'DOE Rio Grande do Norte', url: 'https://diariooficial.rn.gov.br' },
+  { id: 'doe_ro', label: 'DOE Rondônia', url: 'https://diof.ro.gov.br' },
+  { id: 'doe_rr', label: 'DOE Roraima', url: 'https://imprensaoficial.rr.gov.br' },
+  { id: 'doe_rs', label: 'DOE Rio Grande do Sul', url: 'https://diariooficial.rs.gov.br' },
+  { id: 'doe_sc', label: 'DOE Santa Catarina', url: 'https://doe.sea.sc.gov.br' },
+  { id: 'doe_se', label: 'DOE Sergipe', url: 'https://segrase.se.gov.br' },
+  { id: 'doesp', label: 'DOE São Paulo', url: 'https://doe.sp.gov.br' },
+  { id: 'doe_to', label: 'DOE Tocantins', url: 'https://diariooficial.to.gov.br' },
+  // Municipais
+  { id: 'tcmpa', label: 'TCMPA (Municípios PA)', url: 'https://www.tcmpa.tc.br/portalsc/LISTAGEM_GRID/' },
   { id: 'dobelem', label: 'DO Belém', url: 'https://sistemas.belem.pa.gov.br/diario/painel' },
   { id: 'doananindeua', label: 'DO Ananindeua', url: 'https://ananindeua.pa.gov.br/diario_oficial' },
-  { id: 'pncp', label: 'PNCP', url: 'https://pncp.gov.br/app/editais?pagina=1' },
 ];
 
 export default function DiariosOficiaisTab() {
@@ -352,17 +379,29 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
     const matchUf = ufFiltro === 'todos' || a.uf === ufFiltro;
     const matchDataInicio = !dataInicio || (a.data_publicacao && new Date(a.data_publicacao) >= dataInicio);
     const matchDataFim = !dataFim || (a.data_publicacao && new Date(a.data_publicacao) <= new Date(dataFim.getTime() + 86400000));
-    const portalLower = a.portal?.toLowerCase() || '';
-    const matchFonte = fonteFiltro === 'todos' ||
-      (fonteFiltro === 'tcmpa' && portalLower.includes('tcm')) ||
-      (fonteFiltro === 'dou' && portalLower.includes('dou')) ||
-      (fonteFiltro === 'ioepa' && (portalLower.includes('ioepa') || portalLower.includes('doe-pa') || portalLower.includes('pará'))) ||
-      (fonteFiltro === 'doesp' && (portalLower.includes('doe-sp') || portalLower.includes('doesp') || portalLower.includes('são paulo'))) ||
-      (fonteFiltro === 'ioerj' && (portalLower.includes('ioerj') || portalLower.includes('doe-rj') || portalLower.includes('rio de janeiro'))) ||
-      (fonteFiltro === 'dodf' && (portalLower.includes('dodf') || portalLower.includes('doe-df') || portalLower.includes('distrito federal'))) ||
-      (fonteFiltro === 'dobelem' && (portalLower.includes('belém') || portalLower.includes('belem'))) ||
-      (fonteFiltro === 'doananindeua' && portalLower.includes('ananindeua')) ||
-      (fonteFiltro === 'pncp' && portalLower.includes('pncp'));
+    const portalLower = (a.portal || '').toLowerCase();
+    let matchFonte = fonteFiltro === 'todos';
+    if (!matchFonte) {
+      const fonteObj = FONTES_DIARIOS.find(f => f.id === fonteFiltro);
+      if (fonteObj) {
+        const label = fonteObj.label.toLowerCase();
+        // Match by portal name containing the fonte label or key parts
+        matchFonte = portalLower.includes(label.split(' ')[0]) ||
+          portalLower.includes(fonteFiltro.replace('doe_', '')) ||
+          // Specific known mappings
+          (fonteFiltro === 'pncp' && portalLower.includes('pncp')) ||
+          (fonteFiltro === 'dou' && portalLower.includes('dou')) ||
+          (fonteFiltro === 'compras_gov' && portalLower.includes('compras')) ||
+          (fonteFiltro === 'gov_br' && portalLower.includes('gov.br')) ||
+          (fonteFiltro === 'ioepa' && (portalLower.includes('ioepa') || portalLower.includes('pará'))) ||
+          (fonteFiltro === 'ioerj' && (portalLower.includes('ioerj') || portalLower.includes('rio de janeiro'))) ||
+          (fonteFiltro === 'dodf' && (portalLower.includes('dodf') || portalLower.includes('distrito federal'))) ||
+          (fonteFiltro === 'doesp' && (portalLower.includes('doe') && portalLower.includes('são paulo'))) ||
+          (fonteFiltro === 'tcmpa' && portalLower.includes('tcm')) ||
+          (fonteFiltro === 'dobelem' && portalLower.includes('belém')) ||
+          (fonteFiltro === 'doananindeua' && portalLower.includes('ananindeua'));
+      }
+    }
     return matchBusca && matchTipo && matchUf && matchFonte && matchDataInicio && matchDataFim;
   });
 
