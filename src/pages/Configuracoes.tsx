@@ -471,18 +471,21 @@ export default function Configuracoes() {
                 <h2 className="text-sm font-semibold">Notificações</h2>
               </div>
               <div className="space-y-4">
-                {[
-                  { label: 'Novos editais compatíveis', desc: 'Alerta ao detectar licitação com CNAE compatível', default: true },
-                  { label: 'Prazos próximos', desc: 'Aviso 48h antes do encerramento', default: true },
-                  { label: 'Atividade de concorrentes', desc: 'Notificação sobre novos lances de concorrentes monitorados', default: false },
-                  { label: 'Relatórios semanais', desc: 'Resumo por e-mail toda segunda-feira', default: true },
-                ].map((n) => (
-                  <div key={n.label} className="flex items-center justify-between">
+                {([
+                  { key: 'editais_compativeis' as const, label: 'Novos editais compatíveis', desc: 'Alerta ao detectar licitação com CNAE compatível' },
+                  { key: 'prazos_proximos' as const, label: 'Prazos próximos', desc: 'Aviso 48h antes do encerramento' },
+                  { key: 'atividade_concorrentes' as const, label: 'Atividade de concorrentes', desc: 'Notificação sobre novos lances de concorrentes monitorados' },
+                  { key: 'relatorios_semanais' as const, label: 'Relatórios semanais', desc: 'Resumo por e-mail toda segunda-feira' },
+                ]).map((n) => (
+                  <div key={n.key} className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium">{n.label}</p>
                       <p className="text-xs text-muted-foreground">{n.desc}</p>
                     </div>
-                    <Switch defaultChecked={n.default} />
+                    <Switch
+                      checked={notifConfig[n.key]}
+                      onCheckedChange={(v) => setNotifConfig(prev => ({ ...prev, [n.key]: v }))}
+                    />
                   </div>
                 ))}
               </div>
@@ -495,10 +498,24 @@ export default function Configuracoes() {
                 <h2 className="text-sm font-semibold">Portais Monitorados</h2>
               </div>
               <div className="space-y-3">
-                {['Compras Governamentais', 'PNCP', 'BEC/SP', 'Licitações-e (BB)', 'Bolsa Nacional de Compras', 'Banparanet (PA)', 'Compras Públicas RJ', 'BLL Compras', 'Licitanet', 'Portal de Compras Públicas'].map((portal) => (
-                  <div key={portal} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                    <span className="text-sm font-medium">{portal}</span>
-                    <Switch defaultChecked={portal !== 'BEC/SP'} />
+                {([
+                  { key: 'compras_governamentais', label: 'Compras Governamentais' },
+                  { key: 'pncp', label: 'PNCP' },
+                  { key: 'bec_sp', label: 'BEC/SP' },
+                  { key: 'licitacoes_e_bb', label: 'Licitações-e (BB)' },
+                  { key: 'bolsa_nacional', label: 'Bolsa Nacional de Compras' },
+                  { key: 'banparanet_pa', label: 'Banparanet (PA)' },
+                  { key: 'compras_publicas_rj', label: 'Compras Públicas RJ' },
+                  { key: 'bll_compras', label: 'BLL Compras' },
+                  { key: 'licitanet', label: 'Licitanet' },
+                  { key: 'portal_compras_publicas', label: 'Portal de Compras Públicas' },
+                ]).map((p) => (
+                  <div key={p.key} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                    <span className="text-sm font-medium">{p.label}</span>
+                    <Switch
+                      checked={portaisConfig[p.key] ?? false}
+                      onCheckedChange={(v) => setPortaisConfig(prev => ({ ...prev, [p.key]: v }))}
+                    />
                   </div>
                 ))}
               </div>
@@ -511,10 +528,20 @@ export default function Configuracoes() {
                 <h2 className="text-sm font-semibold">Diários Oficiais Monitorados</h2>
               </div>
               <div className="space-y-3">
-                {['DOU (Federal)', 'IOEPA (Estadual)', 'TCMPA (Municípios)', 'DOE/SP', 'IOERJ', 'DODF.e (Distrito Federal)'].map((fonte) => (
-                  <div key={fonte} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                    <span className="text-sm font-medium">{fonte}</span>
-                    <Switch defaultChecked />
+                {([
+                  { key: 'dou_federal', label: 'DOU (Federal)' },
+                  { key: 'ioepa_estadual', label: 'IOEPA (Estadual)' },
+                  { key: 'tcmpa_municipios', label: 'TCMPA (Municípios)' },
+                  { key: 'doe_sp', label: 'DOE/SP' },
+                  { key: 'ioerj', label: 'IOERJ' },
+                  { key: 'dodf_e', label: 'DODF.e (Distrito Federal)' },
+                ]).map((d) => (
+                  <div key={d.key} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                    <span className="text-sm font-medium">{d.label}</span>
+                    <Switch
+                      checked={diariosConfig[d.key] ?? true}
+                      onCheckedChange={(v) => setDiariosConfig(prev => ({ ...prev, [d.key]: v }))}
+                    />
                   </div>
                 ))}
               </div>
