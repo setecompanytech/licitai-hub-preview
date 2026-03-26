@@ -161,7 +161,7 @@ ${truncated}`
       <input
         ref={fileRef}
         type="file"
-        accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.webp"
         className="hidden"
         onChange={handleFileChange}
       />
