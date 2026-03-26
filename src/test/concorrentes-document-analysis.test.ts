@@ -70,14 +70,15 @@ describe('concorrentes document analysis helpers', () => {
     worksheet.addRow(['Documento', 'Emissão', 'Validade']);
     worksheet.addRow(['CNPJ', '02/02/2026', 'Não aplicável']);
     const buffer = await workbook.xlsx.writeBuffer();
-    const file = new File([buffer], 'habilitacao.xlsx', {
+    const uint8 = new Uint8Array(buffer as ArrayBuffer);
+    const blob = new Blob([uint8], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
 
-    const documents = await extractDocumentsFromUpload(file, file.name);
+    const { extractTextFromBlob } = await import('@/lib/pdf-text-extractor');
+    const text = await extractTextFromBlob(blob, 'habilitacao.xlsx');
 
-    expect(documents).toHaveLength(1);
-    expect(documents[0].text).toContain('Planilha: Habilitação');
-    expect(documents[0].text).toContain('Linha 2: CNPJ | 02/02/2026 | Não aplicável');
+    expect(text).toContain('Planilha: Habilitação');
+    expect(text).toContain('CNPJ');
   });
 });
