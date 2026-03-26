@@ -1,0 +1,1 @@
+ALTER TABLE public.portal_healthcheck ADD CONSTRAINT portal_healthcheck_portal_id_key UNIQUE (portal_id);
