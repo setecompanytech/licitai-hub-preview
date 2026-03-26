@@ -255,8 +255,18 @@ async function buscarDOEsFirecrawl(
     if (!doe) return [];
 
     const termos = palavrasChave.slice(0, 3).join(" ");
-    // Google-style search targeting the state's DOE domain + gov.br sites
-    const query = `site:${doe.dominio} OR site:.${uf.toLowerCase()}.gov.br "licitação" OR "pregão" OR "edital" ${termos}`;
+    // Comprehensive Google Alerts-style search across all relevant publication types
+    const termosOficiais = [
+      '"licitação"', '"pregão"', '"edital"', '"aviso de licitação"',
+      '"aviso de cancelamento"', '"aviso de republicação"', '"aviso de suspensão"',
+      '"aviso de revogação"', '"aviso de adiamento"', '"extrato de contrato"',
+      '"extrato de termo aditivo"', '"designação de fiscal"', '"ata de registro de preços"',
+      '"resultado de julgamento"', '"homologação"', '"adjudicação"',
+      '"dispensa de licitação"', '"inexigibilidade"', '"chamamento público"',
+      '"tomada de preços"', '"concorrência pública"', '"errata"', '"retificação"',
+    ];
+    const termosQuery = termosOficiais.slice(0, 8).join(" OR ");
+    const query = `site:${doe.dominio} OR site:.${uf.toLowerCase()}.gov.br ${termosQuery} ${termos}`;
 
     try {
       const resp = await fetch("https://api.firecrawl.dev/v1/search", {
