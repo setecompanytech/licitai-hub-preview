@@ -50,8 +50,21 @@ export default function RepresentanteUploader({ onExtracted }: RepresentanteUplo
     setIsExtracting(true);
     let content = '';
 
-    const text = await file.text();
-    const truncated = text.slice(0, 12000);
+    let truncated = '';
+    try {
+      const fullText = await extractTextFromFile(file);
+      truncated = fullText.slice(0, 12000);
+    } catch {
+      toast.error('Não foi possível ler o arquivo. Tente outro formato.');
+      setIsExtracting(false);
+      return;
+    }
+
+    if (truncated.length < 20) {
+      toast.error('Nenhum texto legível encontrado no documento. Tente enviar uma imagem (JPG/PNG) do documento.');
+      setIsExtracting(false);
+      return;
+    }
 
     await streamAIChat({
       messages: [{
