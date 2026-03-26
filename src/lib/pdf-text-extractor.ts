@@ -5,7 +5,7 @@
 import ExcelJS from 'exceljs';
 
 const DEFAULT_MAX_PAGES = 150;
-const PDF_VISION_PAGE_LIMIT = 2;
+const PDF_VISION_PAGE_LIMIT = 5;
 const SPREADSHEET_SHEET_LIMIT = 4;
 const SPREADSHEET_ROW_LIMIT = 80;
 const SPREADSHEET_COL_LIMIT = 16;
@@ -178,9 +178,9 @@ async function renderPdfPagesToVisionInputs(pdf: any, pagesToRender: number): Pr
 
   for (let i = 1; i <= pagesToRender; i += 1) {
     const page = await pdf.getPage(i);
-    const previewViewport = page.getViewport({ scale: 1.5 });
-    const scaleFactor = previewViewport.width > 1600 ? 1600 / previewViewport.width : 1;
-    const viewport = page.getViewport({ scale: 1.5 * scaleFactor });
+    const previewViewport = page.getViewport({ scale: 2.2 });
+    const scaleFactor = previewViewport.width > 1800 ? 1800 / previewViewport.width : 1;
+    const viewport = page.getViewport({ scale: 2.2 * scaleFactor });
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
 
