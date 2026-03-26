@@ -1267,12 +1267,15 @@ export type Database = {
           alerta_whatsapp: boolean | null
           cnaes_monitorados: string[] | null
           created_at: string
+          diarios_monitorados: Json | null
           id: string
           municipio_sede: string | null
           municipios_interesse: string[] | null
+          notificacoes_config: Json | null
           notificacoes_email: boolean | null
           notificacoes_push: boolean | null
           palavras_chave: string[] | null
+          portais_monitorados: Json | null
           priorizar_regiao_sede: boolean | null
           segmentos_prioridade: string[] | null
           uf_sede: string | null
@@ -1288,12 +1291,15 @@ export type Database = {
           alerta_whatsapp?: boolean | null
           cnaes_monitorados?: string[] | null
           created_at?: string
+          diarios_monitorados?: Json | null
           id?: string
           municipio_sede?: string | null
           municipios_interesse?: string[] | null
+          notificacoes_config?: Json | null
           notificacoes_email?: boolean | null
           notificacoes_push?: boolean | null
           palavras_chave?: string[] | null
+          portais_monitorados?: Json | null
           priorizar_regiao_sede?: boolean | null
           segmentos_prioridade?: string[] | null
           uf_sede?: string | null
@@ -1309,12 +1315,15 @@ export type Database = {
           alerta_whatsapp?: boolean | null
           cnaes_monitorados?: string[] | null
           created_at?: string
+          diarios_monitorados?: Json | null
           id?: string
           municipio_sede?: string | null
           municipios_interesse?: string[] | null
+          notificacoes_config?: Json | null
           notificacoes_email?: boolean | null
           notificacoes_push?: boolean | null
           palavras_chave?: string[] | null
+          portais_monitorados?: Json | null
           priorizar_regiao_sede?: boolean | null
           segmentos_prioridade?: string[] | null
           uf_sede?: string | null

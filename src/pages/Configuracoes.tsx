@@ -17,6 +17,7 @@ import AnaliseCNPJAdicional from '@/components/configuracoes/AnaliseCNPJAdiciona
 import RepresentanteUploader, { type ExtractedRepresentanteData } from '@/components/configuracoes/RepresentanteUploader';
 import TimbradoUploader from '@/components/proposta/TimbradoUploader';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import ExportarDados from '@/components/export/ExportarDados';
@@ -55,11 +56,39 @@ export default function Configuracoes() {
   const [repNaturalidade, setRepNaturalidade] = useState('');
   const [repNacionalidade, setRepNacionalidade] = useState('Brasileira');
 
+  // Notification & portal preferences
+  const [notifConfig, setNotifConfig] = useState({
+    editais_compativeis: true, prazos_proximos: true,
+    atividade_concorrentes: false, relatorios_semanais: true,
+  });
+  const [portaisConfig, setPortaisConfig] = useState<Record<string, boolean>>({
+    compras_governamentais: true, pncp: true, bec_sp: false,
+    licitacoes_e_bb: true, bolsa_nacional: true, banparanet_pa: true,
+    compras_publicas_rj: true, bll_compras: true, licitanet: true,
+    portal_compras_publicas: true,
+  });
+  const [diariosConfig, setDiariosConfig] = useState<Record<string, boolean>>({
+    dou_federal: true, ioepa_estadual: true, tcmpa_municipios: true,
+    doe_sp: true, ioerj: true, dodf_e: true,
+  });
+
   // Loading states
   const [loadingCnpj, setLoadingCnpj] = useState(false);
   const [loadingSintegra, setLoadingSintegra] = useState(false);
   const [loadingSalvar, setLoadingSalvar] = useState(false);
   const [erroCnpj, setErroCnpj] = useState('');
+
+  // Load saved notification/portal config
+  const { user } = useAuth();
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('configuracoes').select('notificacoes_config, portais_monitorados, diarios_monitorados')
+      .eq('user_id', user.id).maybeSingle().then(({ data }) => {
+        if (data?.notificacoes_config) setNotifConfig(data.notificacoes_config as any);
+        if (data?.portais_monitorados) setPortaisConfig(data.portais_monitorados as any);
+        if (data?.diarios_monitorados) setDiariosConfig(data.diarios_monitorados as any);
+      });
+  }, [user]);
 
   useEffect(() => {
     if (empresaAtiva) {
@@ -123,6 +152,27 @@ export default function Configuracoes() {
         } as any)
         .eq('id', empresaAtiva.id);
       if (error) throw error;
+
+      // Save notification/portal/diário preferences
+      if (user) {
+        const prefPayload = {
+          user_id: user.id,
+          notificacoes_config: notifConfig as any,
+          portais_monitorados: portaisConfig as any,
+          diarios_monitorados: diariosConfig as any,
+        };
+        const { data: existing } = await supabase
+          .from('configuracoes')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (existing) {
+          await supabase.from('configuracoes').update(prefPayload as any).eq('user_id', user.id);
+        } else {
+          await supabase.from('configuracoes').insert(prefPayload as any);
+        }
+      }
+
       await reloadEmpresas();
       toast.success('Configurações salvas com sucesso!');
     } catch (e: any) {
@@ -421,18 +471,21 @@ export default function Configuracoes() {
                 <h2 className="text-sm font-semibold">Notificações</h2>
               </div>
               <div className="space-y-4">
-                {[
-                  { label: 'Novos editais compatíveis', desc: 'Alerta ao detectar licitação com CNAE compatível', default: true },
-                  { label: 'Prazos próximos', desc: 'Aviso 48h antes do encerramento', default: true },
-                  { label: 'Atividade de concorrentes', desc: 'Notificação sobre novos lances de concorrentes monitorados', default: false },
-                  { label: 'Relatórios semanais', desc: 'Resumo por e-mail toda segunda-feira', default: true },
-                ].map((n) => (
-                  <div key={n.label} className="flex items-center justify-between">
+                {([
+                  { key: 'editais_compativeis' as const, label: 'Novos editais compatíveis', desc: 'Alerta ao detectar licitação com CNAE compatível' },
+                  { key: 'prazos_proximos' as const, label: 'Prazos próximos', desc: 'Aviso 48h antes do encerramento' },
+                  { key: 'atividade_concorrentes' as const, label: 'Atividade de concorrentes', desc: 'Notificação sobre novos lances de concorrentes monitorados' },
+                  { key: 'relatorios_semanais' as const, label: 'Relatórios semanais', desc: 'Resumo por e-mail toda segunda-feira' },
+                ]).map((n) => (
+                  <div key={n.key} className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium">{n.label}</p>
                       <p className="text-xs text-muted-foreground">{n.desc}</p>
                     </div>
-                    <Switch defaultChecked={n.default} />
+                    <Switch
+                      checked={notifConfig[n.key]}
+                      onCheckedChange={(v) => setNotifConfig(prev => ({ ...prev, [n.key]: v }))}
+                    />
                   </div>
                 ))}
               </div>
@@ -445,10 +498,24 @@ export default function Configuracoes() {
                 <h2 className="text-sm font-semibold">Portais Monitorados</h2>
               </div>
               <div className="space-y-3">
-                {['Compras Governamentais', 'PNCP', 'BEC/SP', 'Licitações-e (BB)', 'Bolsa Nacional de Compras', 'Banparanet (PA)', 'Compras Públicas RJ', 'BLL Compras', 'Licitanet', 'Portal de Compras Públicas'].map((portal) => (
-                  <div key={portal} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                    <span className="text-sm font-medium">{portal}</span>
-                    <Switch defaultChecked={portal !== 'BEC/SP'} />
+                {([
+                  { key: 'compras_governamentais', label: 'Compras Governamentais' },
+                  { key: 'pncp', label: 'PNCP' },
+                  { key: 'bec_sp', label: 'BEC/SP' },
+                  { key: 'licitacoes_e_bb', label: 'Licitações-e (BB)' },
+                  { key: 'bolsa_nacional', label: 'Bolsa Nacional de Compras' },
+                  { key: 'banparanet_pa', label: 'Banparanet (PA)' },
+                  { key: 'compras_publicas_rj', label: 'Compras Públicas RJ' },
+                  { key: 'bll_compras', label: 'BLL Compras' },
+                  { key: 'licitanet', label: 'Licitanet' },
+                  { key: 'portal_compras_publicas', label: 'Portal de Compras Públicas' },
+                ]).map((p) => (
+                  <div key={p.key} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                    <span className="text-sm font-medium">{p.label}</span>
+                    <Switch
+                      checked={portaisConfig[p.key] ?? false}
+                      onCheckedChange={(v) => setPortaisConfig(prev => ({ ...prev, [p.key]: v }))}
+                    />
                   </div>
                 ))}
               </div>
@@ -461,10 +528,20 @@ export default function Configuracoes() {
                 <h2 className="text-sm font-semibold">Diários Oficiais Monitorados</h2>
               </div>
               <div className="space-y-3">
-                {['DOU (Federal)', 'IOEPA (Estadual)', 'TCMPA (Municípios)', 'DOE/SP', 'IOERJ', 'DODF.e (Distrito Federal)'].map((fonte) => (
-                  <div key={fonte} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                    <span className="text-sm font-medium">{fonte}</span>
-                    <Switch defaultChecked />
+                {([
+                  { key: 'dou_federal', label: 'DOU (Federal)' },
+                  { key: 'ioepa_estadual', label: 'IOEPA (Estadual)' },
+                  { key: 'tcmpa_municipios', label: 'TCMPA (Municípios)' },
+                  { key: 'doe_sp', label: 'DOE/SP' },
+                  { key: 'ioerj', label: 'IOERJ' },
+                  { key: 'dodf_e', label: 'DODF.e (Distrito Federal)' },
+                ]).map((d) => (
+                  <div key={d.key} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                    <span className="text-sm font-medium">{d.label}</span>
+                    <Switch
+                      checked={diariosConfig[d.key] ?? true}
+                      onCheckedChange={(v) => setDiariosConfig(prev => ({ ...prev, [d.key]: v }))}
+                    />
                   </div>
                 ))}
               </div>
