@@ -145,7 +145,7 @@ export default function CnaesSecundarios() {
     const payload = nextCnaes.map(buildCnaeLabel);
     const { error } = await supabase
       .from('empresas')
-      .update({ cnaes_secundarios: payload })
+      .update({ cnaes_secundarios: payload } as any)
       .eq('id', empresaAtiva.id);
 
     if (error) {
