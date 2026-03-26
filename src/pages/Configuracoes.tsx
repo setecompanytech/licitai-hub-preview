@@ -55,11 +55,39 @@ export default function Configuracoes() {
   const [repNaturalidade, setRepNaturalidade] = useState('');
   const [repNacionalidade, setRepNacionalidade] = useState('Brasileira');
 
+  // Notification & portal preferences
+  const [notifConfig, setNotifConfig] = useState({
+    editais_compativeis: true, prazos_proximos: true,
+    atividade_concorrentes: false, relatorios_semanais: true,
+  });
+  const [portaisConfig, setPortaisConfig] = useState<Record<string, boolean>>({
+    compras_governamentais: true, pncp: true, bec_sp: false,
+    licitacoes_e_bb: true, bolsa_nacional: true, banparanet_pa: true,
+    compras_publicas_rj: true, bll_compras: true, licitanet: true,
+    portal_compras_publicas: true,
+  });
+  const [diariosConfig, setDiariosConfig] = useState<Record<string, boolean>>({
+    dou_federal: true, ioepa_estadual: true, tcmpa_municipios: true,
+    doe_sp: true, ioerj: true, dodf_e: true,
+  });
+
   // Loading states
   const [loadingCnpj, setLoadingCnpj] = useState(false);
   const [loadingSintegra, setLoadingSintegra] = useState(false);
   const [loadingSalvar, setLoadingSalvar] = useState(false);
   const [erroCnpj, setErroCnpj] = useState('');
+
+  // Load saved notification/portal config
+  const { user } = useAuth();
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('configuracoes').select('notificacoes_config, portais_monitorados, diarios_monitorados')
+      .eq('user_id', user.id).maybeSingle().then(({ data }) => {
+        if (data?.notificacoes_config) setNotifConfig(data.notificacoes_config as any);
+        if (data?.portais_monitorados) setPortaisConfig(data.portais_monitorados as any);
+        if (data?.diarios_monitorados) setDiariosConfig(data.diarios_monitorados as any);
+      });
+  }, [user]);
 
   useEffect(() => {
     if (empresaAtiva) {
