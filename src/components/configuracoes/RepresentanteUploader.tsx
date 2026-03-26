@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Upload, FileText, Loader2, X, CheckCircle, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
+import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 
 export interface ExtractedRepresentanteData {
   repNome?: string;
