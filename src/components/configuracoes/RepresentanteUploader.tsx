@@ -170,6 +170,12 @@ export default function RepresentanteUploader({ onExtracted }: RepresentanteUplo
     }
   };
 
+  const handleRemove = () => {
+    setFile(null);
+    setExtracted(false);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
   return (
     <div className="space-y-3">
       {file ? (
