@@ -16,6 +16,7 @@ type Empresa = {
   razao_social: string;
   nome_fantasia: string | null;
   cnae_principal: string | null;
+  cnaes_secundarios?: string[] | null;
   uf: string | null;
   municipio: string | null;
   endereco?: string | null;
@@ -51,6 +52,7 @@ export default function EditEmpresaDialog({ empresa, open, onOpenChange, onSucce
   const [regimeTributario, setRegimeTributario] = useState('');
   const [inscricaoEstadual, setInscricaoEstadual] = useState('');
   const [inscricaoMunicipal, setInscricaoMunicipal] = useState('');
+  const [cnaesSecundarios, setCnaesSecundarios] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [buscando, setBuscando] = useState(false);
   const [timbradoUrl, setTimbradoUrl] = useState<string | null>(null);
@@ -71,6 +73,7 @@ export default function EditEmpresaDialog({ empresa, open, onOpenChange, onSucce
       setRegimeTributario(empresa.regime_tributario || '');
       setInscricaoEstadual(empresa.inscricao_estadual || '');
       setInscricaoMunicipal(empresa.inscricao_municipal || '');
+      setCnaesSecundarios(empresa.cnaes_secundarios || []);
     }
   }, [empresa]);
 
@@ -99,6 +102,7 @@ export default function EditEmpresaDialog({ empresa, open, onOpenChange, onSucce
       setTelefone(data.telefone || telefone);
       if (data.email && data.email.trim()) setEmail(data.email.trim());
       if (data.inscricaoEstadual) setInscricaoEstadual(data.inscricaoEstadual);
+      setCnaesSecundarios(Array.isArray(data.cnaesSecundarios) ? data.cnaesSecundarios : []);
       if (data.simples) setRegimeTributario('simples_nacional');
       
       const sources = ['Receita Federal'];
@@ -142,6 +146,7 @@ export default function EditEmpresaDialog({ empresa, open, onOpenChange, onSucce
           razao_social: razaoSocial.trim(),
           nome_fantasia: nomeFantasia.trim() || null,
           cnae_principal: cnaePrincipal.trim() || null,
+          cnaes_secundarios: cnaesSecundarios,
           uf: uf.trim() || null,
           municipio: municipio.trim() || null,
           endereco: endereco.trim() || null,
