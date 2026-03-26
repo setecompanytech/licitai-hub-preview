@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 
+type JsonRecord = Record<string, unknown>;
+
 export interface ExtractedRepresentanteData {
   repNome?: string;
   repCpf?: string;
@@ -17,6 +19,60 @@ export interface ExtractedRepresentanteData {
 
 interface RepresentanteUploaderProps {
   onExtracted: (data: ExtractedRepresentanteData) => void;
+}
+
+function extractFirstJsonObject(content: string): JsonRecord | null {
+  const fencedMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fencedMatch?.[1] ?? content;
+  const trimmed = candidate.trim();
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as JsonRecord : null;
+  } catch {
+    const jsonMatch = candidate.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as JsonRecord : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
+function readStringField(source: JsonRecord, keys: string[]) {
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim().replace(/^['"]|['"]$/g, '');
+    }
+  }
+
+  return '';
+}
+
+function formatCpf(value: string) {
+  const digits = value.replace(/\D/g, '');
+  if (digits.length !== 11) return value.trim();
+  return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+}
+
+function normalizeRepresentanteData(raw: JsonRecord): ExtractedRepresentanteData {
+  return {
+    repNome: readStringField(raw, ['repNome', 'nome', 'representante', 'nomeRepresentante']),
+    repCpf: formatCpf(readStringField(raw, ['repCpf', 'cpf', 'cpfRepresentante'])),
+    repRg: readStringField(raw, ['repRg', 'rg', 'rgRepresentante', 'numeroRg']),
+    repOrgaoExp: readStringField(raw, ['repOrgaoExp', 'repOrgaoExpedidor', 'orgaoExpedidor', 'orgao_expedidor']),
+    repCargo: readStringField(raw, ['repCargo', 'cargo', 'funcao', 'qualificacao']),
+    repNaturalidade: readStringField(raw, ['repNaturalidade', 'naturalidade', 'cidadeNascimento']),
+    repNacionalidade: readStringField(raw, ['repNacionalidade', 'nacionalidade']),
+  };
+}
+
+function hasExtractedValues(data: ExtractedRepresentanteData) {
+  return Object.values(data).some((value) => typeof value === 'string' && value.trim().length > 0);
 }
 
 export default function RepresentanteUploader({ onExtracted }: RepresentanteUploaderProps) {
@@ -69,38 +125,24 @@ export default function RepresentanteUploader({ onExtracted }: RepresentanteUplo
     await streamAIChat({
       messages: [{
         role: 'user',
-        content: `Analise o documento a seguir (contrato social, procuração, ato constitutivo, RG, CPF ou outro documento de identificação) e extraia os dados do representante legal / sócio-administrador em formato JSON com os campos:
-{
-  "repNome": "nome completo do representante legal / sócio-administrador",
-  "repCpf": "CPF do representante (formato: 000.000.000-00)",
-  "repRg": "número do RG do representante",
-  "repOrgaoExp": "órgão expedidor do RG (ex: SSP/PA, SSP/SP)",
-  "repCargo": "cargo ou função na empresa (ex: Sócio-Administrador, Diretor, Procurador)",
-  "repNaturalidade": "cidade e estado de nascimento (ex: Belém/PA)",
-  "repNacionalidade": "nacionalidade (ex: Brasileira)"
-}
-
-INSTRUÇÕES:
-- Extraia SOMENTE os campos que encontrar claramente no documento.
-- Para campos não encontrados, use string vazia "".
-- Se houver mais de um sócio, extraia os dados do sócio-administrador ou representante legal principal.
-- Retorne APENAS o JSON, sem explicações, sem markdown, sem crases.
-
-DOCUMENTO:
-${truncated}`
+        content: `ARQUIVO: ${file.name}\n\nDOCUMENTO EXTRAÍDO:\n${truncated}`
       }],
-      action: 'analise_edital',
+      action: 'extracao_representante',
       onDelta: (chunk) => { content += chunk; },
       onDone: () => {
         try {
-          const jsonMatch = content.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const data = JSON.parse(jsonMatch[0]) as ExtractedRepresentanteData;
-            onExtracted(data);
-            setExtracted(true);
-            toast.success('Dados do representante extraídos com sucesso!');
-          } else {
+          const parsed = extractFirstJsonObject(content);
+          if (!parsed) {
             toast.error('Não foi possível extrair dados do documento.');
+          } else {
+            const data = normalizeRepresentanteData(parsed);
+            if (!hasExtractedValues(data)) {
+              toast.error('Não foi possível identificar dados confiáveis no documento enviado.');
+            } else {
+              onExtracted(data);
+              setExtracted(true);
+              toast.success('Dados do representante extraídos com sucesso!');
+            }
           }
         } catch {
           toast.error('Erro ao processar dados do documento.');
