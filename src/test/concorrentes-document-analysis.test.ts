@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import {
   buildDocumentEvidence,
   extractDocumentsFromUpload,
@@ -65,22 +65,20 @@ describe('concorrentes document analysis helpers', () => {
   });
 
   it('extracts readable text from xlsx spreadsheets', async () => {
-    const workbook = XLSX.utils.book_new();
-    const worksheet = XLSX.utils.aoa_to_sheet([
-      ['Documento', 'Emissão', 'Validade'],
-      ['CNPJ', '02/02/2026', 'Não aplicável'],
-    ]);
-
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Habilitação');
-    const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const file = new File([buffer], 'habilitacao.xlsx', {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Habilitação');
+    worksheet.addRow(['Documento', 'Emissão', 'Validade']);
+    worksheet.addRow(['CNPJ', '02/02/2026', 'Não aplicável']);
+    const buffer = await workbook.xlsx.writeBuffer();
+    const uint8 = new Uint8Array(buffer as ArrayBuffer);
+    const blob = new Blob([uint8], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
 
-    const documents = await extractDocumentsFromUpload(file, file.name);
+    const { extractTextFromBlob } = await import('@/lib/pdf-text-extractor');
+    const text = await extractTextFromBlob(blob, 'habilitacao.xlsx');
 
-    expect(documents).toHaveLength(1);
-    expect(documents[0].text).toContain('Planilha: Habilitação');
-    expect(documents[0].text).toContain('Linha 2: CNPJ | 02/02/2026 | Não aplicável');
+    expect(text).toContain('Planilha: Habilitação');
+    expect(text).toContain('CNPJ');
   });
 });

@@ -2,7 +2,7 @@
  * Extracts readable text from files/blobs (PDF, DOC, DOCX, TXT).
  * Keeps more of the original line structure to improve edital item extraction fidelity.
  */
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 const DEFAULT_MAX_PAGES = 150;
 const PDF_VISION_PAGE_LIMIT = 2;
@@ -207,35 +207,29 @@ async function extractTextFromImageBlob(blob: Blob, fileName: string): Promise<s
 }
 
 async function extractTextFromSpreadsheetArrayBuffer(arrayBuffer: ArrayBuffer, fileName: string): Promise<string> {
-  const workbook = XLSX.read(new Uint8Array(arrayBuffer), {
-    type: 'array',
-    cellDates: true,
-    dense: false,
-  });
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(arrayBuffer);
 
-  const sheetBlocks = workbook.SheetNames.slice(0, SPREADSHEET_SHEET_LIMIT)
-    .map((sheetName) => {
-      const sheet = workbook.Sheets[sheetName];
-      if (!sheet) return '';
+  const sheetBlocks = workbook.worksheets.slice(0, SPREADSHEET_SHEET_LIMIT)
+    .map((ws) => {
+      if (!ws || ws.rowCount === 0) return '';
 
-      const rows = XLSX.utils.sheet_to_json(sheet, {
-        header: 1,
-        raw: false,
-        defval: '',
-      }) as unknown[][];
-
-      const normalizedRows = rows
-        .slice(0, SPREADSHEET_ROW_LIMIT)
-        .map((row) => row
-          .slice(0, SPREADSHEET_COL_LIMIT)
-          .map(formatSpreadsheetCell)
-          .filter((cell) => cell.length > 0))
-        .filter((row) => row.length > 0);
+      const normalizedRows: string[][] = [];
+      ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+        if (rowNumber > SPREADSHEET_ROW_LIMIT) return;
+        const cells: string[] = [];
+        for (let c = 1; c <= Math.min(row.cellCount, SPREADSHEET_COL_LIMIT); c++) {
+          const val = row.getCell(c).value;
+          const formatted = formatSpreadsheetCell(val);
+          if (formatted.length > 0) cells.push(formatted);
+        }
+        if (cells.length > 0) normalizedRows.push(cells);
+      });
 
       if (normalizedRows.length === 0) return '';
 
       return [
-        `Planilha: ${sheetName}`,
+        `Planilha: ${ws.name}`,
         ...normalizedRows.map((row, index) => `Linha ${index + 1}: ${row.join(' | ')}`),
       ].join('\n');
     })
