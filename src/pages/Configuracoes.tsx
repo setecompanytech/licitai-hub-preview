@@ -152,6 +152,27 @@ export default function Configuracoes() {
         } as any)
         .eq('id', empresaAtiva.id);
       if (error) throw error;
+
+      // Save notification/portal/diário preferences
+      if (user) {
+        const prefPayload = {
+          user_id: user.id,
+          notificacoes_config: notifConfig as any,
+          portais_monitorados: portaisConfig as any,
+          diarios_monitorados: diariosConfig as any,
+        };
+        const { data: existing } = await supabase
+          .from('configuracoes')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (existing) {
+          await supabase.from('configuracoes').update(prefPayload as any).eq('user_id', user.id);
+        } else {
+          await supabase.from('configuracoes').insert(prefPayload as any);
+        }
+      }
+
       await reloadEmpresas();
       toast.success('Configurações salvas com sucesso!');
     } catch (e: any) {
