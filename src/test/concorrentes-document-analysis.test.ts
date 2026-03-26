@@ -65,14 +65,11 @@ describe('concorrentes document analysis helpers', () => {
   });
 
   it('extracts readable text from xlsx spreadsheets', async () => {
-    const workbook = XLSX.utils.book_new();
-    const worksheet = XLSX.utils.aoa_to_sheet([
-      ['Documento', 'Emissão', 'Validade'],
-      ['CNPJ', '02/02/2026', 'Não aplicável'],
-    ]);
-
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Habilitação');
-    const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Habilitação');
+    worksheet.addRow(['Documento', 'Emissão', 'Validade']);
+    worksheet.addRow(['CNPJ', '02/02/2026', 'Não aplicável']);
+    const buffer = await workbook.xlsx.writeBuffer();
     const file = new File([buffer], 'habilitacao.xlsx', {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
