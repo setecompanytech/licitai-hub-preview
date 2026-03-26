@@ -545,7 +545,7 @@ const ACTION_MODELS: Record<string, string> = {
   analise_documental_concorrente: "google/gemini-2.5-flash",
   analise_edital: "google/gemini-2.5-flash",
   analise_peticao: "google/gemini-2.5-flash",
-  extracao_representante: "google/gemini-2.5-pro",
+  extracao_representante: "google/gemini-2.5-flash",
   gerador_juridico: "google/gemini-2.5-flash",
   composicao_custo: "google/gemini-2.5-flash",
 };
