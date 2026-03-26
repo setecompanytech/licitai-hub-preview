@@ -2,7 +2,7 @@
  * Extracts readable text from files/blobs (PDF, DOC, DOCX, TXT).
  * Keeps more of the original line structure to improve edital item extraction fidelity.
  */
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 const DEFAULT_MAX_PAGES = 150;
 const PDF_VISION_PAGE_LIMIT = 2;
