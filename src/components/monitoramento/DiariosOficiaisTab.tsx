@@ -379,17 +379,29 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
     const matchUf = ufFiltro === 'todos' || a.uf === ufFiltro;
     const matchDataInicio = !dataInicio || (a.data_publicacao && new Date(a.data_publicacao) >= dataInicio);
     const matchDataFim = !dataFim || (a.data_publicacao && new Date(a.data_publicacao) <= new Date(dataFim.getTime() + 86400000));
-    const portalLower = a.portal?.toLowerCase() || '';
-    const matchFonte = fonteFiltro === 'todos' ||
-      (fonteFiltro === 'tcmpa' && portalLower.includes('tcm')) ||
-      (fonteFiltro === 'dou' && portalLower.includes('dou')) ||
-      (fonteFiltro === 'ioepa' && (portalLower.includes('ioepa') || portalLower.includes('doe-pa') || portalLower.includes('pará'))) ||
-      (fonteFiltro === 'doesp' && (portalLower.includes('doe-sp') || portalLower.includes('doesp') || portalLower.includes('são paulo'))) ||
-      (fonteFiltro === 'ioerj' && (portalLower.includes('ioerj') || portalLower.includes('doe-rj') || portalLower.includes('rio de janeiro'))) ||
-      (fonteFiltro === 'dodf' && (portalLower.includes('dodf') || portalLower.includes('doe-df') || portalLower.includes('distrito federal'))) ||
-      (fonteFiltro === 'dobelem' && (portalLower.includes('belém') || portalLower.includes('belem'))) ||
-      (fonteFiltro === 'doananindeua' && portalLower.includes('ananindeua')) ||
-      (fonteFiltro === 'pncp' && portalLower.includes('pncp'));
+    const portalLower = (a.portal || '').toLowerCase();
+    let matchFonte = fonteFiltro === 'todos';
+    if (!matchFonte) {
+      const fonteObj = FONTES_DIARIOS.find(f => f.id === fonteFiltro);
+      if (fonteObj) {
+        const label = fonteObj.label.toLowerCase();
+        // Match by portal name containing the fonte label or key parts
+        matchFonte = portalLower.includes(label.split(' ')[0]) ||
+          portalLower.includes(fonteFiltro.replace('doe_', '')) ||
+          // Specific known mappings
+          (fonteFiltro === 'pncp' && portalLower.includes('pncp')) ||
+          (fonteFiltro === 'dou' && portalLower.includes('dou')) ||
+          (fonteFiltro === 'compras_gov' && portalLower.includes('compras')) ||
+          (fonteFiltro === 'gov_br' && portalLower.includes('gov.br')) ||
+          (fonteFiltro === 'ioepa' && (portalLower.includes('ioepa') || portalLower.includes('pará'))) ||
+          (fonteFiltro === 'ioerj' && (portalLower.includes('ioerj') || portalLower.includes('rio de janeiro'))) ||
+          (fonteFiltro === 'dodf' && (portalLower.includes('dodf') || portalLower.includes('distrito federal'))) ||
+          (fonteFiltro === 'doesp' && (portalLower.includes('doe') && portalLower.includes('são paulo'))) ||
+          (fonteFiltro === 'tcmpa' && portalLower.includes('tcm')) ||
+          (fonteFiltro === 'dobelem' && portalLower.includes('belém')) ||
+          (fonteFiltro === 'doananindeua' && portalLower.includes('ananindeua'));
+      }
+    }
     return matchBusca && matchTipo && matchUf && matchFonte && matchDataInicio && matchDataFim;
   });
 
