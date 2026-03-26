@@ -17,6 +17,7 @@ import AnaliseCNPJAdicional from '@/components/configuracoes/AnaliseCNPJAdiciona
 import RepresentanteUploader, { type ExtractedRepresentanteData } from '@/components/configuracoes/RepresentanteUploader';
 import TimbradoUploader from '@/components/proposta/TimbradoUploader';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import ExportarDados from '@/components/export/ExportarDados';
