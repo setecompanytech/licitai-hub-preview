@@ -86,12 +86,11 @@ Deno.serve(async (req) => {
                 type: 'text',
                 text: `Arquivo: ${fileName}. Extraia o texto visível com fidelidade literal.`,
               },
-              ...sanitizedImages.map((image: VisionImage, index: number) => ({
+              ...sanitizedImages.map((image: VisionImage) => ({
                 type: 'image_url',
                 image_url: {
                   url: image.dataUrl,
                 },
-                name: image.name || `imagem-${index + 1}`,
               })),
             ],
           },
