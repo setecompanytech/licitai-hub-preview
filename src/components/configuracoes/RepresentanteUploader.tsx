@@ -3,79 +3,21 @@ import { Button } from '@/components/ui/button';
 import { Upload, FileText, Loader2, X, CheckCircle, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-
-type JsonRecord = Record<string, unknown>;
+import {
+  extractFirstJsonObject,
+  hasCoreRepresentanteValues,
+  normalizeRepresentanteData,
+  type ExtractedRepresentanteData,
+} from './representante-extraction';
 
 const PDF_VISION_PAGE_LIMIT = 5;
 const PDF_RENDER_SCALE = 2.2;
 const PDF_MAX_RENDER_WIDTH = 1800;
 
-export interface ExtractedRepresentanteData {
-  repNome?: string;
-  repCpf?: string;
-  repRg?: string;
-  repOrgaoExp?: string;
-  repCargo?: string;
-  repNaturalidade?: string;
-  repNacionalidade?: string;
-}
+export type { ExtractedRepresentanteData } from './representante-extraction';
 
 interface RepresentanteUploaderProps {
   onExtracted: (data: ExtractedRepresentanteData) => void;
-}
-
-function extractFirstJsonObject(content: string): JsonRecord | null {
-  const fencedMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidate = fencedMatch?.[1] ?? content;
-  const trimmed = candidate.trim();
-
-  try {
-    const parsed = JSON.parse(trimmed);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as JsonRecord : null;
-  } catch {
-    const jsonMatch = candidate.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-
-    try {
-      const parsed = JSON.parse(jsonMatch[0]);
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as JsonRecord : null;
-    } catch {
-      return null;
-    }
-  }
-}
-
-function readStringField(source: JsonRecord, keys: string[]) {
-  for (const key of keys) {
-    const value = source[key];
-    if (typeof value === 'string' && value.trim()) {
-      return value.trim().replace(/^['"]|['"]$/g, '');
-    }
-  }
-
-  return '';
-}
-
-function formatCpf(value: string) {
-  const digits = value.replace(/\D/g, '');
-  if (digits.length !== 11) return value.trim();
-  return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-}
-
-function normalizeRepresentanteData(raw: JsonRecord): ExtractedRepresentanteData {
-  return {
-    repNome: readStringField(raw, ['repNome', 'nome', 'representante', 'nomeRepresentante']),
-    repCpf: formatCpf(readStringField(raw, ['repCpf', 'cpf', 'cpfRepresentante'])),
-    repRg: readStringField(raw, ['repRg', 'rg', 'rgRepresentante', 'numeroRg']),
-    repOrgaoExp: readStringField(raw, ['repOrgaoExp', 'repOrgaoExpedidor', 'orgaoExpedidor', 'orgao_expedidor']),
-    repCargo: readStringField(raw, ['repCargo', 'cargo', 'funcao', 'qualificacao']),
-    repNaturalidade: readStringField(raw, ['repNaturalidade', 'naturalidade', 'cidadeNascimento']),
-    repNacionalidade: readStringField(raw, ['repNacionalidade', 'nacionalidade']),
-  };
-}
-
-function hasCoreRepresentanteValues(data: ExtractedRepresentanteData) {
-  return [data.repNome, data.repCpf, data.repRg].some((value) => typeof value === 'string' && value.trim().length > 0);
 }
 
 export default function RepresentanteUploader({ onExtracted }: RepresentanteUploaderProps) {
@@ -121,17 +63,12 @@ export default function RepresentanteUploader({ onExtracted }: RepresentanteUplo
         const dataUrl = await fileToDataUrl(file);
         images = [{ name: file.name, dataUrl }];
       } else if (isPdf) {
-        // Render PDF pages to images for direct Vision analysis
+        // Render PDF pages to images and also send extracted text as support context
         images = await renderPdfToImages(file);
-        if (images.length === 0) {
-          // Fallback to text extraction
-          const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
-          text = (await extractTextFromFile(file)).slice(0, 12000);
-        }
+        text = await extractDocumentText(file);
       } else {
         // Text-based documents (DOCX, TXT, etc.)
-        const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
-        text = (await extractTextFromFile(file)).slice(0, 12000);
+        text = await extractDocumentText(file);
       }
 
       if (images.length === 0 && text.length < 20) {
@@ -227,6 +164,16 @@ export default function RepresentanteUploader({ onExtracted }: RepresentanteUplo
       />
     </div>
   );
+}
+
+async function extractDocumentText(file: File): Promise<string> {
+  try {
+    const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
+    return (await extractTextFromFile(file)).slice(0, 12000);
+  } catch (error) {
+    console.error('Text extraction error:', error);
+    return '';
+  }
 }
 
 function fileToDataUrl(file: File): Promise<string> {

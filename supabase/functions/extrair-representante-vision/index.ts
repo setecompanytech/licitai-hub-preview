@@ -3,7 +3,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const SYSTEM_PROMPT = `Você é um extrator técnico de dados cadastrais brasileiros. Analise a IMAGEM do documento enviado e extraia os dados do representante legal.
+const SYSTEM_PROMPT = `Você é um extrator técnico de dados cadastrais brasileiros. Analise o documento enviado (imagens e, quando disponível, texto OCR de apoio) e extraia os dados do representante legal.
 
 DOCUMENTOS POSSÍVEIS:
 - CNH, RG, CPF, procuração, contrato social, ato constitutivo.
@@ -30,6 +30,8 @@ REGRAS CRÍTICAS:
 - repCargo: preencha SOMENTE se indicar vínculo societário ou função empresarial; em documento pessoal isolado, deixe "".
 - repNaturalidade e repNacionalidade: preencha SOMENTE se visíveis no documento.
 - Se houver múltiplas pessoas, escolha o representante legal, sócio-administrador ou titular principal.
+- Valores genéricos de formulário como "000.000.000-00", "Número do RG", "SSP/XX", "Cidade/UF" e "Nome completo do representante" NÃO são dados válidos; se houver apenas esse tipo de exemplo/placeholder, retorne "".
+- Se houver imagem e texto OCR, use o texto apenas como apoio e priorize o que estiver consistente com o documento.
 - NUNCA invente dados. NUNCA transfira valores de um campo para outro. NUNCA complete por contexto.`;
 
 Deno.serve(async (req) => {
@@ -56,26 +58,31 @@ Deno.serve(async (req) => {
       .filter((img: any) => typeof img?.dataUrl === 'string' && img.dataUrl.startsWith('data:image/'))
       .slice(0, 5);
 
-    if (sanitizedImages.length > 0) {
+    const validImages = sanitizedImages.filter((img: any) => (img.dataUrl?.length || 0) <= 5_500_000);
+    const hasSupportText = typeof text === 'string' && text.trim().length > 10;
+
+    if (validImages.length > 0) {
       contentParts.push({
         type: 'text',
         text: `Arquivo: ${fileName}. Analise a(s) imagem(ns) do documento e extraia os dados do representante legal. Retorne APENAS o JSON.`,
       });
 
-      for (const img of sanitizedImages) {
-        if ((img.dataUrl?.length || 0) > 5_500_000) continue;
+      for (const img of validImages) {
         contentParts.push({
           type: 'image_url',
           image_url: { url: img.dataUrl },
         });
       }
-    } else if (text && text.trim().length > 10) {
-      // Fallback: if no images, use extracted text
+    }
+
+    if (hasSupportText) {
       contentParts.push({
         type: 'text',
-        text: `Arquivo: ${fileName}\n\nTEXTO EXTRAÍDO DO DOCUMENTO:\n${text.slice(0, 12000)}\n\nExtraia os dados do representante legal. Retorne APENAS o JSON.`,
+        text: `Arquivo: ${fileName}\n\nTEXTO OCR DE APOIO (pode conter ruído; confirme nas imagens sempre que possível):\n${text.slice(0, 12000)}\n\nExtraia os dados do representante legal. Retorne APENAS o JSON.`,
       });
-    } else {
+    }
+
+    if (contentParts.length === 0) {
       return new Response(JSON.stringify({ error: 'Nenhuma imagem ou texto válido enviado.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -89,7 +96,7 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         temperature: 0.1,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
