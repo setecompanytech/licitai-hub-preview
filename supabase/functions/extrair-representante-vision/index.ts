@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     // If we have images, send them directly for vision analysis
     const sanitizedImages = (Array.isArray(images) ? images : [])
       .filter((img: any) => typeof img?.dataUrl === 'string' && img.dataUrl.startsWith('data:image/'))
-      .slice(0, 4);
+      .slice(0, 5);
 
     if (sanitizedImages.length > 0) {
       contentParts.push({
