@@ -31,6 +31,7 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
   const [telefone, setTelefone] = useState('');
   const [email, setEmail] = useState('');
   const [inscricaoEstadual, setInscricaoEstadual] = useState('');
+  const [cnaesSecundarios, setCnaesSecundarios] = useState<string[]>([]);
   const [validade, setValidade] = useState('');
   const [regimeTributario, setRegimeTributario] = useState('');
   const [certTipo, setCertTipo] = useState<'e-cnpj' | 'e-cpf'>('e-cnpj');
@@ -71,6 +72,7 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
       setTelefone(data.telefone || '');
       setEmail(data.email || '');
       setCnpj(data.cnpj || cnpj);
+      setCnaesSecundarios(Array.isArray(data.cnaesSecundarios) ? data.cnaesSecundarios : []);
       if (data.simples) setRegimeTributario('simples_nacional');
       toast.success('Dados da Receita Federal preenchidos automaticamente!');
 
@@ -122,6 +124,7 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
         razao_social: razaoSocial.trim(),
         nome_fantasia: nomeFantasia.trim() || undefined,
         cnae_principal: cnaePrincipal.trim() || undefined,
+        cnaes_secundarios: cnaesSecundarios,
         uf: uf.trim() || undefined,
         municipio: municipio.trim() || undefined,
         endereco: endereco.trim() || undefined,
@@ -148,6 +151,7 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
       setCnaePrincipal(''); setUf(''); setMunicipio(''); setEndereco('');
       setRegimeTributario(''); setTelefone(''); setCertNome('');
       setEmail(''); setInscricaoEstadual(''); setComplemento('');
+      setCnaesSecundarios([]);
       setBairro(''); setCep('');
       onSuccess?.();
     } catch (err: any) {

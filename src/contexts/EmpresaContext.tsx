@@ -8,6 +8,7 @@ type Empresa = {
   razao_social: string;
   nome_fantasia: string | null;
   cnae_principal: string | null;
+  cnaes_secundarios: string[] | null;
   uf: string | null;
   municipio: string | null;
   endereco: string | null;
@@ -51,7 +52,7 @@ type EmpresaContextType = {
   loading: boolean;
   setEmpresaAtiva: (empresaId: string | 'todas') => Promise<void>;
   reloadEmpresas: () => Promise<void>;
-  addEmpresa: (data: { cnpj: string; razao_social: string; nome_fantasia?: string; cnae_principal?: string; uf?: string; municipio?: string; endereco?: string; complemento?: string; bairro?: string; cep?: string; telefone?: string; email?: string; inscricao_estadual?: string; certificado_path?: string; certificado_nome?: string; certificado_tipo?: string; certificado_validade?: string; regime_tributario?: string }) => Promise<{ id: string } | null>;
+  addEmpresa: (data: { cnpj: string; razao_social: string; nome_fantasia?: string; cnae_principal?: string; cnaes_secundarios?: string[]; uf?: string; municipio?: string; endereco?: string; complemento?: string; bairro?: string; cep?: string; telefone?: string; email?: string; inscricao_estadual?: string; certificado_path?: string; certificado_nome?: string; certificado_tipo?: string; certificado_validade?: string; regime_tributario?: string }) => Promise<{ id: string } | null>;
 };
 
 const EmpresaContext = createContext<EmpresaContextType | undefined>(undefined);
@@ -214,6 +215,9 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       razao_social: data.razao_social.trim(),
       nome_fantasia: optionalValue(data.nome_fantasia),
       cnae_principal: optionalValue(data.cnae_principal),
+      cnaes_secundarios: Array.isArray(data.cnaes_secundarios)
+        ? data.cnaes_secundarios.filter((item: unknown): item is string => typeof item === 'string' && item.trim().length > 0)
+        : undefined,
       uf: optionalValue(data.uf),
       municipio: optionalValue(data.municipio),
       endereco: optionalValue(data.endereco),
