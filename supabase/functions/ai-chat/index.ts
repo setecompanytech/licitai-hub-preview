@@ -115,6 +115,41 @@ REGRAS:
 - Classifique gravidade: alta = argumento forte/ilegalidade clara; média = vício relevante; baixa = questão menor
 - Responda SEMPRE em português brasileiro`,
 
+  extracao_representante: `Você é um extrator técnico de dados cadastrais brasileiros para documentos pessoais e societários.
+${FORMATACAO_GLOBAL}
+
+OBJETIVO:
+- Extrair os dados do representante legal principal a partir do texto do documento enviado.
+
+DOCUMENTOS POSSÍVEIS:
+- CNH, RG, CPF, procuração, contrato social, ato constitutivo, documento de identificação ou qualificação societária.
+
+FORMATO DE SAÍDA:
+- Retorne APENAS um JSON puro, sem markdown, sem comentários, sem texto introdutório e sem crases.
+- Use EXATAMENTE estas chaves:
+{
+  "repNome": "",
+  "repCpf": "",
+  "repRg": "",
+  "repOrgaoExp": "",
+  "repCargo": "",
+  "repNaturalidade": "",
+  "repNacionalidade": ""
+}
+
+REGRAS CRÍTICAS:
+- Campo não identificado com segurança = "".
+- Preserve a grafia original, incluindo acentos.
+- CPF: se visível, normalize preferencialmente para 000.000.000-00.
+- Em CNH, use o nome do portador como repNome.
+- NÃO use número de registro da CNH, RENACH, número do espelho ou código de segurança como RG.
+- repRg só pode ser preenchido se o RG estiver explícito no documento.
+- repOrgaoExp só pode ser preenchido se houver órgão expedidor explicitamente visível (ex.: SSP/PA, DETRAN/PA).
+- repCargo só pode ser preenchido se o documento indicar vínculo societário, mandato, representação ou função empresarial; em documento pessoal isolado, deixe "".
+- repNaturalidade e repNacionalidade só podem ser preenchidos se estiverem explicitamente visíveis.
+- Se houver múltiplas pessoas, escolha a que estiver indicada como representante legal, sócio-administrador, proprietário, outorgado ou titular principal do documento.
+- Nunca invente, nunca complete por contexto e nunca transfira valores de um campo para outro.`,
+
   gerador_juridico: `Você é um advogado Doutor em Direito Administrativo, especialista na elaboração de peças jurídicas para licitações públicas brasileiras, com domínio absoluto da Lei 14.133/2021, LC 123/2006, CF/88, Decreto 11.462/2023, Lei 9.784/99 e jurisprudência consolidada do TCU.
 
 SUA MISSÃO: Gerar documentos jurídicos COMPLETOS, PROFISSIONAIS e FUNDAMENTADOS para licitações, incluindo:
@@ -510,6 +545,7 @@ const ACTION_MODELS: Record<string, string> = {
   analise_documental_concorrente: "google/gemini-2.5-flash",
   analise_edital: "google/gemini-2.5-flash",
   analise_peticao: "google/gemini-2.5-flash",
+  extracao_representante: "google/gemini-2.5-pro",
   gerador_juridico: "google/gemini-2.5-flash",
   composicao_custo: "google/gemini-2.5-flash",
 };
@@ -575,6 +611,10 @@ serve(async (req) => {
 
     if (action === "analise_documental_concorrente") {
       requestBody.reasoning = { effort: "low" };
+    }
+
+    if (action === "extracao_representante") {
+      requestBody.temperature = 0.1;
     }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
