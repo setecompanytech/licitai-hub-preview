@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import {
   buildDocumentEvidence,
   extractDocumentsFromUpload,
