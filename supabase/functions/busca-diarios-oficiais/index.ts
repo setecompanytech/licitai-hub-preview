@@ -364,8 +364,17 @@ async function buscarGovBrFirecrawl(
   const resultados: any[] = [];
   try {
     const termos = palavrasChave.slice(0, 4).join(" ");
-    // Replicates Google Alerts: site:.gov.br "licitação" "produto" "PDF"
-    const query = `site:.gov.br "licitação" OR "pregão" OR "edital" ${termos} filetype:pdf OR "aviso de licitação"`;
+    // Comprehensive Google Alerts-style search across all gov.br publication types
+    const termosOficiais = [
+      '"licitação"', '"pregão"', '"edital"', '"aviso de licitação"',
+      '"aviso de cancelamento"', '"aviso de republicação"', '"aviso de suspensão"',
+      '"extrato de contrato"', '"extrato de termo aditivo"', '"designação de fiscal"',
+      '"ata de registro de preços"', '"resultado de julgamento"', '"homologação"',
+      '"dispensa de licitação"', '"inexigibilidade"', '"chamamento público"',
+      '"errata"', '"retificação"', '"aviso de revogação"', '"aviso de adiamento"',
+    ];
+    const termosQuery = termosOficiais.slice(0, 8).join(" OR ");
+    const query = `site:.gov.br ${termosQuery} ${termos} filetype:pdf OR "publicação"`;
 
     const resp = await fetch("https://api.firecrawl.dev/v1/search", {
       method: "POST",
