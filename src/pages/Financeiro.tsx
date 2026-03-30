@@ -36,7 +36,7 @@ export default function Financeiro() {
           <TabsTrigger value="pagar"><ArrowDownCircle className="w-3.5 h-3.5 mr-1" /> A Pagar</TabsTrigger>
           <TabsTrigger value="receber"><ArrowUpCircle className="w-3.5 h-3.5 mr-1" /> A Receber</TabsTrigger>
           <TabsTrigger value="boletos"><Barcode className="w-3.5 h-3.5 mr-1" /> Boletos</TabsTrigger>
-          <TabsTrigger value="config-fiscal"><FileText className="w-3.5 h-3.5 mr-1" /> Config. Fiscal</TabsTrigger>
+          
         </TabsList>
 
         <TabsContent value="visao-geral"><FluxoCaixa /></TabsContent>
