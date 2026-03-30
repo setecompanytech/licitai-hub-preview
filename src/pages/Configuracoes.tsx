@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import ExportarDados from '@/components/export/ExportarDados';
 import BackupAgendado from '@/components/configuracoes/BackupAgendado';
-import NuvemFiscalConfig from '@/components/configuracoes/NuvemFiscalConfig';
+
 
 export default function Configuracoes() {
   const { empresaAtiva, reloadEmpresas } = useEmpresa();
