@@ -272,11 +272,51 @@ app.post('/sessao/encerrar', authMiddleware, (req, res) => {
   res.json({ success: true, status: 'encerrado' });
 });
 
+// ─── POST /sessao/retomar ───
+app.post('/sessao/retomar', authMiddleware, (req, res) => {
+  const { sessao_id } = req.body;
+  const result = sessionManager.resumeSession(sessao_id);
+  if (!result) return res.status(404).json({ error: 'Sessão não encontrada ou não pausada' });
+  res.json({ success: true, status: 'ativo' });
+});
+
+// ─── POST /kill-switch ───
+// Encerra TODAS as sessões imediatamente
+app.post('/kill-switch', authMiddleware, (req, res) => {
+  const { motivo } = req.body;
+  console.log(\`🛑 KILL SWITCH ACIONADO: \${motivo || 'Sem motivo'}\`);
+  const encerradas = sessionManager.killAll(motivo);
+  res.json({ success: true, sessoes_encerradas: encerradas, motivo });
+});
+
+// ─── GET /sessoes ───
+// Lista todas as sessões com status detalhado
+app.get('/sessoes', authMiddleware, (req, res) => {
+  res.json({
+    sessoes: sessionManager.getAllSessions(),
+    capacidade: sessionManager.getCapacity(),
+  });
+});
+
+// ─── GET /portais ───
+// Lista portais suportados com metadados
+app.get('/portais', (req, res) => {
+  res.json({
+    portais: Object.entries(PORTALS).map(([id, info]) => ({
+      id,
+      nome: info.nome || id,
+      tipo: info.tipo || 'desconhecido',
+    })),
+    total: Object.keys(PORTALS).length,
+  });
+});
+
 app.listen(PORT, () => {
-  console.log(\`🤖 Agente de Lances v2.0 rodando na porta \${PORT}\`);
+  console.log(\`🤖 Agente de Lances v2.1.0 rodando na porta \${PORT}\`);
   console.log(\`   Portais: \${Object.keys(PORTALS).join(', ')}\`);
+  console.log(\`   Max sessões: \${process.env.MAX_SESSOES_PARALELAS || 3}\`);
   console.log(\`   Callback: \${process.env.CALLBACK_URL || '(não configurada)'}\`);
-  console.log(\`   Certificado: \${process.env.CERT_PATH || '(não configurado)'}\`);
+  console.log(\`   Certificado: \${process.env.CERT_PATH || '(multi-CNPJ em certs/)'}\`);
 });
 `,
 
