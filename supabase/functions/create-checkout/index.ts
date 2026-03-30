@@ -46,6 +46,10 @@ serve(async (req) => {
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
       payment_method_types: ["card", "boleto"],
+      subscription_data: {
+        description: "Assinatura PRAEFECTUS - Plataforma de Gestão Inteligente de Licitações",
+      },
+      payment_intent_data: undefined,
       success_url: `${origin}${successPath || "/configuracoes?checkout=success"}`,
       cancel_url: `${origin}${cancelPath || "/configuracoes?checkout=cancel"}`,
     });
