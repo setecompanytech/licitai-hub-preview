@@ -2,7 +2,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Landmark, ArrowDownCircle, ArrowUpCircle, RefreshCw, BarChart3,
-  Barcode, FileText, Settings2, FileOutput, FileInput
+  Barcode, Settings2, FileOutput, FileInput
 } from 'lucide-react';
 import ContasBancarias from '@/components/financeiro/ContasBancarias';
 import ContasPagar from '@/components/financeiro/ContasPagar';
@@ -10,7 +10,7 @@ import ContasReceber from '@/components/financeiro/ContasReceber';
 import ConciliacaoBancaria from '@/components/financeiro/ConciliacaoBancaria';
 import FluxoCaixa from '@/components/financeiro/FluxoCaixa';
 import Boletos from '@/components/financeiro/Boletos';
-import EmissaoNFe from '@/components/financeiro/EmissaoNFe';
+
 import ConciliacaoRegras from '@/components/financeiro/ConciliacaoRegras';
 import NFSaida from '@/components/financeiro/NFSaida';
 import NFEntrada from '@/components/financeiro/NFEntrada';
@@ -36,7 +36,7 @@ export default function Financeiro() {
           <TabsTrigger value="pagar"><ArrowDownCircle className="w-3.5 h-3.5 mr-1" /> A Pagar</TabsTrigger>
           <TabsTrigger value="receber"><ArrowUpCircle className="w-3.5 h-3.5 mr-1" /> A Receber</TabsTrigger>
           <TabsTrigger value="boletos"><Barcode className="w-3.5 h-3.5 mr-1" /> Boletos</TabsTrigger>
-          <TabsTrigger value="config-fiscal"><FileText className="w-3.5 h-3.5 mr-1" /> Config. Fiscal</TabsTrigger>
+          
         </TabsList>
 
         <TabsContent value="visao-geral"><FluxoCaixa /></TabsContent>
@@ -48,7 +48,7 @@ export default function Financeiro() {
         <TabsContent value="pagar"><ContasPagar /></TabsContent>
         <TabsContent value="receber"><ContasReceber /></TabsContent>
         <TabsContent value="boletos"><Boletos /></TabsContent>
-        <TabsContent value="config-fiscal"><EmissaoNFe /></TabsContent>
+        
       </Tabs>
     </AppLayout>
   );

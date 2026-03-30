@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Bell, Globe, Shield, Newspaper, Search, Loader2, ExternalLink, CheckCircle2, AlertTriangle, ImageIcon, User, Save, CreditCard, Settings, FileText } from 'lucide-react';
+import { Building2, Bell, Globe, Shield, Newspaper, Search, Loader2, ExternalLink, CheckCircle2, AlertTriangle, ImageIcon, User, Save, CreditCard, Settings } from 'lucide-react';
 import CnaesSecundarios from '@/components/configuracoes/CnaesSecundarios';
 import PlanoAssinatura from '@/components/configuracoes/PlanoAssinatura';
 import PlanoVerificacao from '@/components/configuracoes/PlanoVerificacao';
@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import ExportarDados from '@/components/export/ExportarDados';
 import BackupAgendado from '@/components/configuracoes/BackupAgendado';
-import NuvemFiscalConfig from '@/components/configuracoes/NuvemFiscalConfig';
+
 
 export default function Configuracoes() {
   const { empresaAtiva, reloadEmpresas } = useEmpresa();
@@ -280,10 +280,6 @@ export default function Configuracoes() {
             <TabsTrigger value="plano" className="gap-2">
               <CreditCard className="w-4 h-4" />
               Plano & Assinatura
-            </TabsTrigger>
-            <TabsTrigger value="fiscal" className="gap-2">
-              <FileText className="w-4 h-4" />
-              Fiscal / NF
             </TabsTrigger>
           </TabsList>
 
@@ -583,10 +579,6 @@ export default function Configuracoes() {
             <AnaliseCNPJAdicional />
           </TabsContent>
 
-          {/* ── Tab: Fiscal / NF ── */}
-          <TabsContent value="fiscal" className="space-y-6">
-            <NuvemFiscalConfig />
-          </TabsContent>
         </Tabs>
       </div>
     </AppLayout>
