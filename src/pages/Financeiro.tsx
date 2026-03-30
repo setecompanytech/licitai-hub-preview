@@ -48,7 +48,7 @@ export default function Financeiro() {
         <TabsContent value="pagar"><ContasPagar /></TabsContent>
         <TabsContent value="receber"><ContasReceber /></TabsContent>
         <TabsContent value="boletos"><Boletos /></TabsContent>
-        <TabsContent value="config-fiscal"><EmissaoNFe /></TabsContent>
+        
       </Tabs>
     </AppLayout>
   );
