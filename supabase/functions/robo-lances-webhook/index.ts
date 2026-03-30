@@ -326,6 +326,78 @@ serve(async (req) => {
       return jsonResponse({ success: true, received: tipo });
     }
 
+    // ─── KILL SWITCH ───
+
+    if (action === "kill-switch") {
+      const authHeader = req.headers.get("authorization");
+      if (!authHeader) {
+        return jsonResponse({ error: "Não autorizado" }, 401);
+      }
+      const { data: { user } } = await supabase.auth.getUser(
+        authHeader.replace("Bearer ", "")
+      );
+      if (!user) return jsonResponse({ error: "Token inválido" }, 401);
+
+      const { motivo } = body;
+
+      // 1. Encerrar todas as sessões ativas do usuário no DB
+      const { data: sessoesAtivas } = await supabase
+        .from("sessoes_lance_real")
+        .select("id, agente_id")
+        .eq("user_id", user.id)
+        .in("status", ["ativo", "enviando"]);
+
+      if (sessoesAtivas && sessoesAtivas.length > 0) {
+        await supabase
+          .from("sessoes_lance_real")
+          .update({
+            status: "encerrado",
+            erro: `Parada emergencial: ${motivo || "Acionada pelo operador"}`,
+          })
+          .eq("user_id", user.id)
+          .in("status", ["ativo", "enviando"]);
+      }
+
+      // 2. Notify all active agents
+      const { data: agentes } = await supabase
+        .from("agente_externo_config")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("status", "ativo");
+
+      const agentResults: { agente: string; ok: boolean }[] = [];
+      for (const agente of agentes || []) {
+        try {
+          const resp = await fetch(`${agente.url_base}/kill-switch`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Agent-Key": agente.api_key_hash || "",
+            },
+            body: JSON.stringify({ motivo }),
+            signal: AbortSignal.timeout(5000),
+          });
+          agentResults.push({ agente: agente.nome, ok: resp.ok });
+        } catch {
+          agentResults.push({ agente: agente.nome, ok: false });
+        }
+      }
+
+      // 3. Audit log
+      await supabase.from("webhook_log").insert({
+        user_id: user.id,
+        direcao: "saida",
+        tipo: "kill-switch",
+        payload: { motivo, sessoes_encerradas: sessoesAtivas?.length || 0, agentResults },
+      });
+
+      return jsonResponse({
+        success: true,
+        sessoes_encerradas: sessoesAtivas?.length || 0,
+        agentes_notificados: agentResults,
+      });
+    }
+
     // ─── STATUS ───
 
     if (action === "status") {

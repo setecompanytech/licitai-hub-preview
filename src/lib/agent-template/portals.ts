@@ -67,18 +67,22 @@ module.exports = { BasePortal };
   'src/portals/comprasgov.js': `const { BasePortal } = require('./base-portal');
 
 /**
- * Módulo de automação para o portal Compras.gov.br
+ * Módulo de automação para o portal Compras.gov.br (CNET Mobile)
  *
- * URL: https://www.gov.br/compras/pt-br
- * Autenticação: Certificado digital A1 (e-CPF/e-CNPJ) via gov.br
+ * URL base: https://cnetmobile.estaleiro.serpro.gov.br
+ * Autenticação: SSO gov.br com certificado digital A1/A3
  *
- * Fluxo de disputa:
- * 1. Acessar gov.br e autenticar com certificado
- * 2. Navegar para Compras.gov > Área do Fornecedor
- * 3. Localizar a sessão de disputa pelo número do edital
- * 4. Ler valor do melhor lance na tabela de propostas
- * 5. Inserir novo lance no campo de valor
- * 6. Confirmar envio
+ * Fluxo completo de disputa:
+ * 1. Acessar SSO gov.br e autenticar com certificado digital
+ * 2. Navegar para CNET Mobile > Área do Fornecedor
+ * 3. Localizar a sessão de disputa pelo número UASG/Pregão
+ * 4. Monitorar sala de disputa em tempo real
+ * 5. Ler melhor lance e classificação
+ * 6. Enviar lance com confirmação em 2 etapas
+ *
+ * IMPORTANTE: Os seletores CSS são baseados no portal Angular e mudam
+ * periodicamente. Use o roteiro em docs/roteiro-testes-vps-comprasgov.md
+ * para re-mapear seletores via VNC quando necessário.
  */
 class ComprasGovPortal extends BasePortal {
   constructor(page, credenciais) {
@@ -86,41 +90,136 @@ class ComprasGovPortal extends BasePortal {
     this.nome = 'comprasgov';
     this.baseUrl = 'https://cnetmobile.estaleiro.serpro.gov.br';
     this.loginUrl = 'https://sso.acesso.gov.br';
+    this.maxRetries = 3;
+    this.retryDelay = 2000;
+  }
+
+  /**
+   * Anti-detecção: remove marcadores de automação do navegador
+   */
+  async aplicarAntiDeteccao() {
+    await this.page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => false });
+      delete navigator.__proto__.webdriver;
+      window.chrome = { runtime: {} };
+      Object.defineProperty(navigator, 'plugins', {
+        get: () => [1, 2, 3, 4, 5],
+      });
+      Object.defineProperty(navigator, 'languages', {
+        get: () => ['pt-BR', 'pt', 'en-US', 'en'],
+      });
+    });
+  }
+
+  /**
+   * Delay humanizado entre ações (300-800ms)
+   */
+  async delayHumano(min = 300, max = 800) {
+    const ms = Math.floor(Math.random() * (max - min)) + min;
+    await this.page.waitForTimeout(ms);
+  }
+
+  /**
+   * Retry wrapper para operações instáveis
+   */
+  async comRetry(fn, descricao, tentativas = this.maxRetries) {
+    for (let i = 1; i <= tentativas; i++) {
+      try {
+        return await fn();
+      } catch (err) {
+        console.warn(\`⚠️ [\${descricao}] Tentativa \${i}/\${tentativas} falhou: \${err.message}\`);
+        if (i === tentativas) throw err;
+        await this.page.waitForTimeout(this.retryDelay * i);
+      }
+    }
   }
 
   async login() {
-    console.log('🔐 Iniciando login no Compras.gov via gov.br...');
-    await this.page.goto(this.loginUrl, { waitUntil: 'networkidle2' });
+    console.log('🔐 Iniciando login no Compras.gov via SSO gov.br...');
+    await this.aplicarAntiDeteccao();
 
-    // Selecionar login com certificado digital
-    const certBtn = await this.aguardarElemento('[data-cert-login], .certificate-login, a[href*="certificado"]');
-    if (!certBtn) {
-      // Tentar via botão genérico de certificado
+    await this.comRetry(async () => {
+      // 1. Acessar SSO gov.br
+      await this.page.goto(this.loginUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+      await this.delayHumano(500, 1200);
+      await this.screenshot('sso-gov-br');
+
+      // 2. Selecionar login com certificado digital
+      // O SSO gov.br tem diferentes layouts — tentar múltiplos seletores
+      const certSelectors = [
+        'a[href*="certificado"]',
+        'button[data-cert-login]',
+        '.certificate-login',
+        '#login-certificate',
+        'a.btn-certificate',
+      ];
+
+      let certFound = false;
+      for (const sel of certSelectors) {
+        const found = await this.aguardarElemento(sel, 3000);
+        if (found) {
+          await this.page.click(sel);
+          certFound = true;
+          break;
+        }
+      }
+
+      if (!certFound) {
+        // Fallback: buscar por texto
+        const clicked = await this.page.evaluate(() => {
+          const links = [...document.querySelectorAll('a, button, span[role="button"]')];
+          const certLink = links.find(el => {
+            const text = (el.textContent || '').toLowerCase();
+            return text.includes('certificado') || text.includes('certificate') ||
+                   text.includes('cert digital') || text.includes('e-cpf');
+          });
+          if (certLink) { certLink.click(); return true; }
+          return false;
+        });
+        if (!clicked) throw new Error('Botão de certificado digital não encontrado no SSO gov.br');
+      }
+
+      console.log('📜 Aguardando autenticação mTLS com certificado...');
+      await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 45000 });
+      await this.delayHumano(1000, 2000);
+      await this.screenshot('pos-login-sso');
+    }, 'login-sso');
+
+    // 3. Verificar se precisa autorizar acesso ao Compras.gov
+    const needsAuth = await this.page.evaluate(() => {
+      const body = document.body.innerText.toLowerCase();
+      return body.includes('autorizar') || body.includes('permitir acesso');
+    });
+
+    if (needsAuth) {
+      console.log('📋 Autorizando acesso ao Compras.gov...');
       await this.page.evaluate(() => {
-        const links = [...document.querySelectorAll('a, button')];
-        const certLink = links.find(el =>
-          el.textContent.toLowerCase().includes('certificado') ||
-          el.textContent.toLowerCase().includes('certificate')
-        );
-        if (certLink) certLink.click();
+        const btn = [...document.querySelectorAll('button, input[type="submit"]')]
+          .find(b => (b.textContent || b.value || '').toLowerCase().includes('autorizar'));
+        if (btn) btn.click();
       });
-    } else {
-      await this.page.click('[data-cert-login], .certificate-login, a[href*="certificado"]');
+      await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
     }
 
-    // Aguardar autenticação mTLS (o navegador apresenta o certificado automaticamente)
-    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 });
-    await this.screenshot('pos-login');
+    // 4. Navegar para CNET Mobile (área do fornecedor)
+    await this.comRetry(async () => {
+      await this.page.goto(\`\${this.baseUrl}/pregao/fornecedor\`, {
+        waitUntil: 'networkidle2', timeout: 30000,
+      });
+      await this.delayHumano();
+    }, 'navegar-cnet');
 
-    // Verificar se login foi bem-sucedido
+    // 5. Verificar login bem-sucedido
     const loggedIn = await this.page.evaluate(() => {
-      return document.body.innerText.includes('Fornecedor') ||
-             document.body.innerText.includes('Bem-vindo') ||
-             document.body.innerText.includes('Painel');
+      const body = document.body.innerText;
+      return body.includes('Fornecedor') || body.includes('Bem-vindo') ||
+             body.includes('Painel') || body.includes('UASG') ||
+             body.includes('Pregão') || body.includes('Meus Pregões');
     });
 
     if (!loggedIn) {
-      throw new Error('Login no Compras.gov falhou — verifique o certificado digital');
+      await this.screenshot('login-falha');
+      throw new Error('Login no Compras.gov falhou — verifique o certificado digital e credenciais SSO');
     }
 
     this.loggedIn = true;
@@ -128,38 +227,103 @@ class ComprasGovPortal extends BasePortal {
   }
 
   async navegarParaDisputa(edital) {
-    console.log(\`📋 Navegando para disputa do edital: \${edital}\`);
-    await this.page.goto(\`\${this.baseUrl}/pregao/fornecedor\`, { waitUntil: 'networkidle2' });
+    console.log(\`📋 Navegando para disputa: \${edital}\`);
+    await this.aplicarAntiDeteccao();
 
-    // Buscar pelo número do edital
-    await this.preencherCampo('input[name="uasg"], input[name="numPregao"], #busca-pregao', edital);
-    await this.page.keyboard.press('Enter');
-    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 });
+    await this.comRetry(async () => {
+      // CNET Mobile usa Angular — aguardar carregamento do framework
+      await this.page.goto(\`\${this.baseUrl}/pregao/fornecedor\`, {
+        waitUntil: 'networkidle2', timeout: 25000,
+      });
+      await this.delayHumano(1000, 2000);
 
-    // Clicar na sessão de disputa
-    const disputaLink = await this.aguardarElemento('a[href*="disputa"], .btn-disputa, td a');
-    if (disputaLink) {
-      await this.page.click('a[href*="disputa"], .btn-disputa, td a');
-      await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
-    }
+      // Tentar buscar pelo número do pregão/UASG
+      const buscaSelectors = [
+        'input[name="uasg"]', 'input[name="numPregao"]',
+        'input[placeholder*="UASG"]', 'input[placeholder*="pregão"]',
+        'input[placeholder*="Pregão"]', '#busca-pregao',
+        'input[type="search"]', 'input[formcontrolname="busca"]',
+        'input[formcontrolname="numPregao"]',
+      ];
 
-    await this.screenshot('disputa');
-    console.log('✅ Na página de disputa');
+      let buscaFound = false;
+      for (const sel of buscaSelectors) {
+        const found = await this.aguardarElemento(sel, 2000);
+        if (found) {
+          await this.preencherCampo(sel, edital);
+          buscaFound = true;
+          break;
+        }
+      }
+
+      if (!buscaFound) {
+        // Fallback: procurar qualquer input de texto visível
+        await this.page.evaluate((editalNum) => {
+          const inputs = [...document.querySelectorAll('input[type="text"], input:not([type])')];
+          const input = inputs.find(i => i.offsetParent !== null);
+          if (input) {
+            input.value = editalNum;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }, edital);
+      }
+
+      await this.delayHumano(500, 1000);
+      await this.page.keyboard.press('Enter');
+      await this.page.waitForTimeout(5000);
+      await this.screenshot('busca-resultado');
+
+      // Clicar na sala de disputa
+      const disputaClicked = await this.page.evaluate(() => {
+        const links = [...document.querySelectorAll('a, button, tr, td')];
+        const disputaLink = links.find(el => {
+          const text = (el.textContent || '').toLowerCase();
+          return text.includes('sala') || text.includes('disputa') ||
+                 text.includes('participar') || text.includes('acessar');
+        });
+        if (disputaLink) { disputaLink.click(); return true; }
+        return false;
+      });
+
+      if (disputaClicked) {
+        await this.page.waitForTimeout(5000);
+      }
+
+      await this.screenshot('sala-disputa');
+      console.log('✅ Na sala de disputa');
+    }, 'navegar-disputa');
   }
 
   async lerMelhorLance() {
     const valor = await this.page.evaluate(() => {
-      // Tentar diferentes seletores usados pelo Compras.gov
+      // Seletores ampliados para CNET Mobile Angular
       const seletores = [
         '.melhor-lance', '.menor-lance', '.valor-lance',
-        'td.valor', '.lance-atual', '#melhorLance',
+        '#melhorLance', '#menorLance', '#valorAtual',
+        'td.valor', '.lance-atual', '.proposta-valor',
+        '[data-field="melhorLance"]', '[data-field="valor"]',
+        'span.ng-star-inserted', // Angular dynamic elements
+        '.mat-cell', // Angular Material
+        // Tabela de classificação — primeira linha, coluna de valor
+        'table tbody tr:first-child td:nth-child(3)',
+        'table tbody tr:first-child td:nth-child(4)',
+        '.classificacao-item:first-child .valor',
       ];
       for (const sel of seletores) {
         const el = document.querySelector(sel);
         if (el) {
-          const texto = el.textContent.replace(/[^\\d.,]/g, '').replace('.', '').replace(',', '.');
-          const num = parseFloat(texto);
-          if (!isNaN(num)) return num;
+          const texto = el.textContent.replace(/[^\\d.,]/g, '');
+          if (!texto) continue;
+          // Formato brasileiro: 1.234,56
+          const parts = texto.split(',');
+          if (parts.length === 2) {
+            const inteiro = parts[0].replace(/\\./g, '');
+            const num = parseFloat(inteiro + '.' + parts[1]);
+            if (!isNaN(num) && num > 0) return num;
+          }
+          const num = parseFloat(texto.replace('.', '').replace(',', '.'));
+          if (!isNaN(num) && num > 0) return num;
         }
       }
       return null;
@@ -167,6 +331,7 @@ class ComprasGovPortal extends BasePortal {
 
     if (valor === null) {
       console.warn('⚠️ Não foi possível ler o melhor lance atual');
+      await this.screenshot('lance-leitura-falha');
     } else {
       console.log(\`💰 Melhor lance atual: R$ \${this.formatarMoeda(valor)}\`);
     }
@@ -177,29 +342,93 @@ class ComprasGovPortal extends BasePortal {
     console.log(\`📤 Enviando lance: R$ \${this.formatarMoeda(valor)}\`);
     const valorStr = this.formatarMoeda(valor);
 
-    // Preencher campo de lance
-    const campoLance = 'input[name="valorLance"], input[name="lance"], #campoLance, input[type="text"][name*="lance"]';
-    await this.preencherCampo(campoLance, valorStr);
+    await this.comRetry(async () => {
+      // Preencher campo de lance
+      const campoSelectors = [
+        'input[name="valorLance"]', 'input[name="lance"]',
+        '#campoLance', '#valorLance', '#inputLance',
+        'input[type="text"][name*="lance"]',
+        'input[formcontrolname="valorLance"]',
+        'input[formcontrolname="lance"]',
+        'input[placeholder*="lance"]', 'input[placeholder*="valor"]',
+      ];
 
-    // Clicar no botão de enviar
-    await this.page.evaluate(() => {
-      const btns = [...document.querySelectorAll('button, input[type="submit"]')];
-      const btn = btns.find(b =>
-        b.textContent.toLowerCase().includes('enviar') ||
-        b.value?.toLowerCase().includes('enviar') ||
-        b.textContent.toLowerCase().includes('confirmar lance')
-      );
-      if (btn) btn.click();
-    });
+      let campoFound = false;
+      for (const sel of campoSelectors) {
+        const found = await this.aguardarElemento(sel, 2000);
+        if (found) {
+          await this.preencherCampo(sel, valorStr);
+          campoFound = true;
+          break;
+        }
+      }
 
-    // Aguardar diálogo de confirmação
-    this.page.on('dialog', async dialog => {
-      console.log(\`📌 Diálogo: \${dialog.message()}\`);
-      await dialog.accept();
-    });
+      if (!campoFound) {
+        // Fallback: buscar campo numérico visível
+        await this.page.evaluate((val) => {
+          const inputs = [...document.querySelectorAll('input[type="text"], input[type="number"], input:not([type])')];
+          const campo = inputs.find(i =>
+            i.offsetParent !== null &&
+            (i.placeholder || '').toLowerCase().match(/lance|valor|proposta/)
+          );
+          if (campo) {
+            campo.value = '';
+            campo.focus();
+            campo.value = val;
+            campo.dispatchEvent(new Event('input', { bubbles: true }));
+            campo.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }, valorStr);
+      }
 
-    await this.page.waitForTimeout(3000);
-    await this.screenshot('lance-enviado');
+      await this.delayHumano(300, 600);
+
+      // Clicar no botão de enviar
+      const enviado = await this.page.evaluate(() => {
+        const btns = [...document.querySelectorAll('button, input[type="submit"], a.btn')];
+        const btn = btns.find(b => {
+          const text = (b.textContent || b.value || '').toLowerCase();
+          return text.includes('enviar') || text.includes('confirmar lance') ||
+                 text.includes('registrar') || text.includes('submeter');
+        });
+        if (btn) { btn.click(); return true; }
+        return false;
+      });
+
+      if (!enviado) throw new Error('Botão de enviar lance não encontrado');
+
+      await this.delayHumano(500, 1000);
+
+      // Confirmação em 2 etapas (modal do CNET)
+      const modalConfirm = await this.page.evaluate(() => {
+        // Modal de confirmação do Angular Material ou custom
+        const modals = document.querySelectorAll('.modal, .mat-dialog-container, .cdk-overlay-pane, [role="dialog"]');
+        for (const modal of modals) {
+          const confirmBtn = modal.querySelector('button');
+          const btns = [...modal.querySelectorAll('button')];
+          const ok = btns.find(b => {
+            const text = (b.textContent || '').toLowerCase();
+            return text.includes('confirmar') || text.includes('sim') || text.includes('ok');
+          });
+          if (ok) { ok.click(); return true; }
+        }
+        return false;
+      });
+
+      // Dialog nativo do browser
+      this.page.once('dialog', async dialog => {
+        console.log(\`📌 Confirmação: \${dialog.message()}\`);
+        await dialog.accept();
+      });
+
+      await this.page.waitForTimeout(3000);
+      await this.screenshot('lance-enviado');
+
+      if (modalConfirm) {
+        console.log('✅ Confirmação em 2 etapas aceita');
+      }
+    }, 'enviar-lance');
+
     console.log(\`✅ Lance de R$ \${valorStr} enviado\`);
     return true;
   }
@@ -207,9 +436,53 @@ class ComprasGovPortal extends BasePortal {
   async verificarResultado() {
     return await this.page.evaluate(() => {
       const texto = document.body.innerText.toLowerCase();
-      if (texto.includes('lance aceito') || texto.includes('lance registrado')) return 'aceito';
-      if (texto.includes('lance recusado') || texto.includes('erro')) return 'recusado';
+      if (texto.includes('lance aceito') || texto.includes('lance registrado') ||
+          texto.includes('sucesso') || texto.includes('lance enviado com sucesso')) {
+        return 'aceito';
+      }
+      if (texto.includes('lance recusado') || texto.includes('valor inválido') ||
+          texto.includes('erro ao enviar') || texto.includes('não aceito')) {
+        return 'recusado';
+      }
+      if (texto.includes('sessão encerrada') || texto.includes('disputa encerrada') ||
+          texto.includes('fase encerrada')) {
+        return 'encerrado';
+      }
       return 'indefinido';
+    });
+  }
+
+  /**
+   * Monitora a sala de disputa em tempo real.
+   * Retorna dados da classificação atual.
+   */
+  async lerClassificacao() {
+    return await this.page.evaluate(() => {
+      const rows = document.querySelectorAll('table tbody tr, .classificacao-item');
+      const classificacao = [];
+      rows.forEach((row, i) => {
+        const cells = row.querySelectorAll('td, span, .campo');
+        if (cells.length >= 2) {
+          classificacao.push({
+            posicao: i + 1,
+            fornecedor: (cells[0]?.textContent || '').trim(),
+            valor: (cells[1]?.textContent || cells[2]?.textContent || '').trim(),
+          });
+        }
+      });
+      return classificacao;
+    });
+  }
+
+  /**
+   * Verifica se a fase de lances ainda está aberta
+   */
+  async faseAberta() {
+    return await this.page.evaluate(() => {
+      const texto = document.body.innerText.toLowerCase();
+      return !texto.includes('encerrad') && !texto.includes('finalizad') &&
+             (texto.includes('aberta') || texto.includes('em andamento') ||
+              texto.includes('fase de lance') || texto.includes('disputa'));
     });
   }
 }
