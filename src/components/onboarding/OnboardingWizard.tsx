@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -18,12 +18,46 @@ import { toast } from 'sonner';
 const ONBOARDING_KEY = 'praefectus_onboarding_done';
 
 export function useOnboarding() {
-  const [show, setShow] = useState(() => localStorage.getItem(ONBOARDING_KEY) !== 'true');
+  const { user } = useAuth();
+  const [show, setShow] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!user) { setLoaded(true); return; }
+
+    // Quick local check first
+    if (localStorage.getItem(ONBOARDING_KEY) === 'true') {
+      setShow(false);
+      setLoaded(true);
+      return;
+    }
+
+    // Check DB for onboarding_done flag
+    const check = async () => {
+      const { data } = await supabase
+        .from('configuracoes')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (data) {
+        // User already has config row → onboarding was completed before
+        localStorage.setItem(ONBOARDING_KEY, 'true');
+        setShow(false);
+      } else {
+        setShow(true);
+      }
+      setLoaded(true);
+    };
+    check();
+  }, [user]);
+
   const dismiss = () => {
     localStorage.setItem(ONBOARDING_KEY, 'true');
     setShow(false);
   };
-  return { showOnboarding: show, dismissOnboarding: dismiss };
+
+  return { showOnboarding: loaded ? show : false, dismissOnboarding: dismiss };
 }
 
 type Props = {
