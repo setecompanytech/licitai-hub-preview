@@ -28,7 +28,16 @@ export default function KillSwitchButton({ sessaoId, licitacaoId, onParada, disa
     setLoading(true);
 
     try {
-      // 1. Update session in DB
+      // 1. Call centralized kill-switch endpoint
+      const { data, error } = await supabase.functions.invoke('robo-lances-webhook/kill-switch', {
+        body: {
+          motivo: 'Parada emergencial acionada pelo operador',
+        },
+      });
+
+      if (error) throw error;
+
+      // 2. Update specific session if provided
       if (sessaoId) {
         await supabase
           .from('sessoes_lance_real')
@@ -41,33 +50,21 @@ export default function KillSwitchButton({ sessaoId, licitacaoId, onParada, disa
           .eq('id', sessaoId);
       }
 
-      // 2. Audit log
+      // 3. Audit log
       await registrar('parada_emergencial', {
         motivo: 'Parada emergencial acionada pelo operador',
         sessao_id: sessaoId,
+        resultado: data,
       }, {
         sessaoId,
         licitacaoId,
       });
 
-      // 3. Try to notify external agent
-      if (sessaoId) {
-        try {
-          await supabase.functions.invoke('robo-lances-webhook/callback', {
-            body: {
-              sessao_id: sessaoId,
-              tipo: 'sessao-encerrada',
-              payload: { resultado: 'parada_emergencial' },
-            },
-          });
-        } catch {
-          // Agent may be unreachable — that's ok, we've already updated DB
-        }
-      }
-
-      toast.warning('🛑 PARADA EMERGENCIAL ACIONADA — Todas as operações foram interrompidas.', {
-        duration: 10000,
-      });
+      const encerradas = (data as any)?.sessoes_encerradas || 0;
+      toast.warning(
+        `🛑 PARADA EMERGENCIAL — ${encerradas} sessão(ões) encerrada(s). Agentes notificados.`,
+        { duration: 10000 }
+      );
 
       onParada();
     } catch (err) {
