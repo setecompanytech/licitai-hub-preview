@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Check, ArrowRight, Sparkles, X, Shield, Zap, Crown, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
@@ -73,6 +74,7 @@ const FEATURE_TIERS: Record<string, number> = {
 
 export default function PlanosSection() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [showComparison, setShowComparison] = useState(false);
 
@@ -83,7 +85,14 @@ export default function PlanosSection() {
   }, []);
 
   const handleChoosePlan = (slug: string) => {
-    navigate(`/cadastro?plano=${slug}`);
+    const paymentRoute = '/configuracoes?scroll=planos#plano';
+
+    if (user) {
+      navigate(paymentRoute);
+      return;
+    }
+
+    navigate(`/auth?step=signup&redirect=${encodeURIComponent(paymentRoute)}`);
   };
 
   return (

@@ -46,6 +46,7 @@ type AuthStep = 'escolha' | 'manual' | 'certificado' | 'signup' | 'forgot';
 export default function Auth() {
   const [searchParams] = useSearchParams();
   const initialStep = (searchParams.get('step') as AuthStep) || 'escolha';
+  const redirectAfterAuth = searchParams.get('redirect') || '/dashboard';
   const [step, setStep] = useState<AuthStep>(initialStep);
   const [email, setEmail] = useState('');
   const [emailConfirm, setEmailConfirm] = useState('');
@@ -68,9 +69,9 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      navigate('/dashboard', { replace: true });
+      navigate(redirectAfterAuth, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, redirectAfterAuth]);
 
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -96,7 +97,7 @@ export default function Auth() {
     if (error) {
       toast.error('E-mail ou senha incorretos');
     } else {
-      navigate('/dashboard');
+      navigate(redirectAfterAuth);
     }
   };
 
