@@ -495,6 +495,15 @@ class SessionManager {
     return session;
   }
 
+  resumeSession(sessaoId) {
+    const session = this.sessions.get(sessaoId);
+    if (!session || session.status !== 'pausado') return null;
+    session.status = 'ativo';
+    this._startBiddingLoop(session);
+    console.log(\`▶️ Sessão \${sessaoId} retomada. Ativas: \${this.getActiveSessions().length}\`);
+    return session;
+  }
+
   endSession(sessaoId) {
     const session = this.sessions.get(sessaoId);
     if (!session) return null;
@@ -513,6 +522,31 @@ class SessionManager {
     return session;
   }
 
+  /**
+   * KILL SWITCH — encerra TODAS as sessões ativas imediatamente.
+   * Retorna o número de sessões encerradas.
+   */
+  killAll(motivo) {
+    const ativas = this.getActiveSessions();
+    console.log(\`🛑 KILL ALL: Encerrando \${ativas.length} sessão(ões) — Motivo: \${motivo || 'N/I'}\`);
+    
+    for (const session of ativas) {
+      session.status = 'encerrado';
+      if (session.interval) clearInterval(session.interval);
+      if (session.heartbeatInterval) clearInterval(session.heartbeatInterval);
+      if (session.browser) session.browser.close().catch(() => {});
+      
+      sendCallback(session, 'sessao-encerrada', {
+        resultado: 'parada_emergencial',
+        valor_final: session.valor_atual,
+        total_rodadas: session.rodada,
+        motivo,
+      });
+    }
+    
+    return ativas.length;
+  }
+
   getActiveSessions() {
     return [...this.sessions.values()].filter((s) => s.status === 'ativo');
   }
@@ -522,9 +556,12 @@ class SessionManager {
       sessao_id: id,
       status: s.status,
       portal_id: s.portal_id,
+      portal_nome: s.portal_nome,
       edital: s.edital,
       rodada: s.rodada,
       valor_atual: s.valor_atual,
+      valor_minimo: s.valor_minimo,
+      max_lances: s.max_lances,
       created_at: s.created_at,
     }));
   }
