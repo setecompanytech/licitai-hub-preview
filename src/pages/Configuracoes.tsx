@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Bell, Globe, Shield, Newspaper, Search, Loader2, ExternalLink, CheckCircle2, AlertTriangle, ImageIcon, User, Save, CreditCard, Settings, FileText } from 'lucide-react';
+import { Building2, Bell, Globe, Shield, Newspaper, Search, Loader2, ExternalLink, CheckCircle2, AlertTriangle, ImageIcon, User, Save, CreditCard, Settings } from 'lucide-react';
 import CnaesSecundarios from '@/components/configuracoes/CnaesSecundarios';
 import PlanoAssinatura from '@/components/configuracoes/PlanoAssinatura';
 import PlanoVerificacao from '@/components/configuracoes/PlanoVerificacao';

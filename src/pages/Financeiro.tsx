@@ -2,7 +2,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Landmark, ArrowDownCircle, ArrowUpCircle, RefreshCw, BarChart3,
-  Barcode, FileText, Settings2, FileOutput, FileInput
+  Barcode, Settings2, FileOutput, FileInput
 } from 'lucide-react';
 import ContasBancarias from '@/components/financeiro/ContasBancarias';
 import ContasPagar from '@/components/financeiro/ContasPagar';
