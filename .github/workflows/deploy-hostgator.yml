@@ -57,10 +57,10 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
+          protocol: ftps
           port: 21
           local-dir: ./dist/
-          server-dir: ./public_html/
+          server-dir: ${{ secrets.FTP_SERVER_DIR || './public_html/' }}
           dangerous-clean-slate: false
 
       - name: Wait before retry
@@ -76,10 +76,10 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
+          protocol: ftps
           port: 21
           local-dir: ./dist/
-          server-dir: ./public_html/
+          server-dir: ${{ secrets.FTP_SERVER_DIR || './public_html/' }}
           dangerous-clean-slate: false
 
       - name: Wait before final retry
@@ -93,10 +93,10 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
+          protocol: ftps
           port: 21
           local-dir: ./dist/
-          server-dir: ./public_html/
+          server-dir: ${{ secrets.FTP_SERVER_DIR || './public_html/' }}
           dangerous-clean-slate: false
 
       - name: Success summary
