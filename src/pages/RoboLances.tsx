@@ -698,8 +698,10 @@ export default function RoboLances() {
 
         {/* ── AGENTE EXTERNO TAB ── */}
         <TabsContent value="agente" className="flex-1 m-0 overflow-auto p-6 space-y-6">
+          <AtivacaoChecklist />
           <AgenteExternoConfig />
           <AgenteTemplateDownload />
+          <PortalHealthcheck />
         </TabsContent>
 
         {/* ── CONFIGURAÇÕES TAB ── */}
