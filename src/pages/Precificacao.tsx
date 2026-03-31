@@ -570,7 +570,7 @@ Responda APENAS em JSON, sem markdown:
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { label: 'Itens Pesquisados', value: '0', icon: Package },
             { label: 'Fontes Consultadas', value: '0', icon: ShoppingCart },

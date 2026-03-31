@@ -70,7 +70,7 @@ export default function AssessoriaCadastral() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="stat-card text-center">
             <CheckCircle2 className="w-5 h-5 mx-auto mb-1 text-success" />
             <p className="text-lg font-bold">{cadastros.filter(c => c.status === 'ativo').length}</p>
