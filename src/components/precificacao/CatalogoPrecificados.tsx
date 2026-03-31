@@ -315,7 +315,7 @@ Responda APENAS em JSON:
             <BookOpen className="w-3.5 h-3.5 mr-1" /> Ficha / Folder
           </Button>
           <Button size="sm" onClick={() => setShowConsulta(!showConsulta)} variant={showConsulta ? 'default' : 'outline'}
-            className={cn("text-xs", showConsulta ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : '')}>
+            className={showConsulta ? 'bg-accent hover:bg-accent/90 text-accent-foreground text-xs' : 'text-xs'}>
             <Sparkles className="w-3.5 h-3.5 mr-1" /> Consulta IA
           </Button>
           <Button size="sm" onClick={loadItems} variant="outline" disabled={loading} className="text-xs">
