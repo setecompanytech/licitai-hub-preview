@@ -885,12 +885,11 @@ export default function MuralLicitacoes() {
                         </tr>
                       </thead>
                       <tbody>
-                        {d.itens.slice(0, 50).map((item, idx) => (
+                        {d.itens.map((item, idx) => (
                           <tr key={idx} className="border-b border-border/20 hover:bg-muted/20">
                             <td className="px-3 py-2 font-mono text-muted-foreground">{item.numero}</td>
                             <td className="px-3 py-2 max-w-[300px]">
-                              <span className="line-clamp-2">{item.descricao}</span>
-                              {item.marca && <span className="text-muted-foreground ml-1">(Marca: {item.marca})</span>}
+                              <span className="line-clamp-2 text-xs">{item.descricao}</span>
                             </td>
                             <td className="px-3 py-2 text-right">{item.quantidade?.toLocaleString('pt-BR')}</td>
                             <td className="px-3 py-2">{item.unidade_medida}</td>
@@ -905,14 +904,6 @@ export default function MuralLicitacoes() {
                             </td>
                           </tr>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {d.itens.length > 50 && (
-                    <div className="px-3 py-2 text-xs text-muted-foreground bg-muted/30 text-center">
-                      Exibindo 50 de {d.total_itens} itens. Acesse o PNCP para ver todos.
-                    </div>
-                  )}
                 </div>
               </div>
             )}
