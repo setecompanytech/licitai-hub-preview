@@ -107,13 +107,15 @@ export default function MonitoramentoEditais() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-            <div className="flex items-center gap-2 bg-card rounded-lg border border-border/50 px-3 py-2 min-w-0">
-              <Building2 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              <span className="text-xs sm:text-sm font-medium truncate">
-                {empresaAtiva?.nome_fantasia || empresaAtiva?.razao_social || 'Nenhuma empresa selecionada'}
-              </span>
+            <div className="flex flex-col gap-1.5 bg-card rounded-lg border border-border/50 px-3 py-2.5 min-w-0">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <span className="text-xs sm:text-sm font-medium truncate">
+                  {empresaAtiva?.nome_fantasia || empresaAtiva?.razao_social || 'Nenhuma empresa selecionada'}
+                </span>
+              </div>
               {empresaAtiva?.cnae_principal && (
-                <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-[10px] flex-shrink-0 whitespace-nowrap">
+                <Badge variant="outline" className="bg-accent/10 text-accent border-accent/25 text-[10px] w-fit break-all leading-relaxed">
                   CNAE {empresaAtiva.cnae_principal}
                 </Badge>
               )}
