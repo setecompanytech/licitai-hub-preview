@@ -549,17 +549,17 @@ Responda APENAS em JSON, sem markdown:
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <DollarSign className="w-6 h-6 text-accent" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+              <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
               Precificação de Preços
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               Pesquisa integrada com Mercado Livre, Google Shopping, Painel de Preços Gov.br e cotações de fornecedores
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 self-start sm:self-auto flex-shrink-0">
             <Button variant="outline" size="sm">
               <RefreshCw className="w-4 h-4 mr-1" /> Atualizar Preços
             </Button>
