@@ -63,6 +63,7 @@ import WorkflowIA from "./pages/WorkflowIA";
 import EquipeColaboradores from "./pages/EquipeColaboradores";
 import AssistenteEspecializado from "./pages/AssistenteEspecializado";
 import Unsubscribe from "./pages/Unsubscribe";
+import CertificadoUpload from "./pages/CertificadoUpload";
 const queryClient = new QueryClient();
 
 const ProtectedPages = ({ children }: { children: React.ReactNode }) => (
