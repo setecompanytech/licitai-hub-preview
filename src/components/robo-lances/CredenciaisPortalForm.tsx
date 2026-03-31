@@ -253,7 +253,7 @@ export default function CredenciaisPortalForm() {
                 {cred.senha_hash && (
                   <p className="flex items-center gap-1">
                     <span className="font-medium text-foreground">Senha:</span> ••••••••
-                    <Shield className="w-3 h-3 text-success ml-1" title="Criptografada AES-256" />
+                    <span title="Criptografada AES-256"><Shield className="w-3 h-3 text-success ml-1" /></span>
                   </p>
                 )}
                 {cred.certificado_nome && (
