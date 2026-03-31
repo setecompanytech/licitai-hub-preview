@@ -39,6 +39,7 @@ type ResultadoBusca = {
   valor_estimado: number | null;
   uf: string | null;
   municipio: string | null;
+  data_abertura: string | null;
   data_encerramento: string | null;
   portal: string;
   url?: string;
