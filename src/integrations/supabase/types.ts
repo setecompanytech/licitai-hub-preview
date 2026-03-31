@@ -3420,6 +3420,7 @@ export type Database = {
           cnae_compativel: boolean | null
           created_at: string
           data_abertura: string | null
+          data_encerramento: string | null
           data_publicacao: string | null
           id: string
           lido: boolean | null
@@ -3442,6 +3443,7 @@ export type Database = {
           cnae_compativel?: boolean | null
           created_at?: string
           data_abertura?: string | null
+          data_encerramento?: string | null
           data_publicacao?: string | null
           id?: string
           lido?: boolean | null
@@ -3464,6 +3466,7 @@ export type Database = {
           cnae_compativel?: boolean | null
           created_at?: string
           data_abertura?: string | null
+          data_encerramento?: string | null
           data_publicacao?: string | null
           id?: string
           lido?: boolean | null
