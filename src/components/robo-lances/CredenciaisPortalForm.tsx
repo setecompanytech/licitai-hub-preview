@@ -58,11 +58,9 @@ export default function CredenciaisPortalForm() {
     queryKey: ['credenciais-portais', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
-        .from('credenciais_portais')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('portal_nome');
+      const { data, error } = await supabase.functions.invoke('credenciais-portal?action=list', {
+        method: 'GET',
+      });
       if (error) throw error;
       return data;
     },
@@ -71,7 +69,10 @@ export default function CredenciaisPortalForm() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('credenciais_portais').delete().eq('id', id);
+      const { error } = await supabase.functions.invoke('credenciais-portal?action=delete', {
+        method: 'DELETE',
+        body: { id },
+      });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -94,23 +95,17 @@ export default function CredenciaisPortalForm() {
     try {
       const portal = PORTAIS.find((p) => p.id === portalId);
 
-      // Simple base64 obfuscation for password (real encryption should be server-side)
-      const senhaEncoded = senha ? btoa(senha) : null;
-
-      const { error } = await supabase.from('credenciais_portais').upsert(
-        {
-          user_id: user.id,
+      const { error } = await supabase.functions.invoke('credenciais-portal?action=save', {
+        body: {
           portal_id: portalId,
           portal_nome: portal?.nome || portalId,
           login: login || null,
-          senha_hash: senhaEncoded,
-          status: 'ativo',
+          senha: senha || null,
         },
-        { onConflict: 'user_id,portal_id' }
-      );
+      });
       if (error) throw error;
 
-      toast.success('Credencial salva com sucesso');
+      toast.success('Credencial salva com criptografia AES-256');
       queryClient.invalidateQueries({ queryKey: ['credenciais-portais'] });
       resetForm();
       setOpen(false);
@@ -202,15 +197,8 @@ export default function CredenciaisPortalForm() {
               <div className="bg-success/10 border border-success/20 rounded-lg p-3">
                 <p className="text-xs text-success flex items-center gap-1">
                   <Shield className="w-3 h-3" />
-                  Certificados digitais são gerenciados localmente (via Agente Externo no VPS
-                  ou extensão de navegador). Nunca armazenamos certificados na nuvem.
-                </p>
-              </div>
-
-              <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
-                <p className="text-xs text-warning flex items-center gap-1">
-                  <Shield className="w-3 h-3" />
-                  Login e senha são armazenados de forma segura. Apenas você tem acesso.
+                  Senhas criptografadas com AES-256-GCM no servidor. Certificados
+                  digitais são gerenciados localmente (Agente ou extensão).
                 </p>
               </div>
 
@@ -220,7 +208,7 @@ export default function CredenciaisPortalForm() {
                 className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
               >
                 {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Key className="w-4 h-4 mr-1" />}
-                Salvar Credencial
+                Salvar Credencial Criptografada
               </Button>
             </div>
           </DialogContent>
@@ -263,8 +251,9 @@ export default function CredenciaisPortalForm() {
                   </p>
                 )}
                 {cred.senha_hash && (
-                  <p>
+                  <p className="flex items-center gap-1">
                     <span className="font-medium text-foreground">Senha:</span> ••••••••
+                    <Shield className="w-3 h-3 text-success ml-1" title="Criptografada AES-256" />
                   </p>
                 )}
                 {cred.certificado_nome && (
