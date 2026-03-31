@@ -731,22 +731,22 @@ export default function MuralLicitacoes() {
 
         <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
           {/* Header */}
-          <div className="bg-accent/10 border-b border-accent/20 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
-                  <Gavel className="w-5 h-5 text-accent" />
+          <div className="bg-accent/10 border-b border-accent/20 px-4 sm:px-6 py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
+                  <Gavel className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
                 </div>
-                <div>
-                  <h2 className="font-bold text-lg">Ficha da Licitação</h2>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-success" />
-                    Dados extraídos em tempo real da API oficial do PNCP
+                <div className="min-w-0">
+                  <h2 className="font-bold text-base sm:text-lg">Ficha da Licitação</h2>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                    <ShieldCheck className="w-3.5 h-3.5 text-success flex-shrink-0" />
+                    <span>Dados extraídos em tempo real da API oficial do PNCP</span>
                     {d && <Badge className="bg-success/10 text-success border-success/30 text-[9px] ml-1">Verificado ✓</Badge>}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <Badge className={cn('text-xs', statusColor(d?.situacao || lic.status))}>{d?.situacao || lic.status}</Badge>
                 <button onClick={() => toggleFavorito(lic)} className={cn('p-2 rounded-md transition-colors', isFav ? 'text-warning bg-warning/10' : 'text-muted-foreground hover:text-warning')}>
                   {isFav ? <Star className="w-5 h-5 fill-current" /> : <StarOff className="w-5 h-5" />}
