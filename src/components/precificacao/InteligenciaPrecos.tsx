@@ -352,20 +352,20 @@ Responda APENAS em JSON válido:
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary/5 via-accent/5 to-success/5 border border-primary/15 rounded-xl p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
-              <Brain className="w-5 h-5 text-primary" />
+      <div className="bg-gradient-to-r from-primary/5 via-accent/5 to-success/5 border border-primary/15 rounded-xl p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-xs sm:text-sm font-semibold flex items-center gap-2 text-foreground flex-wrap">
+              <Brain className="w-5 h-5 text-primary flex-shrink-0" />
               Inteligência de Preços com IA
             </h3>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
               Monitora preços da concorrência e identifica oportunidades para aumentar margens sem perder competitividade
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
             {lastUpdate && (
-              <span className="text-[10px] text-muted-foreground">Atualizado: {lastUpdate}</span>
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap">Atualizado: {lastUpdate}</span>
             )}
             <Button
               onClick={handleAnalyze}
