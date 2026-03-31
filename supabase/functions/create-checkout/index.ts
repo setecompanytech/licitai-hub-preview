@@ -29,15 +29,16 @@ serve(async (req) => {
       }
     );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
-    if (claimsError) throw new Error(`Auth error: ${claimsError.message}`);
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) throw new Error("Usuário não autenticado");
 
-    const userEmail = claimsData?.claims?.email;
-    if (!userEmail) throw new Error("Usuário não autenticado");
+    const userEmail = user.email;
+    if (!userEmail) throw new Error("E-mail do usuário não encontrado");
 
     const { priceId, successPath, cancelPath } = await req.json();
     if (!priceId) throw new Error("priceId é obrigatório");
+
+    console.log("[CREATE-CHECKOUT] Creating session for", userEmail, "price:", priceId);
 
     const stripe = new Stripe(stripeKey, {
       apiVersion: "2025-08-27.basil",
@@ -49,7 +50,7 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
+    const origin = req.headers.get("origin") || "https://praefectus.com.br";
     const resolvedSuccessPath = successPath || "/configuracoes?checkout=success&scroll=planos#plano";
     const resolvedCancelPath = cancelPath || "/configuracoes?checkout=cancel&scroll=planos#plano";
 
@@ -62,10 +63,11 @@ serve(async (req) => {
       subscription_data: {
         description: "Assinatura PRAEFECTUS - Plataforma de Gestão Inteligente de Licitações",
       },
-      payment_intent_data: undefined,
       success_url: `${origin}${resolvedSuccessPath}`,
       cancel_url: `${origin}${resolvedCancelPath}`,
     });
+
+    console.log("[CREATE-CHECKOUT] Session created:", session.id);
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
