@@ -266,7 +266,7 @@ export default function RoboLances() {
               <Globe className="w-3.5 h-3.5 mr-1" /> Portais
             </TabsTrigger>
             <TabsTrigger value="agente" className="text-xs">
-              <Shield className="w-3.5 h-3.5 mr-1" /> Agente Externo
+              <Shield className="w-3.5 h-3.5 mr-1" /> Agente Cloud
             </TabsTrigger>
             <TabsTrigger value="configuracoes" className="text-xs">
               <Settings className="w-3.5 h-3.5 mr-1" /> Configurações
