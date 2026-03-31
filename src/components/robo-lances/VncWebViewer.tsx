@@ -161,7 +161,8 @@ export default function VncWebViewer() {
             src={vncUrl}
             className="w-full h-full border-0"
             title="VNC Web Viewer — noVNC"
-            allow="clipboard-read; clipboard-write"
+            allow="clipboard-read; clipboard-write; fullscreen"
+            allowFullScreen
             onLoad={() => setLoading(false)}
           />
         </div>
