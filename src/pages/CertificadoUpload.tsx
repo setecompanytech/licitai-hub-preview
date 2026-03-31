@@ -307,7 +307,7 @@ export default function CertificadoUpload() {
 
         {/* Footer */}
         <p className="text-center text-[10px] text-muted-foreground mt-6">
-          Conexão segura (TLS 1.3) • Dados protegidos por criptografia AES-256 • LGPD compliant
+          Conexão segura via HTTPS • Armazenamento protegido • Em conformidade com a LGPD
         </p>
       </div>
     </div>
