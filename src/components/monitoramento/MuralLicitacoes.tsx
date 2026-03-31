@@ -1048,28 +1048,28 @@ export default function MuralLicitacoes() {
         </div>
 
         {/* Keyword + UASG search bar */}
-        <form onSubmit={handleSearch} className="flex flex-wrap gap-2 mb-3">
-          <div className="relative flex-1 min-w-[200px]">
+        <form onSubmit={handleSearch} className="flex flex-col sm:flex-row flex-wrap gap-2 mb-3">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Palavra-chave"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="pl-9 text-sm"
+              className="pl-9 text-xs sm:text-sm"
               disabled={loading}
             />
           </div>
-          <div className="relative w-[200px]">
+          <div className="relative sm:w-[200px]">
             <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="UASG / CNPJ do Órgão"
               value={uasgTerm}
               onChange={e => setUasgTerm(e.target.value)}
-              className="pl-9 text-sm"
+              className="pl-9 text-xs sm:text-sm"
               disabled={loading}
             />
           </div>
-          <Button type="submit" disabled={loading} className="bg-accent hover:bg-accent/90 text-accent-foreground gap-1.5">
+          <Button type="submit" disabled={loading} className="bg-accent hover:bg-accent/90 text-accent-foreground gap-1.5 w-full sm:w-auto">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             Buscar
           </Button>
