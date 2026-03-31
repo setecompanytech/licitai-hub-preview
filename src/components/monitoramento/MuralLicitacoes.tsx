@@ -543,7 +543,7 @@ export default function MuralLicitacoes() {
       valor_estimado: lic.valor_estimado,
       uf: lic.uf,
       municipio: lic.municipio,
-      data_encerramento: lic.data_abertura, // data_abertura = fim de recebimento de propostas (dataAberturaProposta do PNCP)
+      data_encerramento: lic.data_encerramento || lic.data_abertura,
       portal: lic.portal,
       url: lic.url || undefined,
     });
@@ -990,7 +990,7 @@ export default function MuralLicitacoes() {
               numero: editalInteresse.numero, orgao: editalInteresse.orgao, objeto: editalInteresse.objeto,
               modalidade: editalInteresse.modalidade, valor_estimado: editalInteresse.valor_estimado,
               uf: editalInteresse.uf, municipio: editalInteresse.municipio,
-              data_encerramento: editalInteresse.data_abertura, portal: editalInteresse.portal,
+              data_encerramento: editalInteresse.data_encerramento || editalInteresse.data_abertura, portal: editalInteresse.portal,
               url: editalInteresse.url || undefined,
             }}
             onSuccess={() => setEditalInteresse(null)}
@@ -1503,7 +1503,7 @@ export default function MuralLicitacoes() {
             numero: editalInteresse.numero, orgao: editalInteresse.orgao, objeto: editalInteresse.objeto,
             modalidade: editalInteresse.modalidade, valor_estimado: editalInteresse.valor_estimado,
             uf: editalInteresse.uf, municipio: editalInteresse.municipio,
-            data_encerramento: editalInteresse.data_abertura, portal: editalInteresse.portal,
+            data_encerramento: editalInteresse.data_encerramento || editalInteresse.data_abertura, portal: editalInteresse.portal,
             url: editalInteresse.url || undefined,
           }}
           onSuccess={() => setEditalInteresse(null)}

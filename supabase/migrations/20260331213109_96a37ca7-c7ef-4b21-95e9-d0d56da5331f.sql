@@ -1,0 +1,1 @@
+ALTER TABLE public.monitoramento_editais ADD COLUMN IF NOT EXISTS data_encerramento text;

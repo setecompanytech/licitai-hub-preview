@@ -39,6 +39,7 @@ type ResultadoBusca = {
   valor_estimado: number | null;
   uf: string | null;
   municipio: string | null;
+  data_abertura?: string | null;
   data_encerramento: string | null;
   portal: string;
   url?: string;
@@ -246,7 +247,7 @@ export default function LicitacoesTab() {
             uf: lic.uf,
             municipio: lic.municipio,
             valor_estimado: lic.valor_estimado,
-            data_abertura: lic.data_encerramento,
+            data_abertura: lic.data_encerramento || lic.data_abertura,
             url: lic.url,
           });
         setFavoritos(prev => new Set(prev).add(key));
@@ -436,7 +437,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
           .order('created_at', { ascending: false }),
         supabase
           .from('monitoramento_editais')
-          .select('id, titulo, orgao, tipo, status, valor_estimado, uf, municipio, data_abertura, data_publicacao, portal, url')
+          .select('id, titulo, orgao, tipo, status, valor_estimado, uf, municipio, data_abertura, data_encerramento, data_publicacao, portal, url')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(500),
@@ -448,7 +449,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
         url: d.url_edital || undefined,
       })) as ResultadoBusca[];
 
-      const monitoramentoMapeado: ResultadoBusca[] = (monitoramentoResp.data || []).map((d, idx) => ({
+      const monitoramentoMapeado: ResultadoBusca[] = (monitoramentoResp.data || []).map((d: any, idx: number) => ({
         id: d.id,
         numero: extractNumero({ titulo: d.titulo, url: d.url }, idx),
         orgao: d.orgao,
@@ -458,7 +459,8 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
         valor_estimado: d.valor_estimado,
         uf: d.uf,
         municipio: d.municipio,
-        data_encerramento: d.data_abertura || d.data_publicacao,
+        data_abertura: d.data_abertura || null,
+        data_encerramento: d.data_encerramento || d.data_abertura || d.data_publicacao,
         portal: d.portal || 'PNCP',
         url: d.url || undefined,
       }));
@@ -550,7 +552,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
               valor_estimado: item.valor_estimado || null,
               uf: item.uf || null,
               municipio: item.municipio || null,
-              data_encerramento: item.data_abertura || null,
+              data_encerramento: item.data_encerramento || item.data_abertura || null,
               portal: item.portal || 'PNCP',
               url: item.url || null,
               pncpNumero: item.pncp_numero || null,
@@ -702,7 +704,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
               valor_estimado: item.valor_estimado || null,
               uf: item.uf || null,
               municipio: item.municipio || null,
-              data_encerramento: item.data_abertura || null,
+              data_encerramento: item.data_encerramento || item.data_abertura || null,
               portal: item.portal || '-',
               url: item.url || null,
               pncpNumero: item.pncp_numero || null,
