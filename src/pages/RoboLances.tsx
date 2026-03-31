@@ -26,7 +26,7 @@ import {
 import CredenciaisPortalForm from '@/components/robo-lances/CredenciaisPortalForm';
 import ConfigurarLanceDialog, { type LanceConfig, type DisputeItem } from '@/components/robo-lances/ConfigurarLanceDialog';
 import AgenteExternoConfig from '@/components/robo-lances/AgenteExternoConfig';
-import AgenteTemplateDownload from '@/components/robo-lances/AgenteTemplateDownload';
+// AgenteTemplateDownload removed — agent is now cloud-managed
 import LicitacaoChat from '@/components/licitacoes/LicitacaoChat';
 import SimulacaoDisputa from '@/components/robo-lances/SimulacaoDisputa';
 import DisputasResumo from '@/components/robo-lances/DisputasResumo';
@@ -266,7 +266,7 @@ export default function RoboLances() {
               <Globe className="w-3.5 h-3.5 mr-1" /> Portais
             </TabsTrigger>
             <TabsTrigger value="agente" className="text-xs">
-              <Shield className="w-3.5 h-3.5 mr-1" /> Agente Externo
+              <Shield className="w-3.5 h-3.5 mr-1" /> Agente Cloud
             </TabsTrigger>
             <TabsTrigger value="configuracoes" className="text-xs">
               <Settings className="w-3.5 h-3.5 mr-1" /> Configurações
@@ -697,11 +697,10 @@ export default function RoboLances() {
           <PortalHealthcheck />
         </TabsContent>
 
-        {/* ── AGENTE EXTERNO TAB ── */}
+        {/* ── AGENTE CLOUD TAB ── */}
         <TabsContent value="agente" className="flex-1 m-0 overflow-auto p-6 space-y-6">
           <AtivacaoChecklist />
           <AgenteExternoConfig />
-          <AgenteTemplateDownload />
           <PortalHealthcheck />
         </TabsContent>
 
