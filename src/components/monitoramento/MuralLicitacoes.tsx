@@ -990,7 +990,7 @@ export default function MuralLicitacoes() {
               numero: editalInteresse.numero, orgao: editalInteresse.orgao, objeto: editalInteresse.objeto,
               modalidade: editalInteresse.modalidade, valor_estimado: editalInteresse.valor_estimado,
               uf: editalInteresse.uf, municipio: editalInteresse.municipio,
-              data_encerramento: editalInteresse.data_abertura, portal: editalInteresse.portal,
+              data_encerramento: editalInteresse.data_encerramento || editalInteresse.data_abertura, portal: editalInteresse.portal,
               url: editalInteresse.url || undefined,
             }}
             onSuccess={() => setEditalInteresse(null)}
