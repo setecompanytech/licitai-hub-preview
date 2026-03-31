@@ -384,7 +384,7 @@ Responda APENAS em JSON válido:
 
         {/* Mode selector + manual input */}
         <div className="mt-3 flex flex-col gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-0.5">
               <button
                 onClick={() => setMode('catalog')}
