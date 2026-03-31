@@ -29,17 +29,17 @@ export default function ApoioJuridico() {
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Scale className="w-6 h-6 text-accent" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+              <Scale className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
               Apoio Jurídico Especializado
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               Modelos, templates, geração assistida por IA e reequilíbrio contratual – Lei 14.133/2021
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-start sm:self-auto">
             <Badge variant="outline" className="text-[10px] gap-1">
               <Shield className="w-3 h-3" /> Lei 14.133/2021
             </Badge>

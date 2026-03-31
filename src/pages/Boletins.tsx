@@ -35,16 +35,14 @@ export default function Boletins() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Bell className="w-6 h-6 text-accent" />
-              Boletins Diários
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Avisos de novas licitações, alterações e resultados por e-mail
-            </p>
-          </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+            Boletins Diários
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            Avisos de novas licitações, alterações e resultados por e-mail
+          </p>
         </div>
 
         {/* Stats */}

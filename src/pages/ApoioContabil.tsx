@@ -50,11 +50,11 @@ export default function ApoioContabil() {
     <AppLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Calculator className="w-6 h-6 text-accent" />
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
             Apoio Contábil Especializado
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Análises contábeis, tributárias e precificação assistida por IA – NBC, CFC, Lei 14.133/2021
           </p>
         </div>
