@@ -140,11 +140,11 @@ export default function AdminMarketing() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Megaphone className="w-6 h-6 text-accent" />
+            <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+              <Megaphone className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
               Painel de Marketing
             </h1>
-            <p className="text-sm text-muted-foreground">Métricas de aquisição, leads e conversões</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Métricas de aquisição, leads e conversões</p>
           </div>
           <div className="flex items-center gap-2">
             <Select value={period} onValueChange={setPeriod}>

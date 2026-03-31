@@ -105,8 +105,8 @@ const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
     <AppLayout>
       <div className="max-w-5xl">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight">Central de Suporte</h1>
-          <p className="text-sm text-muted-foreground mt-1">Chat com IA ou abra um ticket para a equipe</p>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Central de Suporte</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">Chat com IA ou abra um ticket para a equipe</p>
         </div>
 
         <Tabs defaultValue="chat" className="space-y-6">
