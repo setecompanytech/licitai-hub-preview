@@ -294,6 +294,58 @@ export default function AgenteExternoConfig() {
               </div>
             );
           })}
+
+          {/* Certificate Upload Section */}
+          <div className="border border-border/50 rounded-lg p-4 space-y-3 bg-accent/5">
+            <div className="flex items-center gap-2">
+              <Upload className="w-4 h-4 text-accent" />
+              <h4 className="text-sm font-semibold">Certificado Digital</h4>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Gere um link seguro e temporário (24h) para enviar seu certificado digital (.pfx).
+              O link será enviado também por <strong>e-mail</strong> e <strong>WhatsApp</strong>.
+            </p>
+
+            {certUploadUrl ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-2.5">
+                  <Link2 className="w-4 h-4 text-accent shrink-0" />
+                  <span className="text-xs text-foreground truncate flex-1">{certUploadUrl}</span>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={handleCopyLink}>
+                    <Copy className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-success">
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>Link enviado por e-mail e WhatsApp. Válido por 24 horas.</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleGerarLinkCertificado}
+                  disabled={certLinkLoading}
+                  className="text-xs"
+                >
+                  {certLinkLoading ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
+                  Gerar novo link
+                </Button>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                onClick={handleGerarLinkCertificado}
+                disabled={certLinkLoading || !empresaAtiva?.id}
+                className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs"
+              >
+                {certLinkLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                ) : (
+                  <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                )}
+                Gerar Link de Upload Seguro
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </div>
