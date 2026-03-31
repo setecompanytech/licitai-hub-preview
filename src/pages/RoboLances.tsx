@@ -41,6 +41,7 @@ import DisputaRealtimePanel from '@/components/robo-lances/DisputaRealtimePanel'
 import PortalHealthcheck from '@/components/robo-lances/PortalHealthcheck';
 import EstrategiaIAPanel from '@/components/robo-lances/EstrategiaIAPanel';
 import AtivacaoChecklist from '@/components/robo-lances/AtivacaoChecklist';
+import VncWebViewer from '@/components/robo-lances/VncWebViewer';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
@@ -701,6 +702,7 @@ export default function RoboLances() {
         <TabsContent value="agente" className="flex-1 m-0 overflow-auto p-6 space-y-6">
           <AtivacaoChecklist />
           <AgenteExternoConfig />
+          <VncWebViewer />
           <PortalHealthcheck />
         </TabsContent>
 
