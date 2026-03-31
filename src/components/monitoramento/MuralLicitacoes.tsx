@@ -1313,19 +1313,19 @@ export default function MuralLicitacoes() {
       </div>
 
       {/* Stats */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <p className="text-xs sm:text-sm text-muted-foreground">
           {loading && loadingExternos ? 'Consultando PNCP + portais externos...' :
            loading ? 'Consultando PNCP...' :
            loadingExternos ? `${licitacoesRaw.length} do PNCP • Buscando portais externos...` :
            `${totalResultados} licitações encontradas${licitacoesExternas.length > 0 ? ` (${licitacoesRaw.length} PNCP + ${licitacoesExternas.length} externos)` : ''}`}
         </p>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/30 gap-1">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/30 gap-1 whitespace-nowrap">
             <Globe className="w-3 h-3" /> PNCP Oficial
           </Badge>
           {incluirExternos && licitacoesExternas.length > 0 && (
-            <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent border-accent/30 gap-1">
+            <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent border-accent/30 gap-1 whitespace-nowrap">
               <Sparkles className="w-3 h-3" /> Portais Externos
             </Badge>
           )}
