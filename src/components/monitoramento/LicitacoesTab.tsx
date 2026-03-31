@@ -550,7 +550,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
               valor_estimado: item.valor_estimado || null,
               uf: item.uf || null,
               municipio: item.municipio || null,
-              data_encerramento: item.data_abertura || null,
+              data_encerramento: item.data_encerramento || item.data_abertura || null,
               portal: item.portal || 'PNCP',
               url: item.url || null,
               pncpNumero: item.pncp_numero || null,
