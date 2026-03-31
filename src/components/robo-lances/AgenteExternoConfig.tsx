@@ -85,10 +85,44 @@ export default function AgenteExternoConfig() {
         if (exists) return prev.map((a) => (a.id === result.agente.id ? result.agente : a));
         return [...prev, result.agente];
       });
+
+      // Auto-generate certificate upload link for Enterprise
+      if (empresaAtiva?.id) {
+        await handleGerarLinkCertificado();
+      }
     } catch (e: any) {
       toast.error(e.message || 'Erro ao provisionar agente');
     } finally {
       setProvisioning(false);
+    }
+  };
+
+  const handleGerarLinkCertificado = async () => {
+    if (!empresaAtiva?.id) {
+      toast.error('Selecione uma empresa antes de gerar o link.');
+      return;
+    }
+    setCertLinkLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('gerar-link-certificado', {
+        body: { empresa_id: empresaAtiva.id },
+      });
+      if (error) throw error;
+      if (data?.upload_url) {
+        setCertUploadUrl(data.upload_url);
+        toast.success('Link de upload gerado! Você receberá por e-mail e WhatsApp.');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao gerar link de upload');
+    } finally {
+      setCertLinkLoading(false);
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (certUploadUrl) {
+      navigator.clipboard.writeText(certUploadUrl);
+      toast.success('Link copiado para a área de transferência!');
     }
   };
 
