@@ -458,7 +458,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
         valor_estimado: d.valor_estimado,
         uf: d.uf,
         municipio: d.municipio,
-        data_encerramento: d.data_abertura || d.data_publicacao,
+        data_encerramento: d.data_encerramento || d.data_abertura || d.data_publicacao,
         portal: d.portal || 'PNCP',
         url: d.url || undefined,
       }));
