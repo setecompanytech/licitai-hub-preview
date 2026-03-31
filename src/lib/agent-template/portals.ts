@@ -519,16 +519,17 @@ class BLLPortal extends BasePortal {
 
   async login() {
     console.log('🔐 Iniciando login no BLL...');
-    await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
+    // BLL usa WordPress wp-login.php
+    // Seletores VERIFICADOS em 2026-03-31:
+    //   - Login: #user_login (input[name="log"])
+    //   - Senha: #user_pass (input[name="pwd"])
+    //   - Submit: #wp-submit (input[type="submit"][value="Acessar"])
+    //   - Form: #loginform
+    await this.page.goto(\`\${this.baseUrl}/wp-login.php\`, { waitUntil: 'networkidle2' });
 
-    await this.preencherCampo('#login, input[name="login"], input[name="email"]', this.credenciais.login);
-    await this.preencherCampo('#senha, input[name="senha"], input[name="password"]', this.credenciais.senha);
-
-    await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button, input[type="submit"]')]
-        .find(b => b.textContent?.toLowerCase().includes('entrar') || b.value?.toLowerCase().includes('entrar'));
-      if (btn) btn.click();
-    });
+    await this.preencherCampo('#user_login', this.credenciais.login);
+    await this.preencherCampo('#user_pass', this.credenciais.senha);
+    await this.page.click('#wp-submit');
 
     await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
     await this.screenshot('pos-login');
