@@ -435,7 +435,7 @@ Formato: texto estruturado com tópicos numerados.`;
       {/* ── NCM Input por Item ── */}
       {itens.some(i => i.descricao.trim()) && (
         <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <Search className="w-4 h-4 text-accent" />
               Classificação NCM dos Itens

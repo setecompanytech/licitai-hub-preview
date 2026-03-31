@@ -198,7 +198,7 @@ export default function SimulacaoDisputa({ lance, onUpdate, licitacaoId }: Props
   return (
     <div className="mt-3 pt-3 border-t border-border/50 space-y-3">
       {/* Controls */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Simulação de Disputa

@@ -385,7 +385,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                 rows={3} />
               <p className="text-[11px] text-muted-foreground mt-1">Descreva como a comissão varia com os descontos nas ofertas/lances.</p>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <Label>Visibilidade para equipe</Label>
                 <p className="text-[11px] text-muted-foreground">Outros membros poderão ver as comissões deste colaborador</p>

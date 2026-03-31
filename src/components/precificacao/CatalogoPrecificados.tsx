@@ -295,31 +295,30 @@ Responda APENAS em JSON:
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Package className="w-5 h-5 text-accent" />
-          <h3 className="font-semibold text-sm">Catálogo de Itens Precificados</h3>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <Package className="w-5 h-5 text-accent flex-shrink-0" />
+          <h3 className="font-semibold text-xs sm:text-sm whitespace-nowrap">Catálogo de Itens Precificados</h3>
           <Badge variant="outline" className="text-[10px]">{items.length} itens</Badge>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button size="sm" onClick={() => {
             const sel = filteredItems.filter(i => selectedItems.has(i.id));
             if (sel.length === 0 && items.length > 0) {
-              // If no selection, use all items
               setShowDocGenerator(true);
             } else if (sel.length > 0) {
               setShowDocGenerator(true);
             } else {
               toast.error('Nenhum item no catálogo.');
             }
-          }} variant="outline" className="border-accent/30 text-accent hover:bg-accent/10">
-            <BookOpen className="w-3.5 h-3.5 mr-1" /> Ficha / Folder / Catálogo
+          }} variant="outline" className="border-accent/30 text-accent hover:bg-accent/10 text-xs">
+            <BookOpen className="w-3.5 h-3.5 mr-1" /> Ficha / Folder
           </Button>
           <Button size="sm" onClick={() => setShowConsulta(!showConsulta)} variant={showConsulta ? 'default' : 'outline'}
-            className={showConsulta ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}>
-            <Sparkles className="w-3.5 h-3.5 mr-1" /> Consulta Inteligente
+            className={showConsulta ? 'bg-accent hover:bg-accent/90 text-accent-foreground text-xs' : 'text-xs'}>
+            <Sparkles className="w-3.5 h-3.5 mr-1" /> Consulta IA
           </Button>
-          <Button size="sm" onClick={loadItems} variant="outline" disabled={loading}>
+          <Button size="sm" onClick={loadItems} variant="outline" disabled={loading} className="text-xs">
             {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
             <span className="ml-1">Atualizar</span>
           </Button>
@@ -415,7 +414,7 @@ Responda APENAS em JSON:
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative flex-1 min-w-0">
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Buscar no catálogo..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-8 h-9" />
         </div>

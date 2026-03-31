@@ -224,7 +224,7 @@ export default function ContratosGov() {
             <Building2 className="w-4 h-4 text-accent" />
             <span className="text-xs text-muted-foreground">Órgãos</span>
           </div>
-          <p className="text-2xl font-bold">{orgaosUnicos}</p>
+          <p className="text-lg sm:text-2xl font-bold">{orgaosUnicos}</p>
           <span className="text-xs text-muted-foreground">identificados</span>
         </div>
         <div className="stat-card">
@@ -232,21 +232,21 @@ export default function ContratosGov() {
             <FileText className="w-4 h-4 text-accent" />
             <span className="text-xs text-muted-foreground">Total {tipoLabel}</span>
           </div>
-          <p className="text-2xl font-bold">{totalItens.toLocaleString('pt-BR')}</p>
+          <p className="text-lg sm:text-2xl font-bold">{totalItens.toLocaleString('pt-BR')}</p>
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-1">
             <TrendingUp className="w-4 h-4 text-accent" />
             <span className="text-xs text-muted-foreground">Volume Total</span>
           </div>
-          <p className="text-2xl font-bold">{formatCurrency(totalGeral)}</p>
+          <p className="text-lg sm:text-2xl font-bold">{formatCurrency(totalGeral)}</p>
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-1">
             <FileSpreadsheet className="w-4 h-4 text-accent" />
             <span className="text-xs text-muted-foreground">Ticket Médio</span>
           </div>
-          <p className="text-2xl font-bold">{totalItens > 0 ? formatCurrency(totalGeral / totalItens) : 'R$ 0'}</p>
+          <p className="text-lg sm:text-2xl font-bold">{totalItens > 0 ? formatCurrency(totalGeral / totalItens) : 'R$ 0'}</p>
         </div>
       </div>
 

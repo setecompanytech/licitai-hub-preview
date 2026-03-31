@@ -919,25 +919,25 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
   return (
     <div className="space-y-4">
       {/* Unified Search */}
-      <div className="bg-accent/5 rounded-xl border-2 border-accent/30 p-5 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg bg-accent/15 flex items-center justify-center">
+      <div className="bg-accent/5 rounded-xl border-2 border-accent/30 p-4 sm:p-5 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-accent/15 flex items-center justify-center flex-shrink-0">
               <Zap className="w-5 h-5 text-accent" />
             </div>
-            <div>
-              <h3 className="font-semibold text-sm flex items-center gap-2">
-                Busca Inteligente
+            <div className="min-w-0">
+              <h3 className="font-semibold text-xs sm:text-sm flex items-center gap-2 flex-wrap">
+                <span className="whitespace-nowrap">Busca Inteligente</span>
                 <Badge className="bg-accent text-accent-foreground text-[10px]">IA + Portais</Badge>
               </h3>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground">
                 Pesquisa simultânea em {portaisSelecionados.length} portal{portaisSelecionados.length !== 1 ? 'is' : ''} com análise inteligente
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
             {modoResultados === 'busca' && (
-              <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-[10px] cursor-pointer gap-1" onClick={handleVoltarLocal}>
+              <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-[10px] cursor-pointer gap-1 whitespace-nowrap" onClick={handleVoltarLocal}>
                 <X className="w-3 h-3" /> Limpar resultados
               </Badge>
             )}
@@ -966,21 +966,21 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
         </div>
 
         {/* Main search input */}
-        <form onSubmit={e => { e.preventDefault(); handleBuscaUnificada(); }} className="flex gap-2">
-          <div className="relative flex-1">
+        <form onSubmit={e => { e.preventDefault(); handleBuscaUnificada(); }} className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1 min-w-0">
             <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent" />
             <Input
-              placeholder="Descreva o que busca: pavimentação em PA, TI acima de 500 mil, material hospitalar SP..."
+              placeholder="Descreva o que busca: pavimentação em PA, TI acima de 500 mil..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-9 text-sm bg-background border-accent/20 focus-visible:ring-accent"
+              className="pl-9 text-xs sm:text-sm bg-background border-accent/20 focus-visible:ring-accent"
               disabled={buscando}
             />
           </div>
           <Button
             type="submit"
             disabled={buscando}
-            className="bg-accent hover:bg-accent/90 text-accent-foreground px-5 gap-2"
+            className="bg-accent hover:bg-accent/90 text-accent-foreground px-5 gap-2 w-full sm:w-auto"
           >
             {buscando ? (
               <><Loader2 className="w-4 h-4 animate-spin" /> Buscando...</>
@@ -1021,7 +1021,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
         )}
 
         {/* Filters toggle + portal selection */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             size="sm"

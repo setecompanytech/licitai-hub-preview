@@ -398,7 +398,7 @@ export default function WhatsAppRoutingConfig() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <Label className="text-xs">Resposta Automática</Label>
               <Switch checked={config.resposta_automatica} onCheckedChange={v => setConfig(p => ({ ...p, resposta_automatica: v }))} />
             </div>

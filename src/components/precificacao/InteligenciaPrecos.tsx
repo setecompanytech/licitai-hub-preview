@@ -352,20 +352,20 @@ Responda APENAS em JSON válido:
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary/5 via-accent/5 to-success/5 border border-primary/15 rounded-xl p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
-              <Brain className="w-5 h-5 text-primary" />
+      <div className="bg-gradient-to-r from-primary/5 via-accent/5 to-success/5 border border-primary/15 rounded-xl p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-xs sm:text-sm font-semibold flex items-center gap-2 text-foreground flex-wrap">
+              <Brain className="w-5 h-5 text-primary flex-shrink-0" />
               Inteligência de Preços com IA
             </h3>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
               Monitora preços da concorrência e identifica oportunidades para aumentar margens sem perder competitividade
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
             {lastUpdate && (
-              <span className="text-[10px] text-muted-foreground">Atualizado: {lastUpdate}</span>
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap">Atualizado: {lastUpdate}</span>
             )}
             <Button
               onClick={handleAnalyze}
@@ -384,7 +384,7 @@ Responda APENAS em JSON válido:
 
         {/* Mode selector + manual input */}
         <div className="mt-3 flex flex-col gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-0.5">
               <button
                 onClick={() => setMode('catalog')}
@@ -403,9 +403,9 @@ Responda APENAS em JSON válido:
                 Busca Manual
               </button>
             </div>
-            <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
-              <span className="flex items-center gap-1"><ShoppingCart className="w-3 h-3" /> Marketplaces</span>
-              <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> Gov.br (PNCP)</span>
+            <div className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-[11px] text-muted-foreground flex-wrap">
+              <span className="flex items-center gap-1 whitespace-nowrap"><ShoppingCart className="w-3 h-3" /> Marketplaces</span>
+              <span className="flex items-center gap-1 whitespace-nowrap"><Building2 className="w-3 h-3" /> Gov.br (PNCP)</span>
             </div>
           </div>
 

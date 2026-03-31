@@ -120,7 +120,7 @@ export default function ConciliacaoRegras() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h4 className="text-sm font-semibold flex items-center gap-2"><Settings2 className="w-4 h-4 text-accent" /> Regras de Auto-Categorização</h4>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={aplicarRegras}>

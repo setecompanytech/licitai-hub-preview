@@ -872,7 +872,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
       {/* ── Active Generation Panel ── */}
       {activeModelo && (
         <div className="bg-card rounded-xl border-2 border-accent/30 p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-wrap">
               <Sparkles className="w-5 h-5 text-accent" />
               <h3 className="text-sm font-semibold">Gerar: {activeModelo.titulo}</h3>

@@ -109,7 +109,7 @@ export default function NotificationCenter({
   if (!open) return null;
 
   return (
-    <div className="fixed top-16 right-4 z-50 w-[420px] bg-card border border-border rounded-xl shadow-2xl animate-in slide-in-from-top-2 fade-in duration-200">
+    <div className="fixed top-16 right-2 sm:right-4 z-50 w-[calc(100vw-1rem)] sm:w-[420px] bg-card border border-border rounded-xl shadow-2xl animate-in slide-in-from-top-2 fade-in duration-200">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">

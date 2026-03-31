@@ -476,7 +476,7 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
 
       {/* Tributos */}
       <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <h4 className="text-sm font-semibold">Tributos "Por Dentro" — {regimeLabel}</h4>
           <Badge variant="outline" className="text-[10px]">Total: {fmtPerc(bdiCalc.totalTributosPerc)}</Badge>
         </div>
@@ -506,7 +506,7 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
 
       {/* Encargos Sociais */}
       <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <h4 className="text-sm font-semibold">Encargos Sociais e Trabalhistas</h4>
           <Badge variant="outline" className="text-[10px]">Total: {fmtPerc(bdiCalc.totalEncargosPerc)}</Badge>
         </div>
@@ -545,7 +545,7 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
 
       {/* Itens de Custo */}
       <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <h4 className="text-sm font-semibold flex items-center gap-2">
             <FileText className="w-4 h-4 text-accent" /> Itens de Custo Direto
           </h4>
@@ -597,7 +597,7 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
       {/* Resultado */}
       {resultado && (
         <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <h4 className="font-semibold text-sm">Resultado da Composição</h4>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={exportXLSX}>

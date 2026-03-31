@@ -117,7 +117,7 @@ export default function VerificacaoIdoneidade() {
               ? 'bg-success/5 border-success/30'
               : 'bg-destructive/5 border-destructive/30'
           }`}>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-3">
                 {resultado.idonea ? (
                   <ShieldCheck className="w-8 h-8 text-success" />

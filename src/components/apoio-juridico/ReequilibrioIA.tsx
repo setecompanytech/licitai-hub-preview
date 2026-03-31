@@ -520,7 +520,7 @@ IMPORTANTE: Utilize linguagem técnica, objetiva e impessoal, conforme padrão a
       {/* Generator panel */}
       {showGenerator && (
         <div className="bg-card rounded-xl border border-accent/30 p-5 shadow-lg space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <MecIcon className={`w-5 h-5 ${info.cor}`} />
               <h3 className="text-sm font-semibold">Gerador: {info.titulo}</h3>

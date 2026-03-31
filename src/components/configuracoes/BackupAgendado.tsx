@@ -307,7 +307,7 @@ export default function BackupAgendado() {
 
   return (
     <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Database className="w-5 h-5 text-accent" />
           <h2 className="text-sm font-semibold">Backup Programado</h2>

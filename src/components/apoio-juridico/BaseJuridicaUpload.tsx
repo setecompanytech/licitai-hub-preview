@@ -340,7 +340,7 @@ ${truncated}`
 
       {/* Documents List */}
       <div className="bg-card rounded-xl border border-border/50 p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-accent" />
             <h3 className="text-sm font-semibold">Documentos na Base ({docs.length})</h3>
@@ -348,7 +348,7 @@ ${truncated}`
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por título, ementa ou tribunal..."

@@ -664,7 +664,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
       {/* ── Seletor de Anexo (só Simples Nacional) ── */}
       {regime === 'simples_nacional' && (
         <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-accent" /> Anexo do Simples Nacional
             </h4>
@@ -963,7 +963,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
 
           {/* Itens */}
           <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <h4 className="text-sm font-semibold flex items-center gap-2">
                 <FileText className="w-4 h-4 text-accent" /> Itens de Produto
               </h4>
@@ -1011,7 +1011,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
 
           {/* Actions */}
           <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-3">
                 <Switch checked={enviarProposta} onCheckedChange={setEnviarProposta} />
                 <div>
