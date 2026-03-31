@@ -731,22 +731,22 @@ export default function MuralLicitacoes() {
 
         <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
           {/* Header */}
-          <div className="bg-accent/10 border-b border-accent/20 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
-                  <Gavel className="w-5 h-5 text-accent" />
+          <div className="bg-accent/10 border-b border-accent/20 px-4 sm:px-6 py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
+                  <Gavel className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
                 </div>
-                <div>
-                  <h2 className="font-bold text-lg">Ficha da Licitação</h2>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-success" />
-                    Dados extraídos em tempo real da API oficial do PNCP
+                <div className="min-w-0">
+                  <h2 className="font-bold text-base sm:text-lg">Ficha da Licitação</h2>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                    <ShieldCheck className="w-3.5 h-3.5 text-success flex-shrink-0" />
+                    <span>Dados extraídos em tempo real da API oficial do PNCP</span>
                     {d && <Badge className="bg-success/10 text-success border-success/30 text-[9px] ml-1">Verificado ✓</Badge>}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <Badge className={cn('text-xs', statusColor(d?.situacao || lic.status))}>{d?.situacao || lic.status}</Badge>
                 <button onClick={() => toggleFavorito(lic)} className={cn('p-2 rounded-md transition-colors', isFav ? 'text-warning bg-warning/10' : 'text-muted-foreground hover:text-warning')}>
                   {isFav ? <Star className="w-5 h-5 fill-current" /> : <StarOff className="w-5 h-5" />}
@@ -756,7 +756,7 @@ export default function MuralLicitacoes() {
           </div>
 
           {/* Body */}
-          <div className="p-6 space-y-6">
+          <div className="p-4 sm:p-6 space-y-6">
             {/* Loading indicator */}
             {loadingDetalhe && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
@@ -1002,33 +1002,35 @@ export default function MuralLicitacoes() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="bg-accent/5 rounded-xl border border-accent/20 p-5 shadow-sm">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-accent/15 flex items-center justify-center">
-            <Gavel className="w-5 h-5 text-accent" />
+      <div className="bg-accent/5 rounded-xl border border-accent/20 p-4 sm:p-5 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-accent/15 flex items-center justify-center flex-shrink-0">
+              <Gavel className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-bold text-xs sm:text-sm flex items-center gap-2 flex-wrap">
+                <span className="whitespace-nowrap">Mural de Licitações — Tempo Real</span>
+                <Badge className="bg-success text-success-foreground text-[10px]">PNCP Oficial</Badge>
+              </h3>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground">
+                Dados em tempo real da API oficial do Portal Nacional de Contratações Públicas
+              </p>
+            </div>
           </div>
-          <div className="flex-1">
-            <h3 className="font-bold text-sm flex items-center gap-2">
-              Mural de Licitações — Tempo Real
-              <Badge className="bg-success text-success-foreground text-[10px]">PNCP Oficial</Badge>
-            </h3>
-            <p className="text-[11px] text-muted-foreground">
-              Dados em tempo real da API oficial do Portal Nacional de Contratações Públicas
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
             <Button
               size="sm"
               variant="outline"
               onClick={() => setBuscaDiretaAberta(!buscaDiretaAberta)}
-              className="gap-1.5 border-accent/30 text-accent hover:bg-accent/10"
+              className="gap-1.5 border-accent/30 text-accent hover:bg-accent/10 text-xs"
             >
               <Link2 className="w-3.5 h-3.5" />
               Busca Direta
             </Button>
-            <div className="flex items-center gap-2 bg-card border border-border/50 rounded-lg px-3 py-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-accent" />
-              <label htmlFor="toggle-externos" className="text-xs font-medium cursor-pointer select-none">
+            <div className="flex items-center gap-2 bg-card border border-border/50 rounded-lg px-2.5 py-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+              <label htmlFor="toggle-externos" className="text-[11px] sm:text-xs font-medium cursor-pointer select-none whitespace-nowrap">
                 Incluir portais externos
               </label>
               <Switch
@@ -1039,35 +1041,35 @@ export default function MuralLicitacoes() {
               />
               {loadingExternos && <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" />}
             </div>
-            <Button size="sm" variant="outline" onClick={carregarMural} disabled={loading} className="gap-1.5">
+            <Button size="sm" variant="outline" onClick={carregarMural} disabled={loading} className="gap-1.5 text-xs">
               <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} /> Atualizar
             </Button>
           </div>
         </div>
 
         {/* Keyword + UASG search bar */}
-        <form onSubmit={handleSearch} className="flex flex-wrap gap-2 mb-3">
-          <div className="relative flex-1 min-w-[200px]">
+        <form onSubmit={handleSearch} className="flex flex-col sm:flex-row flex-wrap gap-2 mb-3">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Palavra-chave"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="pl-9 text-sm"
+              className="pl-9 text-xs sm:text-sm"
               disabled={loading}
             />
           </div>
-          <div className="relative w-[200px]">
+          <div className="relative sm:w-[200px]">
             <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="UASG / CNPJ do Órgão"
               value={uasgTerm}
               onChange={e => setUasgTerm(e.target.value)}
-              className="pl-9 text-sm"
+              className="pl-9 text-xs sm:text-sm"
               disabled={loading}
             />
           </div>
-          <Button type="submit" disabled={loading} className="bg-accent hover:bg-accent/90 text-accent-foreground gap-1.5">
+          <Button type="submit" disabled={loading} className="bg-accent hover:bg-accent/90 text-accent-foreground gap-1.5 w-full sm:w-auto">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             Buscar
           </Button>
@@ -1311,19 +1313,19 @@ export default function MuralLicitacoes() {
       </div>
 
       {/* Stats */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <p className="text-xs sm:text-sm text-muted-foreground">
           {loading && loadingExternos ? 'Consultando PNCP + portais externos...' :
            loading ? 'Consultando PNCP...' :
            loadingExternos ? `${licitacoesRaw.length} do PNCP • Buscando portais externos...` :
            `${totalResultados} licitações encontradas${licitacoesExternas.length > 0 ? ` (${licitacoesRaw.length} PNCP + ${licitacoesExternas.length} externos)` : ''}`}
         </p>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/30 gap-1">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/30 gap-1 whitespace-nowrap">
             <Globe className="w-3 h-3" /> PNCP Oficial
           </Badge>
           {incluirExternos && licitacoesExternas.length > 0 && (
-            <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent border-accent/30 gap-1">
+            <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent border-accent/30 gap-1 whitespace-nowrap">
               <Sparkles className="w-3 h-3" /> Portais Externos
             </Badge>
           )}
@@ -1480,15 +1482,15 @@ export default function MuralLicitacoes() {
 
       {/* Pagination */}
       {!loading && licitacoes.length > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground">
             Página {pagina} • {totalResultados} resultado(s)
           </p>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={pagina <= 1} onClick={() => setPagina(p => p - 1)} className="gap-1">
+            <Button variant="outline" size="sm" disabled={pagina <= 1} onClick={() => setPagina(p => p - 1)} className="gap-1 text-xs">
               <ChevronLeft className="w-3.5 h-3.5" /> Anterior
             </Button>
-            <Button variant="outline" size="sm" disabled={licitacoes.length < 50} onClick={() => setPagina(p => p + 1)} className="gap-1">
+            <Button variant="outline" size="sm" disabled={licitacoes.length < 50} onClick={() => setPagina(p => p + 1)} className="gap-1 text-xs">
               Próxima <ChevronRight className="w-3.5 h-3.5" />
             </Button>
           </div>

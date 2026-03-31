@@ -153,7 +153,7 @@ export default function MonitoramentoEditais() {
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+        <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
           {(Object.keys(tipoConfig) as TipoDocumento[]).map((tipo) => {
             const cfg = tipoConfig[tipo];
             const Icon = cfg.icon;
@@ -164,9 +164,9 @@ export default function MonitoramentoEditais() {
                 onClick={() => setTipoFiltro(tipoFiltro === tipo ? "todos" : tipo)}
                 className={`stat-card text-center cursor-pointer ${tipoFiltro === tipo ? "ring-2 ring-accent" : ""}`}
               >
-                <Icon className={`w-5 h-5 mx-auto mb-1 ${cfg.color.split(" ")[1]}`} />
-                <p className="text-lg font-bold">{count}</p>
-                <p className="text-[10px] text-muted-foreground leading-tight">{cfg.label}</p>
+                <Icon className={`w-4 h-4 sm:w-5 sm:h-5 mx-auto mb-1 ${cfg.color.split(" ")[1]}`} />
+                <p className="text-sm sm:text-lg font-bold">{count}</p>
+                <p className="text-[8px] sm:text-[10px] text-muted-foreground leading-tight">{cfg.label}</p>
               </button>
             );
           })}
