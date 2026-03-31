@@ -63,6 +63,7 @@ import WorkflowIA from "./pages/WorkflowIA";
 import EquipeColaboradores from "./pages/EquipeColaboradores";
 import AssistenteEspecializado from "./pages/AssistenteEspecializado";
 import Unsubscribe from "./pages/Unsubscribe";
+import CertificadoUpload from "./pages/CertificadoUpload";
 const queryClient = new QueryClient();
 
 const ProtectedPages = ({ children }: { children: React.ReactNode }) => (
@@ -140,6 +141,7 @@ const App = () => (
               <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />
               <Route path="/lgpd" element={<LgpdPage />} />
               <Route path="/unsubscribe" element={<Unsubscribe />} />
+              <Route path="/certificado-upload" element={<CertificadoUpload />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </PropostaCartProvider>

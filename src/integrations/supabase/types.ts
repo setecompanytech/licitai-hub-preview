@@ -915,6 +915,47 @@ export type Database = {
         }
         Relationships: []
       }
+      cert_upload_tokens: {
+        Row: {
+          cert_file_path: string | null
+          created_at: string
+          empresa_id: string
+          expires_at: string
+          id: string
+          token: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          cert_file_path?: string | null
+          created_at?: string
+          empresa_id: string
+          expires_at?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          cert_file_path?: string | null
+          created_at?: string
+          empresa_id?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cert_upload_tokens_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           content: string

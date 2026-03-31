@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import {
   Server, Wifi, WifiOff, Loader2, CheckCircle2, XCircle, Clock,
-  Layers, Cpu, HardDrive, Rocket, ShieldCheck, RefreshCw,
+  Layers, Cpu, HardDrive, Rocket, ShieldCheck, RefreshCw, Upload, Link2, Copy,
 } from 'lucide-react';
 
 type AgenteConfig = {
@@ -34,9 +35,12 @@ const MANAGED_AGENT_KEY = 'praefectus_agente_2026_secreto';
 
 export default function AgenteExternoConfig() {
   const { user, subscription } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const [agentes, setAgentes] = useState<AgenteConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [provisioning, setProvisioning] = useState(false);
+  const [certLinkLoading, setCertLinkLoading] = useState(false);
+  const [certUploadUrl, setCertUploadUrl] = useState<string | null>(null);
 
   const planSlug = subscription.planSlug;
   const planConfig = planSlug ? PLAN_SESSION_LIMITS[planSlug] : null;
@@ -81,10 +85,44 @@ export default function AgenteExternoConfig() {
         if (exists) return prev.map((a) => (a.id === result.agente.id ? result.agente : a));
         return [...prev, result.agente];
       });
+
+      // Auto-generate certificate upload link for Enterprise
+      if (empresaAtiva?.id) {
+        await handleGerarLinkCertificado();
+      }
     } catch (e: any) {
       toast.error(e.message || 'Erro ao provisionar agente');
     } finally {
       setProvisioning(false);
+    }
+  };
+
+  const handleGerarLinkCertificado = async () => {
+    if (!empresaAtiva?.id) {
+      toast.error('Selecione uma empresa antes de gerar o link.');
+      return;
+    }
+    setCertLinkLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('gerar-link-certificado', {
+        body: { empresa_id: empresaAtiva.id },
+      });
+      if (error) throw error;
+      if (data?.upload_url) {
+        setCertUploadUrl(data.upload_url);
+        toast.success('Link de upload gerado! Você receberá por e-mail e WhatsApp.');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao gerar link de upload');
+    } finally {
+      setCertLinkLoading(false);
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (certUploadUrl) {
+      navigator.clipboard.writeText(certUploadUrl);
+      toast.success('Link copiado para a área de transferência!');
     }
   };
 
@@ -256,6 +294,58 @@ export default function AgenteExternoConfig() {
               </div>
             );
           })}
+
+          {/* Certificate Upload Section */}
+          <div className="border border-border/50 rounded-lg p-4 space-y-3 bg-accent/5">
+            <div className="flex items-center gap-2">
+              <Upload className="w-4 h-4 text-accent" />
+              <h4 className="text-sm font-semibold">Certificado Digital</h4>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Gere um link seguro e temporário (24h) para enviar seu certificado digital (.pfx).
+              O link será enviado também por <strong>e-mail</strong> e <strong>WhatsApp</strong>.
+            </p>
+
+            {certUploadUrl ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-2.5">
+                  <Link2 className="w-4 h-4 text-accent shrink-0" />
+                  <span className="text-xs text-foreground truncate flex-1">{certUploadUrl}</span>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={handleCopyLink}>
+                    <Copy className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-success">
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>Link enviado por e-mail e WhatsApp. Válido por 24 horas.</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleGerarLinkCertificado}
+                  disabled={certLinkLoading}
+                  className="text-xs"
+                >
+                  {certLinkLoading ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
+                  Gerar novo link
+                </Button>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                onClick={handleGerarLinkCertificado}
+                disabled={certLinkLoading || !empresaAtiva?.id}
+                className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs"
+              >
+                {certLinkLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                ) : (
+                  <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                )}
+                Gerar Link de Upload Seguro
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </div>
