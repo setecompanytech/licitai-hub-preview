@@ -35,9 +35,12 @@ const MANAGED_AGENT_KEY = 'praefectus_agente_2026_secreto';
 
 export default function AgenteExternoConfig() {
   const { user, subscription } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const [agentes, setAgentes] = useState<AgenteConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [provisioning, setProvisioning] = useState(false);
+  const [certLinkLoading, setCertLinkLoading] = useState(false);
+  const [certUploadUrl, setCertUploadUrl] = useState<string | null>(null);
 
   const planSlug = subscription.planSlug;
   const planConfig = planSlug ? PLAN_SESSION_LIMITS[planSlug] : null;
