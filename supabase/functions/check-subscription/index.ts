@@ -8,6 +8,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const logStep = (step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -35,10 +40,13 @@ serve(async (req) => {
     const userEmail = user.email;
     if (!userEmail) throw new Error("User email not found");
 
+    logStep("User authenticated", { userId: user.id, email: userEmail });
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
 
     if (customers.data.length === 0) {
+      logStep("No Stripe customer found");
       return new Response(JSON.stringify({ subscribed: false }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -46,6 +54,8 @@ serve(async (req) => {
     }
 
     const customerId = customers.data[0].id;
+    logStep("Found customer", { customerId });
+
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "active",
@@ -58,8 +68,28 @@ serve(async (req) => {
 
     if (hasActiveSub) {
       const sub = subscriptions.data[0];
-      subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
-      productId = sub.items.data[0].price.product;
+      logStep("Active subscription found", { subId: sub.id, rawPeriodEnd: sub.current_period_end, typeofPeriodEnd: typeof sub.current_period_end });
+
+      // Safely handle current_period_end - it could be a number (unix timestamp) or a string
+      try {
+        const periodEnd = sub.current_period_end;
+        if (typeof periodEnd === 'number' && periodEnd > 0) {
+          subscriptionEnd = new Date(periodEnd * 1000).toISOString();
+        } else if (typeof periodEnd === 'string') {
+          // Already an ISO string or date string
+          const parsed = new Date(periodEnd);
+          if (!isNaN(parsed.getTime())) {
+            subscriptionEnd = parsed.toISOString();
+          }
+        }
+      } catch (e) {
+        logStep("Warning: could not parse period end, continuing without it");
+      }
+
+      productId = sub.items.data[0]?.price?.product ?? null;
+      logStep("Subscription details", { productId, subscriptionEnd });
+    } else {
+      logStep("No active subscription");
     }
 
     return new Response(
