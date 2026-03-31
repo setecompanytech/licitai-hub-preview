@@ -163,11 +163,11 @@ export default function IndicesRepactuacao() {
     <AppLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <TrendingUp className="w-6 h-6 text-accent" />
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
             Índices Econômicos & Repactuação
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Painel de índices oficiais, base de CCTs e simulador de repactuação — Lei 14.133/2021
           </p>
         </div>

@@ -154,17 +154,17 @@ export default function Blog() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <BookOpen className="w-6 h-6 text-accent" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+              <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
               Blog & Conteúdos
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               Artigos gerados por IA sobre clima, licitações e jurisprudência do TCU
             </p>
           </div>
-          <Button onClick={gerarArtigos} disabled={gerando} size="sm" className="gap-1">
+          <Button onClick={gerarArtigos} disabled={gerando} size="sm" className="gap-1 self-start sm:self-auto flex-shrink-0">
             <RefreshCw className={`w-4 h-4 ${gerando ? 'animate-spin' : ''}`} />
             {gerando ? 'Gerando...' : 'Gerar Artigos'}
           </Button>

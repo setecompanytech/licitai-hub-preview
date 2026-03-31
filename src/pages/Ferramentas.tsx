@@ -145,8 +145,8 @@ export default function Ferramentas() {
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <Zap className="w-6 h-6 text-accent" />
-            <h1 className="text-2xl font-bold tracking-tight">Nossas Ferramentas</h1>
+            <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Nossas Ferramentas</h1>
           </div>
           <p className="text-sm text-muted-foreground">
             Acesse todas as funcionalidades da plataforma LicitaIA em um só lugar.

@@ -106,13 +106,13 @@ Seja objetivo e formate em Markdown limpo com seções numeradas. NÃO utilize e
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Bot className="w-6 h-6 text-accent" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+              <Bot className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
               Workflow Autônomo IA
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               A IA executa todo o trajeto: pesquisa → seleção → agendamento → lances. Você aprova no final.
             </p>
           </div>

@@ -99,8 +99,8 @@ export default function Licitacoes() {
   return (
     <AppLayout>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">Licitações</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Licitações</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground mt-1">
           {loading ? 'Carregando...' : `${filtered.length} licitações encontradas`}
         </p>
       </div>

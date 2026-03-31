@@ -143,15 +143,15 @@ export default function EquipeColaboradores() {
   return (
     <AppLayout>
       <div className="max-w-5xl">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Equipe & Colaboradores</h1>
-            <p className="text-sm text-muted-foreground mt-1">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Equipe & Colaboradores</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
               Gerencie os membros da equipe de {empresaAtiva?.nome_fantasia || empresaAtiva?.razao_social || 'sua empresa'}
             </p>
           </div>
           {isAdmin && (
-            <Button onClick={() => setShowInvite(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+            <Button onClick={() => setShowInvite(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground self-start sm:self-auto flex-shrink-0">
               <UserPlus className="w-4 h-4 mr-2" />
               Adicionar Colaborador
             </Button>

@@ -28,12 +28,12 @@ export default function Empresas() {
   return (
     <AppLayout>
       <div className="max-w-5xl">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Empresas</h1>
-            <p className="text-sm text-muted-foreground mt-1">Gerencie suas empresas e certificados digitais</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Empresas</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">Gerencie suas empresas e certificados digitais</p>
           </div>
-          <Button onClick={() => setShowForm(!showForm)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Button onClick={() => setShowForm(!showForm)} className="bg-accent hover:bg-accent/90 text-accent-foreground self-start sm:self-auto flex-shrink-0">
             <Plus className="w-4 h-4 mr-2" />
             Nova Empresa
           </Button>

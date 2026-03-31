@@ -16,17 +16,17 @@ export default function WhatsAppCRM() {
     <AppLayout>
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-            <MessageSquare className="w-5 h-5 text-emerald-500" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">WhatsApp CRM</h1>
-            <p className="text-sm text-muted-foreground">Gerencie conversas, leads e campanhas em um único painel</p>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">WhatsApp CRM</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">Gerencie conversas, leads e campanhas em um único painel</p>
           </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-6 w-full max-w-3xl">
+          <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full max-w-3xl gap-1">
             <TabsTrigger value="inbox" className="gap-1.5 text-xs">
               <MessageSquare className="w-3.5 h-3.5" />Caixa de Entrada
             </TabsTrigger>

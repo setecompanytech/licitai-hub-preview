@@ -71,17 +71,17 @@ export default function AnaliseMercado() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <BarChart3 className="w-6 h-6 text-accent" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
               Análise de Mercado
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               Resultados por segmento, preços praticados e produtos mais solicitados
             </p>
           </div>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="self-start sm:self-auto flex-shrink-0">
             <Download className="w-4 h-4 mr-1" /> Exportar Relatório
           </Button>
         </div>

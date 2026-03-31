@@ -59,20 +59,18 @@ export default function AssessoriaCadastral() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <ClipboardCheck className="w-6 h-6 text-accent" />
-              Assessoria Cadastral
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Suporte para cadastro no SICAF, CAUFESP, SIGA e demais CRCs
-            </p>
-          </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+            <ClipboardCheck className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+            Assessoria Cadastral
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            Suporte para cadastro no SICAF, CAUFESP, SIGA e demais CRCs
+          </p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="stat-card text-center">
             <CheckCircle2 className="w-5 h-5 mx-auto mb-1 text-success" />
             <p className="text-lg font-bold">{cadastros.filter(c => c.status === 'ativo').length}</p>

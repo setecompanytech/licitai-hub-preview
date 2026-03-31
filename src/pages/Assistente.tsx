@@ -57,11 +57,11 @@ export default function Assistente() {
     <AppLayout>
       <div className="max-w-5xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Bot className="w-6 h-6 text-accent" />
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Bot className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
             Assistente IA Jurídico
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             IA especializada em licitações com base na Lei 14.133/2021
           </p>
         </div>

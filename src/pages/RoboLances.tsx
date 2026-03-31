@@ -251,15 +251,15 @@ export default function RoboLances() {
     <AppLayout>
       <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="h-full flex flex-col">
         {/* ── Top Header ── */}
-        <div className="flex items-center justify-between border-b border-border bg-card px-4 py-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-border bg-card px-4 py-2">
           <div className="flex items-center gap-3">
-            <Bot className="w-5 h-5 text-accent" />
-            <h1 className="text-lg font-bold tracking-tight">Robô de Lances</h1>
+            <Bot className="w-5 h-5 text-accent flex-shrink-0" />
+            <h1 className="text-base sm:text-lg font-bold tracking-tight">Robô de Lances</h1>
           </div>
           <div className="flex items-center gap-2">
             <ExportarResultados lances={lances} />
           </div>
-          <TabsList className="bg-muted/50">
+          <TabsList className="bg-muted/50 flex-wrap h-auto">
             <TabsTrigger value="disputar" className="text-xs">
               <Zap className="w-3.5 h-3.5 mr-1" /> Disputar
             </TabsTrigger>

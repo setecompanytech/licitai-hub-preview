@@ -355,16 +355,14 @@ export default function Documentos() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Shield className="w-6 h-6 text-accent" />
-              Controle de Documentos
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Conformidade com a Lei 14.133/2021 e legislação vigente
-            </p>
-          </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+            Controle de Documentos
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            Conformidade com a Lei 14.133/2021 e legislação vigente
+          </p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
