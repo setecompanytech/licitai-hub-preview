@@ -756,7 +756,7 @@ export default function MuralLicitacoes() {
           </div>
 
           {/* Body */}
-          <div className="p-6 space-y-6">
+          <div className="p-4 sm:p-6 space-y-6">
             {/* Loading indicator */}
             {loadingDetalhe && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
