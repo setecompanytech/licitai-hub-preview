@@ -804,15 +804,41 @@ class LicitanetPortal extends BasePortal {
 
   async login() {
     console.log('🔐 Iniciando login no Licitanet...');
-    await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
-    await this.preencherCampo('input[name="email"], #email', this.credenciais.login);
-    await this.preencherCampo('input[name="senha"], #senha', this.credenciais.senha);
+    // Licitanet é um SPA (Inertia.js/Laravel) — VERIFICADO em 2026-03-31
+    // A rota /login retorna 404, o login real é via /sessao-publica ou modal
+    // URL base verificada: https://licitanet.com.br
+    // Abordagem: navegar para a home e clicar no link de login
+    await this.page.goto(this.baseUrl, { waitUntil: 'networkidle2' });
+    
+    // Procurar link/botão de login na navbar
+    const loginClicked = await this.page.evaluate(() => {
+      const links = [...document.querySelectorAll('a, button')];
+      const loginLink = links.find(el => {
+        const text = (el.textContent || '').toLowerCase().trim();
+        return text === 'entrar' || text === 'login' || text === 'acessar' || 
+               text.includes('área do fornecedor');
+      });
+      if (loginLink) { loginLink.click(); return true; }
+      return false;
+    });
+    
+    if (!loginClicked) {
+      // Fallback: tentar navegação direta para rotas comuns
+      await this.page.goto(\`\${this.baseUrl}/auth/login\`, { waitUntil: 'networkidle2' });
+    }
+    
+    await this.page.waitForTimeout(3000);
+    
+    // Preencher formulário de login (SPA renderiza campos dinamicamente)
+    await this.preencherCampo('input[name="email"], input[name="login"], input[type="email"], #email', this.credenciais.login);
+    await this.preencherCampo('input[name="password"], input[name="senha"], input[type="password"], #password', this.credenciais.senha);
     await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button, input[type="submit"]')]
-        .find(b => (b.textContent || b.value).toLowerCase().includes('entrar'));
+      const btn = [...document.querySelectorAll('button[type="submit"], button')]
+        .find(b => (b.textContent || '').toLowerCase().includes('entrar') || 
+                    (b.textContent || '').toLowerCase().includes('login'));
       if (btn) btn.click();
     });
-    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
+    await this.page.waitForTimeout(5000);
     this.loggedIn = true;
     console.log('✅ Login no Licitanet realizado');
   }
