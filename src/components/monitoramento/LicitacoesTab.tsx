@@ -246,7 +246,7 @@ export default function LicitacoesTab() {
             uf: lic.uf,
             municipio: lic.municipio,
             valor_estimado: lic.valor_estimado,
-            data_abertura: lic.data_encerramento,
+            data_abertura: lic.data_encerramento || lic.data_abertura,
             url: lic.url,
           });
         setFavoritos(prev => new Set(prev).add(key));
