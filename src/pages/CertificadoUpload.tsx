@@ -292,14 +292,14 @@ export default function CertificadoUpload() {
               <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center">
                 <CheckCircle2 className="w-10 h-10 text-success" />
               </div>
-              <h2 className="text-lg font-semibold text-foreground">Certificado Enviado!</h2>
+              <h2 className="text-lg font-semibold text-foreground">Certificado Recebido com Segurança</h2>
               <p className="text-sm text-muted-foreground max-w-sm">
-                Seu certificado digital foi recebido e está sendo configurado no container isolado da sua empresa.
-                Você receberá uma notificação quando estiver pronto.
+                Seu certificado digital foi recebido e vinculado à sua empresa.
+                Ele será utilizado para autenticação nos portais de licitação.
               </p>
               <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground max-w-sm">
                 <p><strong>Próximos passos:</strong></p>
-                <p className="mt-1">A equipe técnica irá validar o certificado e configurar a autenticação nos portais. Prazo estimado: até 2 horas em horário comercial.</p>
+                <p className="mt-1">Você receberá uma confirmação por e-mail quando o certificado estiver ativo e pronto para uso nas disputas eletrônicas.</p>
               </div>
             </div>
           )}
