@@ -144,14 +144,26 @@ class ComprasGovPortal extends BasePortal {
       await this.delayHumano(500, 1200);
       await this.screenshot('sso-gov-br');
 
-      // 2. Selecionar login com certificado digital
-      // O SSO gov.br tem diferentes layouts — tentar múltiplos seletores
+      // 2. Preencher CPF na tela inicial do gov.br
+      // Seletores VERIFICADOS em 2026-03-31:
+      //   - Campo CPF: #accountId (input[name="accountId"])
+      //   - Botão Continuar: #enter-account-id (button[value="enter-account-id"])
+      const cpfField = await this.aguardarElemento('#accountId', 5000);
+      if (cpfField && this.credenciais.cpf) {
+        await this.preencherCampo('#accountId', this.credenciais.cpf);
+        await this.delayHumano(300, 600);
+        await this.page.click('#enter-account-id');
+        await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
+        await this.delayHumano(500, 1000);
+      }
+
+      // 3. Na tela de senha, selecionar certificado digital
+      // Seletores VERIFICADOS: botões com classe .button-href-mimic2 e img com texto "Certificado"
+      // Ou item-login-signup-ways contendo texto "certificado"
       const certSelectors = [
-        'a[href*="certificado"]',
-        'button[data-cert-login]',
-        '.certificate-login',
-        '#login-certificate',
-        'a.btn-certificate',
+        '#login-certificate-digital',
+        'button[value="login-certificate"]',
+        '.item-login-signup-ways button[class*="button-href"]',
       ];
 
       let certFound = false;
@@ -165,13 +177,13 @@ class ComprasGovPortal extends BasePortal {
       }
 
       if (!certFound) {
-        // Fallback: buscar por texto
+        // Fallback VERIFICADO: buscar por texto nos botões/links da página gov.br
         const clicked = await this.page.evaluate(() => {
-          const links = [...document.querySelectorAll('a, button, span[role="button"]')];
-          const certLink = links.find(el => {
+          const items = [...document.querySelectorAll('.item-login-signup-ways a, .item-login-signup-ways button, a, button, span[role="button"]')];
+          const certLink = items.find(el => {
             const text = (el.textContent || '').toLowerCase();
-            return text.includes('certificado') || text.includes('certificate') ||
-                   text.includes('cert digital') || text.includes('e-cpf');
+            return text.includes('certificado digital') || text.includes('certificado') ||
+                   text.includes('cert digital') || text.includes('e-cpf') || text.includes('e-cnpj');
           });
           if (certLink) { certLink.click(); return true; }
           return false;
