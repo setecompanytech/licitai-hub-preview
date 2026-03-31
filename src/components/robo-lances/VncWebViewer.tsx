@@ -13,7 +13,7 @@ export default function VncWebViewer() {
   const [showViewer, setShowViewer] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const vncUrl = `${NOVNC_BASE_URL}/vnc.html?autoconnect=true&resize=scale&reconnect=true&reconnect_delay=3000`;
+  const vncUrl = `${NOVNC_BASE_URL}/vnc.html?path=/vnc/&autoconnect=true&resize=scale&reconnect=true&reconnect_delay=3000`;
 
   const handleOpenViewer = () => {
     setLoading(true);
