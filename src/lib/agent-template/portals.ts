@@ -889,15 +889,35 @@ class PortalComprasPortal extends BasePortal {
 
   async login() {
     console.log('🔐 Iniciando login no Portal de Compras Públicas...');
-    await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
-    await this.preencherCampo('input[name="login"], #login', this.credenciais.login);
-    await this.preencherCampo('input[name="senha"], #senha', this.credenciais.senha);
+    // Portal de Compras Públicas é um SPA Angular — VERIFICADO em 2026-03-31
+    // A rota /18/Login retorna 404 (SPA route), precisa navegar via JS
+    // URL: https://www.portaldecompraspublicas.com.br
+    await this.page.goto(this.baseUrl, { waitUntil: 'networkidle2' });
+    
+    // Clicar no botão de login (Angular renderiza dinamicamente)
+    const loginClicked = await this.page.evaluate(() => {
+      const links = [...document.querySelectorAll('a, button, span[role="button"]')];
+      const loginLink = links.find(el => {
+        const text = (el.textContent || '').toLowerCase().trim();
+        return text === 'entrar' || text === 'login' || text.includes('acessar') ||
+               text.includes('fornecedor');
+      });
+      if (loginLink) { loginLink.click(); return true; }
+      return false;
+    });
+    
+    await this.page.waitForTimeout(3000);
+    
+    // Preencher formulário Angular
+    await this.preencherCampo('input[name="login"], input[formcontrolname="login"], input[type="text"]:not([readonly]), #login', this.credenciais.login);
+    await this.preencherCampo('input[name="senha"], input[formcontrolname="senha"], input[type="password"], #senha', this.credenciais.senha);
     await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button, input[type="submit"]')]
-        .find(b => (b.textContent || b.value).toLowerCase().includes('entrar'));
+      const btn = [...document.querySelectorAll('button[type="submit"], button')]
+        .find(b => (b.textContent || '').toLowerCase().includes('entrar') ||
+                    (b.textContent || '').toLowerCase().includes('login'));
       if (btn) btn.click();
     });
-    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
+    await this.page.waitForTimeout(5000);
     this.loggedIn = true;
     console.log('✅ Login no Portal de Compras Públicas realizado');
   }
