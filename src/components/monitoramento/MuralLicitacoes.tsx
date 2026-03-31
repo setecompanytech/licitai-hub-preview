@@ -903,7 +903,9 @@ export default function MuralLicitacoes() {
                               <Badge variant="outline" className="text-[9px]">{item.situacao || '-'}</Badge>
                             </td>
                           </tr>
-                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
