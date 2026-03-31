@@ -299,7 +299,7 @@ ${truncated}`
   // STEP 2: Review + manual add
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <div className="flex items-center justify-center w-6 h-6 rounded-full bg-accent text-accent-foreground text-xs font-bold">2</div>
           <h4 className="text-sm font-semibold">Etapa 2 — Revisão e Complemento</h4>
@@ -384,7 +384,7 @@ ${truncated}`
       {/* Manual add */}
       {showManualForm ? (
         <div className="bg-muted/30 rounded-lg border border-border/50 p-4 space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <h5 className="text-xs font-semibold flex items-center gap-1">
               <Plus className="w-3.5 h-3.5" /> Adicionar Irregularidade Manual
             </h5>

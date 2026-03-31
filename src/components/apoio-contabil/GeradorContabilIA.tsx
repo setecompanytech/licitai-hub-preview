@@ -230,7 +230,7 @@ export default function GeradorContabilIA() {
 
       {resultado && (
         <div className="bg-card rounded-xl border border-border/50 p-6 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <h3 className="text-sm font-semibold">Resultado da Análise</h3>
             <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(resultado); toast.success('Copiado!'); }}>
               <Copy className="w-3 h-3 mr-1" /> Copiar

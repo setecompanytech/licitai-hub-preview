@@ -530,7 +530,7 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
       {/* Result */}
       {resultado && (
         <div className="bg-card rounded-xl border border-border/50 p-6 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <h3 className="text-sm font-semibold">Documento Gerado</h3>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={copyToClipboard}>

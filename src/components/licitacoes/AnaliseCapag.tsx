@@ -138,7 +138,7 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
               )}
             </div>
           )}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-4">
               <div className={`w-16 h-16 rounded-2xl ${nota.color} flex items-center justify-center shadow-lg`}>
                 <span className="text-white text-3xl font-black">{data.capag.nota}</span>

@@ -304,7 +304,7 @@ export default function ComposicaoCustoIA() {
 
       {/* Items */}
       <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <h4 className="text-sm font-semibold">Itens para Composição</h4>
           <Button variant="outline" size="sm" onClick={addItemRow}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Item
@@ -346,7 +346,7 @@ export default function ComposicaoCustoIA() {
 
       {/* Send to Proposta */}
       <div className="bg-card rounded-xl border border-border/50 p-5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-3">
             <Switch checked={enviarProposta} onCheckedChange={setEnviarProposta} />
             <div>

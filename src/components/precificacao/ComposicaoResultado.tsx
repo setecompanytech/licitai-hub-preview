@@ -86,7 +86,7 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
   if (!parsed) {
     return (
       <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Bot className="w-5 h-5 text-accent" />
             <h4 className="font-semibold text-sm">Composição de Custo Gerada</h4>
