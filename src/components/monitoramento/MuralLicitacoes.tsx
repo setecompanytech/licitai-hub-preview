@@ -1482,15 +1482,15 @@ export default function MuralLicitacoes() {
 
       {/* Pagination */}
       {!loading && licitacoes.length > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground">
             Página {pagina} • {totalResultados} resultado(s)
           </p>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={pagina <= 1} onClick={() => setPagina(p => p - 1)} className="gap-1">
+            <Button variant="outline" size="sm" disabled={pagina <= 1} onClick={() => setPagina(p => p - 1)} className="gap-1 text-xs">
               <ChevronLeft className="w-3.5 h-3.5" /> Anterior
             </Button>
-            <Button variant="outline" size="sm" disabled={licitacoes.length < 50} onClick={() => setPagina(p => p + 1)} className="gap-1">
+            <Button variant="outline" size="sm" disabled={licitacoes.length < 50} onClick={() => setPagina(p => p + 1)} className="gap-1 text-xs">
               Próxima <ChevronRight className="w-3.5 h-3.5" />
             </Button>
           </div>
