@@ -6,6 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+const SITE_URL = "https://praefectus.com.br";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -32,13 +34,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Create admin client for operations
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get empresa data
     const { data: empresa } = await adminClient
       .from("empresas")
       .select("razao_social, cnpj")
@@ -51,7 +51,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Create the token
     const { data: tokenData, error: tokenErr } = await adminClient
       .from("cert_upload_tokens")
       .insert({ user_id: user.id, empresa_id })
@@ -60,21 +59,21 @@ Deno.serve(async (req) => {
 
     if (tokenErr) throw tokenErr;
 
-    // Get user profile for notifications
     const { data: profile } = await adminClient
       .from("profiles")
       .select("nome_completo")
       .eq("user_id", user.id)
       .single();
 
-    const uploadUrl = `${Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", "")
-      ? `https://levo-licita.lovable.app` : "https://levo-licita.lovable.app"}/certificado-upload?token=${tokenData.token}`;
+    const uploadUrl = `${SITE_URL}/certificado-upload?token=${tokenData.token}`;
 
     const expiresFormatted = new Date(tokenData.expires_at).toLocaleString("pt-BR", {
       timeZone: "America/Sao_Paulo",
     });
 
-    // Send transactional email notification
+    const nomeUsuario = profile?.nome_completo || user.email;
+
+    // Send transactional email
     try {
       await supabase.functions.invoke("send-transactional-email", {
         body: {
@@ -82,7 +81,7 @@ Deno.serve(async (req) => {
           recipientEmail: user.email,
           idempotencyKey: `cert-upload-${tokenData.token}`,
           templateData: {
-            nome: profile?.nome_completo || user.email,
+            nome: nomeUsuario,
             empresa: empresa.razao_social,
             cnpj: empresa.cnpj,
             link: uploadUrl,
@@ -94,13 +93,15 @@ Deno.serve(async (req) => {
       console.warn("Email notification failed (non-blocking):", emailErr);
     }
 
-    // Send WhatsApp notification (best-effort)
+    // Send WhatsApp notification (best-effort, using correct interface)
     try {
       await supabase.functions.invoke("whatsapp-envio", {
         body: {
-          tipo: "texto",
-          mensagem: `🔐 *PRAEFECTUS — Upload de Certificado Digital*\n\n` +
-            `Olá ${profile?.nome_completo || ""}!\n\n` +
+          telefone: "0",
+          setor: "documentos",
+          mensagem_custom:
+            `🔐 *PRAEFECTUS — Upload de Certificado Digital*\n\n` +
+            `Olá ${nomeUsuario}!\n\n` +
             `Seu Agente Cloud Enterprise foi ativado com sucesso para a empresa *${empresa.razao_social}*.\n\n` +
             `📎 Acesse o link abaixo para enviar seu certificado digital (.pfx) de forma segura:\n\n` +
             `${uploadUrl}\n\n` +
