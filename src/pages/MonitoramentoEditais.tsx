@@ -96,24 +96,24 @@ export default function MonitoramentoEditais() {
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Download className="w-6 h-6 text-accent" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+              <Download className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
               Monitoramento de Editais
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               Pesquisa automática nos portais em nome da empresa cadastrada
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 bg-card rounded-lg border border-border/50 px-3 py-2">
-              <Building2 className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <div className="flex items-center gap-2 bg-card rounded-lg border border-border/50 px-3 py-2 min-w-0">
+              <Building2 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-xs sm:text-sm font-medium truncate">
                 {empresaAtiva?.nome_fantasia || empresaAtiva?.razao_social || 'Nenhuma empresa selecionada'}
               </span>
               {empresaAtiva?.cnae_principal && (
-                <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-[10px]">
+                <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-[10px] flex-shrink-0 whitespace-nowrap">
                   CNAE {empresaAtiva.cnae_principal}
                 </Badge>
               )}
@@ -121,7 +121,7 @@ export default function MonitoramentoEditais() {
             <Button
               onClick={handlePesquisar}
               disabled={pesquisando}
-              className="bg-accent hover:bg-accent/90 text-accent-foreground"
+              className="bg-accent hover:bg-accent/90 text-accent-foreground flex-shrink-0"
             >
               {pesquisando ? (
                 <>
