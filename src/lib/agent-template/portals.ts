@@ -922,14 +922,15 @@ class BNCPortal extends BasePortal {
 
   async login() {
     console.log('🔐 Iniciando login no BNC...');
-    await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
-    await this.preencherCampo('input[name="email"], #email', this.credenciais.login);
-    await this.preencherCampo('input[name="senha"], #senha', this.credenciais.senha);
-    await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button, input[type="submit"]')]
-        .find(b => (b.textContent || b.value).toLowerCase().includes('entrar'));
-      if (btn) btn.click();
-    });
+    // BNC usa WordPress wp-login.php (idêntico ao BLL)
+    // Seletores VERIFICADOS em 2026-03-31:
+    //   - Login: #user_login (input[name="log"])
+    //   - Senha: #user_pass (input[name="pwd"])
+    //   - Submit: #wp-submit (input[type="submit"][value="Acessar"])
+    await this.page.goto(\`\${this.baseUrl}/wp-login.php\`, { waitUntil: 'networkidle2' });
+    await this.preencherCampo('#user_login', this.credenciais.login);
+    await this.preencherCampo('#user_pass', this.credenciais.senha);
+    await this.page.click('#wp-submit');
     await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
     this.loggedIn = true;
     console.log('✅ Login no BNC realizado');
