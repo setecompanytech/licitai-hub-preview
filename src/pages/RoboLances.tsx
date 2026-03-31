@@ -26,7 +26,7 @@ import {
 import CredenciaisPortalForm from '@/components/robo-lances/CredenciaisPortalForm';
 import ConfigurarLanceDialog, { type LanceConfig, type DisputeItem } from '@/components/robo-lances/ConfigurarLanceDialog';
 import AgenteExternoConfig from '@/components/robo-lances/AgenteExternoConfig';
-import AgenteTemplateDownload from '@/components/robo-lances/AgenteTemplateDownload';
+// AgenteTemplateDownload removed — agent is now cloud-managed
 import LicitacaoChat from '@/components/licitacoes/LicitacaoChat';
 import SimulacaoDisputa from '@/components/robo-lances/SimulacaoDisputa';
 import DisputasResumo from '@/components/robo-lances/DisputasResumo';
