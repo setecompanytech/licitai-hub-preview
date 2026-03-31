@@ -131,7 +131,9 @@ export default function PlanoAssinatura() {
 
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, '_blank');
+        window.location.href = data.url;
+      } else {
+        toast.error('Não foi possível gerar o link de pagamento.');
       }
     } catch (err) {
       console.error('Checkout error:', err);
@@ -156,7 +158,7 @@ export default function PlanoAssinatura() {
 
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, '_blank');
+        window.location.href = data.url;
       }
     } catch (err) {
       console.error('Portal error:', err);
