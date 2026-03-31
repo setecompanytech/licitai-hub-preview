@@ -2,20 +2,12 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
-} from '@/components/ui/dialog';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
-  Server, Wifi, WifiOff, Loader2, Settings, CheckCircle2, XCircle, Clock,
-  Layers, Cpu, HardDrive,
+  Server, Wifi, WifiOff, Loader2, CheckCircle2, XCircle, Clock,
+  Layers, Cpu, HardDrive, Rocket, ShieldCheck, RefreshCw,
 } from 'lucide-react';
 
 type AgenteConfig = {
@@ -31,17 +23,23 @@ type AgenteConfig = {
   ram_mb: number | null;
 };
 
+/** Limites de sessões por plano */
+const PLAN_SESSION_LIMITS: Record<string, { sessions: number; label: string }> = {
+  profissional: { sessions: 1, label: 'Profissional' },
+  enterprise: { sessions: 5, label: 'Enterprise' },
+};
+
+const MANAGED_AGENT_URL = 'https://agente.praefectus.com.br';
+const MANAGED_AGENT_KEY = 'praefectus_agente_2026_secreto';
+
 export default function AgenteExternoConfig() {
-  const { user } = useAuth();
+  const { user, subscription } = useAuth();
   const [agentes, setAgentes] = useState<AgenteConfig[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [provisioning, setProvisioning] = useState(false);
 
-  const [urlBase, setUrlBase] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  const [nome, setNome] = useState('Agente Principal');
-  const [maxSessoes, setMaxSessoes] = useState('3');
+  const planSlug = subscription.planSlug;
+  const planConfig = planSlug ? PLAN_SESSION_LIMITS[planSlug] : null;
 
   useEffect(() => {
     if (!user) return;
@@ -55,35 +53,38 @@ export default function AgenteExternoConfig() {
       });
   }, [user]);
 
-  const handleSave = async () => {
-    if (!urlBase) return;
-    setSaving(true);
+  /** Provisiona automaticamente o agente gerenciado para o plano do usuário */
+  const handleAutoProvision = async () => {
+    if (!planConfig) {
+      toast.error('Seu plano não inclui o Robô de Lances em nuvem.');
+      return;
+    }
 
+    setProvisioning(true);
     try {
       const resp = await supabase.functions.invoke('robo-lances-webhook/configurar-agente', {
         body: {
-          url_base: urlBase,
-          nome,
-          api_key: apiKey,
-          max_sessoes_paralelas: parseInt(maxSessoes),
+          url_base: MANAGED_AGENT_URL,
+          nome: `Agente Cloud — ${planConfig.label}`,
+          api_key: MANAGED_AGENT_KEY,
+          max_sessoes_paralelas: planConfig.sessions,
         },
       });
 
       if (resp.error) throw resp.error;
       const result = resp.data as { success: boolean; agente: AgenteConfig; error?: string };
-      if (!result.success) throw new Error(result.error || 'Erro ao configurar');
+      if (!result.success) throw new Error(result.error || 'Erro ao provisionar');
 
-      toast.success(`Agente configurado: ${result.agente.status}`);
+      toast.success('Agente configurado automaticamente! ✅');
       setAgentes((prev) => {
         const exists = prev.find((a) => a.id === result.agente.id);
         if (exists) return prev.map((a) => (a.id === result.agente.id ? result.agente : a));
         return [...prev, result.agente];
       });
-      setOpen(false);
     } catch (e: any) {
-      toast.error(e.message || 'Erro ao configurar agente');
+      toast.error(e.message || 'Erro ao provisionar agente');
     } finally {
-      setSaving(false);
+      setProvisioning(false);
     }
   };
 
@@ -107,132 +108,19 @@ export default function AgenteExternoConfig() {
     return map[status] || map.inativo;
   };
 
-  const callbackUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/robo-lances-webhook/callback`;
-
   return (
     <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <Server className="w-4 h-4 text-accent" />
-          Agente Externo de Lances
+          Agente Cloud de Lances
         </h3>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-              <Settings className="w-4 h-4 mr-1" /> Configurar Agente
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Server className="w-5 h-5 text-accent" />
-                Configurar Agente Externo
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-4 mt-2">
-              <div className="bg-info/10 border border-info/20 rounded-lg p-3">
-                <p className="text-xs text-info">
-                  O agente externo suporta <strong>múltiplas sessões paralelas</strong>, permitindo
-                  disputar em vários portais simultaneamente com empresas diferentes. Cada sessão
-                  consome ~500MB de RAM.
-                </p>
-              </div>
-
-              <div>
-                <Label className="text-xs">Nome do Agente</Label>
-                <Input
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  placeholder="Agente Principal"
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label className="text-xs">URL Base do Agente *</Label>
-                <Input
-                  value={urlBase}
-                  onChange={(e) => setUrlBase(e.target.value)}
-                  placeholder="https://meu-agente.exemplo.com"
-                  className="mt-1"
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Servidor que roda Puppeteer + certificado digital para automação real
-                </p>
-              </div>
-
-              <div>
-                <Label className="text-xs">Chave de API do Agente</Label>
-                <Input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="Chave secreta para autenticação"
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label className="text-xs">Máximo de Sessões Paralelas</Label>
-                <Select value={maxSessoes} onValueChange={setMaxSessoes}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1 sessão (~2GB RAM)</SelectItem>
-                    <SelectItem value="2">2 sessões (~2.5GB RAM)</SelectItem>
-                    <SelectItem value="3">3 sessões (~3GB RAM)</SelectItem>
-                    <SelectItem value="4">4 sessões (~4GB RAM)</SelectItem>
-                    <SelectItem value="5">5 sessões (~5GB RAM)</SelectItem>
-                    <SelectItem value="6">6 sessões (~6GB RAM)</SelectItem>
-                    <SelectItem value="8">8 sessões (~8GB RAM)</SelectItem>
-                    <SelectItem value="10">10 sessões (~10GB RAM)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Cada sessão abre um navegador Chromium isolado (~500MB). Ajuste conforme a RAM do VPS.
-                </p>
-              </div>
-
-              <div className="border border-border/50 rounded-lg p-3 space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  URL de Callback (configure no agente)
-                </p>
-                <code className="block text-[11px] bg-muted p-2 rounded break-all font-mono">
-                  {callbackUrl}
-                </code>
-              </div>
-
-              <div className="border border-border/50 rounded-lg p-3 space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Protocolo de Comunicação
-                </p>
-                <div className="text-[11px] text-muted-foreground space-y-1">
-                  <p>Endpoints do agente:</p>
-                  <ul className="list-disc list-inside space-y-0.5 ml-1">
-                    <li><code className="bg-muted px-1 rounded">GET /health</code> — Status, capacidade e sessões</li>
-                    <li><code className="bg-muted px-1 rounded">POST /sessao/iniciar</code> — Iniciar sessão (paralela)</li>
-                    <li><code className="bg-muted px-1 rounded">POST /sessao/pausar</code> — Pausar sessão</li>
-                    <li><code className="bg-muted px-1 rounded">POST /sessao/encerrar</code> — Encerrar sessão</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-              <Button
-                onClick={handleSave}
-                disabled={!urlBase || saving}
-                className="bg-accent hover:bg-accent/90 text-accent-foreground"
-              >
-                {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Wifi className="w-4 h-4 mr-1" />}
-                Conectar Agente
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {planConfig && (
+          <Badge variant="outline" className="text-[10px] gap-1">
+            <ShieldCheck className="w-3 h-3" />
+            Plano {planConfig.label} — até {planConfig.sessions} sessão(ões)
+          </Badge>
+        )}
       </div>
 
       {loading ? (
@@ -240,15 +128,67 @@ export default function AgenteExternoConfig() {
           <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
         </div>
       ) : agentes.length === 0 ? (
-        <div className="text-center py-6 space-y-2">
-          <Server className="w-8 h-8 mx-auto text-muted-foreground" />
-          <p className="text-xs text-muted-foreground">
-            Nenhum agente externo configurado. Configure um servidor dedicado para
-            habilitar lances reais nos portais de licitação.
-          </p>
-          <p className="text-[10px] text-muted-foreground">
-            Suporte a múltiplas sessões paralelas — dispute em vários portais ao mesmo tempo.
-          </p>
+        <div className="text-center py-8 space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto">
+            <Rocket className="w-7 h-7 text-accent" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">
+              Ative seu Agente Cloud com um clique
+            </p>
+            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+              O sistema configura automaticamente o servidor de automação de acordo com seu plano.
+              Sem necessidade de configuração técnica — tudo é gerenciado pela plataforma.
+            </p>
+          </div>
+
+          {planConfig ? (
+            <div className="space-y-3">
+              <div className="bg-muted/30 rounded-lg p-3 max-w-sm mx-auto text-left space-y-1.5">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  O que será configurado:
+                </p>
+                <ul className="text-[11px] text-muted-foreground space-y-1">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3 h-3 text-success shrink-0" />
+                    Servidor dedicado em nuvem
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3 h-3 text-success shrink-0" />
+                    {planConfig.sessions} sessão(ões) paralela(s) de navegador
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3 h-3 text-success shrink-0" />
+                    Certificado digital seguro (configurado localmente)
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3 h-3 text-success shrink-0" />
+                    Monitoramento 24/7 e auto-recuperação
+                  </li>
+                </ul>
+              </div>
+
+              <Button
+                onClick={handleAutoProvision}
+                disabled={provisioning}
+                className="bg-accent hover:bg-accent/90 text-accent-foreground font-bold px-8"
+              >
+                {provisioning ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Rocket className="w-4 h-4 mr-2" />
+                )}
+                Ativar Agente Cloud
+              </Button>
+            </div>
+          ) : (
+            <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 max-w-sm mx-auto">
+              <p className="text-xs text-warning">
+                O Robô de Lances em nuvem está disponível a partir do plano <strong>Profissional</strong>.
+                Faça upgrade para ativar essa funcionalidade.
+              </p>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -264,7 +204,6 @@ export default function AgenteExternoConfig() {
                     {statusIcon(agente.status)}
                     <div>
                       <p className="text-sm font-medium">{agente.nome}</p>
-                      <p className="text-[11px] text-muted-foreground font-mono">{agente.url_base}</p>
                       {agente.versao_agente && (
                         <p className="text-[10px] text-muted-foreground">v{agente.versao_agente}</p>
                       )}
@@ -307,6 +246,12 @@ export default function AgenteExternoConfig() {
                       </span>
                     )}
                   </div>
+                </div>
+
+                {/* Gerenciado pela plataforma badge */}
+                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                  <ShieldCheck className="w-3.5 h-3.5 text-success" />
+                  <span>Gerenciado automaticamente pela plataforma — sem configuração técnica necessária</span>
                 </div>
               </div>
             );
