@@ -131,7 +131,7 @@ export default function PlanoAssinatura() {
 
       if (error) throw error;
       if (data?.url) {
-        window.location.href = data.url;
+        window.open(data.url, '_blank');
       } else {
         toast.error('Não foi possível gerar o link de pagamento.');
       }
