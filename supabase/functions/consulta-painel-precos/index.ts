@@ -220,7 +220,7 @@ async function fetchPncpItems(
     }
 
     // Fetch items
-    const itemsUrl = `${PNCP_BASE}/orgaos/${link.cnpj}/compras/${link.ano}/${link.seq}/itens?pagina=1&tamanhoPagina=50`;
+    const itemsUrl = `${PNCP_BASE}/orgaos/${link.cnpj}/compras/${link.ano}/${link.seq}/itens?pagina=1&tamanhoPagina=100`;
     const itemsResp = await fetch(itemsUrl, {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(8000),
