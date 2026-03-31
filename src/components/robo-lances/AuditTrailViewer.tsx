@@ -85,7 +85,7 @@ export default function AuditTrailViewer({ sessaoId }: Props) {
 
   return (
     <div className="bg-card rounded-xl border border-border/50 p-4 space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h3 className="text-xs font-semibold flex items-center gap-2">
           <History className="w-4 h-4 text-accent" />
           Trilha de Auditoria Imutável

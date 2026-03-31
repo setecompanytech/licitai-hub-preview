@@ -195,7 +195,7 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
         </table>
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <Button variant="outline" size="sm" onClick={addItem}>
           <Plus className="w-4 h-4 mr-1" /> Adicionar Item
         </Button>
