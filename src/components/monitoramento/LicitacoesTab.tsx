@@ -449,7 +449,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
         url: d.url_edital || undefined,
       })) as ResultadoBusca[];
 
-      const monitoramentoMapeado: ResultadoBusca[] = (monitoramentoResp.data || []).map((d, idx) => ({
+      const monitoramentoMapeado: ResultadoBusca[] = (monitoramentoResp.data || []).map((d: any, idx: number) => ({
         id: d.id,
         numero: extractNumero({ titulo: d.titulo, url: d.url }, idx),
         orgao: d.orgao,
@@ -459,6 +459,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
         valor_estimado: d.valor_estimado,
         uf: d.uf,
         municipio: d.municipio,
+        data_abertura: d.data_abertura || null,
         data_encerramento: d.data_encerramento || d.data_abertura || d.data_publicacao,
         portal: d.portal || 'PNCP',
         url: d.url || undefined,
