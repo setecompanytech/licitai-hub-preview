@@ -299,7 +299,7 @@ export default function CertificadoUpload() {
               </p>
               <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground max-w-sm">
                 <p><strong>Próximos passos:</strong></p>
-                <p className="mt-1">Você receberá uma confirmação por e-mail quando o certificado estiver ativo e pronto para uso nas disputas eletrônicas.</p>
+                <p className="mt-1">Acesse o painel <strong>Robô de Lances → Checklist de Ativação</strong> para verificar o status do certificado. Ele será automaticamente reconhecido pelo sistema.</p>
               </div>
             </div>
           )}
