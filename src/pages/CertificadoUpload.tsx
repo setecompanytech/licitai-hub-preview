@@ -82,7 +82,7 @@ export default function CertificadoUpload() {
   };
 
   const handleUpload = async () => {
-    if (!file || !senha || !tokenInfo) return;
+    if (!file || !senha || !tokenInfo || !token) return;
 
     if (!file.name.endsWith('.pfx') && !file.name.endsWith('.p12')) {
       toast.error('Apenas arquivos .pfx ou .p12 são aceitos.');
@@ -96,24 +96,22 @@ export default function CertificadoUpload() {
 
     setUploading(true);
     try {
-      const filePath = `${tokenInfo.empresa_id}/${Date.now()}_${file.name}`;
+      const formData = new FormData();
+      formData.append('token', token);
+      formData.append('senha', senha);
+      formData.append('file', file);
 
-      const { error: uploadErr } = await supabase.storage
-        .from('certificados')
-        .upload(filePath, file, { upsert: true });
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/upload-certificado`, {
+        method: 'POST',
+        body: formData,
+      });
 
-      if (uploadErr) throw uploadErr;
+      const result = await response.json();
 
-      // Mark token as used
-      const { error: updateErr } = await supabase
-        .from('cert_upload_tokens' as any)
-        .update({
-          used_at: new Date().toISOString(),
-          cert_file_path: filePath,
-        } as any)
-        .eq('id', tokenInfo.id);
-
-      if (updateErr) throw updateErr;
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao enviar certificado.');
+      }
 
       setUploaded(true);
       toast.success('Certificado enviado com sucesso!');
