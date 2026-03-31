@@ -162,27 +162,27 @@ export default function DispensaEletronicaTab() {
       {/* Stats */}
       <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
         <div className="stat-card text-center">
-          <p className="text-2xl font-bold text-accent">{stats.total}</p>
+          <p className="text-lg sm:text-2xl font-bold text-accent">{stats.total}</p>
           <p className="text-[10px] text-muted-foreground">Portais com Dispensa</p>
         </div>
         <div className="stat-card text-center">
-          <p className="text-2xl font-bold text-info">{stats.federais}</p>
+          <p className="text-lg sm:text-2xl font-bold text-info">{stats.federais}</p>
           <p className="text-[10px] text-muted-foreground">Federais</p>
         </div>
         <div className="stat-card text-center">
-          <p className="text-2xl font-bold text-primary">{stats.estaduais}</p>
+          <p className="text-lg sm:text-2xl font-bold text-primary">{stats.estaduais}</p>
           <p className="text-[10px] text-muted-foreground">Estaduais</p>
         </div>
         <div className="stat-card text-center">
-          <p className="text-2xl font-bold text-warning">{stats.plataformas}</p>
+          <p className="text-lg sm:text-2xl font-bold text-warning">{stats.plataformas}</p>
           <p className="text-[10px] text-muted-foreground">Plataformas</p>
         </div>
         <div className="stat-card text-center">
-          <p className="text-2xl font-bold text-success">{stats.comApi}</p>
+          <p className="text-lg sm:text-2xl font-bold text-success">{stats.comApi}</p>
           <p className="text-[10px] text-muted-foreground">Com API</p>
         </div>
         <div className="stat-card text-center">
-          <p className="text-2xl font-bold text-foreground">{stats.ufsCobertas}/27</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground">{stats.ufsCobertas}/27</p>
           <p className="text-[10px] text-muted-foreground">UFs Cobertas</p>
         </div>
       </div>

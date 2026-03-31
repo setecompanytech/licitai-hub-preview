@@ -414,7 +414,7 @@ Responda APENAS em JSON:
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative flex-1 min-w-0">
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Buscar no catálogo..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-8 h-9" />
         </div>
