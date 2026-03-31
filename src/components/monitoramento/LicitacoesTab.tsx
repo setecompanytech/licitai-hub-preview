@@ -966,21 +966,21 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
         </div>
 
         {/* Main search input */}
-        <form onSubmit={e => { e.preventDefault(); handleBuscaUnificada(); }} className="flex gap-2">
-          <div className="relative flex-1">
+        <form onSubmit={e => { e.preventDefault(); handleBuscaUnificada(); }} className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1 min-w-0">
             <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent" />
             <Input
-              placeholder="Descreva o que busca: pavimentação em PA, TI acima de 500 mil, material hospitalar SP..."
+              placeholder="Descreva o que busca: pavimentação em PA, TI acima de 500 mil..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-9 text-sm bg-background border-accent/20 focus-visible:ring-accent"
+              className="pl-9 text-xs sm:text-sm bg-background border-accent/20 focus-visible:ring-accent"
               disabled={buscando}
             />
           </div>
           <Button
             type="submit"
             disabled={buscando}
-            className="bg-accent hover:bg-accent/90 text-accent-foreground px-5 gap-2"
+            className="bg-accent hover:bg-accent/90 text-accent-foreground px-5 gap-2 w-full sm:w-auto"
           >
             {buscando ? (
               <><Loader2 className="w-4 h-4 animate-spin" /> Buscando...</>
