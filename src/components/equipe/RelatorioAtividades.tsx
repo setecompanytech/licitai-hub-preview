@@ -119,7 +119,7 @@ export default function RelatorioAtividades({ empresaId }: { empresaId: string }
   return (
     <div>
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <div className="flex-1 min-w-[200px]">
+        <div className="flex-1 min-w-0">
           <Input
             placeholder="Buscar por ação, descrição ou colaborador..."
             value={filtroBusca}

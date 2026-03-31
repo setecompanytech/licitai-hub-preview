@@ -348,7 +348,7 @@ ${truncated}`
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por título, ementa ou tribunal..."

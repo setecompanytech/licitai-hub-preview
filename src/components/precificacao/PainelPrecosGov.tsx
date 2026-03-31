@@ -97,7 +97,7 @@ export default function PainelPrecosGov() {
 
       {/* Search bar */}
       <div className="flex gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Ex: Papel A4, Notebook, Monitor, Serviço de limpeza..."
