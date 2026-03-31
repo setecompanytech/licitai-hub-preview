@@ -144,14 +144,26 @@ class ComprasGovPortal extends BasePortal {
       await this.delayHumano(500, 1200);
       await this.screenshot('sso-gov-br');
 
-      // 2. Selecionar login com certificado digital
-      // O SSO gov.br tem diferentes layouts — tentar múltiplos seletores
+      // 2. Preencher CPF na tela inicial do gov.br
+      // Seletores VERIFICADOS em 2026-03-31:
+      //   - Campo CPF: #accountId (input[name="accountId"])
+      //   - Botão Continuar: #enter-account-id (button[value="enter-account-id"])
+      const cpfField = await this.aguardarElemento('#accountId', 5000);
+      if (cpfField && this.credenciais.cpf) {
+        await this.preencherCampo('#accountId', this.credenciais.cpf);
+        await this.delayHumano(300, 600);
+        await this.page.click('#enter-account-id');
+        await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
+        await this.delayHumano(500, 1000);
+      }
+
+      // 3. Na tela de senha, selecionar certificado digital
+      // Seletores VERIFICADOS: botões com classe .button-href-mimic2 e img com texto "Certificado"
+      // Ou item-login-signup-ways contendo texto "certificado"
       const certSelectors = [
-        'a[href*="certificado"]',
-        'button[data-cert-login]',
-        '.certificate-login',
-        '#login-certificate',
-        'a.btn-certificate',
+        '#login-certificate-digital',
+        'button[value="login-certificate"]',
+        '.item-login-signup-ways button[class*="button-href"]',
       ];
 
       let certFound = false;
@@ -165,13 +177,13 @@ class ComprasGovPortal extends BasePortal {
       }
 
       if (!certFound) {
-        // Fallback: buscar por texto
+        // Fallback VERIFICADO: buscar por texto nos botões/links da página gov.br
         const clicked = await this.page.evaluate(() => {
-          const links = [...document.querySelectorAll('a, button, span[role="button"]')];
-          const certLink = links.find(el => {
+          const items = [...document.querySelectorAll('.item-login-signup-ways a, .item-login-signup-ways button, a, button, span[role="button"]')];
+          const certLink = items.find(el => {
             const text = (el.textContent || '').toLowerCase();
-            return text.includes('certificado') || text.includes('certificate') ||
-                   text.includes('cert digital') || text.includes('e-cpf');
+            return text.includes('certificado digital') || text.includes('certificado') ||
+                   text.includes('cert digital') || text.includes('e-cpf') || text.includes('e-cnpj');
           });
           if (certLink) { certLink.click(); return true; }
           return false;
@@ -507,16 +519,17 @@ class BLLPortal extends BasePortal {
 
   async login() {
     console.log('🔐 Iniciando login no BLL...');
-    await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
+    // BLL usa WordPress wp-login.php
+    // Seletores VERIFICADOS em 2026-03-31:
+    //   - Login: #user_login (input[name="log"])
+    //   - Senha: #user_pass (input[name="pwd"])
+    //   - Submit: #wp-submit (input[type="submit"][value="Acessar"])
+    //   - Form: #loginform
+    await this.page.goto(\`\${this.baseUrl}/wp-login.php\`, { waitUntil: 'networkidle2' });
 
-    await this.preencherCampo('#login, input[name="login"], input[name="email"]', this.credenciais.login);
-    await this.preencherCampo('#senha, input[name="senha"], input[name="password"]', this.credenciais.senha);
-
-    await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button, input[type="submit"]')]
-        .find(b => b.textContent?.toLowerCase().includes('entrar') || b.value?.toLowerCase().includes('entrar'));
-      if (btn) btn.click();
-    });
+    await this.preencherCampo('#user_login', this.credenciais.login);
+    await this.preencherCampo('#user_pass', this.credenciais.senha);
+    await this.page.click('#wp-submit');
 
     await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
     await this.screenshot('pos-login');
@@ -791,15 +804,41 @@ class LicitanetPortal extends BasePortal {
 
   async login() {
     console.log('🔐 Iniciando login no Licitanet...');
-    await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
-    await this.preencherCampo('input[name="email"], #email', this.credenciais.login);
-    await this.preencherCampo('input[name="senha"], #senha', this.credenciais.senha);
+    // Licitanet é um SPA (Inertia.js/Laravel) — VERIFICADO em 2026-03-31
+    // A rota /login retorna 404, o login real é via /sessao-publica ou modal
+    // URL base verificada: https://licitanet.com.br
+    // Abordagem: navegar para a home e clicar no link de login
+    await this.page.goto(this.baseUrl, { waitUntil: 'networkidle2' });
+    
+    // Procurar link/botão de login na navbar
+    const loginClicked = await this.page.evaluate(() => {
+      const links = [...document.querySelectorAll('a, button')];
+      const loginLink = links.find(el => {
+        const text = (el.textContent || '').toLowerCase().trim();
+        return text === 'entrar' || text === 'login' || text === 'acessar' || 
+               text.includes('área do fornecedor');
+      });
+      if (loginLink) { loginLink.click(); return true; }
+      return false;
+    });
+    
+    if (!loginClicked) {
+      // Fallback: tentar navegação direta para rotas comuns
+      await this.page.goto(\`\${this.baseUrl}/auth/login\`, { waitUntil: 'networkidle2' });
+    }
+    
+    await this.page.waitForTimeout(3000);
+    
+    // Preencher formulário de login (SPA renderiza campos dinamicamente)
+    await this.preencherCampo('input[name="email"], input[name="login"], input[type="email"], #email', this.credenciais.login);
+    await this.preencherCampo('input[name="password"], input[name="senha"], input[type="password"], #password', this.credenciais.senha);
     await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button, input[type="submit"]')]
-        .find(b => (b.textContent || b.value).toLowerCase().includes('entrar'));
+      const btn = [...document.querySelectorAll('button[type="submit"], button')]
+        .find(b => (b.textContent || '').toLowerCase().includes('entrar') || 
+                    (b.textContent || '').toLowerCase().includes('login'));
       if (btn) btn.click();
     });
-    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
+    await this.page.waitForTimeout(5000);
     this.loggedIn = true;
     console.log('✅ Login no Licitanet realizado');
   }
@@ -850,15 +889,35 @@ class PortalComprasPortal extends BasePortal {
 
   async login() {
     console.log('🔐 Iniciando login no Portal de Compras Públicas...');
-    await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
-    await this.preencherCampo('input[name="login"], #login', this.credenciais.login);
-    await this.preencherCampo('input[name="senha"], #senha', this.credenciais.senha);
+    // Portal de Compras Públicas é um SPA Angular — VERIFICADO em 2026-03-31
+    // A rota /18/Login retorna 404 (SPA route), precisa navegar via JS
+    // URL: https://www.portaldecompraspublicas.com.br
+    await this.page.goto(this.baseUrl, { waitUntil: 'networkidle2' });
+    
+    // Clicar no botão de login (Angular renderiza dinamicamente)
+    const loginClicked = await this.page.evaluate(() => {
+      const links = [...document.querySelectorAll('a, button, span[role="button"]')];
+      const loginLink = links.find(el => {
+        const text = (el.textContent || '').toLowerCase().trim();
+        return text === 'entrar' || text === 'login' || text.includes('acessar') ||
+               text.includes('fornecedor');
+      });
+      if (loginLink) { loginLink.click(); return true; }
+      return false;
+    });
+    
+    await this.page.waitForTimeout(3000);
+    
+    // Preencher formulário Angular
+    await this.preencherCampo('input[name="login"], input[formcontrolname="login"], input[type="text"]:not([readonly]), #login', this.credenciais.login);
+    await this.preencherCampo('input[name="senha"], input[formcontrolname="senha"], input[type="password"], #senha', this.credenciais.senha);
     await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button, input[type="submit"]')]
-        .find(b => (b.textContent || b.value).toLowerCase().includes('entrar'));
+      const btn = [...document.querySelectorAll('button[type="submit"], button')]
+        .find(b => (b.textContent || '').toLowerCase().includes('entrar') ||
+                    (b.textContent || '').toLowerCase().includes('login'));
       if (btn) btn.click();
     });
-    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
+    await this.page.waitForTimeout(5000);
     this.loggedIn = true;
     console.log('✅ Login no Portal de Compras Públicas realizado');
   }
@@ -909,14 +968,15 @@ class BNCPortal extends BasePortal {
 
   async login() {
     console.log('🔐 Iniciando login no BNC...');
-    await this.page.goto(\`\${this.baseUrl}/login\`, { waitUntil: 'networkidle2' });
-    await this.preencherCampo('input[name="email"], #email', this.credenciais.login);
-    await this.preencherCampo('input[name="senha"], #senha', this.credenciais.senha);
-    await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button, input[type="submit"]')]
-        .find(b => (b.textContent || b.value).toLowerCase().includes('entrar'));
-      if (btn) btn.click();
-    });
+    // BNC usa WordPress wp-login.php (idêntico ao BLL)
+    // Seletores VERIFICADOS em 2026-03-31:
+    //   - Login: #user_login (input[name="log"])
+    //   - Senha: #user_pass (input[name="pwd"])
+    //   - Submit: #wp-submit (input[type="submit"][value="Acessar"])
+    await this.page.goto(\`\${this.baseUrl}/wp-login.php\`, { waitUntil: 'networkidle2' });
+    await this.preencherCampo('#user_login', this.credenciais.login);
+    await this.preencherCampo('#user_pass', this.credenciais.senha);
+    await this.page.click('#wp-submit');
     await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
     this.loggedIn = true;
     console.log('✅ Login no BNC realizado');
