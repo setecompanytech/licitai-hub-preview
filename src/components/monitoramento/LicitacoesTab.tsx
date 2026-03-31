@@ -437,7 +437,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
           .order('created_at', { ascending: false }),
         supabase
           .from('monitoramento_editais')
-          .select('id, titulo, orgao, tipo, status, valor_estimado, uf, municipio, data_abertura, data_publicacao, portal, url')
+          .select('id, titulo, orgao, tipo, status, valor_estimado, uf, municipio, data_abertura, data_encerramento, data_publicacao, portal, url')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(500),
