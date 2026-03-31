@@ -788,7 +788,7 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
 
       {/* Filtros */}
       <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[250px]">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Filtrar por CNPJ, objeto, órgão, palavras-chave..."

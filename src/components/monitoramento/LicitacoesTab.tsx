@@ -1021,7 +1021,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
         )}
 
         {/* Filters toggle + portal selection */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             size="sm"

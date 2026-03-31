@@ -221,7 +221,7 @@ export default function PainelLicitacoes() {
       {/* Filters */}
       <div className="bg-card rounded-xl border border-border/50 p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por objeto, órgão ou número..."
