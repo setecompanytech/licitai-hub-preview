@@ -75,17 +75,17 @@ export default function LicitacoesEstrategicas() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Target className="w-6 h-6 text-accent" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+              <Target className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
               Licitações Estratégicas
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               Análise inteligente das oportunidades com maior chance de sucesso
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-start sm:self-auto">
             <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30">
               <Brain className="w-3 h-3 mr-1" /> Análise por IA
             </Badge>

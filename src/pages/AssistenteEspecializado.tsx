@@ -216,14 +216,14 @@ export default function AssistenteEspecializado() {
       <div className="flex flex-col h-[calc(100vh-4rem)]">
         {/* Header */}
         <div className="border-b border-border/50 pb-4 mb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-accent" />
+           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
               </div>
-              <div>
-                <h1 className="text-lg font-bold tracking-tight">Assistente IA Especializada</h1>
-                <p className="text-xs text-muted-foreground">
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-lg font-bold tracking-tight">Assistente IA Especializada</h1>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
                   Jurídica, Contábil e Econômico-Financeira — com busca em fontes oficiais
                 </p>
               </div>

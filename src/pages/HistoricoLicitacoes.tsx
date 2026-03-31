@@ -182,13 +182,13 @@ export default function HistoricoLicitacoes() {
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Archive className="w-6 h-6 text-accent" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+              <Archive className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
               Histórico e Desempenho
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               Acompanhe os resultados das licitações. Processos finalizados ficam disponíveis por 120 dias.
             </p>
           </div>

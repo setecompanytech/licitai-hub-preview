@@ -26,7 +26,7 @@ export default function WhatsAppCRM() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-6 w-full max-w-3xl">
+          <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full max-w-3xl gap-1">
             <TabsTrigger value="inbox" className="gap-1.5 text-xs">
               <MessageSquare className="w-3.5 h-3.5" />Caixa de Entrada
             </TabsTrigger>
