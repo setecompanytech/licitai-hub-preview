@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import {
   Server, Wifi, WifiOff, Loader2, CheckCircle2, XCircle, Clock,
-  Layers, Cpu, HardDrive, Rocket, ShieldCheck, RefreshCw,
+  Layers, Cpu, HardDrive, Rocket, ShieldCheck, RefreshCw, Upload, Link2, Copy,
 } from 'lucide-react';
 
 type AgenteConfig = {
