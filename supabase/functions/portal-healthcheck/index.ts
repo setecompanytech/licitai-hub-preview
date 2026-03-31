@@ -10,7 +10,7 @@ const corsHeaders = {
 const REQUEST_TIMEOUT_MS = 6000;
 
 const PORTAIS = [
-  { id: "compras-gov", nome: "Compras.gov.br", url: "https://cnetmobile.estaleiro.serpro.gov.br", tipo: "federal" },
+  { id: "compras-gov", nome: "Compras.gov.br", url: "https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras", tipo: "federal" },
   { id: "pncp", nome: "PNCP", url: "https://pncp.gov.br", tipo: "federal" },
   { id: "bll", nome: "BLL Compras", url: "https://bll.org.br", tipo: "privado" },
   { id: "licitacoes-e", nome: "Licitações-e (BB)", url: "https://www.licitacoes-e.com.br", tipo: "privado" },

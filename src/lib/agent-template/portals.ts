@@ -67,29 +67,36 @@ module.exports = { BasePortal };
   'src/portals/comprasgov.js': `const { BasePortal } = require('./base-portal');
 
 /**
- * Módulo de automação para o portal Compras.gov.br (CNET Mobile)
+ * Módulo de automação para o portal Compras.gov.br (CNET Mobile / ComprasNet-Web)
  *
- * URL base: https://cnetmobile.estaleiro.serpro.gov.br
+ * URL base: https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web
  * Autenticação: SSO gov.br com certificado digital A1/A3
  *
- * Fluxo completo de disputa:
- * 1. Acessar SSO gov.br e autenticar com certificado digital
- * 2. Navegar para CNET Mobile > Área do Fornecedor
- * 3. Localizar a sessão de disputa pelo número UASG/Pregão
- * 4. Monitorar sala de disputa em tempo real
- * 5. Ler melhor lance e classificação
- * 6. Enviar lance com confirmação em 2 etapas
+ * Seletores SSO gov.br VERIFICADOS contra HTML real em 2026-03-31:
+ *   - Form:            #loginData (form[id="loginData"])
+ *   - CPF Input:        #accountId (input[name="accountId"] type="tel")
+ *   - Botão Continuar:  #enter-account-id (button type="submit" value="enter-account-id" class="button-continuar")
+ *   - Cert. Digital:    #login-certificate (button type="submit" value="login-certificate" formaction="https://certificado.sso.acesso.gov.br/...")
+ *   - Cert. Nuvem:      div#cert-digital-cloud > button.button-href-mimic2
+ *   - Provedores cloud: #login-external-authentication-neoid, #login-external-authentication-safeid, etc.
+ *   - hCaptcha:         div#hcaptcha (pode aparecer após múltiplas tentativas)
+ *   - QR Code:          .modal-qrcode (login sem senha)
  *
- * IMPORTANTE: Os seletores CSS são baseados no portal Angular e mudam
- * periodicamente. Use o roteiro em docs/roteiro-testes-vps-comprasgov.md
- * para re-mapear seletores via VNC quando necessário.
+ * URL real da área pública: /comprasnet-web/public/compras
+ * URL do fornecedor (pós-login): /comprasnet-web/private/fornecedor (a confirmar via VNC)
+ *
+ * ATENÇÃO: A sala de disputa pós-login usa Angular e os seletores internos
+ * só podem ser verificados com credenciais reais via VNC no VPS.
+ * Use docs/roteiro-testes-vps-comprasgov.md para re-mapear quando necessário.
  */
 class ComprasGovPortal extends BasePortal {
   constructor(page, credenciais) {
     super(page, credenciais);
     this.nome = 'comprasgov';
-    this.baseUrl = 'https://cnetmobile.estaleiro.serpro.gov.br';
+    this.baseUrl = 'https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web';
     this.loginUrl = 'https://sso.acesso.gov.br';
+    this.certLoginUrl = 'https://certificado.sso.acesso.gov.br';
+    this.publicUrl = 'https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras';
     this.maxRetries = 3;
     this.retryDelay = 2000;
   }
@@ -134,56 +141,98 @@ class ComprasGovPortal extends BasePortal {
     }
   }
 
+  /**
+   * Detecta e sinaliza hCaptcha para intervenção manual via VNC
+   */
+  async verificarHCaptcha() {
+    const temCaptcha = await this.page.evaluate(() => {
+      const el = document.querySelector('#hcaptcha, .h-captcha, iframe[src*="hcaptcha"]');
+      return el && el.offsetParent !== null;
+    });
+    if (temCaptcha) {
+      console.warn('🔒 hCaptcha detectado! Aguardando resolução manual via VNC...');
+      console.warn('   → Acesse a aba "Agente Cloud" na plataforma para resolver o captcha.');
+      await this.screenshot('hcaptcha-detectado');
+      // Aguarda até 120s para resolução manual
+      await this.page.waitForFunction(
+        () => {
+          const el = document.querySelector('#hcaptcha, .h-captcha, iframe[src*="hcaptcha"]');
+          return !el || el.offsetParent === null;
+        },
+        { timeout: 120000 }
+      );
+      console.log('✅ hCaptcha resolvido!');
+    }
+  }
+
   async login() {
     console.log('🔐 Iniciando login no Compras.gov via SSO gov.br...');
     await this.aplicarAntiDeteccao();
 
     await this.comRetry(async () => {
-      // 1. Acessar SSO gov.br
-      await this.page.goto(this.loginUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+      // 1. Acessar SSO gov.br (a URL exata depende do redirect do portal)
+      //    O portal Compras.gov redireciona para sso.acesso.gov.br com client_id
+      await this.page.goto(this.publicUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+      await this.delayHumano(500, 1200);
+
+      // Clicar em "Acessar" ou "Login" se existir na página pública
+      const loginClicked = await this.page.evaluate(() => {
+        const links = [...document.querySelectorAll('a, button')];
+        const loginLink = links.find(el => {
+          const text = (el.textContent || '').toLowerCase();
+          return text.includes('acessar') || text.includes('login') ||
+                 text.includes('entrar') || text.includes('área do fornecedor');
+        });
+        if (loginLink) { loginLink.click(); return true; }
+        return false;
+      });
+
+      if (loginClicked) {
+        await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {});
+      }
+
+      // Se não redirecionou para SSO, ir diretamente
+      const currentUrl = this.page.url();
+      if (!currentUrl.includes('sso.acesso.gov.br') && !currentUrl.includes('acesso.gov.br')) {
+        await this.page.goto(this.loginUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+      }
+
       await this.delayHumano(500, 1200);
       await this.screenshot('sso-gov-br');
 
-      // 2. Preencher CPF na tela inicial do gov.br
-      // Seletores VERIFICADOS em 2026-03-31:
-      //   - Campo CPF: #accountId (input[name="accountId"])
-      //   - Botão Continuar: #enter-account-id (button[value="enter-account-id"])
-      const cpfField = await this.aguardarElemento('#accountId', 5000);
+      // 2. Preencher CPF — Seletor VERIFICADO: #accountId (input[name="accountId"])
+      const cpfField = await this.aguardarElemento('#accountId', 8000);
       if (cpfField && this.credenciais.cpf) {
         await this.preencherCampo('#accountId', this.credenciais.cpf);
         await this.delayHumano(300, 600);
+
+        // Verificar hCaptcha antes de submeter
+        await this.verificarHCaptcha();
+
+        // Botão Continuar — Seletor VERIFICADO: #enter-account-id (button.button-continuar)
         await this.page.click('#enter-account-id');
-        await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
+        await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {
+          // Pode não navegar se for AJAX
+        });
         await this.delayHumano(500, 1000);
       }
 
-      // 3. Na tela de senha, selecionar certificado digital
-      // Seletores VERIFICADOS: botões com classe .button-href-mimic2 e img com texto "Certificado"
-      // Ou item-login-signup-ways contendo texto "certificado"
-      const certSelectors = [
-        '#login-certificate-digital',
-        'button[value="login-certificate"]',
-        '.item-login-signup-ways button[class*="button-href"]',
-      ];
-
-      let certFound = false;
-      for (const sel of certSelectors) {
-        const found = await this.aguardarElemento(sel, 3000);
-        if (found) {
-          await this.page.click(sel);
-          certFound = true;
-          break;
-        }
-      }
-
-      if (!certFound) {
-        // Fallback VERIFICADO: buscar por texto nos botões/links da página gov.br
+      // 3. Selecionar certificado digital
+      // Seletor VERIFICADO: #login-certificate (button[value="login-certificate"])
+      // Está dentro de div#cert-digital .item-login-signup-ways
+      // formaction aponta para https://certificado.sso.acesso.gov.br/login?...
+      const certButton = await this.aguardarElemento('#login-certificate', 5000);
+      if (certButton) {
+        console.log('📜 Clicando em "Seu certificado digital"...');
+        await this.page.click('#login-certificate');
+      } else {
+        // Fallback: buscar por texto nos botões
         const clicked = await this.page.evaluate(() => {
-          const items = [...document.querySelectorAll('.item-login-signup-ways a, .item-login-signup-ways button, a, button, span[role="button"]')];
+          const items = [...document.querySelectorAll('.item-login-signup-ways button, .item-login-signup-ways a, button, a')];
           const certLink = items.find(el => {
             const text = (el.textContent || '').toLowerCase();
-            return text.includes('certificado digital') || text.includes('certificado') ||
-                   text.includes('cert digital') || text.includes('e-cpf') || text.includes('e-cnpj');
+            return (text.includes('certificado digital') || text.includes('seu certificado')) &&
+                   !text.includes('nuvem');
           });
           if (certLink) { certLink.click(); return true; }
           return false;
@@ -192,12 +241,18 @@ class ComprasGovPortal extends BasePortal {
       }
 
       console.log('📜 Aguardando autenticação mTLS com certificado...');
-      await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 45000 });
+      // O navegador vai redirecionar para certificado.sso.acesso.gov.br
+      // que inicia o handshake TLS client-certificate
+      await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 });
       await this.delayHumano(1000, 2000);
+
+      // Verificar hCaptcha pós-certificado
+      await this.verificarHCaptcha();
+
       await this.screenshot('pos-login-sso');
     }, 'login-sso');
 
-    // 3. Verificar se precisa autorizar acesso ao Compras.gov
+    // 4. Verificar se precisa autorizar acesso ao Compras.gov
     const needsAuth = await this.page.evaluate(() => {
       const body = document.body.innerText.toLowerCase();
       return body.includes('autorizar') || body.includes('permitir acesso');
@@ -213,20 +268,44 @@ class ComprasGovPortal extends BasePortal {
       await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
     }
 
-    // 4. Navegar para CNET Mobile (área do fornecedor)
+    // 5. Navegar para área do fornecedor (ComprasNet-Web)
     await this.comRetry(async () => {
-      await this.page.goto(\`\${this.baseUrl}/pregao/fornecedor\`, {
-        waitUntil: 'networkidle2', timeout: 30000,
-      });
-      await this.delayHumano();
-    }, 'navegar-cnet');
+      // Tentar URLs conhecidas da área do fornecedor
+      const possibleUrls = [
+        \`\${this.baseUrl}/private/fornecedor\`,
+        \`\${this.baseUrl}/pregao/fornecedor\`,
+        \`\${this.baseUrl}/private/home\`,
+        this.baseUrl,
+      ];
 
-    // 5. Verificar login bem-sucedido
+      let found = false;
+      for (const url of possibleUrls) {
+        await this.page.goto(url, { waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {});
+        const isLogged = await this.page.evaluate(() => {
+          const body = document.body.innerText;
+          return body.includes('Fornecedor') || body.includes('Bem-vindo') ||
+                 body.includes('Painel') || body.includes('UASG') ||
+                 body.includes('Pregão') || body.includes('Meus Pregões') ||
+                 body.includes('Em disputa') || body.includes('Abertas');
+        });
+        if (isLogged) { found = true; break; }
+      }
+
+      if (!found) {
+        // Se nenhuma URL funcionou, verificar a página atual
+        const pageText = await this.page.evaluate(() => document.body.innerText.substring(0, 500));
+        console.log('📄 Conteúdo atual da página:', pageText);
+      }
+    }, 'navegar-area-fornecedor');
+
+    // 6. Verificar login bem-sucedido
     const loggedIn = await this.page.evaluate(() => {
       const body = document.body.innerText;
       return body.includes('Fornecedor') || body.includes('Bem-vindo') ||
              body.includes('Painel') || body.includes('UASG') ||
-             body.includes('Pregão') || body.includes('Meus Pregões');
+             body.includes('Pregão') || body.includes('Meus Pregões') ||
+             body.includes('Em disputa') || body.includes('Compras') ||
+             body.includes('Abertas para participação');
     });
 
     if (!loggedIn) {
@@ -243,19 +322,28 @@ class ComprasGovPortal extends BasePortal {
     await this.aplicarAntiDeteccao();
 
     await this.comRetry(async () => {
-      // CNET Mobile usa Angular — aguardar carregamento do framework
-      await this.page.goto(\`\${this.baseUrl}/pregao/fornecedor\`, {
+      // Ir para a lista de compras públicas com filtro "Em disputa"
+      await this.page.goto(\`\${this.publicUrl}\`, {
         waitUntil: 'networkidle2', timeout: 25000,
       });
       await this.delayHumano(1000, 2000);
 
-      // Tentar buscar pelo número do pregão/UASG
+      // A página pública tem filtros: Situação, Etapa, Modalidade, etc.
+      // Seletores observados do HTML real:
+      //   - Filtro "Em disputa": provavelmente um select ou checkbox
+      //   - Campo "Número da compra": input
+      //   - Botão "Pesquisar"
+
+      // Tentar preencher "Número da compra"
       const buscaSelectors = [
+        'input[name="numCompra"]', 'input[name="numeroCompra"]',
+        'input[placeholder*="compra"]', 'input[placeholder*="Número"]',
+        'input[formcontrolname="numCompra"]',
+        'input[type="search"]', '#numCompra',
+        // Fallback genéricos
         'input[name="uasg"]', 'input[name="numPregao"]',
         'input[placeholder*="UASG"]', 'input[placeholder*="pregão"]',
-        'input[placeholder*="Pregão"]', '#busca-pregao',
-        'input[type="search"]', 'input[formcontrolname="busca"]',
-        'input[formcontrolname="numPregao"]',
+        '#busca-pregao',
       ];
 
       let buscaFound = false;
@@ -269,10 +357,16 @@ class ComprasGovPortal extends BasePortal {
       }
 
       if (!buscaFound) {
-        // Fallback: procurar qualquer input de texto visível
+        // Fallback: procurar qualquer input de texto visível que pareça busca
         await this.page.evaluate((editalNum) => {
           const inputs = [...document.querySelectorAll('input[type="text"], input:not([type])')];
-          const input = inputs.find(i => i.offsetParent !== null);
+          const input = inputs.find(i => {
+            if (i.offsetParent === null) return false;
+            const ph = (i.placeholder || '').toLowerCase();
+            const nm = (i.name || '').toLowerCase();
+            return ph.includes('compra') || ph.includes('número') || ph.includes('busca') ||
+                   nm.includes('compra') || nm.includes('num') || nm.includes('busca');
+          });
           if (input) {
             input.value = editalNum;
             input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -282,17 +376,33 @@ class ComprasGovPortal extends BasePortal {
       }
 
       await this.delayHumano(500, 1000);
-      await this.page.keyboard.press('Enter');
+
+      // Clicar em "Pesquisar"
+      const pesquisarClicked = await this.page.evaluate(() => {
+        const btns = [...document.querySelectorAll('button, input[type="submit"], a.btn')];
+        const btn = btns.find(b => {
+          const text = (b.textContent || b.value || '').toLowerCase();
+          return text.includes('pesquisar') || text.includes('buscar') || text.includes('filtrar');
+        });
+        if (btn) { btn.click(); return true; }
+        return false;
+      });
+
+      if (!pesquisarClicked) {
+        await this.page.keyboard.press('Enter');
+      }
+
       await this.page.waitForTimeout(5000);
       await this.screenshot('busca-resultado');
 
-      // Clicar na sala de disputa
+      // Clicar na sala de disputa / resultado
       const disputaClicked = await this.page.evaluate(() => {
-        const links = [...document.querySelectorAll('a, button, tr, td')];
+        const links = [...document.querySelectorAll('a, button, tr, td, .card, .item')];
         const disputaLink = links.find(el => {
           const text = (el.textContent || '').toLowerCase();
           return text.includes('sala') || text.includes('disputa') ||
-                 text.includes('participar') || text.includes('acessar');
+                 text.includes('participar') || text.includes('acessar') ||
+                 text.includes('em andamento');
         });
         if (disputaLink) { disputaLink.click(); return true; }
         return false;
@@ -309,15 +419,13 @@ class ComprasGovPortal extends BasePortal {
 
   async lerMelhorLance() {
     const valor = await this.page.evaluate(() => {
-      // Seletores ampliados para CNET Mobile Angular
       const seletores = [
         '.melhor-lance', '.menor-lance', '.valor-lance',
         '#melhorLance', '#menorLance', '#valorAtual',
         'td.valor', '.lance-atual', '.proposta-valor',
         '[data-field="melhorLance"]', '[data-field="valor"]',
-        'span.ng-star-inserted', // Angular dynamic elements
-        '.mat-cell', // Angular Material
-        // Tabela de classificação — primeira linha, coluna de valor
+        'span.ng-star-inserted',
+        '.mat-cell',
         'table tbody tr:first-child td:nth-child(3)',
         'table tbody tr:first-child td:nth-child(4)',
         '.classificacao-item:first-child .valor',
@@ -327,7 +435,6 @@ class ComprasGovPortal extends BasePortal {
         if (el) {
           const texto = el.textContent.replace(/[^\\d.,]/g, '');
           if (!texto) continue;
-          // Formato brasileiro: 1.234,56
           const parts = texto.split(',');
           if (parts.length === 2) {
             const inteiro = parts[0].replace(/\\./g, '');
@@ -355,7 +462,6 @@ class ComprasGovPortal extends BasePortal {
     const valorStr = this.formatarMoeda(valor);
 
     await this.comRetry(async () => {
-      // Preencher campo de lance
       const campoSelectors = [
         'input[name="valorLance"]', 'input[name="lance"]',
         '#campoLance', '#valorLance', '#inputLance',
@@ -376,7 +482,6 @@ class ComprasGovPortal extends BasePortal {
       }
 
       if (!campoFound) {
-        // Fallback: buscar campo numérico visível
         await this.page.evaluate((val) => {
           const inputs = [...document.querySelectorAll('input[type="text"], input[type="number"], input:not([type])')];
           const campo = inputs.find(i =>
@@ -395,7 +500,6 @@ class ComprasGovPortal extends BasePortal {
 
       await this.delayHumano(300, 600);
 
-      // Clicar no botão de enviar
       const enviado = await this.page.evaluate(() => {
         const btns = [...document.querySelectorAll('button, input[type="submit"], a.btn')];
         const btn = btns.find(b => {
@@ -411,12 +515,10 @@ class ComprasGovPortal extends BasePortal {
 
       await this.delayHumano(500, 1000);
 
-      // Confirmação em 2 etapas (modal do CNET)
+      // Confirmação em 2 etapas (modal)
       const modalConfirm = await this.page.evaluate(() => {
-        // Modal de confirmação do Angular Material ou custom
         const modals = document.querySelectorAll('.modal, .mat-dialog-container, .cdk-overlay-pane, [role="dialog"]');
         for (const modal of modals) {
-          const confirmBtn = modal.querySelector('button');
           const btns = [...modal.querySelectorAll('button')];
           const ok = btns.find(b => {
             const text = (b.textContent || '').toLowerCase();
@@ -466,7 +568,6 @@ class ComprasGovPortal extends BasePortal {
 
   /**
    * Monitora a sala de disputa em tempo real.
-   * Retorna dados da classificação atual.
    */
   async lerClassificacao() {
     return await this.page.evaluate(() => {
