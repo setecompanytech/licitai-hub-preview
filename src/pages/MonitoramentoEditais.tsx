@@ -153,7 +153,7 @@ export default function MonitoramentoEditais() {
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+        <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
           {(Object.keys(tipoConfig) as TipoDocumento[]).map((tipo) => {
             const cfg = tipoConfig[tipo];
             const Icon = cfg.icon;
