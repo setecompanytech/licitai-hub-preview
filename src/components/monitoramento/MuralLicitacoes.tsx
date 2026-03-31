@@ -1002,33 +1002,35 @@ export default function MuralLicitacoes() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="bg-accent/5 rounded-xl border border-accent/20 p-5 shadow-sm">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-accent/15 flex items-center justify-center">
-            <Gavel className="w-5 h-5 text-accent" />
+      <div className="bg-accent/5 rounded-xl border border-accent/20 p-4 sm:p-5 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-accent/15 flex items-center justify-center flex-shrink-0">
+              <Gavel className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-bold text-xs sm:text-sm flex items-center gap-2 flex-wrap">
+                <span className="whitespace-nowrap">Mural de Licitações — Tempo Real</span>
+                <Badge className="bg-success text-success-foreground text-[10px]">PNCP Oficial</Badge>
+              </h3>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground">
+                Dados em tempo real da API oficial do Portal Nacional de Contratações Públicas
+              </p>
+            </div>
           </div>
-          <div className="flex-1">
-            <h3 className="font-bold text-sm flex items-center gap-2">
-              Mural de Licitações — Tempo Real
-              <Badge className="bg-success text-success-foreground text-[10px]">PNCP Oficial</Badge>
-            </h3>
-            <p className="text-[11px] text-muted-foreground">
-              Dados em tempo real da API oficial do Portal Nacional de Contratações Públicas
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
             <Button
               size="sm"
               variant="outline"
               onClick={() => setBuscaDiretaAberta(!buscaDiretaAberta)}
-              className="gap-1.5 border-accent/30 text-accent hover:bg-accent/10"
+              className="gap-1.5 border-accent/30 text-accent hover:bg-accent/10 text-xs"
             >
               <Link2 className="w-3.5 h-3.5" />
               Busca Direta
             </Button>
-            <div className="flex items-center gap-2 bg-card border border-border/50 rounded-lg px-3 py-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-accent" />
-              <label htmlFor="toggle-externos" className="text-xs font-medium cursor-pointer select-none">
+            <div className="flex items-center gap-2 bg-card border border-border/50 rounded-lg px-2.5 py-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+              <label htmlFor="toggle-externos" className="text-[11px] sm:text-xs font-medium cursor-pointer select-none whitespace-nowrap">
                 Incluir portais externos
               </label>
               <Switch
@@ -1039,7 +1041,7 @@ export default function MuralLicitacoes() {
               />
               {loadingExternos && <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" />}
             </div>
-            <Button size="sm" variant="outline" onClick={carregarMural} disabled={loading} className="gap-1.5">
+            <Button size="sm" variant="outline" onClick={carregarMural} disabled={loading} className="gap-1.5 text-xs">
               <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} /> Atualizar
             </Button>
           </div>
