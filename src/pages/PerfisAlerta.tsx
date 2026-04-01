@@ -230,8 +230,8 @@ export default function PerfisAlerta() {
   const handleCalcularScores = async () => {
     setCalculando(true);
     try {
-      const { data, error } = await supabase.functions.invoke('alertas-inteligentes', {
-        body: { action: 'calcular' },
+      const { data, error } = await supabase.functions.invoke('calcular-scores', {
+        body: {},
       });
       if (error) throw error;
       setScoreResults(data);
