@@ -126,7 +126,7 @@ export default function LgpdPage() {
               <strong>II.</strong> Receber comunicações da ANPD e adotar providências;<br />
               <strong>III.</strong> Orientar os funcionários e os contratados da entidade a respeito das práticas a serem tomadas em relação à proteção de dados pessoais;<br />
               <strong>IV.</strong> Executar as demais atribuições determinadas pelo controlador ou estabelecidas em normas complementares.<br /><br />
-              O contato com o DPO pode ser realizado através dos canais de suporte disponíveis na Plataforma.
+              <strong>Contato do DPO:</strong> <a href="mailto:dpo@praefectus.com.br" className="text-primary hover:underline">dpo@praefectus.com.br</a>
             </p>
           </section>
 

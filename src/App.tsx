@@ -75,6 +75,7 @@ import CentralAjuda from "./pages/CentralAjuda";
 import PoliticaCookies from "./pages/PoliticaCookies";
 import Solucoes from "./pages/Solucoes";
 import DemoAmbiente from "./pages/DemoAmbiente";
+import CookieConsentBanner from "./components/shared/CookieConsentBanner";
 const queryClient = new QueryClient();
 
 const ProtectedPages = ({ children }: { children: React.ReactNode }) => (
@@ -166,6 +167,7 @@ const App = () => (
               <Route path="/demo" element={<DemoAmbiente />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <CookieConsentBanner />
           </PropostaCartProvider>
           </EmpresaProvider>
         </AuthProvider>

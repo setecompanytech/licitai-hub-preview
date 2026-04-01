@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://praefectus.com.br/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://praefectus.com.br/solucoes</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://praefectus.com.br/sobre</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://praefectus.com.br/contato</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://praefectus.com.br/faq</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://praefectus.com.br/cadastro</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://praefectus.com.br/seguranca-informacao</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://praefectus.com.br/compliance</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://praefectus.com.br/status</loc><changefreq>daily</changefreq><priority>0.6</priority></url>
+  <url><loc>https://praefectus.com.br/ajuda</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://praefectus.com.br/termos-de-uso</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://praefectus.com.br/politica-de-privacidade</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://praefectus.com.br/lgpd</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://praefectus.com.br/politica-cookies</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
+</urlset>
