@@ -6,16 +6,27 @@ const corsHeaders = {
 }
 
 const PNCP_PAGE_SIZE = 50
-const MAX_PAGES_PER_SEGMENT = 40    // Up to 2000 items per UF+modalidade
-const TIMEOUT_MS = 30000
-const RETRY_COUNT = 2
-const RETRY_DELAY_MS = 800
-const CONCURRENCY = 3                // Parallel fetches
+const MAX_PAGES_PER_SEGMENT = 80   // More pages per segment since each handles only 3 UFs
+const TIMEOUT_MS = 25000
+const RETRY_COUNT = 3
+const RETRY_DELAY_MS = 600
+const CONCURRENCY = 4
 const MODALIDADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-const ALL_UFS = [
-  'AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT',
-  'PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'
+
+// 9 segments of 3 UFs each — each segment runs independently via its own cron job
+const UF_SEGMENTS: string[][] = [
+  ['AC', 'AL', 'AM'],
+  ['AP', 'BA', 'CE'],
+  ['DF', 'ES', 'GO'],
+  ['MA', 'MG', 'MS'],
+  ['MT', 'PA', 'PB'],
+  ['PE', 'PI', 'PR'],
+  ['RJ', 'RN', 'RO'],
+  ['RR', 'RS', 'SC'],
+  ['SE', 'SP', 'TO'],
 ]
+
+const ALL_UFS = UF_SEGMENTS.flat()
 
 function formatDatePNCP(date: Date): string {
   const y = date.getFullYear()
@@ -114,12 +125,9 @@ Deno.serve(async (req) => {
   const cronSecret = Deno.env.get('CRON_SECRET')
   const isCronAuth = cronSecret && authHeader === `Bearer ${cronSecret}`
 
-  // Also accept supabase service_role or anon key calls (from pg_cron net.http_post)
   if (!isCronAuth) {
-    // Try to verify as supabase service role
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     if (!authHeader.includes(supabaseServiceKey) && authHeader !== `Bearer ${supabaseServiceKey}`) {
-      // Also allow if called with the anon key (pg_cron uses it)
       const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
       if (!authHeader.includes(supabaseAnonKey)) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -138,10 +146,14 @@ Deno.serve(async (req) => {
     let body: any = {}
     try { body = await req.json() } catch { /* empty body OK for cron */ }
 
-    const ufs: string[] = body.ufs || ALL_UFS
+    // Segment-based execution: each cron job sends its segment index (0-8)
+    const segment: number | null = typeof body.segment === 'number' ? body.segment : null
+    const ufs: string[] = body.ufs || (segment !== null && segment >= 0 && segment < UF_SEGMENTS.length
+      ? UF_SEGMENTS[segment]
+      : ALL_UFS)
     const modalidades: number[] = body.modalidades || MODALIDADES
-    const diasAtras = body.dias_atras || 7
-    const diasFuturos = body.dias_futuros || 30
+    const diasAtras = body.dias_atras || 15
+    const diasFuturos = body.dias_futuros || 45
 
     const now = new Date()
     const dataInicial = new Date(now.getTime() - diasAtras * 86400000)
@@ -150,8 +162,9 @@ Deno.serve(async (req) => {
     const dataFinalStr = formatDatePNCP(dataFinal)
 
     let totalInseridos = 0
-    let totalAtualizados = 0
     let totalErros = 0
+
+    console.log(`Crawler PNCP iniciando | segment=${segment} | UFs=${ufs.join(',')} | modalidades=${modalidades.length} | período=${dataInicialStr}-${dataFinalStr}`)
 
     // Build all segment tasks (UF x Modalidade)
     const segmentTasks = ufs.flatMap(uf =>
@@ -159,7 +172,7 @@ Deno.serve(async (req) => {
         const baseUrl = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?dataInicial=${dataInicialStr}&dataFinal=${dataFinalStr}&tamanhoPagina=${PNCP_PAGE_SIZE}&codigoModalidadeContratacao=${mod}&uf=${uf}`
 
         const firstPage = await fetchPage(`${baseUrl}&pagina=1`)
-        if (firstPage.items.length === 0) return { inserted: 0, updated: 0, errors: 0 }
+        if (firstPage.items.length === 0) return { inserted: 0, errors: 0 }
 
         const totalPages = Math.min(MAX_PAGES_PER_SEGMENT, Math.ceil(firstPage.total / PNCP_PAGE_SIZE))
         const allItems = [...firstPage.items]
@@ -172,7 +185,7 @@ Deno.serve(async (req) => {
               return result.items
             })
 
-          const pageResults = await runParallel(pageTasks, 2)
+          const pageResults = await runParallel(pageTasks, 3)
           for (const items of pageResults) {
             if (items.length > 0) allItems.push(...items)
           }
@@ -181,7 +194,7 @@ Deno.serve(async (req) => {
         console.log(`UF=${uf} mod=${mod}: ${allItems.length}/${firstPage.total} items`)
 
         const rows = allItems.map(item => mapRow(item, uf, mod)).filter(r => r.pncp_id)
-        if (rows.length === 0) return { inserted: 0, updated: 0, errors: 0 }
+        if (rows.length === 0) return { inserted: 0, errors: 0 }
 
         let segInserted = 0
         let segErrors = 0
@@ -201,7 +214,7 @@ Deno.serve(async (req) => {
           }
         }
 
-        return { inserted: segInserted, updated: 0, errors: segErrors }
+        return { inserted: segInserted, errors: segErrors }
       })
     )
 
@@ -209,25 +222,27 @@ Deno.serve(async (req) => {
     const segmentResults = await runParallel(segmentTasks, CONCURRENCY)
     for (const r of segmentResults) {
       totalInseridos += r.inserted
-      totalAtualizados += r.updated
       totalErros += r.errors
     }
 
     // After crawling, trigger pesquisa-tempo-real to send alerts for new matches
-    try {
-      await supabase.functions.invoke('pesquisa-tempo-real', {
-        body: { source: 'crawler' },
-        headers: { Authorization: `Bearer ${supabaseServiceKey}` },
-      })
-      console.log('pesquisa-tempo-real invocado após crawler')
-    } catch (alertErr) {
-      console.error('Erro ao invocar pesquisa-tempo-real:', alertErr)
+    // Only trigger on the last segment (8) to avoid duplicate alerts
+    if (segment === null || segment === UF_SEGMENTS.length - 1) {
+      try {
+        await supabase.functions.invoke('pesquisa-tempo-real', {
+          body: { source: 'crawler' },
+          headers: { Authorization: `Bearer ${supabaseServiceKey}` },
+        })
+        console.log('pesquisa-tempo-real invocado após crawler')
+      } catch (alertErr) {
+        console.error('Erro ao invocar pesquisa-tempo-real:', alertErr)
+      }
     }
 
     const result = {
       message: 'Crawler PNCP concluído',
+      segment,
       total_inseridos: totalInseridos,
-      total_atualizados: totalAtualizados,
       total_erros: totalErros,
       ufs_processadas: ufs.length,
       modalidades_processadas: modalidades.length,
