@@ -462,11 +462,16 @@ export default function MuralLicitacoes() {
     }
   }, [incluirExternos, searchSubmitted, ufFiltro, modalidadeFiltro]);
 
-  // Filtros client-side aplicados sobre os dados já carregados (sem re-fetch)
-  // Portais únicos para o filtro dinâmico
+  // Portais estáticos + dinâmicos dos resultados
+  const PORTAIS_ESTATICOS = [
+    'PNCP', 'Compras.gov.br', 'Licitanet', 'Licitações-e', 'BLL', 'BNC',
+    'Portal de Compras Públicas', 'Compras MG', 'Compras PR', 'BEC/SP',
+    'Compras RS', 'Compras SC', 'Compras BA', 'Compras PE', 'Compras CE',
+  ];
   const portaisDisponiveis = useMemo(() => {
     const allItems = [...licitacoesRaw, ...licitacoesExternas];
-    const unique = [...new Set(allItems.map(i => i.portal).filter(Boolean))].sort();
+    const dynamicPortals = allItems.map(i => i.portal).filter(Boolean);
+    const unique = [...new Set([...PORTAIS_ESTATICOS, ...dynamicPortals])].sort();
     return unique;
   }, [licitacoesRaw, licitacoesExternas]);
 
