@@ -462,16 +462,17 @@ export default function MuralLicitacoes() {
     }
   }, [incluirExternos, searchSubmitted, ufFiltro, modalidadeFiltro]);
 
-  // Portais estáticos + dinâmicos dos resultados
-  const PORTAIS_ESTATICOS = [
-    'PNCP', 'Compras.gov.br', 'Licitanet', 'Licitações-e', 'BLL', 'BNC',
-    'Portal de Compras Públicas', 'Compras MG', 'Compras PR', 'BEC/SP',
-    'Compras RS', 'Compras SC', 'Compras BA', 'Compras PE', 'Compras CE',
-  ];
   const portaisDisponiveis = useMemo(() => {
+    const estaticos = [
+      'PNCP', 'Compras.gov.br', 'ComprasNet', 'Licitanet', 'Licitações-e',
+      'BLL', 'BNC', 'Portal de Compras Públicas',
+      'BEC/SP', 'Compras MG', 'Compras PR', 'Compras RS', 'Compras SC',
+      'Compras BA', 'Compras PE', 'Compras CE', 'Compras GO', 'Compras RJ',
+      'Compras PA', 'Compras AM', 'Compras MT', 'Compras MS',
+    ];
     const allItems = [...licitacoesRaw, ...licitacoesExternas];
-    const dynamicPortals = allItems.map(i => i.portal).filter(Boolean);
-    const unique = [...new Set([...PORTAIS_ESTATICOS, ...dynamicPortals])].sort();
+    const dynamicPortals = allItems.map(i => i.portal).filter(Boolean) as string[];
+    const unique = [...new Set([...estaticos, ...dynamicPortals])].sort((a, b) => a.localeCompare(b, 'pt-BR'));
     return unique;
   }, [licitacoesRaw, licitacoesExternas]);
 
