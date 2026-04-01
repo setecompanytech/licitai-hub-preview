@@ -182,10 +182,11 @@ export default function MuralLicitacoes() {
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [tipoInstrumentoFiltro, setTipoInstrumentoFiltro] = useState<string>('all');
   const [esferaFiltro, setEsferaFiltro] = useState<string>('all');
+  const [portalFiltro, setPortalFiltro] = useState<string>('all');
   const [municipioFiltro, setMunicipioFiltro] = useState('');
   const [unidadeFiltro, setUnidadeFiltro] = useState('');
   const [orgaoFiltro, setOrgaoFiltro] = useState('');
-
+  
   // Toggle portais externos (Firecrawl)
   const [incluirExternos, setIncluirExternos] = useState(false);
   const [loadingExternos, setLoadingExternos] = useState(false);
