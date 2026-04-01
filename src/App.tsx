@@ -163,6 +163,7 @@ const App = () => (
               <Route path="/ajuda" element={<CentralAjuda />} />
               <Route path="/politica-cookies" element={<PoliticaCookies />} />
               <Route path="/solucoes" element={<Solucoes />} />
+              <Route path="/demo" element={<DemoAmbiente />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </PropostaCartProvider>
