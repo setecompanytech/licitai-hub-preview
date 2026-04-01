@@ -81,6 +81,12 @@ async function runParallel<T>(tasks: Array<() => Promise<T>>, limit: number): Pr
   return results
 }
 
+async function computeHash(text: string): Promise<string> {
+  const data = new TextEncoder().encode(text)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
 function mapRow(item: any, uf: string, mod: number) {
   const cnpj = item.orgaoEntidade?.cnpj || ''
   const ano = item.anoCompra || ''
@@ -114,6 +120,7 @@ function mapRow(item: any, uf: string, mod: number) {
     tipo_instrumento: item.tipoInstrumentoConvocatorioNome || null,
     srp: item.srp ?? null,
     codigo_unidade: item.unidadeOrgao?.codigoUnidade || null,
+    _objeto_raw: item.objetoCompra || '',
   }
 }
 
