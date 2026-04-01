@@ -1473,24 +1473,36 @@ export default function MuralLicitacoes() {
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/20">
+                <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-border/20">
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-1 text-xs gap-1.5 h-8"
+                    className="flex-1 text-xs gap-1 h-8"
                     onClick={() => setFichaAberta(lic)}
                   >
-                    <Eye className="w-3.5 h-3.5" /> Ver Ficha
+                    <Eye className="w-3.5 h-3.5" /> Ficha
                   </Button>
+                  {(lic.url || buildPncpUrl(lic)) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 text-xs gap-1 h-8 text-primary border-primary/30 hover:bg-primary/10"
+                      asChild
+                    >
+                      <a href={lic.url || buildPncpUrl(lic)!} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-3.5 h-3.5" /> Portal
+                      </a>
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-1 text-xs gap-1.5 h-8 text-accent border-accent/30 hover:bg-accent/10"
+                    className="flex-1 text-xs gap-1 h-8 text-accent border-accent/30 hover:bg-accent/10"
                     onClick={() => handleDownloadEdital(lic)}
                     disabled={isDownloading}
                   >
                     {isDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                    {isDownloading ? 'Baixando...' : 'Edital'}
+                    {isDownloading ? '...' : 'Edital'}
                   </Button>
                 </div>
               </Card>
