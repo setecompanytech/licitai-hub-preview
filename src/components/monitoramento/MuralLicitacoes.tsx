@@ -243,6 +243,32 @@ export default function MuralLicitacoes() {
   // Favoritos
   const [favoritos, setFavoritos] = useState<Set<string>>(new Set());
 
+  // Scores de aderência
+  const [scoresMap, setScoresMap] = useState<Map<string, { score_total: number; classificacao: string }>>(new Map());
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('licitacao_scores')
+      .select('licitacao_cache_id, score_total, classificacao')
+      .eq('user_id', user.id)
+      .gt('score_total', 0)
+      .order('score_total', { ascending: false })
+      .limit(1000)
+      .then(({ data }) => {
+        if (data) {
+          const map = new Map<string, { score_total: number; classificacao: string }>();
+          for (const s of data) {
+            const existing = map.get(s.licitacao_cache_id);
+            if (!existing || (s as any).score_total > existing.score_total) {
+              map.set(s.licitacao_cache_id, { score_total: (s as any).score_total, classificacao: (s as any).classificacao });
+            }
+          }
+          setScoresMap(map);
+        }
+      });
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
     supabase
