@@ -167,6 +167,7 @@ const App = () => (
               <Route path="/demo" element={<DemoAmbiente />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <CookieConsentBanner />
           </PropostaCartProvider>
           </EmpresaProvider>
         </AuthProvider>

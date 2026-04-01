@@ -113,7 +113,8 @@ export default function PoliticaPrivacidade() {
           <section>
             <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">10. ENCARREGADO DE PROTEÇÃO DE DADOS (DPO)</h2>
             <p className="text-sm text-muted-foreground">
-              O USUÁRIO poderá contatar o Encarregado de Proteção de Dados para exercer seus direitos ou esclarecer dúvidas sobre o tratamento de dados pessoais, conforme <strong>Art. 41 da LGPD</strong>, através dos canais de suporte disponíveis na Plataforma.
+              O USUÁRIO poderá contatar o Encarregado de Proteção de Dados (DPO) para exercer seus direitos ou esclarecer dúvidas sobre o tratamento de dados pessoais, conforme <strong>Art. 41 da LGPD</strong>.<br /><br />
+              <strong>Encarregado (DPO):</strong> Rafael — E-mail: <a href="mailto:dpo@praefectus.com.br" className="text-primary hover:underline">dpo@praefectus.com.br</a>
             </p>
           </section>
 
