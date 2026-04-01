@@ -1256,20 +1256,21 @@ export default function MuralLicitacoes() {
 
               {/* Row 5: Datas */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex-1">
-                    <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Data de início de recebimento de propostas</label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn("w-full h-10 justify-start text-left text-xs font-normal", !dataInicio && "text-muted-foreground")}>
-                          <CalendarDays className="w-3 h-3 mr-1.5" />
-                          {dataInicio ? format(dataInicio, "dd/MM/yyyy") : "Selecione"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={dataInicio} onSelect={(d) => { setDataInicio(d); setPagina(1); }} locale={ptBR} initialFocus className={cn("p-3 pointer-events-auto")} />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Data de início de recebimento de propostas</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full h-10 justify-start text-left text-xs font-normal", !dataInicio && "text-muted-foreground")}>
+                        <CalendarDays className="w-3 h-3 mr-1.5" />
+                        {dataInicio ? format(dataInicio, "dd/MM/yyyy") : "Selecione"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={dataInicio} onSelect={(d) => { setDataInicio(d); setPagina(1); }} locale={ptBR} initialFocus className={cn("p-3 pointer-events-auto")} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="flex gap-2 items-end">
                   <div className="flex-1">
                     <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Data fim de recebimento de propostas</label>
                     <Popover>
@@ -1293,7 +1294,7 @@ export default function MuralLicitacoes() {
               </div>
 
               {/* Clear all filters */}
-              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || dataInicio || dataFim) && (
+              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || portalFiltro !== 'all' || dataInicio || dataFim) && (
                 <div className="flex justify-end pt-1">
                   <Button
                     variant="ghost"
@@ -1303,7 +1304,8 @@ export default function MuralLicitacoes() {
                       setTipoInstrumentoFiltro('all'); setModalidadeFiltro('all');
                       setOrgaoFiltro(''); setUnidadeFiltro('');
                       setUfFiltro('all'); setMunicipioFiltro('');
-                      setEsferaFiltro('all'); setDataInicio(undefined); setDataFim(undefined);
+                      setEsferaFiltro('all'); setPortalFiltro('all');
+                      setDataInicio(undefined); setDataFim(undefined);
                       setPagina(1);
                     }}
                   >
