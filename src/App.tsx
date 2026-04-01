@@ -147,6 +147,9 @@ const App = () => (
               <Route path="/unsubscribe" element={<Unsubscribe />} />
               <Route path="/perfis-alerta" element={<ProtectedPages><PerfisAlerta /></ProtectedPages>} />
               <Route path="/certificado-upload" element={<CertificadoUpload />} />
+              <Route path="/seguranca-informacao" element={<SegurancaInformacao />} />
+              <Route path="/compliance" element={<ComplianceGovernanca />} />
+              <Route path="/status" element={<StatusPlataforma />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </PropostaCartProvider>
