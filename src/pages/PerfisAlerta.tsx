@@ -150,6 +150,46 @@ export default function PerfisAlerta() {
 
   useEffect(() => { loadPerfis(); }, [loadPerfis]);
 
+  const loadAnalytics = useCallback(async () => {
+    if (!user || perfis.length === 0) return;
+    setLoadingStats(true);
+    try {
+      // Load dispatch stats per profile
+      const { data: dispatches } = await supabase
+        .from('alerta_dispatches')
+        .select('perfil_alerta_id, status')
+        .eq('user_id', user.id);
+      
+      // Load score classifications per profile
+      const { data: scores } = await supabase
+        .from('licitacao_scores')
+        .select('perfil_alerta_id, classificacao')
+        .eq('user_id', user.id);
+
+      const stats: Record<string, any> = {};
+      for (const p of perfis) {
+        const pDispatches = (dispatches || []).filter(d => d.perfil_alerta_id === p.id);
+        const pScores = (scores || []).filter(s => s.perfil_alerta_id === p.id);
+        stats[p.id] = {
+          total: pDispatches.length,
+          enviado: pDispatches.filter(d => d.status === 'enviado').length,
+          pendente: pDispatches.filter(d => d.status === 'pendente').length,
+          falhou: pDispatches.filter(d => d.status === 'falhou').length,
+          quente: pScores.filter(s => s.classificacao === 'quente').length,
+          urgente: pScores.filter(s => s.classificacao === 'urgente').length,
+          premium: pScores.filter(s => s.classificacao === 'premium').length,
+        };
+      }
+      setDispatchStats(stats);
+    } catch (err) {
+      console.error('Erro ao carregar analytics:', err);
+    } finally {
+      setLoadingStats(false);
+    }
+  }, [user, perfis]);
+
+  useEffect(() => { if (analyticsTab === 'analytics') loadAnalytics(); }, [analyticsTab, loadAnalytics]);
+
   const handleNovo = () => {
     setEditando({
       ...defaultPerfil,
