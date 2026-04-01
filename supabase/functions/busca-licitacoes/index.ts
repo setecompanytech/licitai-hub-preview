@@ -473,6 +473,52 @@ serve(async (req) => {
       console.log("Cache query error (non-fatal):", cacheErr);
     }
 
+    // ── Persist to cache for instant future loads ──
+    if (persistCache && allItems.length > 0) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const sbAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+        const cacheRows = allItems
+          .filter((i: any) => i.cnpjOrgao && i.anoCompra && i.sequencialCompra)
+          .map((i: any) => ({
+            pncp_id: `${i.cnpjOrgao}-${i.anoCompra}-${i.sequencialCompra}`,
+            cnpj_orgao: i.cnpjOrgao,
+            ano_compra: String(i.anoCompra),
+            sequencial_compra: String(i.sequencialCompra),
+            numero_compra: i.numero || null,
+            orgao: i.orgao || null,
+            objeto: i.objeto || null,
+            modalidade_nome: i.modalidade || null,
+            situacao: i.status || null,
+            valor_total_estimado: i.valor_estimado || null,
+            uf: i.uf || null,
+            municipio: i.municipio || null,
+            data_abertura_proposta: i.data_abertura || null,
+            data_encerramento_proposta: i.data_encerramento || null,
+            data_publicacao_pncp: i.data_publicacao || null,
+            url_pncp: i.url || null,
+            numero_controle_pncp: i.pncpNumero || null,
+            esfera_id: i.esferaNome === 'Federal' ? 'F' : i.esferaNome === 'Estadual' ? 'E' : i.esferaNome === 'Municipal' ? 'M' : i.esferaNome === 'Distrital' ? 'D' : null,
+            tipo_instrumento: i.tipoInstrumentoNome || null,
+            unidade_orgao: i.unidadeOrgao || null,
+            codigo_unidade: i.codigoUnidade || null,
+            link_sistema_origem: i.url || null,
+            updated_at: new Date().toISOString(),
+          }));
+
+        // Upsert in batches of 100
+        for (let b = 0; b < cacheRows.length; b += 100) {
+          const batch = cacheRows.slice(b, b + 100);
+          await sbAdmin.from("pncp_editais_cache").upsert(batch, { onConflict: "pncp_id", ignoreDuplicates: false });
+        }
+        console.log(`Cache persistido: ${cacheRows.length} editais salvos/atualizados`);
+      } catch (persistErr) {
+        console.log("Cache persist error (non-fatal):", persistErr);
+      }
+    }
+
     const itemsComId = allItems.map((item, idx) => ({ ...item, id: `busca-${idx}` }));
     return new Response(JSON.stringify({
       items: itemsComId, total: itemsComId.length, pagina: pagina || 1,
