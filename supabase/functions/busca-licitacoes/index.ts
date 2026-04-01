@@ -70,10 +70,10 @@ function mapPncpItem(item: any, uf: string | null) {
 }
 
 const PNCP_PAGE_SIZE = 50;
-const PNCP_TIMEOUT_MS = 20000;       // Reduced from 45s to avoid edge function timeout
-const PNCP_MAX_RETRIES = 1;          // Reduced from 2 — faster fallback to cache
-const PNCP_MODALIDADE_CONCURRENCY = 3;
-const PNCP_PAGE_CONCURRENCY = 2;
+const PNCP_TIMEOUT_MS = 20000;
+const PNCP_MAX_RETRIES = 2;
+const PNCP_MODALIDADE_CONCURRENCY = 4;
+const PNCP_PAGE_CONCURRENCY = 3;
 
 type PncpPageResult = {
   items: any[];
