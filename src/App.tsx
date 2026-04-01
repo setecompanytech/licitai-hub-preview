@@ -122,6 +122,7 @@ const App = () => (
               <Route path="/admin/financeiro" element={<ProtectedPages><AdminFinanceiro /></ProtectedPages>} />
               <Route path="/admin/fontes-fabricantes" element={<ProtectedPages><AdminFontesFabricantes /></ProtectedPages>} />
               <Route path="/admin/marketing" element={<ProtectedPages><AdminMarketing /></ProtectedPages>} />
+              <Route path="/admin/auditoria" element={<ProtectedPages><AdminGuard><AuditoriaAdmin /></AdminGuard></ProtectedPages>} />
               <Route path="/monitoramento-chat" element={<ProtectedPages><MonitoramentoChat /></ProtectedPages>} />
               <Route path="/analise-mercado" element={<PlanPages><AnaliseMercado /></PlanPages>} />
               <Route path="/licitacoes-estrategicas" element={<ProtectedPages><LicitacoesEstrategicas /></ProtectedPages>} />
