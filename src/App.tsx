@@ -58,6 +58,7 @@ import ApiIntegracao from "./pages/ApiIntegracao";
 import IndicesRepactuacao from "./pages/IndicesRepactuacao";
 import RelatorioContabil from "./pages/RelatorioContabil";
 import AdminMarketing from "./pages/AdminMarketing";
+import AuditoriaAdmin from "./pages/AuditoriaAdmin";
 import MeusCompromissos from "./pages/MeusCompromissos";
 import WorkflowIA from "./pages/WorkflowIA";
 import EquipeColaboradores from "./pages/EquipeColaboradores";
