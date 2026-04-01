@@ -271,10 +271,68 @@ export default function MuralLicitacoes() {
 
   // Dados brutos da API (sem filtros client-side)
   const [licitacoesRaw, setLicitacoesRaw] = useState<LicitacaoMural[]>([]);
+  const [sincronizando, setSincronizando] = useState(false);
 
-  const carregarMural = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // Helper to map edge function / cache items to LicitacaoMural
+  const mapToMural = (item: any): LicitacaoMural => ({
+    id: item.id || `cache-${Math.random().toString(36).slice(2)}`,
+    numero: item.numero || item.numero_compra || '-',
+    orgao: item.orgao || '-',
+    objeto: item.objeto || '-',
+    modalidade: item.modalidade || item.modalidade_nome || 'Não informada',
+    status: item.status || item.situacao || 'Publicado',
+    valor_estimado: item.valor_estimado ?? item.valor_total_estimado ?? null,
+    uf: item.uf || null,
+    municipio: item.municipio || null,
+    data_abertura: item.data_abertura || item.data_abertura_proposta || null,
+    data_encerramento: item.data_encerramento || item.data_encerramento_proposta || null,
+    data_publicacao: item.data_publicacao || item.data_publicacao_pncp || null,
+    portal: item.portal || 'PNCP',
+    url: item.url || item.url_pncp || null,
+    pncpNumero: item.pncpNumero || item.numero_controle_pncp || null,
+    cnpjOrgao: item.cnpjOrgao || item.cnpj_orgao || null,
+    anoCompra: item.anoCompra || item.ano_compra || null,
+    sequencialCompra: item.sequencialCompra || item.sequencial_compra || null,
+    esferaNome: item.esferaNome || (item.esfera_id === 'F' ? 'Federal' : item.esfera_id === 'E' ? 'Estadual' : item.esfera_id === 'M' ? 'Municipal' : item.esfera_id === 'D' ? 'Distrital' : null),
+    tipoInstrumentoNome: item.tipoInstrumentoNome || item.tipo_instrumento || null,
+    unidadeOrgao: item.unidadeOrgao || item.unidade_orgao || null,
+  });
+
+  // ── FASE 1: Carregamento instantâneo do cache local ──
+  const carregarCache = useCallback(async () => {
+    try {
+      let query = supabase.from('pncp_editais_cache').select('*');
+      if (ufFiltro !== 'all') query = query.eq('uf', ufFiltro);
+      if (searchSubmitted) query = query.ilike('objeto', `%${searchSubmitted}%`);
+      if (uasgSubmitted) {
+        const clean = uasgSubmitted.replace(/[.\-\/\s]/g, '');
+        if (clean.length === 14 || clean.length === 11) query = query.eq('cnpj_orgao', clean);
+      }
+      if (modalidadeFiltro !== 'all') {
+        const modLabel = MODALIDADES.find(m => m.value === modalidadeFiltro);
+        if (modLabel) query = query.eq('modalidade_id', modLabel.cod);
+      }
+      if (municipioFiltro.trim()) query = query.ilike('municipio', `%${municipioFiltro.trim()}%`);
+      if (dataInicio) query = query.gte('data_publicacao_pncp', dataInicio.toISOString().split('T')[0]);
+      if (dataFim) query = query.lte('data_publicacao_pncp', dataFim.toISOString().split('T')[0] + 'T23:59:59');
+
+      query = query.order('data_publicacao_pncp', { ascending: false }).limit(500);
+      const { data } = await query;
+      if (data && data.length > 0) {
+        const items = data.map(mapToMural);
+        setLicitacoesRaw(items);
+        return items.length;
+      }
+      return 0;
+    } catch (err) {
+      console.error('Cache load error:', err);
+      return 0;
+    }
+  }, [ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro]);
+
+  // ── FASE 2: Sincronização em tempo real com PNCP (background) ──
+  const sincronizarPNCP = useCallback(async () => {
+    setSincronizando(true);
     try {
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
@@ -294,45 +352,54 @@ export default function MuralLicitacoes() {
             municipio: municipioFiltro.trim() || undefined,
             pagina,
             mural: true,
+            persistCache: true,
           }),
         }
       );
 
       if (!response.ok) throw new Error(`Erro ${response.status}`);
       const data = await response.json();
+      const items: LicitacaoMural[] = (data.items || []).map(mapToMural);
 
-      const items: LicitacaoMural[] = (data.items || []).map((item: any) => ({
-        id: item.id,
-        numero: item.numero || '-',
-        orgao: item.orgao || '-',
-        objeto: item.objeto || '-',
-        modalidade: item.modalidade || 'Não informada',
-        status: item.status || 'Publicado',
-        valor_estimado: item.valor_estimado,
-        uf: item.uf,
-        municipio: item.municipio,
-        data_abertura: item.data_abertura,
-        data_encerramento: item.data_encerramento || null,
-        data_publicacao: item.data_publicacao,
-        portal: item.portal || 'PNCP',
-        url: item.url,
-        pncpNumero: item.pncpNumero,
-        cnpjOrgao: item.cnpjOrgao,
-        anoCompra: item.anoCompra,
-        sequencialCompra: item.sequencialCompra,
-        esferaNome: item.esferaNome || null,
-        tipoInstrumentoNome: item.tipoInstrumentoNome || null,
-        unidadeOrgao: item.unidadeOrgao || null,
-      }));
+      // Merge: use live data as primary, keeping any extras from cache
+      setLicitacoesRaw(prev => {
+        const liveKeys = new Set(items.map(i => `${i.cnpjOrgao}-${i.anoCompra}-${i.sequencialCompra}`).filter(k => k !== 'null-null-null'));
+        const cacheOnlyItems = prev.filter(p => {
+          const key = `${p.cnpjOrgao}-${p.anoCompra}-${p.sequencialCompra}`;
+          return key === 'null-null-null' || !liveKeys.has(key);
+        });
+        return [...items, ...cacheOnlyItems];
+      });
+    } catch (err) {
+      console.error('PNCP sync error:', err);
+      // Don't set error if we already have cached data
+      if (licitacoesRaw.length === 0) {
+        setError('Erro ao sincronizar com o PNCP. Exibindo dados do cache.');
+      }
+    } finally {
+      setSincronizando(false);
+    }
+  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro]);
 
-      setLicitacoesRaw(items);
+  // ── Carregamento principal: cache primeiro, depois PNCP em background ──
+  const carregarMural = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const cacheCount = await carregarCache();
+      // Se temos cache, libera a UI imediatamente
+      if (cacheCount > 0) {
+        setLoading(false);
+      }
+      // Sincroniza com PNCP em background
+      await sincronizarPNCP();
     } catch (err) {
       console.error(err);
-      setError('Erro ao carregar licitações do PNCP. Tente novamente.');
+      setError('Erro ao carregar licitações. Tente novamente.');
     } finally {
       setLoading(false);
     }
-  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro]);
+  }, [carregarCache, sincronizarPNCP]);
 
   // Busca em portais externos via Firecrawl (busca-editais-ia)
   const carregarExternos = useCallback(async () => {
