@@ -584,6 +584,11 @@ export default function Configuracoes() {
             <AnaliseCNPJAdicional />
           </TabsContent>
 
+          {/* ── Tab: Segurança ── */}
+          <TabsContent value="seguranca" className="space-y-6">
+            <SegurancaConta />
+          </TabsContent>
+
         </Tabs>
       </div>
     </AppLayout>
