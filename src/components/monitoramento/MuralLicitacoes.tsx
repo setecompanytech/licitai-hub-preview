@@ -316,7 +316,7 @@ export default function MuralLicitacoes() {
       if (dataInicio) query = query.gte('data_publicacao_pncp', dataInicio.toISOString().split('T')[0]);
       if (dataFim) query = query.lte('data_publicacao_pncp', dataFim.toISOString().split('T')[0] + 'T23:59:59');
 
-      query = query.order('data_publicacao_pncp', { ascending: false }).limit(500);
+      query = query.order('data_publicacao_pncp', { ascending: false }).limit(1000);
       const { data } = await query;
       if (data && data.length > 0) {
         const items = data.map(mapToMural);

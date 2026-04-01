@@ -248,16 +248,15 @@ serve(async (req) => {
         // Fetch more pages when filtering by municipality or UASG (since API doesn't support server-side municipality filter)
         const needsDeepFetch = !!(cleanMunicipio || isUasg);
 
-        // Run fetches in parallel batches to maximize coverage within Edge Function timeout
         const maxPages = needsDeepFetch
-          ? 10
+          ? 15
           : userModalidadeCod && uf
-            ? 8
+            ? 12
             : userModalidadeCod
-              ? 5
+              ? 8
               : uf
-                ? 3
-                : (modalidades.length <= 3 ? 3 : 1);
+                ? 5
+                : (modalidades.length <= 3 ? 4 : 2);
 
         const tasks = modalidades.map((cod) => async () => {
           const params = new URLSearchParams();
