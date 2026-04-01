@@ -155,6 +155,11 @@ const App = () => (
               <Route path="/seguranca-informacao" element={<SegurancaInformacao />} />
               <Route path="/compliance" element={<ComplianceGovernanca />} />
               <Route path="/status" element={<StatusPlataforma />} />
+              <Route path="/sobre" element={<SobreEmpresa />} />
+              <Route path="/contato" element={<ContatoDemo />} />
+              <Route path="/ajuda" element={<CentralAjuda />} />
+              <Route path="/politica-cookies" element={<PoliticaCookies />} />
+              <Route path="/solucoes" element={<Solucoes />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </PropostaCartProvider>
