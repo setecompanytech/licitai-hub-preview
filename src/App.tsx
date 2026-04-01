@@ -65,6 +65,9 @@ import AssistenteEspecializado from "./pages/AssistenteEspecializado";
 import Unsubscribe from "./pages/Unsubscribe";
 import CertificadoUpload from "./pages/CertificadoUpload";
 import PerfisAlerta from "./pages/PerfisAlerta";
+import SegurancaInformacao from "./pages/SegurancaInformacao";
+import ComplianceGovernanca from "./pages/ComplianceGovernanca";
+import StatusPlataforma from "./pages/StatusPlataforma";
 const queryClient = new QueryClient();
 
 const ProtectedPages = ({ children }: { children: React.ReactNode }) => (
