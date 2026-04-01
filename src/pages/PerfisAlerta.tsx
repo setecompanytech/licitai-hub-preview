@@ -15,7 +15,7 @@ import {
   Plus, Pencil, Trash2, Search, MapPin, Building2, Tag, Shield,
   Bell, Mail, MessageSquare, Loader2, Save, Target, Flame,
   Clock, Star, Globe, AlertTriangle, Zap, CheckCircle2,
-  SlidersHorizontal, X
+  SlidersHorizontal, X, BarChart3, Send, Eye, TrendingUp
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
