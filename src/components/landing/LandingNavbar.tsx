@@ -17,12 +17,12 @@ export default function LandingNavbar() {
   }, []);
 
   const links = [
+    { label: 'Soluções', onClick: () => navigate('/solucoes') },
     { label: 'Como Funciona', href: '#como-funciona' },
-    { label: 'Funcionalidades', href: '#features' },
     { label: 'Segmentos', href: '#segmentos' },
     { label: 'Planos', href: '#planos' },
     { label: 'Segurança', onClick: () => navigate('/seguranca-informacao') },
-    { label: 'Status', onClick: () => navigate('/status') },
+    { label: 'Contato', onClick: () => navigate('/contato') },
   ];
 
   return (

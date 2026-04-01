@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building2, Bell, Globe, Shield, Newspaper, Search, Loader2, ExternalLink, CheckCircle2, AlertTriangle, ImageIcon, User, Save, CreditCard, Settings } from 'lucide-react';
 import CnaesSecundarios from '@/components/configuracoes/CnaesSecundarios';
+import SegurancaConta from '@/components/configuracoes/SegurancaConta';
 import PlanoAssinatura from '@/components/configuracoes/PlanoAssinatura';
 import PlanoVerificacao from '@/components/configuracoes/PlanoVerificacao';
 import AnalyseCustosPlanos from '@/components/configuracoes/AnalyseCustosPlanos';
@@ -280,6 +281,10 @@ export default function Configuracoes() {
             <TabsTrigger value="plano" className="gap-2">
               <CreditCard className="w-4 h-4" />
               Plano & Assinatura
+            </TabsTrigger>
+            <TabsTrigger value="seguranca" className="gap-2">
+              <Shield className="w-4 h-4" />
+              Segurança
             </TabsTrigger>
           </TabsList>
 
@@ -577,6 +582,11 @@ export default function Configuracoes() {
             <PlanoVerificacao />
             {isAdmin && <AnalyseCustosPlanos />}
             <AnaliseCNPJAdicional />
+          </TabsContent>
+
+          {/* ── Tab: Segurança ── */}
+          <TabsContent value="seguranca" className="space-y-6">
+            <SegurancaConta />
           </TabsContent>
 
         </Tabs>

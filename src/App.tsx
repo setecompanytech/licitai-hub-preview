@@ -58,6 +58,7 @@ import ApiIntegracao from "./pages/ApiIntegracao";
 import IndicesRepactuacao from "./pages/IndicesRepactuacao";
 import RelatorioContabil from "./pages/RelatorioContabil";
 import AdminMarketing from "./pages/AdminMarketing";
+import AuditoriaAdmin from "./pages/AuditoriaAdmin";
 import MeusCompromissos from "./pages/MeusCompromissos";
 import WorkflowIA from "./pages/WorkflowIA";
 import EquipeColaboradores from "./pages/EquipeColaboradores";
@@ -68,6 +69,12 @@ import PerfisAlerta from "./pages/PerfisAlerta";
 import SegurancaInformacao from "./pages/SegurancaInformacao";
 import ComplianceGovernanca from "./pages/ComplianceGovernanca";
 import StatusPlataforma from "./pages/StatusPlataforma";
+import SobreEmpresa from "./pages/SobreEmpresa";
+import ContatoDemo from "./pages/ContatoDemo";
+import CentralAjuda from "./pages/CentralAjuda";
+import PoliticaCookies from "./pages/PoliticaCookies";
+import Solucoes from "./pages/Solucoes";
+import DemoAmbiente from "./pages/DemoAmbiente";
 const queryClient = new QueryClient();
 
 const ProtectedPages = ({ children }: { children: React.ReactNode }) => (
@@ -116,6 +123,7 @@ const App = () => (
               <Route path="/admin/financeiro" element={<ProtectedPages><AdminFinanceiro /></ProtectedPages>} />
               <Route path="/admin/fontes-fabricantes" element={<ProtectedPages><AdminFontesFabricantes /></ProtectedPages>} />
               <Route path="/admin/marketing" element={<ProtectedPages><AdminMarketing /></ProtectedPages>} />
+              <Route path="/admin/auditoria" element={<ProtectedPages><AdminGuard><AuditoriaAdmin /></AdminGuard></ProtectedPages>} />
               <Route path="/monitoramento-chat" element={<ProtectedPages><MonitoramentoChat /></ProtectedPages>} />
               <Route path="/analise-mercado" element={<PlanPages><AnaliseMercado /></PlanPages>} />
               <Route path="/licitacoes-estrategicas" element={<ProtectedPages><LicitacoesEstrategicas /></ProtectedPages>} />
@@ -150,6 +158,12 @@ const App = () => (
               <Route path="/seguranca-informacao" element={<SegurancaInformacao />} />
               <Route path="/compliance" element={<ComplianceGovernanca />} />
               <Route path="/status" element={<StatusPlataforma />} />
+              <Route path="/sobre" element={<SobreEmpresa />} />
+              <Route path="/contato" element={<ContatoDemo />} />
+              <Route path="/ajuda" element={<CentralAjuda />} />
+              <Route path="/politica-cookies" element={<PoliticaCookies />} />
+              <Route path="/solucoes" element={<Solucoes />} />
+              <Route path="/demo" element={<DemoAmbiente />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </PropostaCartProvider>
