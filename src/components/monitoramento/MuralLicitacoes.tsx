@@ -1498,6 +1498,9 @@ export default function MuralLicitacoes() {
           {licitacoes.map((lic, idx) => {
             const isFav = favoritos.has(`${lic.numero}|${lic.orgao}`);
             const isDownloading = downloading === lic.id;
+            const scoreInfo = scoresMap.get(lic.id);
+            const classEmoji: Record<string, string> = { quente: '🔥', urgente: '⚡', premium: '⭐', regional: '📍' };
+            const classCor: Record<string, string> = { quente: 'bg-destructive/10 text-destructive border-destructive/30', urgente: 'bg-warning/10 text-warning border-warning/30', premium: 'bg-yellow-100 text-yellow-800 border-yellow-300', regional: 'bg-info/10 text-info border-info/30' };
             return (
               <Card
                 key={lic.id}
@@ -1506,7 +1509,24 @@ export default function MuralLicitacoes() {
               >
                 {/* Top row */}
                 <div className="flex items-start justify-between mb-2">
-                  <Badge className={cn('text-[10px] px-2 py-0.5', statusColor(lic.status))}>{lic.status}</Badge>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <Badge className={cn('text-[10px] px-2 py-0.5', statusColor(lic.status))}>{lic.status}</Badge>
+                    {scoreInfo && scoreInfo.classificacao !== 'normal' && (
+                      <Badge className={cn('text-[10px] px-1.5 py-0.5 border', classCor[scoreInfo.classificacao] || '')}>
+                        {classEmoji[scoreInfo.classificacao] || ''} {scoreInfo.classificacao}
+                      </Badge>
+                    )}
+                    {scoreInfo && scoreInfo.score_total > 0 && (
+                      <Tooltip delayDuration={200}>
+                        <TooltipTrigger asChild>
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 font-mono">
+                            {scoreInfo.score_total}%
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent className="text-xs">Score de aderência ao seu perfil</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={e => { e.stopPropagation(); toggleFavorito(lic); }}
