@@ -5,17 +5,17 @@ export default function LandingFooter() {
   const navigate = useNavigate();
 
   const productLinks = [
-    { label: 'Funcionalidades', href: '#features' },
+    { label: 'Soluções', onClick: () => navigate('/solucoes') },
     { label: 'Como Funciona', href: '#como-funciona' },
     { label: 'Segmentos Atendidos', href: '#segmentos' },
-    { label: 'Portais Integrados', href: '#portais' },
     { label: 'Planos', href: '#planos' },
+    { label: 'Sobre a Empresa', onClick: () => navigate('/sobre') },
   ];
 
   const supportLinks = [
-    { label: 'Central de Ajuda', onClick: () => navigate('/suporte') },
+    { label: 'Central de Ajuda', onClick: () => navigate('/ajuda') },
     { label: 'FAQ', onClick: () => navigate('/faq') },
-    { label: 'E-book Gratuito', onClick: () => navigate('/ebook') },
+    { label: 'Contato / Demonstração', onClick: () => navigate('/contato') },
     { label: 'Blog', onClick: () => navigate('/blog') },
     { label: 'Status da Plataforma', onClick: () => navigate('/status') },
   ];
@@ -25,6 +25,7 @@ export default function LandingFooter() {
     { label: 'Compliance e Governança', onClick: () => navigate('/compliance') },
     { label: 'Privacidade e LGPD', onClick: () => navigate('/lgpd') },
     { label: 'Política de Privacidade', onClick: () => navigate('/politica-de-privacidade') },
+    { label: 'Política de Cookies', onClick: () => navigate('/politica-cookies') },
     { label: 'Termos de Uso', onClick: () => navigate('/termos-de-uso') },
   ];
 
