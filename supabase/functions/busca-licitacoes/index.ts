@@ -250,14 +250,14 @@ serve(async (req) => {
 
         // Run fetches in parallel batches to maximize coverage within Edge Function timeout
         const maxPages = needsDeepFetch
-          ? 20
+          ? 10
           : userModalidadeCod && uf
-            ? 15
+            ? 8
             : userModalidadeCod
-              ? 12
+              ? 5
               : uf
-                ? 8
-                : (modalidades.length <= 3 ? 8 : 3);
+                ? 3
+                : (modalidades.length <= 3 ? 3 : 1);
 
         const tasks = modalidades.map((cod) => async () => {
           const params = new URLSearchParams();
