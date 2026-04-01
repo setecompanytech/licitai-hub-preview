@@ -396,12 +396,22 @@ export default function MuralLicitacoes() {
   }, [incluirExternos, searchSubmitted, ufFiltro, modalidadeFiltro]);
 
   // Filtros client-side aplicados sobre os dados já carregados (sem re-fetch)
+  // Portais únicos para o filtro dinâmico
+  const portaisDisponiveis = useMemo(() => {
+    const allItems = [...licitacoesRaw, ...licitacoesExternas];
+    const unique = [...new Set(allItems.map(i => i.portal).filter(Boolean))].sort();
+    return unique;
+  }, [licitacoesRaw, licitacoesExternas]);
+
   const licitacoesFiltradas = useMemo(() => {
     // Merge PNCP + external results, deduplicating by numero+orgao
     const pncpKeys = new Set(licitacoesRaw.map(i => `${i.numero}|${i.orgao}`));
     const externasDedup = licitacoesExternas.filter(e => !pncpKeys.has(`${e.numero}|${e.orgao}`));
     let items = [...licitacoesRaw, ...externasDedup];
 
+    if (portalFiltro !== 'all') {
+      items = items.filter(i => i.portal?.toLowerCase() === portalFiltro.toLowerCase());
+    }
     if (esferaFiltro !== 'all') {
       items = items.filter(i => i.esferaNome?.toLowerCase().includes(esferaFiltro.toLowerCase()));
     }
@@ -409,7 +419,6 @@ export default function MuralLicitacoes() {
       const tipoLabel = TIPOS_INSTRUMENTO.find(t => t.value === tipoInstrumentoFiltro)?.label || '';
       items = items.filter(i => i.tipoInstrumentoNome?.toLowerCase().includes(tipoLabel.toLowerCase()));
     }
-    // municipio filter is now server-side (sent to edge function)
     if (unidadeFiltro.trim()) {
       const term = unidadeFiltro.trim().toLowerCase();
       items = items.filter(i => i.unidadeOrgao?.toLowerCase().includes(term));
@@ -432,7 +441,7 @@ export default function MuralLicitacoes() {
     }
 
     return items;
-  }, [licitacoesRaw, licitacoesExternas, esferaFiltro, tipoInstrumentoFiltro, unidadeFiltro, orgaoFiltro, segmentosPrioritarios]);
+  }, [licitacoesRaw, licitacoesExternas, esferaFiltro, tipoInstrumentoFiltro, portalFiltro, unidadeFiltro, orgaoFiltro, segmentosPrioritarios]);
 
   // Sincronizar licitacoes e totalResultados com os dados filtrados
   useEffect(() => {
