@@ -61,7 +61,7 @@ jobs:
           port: 21
           local-dir: ./dist/
           server-dir: ${{ secrets.FTP_SERVER_DIR || './public_html/' }}
-          dangerous-clean-slate: false
+          dangerous-clean-slate: true
 
       - name: Wait before retry
         if: steps.deploy1.outcome == 'failure'
@@ -80,7 +80,7 @@ jobs:
           port: 21
           local-dir: ./dist/
           server-dir: ${{ secrets.FTP_SERVER_DIR || './public_html/' }}
-          dangerous-clean-slate: false
+          dangerous-clean-slate: true
 
       - name: Wait before final retry
         if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure'
@@ -97,7 +97,7 @@ jobs:
           port: 21
           local-dir: ./dist/
           server-dir: ${{ secrets.FTP_SERVER_DIR || './public_html/' }}
-          dangerous-clean-slate: false
+          dangerous-clean-slate: true
 
       - name: Success summary
         run: echo "Deploy FTP concluído com sucesso."
