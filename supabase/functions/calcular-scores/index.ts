@@ -45,7 +45,7 @@ serve(async (req) => {
 
     const { data: licitacoes, error: licErr } = await supabase
       .from("pncp_editais_cache")
-      .select("id, objeto, orgao, uf, municipio, modalidade, valor_estimado, data_abertura, data_encerramento, numero, portal")
+      .select("id, objeto, orgao, uf, municipio, modalidade, valor_estimado, data_abertura, data_encerramento, numero, portal, hash_objeto, versao")
       .gte("created_at", dataLimite.toISOString())
       .limit(500);
 
@@ -81,11 +81,41 @@ serve(async (req) => {
       if (!upsertErr) inserted += batch.length;
     }
 
+    // 5. Create dispatch records for high-score matches (score >= 50)
+    const highScores = allScores.filter(s => s.score_total >= 50);
+    const dispatches: any[] = [];
+    for (const s of highScores) {
+      const perfil = perfis.find((p: any) => p.id === s.perfil_alerta_id);
+      if (!perfil) continue;
+      const lic = licitacoes.find((l: any) => l.id === s.licitacao_cache_id);
+      const versao = lic?.versao || 1;
+      const hash = lic?.hash_objeto || null;
+      if (perfil.canal_sistema) {
+        dispatches.push({ user_id: userId, perfil_alerta_id: s.perfil_alerta_id, licitacao_cache_id: s.licitacao_cache_id, canal: 'sistema', hash_enviado: hash, versao_enviada: versao, status: 'enviado', enviado_em: new Date().toISOString() });
+      }
+      if (perfil.canal_email) {
+        dispatches.push({ user_id: userId, perfil_alerta_id: s.perfil_alerta_id, licitacao_cache_id: s.licitacao_cache_id, canal: 'email', hash_enviado: hash, versao_enviada: versao, status: 'pendente' });
+      }
+      if (perfil.canal_whatsapp) {
+        dispatches.push({ user_id: userId, perfil_alerta_id: s.perfil_alerta_id, licitacao_cache_id: s.licitacao_cache_id, canal: 'whatsapp', hash_enviado: hash, versao_enviada: versao, status: 'pendente' });
+      }
+    }
+
+    let dispatchesCreated = 0;
+    for (let i = 0; i < dispatches.length; i += 100) {
+      const batch = dispatches.slice(i, i + 100);
+      const { error: dErr } = await supabase
+        .from("alerta_dispatches")
+        .upsert(batch, { onConflict: "perfil_alerta_id,licitacao_cache_id,canal,versao_enviada" });
+      if (!dErr) dispatchesCreated += batch.length;
+    }
+
     return jsonRes({
       total_perfis: perfis.length,
       total_licitacoes: licitacoes.length,
       scores_calculados: allScores.length,
       scores_inseridos: inserted,
+      dispatches_criados: dispatchesCreated,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Erro desconhecido";

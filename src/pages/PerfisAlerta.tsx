@@ -15,7 +15,7 @@ import {
   Plus, Pencil, Trash2, Search, MapPin, Building2, Tag, Shield,
   Bell, Mail, MessageSquare, Loader2, Save, Target, Flame,
   Clock, Star, Globe, AlertTriangle, Zap, CheckCircle2,
-  SlidersHorizontal, X
+  SlidersHorizontal, X, BarChart3, Send, Eye, TrendingUp
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -124,6 +124,9 @@ export default function PerfisAlerta() {
   const [saving, setSaving] = useState(false);
   const [calculando, setCalculando] = useState(false);
   const [scoreResults, setScoreResults] = useState<any>(null);
+  const [analyticsTab, setAnalyticsTab] = useState<'perfis' | 'analytics'>('perfis');
+  const [dispatchStats, setDispatchStats] = useState<Record<string, { total: number; enviado: number; pendente: number; falhou: number; quente: number; urgente: number; premium: number }>>({});
+  const [loadingStats, setLoadingStats] = useState(false);
 
   // Temp input states for array fields
   const [tempCnae, setTempCnae] = useState('');
@@ -146,6 +149,46 @@ export default function PerfisAlerta() {
   }, [user]);
 
   useEffect(() => { loadPerfis(); }, [loadPerfis]);
+
+  const loadAnalytics = useCallback(async () => {
+    if (!user || perfis.length === 0) return;
+    setLoadingStats(true);
+    try {
+      // Load dispatch stats per profile
+      const { data: dispatches } = await supabase
+        .from('alerta_dispatches')
+        .select('perfil_alerta_id, status')
+        .eq('user_id', user.id);
+      
+      // Load score classifications per profile
+      const { data: scores } = await supabase
+        .from('licitacao_scores')
+        .select('perfil_alerta_id, classificacao')
+        .eq('user_id', user.id);
+
+      const stats: Record<string, any> = {};
+      for (const p of perfis) {
+        const pDispatches = (dispatches || []).filter(d => d.perfil_alerta_id === p.id);
+        const pScores = (scores || []).filter(s => s.perfil_alerta_id === p.id);
+        stats[p.id] = {
+          total: pDispatches.length,
+          enviado: pDispatches.filter(d => d.status === 'enviado').length,
+          pendente: pDispatches.filter(d => d.status === 'pendente').length,
+          falhou: pDispatches.filter(d => d.status === 'falhou').length,
+          quente: pScores.filter(s => s.classificacao === 'quente').length,
+          urgente: pScores.filter(s => s.classificacao === 'urgente').length,
+          premium: pScores.filter(s => s.classificacao === 'premium').length,
+        };
+      }
+      setDispatchStats(stats);
+    } catch (err) {
+      console.error('Erro ao carregar analytics:', err);
+    } finally {
+      setLoadingStats(false);
+    }
+  }, [user, perfis]);
+
+  useEffect(() => { if (analyticsTab === 'analytics') loadAnalytics(); }, [analyticsTab, loadAnalytics]);
 
   const handleNovo = () => {
     setEditando({
@@ -293,6 +336,16 @@ export default function PerfisAlerta() {
           </div>
         </div>
 
+        {/* Tabs: Perfis / Analytics */}
+        <div className="flex gap-2 mb-4">
+          <Button variant={analyticsTab === 'perfis' ? 'default' : 'outline'} size="sm" onClick={() => setAnalyticsTab('perfis')} className="gap-1.5">
+            <Target className="w-4 h-4" /> Perfis
+          </Button>
+          <Button variant={analyticsTab === 'analytics' ? 'default' : 'outline'} size="sm" onClick={() => setAnalyticsTab('analytics')} className="gap-1.5">
+            <BarChart3 className="w-4 h-4" /> Analytics
+          </Button>
+        </div>
+
         {/* Score results */}
         {scoreResults && (
           <Card className="p-4 mb-4 border-accent/30 bg-accent/5">
@@ -304,95 +357,211 @@ export default function PerfisAlerta() {
               <Badge variant="secondary">{scoreResults.total_licitacoes} licitações</Badge>
               <span>=</span>
               <Badge className="bg-accent text-accent-foreground">{scoreResults.scores_calculados} scores</Badge>
+              {scoreResults.dispatches_criados > 0 && (
+                <>
+                  <span>·</span>
+                  <Badge variant="outline">{scoreResults.dispatches_criados} alertas</Badge>
+                </>
+              )}
             </div>
           </Card>
         )}
 
-        {/* Lista de perfis */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-accent" />
-          </div>
-        ) : perfis.length === 0 ? (
-          <Card className="p-12 text-center">
-            <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Nenhum perfil de alerta</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Crie perfis para receber alertas personalizados de licitações
-            </p>
-            <Button onClick={handleNovo} className="gap-1.5">
-              <Plus className="w-4 h-4" /> Criar Primeiro Perfil
-            </Button>
-          </Card>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {perfis.map(p => (
-              <Card key={p.id} className={`p-4 relative transition-all ${!p.ativo ? 'opacity-50' : ''}`}>
-                <div className="absolute top-3 right-3 flex items-center gap-1">
-                  <Switch checked={p.ativo} onCheckedChange={() => handleToggleAtivo(p.id, p.ativo)} />
-                </div>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: p.cor + '20' }}>
-                    <Target className="w-4 h-4" style={{ color: p.cor }} />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-sm">{p.nome}</h3>
-                    <p className="text-[10px] text-muted-foreground">{p.frequencia}</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {p.palavras_chave?.slice(0, 3).map(kw => (
-                    <Badge key={kw} variant="secondary" className="text-[10px]">{kw}</Badge>
-                  ))}
-                  {(p.palavras_chave?.length || 0) > 3 && (
-                    <Badge variant="outline" className="text-[10px]">+{p.palavras_chave.length - 3}</Badge>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-1 mb-3 text-[10px] text-muted-foreground">
-                  {p.ufs?.length > 0 && <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" />{p.ufs.slice(0, 3).join(', ')}</span>}
-                  {p.modalidades?.length > 0 && <span className="flex items-center gap-0.5 ml-2"><Shield className="w-3 h-3" />{p.modalidades.length} mod.</span>}
-                  {p.cnaes?.length > 0 && <span className="flex items-center gap-0.5 ml-2"><Tag className="w-3 h-3" />{p.cnaes.length} CNAEs</span>}
-                </div>
-
-                <div className="flex items-center gap-1 mb-3">
-                  {p.canal_email && <Badge variant="outline" className="text-[10px] gap-0.5"><Mail className="w-3 h-3" />E-mail</Badge>}
-                  {p.canal_whatsapp && <Badge variant="outline" className="text-[10px] gap-0.5"><MessageSquare className="w-3 h-3" />WhatsApp</Badge>}
-                  {p.canal_sistema && <Badge variant="outline" className="text-[10px] gap-0.5"><Bell className="w-3 h-3" />Sistema</Badge>}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleEditar(p)} className="flex-1 gap-1 text-xs">
-                    <Pencil className="w-3 h-3" /> Editar
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleExcluir(p.id)} className="text-destructive hover:text-destructive">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
+        {analyticsTab === 'perfis' && (
+          <>
+            {/* Lista de perfis */}
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-6 h-6 animate-spin text-accent" />
+              </div>
+            ) : perfis.length === 0 ? (
+              <Card className="p-12 text-center">
+                <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Nenhum perfil de alerta</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Crie perfis para receber alertas personalizados de licitações
+                </p>
+                <Button onClick={handleNovo} className="gap-1.5">
+                  <Plus className="w-4 h-4" /> Criar Primeiro Perfil
+                </Button>
               </Card>
-            ))}
-          </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {perfis.map(p => (
+                  <Card key={p.id} className={`p-4 relative transition-all ${!p.ativo ? 'opacity-50' : ''}`}>
+                    <div className="absolute top-3 right-3 flex items-center gap-1">
+                      <Switch checked={p.ativo} onCheckedChange={() => handleToggleAtivo(p.id, p.ativo)} />
+                    </div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: p.cor + '20' }}>
+                        <Target className="w-4 h-4" style={{ color: p.cor }} />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-sm">{p.nome}</h3>
+                        <p className="text-[10px] text-muted-foreground">{p.frequencia}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {p.palavras_chave?.slice(0, 3).map(kw => (
+                        <Badge key={kw} variant="secondary" className="text-[10px]">{kw}</Badge>
+                      ))}
+                      {(p.palavras_chave?.length || 0) > 3 && (
+                        <Badge variant="outline" className="text-[10px]">+{p.palavras_chave.length - 3}</Badge>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-1 mb-3 text-[10px] text-muted-foreground">
+                      {p.ufs?.length > 0 && <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" />{p.ufs.slice(0, 3).join(', ')}</span>}
+                      {p.modalidades?.length > 0 && <span className="flex items-center gap-0.5 ml-2"><Shield className="w-3 h-3" />{p.modalidades.length} mod.</span>}
+                      {p.cnaes?.length > 0 && <span className="flex items-center gap-0.5 ml-2"><Tag className="w-3 h-3" />{p.cnaes.length} CNAEs</span>}
+                    </div>
+
+                    <div className="flex items-center gap-1 mb-3">
+                      {p.canal_email && <Badge variant="outline" className="text-[10px] gap-0.5"><Mail className="w-3 h-3" />E-mail</Badge>}
+                      {p.canal_whatsapp && <Badge variant="outline" className="text-[10px] gap-0.5"><MessageSquare className="w-3 h-3" />WhatsApp</Badge>}
+                      {p.canal_sistema && <Badge variant="outline" className="text-[10px] gap-0.5"><Bell className="w-3 h-3" />Sistema</Badge>}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleEditar(p)} className="flex-1 gap-1 text-xs">
+                        <Pencil className="w-3 h-3" /> Editar
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleExcluir(p.id)} className="text-destructive hover:text-destructive">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Legenda de classificações */}
+            <Card className="mt-6 p-4">
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-accent" />
+                Classificação Automática de Licitações
+              </h3>
+              <div className="flex flex-wrap gap-3">
+                {Object.entries(CLASSIFICACAO_CONFIG).map(([key, cfg]) => (
+                  <div key={key} className="flex items-center gap-2 text-xs">
+                    <div className={`w-3 h-3 rounded-full ${cfg.cor}`} />
+                    <span>{cfg.label}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                🔥 Quente: Score ≥80% + Urgência ≥80% · ⚡ Urgente: Abertura ≤3 dias · ⭐ Premium: Score ≥70% · 📍 Regional: Match geográfico + Score ≥50%
+              </p>
+            </Card>
+          </>
         )}
 
-        {/* Legenda de classificações */}
-        <Card className="mt-6 p-4">
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <SlidersHorizontal className="w-4 h-4 text-accent" />
-            Classificação Automática de Licitações
-          </h3>
-          <div className="flex flex-wrap gap-3">
-            {Object.entries(CLASSIFICACAO_CONFIG).map(([key, cfg]) => (
-              <div key={key} className="flex items-center gap-2 text-xs">
-                <div className={`w-3 h-3 rounded-full ${cfg.cor}`} />
-                <span>{cfg.label}</span>
+        {analyticsTab === 'analytics' && (
+          <div className="space-y-4">
+            {loadingStats ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-6 h-6 animate-spin text-accent" />
               </div>
-            ))}
+            ) : perfis.length === 0 ? (
+              <Card className="p-12 text-center">
+                <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-sm text-muted-foreground">Crie perfis para visualizar analytics</p>
+              </Card>
+            ) : (
+              <>
+                {/* Summary cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Card className="p-4 text-center">
+                    <Target className="w-5 h-5 mx-auto mb-1 text-accent" />
+                    <div className="text-2xl font-bold">{perfis.length}</div>
+                    <div className="text-[11px] text-muted-foreground">Perfis Ativos</div>
+                  </Card>
+                  <Card className="p-4 text-center">
+                    <Send className="w-5 h-5 mx-auto mb-1 text-accent" />
+                    <div className="text-2xl font-bold">
+                      {Object.values(dispatchStats).reduce((sum, s) => sum + s.total, 0)}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">Alertas Totais</div>
+                  </Card>
+                  <Card className="p-4 text-center">
+                    <CheckCircle2 className="w-5 h-5 mx-auto mb-1 text-green-500" />
+                    <div className="text-2xl font-bold">
+                      {Object.values(dispatchStats).reduce((sum, s) => sum + s.enviado, 0)}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">Enviados</div>
+                  </Card>
+                  <Card className="p-4 text-center">
+                    <Flame className="w-5 h-5 mx-auto mb-1 text-red-500" />
+                    <div className="text-2xl font-bold">
+                      {Object.values(dispatchStats).reduce((sum, s) => sum + s.quente, 0)}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">Oport. Quentes</div>
+                  </Card>
+                </div>
+
+                {/* Per-profile analytics */}
+                <h3 className="text-sm font-semibold flex items-center gap-2 mt-4">
+                  <TrendingUp className="w-4 h-4 text-accent" />
+                  Desempenho por Perfil
+                </h3>
+                <div className="space-y-3">
+                  {perfis.map(p => {
+                    const stats = dispatchStats[p.id] || { total: 0, enviado: 0, pendente: 0, falhou: 0, quente: 0, urgente: 0, premium: 0 };
+                    return (
+                      <Card key={p.id} className="p-4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ backgroundColor: p.cor + '20' }}>
+                            <Target className="w-3 h-3" style={{ color: p.cor }} />
+                          </div>
+                          <span className="font-semibold text-sm">{p.nome}</span>
+                          {!p.ativo && <Badge variant="outline" className="text-[10px]">Inativo</Badge>}
+                        </div>
+                        <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 text-center">
+                          <div>
+                            <div className="text-lg font-bold">{stats.total}</div>
+                            <div className="text-[10px] text-muted-foreground">Alertas</div>
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold text-green-600">{stats.enviado}</div>
+                            <div className="text-[10px] text-muted-foreground">Enviados</div>
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold text-yellow-600">{stats.pendente}</div>
+                            <div className="text-[10px] text-muted-foreground">Pendentes</div>
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold text-destructive">{stats.falhou}</div>
+                            <div className="text-[10px] text-muted-foreground">Falhas</div>
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold">🔥 {stats.quente}</div>
+                            <div className="text-[10px] text-muted-foreground">Quentes</div>
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold">⚡ {stats.urgente}</div>
+                            <div className="text-[10px] text-muted-foreground">Urgentes</div>
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold">⭐ {stats.premium}</div>
+                            <div className="text-[10px] text-muted-foreground">Premium</div>
+                          </div>
+                        </div>
+                        {stats.total > 0 && (
+                          <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden flex">
+                            <div className="bg-green-500 h-full" style={{ width: `${(stats.enviado / stats.total) * 100}%` }} />
+                            <div className="bg-yellow-500 h-full" style={{ width: `${(stats.pendente / stats.total) * 100}%` }} />
+                            <div className="bg-destructive h-full" style={{ width: `${(stats.falhou / stats.total) * 100}%` }} />
+                          </div>
+                        )}
+                      </Card>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
-          <p className="text-[11px] text-muted-foreground mt-2">
-            🔥 Quente: Score ≥80% + Urgência ≥80% · ⚡ Urgente: Abertura ≤3 dias · ⭐ Premium: Score ≥70% · 📍 Regional: Match geográfico + Score ≥50%
-          </p>
-        </Card>
+        )}
       </div>
 
       {/* Dialog de edição */}
