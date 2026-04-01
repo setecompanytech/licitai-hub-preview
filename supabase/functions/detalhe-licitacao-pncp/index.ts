@@ -14,7 +14,7 @@ const FETCH_HEADERS = {
 const PNCP_ITEMS_PAGE_SIZE = 100;
 const PNCP_ITEMS_MAX_PAGES = 10;
 
-async function fetchJsonWithTimeout(url: string, timeoutMs = 8000) {
+async function fetchJsonWithTimeout(url: string, timeoutMs = 12000) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -34,6 +34,21 @@ async function fetchJsonWithTimeout(url: string, timeoutMs = 8000) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function fetchJsonWithRetry(url: string, timeoutMs = 12000, retries = 2): Promise<unknown> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fetchJsonWithTimeout(url, timeoutMs);
+    } catch (err) {
+      const isLast = attempt === retries;
+      if (isLast) throw err;
+      const delay = 1000 * (attempt + 1);
+      console.warn(`PNCP tentativa ${attempt + 1} falhou, retrying em ${delay}ms...`, (err as Error).message);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw new Error("Unreachable");
 }
 
 function extractItensArray(payload: unknown): Record<string, unknown>[] {
