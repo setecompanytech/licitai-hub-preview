@@ -67,6 +67,7 @@ const navGroups: NavGroup[] = [
     items: [
       { icon: Download, label: 'Editais', path: '/monitoramento-editais' },
       { icon: Bell, label: 'Boletins Diários', path: '/boletins' },
+      { icon: Target, label: 'Perfis de Alerta', path: '/perfis-alerta' },
       { icon: MessageSquare, label: 'Chat e Mural', path: '/monitoramento-chat' },
       { icon: MessageSquare, label: 'WhatsApp CRM', path: '/whatsapp-crm' },
     ],
