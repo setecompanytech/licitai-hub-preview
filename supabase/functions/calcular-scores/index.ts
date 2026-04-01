@@ -45,7 +45,7 @@ serve(async (req) => {
 
     const { data: licitacoes, error: licErr } = await supabase
       .from("pncp_editais_cache")
-      .select("id, objeto, orgao, uf, municipio, modalidade, valor_estimado, data_abertura, data_encerramento, numero, portal")
+      .select("id, objeto, orgao, uf, municipio, modalidade, valor_estimado, data_abertura, data_encerramento, numero, portal, hash_objeto, versao")
       .gte("created_at", dataLimite.toISOString())
       .limit(500);
 
