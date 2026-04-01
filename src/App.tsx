@@ -74,6 +74,7 @@ import ContatoDemo from "./pages/ContatoDemo";
 import CentralAjuda from "./pages/CentralAjuda";
 import PoliticaCookies from "./pages/PoliticaCookies";
 import Solucoes from "./pages/Solucoes";
+import DemoAmbiente from "./pages/DemoAmbiente";
 const queryClient = new QueryClient();
 
 const ProtectedPages = ({ children }: { children: React.ReactNode }) => (
