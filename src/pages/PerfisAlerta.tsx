@@ -124,6 +124,9 @@ export default function PerfisAlerta() {
   const [saving, setSaving] = useState(false);
   const [calculando, setCalculando] = useState(false);
   const [scoreResults, setScoreResults] = useState<any>(null);
+  const [analyticsTab, setAnalyticsTab] = useState<'perfis' | 'analytics'>('perfis');
+  const [dispatchStats, setDispatchStats] = useState<Record<string, { total: number; enviado: number; pendente: number; falhou: number; quente: number; urgente: number; premium: number }>>({});
+  const [loadingStats, setLoadingStats] = useState(false);
 
   // Temp input states for array fields
   const [tempCnae, setTempCnae] = useState('');
