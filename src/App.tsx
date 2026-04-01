@@ -68,6 +68,11 @@ import PerfisAlerta from "./pages/PerfisAlerta";
 import SegurancaInformacao from "./pages/SegurancaInformacao";
 import ComplianceGovernanca from "./pages/ComplianceGovernanca";
 import StatusPlataforma from "./pages/StatusPlataforma";
+import SobreEmpresa from "./pages/SobreEmpresa";
+import ContatoDemo from "./pages/ContatoDemo";
+import CentralAjuda from "./pages/CentralAjuda";
+import PoliticaCookies from "./pages/PoliticaCookies";
+import Solucoes from "./pages/Solucoes";
 const queryClient = new QueryClient();
 
 const ProtectedPages = ({ children }: { children: React.ReactNode }) => (
