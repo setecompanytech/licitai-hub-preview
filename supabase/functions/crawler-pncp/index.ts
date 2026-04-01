@@ -200,15 +200,46 @@ Deno.serve(async (req) => {
 
         console.log(`UF=${uf} mod=${mod}: ${allItems.length}/${firstPage.total} items`)
 
-        const rows = allItems.map(item => mapRow(item, uf, mod)).filter(r => r.pncp_id)
-        if (rows.length === 0) return { inserted: 0, errors: 0 }
+        const rawRows = allItems.map(item => mapRow(item, uf, mod)).filter(r => r.pncp_id)
+        if (rawRows.length === 0) return { inserted: 0, errors: 0 }
+
+        // Compute hashes for change detection
+        const rows = []
+        for (const r of rawRows) {
+          const objetoRaw = r._objeto_raw
+          delete (r as any)._objeto_raw
+          const hash = await computeHash(objetoRaw + '|' + (r.situacao || '') + '|' + (r.valor_total_estimado || ''))
+          rows.push({ ...r, hash_objeto: hash })
+        }
+
+        // Check existing hashes to detect retificações
+        const pncpIds = rows.map(r => r.pncp_id).filter(Boolean) as string[]
+        const { data: existingRows } = await supabase
+          .from('pncp_editais_cache')
+          .select('pncp_id, hash_objeto, versao')
+          .in('pncp_id', pncpIds.slice(0, 500))
+        const existingMap = new Map((existingRows || []).map(e => [e.pncp_id, e]))
+
+        const finalRows = rows.map(r => {
+          const existing = existingMap.get(r.pncp_id)
+          if (existing && existing.hash_objeto && existing.hash_objeto !== r.hash_objeto) {
+            return {
+              ...r,
+              versao_anterior_hash: existing.hash_objeto,
+              versao: (existing.versao || 1) + 1,
+              retificacao: true,
+              data_ultima_retificacao: new Date().toISOString(),
+            }
+          }
+          return r
+        })
 
         let segInserted = 0
         let segErrors = 0
 
         // Upsert in batches of 200
-        for (let i = 0; i < rows.length; i += 200) {
-          const batch = rows.slice(i, i + 200)
+        for (let i = 0; i < finalRows.length; i += 200) {
+          const batch = finalRows.slice(i, i + 200)
           const { error, count } = await supabase
             .from('pncp_editais_cache')
             .upsert(batch, { onConflict: 'pncp_id', ignoreDuplicates: false, count: 'exact' })
