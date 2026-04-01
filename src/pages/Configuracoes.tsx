@@ -282,6 +282,10 @@ export default function Configuracoes() {
               <CreditCard className="w-4 h-4" />
               Plano & Assinatura
             </TabsTrigger>
+            <TabsTrigger value="seguranca" className="gap-2">
+              <Shield className="w-4 h-4" />
+              Segurança
+            </TabsTrigger>
           </TabsList>
 
           {/* ── Tab: Configurações Gerais ── */}
