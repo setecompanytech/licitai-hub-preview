@@ -187,7 +187,7 @@ serve(async (req) => {
     const detalheUrl = `https://pncp.gov.br/api/consulta/v1/orgaos/${cnpj}/compras/${ano}/${seq}`;
 
     const [detalheResult, itensResult] = await Promise.allSettled([
-      fetchJsonWithTimeout(detalheUrl, 15000),
+      fetchJsonWithRetry(detalheUrl, 20000, 2),
       fetchPncpItens(cnpj, ano, seq),
     ]);
 
