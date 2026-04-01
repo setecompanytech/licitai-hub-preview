@@ -70,9 +70,9 @@ function mapPncpItem(item: any, uf: string | null) {
 }
 
 const PNCP_PAGE_SIZE = 50;
-const PNCP_TIMEOUT_MS = 45000;
-const PNCP_MAX_RETRIES = 2;
-const PNCP_MODALIDADE_CONCURRENCY = 2;
+const PNCP_TIMEOUT_MS = 20000;       // Reduced from 45s to avoid edge function timeout
+const PNCP_MAX_RETRIES = 1;          // Reduced from 2 — faster fallback to cache
+const PNCP_MODALIDADE_CONCURRENCY = 3;
 const PNCP_PAGE_CONCURRENCY = 2;
 
 type PncpPageResult = {
@@ -250,14 +250,14 @@ serve(async (req) => {
 
         // Run fetches in parallel batches to maximize coverage within Edge Function timeout
         const maxPages = needsDeepFetch
-          ? 20
+          ? 10
           : userModalidadeCod && uf
-            ? 15
+            ? 8
             : userModalidadeCod
-              ? 12
+              ? 5
               : uf
-                ? 8
-                : (modalidades.length <= 3 ? 8 : 3);
+                ? 3
+                : (modalidades.length <= 3 ? 3 : 1);
 
         const tasks = modalidades.map((cod) => async () => {
           const params = new URLSearchParams();

@@ -372,10 +372,11 @@ export default function MuralLicitacoes() {
       });
     } catch (err) {
       console.error('PNCP sync error:', err);
-      // Don't set error if we already have cached data
+      // Only show error if we have zero data at all
       if (licitacoesRaw.length === 0) {
-        setError('Erro ao sincronizar com o PNCP. Exibindo dados do cache.');
+        setError('Não foi possível conectar ao PNCP. Tente novamente em instantes.');
       }
+      // If we have cached data, silently ignore sync failure
     } finally {
       setSincronizando(false);
     }
