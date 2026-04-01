@@ -65,6 +65,66 @@ export type Database = {
         }
         Relationships: []
       }
+      alerta_dispatches: {
+        Row: {
+          canal: string
+          created_at: string
+          enviado_em: string | null
+          erro: string | null
+          hash_enviado: string | null
+          id: string
+          licitacao_cache_id: string
+          lido_em: string | null
+          perfil_alerta_id: string
+          status: string
+          user_id: string
+          versao_enviada: number | null
+        }
+        Insert: {
+          canal?: string
+          created_at?: string
+          enviado_em?: string | null
+          erro?: string | null
+          hash_enviado?: string | null
+          id?: string
+          licitacao_cache_id: string
+          lido_em?: string | null
+          perfil_alerta_id: string
+          status?: string
+          user_id: string
+          versao_enviada?: number | null
+        }
+        Update: {
+          canal?: string
+          created_at?: string
+          enviado_em?: string | null
+          erro?: string | null
+          hash_enviado?: string | null
+          id?: string
+          licitacao_cache_id?: string
+          lido_em?: string | null
+          perfil_alerta_id?: string
+          status?: string
+          user_id?: string
+          versao_enviada?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alerta_dispatches_licitacao_cache_id_fkey"
+            columns: ["licitacao_cache_id"]
+            isOneToOne: false
+            referencedRelation: "pncp_editais_cache"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alerta_dispatches_perfil_alerta_id_fkey"
+            columns: ["perfil_alerta_id"]
+            isOneToOne: false
+            referencedRelation: "perfis_alerta"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       apoio_contabil: {
         Row: {
           conteudo: string | null
@@ -4156,7 +4216,9 @@ export type Database = {
           data_abertura_proposta: string | null
           data_encerramento_proposta: string | null
           data_publicacao_pncp: string | null
+          data_ultima_retificacao: string | null
           esfera_id: string | null
+          hash_objeto: string | null
           id: string
           link_sistema_origem: string | null
           modalidade_id: number | null
@@ -4168,6 +4230,7 @@ export type Database = {
           objeto: string | null
           orgao: string | null
           pncp_id: string
+          retificacao: boolean
           sequencial_compra: string | null
           situacao: string | null
           srp: boolean | null
@@ -4178,6 +4241,8 @@ export type Database = {
           url_pncp: string | null
           valor_total_estimado: number | null
           valor_total_homologado: number | null
+          versao: number
+          versao_anterior_hash: string | null
         }
         Insert: {
           ano_compra?: string | null
@@ -4187,7 +4252,9 @@ export type Database = {
           data_abertura_proposta?: string | null
           data_encerramento_proposta?: string | null
           data_publicacao_pncp?: string | null
+          data_ultima_retificacao?: string | null
           esfera_id?: string | null
+          hash_objeto?: string | null
           id?: string
           link_sistema_origem?: string | null
           modalidade_id?: number | null
@@ -4199,6 +4266,7 @@ export type Database = {
           objeto?: string | null
           orgao?: string | null
           pncp_id: string
+          retificacao?: boolean
           sequencial_compra?: string | null
           situacao?: string | null
           srp?: boolean | null
@@ -4209,6 +4277,8 @@ export type Database = {
           url_pncp?: string | null
           valor_total_estimado?: number | null
           valor_total_homologado?: number | null
+          versao?: number
+          versao_anterior_hash?: string | null
         }
         Update: {
           ano_compra?: string | null
@@ -4218,7 +4288,9 @@ export type Database = {
           data_abertura_proposta?: string | null
           data_encerramento_proposta?: string | null
           data_publicacao_pncp?: string | null
+          data_ultima_retificacao?: string | null
           esfera_id?: string | null
+          hash_objeto?: string | null
           id?: string
           link_sistema_origem?: string | null
           modalidade_id?: number | null
@@ -4230,6 +4302,7 @@ export type Database = {
           objeto?: string | null
           orgao?: string | null
           pncp_id?: string
+          retificacao?: boolean
           sequencial_compra?: string | null
           situacao?: string | null
           srp?: boolean | null
@@ -4240,6 +4313,8 @@ export type Database = {
           url_pncp?: string | null
           valor_total_estimado?: number | null
           valor_total_homologado?: number | null
+          versao?: number
+          versao_anterior_hash?: string | null
         }
         Relationships: []
       }
