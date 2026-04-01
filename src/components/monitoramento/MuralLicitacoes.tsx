@@ -182,10 +182,11 @@ export default function MuralLicitacoes() {
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [tipoInstrumentoFiltro, setTipoInstrumentoFiltro] = useState<string>('all');
   const [esferaFiltro, setEsferaFiltro] = useState<string>('all');
+  const [portalFiltro, setPortalFiltro] = useState<string>('all');
   const [municipioFiltro, setMunicipioFiltro] = useState('');
   const [unidadeFiltro, setUnidadeFiltro] = useState('');
   const [orgaoFiltro, setOrgaoFiltro] = useState('');
-
+  
   // Toggle portais externos (Firecrawl)
   const [incluirExternos, setIncluirExternos] = useState(false);
   const [loadingExternos, setLoadingExternos] = useState(false);
@@ -395,12 +396,22 @@ export default function MuralLicitacoes() {
   }, [incluirExternos, searchSubmitted, ufFiltro, modalidadeFiltro]);
 
   // Filtros client-side aplicados sobre os dados já carregados (sem re-fetch)
+  // Portais únicos para o filtro dinâmico
+  const portaisDisponiveis = useMemo(() => {
+    const allItems = [...licitacoesRaw, ...licitacoesExternas];
+    const unique = [...new Set(allItems.map(i => i.portal).filter(Boolean))].sort();
+    return unique;
+  }, [licitacoesRaw, licitacoesExternas]);
+
   const licitacoesFiltradas = useMemo(() => {
     // Merge PNCP + external results, deduplicating by numero+orgao
     const pncpKeys = new Set(licitacoesRaw.map(i => `${i.numero}|${i.orgao}`));
     const externasDedup = licitacoesExternas.filter(e => !pncpKeys.has(`${e.numero}|${e.orgao}`));
     let items = [...licitacoesRaw, ...externasDedup];
 
+    if (portalFiltro !== 'all') {
+      items = items.filter(i => i.portal?.toLowerCase() === portalFiltro.toLowerCase());
+    }
     if (esferaFiltro !== 'all') {
       items = items.filter(i => i.esferaNome?.toLowerCase().includes(esferaFiltro.toLowerCase()));
     }
@@ -408,7 +419,6 @@ export default function MuralLicitacoes() {
       const tipoLabel = TIPOS_INSTRUMENTO.find(t => t.value === tipoInstrumentoFiltro)?.label || '';
       items = items.filter(i => i.tipoInstrumentoNome?.toLowerCase().includes(tipoLabel.toLowerCase()));
     }
-    // municipio filter is now server-side (sent to edge function)
     if (unidadeFiltro.trim()) {
       const term = unidadeFiltro.trim().toLowerCase();
       items = items.filter(i => i.unidadeOrgao?.toLowerCase().includes(term));
@@ -431,7 +441,7 @@ export default function MuralLicitacoes() {
     }
 
     return items;
-  }, [licitacoesRaw, licitacoesExternas, esferaFiltro, tipoInstrumentoFiltro, unidadeFiltro, orgaoFiltro, segmentosPrioritarios]);
+  }, [licitacoesRaw, licitacoesExternas, esferaFiltro, tipoInstrumentoFiltro, portalFiltro, unidadeFiltro, orgaoFiltro, segmentosPrioritarios]);
 
   // Sincronizar licitacoes e totalResultados com os dados filtrados
   useEffect(() => {
@@ -1119,7 +1129,7 @@ export default function MuralLicitacoes() {
             <div className="flex items-center gap-2 text-sm font-semibold">
               <SlidersHorizontal className="w-4 h-4 text-accent" />
               FILTROS
-              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || dataInicio || dataFim) && (
+              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || portalFiltro !== 'all' || dataInicio || dataFim) && (
                 <Badge className="bg-accent/10 text-accent border-accent/20 text-[9px]">Ativos</Badge>
               )}
             </div>
@@ -1214,7 +1224,7 @@ export default function MuralLicitacoes() {
                 </div>
               </div>
 
-              {/* Row 4: Esferas + Datas */}
+              {/* Row 4: Esferas + Portal */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Esferas</label>
@@ -1229,21 +1239,38 @@ export default function MuralLicitacoes() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Portal de Origem</label>
+                  <Select value={portalFiltro} onValueChange={v => { setPortalFiltro(v); setPagina(1); }}>
+                    <SelectTrigger className="w-full h-10 text-xs">
+                      <Globe className="w-3 h-3 mr-1 text-muted-foreground" />
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os portais</SelectItem>
+                      {portaisDisponiveis.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Row 5: Datas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Data de início de recebimento de propostas</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full h-10 justify-start text-left text-xs font-normal", !dataInicio && "text-muted-foreground")}>
+                        <CalendarDays className="w-3 h-3 mr-1.5" />
+                        {dataInicio ? format(dataInicio, "dd/MM/yyyy") : "Selecione"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={dataInicio} onSelect={(d) => { setDataInicio(d); setPagina(1); }} locale={ptBR} initialFocus className={cn("p-3 pointer-events-auto")} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <div className="flex gap-2 items-end">
-                  <div className="flex-1">
-                    <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Data de início de recebimento de propostas</label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn("w-full h-10 justify-start text-left text-xs font-normal", !dataInicio && "text-muted-foreground")}>
-                          <CalendarDays className="w-3 h-3 mr-1.5" />
-                          {dataInicio ? format(dataInicio, "dd/MM/yyyy") : "Selecione"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={dataInicio} onSelect={(d) => { setDataInicio(d); setPagina(1); }} locale={ptBR} initialFocus className={cn("p-3 pointer-events-auto")} />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
                   <div className="flex-1">
                     <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Data fim de recebimento de propostas</label>
                     <Popover>
@@ -1267,7 +1294,7 @@ export default function MuralLicitacoes() {
               </div>
 
               {/* Clear all filters */}
-              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || dataInicio || dataFim) && (
+              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || portalFiltro !== 'all' || dataInicio || dataFim) && (
                 <div className="flex justify-end pt-1">
                   <Button
                     variant="ghost"
@@ -1277,7 +1304,8 @@ export default function MuralLicitacoes() {
                       setTipoInstrumentoFiltro('all'); setModalidadeFiltro('all');
                       setOrgaoFiltro(''); setUnidadeFiltro('');
                       setUfFiltro('all'); setMunicipioFiltro('');
-                      setEsferaFiltro('all'); setDataInicio(undefined); setDataFim(undefined);
+                      setEsferaFiltro('all'); setPortalFiltro('all');
+                      setDataInicio(undefined); setDataFim(undefined);
                       setPagina(1);
                     }}
                   >
@@ -1445,24 +1473,36 @@ export default function MuralLicitacoes() {
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/20">
+                <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-border/20">
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-1 text-xs gap-1.5 h-8"
+                    className="flex-1 text-xs gap-1 h-8"
                     onClick={() => setFichaAberta(lic)}
                   >
-                    <Eye className="w-3.5 h-3.5" /> Ver Ficha
+                    <Eye className="w-3.5 h-3.5" /> Ficha
                   </Button>
+                  {(lic.url || buildPncpUrl(lic)) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 text-xs gap-1 h-8 text-primary border-primary/30 hover:bg-primary/10"
+                      asChild
+                    >
+                      <a href={lic.url || buildPncpUrl(lic)!} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-3.5 h-3.5" /> Portal
+                      </a>
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-1 text-xs gap-1.5 h-8 text-accent border-accent/30 hover:bg-accent/10"
+                    className="flex-1 text-xs gap-1 h-8 text-accent border-accent/30 hover:bg-accent/10"
                     onClick={() => handleDownloadEdital(lic)}
                     disabled={isDownloading}
                   >
                     {isDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                    {isDownloading ? 'Baixando...' : 'Edital'}
+                    {isDownloading ? '...' : 'Edital'}
                   </Button>
                 </div>
               </Card>
