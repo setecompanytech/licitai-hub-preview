@@ -1409,9 +1409,14 @@ export default function MuralLicitacoes() {
 
       {/* Stats */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <p className="text-xs sm:text-sm text-muted-foreground">
-          {loading && loadingExternos ? 'Consultando PNCP + portais externos...' :
-           loading ? 'Consultando PNCP...' :
+        <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1.5">
+          {loading && licitacoesRaw.length === 0 ? 'Carregando licitações...' :
+           sincronizando ? (
+             <>
+               <RefreshCw className="w-3 h-3 animate-spin text-accent" />
+               {`${totalResultados} licitações • Sincronizando com PNCP...`}
+             </>
+           ) :
            loadingExternos ? `${licitacoesRaw.length} do PNCP • Buscando portais externos...` :
            `${totalResultados} licitações encontradas${licitacoesExternas.length > 0 ? ` (${licitacoesRaw.length} PNCP + ${licitacoesExternas.length} externos)` : ''}`}
         </p>
