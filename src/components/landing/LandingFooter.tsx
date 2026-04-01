@@ -52,7 +52,11 @@ export default function LandingFooter() {
           <ul className="space-y-2.5 text-sm text-muted-foreground">
             {productLinks.map((l) => (
               <li key={l.label}>
-                <a href={l.href} className="hover:text-foreground transition-colors">{l.label}</a>
+                {'onClick' in l && l.onClick ? (
+                  <button onClick={l.onClick} className="hover:text-foreground transition-colors">{l.label}</button>
+                ) : (
+                  <a href={(l as any).href} className="hover:text-foreground transition-colors">{l.label}</a>
+                )}
               </li>
             ))}
           </ul>
