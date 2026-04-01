@@ -1224,7 +1224,7 @@ export default function MuralLicitacoes() {
                 </div>
               </div>
 
-              {/* Row 4: Esferas + Datas */}
+              {/* Row 4: Esferas + Portal */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Esferas</label>
@@ -1239,7 +1239,23 @@ export default function MuralLicitacoes() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex gap-2 items-end">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Portal de Origem</label>
+                  <Select value={portalFiltro} onValueChange={v => { setPortalFiltro(v); setPagina(1); }}>
+                    <SelectTrigger className="w-full h-10 text-xs">
+                      <Globe className="w-3 h-3 mr-1 text-muted-foreground" />
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os portais</SelectItem>
+                      {portaisDisponiveis.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Row 5: Datas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex-1">
                     <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Data de início de recebimento de propostas</label>
                     <Popover>
