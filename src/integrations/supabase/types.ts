@@ -3290,6 +3290,71 @@ export type Database = {
           },
         ]
       }
+      licitacao_scores: {
+        Row: {
+          classificacao: string
+          created_at: string
+          descartado: boolean | null
+          id: string
+          licitacao_cache_id: string
+          notificado: boolean | null
+          perfil_alerta_id: string
+          salvo: boolean | null
+          score_cnae: number | null
+          score_modalidade: number | null
+          score_palavra_chave: number | null
+          score_regiao: number | null
+          score_total: number
+          score_urgencia: number | null
+          score_valor: number | null
+          user_id: string
+        }
+        Insert: {
+          classificacao?: string
+          created_at?: string
+          descartado?: boolean | null
+          id?: string
+          licitacao_cache_id: string
+          notificado?: boolean | null
+          perfil_alerta_id: string
+          salvo?: boolean | null
+          score_cnae?: number | null
+          score_modalidade?: number | null
+          score_palavra_chave?: number | null
+          score_regiao?: number | null
+          score_total?: number
+          score_urgencia?: number | null
+          score_valor?: number | null
+          user_id: string
+        }
+        Update: {
+          classificacao?: string
+          created_at?: string
+          descartado?: boolean | null
+          id?: string
+          licitacao_cache_id?: string
+          notificado?: boolean | null
+          perfil_alerta_id?: string
+          salvo?: boolean | null
+          score_cnae?: number | null
+          score_modalidade?: number | null
+          score_palavra_chave?: number | null
+          score_regiao?: number | null
+          score_total?: number
+          score_urgencia?: number | null
+          score_valor?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "licitacao_scores_perfil_alerta_id_fkey"
+            columns: ["perfil_alerta_id"]
+            isOneToOne: false
+            referencedRelation: "perfis_alerta"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       licitacoes: {
         Row: {
           arquivado_em: string | null
@@ -3872,6 +3937,128 @@ export type Database = {
             columns: ["source_id"]
             isOneToOne: false
             referencedRelation: "search_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      perfis_alerta: {
+        Row: {
+          ativo: boolean
+          canal_email: boolean | null
+          canal_sistema: boolean | null
+          canal_whatsapp: boolean | null
+          cnaes: string[] | null
+          cor: string | null
+          created_at: string
+          empresa_id: string | null
+          exclusividade_meepp: boolean | null
+          frequencia: string | null
+          horarios_disparo: string[] | null
+          icone: string | null
+          id: string
+          modalidades: string[] | null
+          municipios: string[] | null
+          nome: string
+          orgaos_bloqueados: string[] | null
+          orgaos_favoritos: string[] | null
+          palavras_chave: string[] | null
+          palavras_negativas: string[] | null
+          peso_cnae: number
+          peso_modalidade: number
+          peso_palavra_chave: number
+          peso_regiao: number
+          peso_urgencia: number
+          peso_valor: number
+          priorizar_regiao_sede: boolean | null
+          regiao: string | null
+          segmentos: string[] | null
+          tipos_publicacao: string[] | null
+          ufs: string[] | null
+          updated_at: string
+          user_id: string
+          valor_maximo: number | null
+          valor_minimo: number | null
+        }
+        Insert: {
+          ativo?: boolean
+          canal_email?: boolean | null
+          canal_sistema?: boolean | null
+          canal_whatsapp?: boolean | null
+          cnaes?: string[] | null
+          cor?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          exclusividade_meepp?: boolean | null
+          frequencia?: string | null
+          horarios_disparo?: string[] | null
+          icone?: string | null
+          id?: string
+          modalidades?: string[] | null
+          municipios?: string[] | null
+          nome?: string
+          orgaos_bloqueados?: string[] | null
+          orgaos_favoritos?: string[] | null
+          palavras_chave?: string[] | null
+          palavras_negativas?: string[] | null
+          peso_cnae?: number
+          peso_modalidade?: number
+          peso_palavra_chave?: number
+          peso_regiao?: number
+          peso_urgencia?: number
+          peso_valor?: number
+          priorizar_regiao_sede?: boolean | null
+          regiao?: string | null
+          segmentos?: string[] | null
+          tipos_publicacao?: string[] | null
+          ufs?: string[] | null
+          updated_at?: string
+          user_id: string
+          valor_maximo?: number | null
+          valor_minimo?: number | null
+        }
+        Update: {
+          ativo?: boolean
+          canal_email?: boolean | null
+          canal_sistema?: boolean | null
+          canal_whatsapp?: boolean | null
+          cnaes?: string[] | null
+          cor?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          exclusividade_meepp?: boolean | null
+          frequencia?: string | null
+          horarios_disparo?: string[] | null
+          icone?: string | null
+          id?: string
+          modalidades?: string[] | null
+          municipios?: string[] | null
+          nome?: string
+          orgaos_bloqueados?: string[] | null
+          orgaos_favoritos?: string[] | null
+          palavras_chave?: string[] | null
+          palavras_negativas?: string[] | null
+          peso_cnae?: number
+          peso_modalidade?: number
+          peso_palavra_chave?: number
+          peso_regiao?: number
+          peso_urgencia?: number
+          peso_valor?: number
+          priorizar_regiao_sede?: boolean | null
+          regiao?: string | null
+          segmentos?: string[] | null
+          tipos_publicacao?: string[] | null
+          ufs?: string[] | null
+          updated_at?: string
+          user_id?: string
+          valor_maximo?: number | null
+          valor_minimo?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "perfis_alerta_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
         ]
