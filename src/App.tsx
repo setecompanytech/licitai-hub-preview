@@ -65,6 +65,9 @@ import AssistenteEspecializado from "./pages/AssistenteEspecializado";
 import Unsubscribe from "./pages/Unsubscribe";
 import CertificadoUpload from "./pages/CertificadoUpload";
 import PerfisAlerta from "./pages/PerfisAlerta";
+import SegurancaInformacao from "./pages/SegurancaInformacao";
+import ComplianceGovernanca from "./pages/ComplianceGovernanca";
+import StatusPlataforma from "./pages/StatusPlataforma";
 const queryClient = new QueryClient();
 
 const ProtectedPages = ({ children }: { children: React.ReactNode }) => (
@@ -144,6 +147,9 @@ const App = () => (
               <Route path="/unsubscribe" element={<Unsubscribe />} />
               <Route path="/perfis-alerta" element={<ProtectedPages><PerfisAlerta /></ProtectedPages>} />
               <Route path="/certificado-upload" element={<CertificadoUpload />} />
+              <Route path="/seguranca-informacao" element={<SegurancaInformacao />} />
+              <Route path="/compliance" element={<ComplianceGovernanca />} />
+              <Route path="/status" element={<StatusPlataforma />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </PropostaCartProvider>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import PraefectusLogo from '@/components/shared/PraefectusLogo';
@@ -17,11 +17,12 @@ export default function LandingNavbar() {
   }, []);
 
   const links = [
+    { label: 'Como Funciona', href: '#como-funciona' },
     { label: 'Funcionalidades', href: '#features' },
-    { label: 'Portais', href: '#portais' },
+    { label: 'Segmentos', href: '#segmentos' },
     { label: 'Planos', href: '#planos' },
-    { label: 'Depoimentos', href: '#depoimentos' },
-    { label: 'FAQ', href: '#faq' },
+    { label: 'Segurança', onClick: () => navigate('/seguranca-informacao') },
+    { label: 'Status', onClick: () => navigate('/status') },
   ];
 
   return (
@@ -31,23 +32,37 @@ export default function LandingNavbar() {
         : 'bg-transparent'
     }`}>
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <a href="#" className="flex items-center gap-2.5">
+        <a href="/" className="flex items-center gap-2.5">
           <PraefectusLogo size="lg" variant={scrolled ? 'default' : 'light'} />
         </a>
 
         <div className="hidden lg:flex items-center gap-1">
           {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              className={`px-3.5 py-2 text-[13px] font-medium transition-colors rounded-md ${
-                scrolled
-                  ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                  : 'text-white/70 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              {l.label}
-            </a>
+            'onClick' in l && l.onClick ? (
+              <button
+                key={l.label}
+                onClick={l.onClick}
+                className={`px-3 py-2 text-[13px] font-medium transition-colors rounded-md ${
+                  scrolled
+                    ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {l.label}
+              </button>
+            ) : (
+              <a
+                key={l.label}
+                href={(l as any).href}
+                className={`px-3 py-2 text-[13px] font-medium transition-colors rounded-md ${
+                  scrolled
+                    ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {l.label}
+              </a>
+            )
           ))}
         </div>
 
@@ -59,6 +74,13 @@ export default function LandingNavbar() {
             onClick={() => navigate('/auth')}
           >
             Entrar
+          </Button>
+          <Button
+            size="sm"
+            className="bg-accent hover:bg-accent/90 text-accent-foreground text-[13px] font-bold rounded-lg"
+            onClick={() => navigate('/auth?step=signup')}
+          >
+            Criar Conta
           </Button>
         </div>
 
@@ -80,14 +102,21 @@ export default function LandingNavbar() {
           >
             <div className="px-6 py-4 space-y-1">
               {links.map((l) => (
-                <a key={l.href} href={l.href} onClick={() => setMobileOpen(false)}
-                  className="block px-4 py-2.5 text-sm text-foreground hover:text-accent font-medium rounded-md hover:bg-muted/60">
-                  {l.label}
-                </a>
+                'onClick' in l && l.onClick ? (
+                  <button key={l.label} onClick={() => { setMobileOpen(false); l.onClick!(); }}
+                    className="block w-full text-left px-4 py-2.5 text-sm text-foreground hover:text-accent font-medium rounded-md hover:bg-muted/60">
+                    {l.label}
+                  </button>
+                ) : (
+                  <a key={l.label} href={(l as any).href} onClick={() => setMobileOpen(false)}
+                    className="block px-4 py-2.5 text-sm text-foreground hover:text-accent font-medium rounded-md hover:bg-muted/60">
+                    {l.label}
+                  </a>
+                )
               ))}
               <div className="pt-3 flex flex-col gap-2">
                 <Button variant="outline" className="w-full" onClick={() => navigate('/auth')}>Entrar</Button>
-                <Button className="w-full bg-accent text-accent-foreground font-bold" onClick={() => { setMobileOpen(false); document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' }); }}>Escolher Meu Plano</Button>
+                <Button className="w-full bg-accent text-accent-foreground font-bold" onClick={() => navigate('/auth?step=signup')}>Criar Conta</Button>
               </div>
             </div>
           </motion.div>
