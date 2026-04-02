@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import App from "./App.tsx";
 import "./index.css";
+import { initSecurityGuard } from "./lib/security-guard";
 
 const clearLegacyBrowserState = async () => {
   if (typeof window === "undefined") return;
@@ -22,6 +23,7 @@ const clearLegacyBrowserState = async () => {
 };
 
 void clearLegacyBrowserState();
+initSecurityGuard();
 
 if (typeof window !== "undefined") {
   window.addEventListener("load", () => {
