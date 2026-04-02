@@ -44,25 +44,33 @@
     <meta name="twitter:site" content="@Praefectus" />
     <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/e101e203-8f1d-4e97-910e-131c41a46fc4?Expires=1773431781&amp;GoogleAccessId=go-api-on-aws%40gpt-engineer-390607.iam.gserviceaccount.com&amp;Signature=cviC7r3cRsI8GBK3eXrgWepnOb7%2BK6ZUh7IrdSKHogxHoCsmtgPYDo14IaYg%2FmahJtLSq8cDyMgew3lq5Wgo18EGR6WcbmVBqFbD8IH%2FbbimFsNS3QjZ5WNkZPvABcSd9AphVYJBc%2B%2F6pxTBAXTKZtPdUXMcePhu4lSqf6Q2Q%2BA4tS7%2BZdbiSXO62brKvleRsctQ5c7oTK56vseyjtI6IKBAXw63HsO9nqSKk2FtgY%2F6KX12vKWsjRES7Rnk9%2BErujwCliAd4C6Fs2IdfTE450Q3mvoqSpj4eIlNNp9k0sapuAo6Jf3jpqZ%2BFLZaJuC6HNZTf0oBVH%2F5B9UPBOhg0g%3D%3D">
 
-    <!-- Meta Pixel (Facebook) -->
+    <!-- Tracking scripts - carregados condicionalmente (desativados em /auth) -->
     <script>
-      !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-      n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-      n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-      t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
-      document,'script','https://connect.facebook.net/en_US/fbevents.js');
-      // fbq('init', 'YOUR_PIXEL_ID');
-      // fbq('track', 'PageView');
-    </script>
+      (function() {
+        var isAuthPage = window.location.pathname.indexOf('/auth') === 0 || window.location.pathname.indexOf('/reset-password') === 0;
+        if (isAuthPage) return;
 
-    <!-- Google Analytics 4 + Google Ads Tag -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      // gtag('config', 'G-XXXXXXXXXX');
-      // gtag('config', 'AW-CONVERSION_ID');
+        // Meta Pixel (Facebook)
+        !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+        n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+        document,'script','https://connect.facebook.net/en_US/fbevents.js');
+        // fbq('init', 'YOUR_PIXEL_ID');
+        // fbq('track', 'PageView');
+
+        // Google Analytics 4 + Google Ads Tag
+        var gaScript = document.createElement('script');
+        gaScript.async = true;
+        gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX';
+        document.head.appendChild(gaScript);
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        window.gtag = gtag;
+        gtag('js', new Date());
+        // gtag('config', 'G-XXXXXXXXXX');
+        // gtag('config', 'AW-CONVERSION_ID');
+      })();
     </script>
   <meta property="og:title" content="Praefectus | Gestão de Licitações">
   <meta name="twitter:title" content="Praefectus | Gestão de Licitações">
