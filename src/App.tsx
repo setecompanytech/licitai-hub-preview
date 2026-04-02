@@ -10,6 +10,7 @@ import { PropostaCartProvider } from "@/contexts/PropostaCartContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import PlanGuard from "@/components/auth/PlanGuard";
 import AdminGuard from "@/components/auth/AdminGuard";
+import MaintenanceGuard from "@/components/auth/MaintenanceGuard";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
@@ -97,6 +98,7 @@ const App = () => (
         <AuthProvider>
           <EmpresaProvider>
           <PropostaCartProvider>
+            <MaintenanceGuard>
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/landing" element={<Navigate to="/" replace />} />
@@ -168,6 +170,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
             <CookieConsentBanner />
+            </MaintenanceGuard>
           </PropostaCartProvider>
           </EmpresaProvider>
         </AuthProvider>
