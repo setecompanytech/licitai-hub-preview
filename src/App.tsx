@@ -166,6 +166,7 @@ const App = () => (
               <Route path="/contato" element={<ContatoDemo />} />
               <Route path="/ajuda" element={<CentralAjuda />} />
               <Route path="/politica-cookies" element={<PoliticaCookies />} />
+              <Route path="/politica-sla" element={<PoliticaSLA />} />
               <Route path="/solucoes" element={<Solucoes />} />
               <Route path="/demo" element={<DemoAmbiente />} />
               <Route path="*" element={<NotFound />} />
