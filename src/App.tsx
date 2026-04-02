@@ -76,6 +76,7 @@ import CentralAjuda from "./pages/CentralAjuda";
 import PoliticaCookies from "./pages/PoliticaCookies";
 import PoliticaSLA from "./pages/PoliticaSLA";
 import Solucoes from "./pages/Solucoes";
+import AvisoLegal from "./pages/AvisoLegal";
 import DemoAmbiente from "./pages/DemoAmbiente";
 import CookieConsentBanner from "./components/shared/CookieConsentBanner";
 const queryClient = new QueryClient();
@@ -167,6 +168,7 @@ const App = () => (
               <Route path="/ajuda" element={<CentralAjuda />} />
               <Route path="/politica-cookies" element={<PoliticaCookies />} />
               <Route path="/politica-sla" element={<PoliticaSLA />} />
+              <Route path="/aviso-legal" element={<AvisoLegal />} />
               <Route path="/solucoes" element={<Solucoes />} />
               <Route path="/demo" element={<DemoAmbiente />} />
               <Route path="*" element={<NotFound />} />
