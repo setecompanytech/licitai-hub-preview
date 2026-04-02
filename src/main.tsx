@@ -23,6 +23,7 @@ const clearLegacyBrowserState = async () => {
 };
 
 void clearLegacyBrowserState();
+initSecurityGuard();
 
 if (typeof window !== "undefined") {
   window.addEventListener("load", () => {
