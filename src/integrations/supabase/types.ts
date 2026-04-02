@@ -5370,6 +5370,30 @@ export type Database = {
           },
         ]
       }
+      site_config: {
+        Row: {
+          chave: string
+          id: string
+          updated_at: string
+          updated_by: string | null
+          valor: string
+        }
+        Insert: {
+          chave: string
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+          valor?: string
+        }
+        Update: {
+          chave?: string
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+          valor?: string
+        }
+        Relationships: []
+      }
       sub_tarefas: {
         Row: {
           concluida_em: string | null
