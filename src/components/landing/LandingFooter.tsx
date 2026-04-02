@@ -1,33 +1,48 @@
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import PraefectusLogo from '@/components/shared/PraefectusLogo';
 
 export default function LandingFooter() {
-  const navigate = useNavigate();
-
   const productLinks = [
-    { label: 'Soluções', onClick: () => navigate('/solucoes') },
+    { label: 'Soluções', to: '/solucoes' },
     { label: 'Como Funciona', href: '#como-funciona' },
     { label: 'Segmentos Atendidos', href: '#segmentos' },
     { label: 'Planos', href: '#planos' },
-    { label: 'Sobre a Empresa', onClick: () => navigate('/sobre') },
+    { label: 'Sobre a Empresa', to: '/sobre' },
   ];
 
   const supportLinks = [
-    { label: 'Central de Ajuda', onClick: () => navigate('/ajuda') },
-    { label: 'FAQ', onClick: () => navigate('/faq') },
-    { label: 'Contato / Demonstração', onClick: () => navigate('/contato') },
-    { label: 'Blog', onClick: () => navigate('/blog') },
-    { label: 'Status da Plataforma', onClick: () => navigate('/status') },
+    { label: 'Central de Ajuda', to: '/ajuda' },
+    { label: 'FAQ', to: '/faq' },
+    { label: 'Contato / Demonstração', to: '/contato' },
+    { label: 'Blog', to: '/blog' },
+    { label: 'Status da Plataforma', to: '/status' },
+    { label: 'Política de SLA', to: '/politica-sla' },
   ];
 
   const securityLinks = [
-    { label: 'Segurança da Informação', onClick: () => navigate('/seguranca-informacao') },
-    { label: 'Compliance e Governança', onClick: () => navigate('/compliance') },
-    { label: 'Privacidade e LGPD', onClick: () => navigate('/lgpd') },
-    { label: 'Política de Privacidade', onClick: () => navigate('/politica-de-privacidade') },
-    { label: 'Política de Cookies', onClick: () => navigate('/politica-cookies') },
-    { label: 'Termos de Uso', onClick: () => navigate('/termos-de-uso') },
+    { label: 'Segurança da Informação', to: '/seguranca-informacao' },
+    { label: 'Compliance e Governança', to: '/compliance' },
+    { label: 'Privacidade e LGPD', to: '/lgpd' },
+    { label: 'Política de Privacidade', to: '/politica-de-privacidade' },
+    { label: 'Política de Cookies', to: '/politica-cookies' },
+    { label: 'Termos de Uso', to: '/termos-de-uso' },
+    { label: 'Aviso Legal', to: '/aviso-legal' },
   ];
+
+  const renderLink = (item: { label: string; to?: string; href?: string }) => {
+    if (item.to) {
+      return (
+        <Link to={item.to} className="hover:text-foreground transition-colors">
+          {item.label}
+        </Link>
+      );
+    }
+    return (
+      <a href={item.href} className="hover:text-foreground transition-colors">
+        {item.label}
+      </a>
+    );
+  };
 
   return (
     <footer className="border-t border-border/30 py-14 px-6 bg-card">
@@ -51,13 +66,7 @@ export default function LandingFooter() {
           <h4 className="font-semibold text-sm mb-4">Produto</h4>
           <ul className="space-y-2.5 text-sm text-muted-foreground">
             {productLinks.map((l) => (
-              <li key={l.label}>
-                {'onClick' in l && l.onClick ? (
-                  <button onClick={l.onClick} className="hover:text-foreground transition-colors">{l.label}</button>
-                ) : (
-                  <a href={(l as any).href} className="hover:text-foreground transition-colors">{l.label}</a>
-                )}
-              </li>
+              <li key={l.label}>{renderLink(l)}</li>
             ))}
           </ul>
         </div>
@@ -66,9 +75,7 @@ export default function LandingFooter() {
           <h4 className="font-semibold text-sm mb-4">Suporte</h4>
           <ul className="space-y-2.5 text-sm text-muted-foreground">
             {supportLinks.map((l) => (
-              <li key={l.label}>
-                <button onClick={l.onClick} className="hover:text-foreground transition-colors">{l.label}</button>
-              </li>
+              <li key={l.label}>{renderLink(l)}</li>
             ))}
           </ul>
         </div>
@@ -77,9 +84,7 @@ export default function LandingFooter() {
           <h4 className="font-semibold text-sm mb-4">Segurança e Legal</h4>
           <ul className="space-y-2.5 text-sm text-muted-foreground">
             {securityLinks.map((l) => (
-              <li key={l.label}>
-                <button onClick={l.onClick} className="hover:text-foreground transition-colors">{l.label}</button>
-              </li>
+              <li key={l.label}>{renderLink(l)}</li>
             ))}
           </ul>
         </div>
