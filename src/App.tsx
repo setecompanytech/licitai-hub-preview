@@ -98,6 +98,7 @@ const App = () => (
         <AuthProvider>
           <EmpresaProvider>
           <PropostaCartProvider>
+            <MaintenanceGuard>
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/landing" element={<Navigate to="/" replace />} />
@@ -169,6 +170,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
             <CookieConsentBanner />
+            </MaintenanceGuard>
           </PropostaCartProvider>
           </EmpresaProvider>
         </AuthProvider>
