@@ -74,6 +74,7 @@ import SobreEmpresa from "./pages/SobreEmpresa";
 import ContatoDemo from "./pages/ContatoDemo";
 import CentralAjuda from "./pages/CentralAjuda";
 import PoliticaCookies from "./pages/PoliticaCookies";
+import PoliticaSLA from "./pages/PoliticaSLA";
 import Solucoes from "./pages/Solucoes";
 import DemoAmbiente from "./pages/DemoAmbiente";
 import CookieConsentBanner from "./components/shared/CookieConsentBanner";
@@ -165,6 +166,7 @@ const App = () => (
               <Route path="/contato" element={<ContatoDemo />} />
               <Route path="/ajuda" element={<CentralAjuda />} />
               <Route path="/politica-cookies" element={<PoliticaCookies />} />
+              <Route path="/politica-sla" element={<PoliticaSLA />} />
               <Route path="/solucoes" element={<Solucoes />} />
               <Route path="/demo" element={<DemoAmbiente />} />
               <Route path="*" element={<NotFound />} />
