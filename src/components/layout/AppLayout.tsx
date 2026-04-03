@@ -195,7 +195,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
           navigate(path);
         }}
       />
-      <FloatingChat />
+      <AureliaChat />
       <GlobalSearch />
     </div>
   );
