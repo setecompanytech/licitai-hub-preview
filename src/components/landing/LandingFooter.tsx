@@ -26,6 +26,7 @@ export default function LandingFooter() {
     { label: 'Política de Privacidade', to: '/politica-de-privacidade' },
     { label: 'Política de Cookies', to: '/politica-cookies' },
     { label: 'Termos de Uso', to: '/termos-de-uso' },
+    { label: 'Acordo de Processamento de Dados (DPA)', to: '/dpa' },
     { label: 'Aviso Legal', to: '/aviso-legal' },
   ];
 
