@@ -7,7 +7,7 @@ import AlertaVencimentoBanner from './AlertaVencimentoBanner';
 import { Bell, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette, Zap, Download } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
-import FloatingChat from '@/components/chat/FloatingChat';
+import AureliaChat from '@/components/aurelia/AureliaChat';
 import GlobalSearch from '@/components/search/GlobalSearch';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import MaintenanceBanner from '@/components/layout/MaintenanceBanner';
