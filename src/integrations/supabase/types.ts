@@ -14,6 +14,483 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_acoes_log: {
+        Row: {
+          acao: string
+          agente: string
+          created_at: string | null
+          duracao_ms: number | null
+          erro_msg: string | null
+          id: string
+          licitacao_id: string | null
+          payload_in: Json | null
+          payload_out: Json | null
+          status: string | null
+        }
+        Insert: {
+          acao: string
+          agente: string
+          created_at?: string | null
+          duracao_ms?: number | null
+          erro_msg?: string | null
+          id?: string
+          licitacao_id?: string | null
+          payload_in?: Json | null
+          payload_out?: Json | null
+          status?: string | null
+        }
+        Update: {
+          acao?: string
+          agente?: string
+          created_at?: string | null
+          duracao_ms?: number | null
+          erro_msg?: string | null
+          id?: string
+          licitacao_id?: string | null
+          payload_in?: Json | null
+          payload_out?: Json | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_acoes_log_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "agent_licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_chat_monitor: {
+        Row: {
+          categoria: string | null
+          conteudo: string
+          created_at: string | null
+          id: string
+          licitacao_id: string | null
+          mensagem_id: string | null
+          portal: string | null
+          remetente: string | null
+          requer_acao: boolean | null
+          respondido_em: string | null
+          resposta_enviada: string | null
+        }
+        Insert: {
+          categoria?: string | null
+          conteudo: string
+          created_at?: string | null
+          id?: string
+          licitacao_id?: string | null
+          mensagem_id?: string | null
+          portal?: string | null
+          remetente?: string | null
+          requer_acao?: boolean | null
+          respondido_em?: string | null
+          resposta_enviada?: string | null
+        }
+        Update: {
+          categoria?: string | null
+          conteudo?: string
+          created_at?: string | null
+          id?: string
+          licitacao_id?: string | null
+          mensagem_id?: string | null
+          portal?: string | null
+          remetente?: string | null
+          requer_acao?: boolean | null
+          respondido_em?: string | null
+          resposta_enviada?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_chat_monitor_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "agent_licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_concorrentes: {
+        Row: {
+          cnpj: string
+          created_at: string | null
+          data_verificacao: string | null
+          estrategia_lance: string | null
+          id: string
+          preco_medio_desvio: number | null
+          razao_social: string | null
+          sancionado: boolean | null
+          segmentos: string[] | null
+          taxa_vitoria: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          cnpj: string
+          created_at?: string | null
+          data_verificacao?: string | null
+          estrategia_lance?: string | null
+          id?: string
+          preco_medio_desvio?: number | null
+          razao_social?: string | null
+          sancionado?: boolean | null
+          segmentos?: string[] | null
+          taxa_vitoria?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          cnpj?: string
+          created_at?: string | null
+          data_verificacao?: string | null
+          estrategia_lance?: string | null
+          id?: string
+          preco_medio_desvio?: number | null
+          razao_social?: string | null
+          sancionado?: boolean | null
+          segmentos?: string[] | null
+          taxa_vitoria?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      agent_configuracoes: {
+        Row: {
+          agente_ativo: boolean | null
+          alertar_whatsapp: boolean | null
+          auto_responder_chat: boolean | null
+          auto_submeter_prop: boolean | null
+          created_at: string | null
+          empresa_id: string
+          estrategia_lance: string | null
+          horario_fim: string | null
+          horario_inicio: string | null
+          preco_minimo_perc: number | null
+          score_minimo_auto: number | null
+          score_minimo_notif: number | null
+          updated_at: string | null
+          valor_maximo: number | null
+          valor_minimo: number | null
+          whatsapp_numero: string | null
+        }
+        Insert: {
+          agente_ativo?: boolean | null
+          alertar_whatsapp?: boolean | null
+          auto_responder_chat?: boolean | null
+          auto_submeter_prop?: boolean | null
+          created_at?: string | null
+          empresa_id: string
+          estrategia_lance?: string | null
+          horario_fim?: string | null
+          horario_inicio?: string | null
+          preco_minimo_perc?: number | null
+          score_minimo_auto?: number | null
+          score_minimo_notif?: number | null
+          updated_at?: string | null
+          valor_maximo?: number | null
+          valor_minimo?: number | null
+          whatsapp_numero?: string | null
+        }
+        Update: {
+          agente_ativo?: boolean | null
+          alertar_whatsapp?: boolean | null
+          auto_responder_chat?: boolean | null
+          auto_submeter_prop?: boolean | null
+          created_at?: string | null
+          empresa_id?: string
+          estrategia_lance?: string | null
+          horario_fim?: string | null
+          horario_inicio?: string | null
+          preco_minimo_perc?: number | null
+          score_minimo_auto?: number | null
+          score_minimo_notif?: number | null
+          updated_at?: string | null
+          valor_maximo?: number | null
+          valor_minimo?: number | null
+          whatsapp_numero?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_configuracoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_configuracoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_contratos: {
+        Row: {
+          created_at: string | null
+          data_fim: string | null
+          data_inicio: string | null
+          empresa_id: string | null
+          id: string
+          indice_reajuste: string | null
+          licitacao_id: string | null
+          numero_contrato: string | null
+          objeto: string | null
+          orgao: string | null
+          proximo_reajuste: string | null
+          status: string | null
+          ultimo_reajuste: string | null
+          updated_at: string | null
+          valor_total: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          empresa_id?: string | null
+          id?: string
+          indice_reajuste?: string | null
+          licitacao_id?: string | null
+          numero_contrato?: string | null
+          objeto?: string | null
+          orgao?: string | null
+          proximo_reajuste?: string | null
+          status?: string | null
+          ultimo_reajuste?: string | null
+          updated_at?: string | null
+          valor_total?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          empresa_id?: string | null
+          id?: string
+          indice_reajuste?: string | null
+          licitacao_id?: string | null
+          numero_contrato?: string | null
+          objeto?: string | null
+          orgao?: string | null
+          proximo_reajuste?: string | null
+          status?: string | null
+          ultimo_reajuste?: string | null
+          updated_at?: string | null
+          valor_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_contratos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_contratos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_contratos_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "agent_licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_documentos: {
+        Row: {
+          arquivo_url: string | null
+          auto_renovar: boolean | null
+          created_at: string | null
+          empresa_id: string | null
+          id: string
+          status: string | null
+          tipo: string
+          ultima_coleta: string | null
+          updated_at: string | null
+          validade: string | null
+        }
+        Insert: {
+          arquivo_url?: string | null
+          auto_renovar?: boolean | null
+          created_at?: string | null
+          empresa_id?: string | null
+          id?: string
+          status?: string | null
+          tipo: string
+          ultima_coleta?: string | null
+          updated_at?: string | null
+          validade?: string | null
+        }
+        Update: {
+          arquivo_url?: string | null
+          auto_renovar?: boolean | null
+          created_at?: string | null
+          empresa_id?: string | null
+          id?: string
+          status?: string | null
+          tipo?: string
+          ultima_coleta?: string | null
+          updated_at?: string | null
+          validade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_documentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_documentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_jurisprudencia: {
+        Row: {
+          conteudo: string | null
+          created_at: string | null
+          data_pub: string | null
+          embedding: string | null
+          ementa: string | null
+          fonte: string | null
+          id: string
+          numero: string | null
+          tags: string[] | null
+        }
+        Insert: {
+          conteudo?: string | null
+          created_at?: string | null
+          data_pub?: string | null
+          embedding?: string | null
+          ementa?: string | null
+          fonte?: string | null
+          id?: string
+          numero?: string | null
+          tags?: string[] | null
+        }
+        Update: {
+          conteudo?: string | null
+          created_at?: string | null
+          data_pub?: string | null
+          embedding?: string | null
+          ementa?: string | null
+          fonte?: string | null
+          id?: string
+          numero?: string | null
+          tags?: string[] | null
+        }
+        Relationships: []
+      }
+      agent_licitacoes: {
+        Row: {
+          agente_atual: string | null
+          aprovacao_humana: boolean | null
+          created_at: string | null
+          data_abertura: string | null
+          decisao: string | null
+          empresa_id: string | null
+          erro_log: string | null
+          id: string
+          motivo_decisao: string | null
+          nossa_posicao: number | null
+          pncp_cache_id: string | null
+          prazo_habilitacao: string | null
+          prazo_proposta: string | null
+          prazo_recurso: string | null
+          preco_minimo: number | null
+          preco_proposta: number | null
+          preco_vencedor: number | null
+          proxima_acao: string | null
+          proxima_execucao: string | null
+          score_relevancia: number | null
+          tentativas: number | null
+          ultima_acao: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          agente_atual?: string | null
+          aprovacao_humana?: boolean | null
+          created_at?: string | null
+          data_abertura?: string | null
+          decisao?: string | null
+          empresa_id?: string | null
+          erro_log?: string | null
+          id?: string
+          motivo_decisao?: string | null
+          nossa_posicao?: number | null
+          pncp_cache_id?: string | null
+          prazo_habilitacao?: string | null
+          prazo_proposta?: string | null
+          prazo_recurso?: string | null
+          preco_minimo?: number | null
+          preco_proposta?: number | null
+          preco_vencedor?: number | null
+          proxima_acao?: string | null
+          proxima_execucao?: string | null
+          score_relevancia?: number | null
+          tentativas?: number | null
+          ultima_acao?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          agente_atual?: string | null
+          aprovacao_humana?: boolean | null
+          created_at?: string | null
+          data_abertura?: string | null
+          decisao?: string | null
+          empresa_id?: string | null
+          erro_log?: string | null
+          id?: string
+          motivo_decisao?: string | null
+          nossa_posicao?: number | null
+          pncp_cache_id?: string | null
+          prazo_habilitacao?: string | null
+          prazo_proposta?: string | null
+          prazo_recurso?: string | null
+          preco_minimo?: number | null
+          preco_proposta?: number | null
+          preco_vencedor?: number | null
+          proxima_acao?: string | null
+          proxima_execucao?: string | null
+          score_relevancia?: number | null
+          tentativas?: number | null
+          ultima_acao?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_licitacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_licitacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_licitacoes_pncp_cache_id_fkey"
+            columns: ["pncp_cache_id"]
+            isOneToOne: false
+            referencedRelation: "pncp_editais_cache"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agente_externo_config: {
         Row: {
           api_key_hash: string | null
@@ -6843,6 +7320,10 @@ export type Database = {
       }
     }
     Functions: {
+      calcular_metricas_agente: {
+        Args: { p_empresa_id: string }
+        Returns: Json
+      }
       check_lead_rate_limit: { Args: { p_email: string }; Returns: boolean }
       check_rate_limit: {
         Args: {
