@@ -52,7 +52,7 @@ export default function DeteccaoPortais() {
       // Load credentials and empresa info in parallel
       const [credResp, profileResp] = await Promise.all([
         supabase
-          .from('credenciais_portais')
+          .from('credenciais_portais_safe' as any)
           .select('portal_id, login, certificado_path')
           .eq('user_id', user.id),
         supabase
@@ -62,7 +62,7 @@ export default function DeteccaoPortais() {
           .single(),
       ]);
 
-      const credenciais = credResp.data || [];
+      const credenciais = (credResp.data || []) as any[];
       const profile = profileResp.data;
 
       // If has empresa_ativa_id, get empresa name

@@ -111,8 +111,10 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
     const { error } = await supabase.storage.from('timbrados').upload(path, file, { upsert: true });
     if (error) { toast.error('Erro: ' + error.message); setLoading(false); return; }
 
-    const { data: urlData } = supabase.storage.from('timbrados').getPublicUrl(path);
-    const publicUrl = urlData.publicUrl;
+    // Bucket is private - generate a long-lived signed URL (1 year)
+    const { data: signedData, error: signError } = await supabase.storage.from('timbrados').createSignedUrl(path, 31536000);
+    if (signError || !signedData?.signedUrl) { toast.error('Erro ao gerar URL: ' + (signError?.message || 'desconhecido')); setLoading(false); return; }
+    const publicUrl = signedData.signedUrl;
 
     const updateFields: Record<string, any> = {
       [`${prefix}_path`]: path,

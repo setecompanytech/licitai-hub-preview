@@ -127,7 +127,7 @@ export default function CalendarioLicitacoes() {
 
       // 3) Portal credentials certificates
       const { data: creds } = await supabase
-        .from('credenciais_portais')
+        .from('credenciais_portais_safe' as any)
         .select('id, portal_nome, validade_certificado')
         .eq('user_id', user.id)
         .not('validade_certificado', 'is', null);
