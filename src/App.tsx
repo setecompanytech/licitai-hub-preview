@@ -79,6 +79,7 @@ import Solucoes from "./pages/Solucoes";
 import AvisoLegal from "./pages/AvisoLegal";
 import DemoAmbiente from "./pages/DemoAmbiente";
 import DpaPage from "./pages/DpaPage";
+import AgentePage from "./pages/AgentePage";
 import CookieConsentBanner from "./components/shared/CookieConsentBanner";
 const queryClient = new QueryClient();
 

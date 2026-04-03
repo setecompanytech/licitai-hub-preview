@@ -72,7 +72,7 @@ const DECISAO_CONFIG: Record<string, { label: string; variant: 'default' | 'seco
 };
 
 export default function AgenteDashboard() {
-  const { empresaSelecionada } = useEmpresa();
+  const { empresaAtiva } = useEmpresa();
   const { user } = useAuth();
   const [metricas, setMetricas] = useState<AgentMetricas | null>(null);
   const [licitacoes, setLicitacoes] = useState<AgentLicitacao[]>([]);
@@ -82,12 +82,12 @@ export default function AgenteDashboard() {
   const [tab, setTab] = useState('monitoradas');
 
   const carregarDados = useCallback(async () => {
-    if (!empresaSelecionada?.id) return;
+    if (!empresaAtiva?.id) return;
 
     try {
       // Metrics
       const { data: metricasData } = await supabase.rpc('calcular_metricas_agente', {
-        p_empresa_id: empresaSelecionada.id,
+        p_empresa_id: empresaAtiva.id,
       });
       if (metricasData) setMetricas(metricasData as unknown as AgentMetricas);
 
@@ -95,7 +95,7 @@ export default function AgenteDashboard() {
       const { data: licsData } = await supabase
         .from('agent_licitacoes')
         .select('*, pncp_editais_cache(objeto_compra, orgao_nome, valor_total_estimado, uf, modalidade_nome)')
-        .eq('empresa_id', empresaSelecionada.id)
+        .eq('empresa_id', empresaAtiva.id)
         .not('decisao', 'in', '(descartado,concluido,cancelado)')
         .order('updated_at', { ascending: false })
         .limit(30);
@@ -105,7 +105,7 @@ export default function AgenteDashboard() {
       const { data: configData } = await supabase
         .from('agent_configuracoes')
         .select('agente_ativo')
-        .eq('empresa_id', empresaSelecionada.id)
+        .eq('empresa_id', empresaAtiva.id)
         .maybeSingle();
       setAgenteAtivo(configData?.agente_ativo || false);
 
@@ -121,7 +121,7 @@ export default function AgenteDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [empresaSelecionada?.id]);
+  }, [empresaAtiva?.id]);
 
   useEffect(() => {
     carregarDados();
@@ -140,14 +140,14 @@ export default function AgenteDashboard() {
   }, [carregarDados]);
 
   const toggleAgente = async () => {
-    if (!empresaSelecionada?.id) return;
+    if (!empresaAtiva?.id) return;
 
     const novoEstado = !agenteAtivo;
 
     const { error } = await supabase
       .from('agent_configuracoes')
       .upsert({
-        empresa_id: empresaSelecionada.id,
+        empresa_id: empresaAtiva.id,
         agente_ativo: novoEstado,
       }, { onConflict: 'empresa_id' });
 
@@ -173,7 +173,7 @@ export default function AgenteDashboard() {
 
     // Trigger preparation
     supabase.functions.invoke('agent-orchestrator', {
-      body: { tipo: 'preparar', payload: { licitacao_id: licitacaoId, empresa_id: empresaSelecionada?.id } },
+      body: { tipo: 'preparar', payload: { licitacao_id: licitacaoId, empresa_id: empresaAtiva?.id } },
     }).catch(() => {});
 
     toast.success('Participação aprovada — agente preparando análise');
@@ -198,7 +198,7 @@ export default function AgenteDashboard() {
     return new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
   };
 
-  if (!empresaSelecionada?.id) {
+  if (!empresaAtiva?.id) {
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground">
         <p>Selecione uma empresa para acessar o AURÉLIA Agent.</p>
@@ -382,7 +382,7 @@ export default function AgenteDashboard() {
 
         {/* Tab: Configurações */}
         <TabsContent value="config">
-          <AgentConfig empresaId={empresaSelecionada.id} />
+          <AgentConfig empresaId={empresaAtiva.id} />
         </TabsContent>
       </Tabs>
     </div>
