@@ -16,6 +16,7 @@ import {
   TrendingUp, Target, RefreshCw, Settings, DollarSign,
 } from 'lucide-react';
 import PrecificacaoReview from './PrecificacaoReview';
+import PesquisaPrecos from './PesquisaPrecos';
 
 interface AgentMetricas {
   total_monitoradas: number;
