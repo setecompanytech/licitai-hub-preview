@@ -485,6 +485,7 @@ export type Database = {
           especificacoes_tecnicas: string | null
           exclusivo_me_epp: boolean | null
           fontes_consultadas: Json | null
+          fontes_ecommerce_count: number | null
           id: string
           justificativa_marca: string | null
           licitacao_id: string | null
@@ -500,6 +501,7 @@ export type Database = {
           preco_lance_minimo: number | null
           preco_proposta: number | null
           preco_referencia: number | null
+          preco_referencia_ecommerce: number | null
           quantidade: number | null
           status: string | null
           unidade: string | null
@@ -521,6 +523,7 @@ export type Database = {
           especificacoes_tecnicas?: string | null
           exclusivo_me_epp?: boolean | null
           fontes_consultadas?: Json | null
+          fontes_ecommerce_count?: number | null
           id?: string
           justificativa_marca?: string | null
           licitacao_id?: string | null
@@ -536,6 +539,7 @@ export type Database = {
           preco_lance_minimo?: number | null
           preco_proposta?: number | null
           preco_referencia?: number | null
+          preco_referencia_ecommerce?: number | null
           quantidade?: number | null
           status?: string | null
           unidade?: string | null
@@ -557,6 +561,7 @@ export type Database = {
           especificacoes_tecnicas?: string | null
           exclusivo_me_epp?: boolean | null
           fontes_consultadas?: Json | null
+          fontes_ecommerce_count?: number | null
           id?: string
           justificativa_marca?: string | null
           licitacao_id?: string | null
@@ -572,6 +577,7 @@ export type Database = {
           preco_lance_minimo?: number | null
           preco_proposta?: number | null
           preco_referencia?: number | null
+          preco_referencia_ecommerce?: number | null
           quantidade?: number | null
           status?: string | null
           unidade?: string | null
@@ -5466,6 +5472,158 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      price_alertas: {
+        Row: {
+          ativo: boolean | null
+          codigo_catmat: string | null
+          created_at: string | null
+          descricao: string | null
+          empresa_id: string | null
+          id: string
+          preco_referencia: number | null
+          threshold_alta: number | null
+          threshold_queda: number | null
+          ultima_notif: string | null
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          codigo_catmat?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          preco_referencia?: number | null
+          threshold_alta?: number | null
+          threshold_queda?: number | null
+          ultima_notif?: string | null
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean | null
+          codigo_catmat?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          preco_referencia?: number | null
+          threshold_alta?: number | null
+          threshold_queda?: number | null
+          ultima_notif?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_alertas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_alertas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      price_historico: {
+        Row: {
+          codigo_catmat: string | null
+          data_coleta: string | null
+          descricao: string
+          fontes: string[] | null
+          id: string
+          item_edital_id: string | null
+          preco_maximo: number | null
+          preco_mediana: number | null
+          preco_medio: number | null
+          preco_minimo: number | null
+          preco_sugerido: number | null
+          tendencia: string | null
+          total_registros: number | null
+          variacao_pct: number | null
+        }
+        Insert: {
+          codigo_catmat?: string | null
+          data_coleta?: string | null
+          descricao: string
+          fontes?: string[] | null
+          id?: string
+          item_edital_id?: string | null
+          preco_maximo?: number | null
+          preco_mediana?: number | null
+          preco_medio?: number | null
+          preco_minimo?: number | null
+          preco_sugerido?: number | null
+          tendencia?: string | null
+          total_registros?: number | null
+          variacao_pct?: number | null
+        }
+        Update: {
+          codigo_catmat?: string | null
+          data_coleta?: string | null
+          descricao?: string
+          fontes?: string[] | null
+          id?: string
+          item_edital_id?: string | null
+          preco_maximo?: number | null
+          preco_mediana?: number | null
+          preco_medio?: number | null
+          preco_minimo?: number | null
+          preco_sugerido?: number | null
+          tendencia?: string | null
+          total_registros?: number | null
+          variacao_pct?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_historico_item_edital_id_fkey"
+            columns: ["item_edital_id"]
+            isOneToOne: false
+            referencedRelation: "agent_itens_edital"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      price_search_cache: {
+        Row: {
+          acessos: number | null
+          cache_key: string
+          codigo_catmat: string | null
+          coletado_em: string | null
+          descricao: string
+          estatisticas: Json
+          expira_em: string
+          id: string
+          resultados: Json
+        }
+        Insert: {
+          acessos?: number | null
+          cache_key: string
+          codigo_catmat?: string | null
+          coletado_em?: string | null
+          descricao: string
+          estatisticas: Json
+          expira_em: string
+          id?: string
+          resultados: Json
+        }
+        Update: {
+          acessos?: number | null
+          cache_key?: string
+          codigo_catmat?: string | null
+          coletado_em?: string | null
+          descricao?: string
+          estatisticas?: Json
+          expira_em?: string
+          id?: string
+          resultados?: Json
+        }
+        Relationships: []
       }
       processos_interesse: {
         Row: {
