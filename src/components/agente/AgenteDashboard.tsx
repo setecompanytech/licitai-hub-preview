@@ -394,6 +394,11 @@ export default function AgenteDashboard() {
           </div>
         </TabsContent>
 
+        {/* Tab: Pesquisa de Preços */}
+        <TabsContent value="pesquisa">
+          <PesquisaPrecos />
+        </TabsContent>
+
         <TabsContent value="logs">
           <ScrollArea className="h-[500px]">
             <div className="space-y-2">
