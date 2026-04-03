@@ -43,7 +43,7 @@ const FATURAMENTO_ANUAL = [
   'R$ 1 milhão a R$ 5 milhões', 'Acima de R$ 5 milhões', 'Prefiro não informar'
 ];
 
-type AuthStep = 'escolha' | 'manual' | 'certificado' | 'signup' | 'forgot';
+type AuthStep = 'escolha' | 'manual' | 'certificado' | 'signup' | 'forgot' | 'mfa';
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
