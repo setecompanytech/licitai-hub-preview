@@ -163,7 +163,6 @@ export default function SegurancaConta() {
 
       {/* LGPD */}
       <SolicitacaoLgpd />
-      </section>
 
       {/* Log de Atividades de Autenticação */}
       <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
