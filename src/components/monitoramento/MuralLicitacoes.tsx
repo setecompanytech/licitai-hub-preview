@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import MarcarInteresseDialog from '@/components/compromissos/MarcarInteresseDialog';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
+import AureliaEditalPanel from '@/components/aurelia/AureliaEditalPanel';
 
 type DetalhePNCP = {
   success: boolean;
@@ -1057,6 +1058,19 @@ export default function MuralLicitacoes() {
                 Fonte: {d.fonte} • Consultado em: {new Date(d.consultado_em).toLocaleString('pt-BR')}
               </div>
             )}
+
+            {/* AURÉLIA — Análise automática do edital */}
+            <AureliaEditalPanel
+              edital={{
+                titulo: d?.numero_compra || lic.numero,
+                objeto: d?.objeto || lic.objeto,
+                orgao: d?.orgao || lic.orgao,
+                valor: (d?.valor_total_estimado || lic.valor_estimado) ? formatCurrency(d?.valor_total_estimado || lic.valor_estimado!) : 'Não informado',
+                modalidade: d?.modalidade || lic.modalidade,
+                dataAbertura: d?.data_abertura_proposta || lic.data_abertura || undefined,
+                uf: d?.uf || lic.uf || undefined,
+              }}
+            />
 
             {/* Actions */}
             <div className="flex flex-wrap gap-3 pt-4 border-t border-border/50">

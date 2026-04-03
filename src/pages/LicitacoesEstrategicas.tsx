@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AnaliseCapag from '@/components/licitacoes/AnaliseCapag';
+import AureliaEditalPanel from '@/components/aurelia/AureliaEditalPanel';
 import {
   Target, TrendingUp, Star, AlertTriangle, CheckCircle2,
   Brain, Zap, Eye, BookmarkPlus, Filter, ArrowUpDown, Landmark, Search, MapPin
@@ -212,6 +213,18 @@ export default function LicitacoesEstrategicas() {
                             </ul>
                           </div>
                         </div>
+
+                        {/* AURÉLIA — Análise automática */}
+                        <AureliaEditalPanel
+                          edital={{
+                            titulo: lic.numero,
+                            objeto: lic.objeto,
+                            orgao: lic.orgao,
+                            valor: formatCurrency(lic.valor),
+                            modalidade: 'Licitação',
+                            dataAbertura: lic.dataAbertura,
+                          }}
+                        />
                       </div>
                     )}
                   </Card>

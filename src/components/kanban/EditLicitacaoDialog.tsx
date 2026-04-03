@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import AureliaEditalPanel from '@/components/aurelia/AureliaEditalPanel';
 
 type LicitacaoKanban = {
   id: string;
@@ -287,6 +288,18 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
               placeholder="Anotações sobre o processo..."
             />
           </div>
+
+          {/* AURÉLIA — Análise automática */}
+          <AureliaEditalPanel
+            edital={{
+              titulo: form.numero,
+              objeto: form.objeto,
+              orgao: form.orgao,
+              valor: form.valor_estimado ? `R$ ${form.valor_estimado}` : 'Não informado',
+              modalidade: form.status,
+              uf: form.uf || undefined,
+            }}
+          />
 
           <div className="flex items-center justify-between pt-2 border-t border-border/50">
             <AlertDialog>
