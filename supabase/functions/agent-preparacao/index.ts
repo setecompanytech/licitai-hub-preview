@@ -92,15 +92,24 @@ UF: ${edital.uf}`
     const docsVencidos = (docs || []).filter(d => d.status === 'vencido' || d.status === 'vencendo');
     const docsFaltantes = (docs || []).filter(d => d.status === 'faltante');
 
-    // 4. Atualizar licitação com resultados
+    // 4. Disparar extração de itens para precificação
+    const temPendencias = docsVencidos.length > 0 || docsFaltantes.length > 0;
+    const proximaAcao = temPendencias ? 'resolver_pendencias_docs' : 'extrair_itens_precificacao';
+
+    // Se não tem pendências de docs, disparar extração de itens
+    if (!temPendencias) {
+      await supabase.functions.invoke('agent-extrator-itens', {
+        body: { licitacao_id, empresa_id },
+      }).catch((e: Error) => console.error('Erro ao disparar extração de itens:', e));
+    }
+
+    // 5. Atualizar licitação com resultados
     await supabase
       .from('agent_licitacoes')
       .update({
         agente_atual: 'agent_preparacao',
         ultima_acao: 'analise_edital',
-        proxima_acao: docsVencidos.length > 0 || docsFaltantes.length > 0
-          ? 'resolver_pendencias_docs'
-          : 'montar_proposta',
+        proxima_acao: proximaAcao,
         proxima_execucao: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
       })
       .eq('id', licitacao_id);
