@@ -173,6 +173,7 @@ const App = () => (
               <Route path="/aviso-legal" element={<AvisoLegal />} />
               <Route path="/solucoes" element={<Solucoes />} />
               <Route path="/demo" element={<DemoAmbiente />} />
+              <Route path="/dpa" element={<DpaPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <CookieConsentBanner />
