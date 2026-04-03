@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import MarcarInteresseDialog from '@/components/compromissos/MarcarInteresseDialog';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
+import AureliaEditalPanel from '@/components/aurelia/AureliaEditalPanel';
 
 type DetalhePNCP = {
   success: boolean;
