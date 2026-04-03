@@ -5576,6 +5576,42 @@ export type Database = {
         }
         Relationships: []
       }
+      solicitacoes_lgpd: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          id: string
+          prazo_resposta: string
+          resposta: string | null
+          status: string
+          tipo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          prazo_resposta?: string
+          resposta?: string | null
+          status?: string
+          tipo: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          prazo_resposta?: string
+          resposta?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       sub_tarefas: {
         Row: {
           concluida_em: string | null

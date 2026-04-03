@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Shield, Key, Eye, Clock, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import MfaEnrollment from './MfaEnrollment';
+import SolicitacaoLgpd from './SolicitacaoLgpd';
 import { toast } from 'sonner';
 
 export default function SegurancaConta() {
@@ -153,14 +155,14 @@ export default function SegurancaConta() {
             <span className="text-muted-foreground">Conta criada em</span>
             <span className="font-medium text-xs">{user?.created_at ? new Date(user.created_at).toLocaleString('pt-BR') : '—'}</span>
           </div>
-          <div className="flex items-center justify-between py-2">
-            <span className="text-muted-foreground">Autenticação em dois fatores (MFA)</span>
-            <Badge variant="outline" className="bg-muted text-muted-foreground">
-              <Clock className="w-3 h-3 mr-1" /> Em breve
-            </Badge>
-          </div>
         </div>
       </section>
+
+      {/* MFA */}
+      <MfaEnrollment />
+
+      {/* LGPD */}
+      <SolicitacaoLgpd />
 
       {/* Log de Atividades de Autenticação */}
       <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">

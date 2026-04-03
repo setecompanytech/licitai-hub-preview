@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import PraefectusLogo from '@/components/shared/PraefectusLogo';
+import MfaVerification from '@/components/auth/MfaVerification';
 
 const CARGOS = [
   'Diretor(a)', 'Gerente', 'Coordenador(a)', 'Analista', 'Assistente',
@@ -41,7 +43,7 @@ const FATURAMENTO_ANUAL = [
   'R$ 1 milhão a R$ 5 milhões', 'Acima de R$ 5 milhões', 'Prefiro não informar'
 ];
 
-type AuthStep = 'escolha' | 'manual' | 'certificado' | 'signup' | 'forgot';
+type AuthStep = 'escolha' | 'manual' | 'certificado' | 'signup' | 'forgot' | 'mfa';
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
@@ -68,10 +70,23 @@ export default function Auth() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
+    if (user && step !== 'mfa') {
       navigate(redirectAfterAuth, { replace: true });
     }
-  }, [user, navigate, redirectAfterAuth]);
+  }, [user, navigate, redirectAfterAuth, step]);
+
+  // MFA verification screen
+  if (step === 'mfa') {
+    return (
+      <MfaVerification
+        onSuccess={() => navigate(redirectAfterAuth)}
+        onCancel={async () => {
+          await supabase.auth.signOut();
+          setStep('manual');
+        }}
+      />
+    );
+  }
 
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -96,9 +111,18 @@ export default function Auth() {
     setLoading(false);
     if (error) {
       toast.error('E-mail ou senha incorretos');
-    } else {
-      navigate(redirectAfterAuth);
+      return;
     }
+    // Check if user has MFA enabled
+    try {
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const hasVerifiedTOTP = factors?.totp?.some(f => f.status === 'verified');
+      if (hasVerifiedTOTP) {
+        setStep('mfa');
+        return;
+      }
+    } catch {}
+    navigate(redirectAfterAuth);
   };
 
   const checkLeakedPassword = async (pwd: string): Promise<boolean> => {
