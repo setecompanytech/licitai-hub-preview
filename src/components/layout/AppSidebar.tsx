@@ -109,6 +109,7 @@ const navGroups: NavGroup[] = [
     title: 'Ferramentas',
     items: [
       { icon: Sparkles, label: 'AURÉLIA', path: '/aurelia' },
+      { icon: Bot, label: 'AURÉLIA Agent', path: '/agente' },
       { icon: Bot, label: 'IA Especializada', path: '/assistente-especializado' },
       { icon: GraduationCap, label: 'Tutorial / Guia', path: '/tutorial' },
       { icon: BookOpen, label: 'Blog', path: '/blog' },

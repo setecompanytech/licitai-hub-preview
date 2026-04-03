@@ -175,6 +175,7 @@ const App = () => (
               <Route path="/solucoes" element={<Solucoes />} />
               <Route path="/demo" element={<DemoAmbiente />} />
               <Route path="/dpa" element={<DpaPage />} />
+              <Route path="/agente" element={<PlanPages><AgentePage /></PlanPages>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <CookieConsentBanner />
