@@ -13,8 +13,9 @@ import { toast } from 'sonner';
 import {
   Bot, Zap, Trophy, Clock, AlertTriangle, CheckCircle2, XCircle,
   Eye, Play, Pause, BarChart3, FileText, Scale, Shield, Activity,
-  TrendingUp, Target, RefreshCw, Settings,
+  TrendingUp, Target, RefreshCw, Settings, DollarSign,
 } from 'lucide-react';
+import PrecificacaoReview from './PrecificacaoReview';
 
 interface AgentMetricas {
   total_monitoradas: number;
@@ -274,10 +275,14 @@ export default function AgenteDashboard() {
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="bg-muted/50">
+        <TabsList className="bg-muted/50 flex-wrap">
           <TabsTrigger value="monitoradas">
             <Target className="h-4 w-4 mr-2" />
             Licitações ({licitacoes.length})
+          </TabsTrigger>
+          <TabsTrigger value="precificacao">
+            <DollarSign className="h-4 w-4 mr-2" />
+            Precificação
           </TabsTrigger>
           <TabsTrigger value="logs">
             <Activity className="h-4 w-4 mr-2" />
@@ -353,7 +358,37 @@ export default function AgenteDashboard() {
           </ScrollArea>
         </TabsContent>
 
-        {/* Tab: Logs */}
+        {/* Tab: Precificação */}
+        <TabsContent value="precificacao">
+          <div className="space-y-4">
+            {licitacoes.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p>Nenhuma licitação para precificar.</p>
+                <p className="text-sm mt-1">Aprove licitações na aba anterior para iniciar a precificação.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {licitacoes
+                  .filter(l => ['participar', 'participando', 'proposta_enviada', 'em_disputa', 'aguardar_aprovacao'].includes(l.decisao))
+                  .map((lic) => (
+                    <div key={lic.id} className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">{lic.pncp_editais_cache?.modalidade_nome}</Badge>
+                        <h4 className="text-sm font-medium text-foreground truncate flex-1">
+                          {lic.pncp_editais_cache?.objeto_compra || 'Carregando...'}
+                        </h4>
+                        <span className="text-xs text-muted-foreground">{lic.pncp_editais_cache?.orgao_nome}</span>
+                      </div>
+                      <PrecificacaoReview licitacaoId={lic.id} />
+                      <Separator />
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
         <TabsContent value="logs">
           <ScrollArea className="h-[500px]">
             <div className="space-y-2">
@@ -403,6 +438,14 @@ function AgentConfig({ empresaId }: { empresaId: string }) {
     whatsapp_numero: '',
     horario_inicio: '07:00',
     horario_fim: '22:00',
+    // Precificação
+    fator_preco_proposta: 0.920,
+    fator_lance_inicial: 0.900,
+    margem_minima_perc_cfg: 0.080,
+    margem_alvo_perc: 0.150,
+    valor_maximo_por_item: null as number | null,
+    preco_minimo_absoluto: 0.01,
+    confianca_minima_auto: 0.60,
   });
   const [saving, setSaving] = useState(false);
 
@@ -428,6 +471,13 @@ function AgentConfig({ empresaId }: { empresaId: string }) {
           whatsapp_numero: data.whatsapp_numero ?? '',
           horario_inicio: data.horario_inicio ?? '07:00',
           horario_fim: data.horario_fim ?? '22:00',
+          fator_preco_proposta: (data as any).fator_preco_proposta ?? 0.920,
+          fator_lance_inicial: (data as any).fator_lance_inicial ?? 0.900,
+          margem_minima_perc_cfg: (data as any).margem_minima_perc ?? 0.080,
+          margem_alvo_perc: (data as any).margem_alvo_perc ?? 0.150,
+          valor_maximo_por_item: (data as any).valor_maximo_por_item ?? null,
+          preco_minimo_absoluto: (data as any).preco_minimo_absoluto ?? 0.01,
+          confianca_minima_auto: (data as any).confianca_minima_auto ?? 0.60,
         });
       }
     };
@@ -436,9 +486,21 @@ function AgentConfig({ empresaId }: { empresaId: string }) {
 
   const salvar = async () => {
     setSaving(true);
+    const { fator_preco_proposta, fator_lance_inicial, margem_minima_perc_cfg, margem_alvo_perc, valor_maximo_por_item, preco_minimo_absoluto, confianca_minima_auto, ...restConfig } = config;
+    const payload = {
+      empresa_id: empresaId,
+      ...restConfig,
+      fator_preco_proposta,
+      fator_lance_inicial,
+      margem_minima_perc: margem_minima_perc_cfg,
+      margem_alvo_perc,
+      valor_maximo_por_item,
+      preco_minimo_absoluto,
+      confianca_minima_auto,
+    };
     const { error } = await supabase
       .from('agent_configuracoes')
-      .upsert({ empresa_id: empresaId, ...config }, { onConflict: 'empresa_id' });
+      .upsert(payload as any, { onConflict: 'empresa_id' });
 
     setSaving(false);
     if (error) {
@@ -553,6 +615,58 @@ function AgentConfig({ empresaId }: { empresaId: string }) {
             <div>
               <label className="text-sm text-muted-foreground">Horário fim</label>
               <input type="time" value={config.horario_fim} onChange={e => setConfig(c => ({ ...c, horario_fim: e.target.value }))}
+                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-primary" />
+            Precificação Autônoma
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-muted-foreground">Fator preço proposta</label>
+              <input type="number" step="0.001" value={config.fator_preco_proposta} onChange={e => setConfig(c => ({ ...c, fator_preco_proposta: Number(e.target.value) }))}
+                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <p className="text-xs text-muted-foreground mt-1">{((1 - config.fator_preco_proposta) * 100).toFixed(1)}% abaixo do mercado</p>
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">Fator lance inicial</label>
+              <input type="number" step="0.001" value={config.fator_lance_inicial} onChange={e => setConfig(c => ({ ...c, fator_lance_inicial: Number(e.target.value) }))}
+                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <p className="text-xs text-muted-foreground mt-1">{((1 - config.fator_lance_inicial) * 100).toFixed(1)}% abaixo do mercado</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-muted-foreground">Margem mínima (%)</label>
+              <input type="number" step="0.001" value={config.margem_minima_perc_cfg} onChange={e => setConfig(c => ({ ...c, margem_minima_perc_cfg: Number(e.target.value) }))}
+                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <p className="text-xs text-muted-foreground mt-1">{(config.margem_minima_perc_cfg * 100).toFixed(1)}% margem mínima</p>
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">Margem alvo (%)</label>
+              <input type="number" step="0.001" value={config.margem_alvo_perc} onChange={e => setConfig(c => ({ ...c, margem_alvo_perc: Number(e.target.value) }))}
+                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <p className="text-xs text-muted-foreground mt-1">{(config.margem_alvo_perc * 100).toFixed(1)}% margem alvo</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-muted-foreground">Confiança mín. auto-aprovação</label>
+              <input type="number" step="0.01" value={config.confianca_minima_auto} onChange={e => setConfig(c => ({ ...c, confianca_minima_auto: Number(e.target.value) }))}
+                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <p className="text-xs text-muted-foreground mt-1">{(config.confianca_minima_auto * 100).toFixed(0)}% — abaixo pede revisão humana</p>
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">Preço mínimo absoluto (R$)</label>
+              <input type="number" step="0.01" value={config.preco_minimo_absoluto} onChange={e => setConfig(c => ({ ...c, preco_minimo_absoluto: Number(e.target.value) }))}
                 className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
             </div>
           </div>

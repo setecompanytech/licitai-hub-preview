@@ -159,16 +159,23 @@ export type Database = {
           alertar_whatsapp: boolean | null
           auto_responder_chat: boolean | null
           auto_submeter_prop: boolean | null
+          confianca_minima_auto: number | null
           created_at: string | null
           empresa_id: string
           estrategia_lance: string | null
+          fator_lance_inicial: number | null
+          fator_preco_proposta: number | null
           horario_fim: string | null
           horario_inicio: string | null
+          margem_alvo_perc: number | null
+          margem_minima_perc: number | null
+          preco_minimo_absoluto: number | null
           preco_minimo_perc: number | null
           score_minimo_auto: number | null
           score_minimo_notif: number | null
           updated_at: string | null
           valor_maximo: number | null
+          valor_maximo_por_item: number | null
           valor_minimo: number | null
           whatsapp_numero: string | null
         }
@@ -177,16 +184,23 @@ export type Database = {
           alertar_whatsapp?: boolean | null
           auto_responder_chat?: boolean | null
           auto_submeter_prop?: boolean | null
+          confianca_minima_auto?: number | null
           created_at?: string | null
           empresa_id: string
           estrategia_lance?: string | null
+          fator_lance_inicial?: number | null
+          fator_preco_proposta?: number | null
           horario_fim?: string | null
           horario_inicio?: string | null
+          margem_alvo_perc?: number | null
+          margem_minima_perc?: number | null
+          preco_minimo_absoluto?: number | null
           preco_minimo_perc?: number | null
           score_minimo_auto?: number | null
           score_minimo_notif?: number | null
           updated_at?: string | null
           valor_maximo?: number | null
+          valor_maximo_por_item?: number | null
           valor_minimo?: number | null
           whatsapp_numero?: string | null
         }
@@ -195,16 +209,23 @@ export type Database = {
           alertar_whatsapp?: boolean | null
           auto_responder_chat?: boolean | null
           auto_submeter_prop?: boolean | null
+          confianca_minima_auto?: number | null
           created_at?: string | null
           empresa_id?: string
           estrategia_lance?: string | null
+          fator_lance_inicial?: number | null
+          fator_preco_proposta?: number | null
           horario_fim?: string | null
           horario_inicio?: string | null
+          margem_alvo_perc?: number | null
+          margem_minima_perc?: number | null
+          preco_minimo_absoluto?: number | null
           preco_minimo_perc?: number | null
           score_minimo_auto?: number | null
           score_minimo_notif?: number | null
           updated_at?: string | null
           valor_maximo?: number | null
+          valor_maximo_por_item?: number | null
           valor_minimo?: number | null
           whatsapp_numero?: string | null
         }
@@ -351,6 +372,233 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_historico_precos: {
+        Row: {
+          cnpj_vencedor: string | null
+          codigo_catmat: string | null
+          created_at: string | null
+          data_registro: string | null
+          descricao: string
+          edital_id: string | null
+          empresa_id: string | null
+          id: string
+          item_id: string | null
+          marca: string | null
+          modalidade: string | null
+          modelo: string | null
+          orgao: string | null
+          posicao_final: number | null
+          preco_lance_min: number | null
+          preco_proposta: number | null
+          preco_vencedor: number | null
+          quantidade: number | null
+          resultado: string | null
+          uf_orgao: string | null
+          unidade: string | null
+        }
+        Insert: {
+          cnpj_vencedor?: string | null
+          codigo_catmat?: string | null
+          created_at?: string | null
+          data_registro?: string | null
+          descricao: string
+          edital_id?: string | null
+          empresa_id?: string | null
+          id?: string
+          item_id?: string | null
+          marca?: string | null
+          modalidade?: string | null
+          modelo?: string | null
+          orgao?: string | null
+          posicao_final?: number | null
+          preco_lance_min?: number | null
+          preco_proposta?: number | null
+          preco_vencedor?: number | null
+          quantidade?: number | null
+          resultado?: string | null
+          uf_orgao?: string | null
+          unidade?: string | null
+        }
+        Update: {
+          cnpj_vencedor?: string | null
+          codigo_catmat?: string | null
+          created_at?: string | null
+          data_registro?: string | null
+          descricao?: string
+          edital_id?: string | null
+          empresa_id?: string | null
+          id?: string
+          item_id?: string | null
+          marca?: string | null
+          modalidade?: string | null
+          modelo?: string | null
+          orgao?: string | null
+          posicao_final?: number | null
+          preco_lance_min?: number | null
+          preco_proposta?: number | null
+          preco_vencedor?: number | null
+          quantidade?: number | null
+          resultado?: string | null
+          uf_orgao?: string | null
+          unidade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_historico_precos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_historico_precos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_historico_precos_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "agent_itens_edital"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_itens_edital: {
+        Row: {
+          aprovado_em: string | null
+          aprovado_por: string | null
+          codigo_catmat: string | null
+          codigo_catser: string | null
+          confianca_calculo: number | null
+          created_at: string | null
+          criterio_julgamento: string | null
+          descricao: string
+          edital_id: string | null
+          empresa_id: string | null
+          especificacoes_tecnicas: string | null
+          exclusivo_me_epp: boolean | null
+          fontes_consultadas: Json | null
+          id: string
+          justificativa_marca: string | null
+          licitacao_id: string | null
+          lote: number | null
+          marca_referencia: string | null
+          marca_selecionada: string | null
+          margem_bruta_perc: number | null
+          modelo_selecionado: string | null
+          motivo_status: string | null
+          numero: number
+          permite_equivalente: boolean | null
+          preco_lance_inicial: number | null
+          preco_lance_minimo: number | null
+          preco_proposta: number | null
+          preco_referencia: number | null
+          quantidade: number | null
+          status: string | null
+          unidade: string | null
+          updated_at: string | null
+          valor_estimado_total: number | null
+          valor_estimado_unitario: number | null
+        }
+        Insert: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          codigo_catmat?: string | null
+          codigo_catser?: string | null
+          confianca_calculo?: number | null
+          created_at?: string | null
+          criterio_julgamento?: string | null
+          descricao: string
+          edital_id?: string | null
+          empresa_id?: string | null
+          especificacoes_tecnicas?: string | null
+          exclusivo_me_epp?: boolean | null
+          fontes_consultadas?: Json | null
+          id?: string
+          justificativa_marca?: string | null
+          licitacao_id?: string | null
+          lote?: number | null
+          marca_referencia?: string | null
+          marca_selecionada?: string | null
+          margem_bruta_perc?: number | null
+          modelo_selecionado?: string | null
+          motivo_status?: string | null
+          numero: number
+          permite_equivalente?: boolean | null
+          preco_lance_inicial?: number | null
+          preco_lance_minimo?: number | null
+          preco_proposta?: number | null
+          preco_referencia?: number | null
+          quantidade?: number | null
+          status?: string | null
+          unidade?: string | null
+          updated_at?: string | null
+          valor_estimado_total?: number | null
+          valor_estimado_unitario?: number | null
+        }
+        Update: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          codigo_catmat?: string | null
+          codigo_catser?: string | null
+          confianca_calculo?: number | null
+          created_at?: string | null
+          criterio_julgamento?: string | null
+          descricao?: string
+          edital_id?: string | null
+          empresa_id?: string | null
+          especificacoes_tecnicas?: string | null
+          exclusivo_me_epp?: boolean | null
+          fontes_consultadas?: Json | null
+          id?: string
+          justificativa_marca?: string | null
+          licitacao_id?: string | null
+          lote?: number | null
+          marca_referencia?: string | null
+          marca_selecionada?: string | null
+          margem_bruta_perc?: number | null
+          modelo_selecionado?: string | null
+          motivo_status?: string | null
+          numero?: number
+          permite_equivalente?: boolean | null
+          preco_lance_inicial?: number | null
+          preco_lance_minimo?: number | null
+          preco_proposta?: number | null
+          preco_referencia?: number | null
+          quantidade?: number | null
+          status?: string | null
+          unidade?: string | null
+          updated_at?: string | null
+          valor_estimado_total?: number | null
+          valor_estimado_unitario?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_itens_edital_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_itens_edital_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_itens_edital_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "agent_licitacoes"
             referencedColumns: ["id"]
           },
         ]
