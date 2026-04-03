@@ -213,6 +213,18 @@ export default function LicitacoesEstrategicas() {
                             </ul>
                           </div>
                         </div>
+
+                        {/* AURÉLIA — Análise automática */}
+                        <AureliaEditalPanel
+                          edital={{
+                            titulo: lic.numero,
+                            objeto: lic.objeto,
+                            orgao: lic.orgao,
+                            valor: formatCurrency(lic.valor),
+                            modalidade: 'Licitação',
+                            dataAbertura: lic.dataAbertura,
+                          }}
+                        />
                       </div>
                     )}
                   </Card>
