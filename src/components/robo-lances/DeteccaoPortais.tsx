@@ -62,7 +62,7 @@ export default function DeteccaoPortais() {
           .single(),
       ]);
 
-      const credenciais = credResp.data || [];
+      const credenciais = (credResp.data || []) as any[];
       const profile = profileResp.data;
 
       // If has empresa_ativa_id, get empresa name

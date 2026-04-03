@@ -151,7 +151,7 @@ export default function NFSaida() {
     ]);
     setNotas((notasRes.data as any[]) || []);
     setContratos((contratosRes.data as any[]) || []);
-    setApiConfigured(!!configRes.data?.ativo);
+    setApiConfigured(!!(configRes.data as any)?.ativo);
     setPreNotas((preNotasRes.data as any[]) || []);
     setLoading(false);
   };
