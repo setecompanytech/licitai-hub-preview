@@ -275,10 +275,14 @@ export default function AgenteDashboard() {
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="bg-muted/50">
+        <TabsList className="bg-muted/50 flex-wrap">
           <TabsTrigger value="monitoradas">
             <Target className="h-4 w-4 mr-2" />
             Licitações ({licitacoes.length})
+          </TabsTrigger>
+          <TabsTrigger value="precificacao">
+            <DollarSign className="h-4 w-4 mr-2" />
+            Precificação
           </TabsTrigger>
           <TabsTrigger value="logs">
             <Activity className="h-4 w-4 mr-2" />
