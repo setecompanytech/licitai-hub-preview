@@ -13,8 +13,9 @@ import { toast } from 'sonner';
 import {
   Bot, Zap, Trophy, Clock, AlertTriangle, CheckCircle2, XCircle,
   Eye, Play, Pause, BarChart3, FileText, Scale, Shield, Activity,
-  TrendingUp, Target, RefreshCw, Settings,
+  TrendingUp, Target, RefreshCw, Settings, DollarSign,
 } from 'lucide-react';
+import PrecificacaoReview from './PrecificacaoReview';
 
 interface AgentMetricas {
   total_monitoradas: number;
