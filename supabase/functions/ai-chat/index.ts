@@ -654,13 +654,41 @@ INSTRUÇÕES FINAIS:
 - Responda SEMPRE em português brasileiro formal.`,
 };
 
+// ── MELHORIA 1 & 3: Modelos especializados por módulo ──
+// Modelo pesado (gemini-2.5-pro) para análises complexas jurídicas/contábeis
+// Modelo equilibrado (gemini-2.5-flash) para extração e composição
+// Modelo rápido (gemini-3-flash-preview) para chat geral e respostas rápidas (default)
 const ACTION_MODELS: Record<string, string> = {
-  analise_documental_concorrente: "google/gemini-2.5-flash",
-  analise_edital: "google/gemini-2.5-flash",
-  analise_peticao: "google/gemini-2.5-flash",
-  extracao_representante: "google/gemini-2.5-flash",
-  gerador_juridico: "google/gemini-2.5-flash",
+  // Análises jurídicas complexas → modelo top-tier
+  analise_documental_concorrente: "google/gemini-2.5-pro",
+  analise_edital: "google/gemini-2.5-pro",
+  analise_peticao: "google/gemini-2.5-pro",
+  gerador_juridico: "google/gemini-2.5-pro",
+  
+  // AURÉLIA análises profundas → modelo top-tier
+  aurelia_riscos: "google/gemini-2.5-pro",
+  aurelia_habilitacao: "google/gemini-2.5-pro",
+  aurelia_recomendacao: "google/gemini-2.5-pro",
+  
+  // AURÉLIA chat e resumo → modelo equilibrado
+  aurelia: "google/gemini-2.5-flash",
+  aurelia_resumo: "google/gemini-2.5-flash",
+  
+  // Composição e contabilidade → modelo equilibrado
   composicao_custo: "google/gemini-2.5-flash",
+  contabilidade_tributaria: "google/gemini-2.5-flash",
+  precificacao: "google/gemini-2.5-flash",
+  
+  // Extração de dados → modelo equilibrado com temperatura baixa
+  extracao_representante: "google/gemini-2.5-flash",
+  
+  // Pesquisa e proposta → modelo equilibrado
+  pesquisa_mercado: "google/gemini-2.5-flash",
+  proposta_tecnica: "google/gemini-2.5-flash",
+  
+  // Reequilíbrio e impugnação → modelo top-tier (peças jurídicas)
+  reequilibrio: "google/gemini-2.5-pro",
+  impugnacao: "google/gemini-2.5-pro",
 };
 
 serve(async (req) => {
