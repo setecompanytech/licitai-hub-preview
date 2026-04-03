@@ -104,8 +104,9 @@ export default function CredenciaisPortalForm() {
         body: {
           portal_id: portalId,
           portal_nome: portal?.nome || portalId,
-          login: login || null,
+          login: isLicitacoesE ? (codigoBB || login || null) : (login || null),
           senha: senha || null,
+          metadata: isLicitacoesE ? { codigo_bb: codigoBB, versao_portal: versaoPortal } : undefined,
         },
       });
       if (error) throw error;
