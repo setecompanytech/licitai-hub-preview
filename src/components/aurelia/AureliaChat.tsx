@@ -1,0 +1,195 @@
+import { useState, useRef, useEffect } from 'react';
+import { X, Send, Loader2, Minimize2, Shield } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { streamAIChat, ChatMessage } from '@/lib/ai-stream';
+import ReactMarkdown from 'react-markdown';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
+
+export default function AureliaChat() {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasGreeted, setHasGreeted] = useState(false);
+  const [hasNotification, setHasNotification] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => inputRef.current?.focus(), 200);
+      setHasNotification(false);
+      if (!hasGreeted && messages.length === 0) {
+        setMessages([{
+          role: 'assistant',
+          content: 'Olá! Sou a **AURÉLIA**, sua consultora de licitações da PRAEFECTUS.\n\nComo posso ajudar hoje?\n\n- Análise de editais e cláusulas\n- Habilitação e documentação\n- Estratégia de propostas e lances\n- Dúvidas sobre a Lei 14.133/2021'
+        }]);
+        setHasGreeted(true);
+      }
+    }
+  }, [open]);
+
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text || isLoading) return;
+
+    const userMsg: ChatMessage = { role: 'user', content: text };
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
+    setInput('');
+    setIsLoading(true);
+
+    let assistantContent = '';
+
+    await streamAIChat({
+      messages: updatedMessages,
+      action: 'aurelia',
+      context: `Tela ativa: ${location.pathname}`,
+      onDelta: (chunk) => {
+        assistantContent += chunk;
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.role === 'assistant' && prev.length > updatedMessages.length - 1) {
+            return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantContent } : m);
+          }
+          return [...prev, { role: 'assistant', content: assistantContent }];
+        });
+      },
+      onDone: () => setIsLoading(false),
+      onError: (err) => {
+        setMessages(prev => [...prev, { role: 'assistant', content: `Não foi possível conectar com a AURÉLIA. ${err}` }]);
+        setIsLoading(false);
+      },
+    });
+  };
+
+  const handleNewChat = () => {
+    setMessages([{
+      role: 'assistant',
+      content: 'Nova consulta iniciada. Como posso ajudar?'
+    }]);
+  };
+
+  return (
+    <>
+      {/* FAB Button */}
+      <AnimatePresence>
+        {!open && (
+          <motion.button
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+            onClick={() => setOpen(true)}
+            className={cn(
+              "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all",
+              "bg-[hsl(43,60%,54%)] hover:bg-[hsl(43,60%,48%)] text-white",
+              hasNotification && "aurelia-glow"
+            )}
+            title="Consultar AURÉLIA"
+          >
+            <div className="flex items-center justify-center">
+              <Shield className="w-5 h-5 mr-[-2px]" />
+              <span className="text-xs font-bold">A</span>
+            </div>
+            {hasNotification && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+            )}
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Chat Panel */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-4 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[520px] rounded-xl overflow-hidden shadow-2xl border border-[hsl(215,20%,20%)] flex flex-col"
+            style={{ background: 'hsl(215, 50%, 7%)' }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[hsl(215,20%,20%)]" style={{ background: 'hsl(215, 40%, 10%)' }}>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[hsl(43,60%,54%)] flex items-center justify-center border border-[hsl(43,60%,44%)]">
+                  <span className="text-xs font-bold text-white">AU</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-[hsl(215,14%,92%)] tracking-wide">AURÉLIA</h3>
+                  <p className="text-[10px] text-[hsl(215,12%,55%)]">Consultora de Licitações</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" onClick={handleNewChat} className="h-7 w-7 text-[hsl(215,12%,55%)] hover:text-[hsl(43,60%,54%)]" title="Nova consulta">
+                  <Minimize2 className="w-3.5 h-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="h-7 w-7 text-[hsl(215,12%,55%)] hover:text-red-400">
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+              {messages.map((msg, i) => (
+                <div key={i} className={cn("flex", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                  <div className={cn(
+                    "max-w-[85%] rounded-lg px-3 py-2 text-xs",
+                    msg.role === 'user'
+                      ? 'aurelia-bubble-user text-[hsl(215,14%,92%)]'
+                      : 'aurelia-bubble-ai text-[hsl(215,14%,82%)]'
+                  )}>
+                    {msg.role === 'assistant' ? (
+                      <div className="prose prose-xs prose-invert max-w-none [&>*]:my-1 [&_li]:my-0.5">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                    ) : msg.content}
+                  </div>
+                </div>
+              ))}
+              {isLoading && messages[messages.length - 1]?.role === 'user' && (
+                <div className="flex justify-start">
+                  <div className="aurelia-bubble-ai rounded-lg px-3 py-2 text-xs text-[hsl(215,12%,55%)] flex items-center gap-1.5">
+                    <Loader2 className="w-3 h-3 animate-spin text-[hsl(43,60%,54%)]" />
+                    AURÉLIA está analisando…
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input */}
+            <div className="p-3 border-t border-[hsl(215,20%,20%)]" style={{ background: 'hsl(215, 40%, 10%)' }}>
+              <div className="flex gap-2">
+                <input
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                  placeholder="Pergunte sobre editais, habilitação, propostas…"
+                  className="flex-1 bg-[hsl(215,25%,15%)] border border-[hsl(215,20%,22%)] rounded-lg px-3 py-2 text-xs text-[hsl(215,14%,92%)] placeholder:text-[hsl(215,12%,40%)] focus:outline-none focus:border-[hsl(43,60%,54%)] transition-colors"
+                  disabled={isLoading}
+                />
+                <Button
+                  onClick={handleSend}
+                  disabled={!input.trim() || isLoading}
+                  size="icon"
+                  className="h-8 w-8 bg-[hsl(43,60%,54%)] hover:bg-[hsl(43,60%,48%)] text-white shrink-0"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
