@@ -471,6 +471,13 @@ function AgentConfig({ empresaId }: { empresaId: string }) {
           whatsapp_numero: data.whatsapp_numero ?? '',
           horario_inicio: data.horario_inicio ?? '07:00',
           horario_fim: data.horario_fim ?? '22:00',
+          fator_preco_proposta: (data as any).fator_preco_proposta ?? 0.920,
+          fator_lance_inicial: (data as any).fator_lance_inicial ?? 0.900,
+          margem_minima_perc_cfg: (data as any).margem_minima_perc ?? 0.080,
+          margem_alvo_perc: (data as any).margem_alvo_perc ?? 0.150,
+          valor_maximo_por_item: (data as any).valor_maximo_por_item ?? null,
+          preco_minimo_absoluto: (data as any).preco_minimo_absoluto ?? 0.01,
+          confianca_minima_auto: (data as any).confianca_minima_auto ?? 0.60,
         });
       }
     };
