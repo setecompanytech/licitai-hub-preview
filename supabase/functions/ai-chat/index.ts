@@ -1,9 +1,45 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+// ── CACHE LAYER 1: Memória da Edge Function ──
+// Deno Edge Functions mantêm estado entre requests na mesma instância (~128MB RAM)
+const memoryCache = new Map<string, { valor: string; expiraEm: number }>();
+const MEMORY_TTL_MS = 120_000; // 2 minutos na RAM
+
+// Ações da AURÉLIA que podem ser cacheadas (análises baseadas no edital, não personalizadas)
+const CACHEABLE_ACTIONS = ['aurelia_resumo', 'aurelia_habilitacao', 'aurelia_riscos', 'aurelia_recomendacao'];
+
+// TTL por tipo de análise (em horas)
+const CACHE_TTL_HOURS: Record<string, number> = {
+  aurelia_resumo: 24,
+  aurelia_habilitacao: 24,
+  aurelia_riscos: 12,
+  aurelia_recomendacao: 12,
+};
+
+function generateCacheKey(action: string, context: string | null): string {
+  // Hash simples do contexto para gerar cache key determinística
+  const content = `${action}:${context || ''}`;
+  let hash = 0;
+  for (let i = 0; i < content.length; i++) {
+    const char = content.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return `${action}:${Math.abs(hash).toString(36)}`;
+}
+
+function getServiceClient() {
+  return createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+}
 
 // Diretriz global de formatação — aplicada a todos os prompts do sistema
 const FORMATACAO_GLOBAL = `
