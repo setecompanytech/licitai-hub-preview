@@ -13,9 +13,10 @@ import { toast } from 'sonner';
 import {
   Bot, Zap, Trophy, Clock, AlertTriangle, CheckCircle2, XCircle,
   Eye, Play, Pause, BarChart3, FileText, Scale, Shield, Activity,
-  TrendingUp, Target, RefreshCw, Settings, DollarSign,
+  TrendingUp, Target, RefreshCw, Settings, DollarSign, Search,
 } from 'lucide-react';
 import PrecificacaoReview from './PrecificacaoReview';
+import PesquisaPrecos from './PesquisaPrecos';
 
 interface AgentMetricas {
   total_monitoradas: number;
@@ -284,6 +285,10 @@ export default function AgenteDashboard() {
             <DollarSign className="h-4 w-4 mr-2" />
             Precificação
           </TabsTrigger>
+          <TabsTrigger value="pesquisa">
+            <Search className="h-4 w-4 mr-2" />
+            Pesquisa de Preços
+          </TabsTrigger>
           <TabsTrigger value="logs">
             <Activity className="h-4 w-4 mr-2" />
             Log de Ações
@@ -387,6 +392,11 @@ export default function AgenteDashboard() {
               </div>
             )}
           </div>
+        </TabsContent>
+
+        {/* Tab: Pesquisa de Preços */}
+        <TabsContent value="pesquisa">
+          <PesquisaPrecos />
         </TabsContent>
 
         <TabsContent value="logs">
