@@ -285,6 +285,10 @@ export default function AgenteDashboard() {
             <DollarSign className="h-4 w-4 mr-2" />
             Precificação
           </TabsTrigger>
+          <TabsTrigger value="pesquisa">
+            <Search className="h-4 w-4 mr-2" />
+            Pesquisa de Preços
+          </TabsTrigger>
           <TabsTrigger value="logs">
             <Activity className="h-4 w-4 mr-2" />
             Log de Ações
