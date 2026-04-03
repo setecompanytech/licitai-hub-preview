@@ -167,6 +167,70 @@ export default function CredenciaisPortalForm() {
                 </Select>
               </div>
 
+              {isLicitacoesE && (
+                <div className="border border-warning/30 rounded-lg p-4 space-y-3 bg-warning/5">
+                  <p className="text-xs font-semibold text-warning uppercase tracking-wider flex items-center gap-1">
+                    <Building2 className="w-3.5 h-3.5" />
+                    Licitações-e — Banco do Brasil
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Suas credenciais são criptografadas com AES-256-GCM e nunca armazenadas em texto simples.
+                  </p>
+                  <div>
+                    <Label className="text-xs">Versão do portal</Label>
+                    <div className="flex gap-2 mt-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={versaoPortal === 'v2' ? 'default' : 'outline'}
+                        className={`text-xs flex-1 ${versaoPortal === 'v2' ? 'bg-accent text-accent-foreground' : ''}`}
+                        onClick={() => setVersaoPortal('v2')}
+                      >
+                        Novo (licitacoes-e2) <Badge variant="outline" className="ml-1 text-[8px] scale-75">recomendado</Badge>
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={versaoPortal === 'v1' ? 'default' : 'outline'}
+                        className="text-xs flex-1"
+                        onClick={() => setVersaoPortal('v1')}
+                      >
+                        Legado (licitacoes-e)
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Código de acesso BB (chave)</Label>
+                    <Input
+                      value={codigoBB}
+                      onChange={(e) => setCodigoBB(e.target.value)}
+                      placeholder="Ex: 1234567"
+                      className="mt-1"
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-1">Chave de acesso usada para login no licitacoes-e.com.br</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Senha</Label>
+                    <div className="relative mt-1">
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        value={senha}
+                        onChange={(e) => setSenha(e.target.value)}
+                        placeholder="Sua senha do Licitações-e"
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!isLicitacoesE && (
               <div className="border border-border/50 rounded-lg p-4 space-y-3">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Login e Senha
@@ -198,6 +262,8 @@ export default function CredenciaisPortalForm() {
                     </button>
                   </div>
                 </div>
+              </div>
+              )}
               </div>
 
               <div className="bg-success/10 border border-success/20 rounded-lg p-3">
