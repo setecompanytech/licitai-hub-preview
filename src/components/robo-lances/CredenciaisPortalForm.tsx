@@ -89,6 +89,8 @@ export default function CredenciaisPortalForm() {
     setPortalId('');
     setLogin('');
     setSenha('');
+    setCodigoBB('');
+    setVersaoPortal('v2');
   };
 
   const handleSave = async () => {
