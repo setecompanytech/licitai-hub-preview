@@ -438,6 +438,14 @@ function AgentConfig({ empresaId }: { empresaId: string }) {
     whatsapp_numero: '',
     horario_inicio: '07:00',
     horario_fim: '22:00',
+    // Precificação
+    fator_preco_proposta: 0.920,
+    fator_lance_inicial: 0.900,
+    margem_minima_perc_cfg: 0.080,
+    margem_alvo_perc: 0.150,
+    valor_maximo_por_item: null as number | null,
+    preco_minimo_absoluto: 0.01,
+    confianca_minima_auto: 0.60,
   });
   const [saving, setSaving] = useState(false);
 
