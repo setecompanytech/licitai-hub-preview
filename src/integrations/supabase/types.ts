@@ -277,6 +277,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "assinaturas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "assinaturas_plano_id_fkey"
             columns: ["plano_id"]
             isOneToOne: false
@@ -322,6 +329,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atividades_colaborador_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -896,6 +910,13 @@ export type Database = {
             referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "boletos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       catalogo_itens_precificados: {
@@ -1056,6 +1077,13 @@ export type Database = {
             referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "cert_upload_tokens_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       chat_messages: {
@@ -1131,6 +1159,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comissoes_config_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -1216,6 +1251,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comissoes_lancamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
           {
@@ -1336,6 +1378,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conciliacao_regras_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -1583,6 +1632,13 @@ export type Database = {
             referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "contas_bancarias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       contas_pagar: {
@@ -1690,6 +1746,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contas_pagar_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -1809,6 +1872,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contas_receber_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
           {
@@ -2155,6 +2225,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
           {
@@ -2513,6 +2590,13 @@ export type Database = {
             referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "dre_categorias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       editais_favoritos: {
@@ -2690,6 +2774,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "empresa_membros_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -3544,6 +3635,13 @@ export type Database = {
             referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "licitacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       manutencao_agendada: {
@@ -3892,6 +3990,13 @@ export type Database = {
             referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notas_fiscais_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       notificacoes: {
@@ -3970,6 +4075,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nuvem_fiscal_config_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -4161,6 +4273,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "perfis_alerta_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -4546,6 +4665,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pre_notas_fiscais_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pre_notas_fiscais_nota_fiscal_id_fkey"
             columns: ["nota_fiscal_id"]
             isOneToOne: false
@@ -4725,6 +4851,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "processos_interesse_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "processos_interesse_licitacao_id_fkey"
             columns: ["licitacao_id"]
             isOneToOne: false
@@ -4827,6 +4960,13 @@ export type Database = {
             columns: ["empresa_ativa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_empresa_ativa_id_fkey"
+            columns: ["empresa_ativa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -5653,6 +5793,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tarefas_colaborador_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tarefas_colaborador_licitacao_id_fkey"
             columns: ["licitacao_id"]
             isOneToOne: false
@@ -6428,6 +6575,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "workflow_ia_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "workflow_ia_processo_interesse_id_fkey"
             columns: ["processo_interesse_id"]
             isOneToOne: false
@@ -6438,7 +6592,123 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      empresas_safe: {
+        Row: {
+          bairro: string | null
+          cabecalho_path: string | null
+          cabecalho_url: string | null
+          cep: string | null
+          certificado_nome: string | null
+          certificado_path: string | null
+          certificado_tipo: string | null
+          certificado_validade: string | null
+          cnae_principal: string | null
+          cnpj: string | null
+          complemento: string | null
+          created_at: string | null
+          created_by: string | null
+          email: string | null
+          endereco: string | null
+          id: string | null
+          inscricao_estadual: string | null
+          inscricao_municipal: string | null
+          municipio: string | null
+          nome_fantasia: string | null
+          razao_social: string | null
+          regime_tributario: string | null
+          rep_cargo: string | null
+          rep_cpf: string | null
+          rep_nacionalidade: string | null
+          rep_naturalidade: string | null
+          rep_nome: string | null
+          rep_orgao_expedidor: string | null
+          rep_rg: string | null
+          rodape_path: string | null
+          rodape_url: string | null
+          telefone: string | null
+          timbrado_path: string | null
+          timbrado_url: string | null
+          uf: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          bairro?: string | null
+          cabecalho_path?: string | null
+          cabecalho_url?: string | null
+          cep?: string | null
+          certificado_nome?: string | null
+          certificado_path?: string | null
+          certificado_tipo?: string | null
+          certificado_validade?: string | null
+          cnae_principal?: string | null
+          cnpj?: string | null
+          complemento?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string | null
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          municipio?: string | null
+          nome_fantasia?: string | null
+          razao_social?: string | null
+          regime_tributario?: string | null
+          rep_cargo?: string | null
+          rep_cpf?: never
+          rep_nacionalidade?: string | null
+          rep_naturalidade?: string | null
+          rep_nome?: string | null
+          rep_orgao_expedidor?: string | null
+          rep_rg?: never
+          rodape_path?: string | null
+          rodape_url?: string | null
+          telefone?: string | null
+          timbrado_path?: string | null
+          timbrado_url?: string | null
+          uf?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          bairro?: string | null
+          cabecalho_path?: string | null
+          cabecalho_url?: string | null
+          cep?: string | null
+          certificado_nome?: string | null
+          certificado_path?: string | null
+          certificado_tipo?: string | null
+          certificado_validade?: string | null
+          cnae_principal?: string | null
+          cnpj?: string | null
+          complemento?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string | null
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          municipio?: string | null
+          nome_fantasia?: string | null
+          razao_social?: string | null
+          regime_tributario?: string | null
+          rep_cargo?: string | null
+          rep_cpf?: never
+          rep_nacionalidade?: string | null
+          rep_naturalidade?: string | null
+          rep_nome?: string | null
+          rep_orgao_expedidor?: string | null
+          rep_rg?: never
+          rodape_path?: string | null
+          rodape_url?: string | null
+          telefone?: string | null
+          timbrado_path?: string | null
+          timbrado_url?: string | null
+          uf?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       check_lead_rate_limit: { Args: { p_email: string }; Returns: boolean }
