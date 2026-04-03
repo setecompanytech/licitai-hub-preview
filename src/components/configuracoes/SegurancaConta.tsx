@@ -155,13 +155,14 @@ export default function SegurancaConta() {
             <span className="text-muted-foreground">Conta criada em</span>
             <span className="font-medium text-xs">{user?.created_at ? new Date(user.created_at).toLocaleString('pt-BR') : '—'}</span>
           </div>
-          <div className="flex items-center justify-between py-2">
-            <span className="text-muted-foreground">Autenticação em dois fatores (MFA)</span>
-            <Badge variant="outline" className="bg-muted text-muted-foreground">
-              <Clock className="w-3 h-3 mr-1" /> Em breve
-            </Badge>
-          </div>
         </div>
+      </section>
+
+      {/* MFA */}
+      <MfaEnrollment />
+
+      {/* LGPD */}
+      <SolicitacaoLgpd />
       </section>
 
       {/* Log de Atividades de Autenticação */}
