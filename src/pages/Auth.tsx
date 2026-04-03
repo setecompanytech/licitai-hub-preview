@@ -70,10 +70,23 @@ export default function Auth() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
+    if (user && step !== 'mfa') {
       navigate(redirectAfterAuth, { replace: true });
     }
-  }, [user, navigate, redirectAfterAuth]);
+  }, [user, navigate, redirectAfterAuth, step]);
+
+  // MFA verification screen
+  if (step === 'mfa') {
+    return (
+      <MfaVerification
+        onSuccess={() => navigate(redirectAfterAuth)}
+        onCancel={async () => {
+          await supabase.auth.signOut();
+          setStep('manual');
+        }}
+      />
+    );
+  }
 
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 11);
