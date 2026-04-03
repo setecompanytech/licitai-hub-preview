@@ -358,7 +358,37 @@ export default function AgenteDashboard() {
           </ScrollArea>
         </TabsContent>
 
-        {/* Tab: Logs */}
+        {/* Tab: Precificação */}
+        <TabsContent value="precificacao">
+          <div className="space-y-4">
+            {licitacoes.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p>Nenhuma licitação para precificar.</p>
+                <p className="text-sm mt-1">Aprove licitações na aba anterior para iniciar a precificação.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {licitacoes
+                  .filter(l => ['participar', 'participando', 'proposta_enviada', 'em_disputa', 'aguardar_aprovacao'].includes(l.decisao))
+                  .map((lic) => (
+                    <div key={lic.id} className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">{lic.pncp_editais_cache?.modalidade_nome}</Badge>
+                        <h4 className="text-sm font-medium text-foreground truncate flex-1">
+                          {lic.pncp_editais_cache?.objeto_compra || 'Carregando...'}
+                        </h4>
+                        <span className="text-xs text-muted-foreground">{lic.pncp_editais_cache?.orgao_nome}</span>
+                      </div>
+                      <PrecificacaoReview licitacaoId={lic.id} />
+                      <Separator />
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
         <TabsContent value="logs">
           <ScrollArea className="h-[500px]">
             <div className="space-y-2">
