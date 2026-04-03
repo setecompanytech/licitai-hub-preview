@@ -53,7 +53,10 @@ export default function CredenciaisPortalForm() {
   const [portalId, setPortalId] = useState('');
   const [login, setLogin] = useState('');
   const [senha, setSenha] = useState('');
+  const [codigoBB, setCodigoBB] = useState('');
+  const [versaoPortal, setVersaoPortal] = useState<'v1' | 'v2'>('v2');
 
+  const isLicitacoesE = portalId === 'licitacoes-e';
   const { data: credenciais = [], isLoading } = useQuery({
     queryKey: ['credenciais-portais', user?.id],
     queryFn: async () => {
