@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import PraefectusLogo from '@/components/shared/PraefectusLogo';
+import MfaVerification from '@/components/auth/MfaVerification';
 
 const CARGOS = [
   'Diretor(a)', 'Gerente', 'Coordenador(a)', 'Analista', 'Assistente',
