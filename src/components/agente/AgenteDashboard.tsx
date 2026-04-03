@@ -621,6 +621,58 @@ function AgentConfig({ empresaId }: { empresaId: string }) {
         </CardContent>
       </Card>
 
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-primary" />
+            Precificação Autônoma
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-muted-foreground">Fator preço proposta</label>
+              <input type="number" step="0.001" value={config.fator_preco_proposta} onChange={e => setConfig(c => ({ ...c, fator_preco_proposta: Number(e.target.value) }))}
+                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <p className="text-xs text-muted-foreground mt-1">{((1 - config.fator_preco_proposta) * 100).toFixed(1)}% abaixo do mercado</p>
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">Fator lance inicial</label>
+              <input type="number" step="0.001" value={config.fator_lance_inicial} onChange={e => setConfig(c => ({ ...c, fator_lance_inicial: Number(e.target.value) }))}
+                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <p className="text-xs text-muted-foreground mt-1">{((1 - config.fator_lance_inicial) * 100).toFixed(1)}% abaixo do mercado</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-muted-foreground">Margem mínima (%)</label>
+              <input type="number" step="0.001" value={config.margem_minima_perc_cfg} onChange={e => setConfig(c => ({ ...c, margem_minima_perc_cfg: Number(e.target.value) }))}
+                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <p className="text-xs text-muted-foreground mt-1">{(config.margem_minima_perc_cfg * 100).toFixed(1)}% margem mínima</p>
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">Margem alvo (%)</label>
+              <input type="number" step="0.001" value={config.margem_alvo_perc} onChange={e => setConfig(c => ({ ...c, margem_alvo_perc: Number(e.target.value) }))}
+                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <p className="text-xs text-muted-foreground mt-1">{(config.margem_alvo_perc * 100).toFixed(1)}% margem alvo</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-muted-foreground">Confiança mín. auto-aprovação</label>
+              <input type="number" step="0.01" value={config.confianca_minima_auto} onChange={e => setConfig(c => ({ ...c, confianca_minima_auto: Number(e.target.value) }))}
+                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <p className="text-xs text-muted-foreground mt-1">{(config.confianca_minima_auto * 100).toFixed(0)}% — abaixo pede revisão humana</p>
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">Preço mínimo absoluto (R$)</label>
+              <input type="number" step="0.01" value={config.preco_minimo_absoluto} onChange={e => setConfig(c => ({ ...c, preco_minimo_absoluto: Number(e.target.value) }))}
+                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Button onClick={salvar} disabled={saving} className="w-full">
         {saving ? 'Salvando...' : 'Salvar Configurações'}
       </Button>
