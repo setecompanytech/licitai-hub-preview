@@ -377,6 +377,48 @@ export type Database = {
         }
         Relationships: []
       }
+      aurelia_cache: {
+        Row: {
+          acessos: number | null
+          cache_key: string
+          criado_em: string
+          edital_id: string | null
+          expira_em: string
+          id: string
+          modelo_usado: string | null
+          resultado: string
+          tipo_analise: string
+          tokens_gastos: number | null
+          ultimo_acesso: string | null
+        }
+        Insert: {
+          acessos?: number | null
+          cache_key: string
+          criado_em?: string
+          edital_id?: string | null
+          expira_em: string
+          id?: string
+          modelo_usado?: string | null
+          resultado: string
+          tipo_analise?: string
+          tokens_gastos?: number | null
+          ultimo_acesso?: string | null
+        }
+        Update: {
+          acessos?: number | null
+          cache_key?: string
+          criado_em?: string
+          edital_id?: string | null
+          expira_em?: string
+          id?: string
+          modelo_usado?: string | null
+          resultado?: string
+          tipo_analise?: string
+          tokens_gastos?: number | null
+          ultimo_acesso?: string | null
+        }
+        Relationships: []
+      }
       backup_config: {
         Row: {
           alerta_calendario: boolean

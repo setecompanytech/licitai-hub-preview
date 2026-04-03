@@ -1,9 +1,45 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+// ── CACHE LAYER 1: Memória da Edge Function ──
+// Deno Edge Functions mantêm estado entre requests na mesma instância (~128MB RAM)
+const memoryCache = new Map<string, { valor: string; expiraEm: number }>();
+const MEMORY_TTL_MS = 120_000; // 2 minutos na RAM
+
+// Ações da AURÉLIA que podem ser cacheadas (análises baseadas no edital, não personalizadas)
+const CACHEABLE_ACTIONS = ['aurelia_resumo', 'aurelia_habilitacao', 'aurelia_riscos', 'aurelia_recomendacao'];
+
+// TTL por tipo de análise (em horas)
+const CACHE_TTL_HOURS: Record<string, number> = {
+  aurelia_resumo: 24,
+  aurelia_habilitacao: 24,
+  aurelia_riscos: 12,
+  aurelia_recomendacao: 12,
+};
+
+function generateCacheKey(action: string, context: string | null): string {
+  // Hash simples do contexto para gerar cache key determinística
+  const content = `${action}:${context || ''}`;
+  let hash = 0;
+  for (let i = 0; i < content.length; i++) {
+    const char = content.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return `${action}:${Math.abs(hash).toString(36)}`;
+}
+
+function getServiceClient() {
+  return createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+}
 
 // Diretriz global de formatação — aplicada a todos os prompts do sistema
 const FORMATACAO_GLOBAL = `
@@ -711,11 +747,10 @@ serve(async (req) => {
       }
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.49.1");
-      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
         global: { headers: { Authorization: authHeader } },
       });
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
       if (authError || !user) {
         return new Response(JSON.stringify({ error: "Invalid token" }), {
           status: 401,
@@ -723,6 +758,7 @@ serve(async (req) => {
         });
       }
     }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -731,12 +767,63 @@ serve(async (req) => {
     // Truncate context and messages to avoid exceeding token limits
     const MAX_CONTEXT_CHARS = 200000;
     const MAX_MESSAGE_CHARS = 100000;
-    
+
     const truncatedContext = context ? context.slice(0, MAX_CONTEXT_CHARS) : null;
     const truncatedMessages = messages.map((m: { role: string; content: string }) => ({
       ...m,
       content: typeof m.content === 'string' ? m.content.slice(0, MAX_MESSAGE_CHARS) : m.content,
     }));
+
+    // ── CACHE: Verificar se ação é cacheável ──
+    const isCacheable = CACHEABLE_ACTIONS.includes(action) && truncatedContext;
+
+    if (isCacheable) {
+      const cacheKey = generateCacheKey(action, truncatedContext);
+
+      // CAMADA 1: Cache em memória (sub-ms)
+      const memCached = memoryCache.get(cacheKey);
+      if (memCached && memCached.expiraEm > Date.now()) {
+        console.log(`[CACHE HIT] memory | action=${action} key=${cacheKey}`);
+        // Retornar como SSE para manter compatibilidade com o frontend
+        const sseData = `data: ${JSON.stringify({ choices: [{ delta: { content: memCached.valor } }] })}\n\ndata: [DONE]\n\n`;
+        return new Response(sseData, {
+          headers: { ...corsHeaders, "Content-Type": "text/event-stream", "X-Cache": "memory" },
+        });
+      }
+
+      // CAMADA 2: Cache no PostgreSQL (~5-20ms)
+      try {
+        const db = getServiceClient();
+        const { data: dbCached } = await db
+          .from('aurelia_cache')
+          .select('resultado')
+          .eq('cache_key', cacheKey)
+          .gt('expira_em', new Date().toISOString())
+          .single();
+
+        if (dbCached) {
+          console.log(`[CACHE HIT] db | action=${action} key=${cacheKey}`);
+          // Atualiza contador de acessos (fire-and-forget)
+          db.from('aurelia_cache')
+            .update({ acessos: (dbCached as any).acessos + 1, ultimo_acesso: new Date().toISOString() })
+            .eq('cache_key', cacheKey)
+            .then(() => {});
+
+          // Popula memória para próximos requests nesta instância
+          memoryCache.set(cacheKey, {
+            valor: dbCached.resultado,
+            expiraEm: Date.now() + MEMORY_TTL_MS,
+          });
+
+          const sseData = `data: ${JSON.stringify({ choices: [{ delta: { content: dbCached.resultado } }] })}\n\ndata: [DONE]\n\n`;
+          return new Response(sseData, {
+            headers: { ...corsHeaders, "Content-Type": "text/event-stream", "X-Cache": "db" },
+          });
+        }
+      } catch (e) {
+        console.warn("[CACHE] DB lookup failed, proceeding without cache:", e);
+      }
+    }
 
     const allMessages = [
       { role: "system", content: systemPrompt },
@@ -751,13 +838,11 @@ serve(async (req) => {
     };
 
     // ── MELHORIA 2: Raciocínio estendido por tipo de ação ──
-    // Ações que exigem análise profunda → reasoning high
     const HIGH_REASONING_ACTIONS = [
       'aurelia_riscos', 'aurelia_habilitacao', 'aurelia_recomendacao',
       'analise_edital', 'analise_peticao', 'gerador_juridico',
       'reequilibrio', 'impugnacao',
     ];
-    // Ações que exigem raciocínio moderado
     const MEDIUM_REASONING_ACTIONS = [
       'analise_documental_concorrente', 'composicao_custo',
       'contabilidade_tributaria', 'proposta_tecnica',
@@ -797,6 +882,71 @@ serve(async (req) => {
       console.error("AI gateway error:", response.status, t);
       return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── Para ações cacheáveis: interceptar stream, acumular resultado, salvar no cache ──
+    if (isCacheable && response.body) {
+      const cacheKey = generateCacheKey(action, truncatedContext);
+      const reader = response.body.getReader();
+      let fullContent = "";
+      const modelUsed = ACTION_MODELS[action] || "google/gemini-3-flash-preview";
+
+      const stream = new ReadableStream({
+        async pull(controller) {
+          const { done, value } = await reader.read();
+          if (done) {
+            controller.close();
+            // Salvar no cache após stream completo (fire-and-forget)
+            if (fullContent.length > 50) {
+              const ttlHours = CACHE_TTL_HOURS[action] || 12;
+              const expiraEm = new Date(Date.now() + ttlHours * 60 * 60 * 1000).toISOString();
+              try {
+                const db = getServiceClient();
+                await db.from('aurelia_cache').upsert({
+                  cache_key: cacheKey,
+                  tipo_analise: action,
+                  edital_id: null,
+                  resultado: fullContent,
+                  tokens_gastos: Math.ceil(fullContent.length / 4),
+                  modelo_usado: modelUsed,
+                  criado_em: new Date().toISOString(),
+                  expira_em: expiraEm,
+                  acessos: 1,
+                  ultimo_acesso: new Date().toISOString(),
+                }, { onConflict: 'cache_key' });
+
+                // Popula memória
+                memoryCache.set(cacheKey, {
+                  valor: fullContent,
+                  expiraEm: Date.now() + MEMORY_TTL_MS,
+                });
+                console.log(`[CACHE SAVE] action=${action} key=${cacheKey} len=${fullContent.length}`);
+              } catch (e) {
+                console.warn("[CACHE] Save failed:", e);
+              }
+            }
+            return;
+          }
+
+          // Parse SSE chunks para acumular conteúdo
+          const text = new TextDecoder().decode(value);
+          const lines = text.split('\n');
+          for (const line of lines) {
+            if (!line.startsWith('data: ') || line.includes('[DONE]')) continue;
+            try {
+              const parsed = JSON.parse(line.slice(6));
+              const content = parsed.choices?.[0]?.delta?.content;
+              if (content) fullContent += content;
+            } catch { /* partial chunk */ }
+          }
+
+          controller.enqueue(value);
+        },
+      });
+
+      return new Response(stream, {
+        headers: { ...corsHeaders, "Content-Type": "text/event-stream", "X-Cache": "miss" },
       });
     }
 
