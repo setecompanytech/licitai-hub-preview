@@ -6592,6 +6592,51 @@ export type Database = {
       }
     }
     Views: {
+      credenciais_portais_safe: {
+        Row: {
+          certificado_nome: string | null
+          certificado_path: string | null
+          certificado_tipo: string | null
+          created_at: string | null
+          id: string | null
+          login: string | null
+          portal_id: string | null
+          portal_nome: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string | null
+          validade_certificado: string | null
+        }
+        Insert: {
+          certificado_nome?: string | null
+          certificado_path?: string | null
+          certificado_tipo?: string | null
+          created_at?: string | null
+          id?: string | null
+          login?: string | null
+          portal_id?: string | null
+          portal_nome?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          validade_certificado?: string | null
+        }
+        Update: {
+          certificado_nome?: string | null
+          certificado_path?: string | null
+          certificado_tipo?: string | null
+          created_at?: string | null
+          id?: string | null
+          login?: string | null
+          portal_id?: string | null
+          portal_nome?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          validade_certificado?: string | null
+        }
+        Relationships: []
+      }
       empresas_safe: {
         Row: {
           bairro: string | null
@@ -6708,6 +6753,57 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      nuvem_fiscal_config_safe: {
+        Row: {
+          ambiente: string | null
+          ativo: boolean | null
+          certificado_path: string | null
+          certificado_validade: string | null
+          created_at: string | null
+          empresa_id: string | null
+          id: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ambiente?: string | null
+          ativo?: boolean | null
+          certificado_path?: string | null
+          certificado_validade?: string | null
+          created_at?: string | null
+          empresa_id?: string | null
+          id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ambiente?: string | null
+          ativo?: boolean | null
+          certificado_path?: string | null
+          certificado_validade?: string | null
+          created_at?: string | null
+          empresa_id?: string | null
+          id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nuvem_fiscal_config_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nuvem_fiscal_config_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
