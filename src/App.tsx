@@ -78,6 +78,7 @@ import PoliticaSLA from "./pages/PoliticaSLA";
 import Solucoes from "./pages/Solucoes";
 import AvisoLegal from "./pages/AvisoLegal";
 import DemoAmbiente from "./pages/DemoAmbiente";
+import DpaPage from "./pages/DpaPage";
 import CookieConsentBanner from "./components/shared/CookieConsentBanner";
 const queryClient = new QueryClient();
 
