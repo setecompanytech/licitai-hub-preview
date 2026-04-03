@@ -22,7 +22,7 @@ import Documentos from "./pages/Documentos";
 import ApoioJuridico from "./pages/ApoioJuridico";
 import ApoioContabil from "./pages/ApoioContabil";
 import Precificacao from "./pages/Precificacao";
-import Assistente from "./pages/Assistente";
+import AureliaPage from "./pages/AureliaPage";
 import Analytics from "./pages/Analytics";
 import MonitoramentoEditais from "./pages/MonitoramentoEditais";
 import Configuracoes from "./pages/Configuracoes";
