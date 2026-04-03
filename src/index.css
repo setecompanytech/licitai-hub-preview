@@ -147,6 +147,21 @@
 }
 
 @layer utilities {
+  /* AURÉLIA Design System */
+  .aurelia-gold { color: hsl(43 60% 54%); }
+  .aurelia-bg { background: hsl(215 50% 7%); }
+  .aurelia-surface { background: hsl(215 40% 10%); }
+  .aurelia-border { border-color: hsl(215 20% 20%); }
+  .aurelia-bubble-user { background: hsl(213 50% 25%); }
+  .aurelia-bubble-ai { background: hsl(225 25% 14%); }
+
+  @keyframes aurelia-pulse {
+    0%, 100% { box-shadow: 0 4px 20px hsl(43 60% 54% / 0.4); }
+    50% { box-shadow: 0 4px 32px hsl(43 60% 54% / 0.8); }
+  }
+  .aurelia-glow {
+    animation: aurelia-pulse 2s ease-in-out infinite;
+  }
   .glass-card {
     @apply bg-card/80 backdrop-blur-xl border border-border/50 shadow-md;
   }
