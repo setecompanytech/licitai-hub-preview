@@ -98,9 +98,18 @@ export default function Auth() {
     setLoading(false);
     if (error) {
       toast.error('E-mail ou senha incorretos');
-    } else {
-      navigate(redirectAfterAuth);
+      return;
     }
+    // Check if user has MFA enabled
+    try {
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const hasVerifiedTOTP = factors?.totp?.some(f => f.status === 'verified');
+      if (hasVerifiedTOTP) {
+        setStep('mfa');
+        return;
+      }
+    } catch {}
+    navigate(redirectAfterAuth);
   };
 
   const checkLeakedPassword = async (pwd: string): Promise<boolean> => {
