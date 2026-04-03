@@ -678,72 +678,444 @@ module.exports = { BLLPortal };
   'src/portals/licitacoes-e.js': `const { BasePortal } = require('./base-portal');
 
 /**
- * Módulo para Licitações-e (Banco do Brasil)
+ * Módulo de automação para o portal Licitações-e (Banco do Brasil)
  *
- * URL: https://www.licitacoes-e.com.br
- * Autenticação: Login + senha ou certificado digital
+ * DUAS VERSÕES:
+ *   - Legada: https://www.licitacoes-e.com.br/aop/
+ *     Backend Java EE (JSP + Servlets), JSESSIONID, ~20min timeout
+ *   - Nova (Lei 14.133): https://licitacoes-e2.bb.com.br
+ *     Disputa abre automaticamente, dispensa 6-10h, modos Aberto/Fechado
+ *
+ * AUTENTICAÇÃO: Chave BB + Senha pessoal (conta bancária ou credenciamento)
+ *
+ * ARMADILHAS:
+ *   - ⚠ JSESSIONID expira ~20min inativo → renovar a cada 15min
+ *   - ⚠ Fase randômica encerra entre 1s e 30min → verificar a cada 1.5s
+ *   - ⚠ Portal detecta automação → usar stealth + anti-detecção
+ *   - ⚠ Taxa cobrada por participação
+ *   - ⚠ Possível CAPTCHA → fallback VNC
+ *
+ * SELETORES MAPEADOS para ambas versões (v1 legado + v2 novo portal)
  */
 class LicitacoesEPortal extends BasePortal {
   constructor(page, credenciais) {
     super(page, credenciais);
     this.nome = 'licitacoes-e';
-    this.baseUrl = 'https://www.licitacoes-e.com.br';
+    this.baseUrlV1 = 'https://www.licitacoes-e.com.br';
+    this.baseUrlV2 = 'https://licitacoes-e2.bb.com.br';
+    this.versao = credenciais.versao_portal || 'v2';
+    this.baseUrl = this.versao === 'v1' ? this.baseUrlV1 : this.baseUrlV2;
+    this.jsessionid = '';
+    this.loginTimestamp = 0;
+    this.maxRetries = 3;
+    this.retryDelay = 2000;
+
+    // ─── SELETORES v1 (legado) ─────────────────────────────
+    this.seletoresV1 = {
+      login: {
+        campoCodigo: 'input[name="inCodigo"], input[id="codigo"], #txtChave',
+        campoSenha: 'input[type="password"][name="inSenha"], #txtSenha',
+        botaoEntrar: 'input[type="submit"][value*="Entrar"], #btnEntrar, .btn-login',
+        erroLogin: '.mensagem-erro, #msgErro, .alert-danger',
+        indicadorLogado: '#nomeUsuario, .usuario-logado, a[href*="sair"], a[href*="logout"]',
+      },
+      sala: {
+        tituloLicitacao: '#tituloLicitacao, .titulo-pregao, h2.licitacao-titulo',
+        menorLanceAtual: '#menorLance, .menor-lance, td.preco-melhor, .preco-atual',
+        nossoUltimoLance: '#seuLance, .seu-lance, .lance-proprio',
+        campoLance: 'input[name="vlLance"], input[id="vlLance"], #inputLance, input.valor-lance',
+        botaoOferecer: 'button[onclick*="oferecer"], input[value*="Oferecer"], #btnLance, .btn-lance',
+        botaoConfirmar: '#btnConfirmar, button[id*="confirmar"], .btn-confirmar-lance',
+        botaoCancelar: '#btnCancelar, .btn-cancelar',
+        modalConfirmacao: '#modalConfirmacao, .modal-lance, .dialog-confirmacao',
+        cronometro: '#cronometro, .timer-disputa, #temporizador, .countdown',
+        faseAtual: '#faseDisputa, .fase-atual, .status-pregao',
+        indicadorRandom: '.fase-aleatoria, #faseRandomica, .tempo-aleatorio',
+        tabelaLances: '#tabelaLances, table.historico-lances, .lances-realizados',
+        containerChat: '#chat, #mensagensPregoeiro, .chat-pregao, iframe[id*="chat"]',
+        listaMensagens: '#listaMensagens, .mensagens-chat, .historico-mensagens',
+        itemMensagem: '.mensagem-chat, tr.mensagem, .msg-item',
+        autorMensagem: '.autor-mensagem, .remetente, td.autor',
+        textoMensagem: '.texto-mensagem, .conteudo-msg, td.conteudo',
+        vencedorAnunciado: '.vencedor-disputa, #resultadoFinal, .licitante-vencedor',
+        mensagemEncerramento: '.disputa-encerrada, #msgEncerramento',
+        situacaoDisputa: '#situacaoDisputa, .status-disputa, .fase-disputa',
+      },
+      proposta: {
+        listaItens: '#itensLicitacao, table.itens-proposta, .grid-itens',
+        linhaItem: 'tr.item, .row-item, .item-licitacao',
+        campoPrecoUnitario: 'input[name*="preco"], input[name*="vlUnitario"], .input-preco',
+        campoMarca: 'input[name*="marca"], .input-marca',
+        campoModelo: 'input[name*="modelo"], .input-modelo',
+      },
+    };
+
+    // ─── SELETORES v2 (novo portal) ────────────────────────
+    this.seletoresV2 = {
+      login: {
+        campoCodigo: '#codigoAcesso, input[name="codigoAcesso"]',
+        campoSenha: '#senha, input[name="senha"]',
+        botaoEntrar: 'button[type="submit"], .btn-acessar',
+        captcha: '.g-recaptcha, #captcha',
+        indicadorLogado: '.painel-fornecedor, #painelFornecedor',
+      },
+      sala: {
+        menorLanceAtual: '[data-testid="menor-lance"], .melhor-proposta, .valor-destaque',
+        campoLance: '[data-testid="input-lance"], input[placeholder*="lance"], input.lance-valor',
+        botaoOferecer: '[data-testid="btn-lance"], button:has-text("Oferecer Lance")',
+        botaoConfirmar: '#btnConfirmar, button[id*="confirmar"], .btn-confirmar-lance',
+        cronometro: '[data-testid="cronometro"], .timer, .contador-regressivo',
+        situacao: '[data-testid="situacao-disputa"], .chip-situacao',
+        chatMensagens: '[data-testid="chat-mensagens"], .mensagens-disputa',
+        tabelaLances: '[data-testid="historico-lances"], .tabela-lances',
+        mensagemEncerramento: '.disputa-encerrada, [data-testid="encerrado"]',
+        vencedorAnunciado: '[data-testid="vencedor"], .vencedor-disputa',
+        faseAtual: '[data-testid="fase"], .fase-disputa',
+        indicadorRandom: '[data-testid="fase-aleatoria"], .aleatoria',
+        nossoUltimoLance: '[data-testid="meu-lance"], .meu-lance',
+        situacaoDisputa: '[data-testid="situacao-disputa"], .situacao',
+      },
+    };
   }
 
-  async login() {
-    console.log('🔐 Iniciando login no Licitações-e...');
-    await this.page.goto(\`\${this.baseUrl}/aop/lct/licitacaoConsultaPublica.faces\`, { waitUntil: 'networkidle2' });
+  get S() {
+    return this.versao === 'v1' ? this.seletoresV1 : this.seletoresV2;
+  }
 
-    // Clicar em "Área do Fornecedor"
+  get salaS() {
+    return this.S.sala || this.S;
+  }
+
+  /**
+   * Anti-detecção (Puppeteer stealth)
+   */
+  async aplicarAntiDeteccao() {
+    await this.page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+      Object.defineProperty(navigator, 'languages', { get: () => ['pt-BR', 'pt', 'en-US', 'en'] });
+      delete navigator.__proto__.webdriver;
+      window.chrome = { runtime: {} };
+    });
+    await this.page.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+    );
+  }
+
+  async delayHumano(min = 300, max = 800) {
+    const ms = Math.floor(Math.random() * (max - min)) + min;
+    await this.page.waitForTimeout(ms);
+  }
+
+  async digitarHumano(selector, texto) {
+    await this.page.click(selector);
+    for (const char of texto) {
+      await this.page.keyboard.type(char, { delay: Math.random() * 80 + 40 });
+    }
+  }
+
+  async comRetry(fn, descricao, tentativas = this.maxRetries) {
+    for (let i = 1; i <= tentativas; i++) {
+      try {
+        return await fn();
+      } catch (err) {
+        console.warn(\`⚠️ [\${descricao}] Tentativa \${i}/\${tentativas} falhou: \${err.message}\`);
+        if (i === tentativas) throw err;
+        await this.page.waitForTimeout(this.retryDelay * i);
+      }
+    }
+  }
+
+  // ─── LOGIN ───────────────────────────────────────────────────
+  async login() {
+    console.log(\`🔐 Iniciando login no Licitações-e (\${this.versao})...\`);
+    await this.aplicarAntiDeteccao();
+
+    if (this.versao === 'v1') {
+      await this.loginV1();
+    } else {
+      await this.loginV2();
+    }
+
+    // Capturar JSESSIONID
+    const cookies = await this.page.cookies();
+    const sessionCookie = cookies.find(c =>
+      c.name === 'JSESSIONID' || c.name.toLowerCase().includes('session')
+    );
+    this.jsessionid = sessionCookie?.value || '';
+    this.loginTimestamp = Date.now();
+
+    // Verificar login
+    const logado = await this.verificarLogin();
+    if (!logado) {
+      await this.screenshot('login-falha');
+      throw new Error('Falha na autenticação do Licitações-e. Verificar credenciais.');
+    }
+
+    this.loggedIn = true;
+    console.log(\`✅ Login no Licitações-e (\${this.versao}) realizado — JSESSIONID: \${this.jsessionid.substring(0, 8)}...\`);
+  }
+
+  async loginV1() {
+    const S = this.seletoresV1.login;
+    await this.page.goto(\`\${this.baseUrlV1}/aop/index.jsp\`, {
+      waitUntil: 'networkidle2', timeout: 30000,
+    });
+
+    // Clicar em "Acesso Identificado"
     await this.page.evaluate(() => {
       const link = [...document.querySelectorAll('a')].find(a =>
-        a.textContent.includes('Fornecedor') || a.textContent.includes('Login')
+        (a.textContent || '').includes('Acesso Identificado') ||
+        (a.textContent || '').includes('Fornecedor') ||
+        (a.textContent || '').includes('Login')
       );
       if (link) link.click();
     });
+    await this.page.waitForNavigation({ waitUntil: 'networkidle2' }).catch(() => {});
+    await this.delayHumano(500, 1200);
 
-    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
-    await this.preencherCampo('#login, input[name="login"]', this.credenciais.login);
-    await this.preencherCampo('#senha, input[name="senha"]', this.credenciais.senha);
+    await this.aguardarElemento(S.campoCodigo, 15000);
+    await this.digitarHumano(S.campoCodigo, this.credenciais.codigo_bb || this.credenciais.login);
+    await this.delayHumano(500, 1200);
+    await this.digitarHumano(S.campoSenha, this.credenciais.senha);
+    await this.delayHumano(300, 800);
 
-    await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('input[type="submit"], button')]
-        .find(b => (b.value || b.textContent).toLowerCase().includes('ok') || (b.value || b.textContent).toLowerCase().includes('entrar'));
-      if (btn) btn.click();
-    });
-
-    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
-    this.loggedIn = true;
-    console.log('✅ Login no Licitações-e realizado');
+    await this.page.click(S.botaoEntrar);
+    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 });
   }
 
+  async loginV2() {
+    const S = this.seletoresV2.login;
+    await this.page.goto(\`\${this.baseUrlV2}/aop/login\`, {
+      waitUntil: 'networkidle2', timeout: 30000,
+    });
+
+    await this.aguardarElemento(S.campoCodigo, 15000);
+    await this.digitarHumano(S.campoCodigo, this.credenciais.codigo_bb || this.credenciais.login);
+    await this.delayHumano(400, 900);
+    await this.digitarHumano(S.campoSenha, this.credenciais.senha);
+    await this.delayHumano(300, 700);
+
+    // Verificar CAPTCHA
+    const temCaptcha = await this.page.evaluate((sel) => {
+      const el = document.querySelector(sel);
+      return el && el.offsetParent !== null;
+    }, S.captcha || '.g-recaptcha');
+    if (temCaptcha) {
+      console.warn('🔒 CAPTCHA detectado! Aguardando resolução manual via VNC (120s)...');
+      await this.screenshot('captcha-detectado');
+      await this.page.waitForFunction(() => {
+        const el = document.querySelector('.g-recaptcha, #captcha');
+        return !el || el.offsetParent === null;
+      }, { timeout: 120000 });
+      console.log('✅ CAPTCHA resolvido!');
+    }
+
+    await this.page.click(S.botaoEntrar);
+    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 25000 });
+  }
+
+  async verificarLogin() {
+    const S = this.S.login;
+    try {
+      await this.page.waitForSelector(S.indicadorLogado, { timeout: 8000 });
+      return true;
+    } catch {
+      const erroSel = S.erroLogin || '.erro, .alert-danger';
+      const erro = await this.page.$(erroSel);
+      if (erro) {
+        const textoErro = await erro.evaluate(el => el.textContent);
+        throw new Error(\`Erro de login Licitações-e: \${textoErro}\`);
+      }
+      return false;
+    }
+  }
+
+  // ─── RENOVAÇÃO DE SESSÃO (a cada 15min) ────────────────────
+  async renovarSessao() {
+    const quinzeMin = 15 * 60 * 1000;
+    const agora = Date.now();
+    if (agora - this.loginTimestamp >= quinzeMin) {
+      console.log('🔄 Renovando sessão JSESSIONID...');
+      await this.page.goto(
+        this.versao === 'v1'
+          ? \`\${this.baseUrlV1}/aop/suas-propostas.do\`
+          : \`\${this.baseUrlV2}/aop/painel\`,
+        { waitUntil: 'domcontentloaded', timeout: 10000 }
+      );
+      this.loginTimestamp = Date.now();
+    }
+  }
+
+  // ─── NAVEGAÇÃO PARA SALA ───────────────────────────────────
   async navegarParaDisputa(edital) {
-    console.log(\`📋 Buscando edital \${edital} no Licitações-e\`);
-    await this.preencherCampo('input[name="numLicitacao"], #numLicitacao', edital);
-    await this.page.keyboard.press('Enter');
-    await this.page.waitForTimeout(5000);
-    await this.screenshot('disputa-licitacoes-e');
+    console.log(\`📋 Navegando para disputa Licitações-e: \${edital}\`);
+
+    await this.comRetry(async () => {
+      const url = this.versao === 'v1'
+        ? \`\${this.baseUrlV1}/aop/entrar-sala-disputa.do?nrLicitacao=\${edital}\`
+        : \`\${this.baseUrlV2}/aop/pregao/\${edital}/sala\`;
+
+      await this.page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+
+      const S = this.salaS;
+      await this.page.waitForSelector(S.menorLanceAtual, { timeout: 20000 });
+      await this.screenshot('sala-disputa-licitacoes-e');
+      console.log('✅ Na sala de disputa do Licitações-e');
+    }, 'navegar-sala');
   }
 
+  // ─── LER MELHOR LANCE ──────────────────────────────────────
   async lerMelhorLance() {
-    return await this.page.evaluate(() => {
-      const el = document.querySelector('.valorLance, td.lance, .melhorLance');
+    const S = this.salaS;
+    const valor = await this.page.evaluate((sel) => {
+      const el = document.querySelector(sel);
       if (!el) return null;
-      return parseFloat(el.textContent.replace(/[^\\d.,]/g, '').replace('.', '').replace(',', '.'));
-    });
+      const texto = (el.textContent || '')
+        .replace(/[R$\\s]/g, '')
+        .replace(/\\./g, '')
+        .replace(',', '.')
+        .trim();
+      return parseFloat(texto) || null;
+    }, S.menorLanceAtual);
+
+    if (valor !== null) {
+      console.log(\`💰 Menor lance atual Licitações-e: R$ \${this.formatarMoeda(valor)}\`);
+    }
+    return valor;
   }
 
+  // ─── ENVIAR LANCE ──────────────────────────────────────────
   async enviarLance(valor) {
     console.log(\`📤 Enviando lance Licitações-e: R$ \${this.formatarMoeda(valor)}\`);
-    await this.preencherCampo('input[name="valorLance"]', this.formatarMoeda(valor));
-    await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('input[type="submit"], button')]
-        .find(b => (b.value || b.textContent).toLowerCase().includes('enviar'));
-      if (btn) btn.click();
-    });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    const S = this.salaS;
+    const valorFormatado = valor.toFixed(2).replace('.', ',');
+
+    await this.comRetry(async () => {
+      // 1. Limpar e preencher campo
+      const campoLance = await this.page.waitForSelector(S.campoLance, { timeout: 3000, visible: true });
+      if (!campoLance) throw new Error('Campo de lance não encontrado');
+      await this.page.click(S.campoLance, { clickCount: 3 });
+      await this.page.keyboard.press('Backspace');
+      await this.page.type(S.campoLance, valorFormatado, { delay: 50 });
+
+      // 2. Clicar em "Oferecer Lance"
+      const oferecerClicked = await this.page.evaluate((sel) => {
+        const el = document.querySelector(sel);
+        if (el) { el.click(); return true; }
+        // Fallback por texto
+        const btns = [...document.querySelectorAll('button, input[type="submit"]')];
+        const btn = btns.find(b => (b.textContent || b.value || '').toLowerCase().includes('oferecer'));
+        if (btn) { btn.click(); return true; }
+        return false;
+      }, S.botaoOferecer);
+      if (!oferecerClicked) throw new Error('Botão "Oferecer Lance" não encontrado');
+
+      // 3. Aguardar modal de confirmação
+      await this.page.waitForTimeout(1000);
+      const confirmSel = S.modalConfirmacao || S.botaoConfirmar;
+      await this.aguardarElemento(confirmSel, 5000);
+
+      // 4. Confirmar
+      await this.page.evaluate((sel) => {
+        const el = document.querySelector(sel);
+        if (el) { el.click(); return; }
+        const btns = [...document.querySelectorAll('button')];
+        const btn = btns.find(b => (b.textContent || '').toLowerCase().includes('confirmar'));
+        if (btn) btn.click();
+      }, S.botaoConfirmar);
+
+      // 5. Dialog nativo
+      this.page.once('dialog', async dialog => {
+        console.log(\`📌 Confirmação: \${dialog.message()}\`);
+        await dialog.accept();
+      });
+
+      await this.page.waitForTimeout(1500);
+      await this.screenshot('lance-enviado-licitacoes-e');
+    }, 'enviar-lance');
+
+    console.log(\`✅ Lance de R$ \${valorFormatado} enviado no Licitações-e\`);
     return true;
+  }
+
+  // ─── VERIFICAR RESULTADO ───────────────────────────────────
+  async verificarResultado() {
+    const S = this.salaS;
+    return await this.page.evaluate((seletores) => {
+      const texto = document.body.innerText.toLowerCase();
+      if (texto.includes('lance aceito') || texto.includes('lance registrado')) return 'aceito';
+      if (texto.includes('lance recusado') || texto.includes('valor inválido')) return 'recusado';
+      if (texto.includes('disputa encerrada') || texto.includes('sessão encerrada')) return 'encerrado';
+      // Verificar via seletores
+      const encerrado = document.querySelector(seletores.mensagemEncerramento);
+      if (encerrado) return 'encerrado';
+      return 'indefinido';
+    }, S);
+  }
+
+  // ─── DETECÇÃO DE FASE ──────────────────────────────────────
+  async lerFaseAtual() {
+    const S = this.salaS;
+    return await this.page.evaluate((seletores) => {
+      const faseEl = document.querySelector(seletores.faseAtual || seletores.situacao);
+      const fase = (faseEl?.textContent || '').toLowerCase();
+      if (fase.includes('aleat') || fase.includes('random')) return 'aleatorio';
+      if (fase.includes('fechad')) return 'fechado';
+      if (fase.includes('encerrad')) return 'encerrado';
+      return 'aberto';
+    }, S);
+  }
+
+  // ─── CLASSIFICAÇÃO ─────────────────────────────────────────
+  async lerClassificacao() {
+    const S = this.salaS;
+    return await this.page.evaluate((seletores) => {
+      const rows = document.querySelectorAll(\`\${seletores.tabelaLances} tr:not(:first-child)\`);
+      return Array.from(rows).slice(0, 15).map((tr, i) => {
+        const tds = tr.querySelectorAll('td');
+        return {
+          posicao: i + 1,
+          fornecedor: (tds[0]?.textContent || '').trim(),
+          valor: (tds[1]?.textContent || '').trim(),
+        };
+      });
+    }, S);
+  }
+
+  // ─── FASE ABERTA ───────────────────────────────────────────
+  async faseAberta() {
+    const fase = await this.lerFaseAtual();
+    return fase !== 'encerrado';
+  }
+
+  /**
+   * ⚡ Intervalo de verificação específico do Licitações-e:
+   * - Fase randômica: 1.5s (pode encerrar em 1 SEGUNDO!)
+   * - Outras fases: 3s
+   */
+  async getIntervaloVerificacao() {
+    const fase = await this.lerFaseAtual();
+    return fase === 'aleatorio' ? 1500 : 3000;
+  }
+
+  // ─── MONITORAMENTO DO CHAT DO PREGOEIRO ────────────────────
+  async lerMensagensChat() {
+    const S = this.salaS;
+    try {
+      return await this.page.evaluate((seletores) => {
+        const container = document.querySelector(seletores.listaMensagens || seletores.chatMensagens);
+        if (!container) return [];
+        const items = container.querySelectorAll(seletores.itemMensagem || '.mensagem-chat, .msg-item');
+        return Array.from(items).slice(-5).map(el => ({
+          autor: (el.querySelector(seletores.autorMensagem || '.autor')?.textContent || '').trim(),
+          texto: (el.querySelector(seletores.textoMensagem || '.texto')?.textContent || '').trim(),
+          id: el.getAttribute('id') || el.getAttribute('data-id') || '',
+        }));
+      }, S);
+    } catch {
+      return [];
+    }
   }
 }
 

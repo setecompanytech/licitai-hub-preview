@@ -20,7 +20,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 const PORTAIS = [
   { id: 'compras-gov', nome: 'Compras.gov.br', auth: 'certificado', prioridade: 1 },
   { id: 'bll', nome: 'BLL Compras', auth: 'login', prioridade: 2 },
-  { id: 'licitacoes-e', nome: 'Licitações-e (BB)', auth: 'login', prioridade: 3 },
+  { id: 'licitacoes-e', nome: 'Licitações-e (BB)', auth: 'login-bb', prioridade: 3 },
   { id: 'bnc', nome: 'Bolsa Nacional de Compras', auth: 'login', prioridade: 4 },
   { id: 'portal-compras', nome: 'Portal de Compras Públicas', auth: 'login', prioridade: 5 },
   { id: 'bec-sp', nome: 'BEC/SP', auth: 'login+cert', prioridade: 6 },
