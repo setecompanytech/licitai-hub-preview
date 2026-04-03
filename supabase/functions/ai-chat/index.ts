@@ -750,8 +750,23 @@ serve(async (req) => {
       stream: true,
     };
 
-    if (action === "analise_documental_concorrente") {
-      requestBody.reasoning = { effort: "low" };
+    // ── MELHORIA 2: Raciocínio estendido por tipo de ação ──
+    // Ações que exigem análise profunda → reasoning high
+    const HIGH_REASONING_ACTIONS = [
+      'aurelia_riscos', 'aurelia_habilitacao', 'aurelia_recomendacao',
+      'analise_edital', 'analise_peticao', 'gerador_juridico',
+      'reequilibrio', 'impugnacao',
+    ];
+    // Ações que exigem raciocínio moderado
+    const MEDIUM_REASONING_ACTIONS = [
+      'analise_documental_concorrente', 'composicao_custo',
+      'contabilidade_tributaria', 'proposta_tecnica',
+    ];
+
+    if (HIGH_REASONING_ACTIONS.includes(action)) {
+      requestBody.reasoning = { effort: "high" };
+    } else if (MEDIUM_REASONING_ACTIONS.includes(action)) {
+      requestBody.reasoning = { effort: "medium" };
     }
 
     if (action === "extracao_representante") {
