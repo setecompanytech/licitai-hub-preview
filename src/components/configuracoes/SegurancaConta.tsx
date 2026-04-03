@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Shield, Key, Eye, Clock, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import MfaEnrollment from './MfaEnrollment';
+import SolicitacaoLgpd from './SolicitacaoLgpd';
 import { toast } from 'sonner';
 
 export default function SegurancaConta() {
