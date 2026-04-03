@@ -486,9 +486,21 @@ function AgentConfig({ empresaId }: { empresaId: string }) {
 
   const salvar = async () => {
     setSaving(true);
+    const { fator_preco_proposta, fator_lance_inicial, margem_minima_perc_cfg, margem_alvo_perc, valor_maximo_por_item, preco_minimo_absoluto, confianca_minima_auto, ...restConfig } = config;
+    const payload = {
+      empresa_id: empresaId,
+      ...restConfig,
+      fator_preco_proposta,
+      fator_lance_inicial,
+      margem_minima_perc: margem_minima_perc_cfg,
+      margem_alvo_perc,
+      valor_maximo_por_item,
+      preco_minimo_absoluto,
+      confianca_minima_auto,
+    };
     const { error } = await supabase
       .from('agent_configuracoes')
-      .upsert({ empresa_id: empresaId, ...config }, { onConflict: 'empresa_id' });
+      .upsert(payload as any, { onConflict: 'empresa_id' });
 
     setSaving(false);
     if (error) {
