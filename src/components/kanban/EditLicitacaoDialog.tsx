@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import AureliaEditalPanel from '@/components/aurelia/AureliaEditalPanel';
 
 type LicitacaoKanban = {
   id: string;
