@@ -1486,6 +1486,18 @@ export default function MuralLicitacoes() {
               <Sparkles className="w-3 h-3" /> Portais Externos
             </Badge>
           )}
+          {(() => {
+            const totalComprasnet = licitacoesRaw.filter(l => l.fonte === 'comprasnet').length;
+            const totalPncp = licitacoesRaw.filter(l => l.fonte !== 'comprasnet').length;
+            if (totalComprasnet > 0) {
+              return (
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                  PNCP: {totalPncp} · Compras.gov: {totalComprasnet}
+                </span>
+              );
+            }
+            return null;
+          })()}
         </div>
       </div>
 
