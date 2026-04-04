@@ -277,6 +277,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    const duracaoMs = Date.now() - Date.parse(new Date().toISOString())
+
+    // Registrar log de sincronização no pncp_sync_log
+    try {
+      await supabase.from('pncp_sync_log').insert({
+        segmento: segment,
+        ufs_processadas: ufs,
+        total_registros: totalInseridos + totalErros,
+        novos: totalInseridos,
+        erros: totalErros,
+        status: totalErros > 0 && totalInseridos === 0 ? 'erro' : totalErros > 0 ? 'parcial' : 'sucesso',
+        concluido_em: new Date().toISOString(),
+        duracao_ms: Math.round(performance.now()),
+      })
+    } catch (logErr) {
+      console.error('Erro ao registrar sync log:', logErr)
+    }
+
     const result = {
       message: 'Crawler PNCP concluído',
       segment,
