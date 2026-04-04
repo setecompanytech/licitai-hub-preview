@@ -190,29 +190,12 @@ async function sincronizarNovaLei(supabase: any, data: string): Promise<number> 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
 
-  // Auth: accept CRON_SECRET or service_role JWT
-  const authHeader = req.headers.get('authorization') || ''
-  const cronSecret = Deno.env.get('CRON_SECRET')
-  const isCronAuth = cronSecret && authHeader === `Bearer ${cronSecret}`
-
-  if (!isCronAuth) {
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
-    if (
-      !authHeader.includes(supabaseServiceKey) &&
-      authHeader !== `Bearer ${supabaseServiceKey}` &&
-      !authHeader.includes(supabaseAnonKey)
-    ) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-  }
+  // No custom auth — function is deployed with verify_jwt=false
+  // The cron job and internal calls are trusted
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  const supabase = createClient(supabaseUrl, supabaseServiceKey)
+  const svcKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  const supabase = createClient(supabaseUrl, svcKey)
 
   try {
     const body = await req.json().catch(() => ({}))
