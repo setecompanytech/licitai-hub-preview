@@ -7,71 +7,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-/**
- * Extracts product image + title pairs from Mercado Livre search HTML.
- * ML uses img tags with http2.mlstatic.com sources for real product images.
- */
-function extractMLImages(html: string): { titulo: string; image_url: string }[] {
-  const results: { titulo: string; image_url: string }[] = [];
-  const seen = new Set<string>();
-
-  // Match img tags with mlstatic.com sources
-  const imgTags = html.match(/<img[^>]+>/gi) || [];
-  for (const tag of imgTags) {
-    const srcMatch =
-      tag.match(/src="(https?:\/\/http2\.mlstatic\.com\/D_[^"]+)"/i) ||
-      tag.match(/data-src="(https?:\/\/http2\.mlstatic\.com\/D_[^"]+)"/i);
-    if (!srcMatch) continue;
-
-    let imageUrl = srcMatch[1];
-    // Skip tiny thumbnails (contain _Q_ or very small dimensions)
-    if (/_S_\d{2,3}\.\w+$/i.test(imageUrl)) continue;
-
-    // Normalize URL to avoid duplicates
-    const baseUrl = imageUrl.replace(/D_[A-Z]+_NP_/, "D_NQ_NP_").split("?")[0];
-    if (seen.has(baseUrl)) continue;
-    seen.add(baseUrl);
-
-    const altMatch = tag.match(/alt="([^"]*)"/i);
-    const titulo = altMatch ? altMatch[1].trim() : "";
-
-    if (titulo) {
-      results.push({ titulo, image_url: imageUrl });
-    }
-  }
-
-  return results.slice(0, 20); // Limit to 20 images
-}
+const ML_API_BASE = "https://api.mercadolibre.com";
 
 /**
- * Extracts product images from Amazon search HTML.
+ * Busca imagens de produtos via API pública do Mercado Livre.
+ * Retorna thumbnails de alta qualidade + fotos detalhadas via multi-get.
  */
-function extractAmazonImages(html: string): { titulo: string; image_url: string }[] {
-  const results: { titulo: string; image_url: string }[] = [];
-  const seen = new Set<string>();
-
-  const imgTags = html.match(/<img[^>]+>/gi) || [];
-  for (const tag of imgTags) {
-    const srcMatch =
-      tag.match(/src="(https?:\/\/m\.media-amazon\.com\/images\/I\/[^"]+)"/i) ||
-      tag.match(/data-src="(https?:\/\/m\.media-amazon\.com\/images\/I\/[^"]+)"/i);
-    if (!srcMatch) continue;
-
-    const imageUrl = srcMatch[1];
-    const baseUrl = imageUrl.split("?")[0];
-    if (seen.has(baseUrl)) continue;
-    seen.add(baseUrl);
-
-    const altMatch = tag.match(/alt="([^"]*)"/i);
-    const titulo = altMatch ? altMatch[1].trim() : "";
-    if (titulo && titulo.length > 5) {
-      results.push({ titulo, image_url: imageUrl });
-    }
-  }
-
-  return results.slice(0, 20);
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -94,69 +35,76 @@ serve(async (req) => {
       );
     }
 
-    const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
-    if (!apiKey) {
+    console.log("Buscando imagens via ML API para:", termo);
+
+    // Buscar produtos na API do ML
+    const searchRes = await fetch(
+      `${ML_API_BASE}/sites/MLB/search?q=${encodeURIComponent(termo)}&limit=20`,
+      {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(12000),
+      }
+    );
+
+    if (!searchRes.ok) {
+      throw new Error(`ML API retornou ${searchRes.status}`);
+    }
+
+    const searchData = await searchRes.json();
+    const results = searchData.results || [];
+
+    if (results.length === 0) {
       return new Response(
-        JSON.stringify({ success: false, error: "FIRECRAWL_API_KEY não configurada" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: true, imagens: [] }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Buscando imagens para:", termo);
+    // Buscar fotos em alta resolução via multi-get (até 20 IDs por request)
+    const ids = results.map((r: any) => r.id);
+    let picturesMap: Record<string, Array<{ url: string; secure_url: string }>> = {};
 
-    // Scrape Mercado Livre search results
-    const mlSearchUrl = `https://lista.mercadolivre.com.br/${encodeURIComponent(termo).replace(/%20/g, "-")}`;
+    try {
+      const detailRes = await fetch(
+        `${ML_API_BASE}/items?ids=${ids.join(",")}&attributes=id,pictures`,
+        {
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.timeout(10000),
+        }
+      );
 
-    const [mlResponse, amzResponse] = await Promise.allSettled([
-      fetch("https://api.firecrawl.dev/v1/scrape", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          url: mlSearchUrl,
-          formats: ["html"],
-          onlyMainContent: true,
-          waitFor: 3000,
-        }),
-      }),
-      fetch("https://api.firecrawl.dev/v1/scrape", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          url: `https://www.amazon.com.br/s?k=${encodeURIComponent(termo)}`,
-          formats: ["html"],
-          onlyMainContent: true,
-          waitFor: 3000,
-        }),
-      }),
-    ]);
-
-    const imagens: { titulo: string; image_url: string; fonte: string }[] = [];
-
-    // Process ML results
-    if (mlResponse.status === "fulfilled") {
-      const mlData = await mlResponse.value.json();
-      const html = mlData?.data?.html || mlData?.html || "";
-      const mlImages = extractMLImages(html);
-      console.log(`ML: ${mlImages.length} imagens extraídas`);
-      imagens.push(...mlImages.map((img) => ({ ...img, fonte: "Mercado Livre" })));
+      if (detailRes.ok) {
+        const detailData = await detailRes.json();
+        for (const item of detailData) {
+          if (item.code === 200 && item.body.pictures?.length > 0) {
+            picturesMap[item.body.id] = item.body.pictures;
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Multi-get pictures error:", e);
     }
 
-    // Process Amazon results
-    if (amzResponse.status === "fulfilled") {
-      const amzData = await amzResponse.value.json();
-      const html = amzData?.data?.html || amzData?.html || "";
-      const amzImages = extractAmazonImages(html);
-      console.log(`Amazon: ${amzImages.length} imagens extraídas`);
-      imagens.push(...amzImages.map((img) => ({ ...img, fonte: "Amazon" })));
-    }
+    // Montar resultado com imagens
+    const imagens = results.map((item: any) => {
+      const pictures = picturesMap[item.id];
+      const thumbnailHQ = item.thumbnail_id
+        ? `https://http2.mlstatic.com/D_NQ_NP_${item.thumbnail_id}-O.webp`
+        : item.thumbnail;
 
-    console.log(`Total: ${imagens.length} imagens encontradas`);
+      return {
+        titulo: item.title,
+        image_url: pictures?.[0]?.secure_url || pictures?.[0]?.url || thumbnailHQ,
+        images: pictures
+          ? pictures.map((p: any) => p.secure_url || p.url)
+          : [thumbnailHQ],
+        fonte: "Mercado Livre",
+        preco: item.price,
+        url: item.permalink,
+      };
+    }).filter((img: any) => img.titulo && img.image_url);
+
+    console.log(`ML API: ${imagens.length} imagens encontradas`);
 
     return new Response(
       JSON.stringify({ success: true, imagens }),

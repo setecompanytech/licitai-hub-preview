@@ -404,6 +404,7 @@ Responda APENAS em JSON válido:
               </button>
             </div>
             <div className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-[11px] text-muted-foreground flex-wrap">
+              <span className="flex items-center gap-1 whitespace-nowrap"><ShoppingCart className="w-3 h-3" /> Mercado Livre (API)</span>
               <span className="flex items-center gap-1 whitespace-nowrap"><ShoppingCart className="w-3 h-3" /> Marketplaces</span>
               <span className="flex items-center gap-1 whitespace-nowrap"><Building2 className="w-3 h-3" /> Gov.br (PNCP)</span>
             </div>
