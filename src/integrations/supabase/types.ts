@@ -6656,6 +6656,96 @@ export type Database = {
           },
         ]
       }
+      sugestoes_marca_modelo: {
+        Row: {
+          aceito_em: string | null
+          created_at: string
+          data_processo_origem: string | null
+          descricao_item: string
+          fabricante_sugerido: string | null
+          fonte: string
+          fonte_detalhe: string | null
+          id: string
+          justificativa_ia: string | null
+          licitacao_id: string
+          licitacao_item_id: string | null
+          marca_sugerida: string
+          modelo_sugerido: string | null
+          numero_processo_origem: string | null
+          orgao_origem: string | null
+          preco_cotacao_atual: number | null
+          preco_historico: number | null
+          ranking: number | null
+          score_confianca: number | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          aceito_em?: string | null
+          created_at?: string
+          data_processo_origem?: string | null
+          descricao_item: string
+          fabricante_sugerido?: string | null
+          fonte?: string
+          fonte_detalhe?: string | null
+          id?: string
+          justificativa_ia?: string | null
+          licitacao_id: string
+          licitacao_item_id?: string | null
+          marca_sugerida: string
+          modelo_sugerido?: string | null
+          numero_processo_origem?: string | null
+          orgao_origem?: string | null
+          preco_cotacao_atual?: number | null
+          preco_historico?: number | null
+          ranking?: number | null
+          score_confianca?: number | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          aceito_em?: string | null
+          created_at?: string
+          data_processo_origem?: string | null
+          descricao_item?: string
+          fabricante_sugerido?: string | null
+          fonte?: string
+          fonte_detalhe?: string | null
+          id?: string
+          justificativa_ia?: string | null
+          licitacao_id?: string
+          licitacao_item_id?: string | null
+          marca_sugerida?: string
+          modelo_sugerido?: string | null
+          numero_processo_origem?: string | null
+          orgao_origem?: string | null
+          preco_cotacao_atual?: number | null
+          preco_historico?: number | null
+          ranking?: number | null
+          score_confianca?: number | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sugestoes_marca_modelo_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sugestoes_marca_modelo_licitacao_item_id_fkey"
+            columns: ["licitacao_item_id"]
+            isOneToOne: false
+            referencedRelation: "licitacao_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supplier_scores: {
         Row: {
           confiabilidade: number | null
