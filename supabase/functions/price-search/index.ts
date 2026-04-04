@@ -233,6 +233,44 @@ async function coletorLeroyMerlin(termos: string[]): Promise<PriceResult[]> {
   return resultados;
 }
 
+// Coletor Mercado Livre via API pública
+async function coletorMercadoLivre(termos: string[]): Promise<PriceResult[]> {
+  const resultados: PriceResult[] = [];
+
+  for (const termo of termos.slice(0, 2)) {
+    try {
+      const res = await fetch(
+        `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(termo)}&limit=20&condition=new`,
+        {
+          headers: { Accept: 'application/json' },
+          signal: AbortSignal.timeout(10000),
+        }
+      );
+
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      for (const item of (data.results ?? []).slice(0, 15)) {
+        if (item.price > 0) {
+          const marca = item.attributes?.find((a: any) => a.id === 'BRAND')?.value_name || '';
+          resultados.push({
+            fonte: 'mercadolivre',
+            titulo: item.title,
+            preco_unitario: item.price,
+            vendedor: item.seller?.nickname || 'Mercado Livre',
+            condicao: item.condition === 'new' ? 'Novo' : 'Usado',
+            url: item.permalink,
+            ean: marca ? `Marca: ${marca}` : undefined,
+            coletado_em: new Date().toISOString(),
+          });
+        }
+      }
+    } catch (e) { console.error('ML API error:', e); }
+  }
+
+  return resultados;
+}
+
 // Coletor genérico via pesquisa-preco-real (existing function)
 async function coletorPesquisaReal(supabase: any, termos: string[]): Promise<PriceResult[]> {
   const resultados: PriceResult[] = [];
