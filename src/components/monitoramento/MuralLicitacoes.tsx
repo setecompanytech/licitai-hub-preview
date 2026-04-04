@@ -97,6 +97,10 @@ type LicitacaoMural = {
   esferaNome: string | null;
   tipoInstrumentoNome: string | null;
   unidadeOrgao: string | null;
+  // Multi-fonte
+  fonte: string | null;
+  linkComprasnet: string | null;
+  leiBase: string | null;
 };
 
 const UFS_BRASIL = [
@@ -314,8 +318,8 @@ export default function MuralLicitacoes() {
     data_abertura: item.data_abertura || item.data_abertura_proposta || null,
     data_encerramento: item.data_encerramento || item.data_encerramento_proposta || null,
     data_publicacao: item.data_publicacao || item.data_publicacao_pncp || null,
-    portal: item.portal || 'PNCP',
-    url: item.url || item.url_pncp || null,
+    portal: item.fonte === 'comprasnet' ? 'Compras.gov' : (item.portal || 'PNCP'),
+    url: item.url || item.url_pncp || item.link_comprasnet || null,
     pncpNumero: item.pncpNumero || item.numero_controle_pncp || null,
     cnpjOrgao: item.cnpjOrgao || item.cnpj_orgao || null,
     anoCompra: item.anoCompra || item.ano_compra || null,
@@ -323,6 +327,9 @@ export default function MuralLicitacoes() {
     esferaNome: item.esferaNome || (item.esfera_id === 'F' ? 'Federal' : item.esfera_id === 'E' ? 'Estadual' : item.esfera_id === 'M' ? 'Municipal' : item.esfera_id === 'D' ? 'Distrital' : null),
     tipoInstrumentoNome: item.tipoInstrumentoNome || item.tipo_instrumento || null,
     unidadeOrgao: item.unidadeOrgao || item.unidade_orgao || null,
+    fonte: item.fonte || 'pncp',
+    linkComprasnet: item.link_comprasnet || null,
+    leiBase: item.lei_base || null,
   });
 
   // ── FASE 1: Carregamento instantâneo do cache local ──
@@ -629,6 +636,9 @@ export default function MuralLicitacoes() {
         esferaNome: null,
         tipoInstrumentoNome: data.tipo_instrumento_convocatorio || null,
         unidadeOrgao: data.unidade_orgao || null,
+        fonte: 'pncp',
+        linkComprasnet: null,
+        leiBase: '14133',
       };
 
       setFichaAberta(lic);
@@ -852,8 +862,15 @@ export default function MuralLicitacoes() {
                   <h2 className="font-bold text-base sm:text-lg">Ficha da Licitação</h2>
                   <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
                     <ShieldCheck className="w-3.5 h-3.5 text-success flex-shrink-0" />
-                    <span>Dados extraídos em tempo real da API oficial do PNCP</span>
-                    {d && <Badge className="bg-success/10 text-success border-success/30 text-[9px] ml-1">Verificado ✓</Badge>}
+                    <span>
+                      {lic.fonte === 'comprasnet'
+                        ? 'Dados extraídos em tempo real da API oficial do Compras.gov.br'
+                        : 'Dados extraídos em tempo real da API oficial do PNCP'}
+                    </span>
+                    {lic.fonte === 'comprasnet' && (
+                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[9px] ml-1">Compras.gov ✓</Badge>
+                    )}
+                    {d && lic.fonte !== 'comprasnet' && <Badge className="bg-success/10 text-success border-success/30 text-[9px] ml-1">Verificado ✓</Badge>}
                   </p>
                 </div>
               </div>
@@ -1476,6 +1493,18 @@ export default function MuralLicitacoes() {
               <Sparkles className="w-3 h-3" /> Portais Externos
             </Badge>
           )}
+          {(() => {
+            const totalComprasnet = licitacoesRaw.filter(l => l.fonte === 'comprasnet').length;
+            const totalPncp = licitacoesRaw.filter(l => l.fonte !== 'comprasnet').length;
+            if (totalComprasnet > 0) {
+              return (
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                  PNCP: {totalPncp} · Compras.gov: {totalComprasnet}
+                </span>
+              );
+            }
+            return null;
+          })()}
         </div>
       </div>
 
@@ -1548,9 +1577,18 @@ export default function MuralLicitacoes() {
                     >
                       {isFav ? <Star className="w-3.5 h-3.5 fill-current" /> : <StarOff className="w-3.5 h-3.5" />}
                     </button>
-                    <Badge variant="outline" className={cn('text-[9px]', lic.id.startsWith('ext-') ? 'bg-accent/10 text-accent border-accent/30' : '')}>
-                      {lic.id.startsWith('ext-') ? '🌐 Externo' : lic.portal}
+                    <Badge variant="outline" className={cn('text-[9px]',
+                      lic.id.startsWith('ext-') ? 'bg-accent/10 text-accent border-accent/30' :
+                      lic.fonte === 'comprasnet' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' :
+                      ''
+                    )}>
+                      {lic.id.startsWith('ext-') ? '🌐 Externo' : lic.fonte === 'comprasnet' ? '🏛 Compras.gov' : lic.portal}
                     </Badge>
+                    {lic.leiBase && lic.leiBase !== '14133' && (
+                      <Badge variant="outline" className="text-[9px] bg-amber-500/10 text-amber-600 border-amber-500/30">
+                        Lei 8.666
+                      </Badge>
+                    )}
                   </div>
                 </div>
 

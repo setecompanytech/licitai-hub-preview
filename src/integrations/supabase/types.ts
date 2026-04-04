@@ -5164,8 +5164,12 @@ export type Database = {
           data_publicacao_pncp: string | null
           data_ultima_retificacao: string | null
           esfera_id: string | null
+          fonte: string | null
+          fonte_id: string | null
           hash_objeto: string | null
           id: string
+          lei_base: string | null
+          link_comprasnet: string | null
           link_sistema_origem: string | null
           modalidade_id: number | null
           modalidade_nome: string | null
@@ -5181,6 +5185,8 @@ export type Database = {
           situacao: string | null
           srp: boolean | null
           tipo_instrumento: string | null
+          uasg_codigo: string | null
+          uasg_nome: string | null
           uf: string | null
           unidade_orgao: string | null
           updated_at: string | null
@@ -5200,8 +5206,12 @@ export type Database = {
           data_publicacao_pncp?: string | null
           data_ultima_retificacao?: string | null
           esfera_id?: string | null
+          fonte?: string | null
+          fonte_id?: string | null
           hash_objeto?: string | null
           id?: string
+          lei_base?: string | null
+          link_comprasnet?: string | null
           link_sistema_origem?: string | null
           modalidade_id?: number | null
           modalidade_nome?: string | null
@@ -5217,6 +5227,8 @@ export type Database = {
           situacao?: string | null
           srp?: boolean | null
           tipo_instrumento?: string | null
+          uasg_codigo?: string | null
+          uasg_nome?: string | null
           uf?: string | null
           unidade_orgao?: string | null
           updated_at?: string | null
@@ -5236,8 +5248,12 @@ export type Database = {
           data_publicacao_pncp?: string | null
           data_ultima_retificacao?: string | null
           esfera_id?: string | null
+          fonte?: string | null
+          fonte_id?: string | null
           hash_objeto?: string | null
           id?: string
+          lei_base?: string | null
+          link_comprasnet?: string | null
           link_sistema_origem?: string | null
           modalidade_id?: number | null
           modalidade_nome?: string | null
@@ -5253,6 +5269,8 @@ export type Database = {
           situacao?: string | null
           srp?: boolean | null
           tipo_instrumento?: string | null
+          uasg_codigo?: string | null
+          uasg_nome?: string | null
           uf?: string | null
           unidade_orgao?: string | null
           updated_at?: string | null
@@ -5261,6 +5279,57 @@ export type Database = {
           valor_total_homologado?: number | null
           versao?: number
           versao_anterior_hash?: string | null
+        }
+        Relationships: []
+      }
+      pncp_sync_log: {
+        Row: {
+          concluido_em: string | null
+          created_at: string | null
+          data_consultada: string | null
+          duracao_ms: number | null
+          erros: number | null
+          fonte: string | null
+          id: string
+          iniciado_em: string | null
+          modalidade_id: number | null
+          novos: number | null
+          segmento: number | null
+          status: string | null
+          total_registros: number | null
+          ufs_processadas: string[] | null
+        }
+        Insert: {
+          concluido_em?: string | null
+          created_at?: string | null
+          data_consultada?: string | null
+          duracao_ms?: number | null
+          erros?: number | null
+          fonte?: string | null
+          id?: string
+          iniciado_em?: string | null
+          modalidade_id?: number | null
+          novos?: number | null
+          segmento?: number | null
+          status?: string | null
+          total_registros?: number | null
+          ufs_processadas?: string[] | null
+        }
+        Update: {
+          concluido_em?: string | null
+          created_at?: string | null
+          data_consultada?: string | null
+          duracao_ms?: number | null
+          erros?: number | null
+          fonte?: string | null
+          id?: string
+          iniciado_em?: string | null
+          modalidade_id?: number | null
+          novos?: number | null
+          segmento?: number | null
+          status?: string | null
+          total_registros?: number | null
+          ufs_processadas?: string[] | null
         }
         Relationships: []
       }
@@ -7777,6 +7846,15 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      vw_editais_por_fonte: {
+        Row: {
+          fonte: string | null
+          novos_hoje: number | null
+          total: number | null
+          ultima_publicacao: string | null
+        }
+        Relationships: []
       }
     }
     Functions: {
