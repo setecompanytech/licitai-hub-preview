@@ -266,12 +266,24 @@ ${truncated}`
           )}
 
           {extracted && (
-            <div className="flex items-center gap-2 p-2.5 bg-accent/5 border border-accent/20 rounded-lg">
-              <CheckCircle className="w-4 h-4 text-accent shrink-0" />
-              <p className="text-xs text-accent">
-                Extração concluída! Avance para revisar e editar os dados extraídos nas próximas etapas.
-              </p>
-            </div>
+            <>
+              <div className="flex items-center gap-2 p-2.5 bg-accent/5 border border-accent/20 rounded-lg">
+                <CheckCircle className="w-4 h-4 text-accent shrink-0" />
+                <p className="text-xs text-accent">
+                  Extração concluída! Avance para revisar e editar os dados extraídos nas próximas etapas.
+                </p>
+              </div>
+
+              {licitacaoId && (
+                <SugestaoMarcasReview
+                  licitacaoId={licitacaoId}
+                  itens={extractedItensRef.current}
+                  onMarcaAplicada={(itemId, marca) => {
+                    toast.success(`Marca "${marca}" aplicada com sucesso!`);
+                  }}
+                />
+              )}
+            </>
           )}
         </div>
       ) : (
