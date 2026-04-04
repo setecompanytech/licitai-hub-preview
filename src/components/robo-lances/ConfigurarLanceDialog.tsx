@@ -523,7 +523,7 @@ ${truncated}`
     setItens([]); setTipoDisputa('item'); setStep(editingLance ? 1 : 0);
     setSelectedLicId(null); setSearchLic(''); setStatusFilter('todos'); setLicitacaoIdRef(undefined);
     setValorInicialInput(''); setValorMinimoInput('');
-    setEditalFile(null); setShowEditalUpload(false);
+    setEditalFile(null); setShowEditalUpload(false); setAutoExtractTriggered(false);
     resetItemForm();
   };
 
