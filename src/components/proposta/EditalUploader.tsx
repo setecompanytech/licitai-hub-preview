@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import { useEditalExtraction } from '@/hooks/useEditalExtraction';
 import { extractTextFromFile } from '@/lib/pdf-text-extractor';
+import SugestaoMarcasReview from './SugestaoMarcasReview';
 
 interface EditalUploaderProps {
   onExtracted: (data: ExtractedEditalData) => void;
@@ -49,6 +50,7 @@ export default function EditalUploader({ onExtracted, isExtracting, setIsExtract
   const [progress, setProgress] = useState('');
   const [hasExistingItens, setHasExistingItens] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const extractedItensRef = useRef<Array<{ id?: string; numero?: number; descricao: string; quantidade?: number; unidade?: string; valor_unitario?: number }>>([]);
   const { fetchItens, saveItensManual } = useEditalExtraction();
 
   // Check for existing centralized items
@@ -182,6 +184,15 @@ ${truncated}`
               setHasExistingItens(true);
             }
 
+            // Store for suggestion component
+            extractedItensRef.current = itens.map((item, idx) => ({
+              numero: parseInt(item.item) || idx + 1,
+              descricao: item.descricao,
+              quantidade: parseFloat(item.quantidade) || 1,
+              unidade: item.unidade,
+              valor_unitario: parseFloat(item.valorUnitario.replace(',', '.')) || 0,
+            }));
+
             onExtracted({
               numeroLicitacao: data.numeroLicitacao || '',
               orgao: data.orgao || '',
@@ -265,12 +276,24 @@ ${truncated}`
           )}
 
           {extracted && (
-            <div className="flex items-center gap-2 p-2.5 bg-accent/5 border border-accent/20 rounded-lg">
-              <CheckCircle className="w-4 h-4 text-accent shrink-0" />
-              <p className="text-xs text-accent">
-                Extração concluída! Avance para revisar e editar os dados extraídos nas próximas etapas.
-              </p>
-            </div>
+            <>
+              <div className="flex items-center gap-2 p-2.5 bg-accent/5 border border-accent/20 rounded-lg">
+                <CheckCircle className="w-4 h-4 text-accent shrink-0" />
+                <p className="text-xs text-accent">
+                  Extração concluída! Avance para revisar e editar os dados extraídos nas próximas etapas.
+                </p>
+              </div>
+
+              {licitacaoId && (
+                <SugestaoMarcasReview
+                  licitacaoId={licitacaoId}
+                  itens={extractedItensRef.current}
+                  onMarcaAplicada={(itemId, marca) => {
+                    toast.success(`Marca "${marca}" aplicada com sucesso!`);
+                  }}
+                />
+              )}
+            </>
           )}
         </div>
       ) : (
