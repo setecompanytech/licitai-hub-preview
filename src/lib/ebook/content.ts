@@ -1,212 +1,242 @@
 export interface EbookSection {
   title: string;
+  descricao: string;
   contextualizacao: string;
-  fundamento: string;
-  fluxos: string[];
+  comoUsar: string[];
   funcionalidades: string[];
+  dicaPratica: string;
   routeHint: string;
 }
 
 export const ebookSections: EbookSection[] = [
   {
-    title: 'Visao Estrategica do Dashboard',
+    title: 'Dashboard — Visão Estratégica',
+    descricao:
+      'O Dashboard é a tela inicial da PRAEFECTUS. Ele reúne todos os números importantes da sua operação de licitações em um só lugar: quantas licitações estão ativas, quantas foram ganhas, qual o valor total em disputa e quais prazos estão próximos. Funciona como o painel de controle de um avião — uma olhada rápida e você sabe exatamente o estado de toda a operação.',
     contextualizacao:
-      'O Dashboard da PRAEFECTUS consolida indicadores operacionais e financeiros em uma unica visao, reduzindo o tempo de analise e aumentando a capacidade de decisao das equipes de licitacao.',
-    fundamento:
-      'A centralizacao de dados melhora governanca, rastreabilidade e resposta a prazos criticos. O modulo organiza informacoes por status, modalidade e valor para apoiar planejamento tatico e executivo.',
-    fluxos: [
-      'Acessar o Dashboard no inicio do expediente.',
-      'Aplicar filtros por periodo e modalidade.',
-      'Priorizar cards com alerta de prazo e risco.',
-      'Abrir licitacoes criticas diretamente pelos indicadores.',
+      'Empresas que participam de licitações públicas precisam acompanhar dezenas de processos simultâneos, cada um com prazos, documentos e valores diferentes. Sem um painel centralizado, informações se perdem em planilhas, e-mails e anotações. O Dashboard resolve isso consolidando tudo em indicadores visuais atualizados automaticamente.',
+    comoUsar: [
+      'Ao abrir a plataforma, o Dashboard aparece automaticamente como tela inicial.',
+      'Observe os cards de KPI no topo: eles mostram licitações ativas, ganhas, perdidas e taxa de sucesso.',
+      'Use os gráficos de barras para comparar valores por modalidade (pregão, concorrência, dispensa).',
+      'Clique em qualquer indicador com alerta vermelho para ir direto à licitação que precisa de atenção.',
+      'Filtre por período (semana, mês, trimestre) para analisar tendências.',
     ],
     funcionalidades: [
-      'Resumo de licitacoes ativas, ganhas e perdidas.',
-      'Graficos comparativos por faixa de valor e modalidade.',
-      'Alertas de vencimento com destaque visual.',
-      'Visao consolidada da taxa de sucesso por periodo.',
+      'Cards de KPI com variação percentual em relação ao período anterior.',
+      'Gráficos comparativos por faixa de valor e modalidade de licitação.',
+      'Alertas visuais de vencimento de prazo com destaque em vermelho.',
+      'Taxa de sucesso consolidada por período selecionado.',
+      'Acesso rápido às licitações críticas direto pelo indicador.',
     ],
+    dicaPratica: 'Comece o dia sempre pelo Dashboard. Em menos de 30 segundos você identifica o que precisa de atenção imediata.',
     routeHint: '/dashboard',
   },
   {
-    title: 'Monitoramento de Editais e Diarios',
+    title: 'Monitoramento de Editais',
+    descricao:
+      'O módulo de Monitoramento busca automaticamente novas oportunidades de licitação em portais federais, estaduais e municipais. Ele filtra os resultados com base no perfil da sua empresa (CNAE, região, palavras-chave) e classifica cada edital por relevância, para que você nunca perca uma oportunidade compatível.',
     contextualizacao:
-      'A LicitaIA monitora continuamente fontes publicas para identificar oportunidades compativeis com o perfil da empresa, reduzindo perda de editais relevantes.',
-    fundamento:
-      'A cobertura multiplataforma e o filtro por aderencia aumentam eficiencia comercial e reduzem esforco manual em buscas repetitivas.',
-    fluxos: [
-      'Configurar CNAE, estados, municipios e palavras-chave.',
-      'Revisar novos editais classificados por relevancia.',
-      'Marcar editais como lidos, favoritos ou arquivados.',
-      'Encaminhar editais qualificados para o Kanban.',
+      'Todos os dias, centenas de editais são publicados em diversos portais públicos. Monitorar manualmente cada portal é inviável e resulta em oportunidades perdidas. A PRAEFECTUS automatiza essa busca, cruzando os dados publicados com o perfil cadastrado da empresa e gerando alertas em tempo real.',
+    comoUsar: [
+      'Acesse "Monitoramento de Editais" no menu lateral.',
+      'Configure seu perfil de busca: adicione CNAEs, estados, municípios e palavras-chave do seu segmento.',
+      'Revise os editais classificados por score de relevância (de 0 a 100).',
+      'Marque editais como favoritos, lidos ou arquivados para organizar seu pipeline.',
+      'Use os filtros por fonte (Federal, Estadual, Municipal) e por período de publicação.',
     ],
     funcionalidades: [
-      'Monitoramento continuo de portais federais, estaduais e municipais.',
-      'Classificacao automatica por score de relevancia.',
-      'Alertas de publicacao, retificacao e suspensao.',
-      'Integracao com diarios oficiais para rastreio ampliado.',
+      'Monitoramento contínuo de portais federais (Compras.gov.br, PNCP), estaduais e municipais.',
+      'Score de relevância automático baseado na compatibilidade com seu perfil.',
+      'Alertas por e-mail e notificação interna de novos editais compatíveis.',
+      'Filtros avançados por CNAE, região, modalidade, valor estimado e prazo.',
+      'Integração com Diários Oficiais para rastreio de publicações complementares.',
     ],
+    dicaPratica: 'Configure pelo menos 3 palavras-chave específicas do seu nicho. Quanto mais refinado o perfil, maior a precisão dos resultados.',
     routeHint: '/monitoramento-editais',
   },
   {
-    title: 'Chat do Pregao e Acompanhamento em Tempo Real',
+    title: 'Chat do Pregão em Tempo Real',
+    descricao:
+      'Durante uma sessão de pregão eletrônico, diversas informações circulam rapidamente: mensagens do pregoeiro, eventos de lance, questionamentos e decisões. O Chat do Pregão captura e organiza todas essas informações em tempo real, permitindo que sua equipe acompanhe a disputa sem sair da plataforma.',
     contextualizacao:
-      'O modulo de chat permite leitura operacional do pregao em tempo real, incluindo eventos de lance, mensagens da comissao e movimentacao de concorrentes.',
-    fundamento:
-      'A visibilidade imediata de eventos criticos reduz tempo de resposta e melhora a estrategia de disputa durante a sessao publica.',
-    fluxos: [
-      'Selecionar o pregao ativo no painel.',
-      'Acompanhar mensagens e eventos relevantes.',
-      'Acionar equipe tecnica ao detectar risco ou questionamento.',
-      'Registrar decisoes para historico de auditoria.',
+      'Em pregões eletrônicos, segundos podem definir o resultado. A falta de visibilidade sobre o que está acontecendo — quem deu lance, qual o menor preço, se há questionamento pendente — compromete a estratégia de disputa. Este módulo centraliza toda a comunicação do pregão em um painel visual e cronológico.',
+    comoUsar: [
+      'Selecione o pregão ativo no painel de disputas.',
+      'Acompanhe as mensagens do pregoeiro e eventos de lance no feed cronológico.',
+      'Observe o painel lateral que mostra a posição dos concorrentes em tempo real.',
+      'Use o alerta de menção ao CNPJ da empresa para identificar quando você é citado.',
+      'Registre observações internas para análise pós-disputa.',
     ],
     funcionalidades: [
-      'Painel de chat em tempo real por pregao.',
-      'Alerta de mencao ao CNPJ da empresa.',
-      'Registro de eventos para pos-analise.',
-      'Historico consultavel para melhoria continua.',
+      'Feed de chat em tempo real com mensagens do pregão.',
+      'Painel de posição competitiva com ranking de lances.',
+      'Alerta automático quando o CNPJ da empresa é mencionado.',
+      'Classificação de mensagens por tipo: lance, esclarecimento, decisão.',
+      'Histórico completo para auditoria e melhoria contínua.',
     ],
+    dicaPratica: 'Mantenha o Chat aberto em um segundo monitor durante disputas. A visibilidade em tempo real é decisiva para ajustar a estratégia.',
     routeHint: '/monitoramento-chat',
   },
   {
-    title: 'Proposta Tecnica e Comercial Normatizada',
+    title: 'Proposta Técnica e Comercial',
+    descricao:
+      'Este módulo permite criar propostas técnicas e comerciais padronizadas, com planilha de preços, dados da empresa, declarações obrigatórias e assinatura digital — tudo em conformidade com as exigências da Lei 14.133/2021 e ABNT NBR 14724. O resultado pode ser exportado em PDF, Word ou Excel.',
     contextualizacao:
-      'A proposta tecnica e comercial na LicitaIA segue estrutura padronizada para manter conformidade documental, clareza juridica e fidelidade entre tela e arquivos exportados.',
-    fundamento:
-      'O fluxo respeita ABNT NBR 14724 e Lei 14.133/2021, com base em dados estruturados para garantir consistencia entre PDF, Word e Excel.',
-    fluxos: [
-      'Iniciar proposta a partir do edital selecionado.',
-      'Preencher dados comerciais e enderecamento institucional.',
-      'Validar planilha com 11 colunas obrigatorias.',
-      'Aplicar declaracoes, dados de contratacao e assinatura digital.',
+      'Uma proposta mal formatada ou incompleta pode desclassificar a empresa na fase de julgamento. A PRAEFECTUS padroniza toda a estrutura documental: desde o cabeçalho com dados institucionais até a planilha com as 11 colunas obrigatórias, eliminando erros de formatação e omissão de campos.',
+    comoUsar: [
+      'Inicie uma nova proposta selecionando o edital de referência.',
+      'Preencha os dados comerciais da empresa (ou importe do cadastro).',
+      'Adicione os itens na planilha de preços com quantidade, unidade, descrição, marca e valores.',
+      'Revise o preview em tempo real no painel lateral direito.',
+      'Exporte em PDF, Word ou Excel com um clique.',
     ],
     funcionalidades: [
-      'Sequencia documental: proposta, planilha, notas, declaracoes e assinatura.',
-      'Planilha padrao com Item, Quantidade, Unidade, Descricao, Marca, Fabricante, Modelo, Valor Unitario, Valor Unitario por Extenso, Valor Total e Valor Total por Extenso.',
-      'Extracao assistida por IA para preenchimento inicial.',
-      'Exportacao sincronizada para PDF, Word e Excel.',
-      'Selecao bancaria com destaque para BANPARA quando aplicavel.',
+      'Planilha de preços com 11 colunas obrigatórias (Item, Qtd, Unidade, Descrição, Marca, Fabricante, Modelo, Valor Unit., Extenso Unit., Valor Total, Extenso Total).',
+      'Preview em tempo real da proposta formatada.',
+      'Extração assistida por IA para preenchimento inicial a partir do edital.',
+      'Exportação sincronizada para PDF, Word e Excel.',
+      'Gestão de declarações obrigatórias e assinatura digital.',
     ],
+    dicaPratica: 'Use o recurso de importação do catálogo para reaproveitar itens já precificados em licitações anteriores.',
     routeHint: '/proposta-tecnica',
   },
   {
-    title: 'Precificacao Inteligente e Composicao de Custos',
+    title: 'Precificação Inteligente',
+    descricao:
+      'O módulo de Precificação transforma o cálculo de custos em um processo estruturado e rastreável. Ele permite compor o custo unitário de cada item, aplicar BDI (Benefícios e Despesas Indiretas), calcular tributos e comparar com preços de referência do governo — tudo em uma única tela.',
     contextualizacao:
-      'O modulo de precificacao transforma memoria de calculo em processo rastreavel e repetivel, diminuindo erro humano e elevando competitividade.',
-    fundamento:
-      'A combinacao de referencias publicas, composicao de custos e regras fiscais permite propostas tecnicamente sustentaveis e comercialmente viaveis.',
-    fluxos: [
-      'Definir itens, unidades e quantidades da proposta.',
-      'Consultar referencias de preco e custos logísticos.',
-      'Calcular BDI e impactos tributarios.',
-      'Consolidar composicao final e exportar memoria.',
+      'Precificar incorretamente é a principal causa de prejuízo em contratos públicos. Valor alto demais perde o certame; valor baixo demais compromete a margem. A PRAEFECTUS oferece calculadoras integradas que consideram regime tributário, custos logísticos, referências públicas e margem-alvo para gerar preços competitivos e sustentáveis.',
+    comoUsar: [
+      'Acesse "Precificação" e selecione a licitação ou crie uma composição avulsa.',
+      'Defina os itens com quantidade, unidade e descrição.',
+      'Consulte referências de preço público (Painel de Preços Gov, Banco de Preços).',
+      'Use a calculadora de BDI e selecione o regime tributário da empresa.',
+      'Exporte a memória de cálculo completa para revisão interna.',
     ],
     funcionalidades: [
-      'Composicao de custo unitario assistida.',
-      'Calculadoras fiscal e tributaria integradas.',
-      'Consulta de preco publico para balizamento.',
-      'Exportacao da composicao para revisao interna.',
+      'Composição de custo unitário detalhada (material, mão de obra, logística).',
+      'Calculadora de BDI com desmembramento por componente.',
+      'Consulta a preços públicos de referência para balizamento.',
+      'Calculadora tributária integrada (Simples Nacional, Lucro Presumido, Lucro Real).',
+      'Catálogo de itens já precificados para reaproveitamento.',
     ],
+    dicaPratica: 'Sempre compare seu preço final com pelo menos 3 referências públicas antes de submeter a proposta.',
     routeHint: '/precificacao',
   },
   {
-    title: 'Apoio Juridico com IA e Base Normativa',
+    title: 'Apoio Jurídico com IA',
+    descricao:
+      'O Apoio Jurídico permite gerar documentos legais — impugnações, recursos, contrarrazões e pedidos de reequilíbrio — com assistência de inteligência artificial e base normativa integrada. A IA sugere fundamentação jurídica com base na Lei 14.133/2021, jurisprudência do TCU e doutrina aplicável.',
     contextualizacao:
-      'Apoio juridico estruturado para impugnacoes, recursos e manifestacoes tecnicas com apoio de inteligencia artificial e base legal parametrizada.',
-    fundamento:
-      'A padronizacao reduz inconsistencias, acelera redacao e aumenta robustez argumentativa conforme legislacao e jurisprudencia aplicavel.',
-    fluxos: [
-      'Selecionar tipo de peca juridica.',
-      'Anexar dados do edital e fatos relevantes.',
-      'Gerar minuta inicial com fundamentacao.',
-      'Revisar juridicamente e exportar documento final.',
+      'Redigir peças jurídicas para licitações exige conhecimento específico da legislação de compras públicas. Muitas empresas não possuem departamento jurídico dedicado e dependem de assessoria externa, o que aumenta custos e prazos. Este módulo democratiza o acesso à argumentação jurídica qualificada.',
+    comoUsar: [
+      'Selecione o tipo de peça jurídica (impugnação, recurso, contrarrazão, parecer).',
+      'Anexe os dados do edital e descreva os fatos relevantes.',
+      'A IA gera uma minuta com fundamentação legal automatizada.',
+      'Revise e edite o texto diretamente no editor integrado.',
+      'Exporte o documento final em PDF ou Word.',
     ],
     funcionalidades: [
-      'Geracao de impugnacao e recurso administrativo.',
-      'Suporte para contrarrazoes e pareceres.',
-      'Apoio a pedidos de reequilibrio economico-financeiro.',
-      'Upload de base juridica para contexto interno.',
+      'Geração de impugnação ao edital com fundamentação automática.',
+      'Recurso administrativo com citação de jurisprudência.',
+      'Contrarrazões e pareceres técnicos estruturados.',
+      'Pedido de reequilíbrio econômico-financeiro com cálculos.',
+      'Upload de base jurídica própria para enriquecer o contexto da IA.',
     ],
+    dicaPratica: 'Faça upload de decisões favoráveis anteriores na base jurídica. A IA aprende com esses precedentes e fortalece a argumentação.',
     routeHint: '/apoio-juridico',
   },
   {
-    title: 'Gestao de Documentos e Validades',
+    title: 'Gestão de Documentos',
+    descricao:
+      'A Gestão de Documentos funciona como um cofre digital organizado para todos os documentos obrigatórios da empresa em licitações: certidões, atestados, contratos sociais e comprovantes. O sistema monitora validades e alerta quando um documento está prestes a vencer.',
     contextualizacao:
-      'A gestao documental centraliza arquivos obrigatorios da empresa para licitacoes, com foco em validade, disponibilidade e controle de versoes.',
-    fundamento:
-      'O repositorio unico reduz retrabalho, evita envio de documento vencido e acelera montagem de habilitacao e proposta.',
-    fluxos: [
-      'Cadastrar documentos por categoria.',
-      'Associar arquivo a empresa e licitacao.',
-      'Monitorar vencimentos pelo painel de alertas.',
-      'Atualizar versao e manter historico de alteracoes.',
+      'Documentos vencidos ou ausentes são motivo frequente de inabilitação em licitações. Gerenciar certidões com validades diferentes, de múltiplos órgãos, para várias empresas, é complexo e sujeito a erros. O repositório centralizado resolve isso com controle automático de vencimento e histórico de versões.',
+    comoUsar: [
+      'Acesse "Documentos" e cadastre os arquivos por categoria (certidão, atestado, contrato).',
+      'Associe cada documento à empresa correspondente.',
+      'Observe os badges de status: verde (válido), amarelo (vencendo em breve), vermelho (vencido).',
+      'Configure alertas para receber aviso com antecedência antes do vencimento.',
+      'Use o recurso de combinação para juntar documentos em um único PDF para envio.',
     ],
     funcionalidades: [
-      'Repositorio central por tipo documental.',
-      'Alertas de vencimento com antecedencia.',
-      'Combinacao de arquivos para envio unificado.',
-      'Rastreamento de atualizacao e responsavel.',
+      'Repositório centralizado com organização por tipo documental.',
+      'Alertas automáticos de vencimento com antecedência configurável.',
+      'Badges visuais de status (válido, expirando, vencido).',
+      'Combinação de múltiplos documentos em PDF único.',
+      'Histórico de versões com rastreamento de alterações.',
     ],
+    dicaPratica: 'Configure alertas com 30 dias de antecedência para certidões. Isso garante tempo hábil para renovação sem perder prazos.',
     routeHint: '/documentos',
   },
   {
-    title: 'Kanban Operacional de Licitacoes',
+    title: 'Kanban de Licitações',
+    descricao:
+      'O Kanban organiza suas licitações em colunas visuais que representam cada etapa do processo: Novo, Análise, Proposta, Enviado e Ganho. Basta arrastar o card de uma coluna para outra conforme o processo avança. É a forma mais intuitiva de visualizar o progresso de todas as oportunidades.',
     contextualizacao:
-      'O Kanban organiza a execucao das licitacoes em etapas claras, promovendo responsabilidade, visibilidade e previsibilidade de entrega.',
-    fundamento:
-      'A gestao visual de fluxo reduz gargalos e facilita coordenacao entre times comercial, tecnico, juridico e financeiro.',
-    fluxos: [
-      'Criar card para cada oportunidade aprovada.',
-      'Definir responsavel e data limite por etapa.',
-      'Atualizar status conforme andamento real.',
-      'Encerrar card com registro de resultado.',
+      'Sem uma visão clara das etapas, é comum que licitações fiquem "paradas" sem que ninguém perceba. O Kanban resolve isso com gestão visual: cada card é uma licitação, cada coluna é uma etapa, e qualquer gargalo fica imediatamente visível para toda a equipe.',
+    comoUsar: [
+      'Acesse "Kanban" no menu lateral para visualizar o quadro de licitações.',
+      'Crie um novo card para cada oportunidade aprovada, preenchendo título, valor e prazo.',
+      'Atribua um responsável e defina a data limite para cada etapa.',
+      'Arraste o card entre as colunas conforme o andamento (Novo → Análise → Proposta → Enviado → Ganho).',
+      'Clique no card para ver detalhes, adicionar notas e consultar histórico de movimentação.',
     ],
     funcionalidades: [
-      'Colunas personalizaveis por processo.',
-      'Priorizacao por criticidade e prazo.',
-      'Atribuicao de responsavel por atividade.',
-      'Historico de movimentacao para auditoria.',
+      'Colunas personalizáveis por etapa do processo licitatório.',
+      'Drag-and-drop intuitivo para movimentação de cards.',
+      'Priorização visual por criticidade e prazo (badges coloridos).',
+      'Atribuição de responsável por atividade com avatar.',
+      'Histórico de movimentação para auditoria e análise de gargalos.',
     ],
+    dicaPratica: 'Defina uma reunião semanal rápida (15 min) para revisar o quadro Kanban com a equipe. Isso evita que processos fiquem esquecidos.',
     routeHint: '/kanban',
   },
   {
-    title: 'Robo de Lances com Regras Configuraveis',
+    title: 'Robô de Lances',
+    descricao:
+      'O Robô de Lances automatiza o envio de lances em pregões eletrônicos de acordo com regras configuradas por você: preço de referência, piso mínimo, valor de decremento e intervalo entre lances. Ele reage mais rápido que qualquer operador humano, mantendo sua empresa competitiva durante a fase de disputa.',
     contextualizacao:
-      'O robo de lances automatiza respostas em pregoes eletronicos conforme parametros definidos pelo usuario, preservando estrategia e limites de risco.',
-    fundamento:
-      'A automacao controlada melhora tempo de reacao em disputa e padroniza conduta operacional em sessoes de alta volatilidade.',
-    fluxos: [
-      'Configurar valor de referencia, piso e decremento.',
-      'Definir intervalo entre lances e limite de rodadas.',
-      'Executar simulacao antes da sessao real.',
-      'Iniciar monitoramento e acompanhar historico.',
+      'Em pregões eletrônicos com fase de lances, a velocidade de resposta é crucial. Operadores humanos estão sujeitos a atrasos, erros de digitação e fadiga. O Robô de Lances executa a estratégia definida com precisão e velocidade, registrando cada ação em trilha de auditoria completa.',
+    comoUsar: [
+      'Acesse "Robô de Lances" e selecione o pregão alvo.',
+      'Configure o preço de referência (valor máximo) e o piso mínimo (valor que não pode ser ultrapassado).',
+      'Defina o decremento (quanto reduzir a cada lance) e o intervalo em segundos.',
+      'Execute uma simulação antes da sessão real para validar a estratégia.',
+      'Ative o robô e acompanhe os lances em tempo real no painel de monitoramento.',
     ],
     funcionalidades: [
-      'Lance automatico com regra de parada.',
-      'Controle de segundos entre lances.',
-      'Historico completo de tentativas e resultados.',
-      'Modo manual para intervencao imediata.',
+      'Lance automático com regra de parada configurável.',
+      'Controle de intervalo entre lances (em segundos).',
+      'Simulação de disputa para teste de estratégia antes da sessão.',
+      'Trilha de auditoria completa de todas as ações executadas.',
+      'Kill switch (botão de emergência) para interromper instantaneamente.',
     ],
+    dicaPratica: 'Sempre execute pelo menos uma simulação antes de ativar o robô em sessão real. Isso evita surpresas com a configuração.',
     routeHint: '/robo-lances',
   },
   {
-    title: 'Governanca Multiempresa e Perfis de Acesso',
+    title: 'Governança Multiempresa',
+    descricao:
+      'Para grupos empresariais ou escritórios que administram vários CNPJs, o módulo Multiempresa permite gerenciar todas as empresas em uma única conta. Cada empresa tem seus dados isolados, e os membros da equipe podem ter papéis diferentes (administrador, operador, visualizador) em cada empresa.',
     contextualizacao:
-      'A operacao multiempresa permite administrar diferentes CNPJs em uma unica plataforma, com segregacao de dados e papeis por membro.',
-    fundamento:
-      'O modelo de acesso por papel reforca seguranca, evita exposicao indevida de informacoes e melhora governanca corporativa.',
-    fluxos: [
-      'Cadastrar empresa e membros autorizados.',
-      'Definir papeis de acesso por responsabilidade.',
-      'Alternar empresa ativa conforme processo.',
-      'Auditar alteracoes relevantes por usuario.',
+      'Empresas que operam múltiplos CNPJs precisam alternar entre contas, documentos e configurações frequentemente. Sem governança adequada, há risco de enviar documentos da empresa errada ou de operadores acessarem dados que não deveriam. O módulo Multiempresa resolve isso com isolamento de dados e controle de acesso por papel.',
+    comoUsar: [
+      'Acesse "Empresas" para visualizar e gerenciar seus CNPJs cadastrados.',
+      'Clique em "Adicionar Empresa" para cadastrar um novo CNPJ com dados completos.',
+      'Convide membros da equipe e defina o papel de cada um (admin, operador, visualizador).',
+      'Use o seletor de empresa no topo da tela para alternar entre CNPJs.',
+      'Consulte o log de auditoria para rastrear todas as alterações feitas por cada usuário.',
     ],
     funcionalidades: [
-      'Gerenciamento de multiplas empresas em conta unica.',
-      'Papeis administrativos e operacionais separados.',
-      'Isolamento de dados por empresa.',
-      'Controle de certificados e configuracoes dedicadas.',
+      'Gerenciamento de múltiplos CNPJs em conta única.',
+      'Papéis de acesso: administrador, operador e visualizador.',
+      'Isolamento completo de dados entre empresas.',
+      'Seletor rápido de empresa ativa no topo da plataforma.',
+      'Log de auditoria por usuário e empresa para rastreabilidade.',
     ],
+    dicaPratica: 'Revise os papéis de acesso trimestralmente. Colaboradores que mudaram de função podem ter permissões desatualizadas.',
     routeHint: '/empresas',
   },
 ];
