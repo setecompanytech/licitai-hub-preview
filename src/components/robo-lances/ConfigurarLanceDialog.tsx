@@ -1133,12 +1133,51 @@ ${truncated}`
               </div>
             )}
 
-            {itens.length === 0 && (
-              <div className="text-center py-6 border border-dashed border-border rounded-lg bg-muted/20">
-                <Package className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+            {itens.length === 0 && !isExtracting && (
+              <div className="text-center py-6 border border-dashed border-border rounded-lg bg-muted/20 space-y-3">
+                <Package className="w-8 h-8 text-muted-foreground/40 mx-auto" />
                 <p className="text-xs text-muted-foreground">Nenhum item cadastrado ainda.</p>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Preencha o formulário acima para adicionar itens à disputa.
+                <p className="text-[10px] text-muted-foreground">
+                  Extraia automaticamente via IA ou preencha o formulário acima.
+                </p>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs border-primary/40 text-primary hover:bg-primary/10"
+                      onClick={() => editalFileRef.current?.click()}
+                    >
+                      <Upload className="w-3.5 h-3.5 mr-1" /> Enviar Edital (PDF/DOC)
+                    </Button>
+                    {editalFile && (
+                      <Button
+                        size="sm"
+                        className="text-xs"
+                        onClick={handleAutoExtractItems}
+                      >
+                        <Sparkles className="w-3.5 h-3.5 mr-1" /> Extrair Itens via IA
+                      </Button>
+                    )}
+                  </div>
+                  {editalFile && (
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                      <FileText className="w-3 h-3" />
+                      <span className="truncate max-w-[200px]">{editalFile.name}</span>
+                      <button onClick={() => { setEditalFile(null); if (editalFileRef.current) editalFileRef.current.value = ''; }} className="text-destructive hover:underline">remover</button>
+                    </div>
+                  )}
+                </div>
+                <input ref={editalFileRef} type="file" accept=".pdf,.doc,.docx,.txt,.xlsx,.xls" className="hidden" onChange={handleEditalFileChange} />
+              </div>
+            )}
+
+            {itens.length === 0 && isExtracting && (
+              <div className="text-center py-8 border border-primary/30 rounded-lg bg-primary/5 space-y-3">
+                <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
+                <p className="text-sm font-medium text-foreground">Extraindo itens automaticamente...</p>
+                <p className="text-[11px] text-muted-foreground">
+                  A IA está analisando o edital para identificar descrição, quantidade, unidade e valores de referência.
                 </p>
               </div>
             )}
