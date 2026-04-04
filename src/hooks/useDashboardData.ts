@@ -72,6 +72,8 @@ export function useDashboardData() {
     roiMedio: 0,
     valorTotalGanho: 0,
     licitacoesHoje: 0,
+    editaisAbertos: 0,
+    ultimaSincronizacao: null,
   });
   const [chartMensal, setChartMensal] = useState<ChartMensal[]>([]);
   const [chartValor, setChartValor] = useState<ChartValor[]>([]);
