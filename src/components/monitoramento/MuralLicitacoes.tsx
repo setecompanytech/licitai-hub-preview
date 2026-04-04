@@ -636,6 +636,9 @@ export default function MuralLicitacoes() {
         esferaNome: null,
         tipoInstrumentoNome: data.tipo_instrumento_convocatorio || null,
         unidadeOrgao: data.unidade_orgao || null,
+        fonte: 'pncp',
+        linkComprasnet: null,
+        leiBase: '14133',
       };
 
       setFichaAberta(lic);
