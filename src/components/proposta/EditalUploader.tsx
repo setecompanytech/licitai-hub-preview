@@ -50,6 +50,7 @@ export default function EditalUploader({ onExtracted, isExtracting, setIsExtract
   const [progress, setProgress] = useState('');
   const [hasExistingItens, setHasExistingItens] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const extractedItensRef = useRef<Array<{ id?: string; numero?: number; descricao: string; quantidade?: number; unidade?: string; valor_unitario?: number }>>([]);
   const { fetchItens, saveItensManual } = useEditalExtraction();
 
   // Check for existing centralized items
