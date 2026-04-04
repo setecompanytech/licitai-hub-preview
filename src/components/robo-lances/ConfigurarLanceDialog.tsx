@@ -203,6 +203,156 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     }
   }, [open, step, fetchLicitacoes]);
 
+  // ── Auto-extract items via AI when entering step 2 with no items ──
+  const handleAutoExtractItems = useCallback(async () => {
+    if (isExtracting) return;
+    setIsExtracting(true);
+
+    try {
+      // First try fetching from licitacao_itens if we have a licitacaoId
+      if (licitacaoIdRef) {
+        const centralItens = await fetchItens(licitacaoIdRef);
+        if (centralItens.length > 0) {
+          const importedItems = licitacaoItensToDispute(centralItens);
+          applyImportedItems(importedItems);
+          toast.success(`${importedItems.length} itens carregados automaticamente!`);
+          setIsExtracting(false);
+          return;
+        }
+      }
+
+      // Build context text from edital info or file
+      let textoParaAnalise = '';
+      if (editalFile) {
+        const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
+        textoParaAnalise = await extractTextFromFile(editalFile);
+      } else if (licitacaoIdRef) {
+        // Try to get edital text from licitacao data
+        const { data: lic } = await supabase
+          .from('licitacoes')
+          .select('objeto, observacoes')
+          .eq('id', licitacaoIdRef)
+          .single();
+        textoParaAnalise = [lic?.objeto, lic?.observacoes].filter(Boolean).join('\n');
+      }
+
+      if (!textoParaAnalise || textoParaAnalise.length < 20) {
+        toast.info('Envie o edital (PDF/DOC) para extrair itens automaticamente, ou cadastre manualmente.');
+        setIsExtracting(false);
+        return;
+      }
+
+      // AI extraction
+      if (licitacaoIdRef) {
+        const saved = await extrairItensIA(licitacaoIdRef, textoParaAnalise, { forceReExtract: true });
+        const disputeItems = licitacaoItensToDispute(saved);
+        applyImportedItems(disputeItems);
+        if (disputeItems.length > 0) {
+          toast.success(`${disputeItems.length} itens extraídos automaticamente via IA!`);
+        } else {
+          toast.info('Nenhum item encontrado. Cadastre manualmente ou envie o edital.');
+        }
+      } else {
+        await extractFromText(textoParaAnalise);
+      }
+    } catch (err) {
+      console.error('Auto-extract error:', err);
+      toast.error('Erro na extração automática. Cadastre os itens manualmente.');
+    } finally {
+      setIsExtracting(false);
+    }
+  }, [licitacaoIdRef, editalFile, isExtracting, fetchItens, extrairItensIA]);
+
+  // Shared AI text extraction (no licitacaoId)
+  const extractFromText = useCallback(async (text: string) => {
+    const { streamAIChat } = await import('@/lib/ai-stream');
+    const truncated = text.slice(0, 25000);
+    let content = '';
+
+    return new Promise<void>((resolve) => {
+      streamAIChat({
+        messages: [{
+          role: 'user',
+          content: `Analise o Edital ou Termo de Referência abaixo e extraia TODOS os itens/lotes com os valores de referência.
+
+Retorne APENAS um JSON array, sem markdown, sem explicações:
+[
+  {"item": "1", "descricao": "descrição completa", "quantidade": 10, "unidade": "UN", "valor_unitario": 150.00, "valor_total": 1500.00, "lote": "Lote 1"}
+]
+
+REGRAS:
+- Extraia TODOS os itens/lotes do Termo de Referência ou Edital
+- "item" = número sequencial conforme edital
+- "descricao" completa com especificações técnicas
+- "quantidade" e "unidade" exatamente como no edital
+- "valor_unitario" = valor unitário de referência (R$)
+- "valor_total" = valor_unitario × quantidade
+- "lote" conforme edital; se não houver lotes, use "Único"
+- Se valores não explícitos, use 0
+- Retorne [] se não encontrar itens
+
+DOCUMENTO:
+${truncated}`
+        }],
+        action: 'analise_edital',
+        onDelta: (chunk) => { content += chunk; },
+        onDone: () => {
+          try {
+            const jsonMatch = content.match(/\[[\s\S]*\]/);
+            if (!jsonMatch) {
+              toast.info('Nenhum item encontrado. Cadastre manualmente.');
+              resolve();
+              return;
+            }
+            const parsed = JSON.parse(jsonMatch[0]) as Array<{
+              item: string; descricao: string; quantidade: number; unidade: string;
+              valor_unitario: number; valor_total: number; lote?: string;
+            }>;
+
+            if (parsed.length === 0) {
+              toast.info('Nenhum item encontrado no documento.');
+              resolve();
+              return;
+            }
+
+            const extractedItems: DisputeItem[] = parsed.map((p, idx) => ({
+              id: crypto.randomUUID(),
+              numero: parseInt(p.item) || (idx + 1),
+              descricao: p.descricao,
+              quantidade: p.quantidade || 1,
+              unidade: p.unidade || 'UN',
+              valorReferencia: p.valor_unitario || 0,
+              valorMinimo: 0,
+              lote: p.lote || 'Único',
+              disputando: true,
+              situacao: 'aguardando' as const,
+              melhorLance: null,
+              seuUltimoLance: null,
+            }));
+
+            applyImportedItems(extractedItems);
+            toast.success(`${parsed.length} itens extraídos via IA!`);
+          } catch {
+            toast.error('Erro ao processar itens do edital.');
+          }
+          resolve();
+        },
+        onError: (err) => {
+          toast.error(err);
+          resolve();
+        },
+      });
+    });
+  }, []);
+
+  // Auto-trigger extraction when entering step 2 with no items
+  useEffect(() => {
+    if (step === 2 && itens.length === 0 && !autoExtractTriggered && (licitacaoIdRef || editalFile)) {
+      setAutoExtractTriggered(true);
+      handleAutoExtractItems();
+    }
+  }, [step, itens.length, autoExtractTriggered, licitacaoIdRef, editalFile]);
+
   // ── Helper: set items + auto-detect dispute type + suggest values ──
   const applyImportedItems = (importedItems: DisputeItem[]) => {
     setItens(importedItems);
