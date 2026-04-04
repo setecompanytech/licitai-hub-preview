@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
-  Key, Shield, Trash2, Eye, EyeOff, Loader2, FileKey2,
+  Key, Shield, Trash2, Eye, EyeOff, Loader2, FileKey2, Building2,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
