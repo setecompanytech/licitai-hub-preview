@@ -745,6 +745,60 @@ export type Database = {
           },
         ]
       }
+      agent_sessoes: {
+        Row: {
+          ativa: boolean | null
+          created_at: string | null
+          empresa_id: string | null
+          expirada_em: string | null
+          id: string
+          iniciada_em: string | null
+          jsessionid: string | null
+          portal: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ativa?: boolean | null
+          created_at?: string | null
+          empresa_id?: string | null
+          expirada_em?: string | null
+          id?: string
+          iniciada_em?: string | null
+          jsessionid?: string | null
+          portal: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ativa?: boolean | null
+          created_at?: string | null
+          empresa_id?: string | null
+          expirada_em?: string | null
+          id?: string
+          iniciada_em?: string | null
+          jsessionid?: string | null
+          portal?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_sessoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_sessoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agente_externo_config: {
         Row: {
           api_key_hash: string | null
