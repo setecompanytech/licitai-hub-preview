@@ -10,6 +10,8 @@ type KpiData = {
   roiMedio: number;
   valorTotalGanho: number;
   licitacoesHoje: number;
+  editaisAbertos: number;
+  ultimaSincronizacao: string | null;
 };
 
 type ChartMensal = {
