@@ -190,6 +190,8 @@ export function useDashboardData() {
       roiMedio: roi,
       valorTotalGanho: totalGanho,
       licitacoesHoje: hoje || 0,
+      editaisAbertos,
+      ultimaSincronizacao,
     });
   }
 
