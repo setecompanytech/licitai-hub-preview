@@ -97,6 +97,10 @@ type LicitacaoMural = {
   esferaNome: string | null;
   tipoInstrumentoNome: string | null;
   unidadeOrgao: string | null;
+  // Multi-fonte
+  fonte: string | null;
+  linkComprasnet: string | null;
+  leiBase: string | null;
 };
 
 const UFS_BRASIL = [
