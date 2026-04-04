@@ -862,8 +862,15 @@ export default function MuralLicitacoes() {
                   <h2 className="font-bold text-base sm:text-lg">Ficha da Licitação</h2>
                   <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
                     <ShieldCheck className="w-3.5 h-3.5 text-success flex-shrink-0" />
-                    <span>Dados extraídos em tempo real da API oficial do PNCP</span>
-                    {d && <Badge className="bg-success/10 text-success border-success/30 text-[9px] ml-1">Verificado ✓</Badge>}
+                    <span>
+                      {lic.fonte === 'comprasnet'
+                        ? 'Dados extraídos em tempo real da API oficial do Compras.gov.br'
+                        : 'Dados extraídos em tempo real da API oficial do PNCP'}
+                    </span>
+                    {lic.fonte === 'comprasnet' && (
+                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[9px] ml-1">Compras.gov ✓</Badge>
+                    )}
+                    {d && lic.fonte !== 'comprasnet' && <Badge className="bg-success/10 text-success border-success/30 text-[9px] ml-1">Verificado ✓</Badge>}
                   </p>
                 </div>
               </div>
