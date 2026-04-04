@@ -124,6 +124,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
   const [editalFile, setEditalFile] = useState<File | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [showEditalUpload, setShowEditalUpload] = useState(false);
+  const [autoExtractTriggered, setAutoExtractTriggered] = useState(false);
   const editalFileRef = useRef<HTMLInputElement>(null);
 
   // Step 1 fields
