@@ -318,8 +318,8 @@ export default function MuralLicitacoes() {
     data_abertura: item.data_abertura || item.data_abertura_proposta || null,
     data_encerramento: item.data_encerramento || item.data_encerramento_proposta || null,
     data_publicacao: item.data_publicacao || item.data_publicacao_pncp || null,
-    portal: item.portal || 'PNCP',
-    url: item.url || item.url_pncp || null,
+    portal: item.fonte === 'comprasnet' ? 'Compras.gov' : (item.portal || 'PNCP'),
+    url: item.url || item.url_pncp || item.link_comprasnet || null,
     pncpNumero: item.pncpNumero || item.numero_controle_pncp || null,
     cnpjOrgao: item.cnpjOrgao || item.cnpj_orgao || null,
     anoCompra: item.anoCompra || item.ano_compra || null,
@@ -327,6 +327,9 @@ export default function MuralLicitacoes() {
     esferaNome: item.esferaNome || (item.esfera_id === 'F' ? 'Federal' : item.esfera_id === 'E' ? 'Estadual' : item.esfera_id === 'M' ? 'Municipal' : item.esfera_id === 'D' ? 'Distrital' : null),
     tipoInstrumentoNome: item.tipoInstrumentoNome || item.tipo_instrumento || null,
     unidadeOrgao: item.unidadeOrgao || item.unidade_orgao || null,
+    fonte: item.fonte || 'pncp',
+    linkComprasnet: item.link_comprasnet || null,
+    leiBase: item.lei_base || null,
   });
 
   // ── FASE 1: Carregamento instantâneo do cache local ──
