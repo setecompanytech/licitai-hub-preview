@@ -144,6 +144,29 @@ export function useDashboardData() {
         .not('valor_adjudicado', 'is', null),
     ]);
 
+    // Editais abertos no cache PNCP + última sincronização
+    let editaisAbertos = 0;
+    let ultimaSincronizacao: string | null = null;
+    try {
+      const [cacheCount, syncLog] = await Promise.all([
+        supabase
+          .from('pncp_editais_cache')
+          .select('*', { count: 'exact', head: true })
+          .gte('data_encerramento_proposta', new Date().toISOString()),
+        (supabase as any)
+          .from('pncp_sync_log')
+          .select('concluido_em')
+          .eq('status', 'sucesso')
+          .order('concluido_em', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+      editaisAbertos = cacheCount.count || 0;
+      ultimaSincronizacao = syncLog.data?.concluido_em || null;
+    } catch {
+      // Tables may not exist yet
+    }
+
     const totalGanho = ganhos?.reduce((s, l) => s + (l.valor_adjudicado || l.valor_estimado || 0), 0) || 0;
     const totalDecididas = (vencidas || 0) + (perdidas || 0);
     const taxa = totalDecididas > 0 ? ((vencidas || 0) / totalDecididas) * 100 : 0;
