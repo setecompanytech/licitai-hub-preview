@@ -1570,6 +1570,8 @@ export default function MuralLicitacoes() {
                         Lei 8.666
                       </Badge>
                     )}
+                  </div>
+                </div>
 
                 {/* Número */}
                 <p className="text-[10px] font-mono text-muted-foreground mb-1">{lic.numero}</p>
