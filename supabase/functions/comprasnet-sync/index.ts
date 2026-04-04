@@ -190,24 +190,26 @@ async function sincronizarNovaLei(supabase: any, data: string): Promise<number> 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
 
-  // Auth: accept CRON_SECRET or service_role JWT
+  // Auth: accept CRON_SECRET, service_role JWT, or anon key
   const authHeader = req.headers.get('authorization') || ''
+  const apiKey = req.headers.get('apikey') || ''
   const cronSecret = Deno.env.get('CRON_SECRET')
-  const isCronAuth = cronSecret && authHeader === `Bearer ${cronSecret}`
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
 
-  if (!isCronAuth) {
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
-    if (
-      !authHeader.includes(supabaseServiceKey) &&
-      authHeader !== `Bearer ${supabaseServiceKey}` &&
-      !authHeader.includes(supabaseAnonKey)
-    ) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
+  const isCronAuth = cronSecret && authHeader === `Bearer ${cronSecret}`
+  const isServiceAuth = supabaseServiceKey && (
+    authHeader === `Bearer ${supabaseServiceKey}` || authHeader.includes(supabaseServiceKey)
+  )
+  const isAnonAuth = supabaseAnonKey && (
+    authHeader === `Bearer ${supabaseAnonKey}` || apiKey === supabaseAnonKey
+  )
+
+  if (!isCronAuth && !isServiceAuth && !isAnonAuth) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
