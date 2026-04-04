@@ -102,22 +102,26 @@ export function useEditaisPNCP(filtros: FiltrosEditais = {}) {
     setLoading(false);
   }, []);
 
-  // Carregar sync status
+  // Carregar sync status via RPC/raw query (table not in generated types yet)
   const carregarSyncStatus = useCallback(async () => {
-    const { data } = await supabase
-      .from('pncp_sync_log')
-      .select('concluido_em, novos, total_registros')
-      .eq('status', 'sucesso')
-      .order('concluido_em', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    try {
+      const { data } = await (supabase as any)
+        .from('pncp_sync_log')
+        .select('concluido_em, novos, total_registros')
+        .eq('status', 'sucesso')
+        .order('concluido_em', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    if (data) {
-      setSyncStatus({
-        ultimaSincronizacao: data.concluido_em,
-        novos: data.novos || 0,
-        totalRegistros: data.total_registros || 0,
-      });
+      if (data) {
+        setSyncStatus({
+          ultimaSincronizacao: data.concluido_em,
+          novos: data.novos || 0,
+          totalRegistros: data.total_registros || 0,
+        });
+      }
+    } catch {
+      // Table may not exist yet
     }
   }, []);
 
