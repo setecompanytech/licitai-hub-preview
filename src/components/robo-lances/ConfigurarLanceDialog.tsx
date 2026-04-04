@@ -420,7 +420,8 @@ ${truncated}`
     setIsExtracting(true);
 
     try {
-      const text = await editalFile.text();
+      const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
+      const text = await extractTextFromFile(editalFile);
 
       // If we have a licitacaoId, use centralized extraction that persists
       if (licitacaoIdRef) {
