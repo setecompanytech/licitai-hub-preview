@@ -184,6 +184,15 @@ ${truncated}`
               setHasExistingItens(true);
             }
 
+            // Store for suggestion component
+            extractedItensRef.current = itens.map((item, idx) => ({
+              numero: parseInt(item.item) || idx + 1,
+              descricao: item.descricao,
+              quantidade: parseFloat(item.quantidade) || 1,
+              unidade: item.unidade,
+              valor_unitario: parseFloat(item.valorUnitario.replace(',', '.')) || 0,
+            }));
+
             onExtracted({
               numeroLicitacao: data.numeroLicitacao || '',
               orgao: data.orgao || '',
