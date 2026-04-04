@@ -263,8 +263,7 @@ export default function CredenciaisPortalForm() {
                   </div>
                 </div>
               </div>
-              )}
-              </div>
+              )
 
               <div className="bg-success/10 border border-success/20 rounded-lg p-3">
                 <p className="text-xs text-success flex items-center gap-1">
