@@ -1558,11 +1558,18 @@ export default function MuralLicitacoes() {
                     >
                       {isFav ? <Star className="w-3.5 h-3.5 fill-current" /> : <StarOff className="w-3.5 h-3.5" />}
                     </button>
-                    <Badge variant="outline" className={cn('text-[9px]', lic.id.startsWith('ext-') ? 'bg-accent/10 text-accent border-accent/30' : '')}>
-                      {lic.id.startsWith('ext-') ? '🌐 Externo' : lic.portal}
+                    <Badge variant="outline" className={cn('text-[9px]',
+                      lic.id.startsWith('ext-') ? 'bg-accent/10 text-accent border-accent/30' :
+                      lic.fonte === 'comprasnet' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' :
+                      ''
+                    )}>
+                      {lic.id.startsWith('ext-') ? '🌐 Externo' : lic.fonte === 'comprasnet' ? '🏛 Compras.gov' : lic.portal}
                     </Badge>
-                  </div>
-                </div>
+                    {lic.leiBase && lic.leiBase !== '14133' && (
+                      <Badge variant="outline" className="text-[9px] bg-amber-500/10 text-amber-600 border-amber-500/30">
+                        Lei 8.666
+                      </Badge>
+                    )}
 
                 {/* Número */}
                 <p className="text-[10px] font-mono text-muted-foreground mb-1">{lic.numero}</p>
