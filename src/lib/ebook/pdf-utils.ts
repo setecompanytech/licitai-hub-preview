@@ -16,6 +16,8 @@ const COLORS = {
   line: [170, 170, 170] as const,
   accent: [0, 92, 169] as const,
   soft: [240, 245, 250] as const,
+  tipBg: [245, 250, 255] as const,
+  tipBorder: [0, 92, 169] as const,
 };
 
 export function getPageWidth(doc: jsPDF) {
@@ -55,51 +57,68 @@ export function drawCoverPage(doc: jsPDF, chapterCount: number) {
   doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
+  // Top accent bar
   doc.setFillColor(...COLORS.accent);
-  doc.rect(0, 0, pageWidth, 6, 'F');
+  doc.rect(0, 0, pageWidth, 8, 'F');
 
+  // Border frame
   doc.setDrawColor(...COLORS.line);
   doc.setLineWidth(0.3);
   doc.rect(15, 15, pageWidth - 30, pageHeight - 30, 'S');
 
+  // Title
   doc.setFont('times', 'bold');
-  doc.setFontSize(24);
-  doc.setTextColor(...COLORS.text);
-  doc.text('LICITAIA', pageWidth / 2, 72, { align: 'center' });
+  doc.setFontSize(28);
+  doc.setTextColor(...COLORS.accent);
+  doc.text('PRAEFECTUS', pageWidth / 2, 65, { align: 'center' });
 
   doc.setFont('times', 'bold');
   doc.setFontSize(16);
-  doc.text('GUIA TECNICO E OPERACIONAL', pageWidth / 2, 84, { align: 'center' });
+  doc.setTextColor(...COLORS.text);
+  doc.text('GUIA COMPLETO DA PLATAFORMA', pageWidth / 2, 80, { align: 'center' });
 
   doc.setFont('times', 'normal');
-  doc.setFontSize(12);
+  doc.setFontSize(13);
   doc.setTextColor(...COLORS.muted);
-  doc.text('Padrao documental alinhado a ABNT NBR 14724 e Lei 14.133/2021', pageWidth / 2, 98, { align: 'center' });
+  doc.text('Manual Didático e Operacional', pageWidth / 2, 92, { align: 'center' });
 
+  // Divider
+  doc.setDrawColor(...COLORS.accent);
+  doc.setLineWidth(0.5);
+  doc.line(60, 100, pageWidth - 60, 100);
+
+  // Intro
   const intro =
-    'Este documento apresenta os modulos da plataforma LicitaIA com contextualizacao operacional, fundamento tecnico e fluxo recomendado de uso. O material foi estruturado para treinamento, padronizacao interna e consulta rapida.';
+    'Este documento apresenta, de forma didática e ilustrada, todos os módulos da plataforma PRAEFECTUS. ' +
+    'Cada capítulo explica o que a função faz, por que ela é importante, como utilizá-la passo a passo ' +
+    'e inclui dicas práticas para maximizar os resultados da sua equipe em licitações públicas.';
 
   const introLines = doc.splitTextToSize(intro, pageWidth - 90);
   doc.setFont('times', 'normal');
   doc.setFontSize(12);
   doc.setTextColor(...COLORS.text);
-  doc.text(introLines, 45, 124);
+  doc.text(introLines, 45, 118);
 
+  // Metadata
+  let metaY = 170;
   doc.setFont('times', 'normal');
   doc.setFontSize(11);
-  doc.text(`Total de capitulos: ${chapterCount}`, 45, 172);
-  doc.text(`Data de geracao: ${new Date().toLocaleDateString('pt-BR')}`, 45, 180);
+  doc.setTextColor(...COLORS.muted);
+  doc.text(`Total de capítulos: ${chapterCount}`, 45, metaY);
+  doc.text(`Data de geração: ${new Date().toLocaleDateString('pt-BR')}`, 45, metaY + 8);
+  doc.text('Padrão documental: ABNT NBR 14724 | Lei 14.133/2021', 45, metaY + 16);
 
+  // Footer
   doc.setFont('times', 'italic');
   doc.setFontSize(10);
   doc.setTextColor(...COLORS.muted);
-  doc.text('Uso interno. Distribuicao externa nao autorizada.', pageWidth / 2, pageHeight - 26, {
+  doc.text('Uso interno. Distribuição externa não autorizada.', pageWidth / 2, pageHeight - 26, {
     align: 'center',
   });
 
   doc.setFont('times', 'normal');
   doc.setFontSize(9);
-  doc.text('LicitaIA - Plataforma inteligente para licitacoes publicas.', pageWidth / 2, pageHeight - 17, {
+  doc.text('PRAEFECTUS — Plataforma inteligente para licitações públicas.', pageWidth / 2, pageHeight - 17, {
     align: 'center',
   });
 }
@@ -117,14 +136,14 @@ export function drawChapterHeader(doc: jsPDF, chapterNumber: number, chapterTitl
   doc.setFont('times', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(...COLORS.muted);
-  doc.text(`CAPITULO ${String(chapterNumber).padStart(2, '0')}`, ABNT_LAYOUT.marginLeft, 15);
+  doc.text(`CAPÍTULO ${String(chapterNumber).padStart(2, '0')}`, ABNT_LAYOUT.marginLeft, 15);
 
   doc.setFont('times', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(...COLORS.text);
   doc.text(chapterTitle, ABNT_LAYOUT.marginLeft, ABNT_LAYOUT.marginTop - 2);
 
-  const backToToc = 'Voltar ao sumario';
+  const backToToc = 'Voltar ao sumário';
   doc.setFont('times', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(...COLORS.accent);
@@ -147,7 +166,7 @@ export function ensureSpace(
   if (y + neededHeight <= maxY) return y;
 
   doc.addPage();
-  drawChapterHeader(doc, chapterNumber, `${chapterTitle} (continuacao)`);
+  drawChapterHeader(doc, chapterNumber, `${chapterTitle} (continuação)`);
   return ABNT_LAYOUT.marginTop + 6;
 }
 
@@ -186,12 +205,12 @@ export function writeList(
 
   for (let i = 0; i < items.length; i++) {
     const item = `${i + 1}. ${items[i]}`;
-    const lines = doc.splitTextToSize(item, getContentWidth(doc) - 2);
+    const lines = doc.splitTextToSize(item, getContentWidth(doc) - 4);
 
     for (const line of lines) {
       y = ensureSpace(doc, y, ABNT_LAYOUT.lineHeight, chapterNumber, chapterTitle);
       setBodyStyle(doc);
-      doc.text(line, ABNT_LAYOUT.marginLeft + 2, y);
+      doc.text(line, ABNT_LAYOUT.marginLeft + 4, y);
       y += ABNT_LAYOUT.lineHeight;
     }
 
@@ -201,65 +220,69 @@ export function writeList(
   return y + 2;
 }
 
-export function drawModuleFigure(
+export function writeBulletList(
   doc: jsPDF,
+  title: string,
+  items: string[],
   y: number,
-  section: EbookSection,
   chapterNumber: number,
   chapterTitle: string,
 ) {
-  y = ensureSpace(doc, y, 74, chapterNumber, chapterTitle);
+  y = ensureSpace(doc, y, 12, chapterNumber, chapterTitle);
+  setSubheadingStyle(doc);
+  doc.text(title, ABNT_LAYOUT.marginLeft, y);
+  y += 7;
 
-  const x = ABNT_LAYOUT.marginLeft;
-  const width = getContentWidth(doc);
-  const height = 50;
+  for (const item of items) {
+    const bullet = `\u2022  ${item}`;
+    const lines = doc.splitTextToSize(bullet, getContentWidth(doc) - 4);
 
-  doc.setDrawColor(...COLORS.line);
-  doc.setLineWidth(0.4);
-  doc.roundedRect(x, y, width, height, 1.5, 1.5, 'S');
+    for (const line of lines) {
+      y = ensureSpace(doc, y, ABNT_LAYOUT.lineHeight, chapterNumber, chapterTitle);
+      setBodyStyle(doc);
+      doc.text(line, ABNT_LAYOUT.marginLeft + 4, y);
+      y += ABNT_LAYOUT.lineHeight;
+    }
 
-  doc.setFillColor(247, 250, 252);
-  doc.roundedRect(x + 1, y + 1, width - 2, 8, 1, 1, 'F');
-
-  doc.setFont('times', 'bold');
-  doc.setFontSize(10);
-  doc.setTextColor(...COLORS.text);
-  doc.text(`FIGURA FUNCIONAL - ${section.title.toUpperCase()}`, x + 3, y + 6.5);
-
-  doc.setFillColor(236, 242, 248);
-  doc.rect(x + 2, y + 10, 24, height - 13, 'F');
-
-  doc.setFillColor(220, 232, 244);
-  doc.rect(x + 4, y + 13, 20, 4, 'F');
-  doc.rect(x + 4, y + 19, 20, 4, 'F');
-  doc.rect(x + 4, y + 25, 20, 4, 'F');
-  doc.rect(x + 4, y + 31, 20, 4, 'F');
-
-  const chartX = x + 30;
-  const chartY = y + 13;
-  const barBase = [12, 19, 26, 16, 23];
-
-  for (let i = 0; i < barBase.length; i++) {
-    const barHeight = barBase[i] + ((chapterNumber * 3 + i) % 5);
-    doc.setFillColor(...COLORS.accent);
-    doc.rect(chartX + i * 10, chartY + (24 - barHeight), 7, barHeight, 'F');
+    y += 1;
   }
 
-  doc.setFillColor(232, 240, 247);
-  doc.roundedRect(x + 30, y + 39, 24, 8, 1, 1, 'F');
-  doc.roundedRect(x + 56, y + 39, 24, 8, 1, 1, 'F');
-  doc.roundedRect(x + 82, y + 39, 24, 8, 1, 1, 'F');
+  return y + 2;
+}
 
+export function writeTipBox(
+  doc: jsPDF,
+  tip: string,
+  y: number,
+  chapterNumber: number,
+  chapterTitle: string,
+) {
+  const contentWidth = getContentWidth(doc);
+  const tipText = `Dica prática: ${tip}`;
+  const lines = doc.splitTextToSize(tipText, contentWidth - 14);
+  const boxHeight = lines.length * ABNT_LAYOUT.lineHeight + 8;
+
+  y = ensureSpace(doc, y, boxHeight + 4, chapterNumber, chapterTitle);
+
+  const x = ABNT_LAYOUT.marginLeft;
+
+  // Background
+  doc.setFillColor(...COLORS.tipBg);
+  doc.roundedRect(x, y - 4, contentWidth, boxHeight, 2, 2, 'F');
+
+  // Left accent border
+  doc.setFillColor(...COLORS.tipBorder);
+  doc.rect(x, y - 4, 3, boxHeight, 'F');
+
+  // Text
   doc.setFont('times', 'italic');
-  doc.setFontSize(10);
-  doc.setTextColor(...COLORS.muted);
-  doc.text(`Figura ${chapterNumber} - Representacao funcional do modulo em tela.`, x, y + height + 7);
+  doc.setFontSize(11);
+  doc.setTextColor(...COLORS.accent);
+  doc.text(lines, x + 8, y + 2);
 
-  doc.setFont('times', 'normal');
-  doc.setFontSize(10);
-  doc.text(`Rota de acesso no sistema: ${section.routeHint}`, x, y + height + 13);
+  doc.setTextColor(...COLORS.text);
 
-  return y + height + 18;
+  return y + boxHeight + 4;
 }
 
 export function drawLogicalPageNumber(doc: jsPDF, logicalPage: number) {
@@ -279,7 +302,7 @@ export function drawClosingPage(doc: jsPDF) {
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
   doc.setFillColor(...COLORS.accent);
-  doc.rect(0, 0, pageWidth, 6, 'F');
+  doc.rect(0, 0, pageWidth, 8, 'F');
 
   doc.setFont('times', 'bold');
   doc.setFontSize(18);
@@ -287,7 +310,9 @@ export function drawClosingPage(doc: jsPDF) {
   doc.text('ENCERRAMENTO', pageWidth / 2, 70, { align: 'center' });
 
   const finalText =
-    'A LicitaIA integra inteligencia operacional, conformidade documental e automacao de processos para aumentar previsibilidade, produtividade e governanca na participacao em licitacoes publicas.';
+    'A PRAEFECTUS integra inteligência operacional, conformidade documental e automação de processos ' +
+    'para aumentar previsibilidade, produtividade e governança na participação em licitações públicas. ' +
+    'Este guia foi elaborado para capacitar equipes, padronizar operações e servir como referência rápida no dia a dia.';
 
   const lines = doc.splitTextToSize(finalText, pageWidth - 90);
   doc.setFont('times', 'normal');
@@ -297,11 +322,11 @@ export function drawClosingPage(doc: jsPDF) {
   doc.setFont('times', 'italic');
   doc.setFontSize(10);
   doc.setTextColor(...COLORS.muted);
-  doc.text('Documento gerado automaticamente pela plataforma LicitaIA.', pageWidth / 2, pageHeight - 32, {
+  doc.text('Documento gerado automaticamente pela plataforma PRAEFECTUS.', pageWidth / 2, pageHeight - 32, {
     align: 'center',
   });
 
   doc.setFont('times', 'normal');
   doc.setFontSize(10);
-  doc.text('Suporte: suporte@licitaia.com.br', pageWidth / 2, pageHeight - 24, { align: 'center' });
+  doc.text('Suporte: suporte@praefectus.com.br', pageWidth / 2, pageHeight - 24, { align: 'center' });
 }
