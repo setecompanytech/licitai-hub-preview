@@ -422,6 +422,7 @@ Deno.serve(async (req) => {
     const categoria = queryNorm.categoria || 'geral';
     const coletoresPromises: Promise<PriceResult[]>[] = [
       coletorPNCP(todosTermos, codigoCatmat),
+      coletorMercadoLivre(todosTermos), // API pública ML - sempre ativo
     ];
 
     // Coletores por categoria
