@@ -13,8 +13,10 @@ import {
   getPageWidth,
   setBodyStyle,
   setSubheadingStyle,
+  writeBulletList,
   writeList,
   writeParagraph,
+  writeTipBox,
 } from '@/lib/ebook/pdf-utils';
 
 interface TocEntry {
@@ -32,13 +34,12 @@ function addChapterImage(
 ): number {
   const contentWidth = getContentWidth(doc);
   const imgWidth = contentWidth;
-  const imgHeight = imgWidth * (512 / 800); // maintain aspect ratio
+  const imgHeight = imgWidth * (750 / 1200);
 
   y = ensureSpace(doc, y, imgHeight + 18, chapterNumber, chapterTitle);
 
   const x = ABNT_LAYOUT.marginLeft;
 
-  // Draw border around image
   doc.setDrawColor(170, 170, 170);
   doc.setLineWidth(0.3);
   doc.roundedRect(x - 1, y - 1, imgWidth + 2, imgHeight + 2, 1, 1, 'S');
@@ -47,12 +48,11 @@ function addChapterImage(
 
   y += imgHeight + 4;
 
-  // Caption
   doc.setFont('times', 'italic');
   doc.setFontSize(10);
   doc.setTextColor(85, 85, 85);
   doc.text(
-    `Figura ${chapterNumber} — Tela do módulo "${chapterTitle}" no sistema LicitaIA.`,
+    `Figura ${chapterNumber} — Tela do módulo "${chapterTitle}" na plataforma PRAEFECTUS.`,
     x,
     y,
   );
@@ -65,10 +65,11 @@ function renderChapter(
   doc: jsPDF,
   chapterNumber: number,
   title: string,
+  descricao: string,
   contextualizacao: string,
-  fundamento: string,
-  fluxos: string[],
+  comoUsar: string[],
   funcionalidades: string[],
+  dicaPratica: string,
   routeHint: string,
   chapterImage?: string,
 ) {
@@ -77,54 +78,42 @@ function renderChapter(
 
   let y = ABNT_LAYOUT.marginTop + 6;
 
-  // 1. Contextualização
+  // 1. O que é este módulo
   setSubheadingStyle(doc);
-  doc.text('Contextualização operacional', ABNT_LAYOUT.marginLeft, y);
+  doc.text('O que é este módulo', ABNT_LAYOUT.marginLeft, y);
   y += 7;
-  y = writeParagraph(doc, contextualizacao, y, chapterNumber, title);
+  y = writeParagraph(doc, descricao, y, chapterNumber, title);
 
-  // 2. Image right after context (didactic placement)
+  // 2. Image
   if (chapterImage) {
     y += 2;
     y = addChapterImage(doc, chapterImage, y, chapterNumber, title);
   }
 
-  // 3. Fundamento
+  // 3. Por que é importante
   setSubheadingStyle(doc);
   y = ensureSpace(doc, y, 14, chapterNumber, title);
   setSubheadingStyle(doc);
-  doc.text('Fundamento técnico e jurídico', ABNT_LAYOUT.marginLeft, y);
+  doc.text('Por que é importante', ABNT_LAYOUT.marginLeft, y);
   y += 7;
-  y = writeParagraph(doc, fundamento, y, chapterNumber, title);
+  y = writeParagraph(doc, contextualizacao, y, chapterNumber, title);
 
-  // 4. Fluxo
-  y = writeList(doc, 'Fluxo recomendado de uso', fluxos, y, chapterNumber, title);
+  // 4. Como usar — passo a passo
+  y = writeList(doc, 'Como usar — passo a passo', comoUsar, y, chapterNumber, title);
 
-  // 5. Funcionalidades
-  y = writeList(doc, 'Funcionalidades essenciais', funcionalidades, y, chapterNumber, title);
+  // 5. Funcionalidades principais
+  y = writeBulletList(doc, 'Funcionalidades principais', funcionalidades, y, chapterNumber, title);
 
-  // 6. Rota de acesso
+  // 6. Dica prática
+  y = writeTipBox(doc, dicaPratica, y, chapterNumber, title);
+
+  // 7. Rota de acesso
   y = ensureSpace(doc, y, 14, chapterNumber, title);
   setBodyStyle(doc);
   doc.setFont('times', 'italic');
   doc.setFontSize(10);
   doc.setTextColor(85, 85, 85);
   doc.text(`Rota de acesso no sistema: ${routeHint}`, ABNT_LAYOUT.marginLeft, y);
-  y += 10;
-
-  // 7. Observação de governança
-  y = ensureSpace(doc, y, 20, chapterNumber, title);
-  setSubheadingStyle(doc);
-  doc.text('Observação de governança', ABNT_LAYOUT.marginLeft, y);
-  y += 7;
-
-  writeParagraph(
-    doc,
-    'Este capítulo integra padronização de processo, rastreabilidade das decisões e melhoria contínua do desempenho da operação de licitações.',
-    y,
-    chapterNumber,
-    title,
-  );
 }
 
 function renderTableOfContents(doc: jsPDF, toc: TocEntry[]) {
@@ -137,7 +126,7 @@ function renderTableOfContents(doc: jsPDF, toc: TocEntry[]) {
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
   doc.setFillColor(0, 92, 169);
-  doc.rect(0, 0, pageWidth, 6, 'F');
+  doc.rect(0, 0, pageWidth, 8, 'F');
 
   doc.setFont('times', 'bold');
   doc.setFontSize(18);
@@ -211,12 +200,11 @@ function applyLogicalPagination(doc: jsPDF) {
 export async function generateEbook(): Promise<void> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-  // Load all chapter images in parallel
   const chapterImages = await loadChapterImages();
 
   drawCoverPage(doc, ebookSections.length);
 
-  // Placeholder for TOC; filled at the end with correct pages
+  // Placeholder for TOC
   doc.addPage();
 
   const tocEntries: TocEntry[] = [];
@@ -235,10 +223,11 @@ export async function generateEbook(): Promise<void> {
       doc,
       chapterNumber,
       section.title,
+      section.descricao,
       section.contextualizacao,
-      section.fundamento,
-      section.fluxos,
+      section.comoUsar,
       section.funcionalidades,
+      section.dicaPratica,
       section.routeHint,
       chapterImages[chapterNumber],
     );
@@ -248,5 +237,5 @@ export async function generateEbook(): Promise<void> {
   renderTableOfContents(doc, tocEntries);
   applyLogicalPagination(doc);
 
-  doc.save('LicitaIA-Guia-ABNT.pdf');
+  doc.save('PRAEFECTUS-Guia-Completo.pdf');
 }
