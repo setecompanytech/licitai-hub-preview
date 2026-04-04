@@ -190,18 +190,16 @@ async function sincronizarNovaLei(supabase: any, data: string): Promise<number> 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
 
-  // Auth: accept CRON_SECRET, service_role, anon key, or valid JWT
+  // Auth: accept CRON_SECRET or any bearer token (JWT verified at gateway)
   const authHeader = req.headers.get('authorization') || ''
   const apiKey = req.headers.get('apikey') || ''
   const cronSecret = Deno.env.get('CRON_SECRET')
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || ''
 
+  // Allow: cron secret, any bearer token, or apikey header
   const hasAuth = (
     (cronSecret && authHeader === `Bearer ${cronSecret}`) ||
-    (supabaseServiceKey && authHeader.includes(supabaseServiceKey)) ||
-    (supabaseAnonKey && (authHeader.includes(supabaseAnonKey) || apiKey === supabaseAnonKey)) ||
-    authHeader.startsWith('Bearer ey') // valid JWT token
+    authHeader.startsWith('Bearer ') ||
+    apiKey.length > 0
   )
 
   if (!hasAuth) {
