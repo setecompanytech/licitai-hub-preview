@@ -8,7 +8,7 @@ import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useAnalyticsData } from '@/hooks/useAnalyticsData';
-import { Eye, Send, Trophy, TrendingUp, DollarSign, Zap, XCircle, Clock, Gavel, FileCheck2 } from 'lucide-react';
+import { Eye, Send, Trophy, TrendingUp, DollarSign, Zap, XCircle, Clock, Gavel, FileCheck2, Database } from 'lucide-react';
 import RelatorioGerencialPDF from '@/components/relatorios/RelatorioGerencialPDF';
 import OnboardingWizard, { useOnboarding } from '@/components/onboarding/OnboardingWizard';
 import { useNavigate } from 'react-router-dom';
