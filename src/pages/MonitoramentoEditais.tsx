@@ -263,6 +263,7 @@ export default function MonitoramentoEditais() {
           </TabsContent>
 
           <TabsContent value="config" className="space-y-4">
+            <GuiaComprasGov />
             <ConfiguracaoPesquisaTab />
           </TabsContent>
         </Tabs>
