@@ -8,8 +8,10 @@ import {
   Container,
   Head,
   Heading,
+  Hr,
   Html,
   Preview,
+  Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
 
@@ -24,21 +26,32 @@ export const MagicLinkEmail = ({
 }: MagicLinkEmailProps) => (
   <Html lang="pt-BR" dir="ltr">
     <Head />
-    <Preview>Seu link de acesso ao {siteName}</Preview>
+    <Preview>Seu link de acesso — {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <div style={logoBar}>
-          <Text style={logoText}>PRAEFECTUS</Text>
-        </div>
+        <Section style={logoSection}>
+          <Text style={logoText}>
+            <span style={logoPrae}>PRAE</span>
+            <span style={logoFectus}>FECTUS</span>
+          </Text>
+        </Section>
+        <Hr style={divider} />
         <Heading style={h1}>Seu link de acesso</Heading>
         <Text style={text}>
-          Clique no botão abaixo para acessar o {siteName}. Este link expira em breve.
+          Clique no botão abaixo para acessar o {siteName}. Este link expira em
+          poucos minutos.
         </Text>
-        <Button style={button} href={confirmationUrl}>
-          Acessar Plataforma
-        </Button>
+        <Section style={buttonContainer}>
+          <Button style={button} href={confirmationUrl}>
+            Acessar Plataforma
+          </Button>
+        </Section>
         <Text style={footer}>
-          Se você não solicitou este link, pode ignorar este e-mail com segurança.
+          Se você não solicitou este link, ignore este e-mail com segurança.
+        </Text>
+        <Hr style={divider} />
+        <Text style={footerBrand}>
+          © {new Date().getFullYear()} PRAEFECTUS — Inteligência em Licitações
         </Text>
       </Container>
     </Body>
@@ -47,11 +60,24 @@ export const MagicLinkEmail = ({
 
 export default MagicLinkEmail
 
-const main = { backgroundColor: '#f5f6f8', fontFamily: "'Plus Jakarta Sans', Arial, sans-serif" }
-const container = { backgroundColor: '#ffffff', padding: '0', borderRadius: '8px', margin: '40px auto', maxWidth: '560px', overflow: 'hidden' as const }
-const logoBar = { backgroundColor: 'hsl(215, 50%, 23%)', padding: '20px 25px', textAlign: 'center' as const }
-const logoText = { color: '#ffffff', fontSize: '20px', fontWeight: 'bold' as const, letterSpacing: '3px', margin: '0' }
-const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: 'hsl(215, 40%, 16%)', margin: '30px 25px 20px' }
-const text = { fontSize: '14px', color: 'hsl(215, 12%, 50%)', lineHeight: '1.6', margin: '0 25px 20px' }
-const button = { backgroundColor: 'hsl(24, 95%, 53%)', color: '#ffffff', fontSize: '14px', fontWeight: '600' as const, borderRadius: '8px', padding: '12px 24px', textDecoration: 'none', display: 'block', textAlign: 'center' as const, margin: '0 25px 30px' }
-const footer = { fontSize: '12px', color: '#999999', margin: '0 25px 25px', borderTop: '1px solid #eee', paddingTop: '20px' }
+const main = { backgroundColor: '#ffffff', fontFamily: "'Plus Jakarta Sans', Arial, sans-serif" }
+const container = { padding: '32px 28px', maxWidth: '480px', margin: '0 auto' }
+const logoSection = { textAlign: 'center' as const, marginBottom: '8px' }
+const logoText = { fontSize: '24px', fontWeight: 'bold' as const, margin: '0', letterSpacing: '1px' }
+const logoPrae = { color: '#1e3352' }
+const logoFectus = { color: '#f97316' }
+const divider = { borderColor: '#e5e7eb', margin: '20px 0' }
+const h1 = { fontSize: '22px', fontWeight: '700' as const, color: '#182a40', margin: '0 0 20px' }
+const text = { fontSize: '14px', color: '#727d8a', lineHeight: '1.6', margin: '0 0 20px' }
+const buttonContainer = { textAlign: 'center' as const, margin: '28px 0' }
+const button = {
+  backgroundColor: '#1e3352',
+  color: '#ffffff',
+  fontSize: '14px',
+  fontWeight: '600' as const,
+  borderRadius: '8px',
+  padding: '12px 28px',
+  textDecoration: 'none',
+}
+const footer = { fontSize: '12px', color: '#999999', margin: '24px 0 0' }
+const footerBrand = { fontSize: '11px', color: '#b0b0b0', textAlign: 'center' as const, margin: '12px 0 0' }
