@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useSearchParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,7 @@ import MarcarInteresseDialog from '@/components/compromissos/MarcarInteresseDial
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 import AureliaEditalPanel from '@/components/aurelia/AureliaEditalPanel';
+import { MUNICIPIO_IBGE } from '@/constants/pncpMappings';
 
 type DetalhePNCP = {
   success: boolean;
@@ -238,14 +240,70 @@ export default function MuralLicitacoes() {
   const [incluirExternos, setIncluirExternos] = useState(false);
   const [loadingExternos, setLoadingExternos] = useState(false);
   const [licitacoesExternas, setLicitacoesExternas] = useState<LicitacaoMural[]>([]);
-  const municipiosUfSelecionada = useMemo(() => {
-    if (!ufFiltro || ufFiltro === 'all') return [];
-    for (const regiao of Object.values(REGIOES_ESTADOS)) {
-      const estado = regiao.estados.find(e => e.uf === ufFiltro);
-      if (estado) return estado.cidades.sort((a, b) => a.localeCompare(b));
+  // Dynamic municipality loading from IBGE API
+  const [municipiosUfSelecionada, setMunicipiosUfSelecionada] = useState<string[]>([]);
+  const [carregandoMunicipios, setCarregandoMunicipios] = useState(false);
+
+  useEffect(() => {
+    if (!ufFiltro || ufFiltro === 'all') {
+      setMunicipiosUfSelecionada([]);
+      return;
     }
-    return [];
+    setCarregandoMunicipios(true);
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${ufFiltro}/municipios?orderBy=nome`)
+      .then(r => r.json())
+      .then((data: any[]) => {
+        setMunicipiosUfSelecionada(data.map((m: any) => m.nome as string));
+      })
+      .catch(() => {
+        // Fallback to static data if IBGE API fails
+        const fallback: string[] = [];
+        for (const regiao of Object.values(REGIOES_ESTADOS)) {
+          const estado = regiao.estados.find(e => e.uf === ufFiltro);
+          if (estado) {
+            fallback.push(...estado.cidades);
+            break;
+          }
+        }
+        setMunicipiosUfSelecionada(fallback.sort((a, b) => a.localeCompare(b)));
+      })
+      .finally(() => setCarregandoMunicipios(false));
   }, [ufFiltro]);
+
+  // URL search params persistence
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlInitRef = useRef(false);
+
+  // Load filters from URL on mount
+  useEffect(() => {
+    if (urlInitRef.current) return;
+    urlInitRef.current = true;
+    const uf = searchParams.get('uf');
+    const municipio = searchParams.get('municipio');
+    const esfera = searchParams.get('esfera');
+    const modalidade = searchParams.get('modalidade');
+    const q = searchParams.get('q');
+    const portal = searchParams.get('portal');
+    if (uf) setUfFiltro(uf);
+    if (municipio) setMunicipioFiltro(municipio);
+    if (esfera) setEsferaFiltro(esfera);
+    if (modalidade) setModalidadeFiltro(modalidade);
+    if (q) { setSearchTerm(q); setSearchSubmitted(q); }
+    if (portal) setPortalFiltro(portal);
+  }, []);
+
+  // Sync filters to URL
+  useEffect(() => {
+    if (!urlInitRef.current) return;
+    const params: Record<string, string> = {};
+    if (ufFiltro !== 'all') params.uf = ufFiltro;
+    if (municipioFiltro) params.municipio = municipioFiltro;
+    if (esferaFiltro !== 'all') params.esfera = esferaFiltro;
+    if (modalidadeFiltro !== 'all') params.modalidade = modalidadeFiltro;
+    if (searchSubmitted) params.q = searchSubmitted;
+    if (portalFiltro !== 'all') params.portal = portalFiltro;
+    setSearchParams(params, { replace: true });
+  }, [ufFiltro, municipioFiltro, esferaFiltro, modalidadeFiltro, searchSubmitted, portalFiltro, setSearchParams]);
 
   // Configurações de pesquisa automática
   const [configCarregada, setConfigCarregada] = useState(false);
@@ -266,7 +324,6 @@ export default function MuralLicitacoes() {
         if (priorizar) {
           const ufSede = data.uf_sede;
           if (ufSede && ufFiltro === 'all') setUfFiltro(ufSede);
-          // Município da sede NÃO é auto-aplicado como filtro para não restringir demais os resultados
         }
       }
       setConfigCarregada(true);
@@ -388,7 +445,13 @@ export default function MuralLicitacoes() {
         const modLabel = MODALIDADES.find(m => m.value === modalidadeFiltro);
         if (modLabel) query = query.eq('modalidade_id', modLabel.cod);
       }
+      // Municipality filter — exact match from IBGE-sourced name
       if (municipioFiltro.trim()) query = query.ilike('municipio', `%${municipioFiltro.trim()}%`);
+      // Esfera filter — applied at cache level when possible
+      if (esferaFiltro !== 'all') {
+        const esferaCodigo = esferaFiltro === 'Federal' ? 'F' : esferaFiltro === 'Estadual' ? 'E' : esferaFiltro === 'Municipal' ? 'M' : esferaFiltro === 'Distrital' ? 'D' : '';
+        if (esferaCodigo) query = query.eq('esfera_id', esferaCodigo);
+      }
       if (dataInicio) query = query.gte('data_publicacao_pncp', dataInicio.toISOString().split('T')[0]);
       if (dataFim) query = query.lte('data_publicacao_pncp', dataFim.toISOString().split('T')[0] + 'T23:59:59');
 
@@ -404,7 +467,7 @@ export default function MuralLicitacoes() {
       console.error('Cache load error:', err);
       return 0;
     }
-  }, [ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro]);
+  }, [ufFiltro, modalidadeFiltro, esferaFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro]);
 
   // ── FASE 2: Sincronização em tempo real com PNCP (background) ──
   const sincronizarPNCP = useCallback(async () => {
@@ -422,10 +485,13 @@ export default function MuralLicitacoes() {
             query: searchSubmitted || undefined,
             uf: ufFiltro !== 'all' ? ufFiltro : undefined,
             modalidade: modalidadeFiltro !== 'all' ? modalidadeFiltro : undefined,
+            modalidadeId: modalidadeFiltro !== 'all' ? MODALIDADES.find(m => m.value === modalidadeFiltro)?.cod : undefined,
+            esfera: esferaFiltro !== 'all' ? esferaFiltro : undefined,
             dataInicio: dataInicio ? dataInicio.toISOString().split('T')[0] : undefined,
             dataFim: dataFim ? dataFim.toISOString().split('T')[0] : undefined,
             cnpjOrgao: uasgSubmitted || undefined,
             municipio: municipioFiltro.trim() || undefined,
+            codigoMunicipio: municipioFiltro.trim() ? (MUNICIPIO_IBGE[municipioFiltro.trim()] || undefined) : undefined,
             pagina,
             mural: true,
             persistCache: true,
@@ -1336,9 +1402,10 @@ export default function MuralLicitacoes() {
             <div className="flex items-center gap-2 text-sm font-semibold">
               <SlidersHorizontal className="w-4 h-4 text-accent" />
               FILTROS
-              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || portalFiltro !== 'all' || segmentoFiltro !== 'all' || dataInicio || dataFim) && (
-                <Badge className="bg-accent/10 text-accent border-accent/20 text-[9px]">Ativos</Badge>
-              )}
+              {(() => {
+                const count = [tipoInstrumentoFiltro !== 'all', modalidadeFiltro !== 'all', orgaoFiltro, unidadeFiltro, ufFiltro !== 'all', municipioFiltro, esferaFiltro !== 'all', portalFiltro !== 'all', segmentoFiltro !== 'all', !!dataInicio, !!dataFim, searchSubmitted, uasgSubmitted].filter(Boolean).length;
+                return count > 0 ? <Badge className="bg-accent/10 text-accent border-accent/20 text-[9px]">{count} Ativo{count > 1 ? 's' : ''}</Badge> : null;
+              })()}
             </div>
             {filtrosAbertos ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
           </button>
@@ -1412,14 +1479,17 @@ export default function MuralLicitacoes() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Municípios</label>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
+                    Municípios
+                    {carregandoMunicipios && <Loader2 className="w-3 h-3 animate-spin inline ml-1.5" />}
+                  </label>
                   <Select
                     value={municipioFiltro}
                     onValueChange={v => { setMunicipioFiltro(v === 'all' ? '' : v); setPagina(1); }}
-                    disabled={loading || ufFiltro === 'all'}
+                    disabled={loading || ufFiltro === 'all' || carregandoMunicipios}
                   >
                     <SelectTrigger className="w-full h-10 text-xs">
-                      <SelectValue placeholder={ufFiltro === 'all' ? 'Selecione uma UF primeiro' : 'Todos os municípios'} />
+                      <SelectValue placeholder={ufFiltro === 'all' ? 'Selecione uma UF primeiro' : carregandoMunicipios ? 'Carregando...' : 'Todos os municípios'} />
                     </SelectTrigger>
                     <SelectContent className="max-h-60">
                       <SelectItem value="all">Todos os municípios</SelectItem>
@@ -1631,8 +1701,8 @@ export default function MuralLicitacoes() {
           )}
         </div>
 
-        {/* Active filter badges */}
-        {(searchSubmitted || uasgSubmitted || segmentoFiltro !== 'all' || ordenacao.campo !== 'data_publicacao' || ordenacao.direcao !== 'desc') && (
+        {/* Active filter badges — removable chips for ALL filter types */}
+        {(searchSubmitted || uasgSubmitted || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || modalidadeFiltro !== 'all' || tipoInstrumentoFiltro !== 'all' || orgaoFiltro || unidadeFiltro || portalFiltro !== 'all' || segmentoFiltro !== 'all' || dataInicio || dataFim || ordenacao.campo !== 'data_publicacao' || ordenacao.direcao !== 'desc') && (
           <div className="flex items-center gap-2 flex-wrap mt-3">
             {searchSubmitted && (
               <Badge variant="outline" className="gap-1 text-xs">
@@ -1650,10 +1720,90 @@ export default function MuralLicitacoes() {
                 </button>
               </Badge>
             )}
+            {ufFiltro !== 'all' && (
+              <Badge variant="outline" className="gap-1 text-xs bg-info/10 text-info border-info/30">
+                <MapPin className="w-3 h-3" /> UF: {ufFiltro}
+                <button onClick={() => { setUfFiltro('all'); setMunicipioFiltro(''); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {municipioFiltro && (
+              <Badge variant="outline" className="gap-1 text-xs bg-info/10 text-info border-info/30">
+                <MapPin className="w-3 h-3" /> Município: {municipioFiltro}
+                <button onClick={() => { setMunicipioFiltro(''); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {esferaFiltro !== 'all' && (
+              <Badge variant="outline" className="gap-1 text-xs bg-accent/10 text-accent border-accent/30">
+                <Landmark className="w-3 h-3" /> Esfera: {esferaFiltro}
+                <button onClick={() => { setEsferaFiltro('all'); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {modalidadeFiltro !== 'all' && (
+              <Badge variant="outline" className="gap-1 text-xs bg-accent/10 text-accent border-accent/30">
+                <Gavel className="w-3 h-3" /> {MODALIDADES.find(m => m.value === modalidadeFiltro)?.label || modalidadeFiltro}
+                <button onClick={() => { setModalidadeFiltro('all'); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {tipoInstrumentoFiltro !== 'all' && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                <FileText className="w-3 h-3" /> {TIPOS_INSTRUMENTO.find(t => t.value === tipoInstrumentoFiltro)?.label || tipoInstrumentoFiltro}
+                <button onClick={() => { setTipoInstrumentoFiltro('all'); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {orgaoFiltro && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                <Building2 className="w-3 h-3" /> Órgão: {orgaoFiltro}
+                <button onClick={() => { setOrgaoFiltro(''); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {unidadeFiltro && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                Unidade: {unidadeFiltro}
+                <button onClick={() => { setUnidadeFiltro(''); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {portalFiltro !== 'all' && (
+              <Badge variant="outline" className="gap-1 text-xs bg-success/10 text-success border-success/30">
+                <Globe className="w-3 h-3" /> Portal: {portalFiltro}
+                <button onClick={() => { setPortalFiltro('all'); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
             {segmentoFiltro !== 'all' && (
               <Badge variant="outline" className="gap-1 text-xs bg-accent/10 text-accent border-accent/30">
                 <Package className="w-3 h-3" /> Segmento: {segmentoFiltro}
                 <button onClick={() => { setSegmentoFiltro('all'); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {dataInicio && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                <CalendarDays className="w-3 h-3" /> De: {format(dataInicio, 'dd/MM/yyyy')}
+                <button onClick={() => { setDataInicio(undefined); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {dataFim && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                <CalendarDays className="w-3 h-3" /> Até: {format(dataFim, 'dd/MM/yyyy')}
+                <button onClick={() => { setDataFim(undefined); setPagina(1); }}>
                   <X className="w-3 h-3" />
                 </button>
               </Badge>
