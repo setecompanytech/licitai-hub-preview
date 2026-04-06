@@ -1519,7 +1519,7 @@ export default function MuralLicitacoes() {
               </div>
 
               {/* Clear all filters */}
-              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || portalFiltro !== 'all' || dataInicio || dataFim) && (
+              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || portalFiltro !== 'all' || segmentoFiltro !== 'all' || dataInicio || dataFim) && (
                 <div className="flex justify-end pt-1">
                   <Button
                     variant="ghost"
@@ -1530,6 +1530,8 @@ export default function MuralLicitacoes() {
                       setOrgaoFiltro(''); setUnidadeFiltro('');
                       setUfFiltro('all'); setMunicipioFiltro('');
                       setEsferaFiltro('all'); setPortalFiltro('all');
+                      setSegmentoFiltro('all');
+                      setOrdenacao({ campo: 'data_publicacao', direcao: 'desc' });
                       setDataInicio(undefined); setDataFim(undefined);
                       setPagina(1);
                     }}
