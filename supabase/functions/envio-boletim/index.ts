@@ -70,11 +70,9 @@ serve(async (req) => {
       try {
         const { error: invokeErr } = await supabase.functions.invoke('send-transactional-email', {
           body: {
-            template: 'boletim-diario',
-            to: sub.email,
-            subject: `${tipoLabel} — ${new Date().toLocaleDateString("pt-BR")}`,
-            label: `boletim-${tipo}`,
-            data: {
+            templateName: 'boletim-diario',
+            recipientEmail: sub.email,
+            templateData: {
               tipo,
               data: new Date().toLocaleDateString("pt-BR"),
               licitacoes: (licitacoes || []).map(l => ({
