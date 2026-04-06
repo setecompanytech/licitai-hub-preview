@@ -213,6 +213,8 @@ export default function MuralLicitacoes() {
   const [portalFiltro, setPortalFiltro] = useState<string>('all');
   const [municipioFiltro, setMunicipioFiltro] = useState('');
   const [unidadeFiltro, setUnidadeFiltro] = useState('');
+  const [segmentoFiltro, setSegmentoFiltro] = useState<string>('all');
+  const [ordenacao, setOrdenacao] = useState<OrdenacaoConfig>({ campo: 'data_publicacao', direcao: 'desc' });
   const [orgaoFiltro, setOrgaoFiltro] = useState('');
   
   // Toggle portais externos (Firecrawl)
