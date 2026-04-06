@@ -85,6 +85,8 @@ const AvisoLegal = lazy(() => import("./pages/AvisoLegal"));
 const DemoAmbiente = lazy(() => import("./pages/DemoAmbiente"));
 const DpaPage = lazy(() => import("./pages/DpaPage"));
 const AgentePage = lazy(() => import("./pages/AgentePage"));
+const CentralAvisos = lazy(() => import("./pages/CentralAvisos"));
+const PreferenciasAlertas = lazy(() => import("./pages/PreferenciasAlertas"));
 
 const queryClient = new QueryClient();
 
@@ -191,6 +193,8 @@ const App = () => (
               <Route path="/demo" element={<DemoAmbiente />} />
               <Route path="/dpa" element={<DpaPage />} />
               <Route path="/agente" element={<PlanPages><AgentePage /></PlanPages>} />
+              <Route path="/avisos" element={<ProtectedPages><CentralAvisos /></ProtectedPages>} />
+              <Route path="/configuracoes/alertas" element={<ProtectedPages><PreferenciasAlertas /></ProtectedPages>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             </Suspense>
