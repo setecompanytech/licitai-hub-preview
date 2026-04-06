@@ -230,8 +230,12 @@ const renderPdfToVisionImages = async (pdf: any, fileName: string, maxPages: num
   for (let i = 1; i <= maxPages; i += 1) {
     const page = await pdf.getPage(i);
     const firstViewport = page.getViewport({ scale: 1 });
-    const scale = Math.min(2, 1600 / Math.max(firstViewport.width, 1));
-    const viewport = page.getViewport({ scale: Math.max(scale, 1) });
+    const scale = Math.min(
+      1.5,
+      1600 / Math.max(firstViewport.width, 1),
+      1600 / Math.max(firstViewport.height, 1),
+    );
+    const viewport = page.getViewport({ scale: Math.max(scale, 0.5) });
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(viewport.width);
     canvas.height = Math.round(viewport.height);
