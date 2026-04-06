@@ -1439,6 +1439,44 @@ export default function MuralLicitacoes() {
                 </div>
               </div>
 
+              {/* Row 5: Segmento + Ordenação */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Segmento / Ramo</label>
+                  <Select value={segmentoFiltro} onValueChange={v => { setSegmentoFiltro(v); setPagina(1); }}>
+                    <SelectTrigger className="w-full h-10 text-xs">
+                      <Package className="w-3 h-3 mr-1 text-muted-foreground" />
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      <SelectItem value="all">Todos os segmentos</SelectItem>
+                      {SEGMENTOS_FILTRO.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      {segmentosPrioritarios.filter(s => !SEGMENTOS_FILTRO.includes(s)).map(s => (
+                        <SelectItem key={s} value={s}>{s} ⭐</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Ordenar por</label>
+                  <Select
+                    value={`${ordenacao.campo}_${ordenacao.direcao}`}
+                    onValueChange={v => {
+                      const opt = OPCOES_ORDENACAO.find(o => `${o.campo}_${o.direcao}` === v);
+                      if (opt) { setOrdenacao({ campo: opt.campo as OrdenacaoConfig['campo'], direcao: opt.direcao as OrdenacaoConfig['direcao'] }); setPagina(1); }
+                    }}
+                  >
+                    <SelectTrigger className="w-full h-10 text-xs">
+                      <ListOrdered className="w-3 h-3 mr-1 text-muted-foreground" />
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {OPCOES_ORDENACAO.map(o => (
+                        <SelectItem key={`${o.campo}_${o.direcao}`} value={`${o.campo}_${o.direcao}`}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               {/* Row 5: Datas */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
