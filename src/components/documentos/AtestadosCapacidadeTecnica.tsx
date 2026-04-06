@@ -40,6 +40,7 @@ type ACTDoc = {
   dados_extraidos?: {
     objeto?: string;
     orgao_emissor?: string;
+    ano_fornecimento?: string;
     valor?: string;
     cnpj_contratante?: string;
     periodo?: string;
