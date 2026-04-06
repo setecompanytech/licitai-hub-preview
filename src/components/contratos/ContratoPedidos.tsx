@@ -210,7 +210,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       observacoes: form.observacoes || null,
     } as any);
     setSaving(false);
-    if (error) { toast.error('Erro ao salvar pedido'); return; }
+    if (error) { console.error('Erro ao salvar pedido:', error.message, error.details, error.code); toast.error('Erro ao salvar pedido: ' + error.message); return; }
     toast.success('Pedido registrado.');
     setDialogOpen(false);
     resetForm();
@@ -238,7 +238,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     });
     const { error } = await supabase.from('contrato_pedidos').insert(inserts as any);
     setSaving(false);
-    if (error) { toast.error('Erro ao salvar pedidos'); return; }
+    if (error) { console.error('Erro ao salvar pedidos:', error.message, error.details, error.code); toast.error('Erro ao salvar pedidos: ' + error.message); return; }
     toast.success(`${inserts.length} itens registrados.`);
     setDialogOpen(false);
     resetForm();
