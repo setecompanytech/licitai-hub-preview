@@ -113,8 +113,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [user, checkSubscription]);
 
-  // Centralized redirect origin from config
-  const { getRedirectOrigin } = await import('@/config/urls');
+  const getRedirectOrigin = (): string => {
+    const origin = window.location.origin;
+    if (origin.includes('lovableproject.com') || origin.includes('lovable.app') || origin.includes('localhost')) {
+      return 'https://app.praefectus.com.br';
+    }
+    return origin;
+  };
 
   const signUp = async (email: string, password: string, nomeCompleto: string) => {
     const { error } = await supabase.auth.signUp({
