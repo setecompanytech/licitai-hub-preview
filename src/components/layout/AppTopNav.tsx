@@ -9,7 +9,7 @@ import {
   Download, LogOut, Building2, ShieldCheck, HeadphonesIcon, MessageSquare,
   TrendingUp, Target, ClipboardCheck, BookOpen, Bell, Archive, CalendarDays,
   GraduationCap, FileText, ListChecks, Menu, X, FileBarChart, Workflow,
-  Plug, Truck,
+  Plug, Truck, Send,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
