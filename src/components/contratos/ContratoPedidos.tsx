@@ -577,6 +577,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <TableHead className="text-xs text-center">Status</TableHead>
                 <TableHead className="text-xs">NF Comercial</TableHead>
                 <TableHead className="text-xs">NF-e Financeiro</TableHead>
+                {podeVerCustos && <TableHead className="text-xs text-right">Custo Unit</TableHead>}
+                {podeVerCustos && <TableHead className="text-xs text-right">Custo Total</TableHead>}
                 <TableHead className="text-xs w-20"></TableHead>
               </TableRow>
             </TableHeader>
