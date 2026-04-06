@@ -192,7 +192,8 @@ async function renderPdfToImages(file: File): Promise<{ name: string; dataUrl: s
   try {
     const arrayBuffer = await file.arrayBuffer();
     const pdfjsLib = await import('pdfjs-dist');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+    const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
 
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const pagesToRender = Math.min(pdf.numPages, PDF_VISION_PAGE_LIMIT);
