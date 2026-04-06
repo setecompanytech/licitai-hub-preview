@@ -910,6 +910,75 @@ export type Database = {
           },
         ]
       }
+      alertas_gerados: {
+        Row: {
+          arquivado: boolean | null
+          cnpj_orgao: string | null
+          created_at: string | null
+          data_abertura: string | null
+          descricao: string
+          fonte: string
+          id: string
+          lido: boolean | null
+          numero_pregao: string | null
+          numero_processo: string | null
+          orgao: string | null
+          segmento: string | null
+          tipo: string
+          titulo: string
+          uf: string | null
+          urgente: boolean | null
+          url_edital: string | null
+          url_publicacao: string | null
+          user_id: string
+          valor_estimado: number | null
+        }
+        Insert: {
+          arquivado?: boolean | null
+          cnpj_orgao?: string | null
+          created_at?: string | null
+          data_abertura?: string | null
+          descricao: string
+          fonte: string
+          id?: string
+          lido?: boolean | null
+          numero_pregao?: string | null
+          numero_processo?: string | null
+          orgao?: string | null
+          segmento?: string | null
+          tipo: string
+          titulo: string
+          uf?: string | null
+          urgente?: boolean | null
+          url_edital?: string | null
+          url_publicacao?: string | null
+          user_id: string
+          valor_estimado?: number | null
+        }
+        Update: {
+          arquivado?: boolean | null
+          cnpj_orgao?: string | null
+          created_at?: string | null
+          data_abertura?: string | null
+          descricao?: string
+          fonte?: string
+          id?: string
+          lido?: boolean | null
+          numero_pregao?: string | null
+          numero_processo?: string | null
+          orgao?: string | null
+          segmento?: string | null
+          tipo?: string
+          titulo?: string
+          uf?: string | null
+          urgente?: boolean | null
+          url_edital?: string | null
+          url_publicacao?: string | null
+          user_id?: string
+          valor_estimado?: number | null
+        }
+        Relationships: []
+      }
       apoio_contabil: {
         Row: {
           conteudo: string | null
@@ -4847,6 +4916,47 @@ export type Database = {
         }
         Relationships: []
       }
+      notificacoes_enviadas: {
+        Row: {
+          alerta_id: string | null
+          canal: string
+          enviado_em: string | null
+          erro: string | null
+          id: string
+          status: string
+          tentativas: number | null
+          user_id: string
+        }
+        Insert: {
+          alerta_id?: string | null
+          canal: string
+          enviado_em?: string | null
+          erro?: string | null
+          id?: string
+          status: string
+          tentativas?: number | null
+          user_id: string
+        }
+        Update: {
+          alerta_id?: string | null
+          canal?: string
+          enviado_em?: string | null
+          erro?: string | null
+          id?: string
+          status?: string
+          tentativas?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificacoes_enviadas_alerta_id_fkey"
+            columns: ["alerta_id"]
+            isOneToOne: false
+            referencedRelation: "alertas_gerados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nuvem_fiscal_config: {
         Row: {
           ambiente: string | null
@@ -5626,6 +5736,75 @@ export type Database = {
           },
         ]
       }
+      preferencias_alertas: {
+        Row: {
+          ativo: boolean | null
+          canal_email: boolean | null
+          canal_push: boolean | null
+          canal_whatsapp: boolean | null
+          cnpj: string | null
+          created_at: string | null
+          email_notificacao: string | null
+          frequencia: string | null
+          id: string
+          razao_social: string | null
+          receber_alteracoes: boolean | null
+          receber_cancelamentos: boolean | null
+          receber_editais: boolean | null
+          receber_homologacoes: boolean | null
+          receber_suspensoes: boolean | null
+          segmentos: string[] | null
+          ufs: string[] | null
+          updated_at: string | null
+          user_id: string
+          whatsapp_notificacao: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          canal_email?: boolean | null
+          canal_push?: boolean | null
+          canal_whatsapp?: boolean | null
+          cnpj?: string | null
+          created_at?: string | null
+          email_notificacao?: string | null
+          frequencia?: string | null
+          id?: string
+          razao_social?: string | null
+          receber_alteracoes?: boolean | null
+          receber_cancelamentos?: boolean | null
+          receber_editais?: boolean | null
+          receber_homologacoes?: boolean | null
+          receber_suspensoes?: boolean | null
+          segmentos?: string[] | null
+          ufs?: string[] | null
+          updated_at?: string | null
+          user_id: string
+          whatsapp_notificacao?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          canal_email?: boolean | null
+          canal_push?: boolean | null
+          canal_whatsapp?: boolean | null
+          cnpj?: string | null
+          created_at?: string | null
+          email_notificacao?: string | null
+          frequencia?: string | null
+          id?: string
+          razao_social?: string | null
+          receber_alteracoes?: boolean | null
+          receber_cancelamentos?: boolean | null
+          receber_editais?: boolean | null
+          receber_homologacoes?: boolean | null
+          receber_suspensoes?: boolean | null
+          segmentos?: string[] | null
+          ufs?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+          whatsapp_notificacao?: string | null
+        }
+        Relationships: []
+      }
       price_alertas: {
         Row: {
           ativo: boolean | null
@@ -6007,6 +6186,42 @@ export type Database = {
           },
         ]
       }
+      publicacoes_dou_processadas: {
+        Row: {
+          cnpj_mencionado: string | null
+          conteudo_resumo: string | null
+          data_publicacao: string | null
+          id: string
+          identificador: string
+          orgao: string | null
+          processado_em: string | null
+          processo_mencionado: string | null
+          tipo_publicacao: string | null
+        }
+        Insert: {
+          cnpj_mencionado?: string | null
+          conteudo_resumo?: string | null
+          data_publicacao?: string | null
+          id?: string
+          identificador: string
+          orgao?: string | null
+          processado_em?: string | null
+          processo_mencionado?: string | null
+          tipo_publicacao?: string | null
+        }
+        Update: {
+          cnpj_mencionado?: string | null
+          conteudo_resumo?: string | null
+          data_publicacao?: string | null
+          id?: string
+          identificador?: string
+          orgao?: string | null
+          processado_em?: string | null
+          processo_mencionado?: string | null
+          tipo_publicacao?: string | null
+        }
+        Relationships: []
+      }
       quotation_items: {
         Row: {
           created_at: string
@@ -6319,6 +6534,36 @@ export type Database = {
           tipo?: string
           updated_at?: string
           url_base?: string
+        }
+        Relationships: []
+      }
+      segmentos_licitacao: {
+        Row: {
+          ativo: boolean | null
+          categoria: string
+          codigo: string
+          created_at: string | null
+          descricao: string | null
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          categoria: string
+          codigo: string
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean | null
+          categoria?: string
+          codigo?: string
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          nome?: string
         }
         Relationships: []
       }
