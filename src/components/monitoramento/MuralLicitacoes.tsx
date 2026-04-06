@@ -1402,9 +1402,10 @@ export default function MuralLicitacoes() {
             <div className="flex items-center gap-2 text-sm font-semibold">
               <SlidersHorizontal className="w-4 h-4 text-accent" />
               FILTROS
-              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || portalFiltro !== 'all' || segmentoFiltro !== 'all' || dataInicio || dataFim) && (
-                <Badge className="bg-accent/10 text-accent border-accent/20 text-[9px]">Ativos</Badge>
-              )}
+              {(() => {
+                const count = [tipoInstrumentoFiltro !== 'all', modalidadeFiltro !== 'all', orgaoFiltro, unidadeFiltro, ufFiltro !== 'all', municipioFiltro, esferaFiltro !== 'all', portalFiltro !== 'all', segmentoFiltro !== 'all', !!dataInicio, !!dataFim, searchSubmitted, uasgSubmitted].filter(Boolean).length;
+                return count > 0 ? <Badge className="bg-accent/10 text-accent border-accent/20 text-[9px]">{count} Ativo{count > 1 ? 's' : ''}</Badge> : null;
+              })()}
             </div>
             {filtrosAbertos ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
           </button>
