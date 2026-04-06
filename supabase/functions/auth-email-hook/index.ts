@@ -17,12 +17,12 @@ const corsHeaders = {
 }
 
 const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: 'Confirme seu e-mail — PRAEFECTUS',
-  invite: 'Você foi convidado — PRAEFECTUS',
-  magiclink: 'Seu link de acesso — PRAEFECTUS',
-  recovery: 'Redefinir sua senha — PRAEFECTUS',
-  email_change: 'Confirme a alteração de e-mail — PRAEFECTUS',
-  reauthentication: 'Seu código de verificação — PRAEFECTUS',
+  signup: 'Confirm your email',
+  invite: "You've been invited",
+  magiclink: 'Your login link',
+  recovery: 'Reset your password',
+  email_change: 'Confirm your new email',
+  reauthentication: 'Your verification code',
 }
 
 // Template mapping
@@ -36,10 +36,10 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "PRAEFECTUS"
-const SENDER_DOMAIN = "notify.praefectus.com.br"
-const ROOT_DOMAIN = "praefectus.com.br"
-const FROM_DOMAIN = "notify.praefectus.com.br" // Domain shown in From address (may be root or sender subdomain)
+const SITE_NAME = "levo-licita"
+const SENDER_DOMAIN = "notify.app.praefectus.com.br"
+const ROOT_DOMAIN = "app.praefectus.com.br"
+const FROM_DOMAIN = "notify.app.praefectus.com.br" // Domain shown in From address (may be root or sender subdomain)
 
 // Sample data for preview mode ONLY (not used in actual email sending).
 // URLs are baked in at scaffold time from the project's real data.
