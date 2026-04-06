@@ -66,4 +66,10 @@ project_id = "sbnlovigyifvrkgsoalj"
     verify_jwt = false
   [functions.processar-homologacoes]
     verify_jwt = false
+  [functions.coletar-portais]
+    verify_jwt = false
+  [functions.baixar-pdf-edital]
+    verify_jwt = false
+  [functions.distribuir-editais]
+    verify_jwt = false
 

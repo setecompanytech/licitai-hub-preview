@@ -9,7 +9,7 @@ import {
   Download, LogOut, Building2, ShieldCheck, HeadphonesIcon, MessageSquare,
   TrendingUp, Target, ClipboardCheck, BookOpen, Bell, Archive, CalendarDays,
   GraduationCap, FileText, ListChecks, Menu, X, FileBarChart, Workflow,
-  Plug, Truck,
+  Plug, Truck, Send,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -109,6 +109,7 @@ const adminItems: NavItem[] = [
   { icon: DollarSign, label: 'Financeiro', path: '/admin/financeiro' },
   { icon: Target, label: 'Fontes Fabricantes', path: '/admin/fontes-fabricantes' },
   { icon: TrendingUp, label: 'Marketing', path: '/admin/marketing' },
+  { icon: Send, label: 'Distribuição', path: '/admin/distribuicao' },
 ];
 
 // Top-level nav links shown in the horizontal bar
