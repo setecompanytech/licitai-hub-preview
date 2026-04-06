@@ -1,3 +1,7 @@
+import { supabase } from "@/integrations/supabase/client";
+import { createLogger } from "@/services/logger";
+
+const logger = createLogger("AIStream");
 const AI_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -21,12 +25,11 @@ export async function streamAIChat({
     // Use user's JWT token if available, fallback to anon key for public actions
     let authToken = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     try {
-      const { supabase } = await import("@/integrations/supabase/client");
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.access_token) {
         authToken = session.access_token;
       }
-    } catch { /* fallback to anon key */ }
+    } catch (error) { logger.warn("Falha ao obter sessão, usando anon key", error); }
 
     const resp = await fetch(AI_CHAT_URL, {
       method: "POST",

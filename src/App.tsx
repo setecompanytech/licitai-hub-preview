@@ -11,77 +11,91 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import PlanGuard from "@/components/auth/PlanGuard";
 import AdminGuard from "@/components/auth/AdminGuard";
 import MaintenanceGuard from "@/components/auth/MaintenanceGuard";
+import { Navigate } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { Loader2 } from "lucide-react";
+
+// Static imports — always needed immediately
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
-import { Navigate } from "react-router-dom";
-import KanbanPage from "./pages/KanbanPage";
-import RoboLances from "./pages/RoboLances";
-import Concorrentes from "./pages/Concorrentes";
-import Documentos from "./pages/Documentos";
-import ApoioJuridico from "./pages/ApoioJuridico";
-import ApoioContabil from "./pages/ApoioContabil";
-import Precificacao from "./pages/Precificacao";
-import AureliaPage from "./pages/AureliaPage";
-import Analytics from "./pages/Analytics";
-import MonitoramentoEditais from "./pages/MonitoramentoEditais";
-import Configuracoes from "./pages/Configuracoes";
-import Empresas from "./pages/Empresas";
-import AdminTemplates from "./pages/AdminTemplates";
 import LandingPage from "./pages/LandingPage";
-import Cadastro from "./pages/Cadastro";
-import FaqPage from "./pages/FaqPage";
-import Suporte from "./pages/Suporte";
-import AdminFinanceiro from "./pages/AdminFinanceiro";
-import AdminFontesFabricantes from "./pages/AdminFontesFabricantes";
-import MonitoramentoChat from "./pages/MonitoramentoChat";
-import AnaliseMercado from "./pages/AnaliseMercado";
-import LicitacoesEstrategicas from "./pages/LicitacoesEstrategicas";
-import AssessoriaCadastral from "./pages/AssessoriaCadastral";
-import Blog from "./pages/Blog";
-import Boletins from "./pages/Boletins";
-import Ebook from "./pages/Ebook";
-import PropostaTecnica from "./pages/PropostaTecnica";
-import HistoricoLicitacoes from "./pages/HistoricoLicitacoes";
-import Ferramentas from "./pages/Ferramentas";
-import GestaoContratos from "./pages/GestaoContratos";
-import Financeiro from "./pages/Financeiro";
-
-
-import WhatsAppCRM from "./pages/WhatsAppCRM";
-import Calendario from "./pages/Calendario";
-import TermosDeUso from "./pages/TermosDeUso";
-import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
-import LgpdPage from "./pages/LgpdPage";
-import TutorialPage from "./pages/TutorialPage";
 import NotFound from "./pages/NotFound";
-import ApiIntegracao from "./pages/ApiIntegracao";
-import IndicesRepactuacao from "./pages/IndicesRepactuacao";
-import RelatorioContabil from "./pages/RelatorioContabil";
-import AdminMarketing from "./pages/AdminMarketing";
-import AuditoriaAdmin from "./pages/AuditoriaAdmin";
-import MeusCompromissos from "./pages/MeusCompromissos";
-import WorkflowIA from "./pages/WorkflowIA";
-import EquipeColaboradores from "./pages/EquipeColaboradores";
-import AssistenteEspecializado from "./pages/AssistenteEspecializado";
-import Unsubscribe from "./pages/Unsubscribe";
-import CertificadoUpload from "./pages/CertificadoUpload";
-import PerfisAlerta from "./pages/PerfisAlerta";
-import SegurancaInformacao from "./pages/SegurancaInformacao";
-import ComplianceGovernanca from "./pages/ComplianceGovernanca";
-import StatusPlataforma from "./pages/StatusPlataforma";
-import SobreEmpresa from "./pages/SobreEmpresa";
-import ContatoDemo from "./pages/ContatoDemo";
-import CentralAjuda from "./pages/CentralAjuda";
-import PoliticaCookies from "./pages/PoliticaCookies";
-import PoliticaSLA from "./pages/PoliticaSLA";
-import Solucoes from "./pages/Solucoes";
-import AvisoLegal from "./pages/AvisoLegal";
-import DemoAmbiente from "./pages/DemoAmbiente";
-import DpaPage from "./pages/DpaPage";
-import AgentePage from "./pages/AgentePage";
 import CookieConsentBanner from "./components/shared/CookieConsentBanner";
+
+// Lazy imports — loaded on demand
+const KanbanPage = lazy(() => import("./pages/KanbanPage"));
+const RoboLances = lazy(() => import("./pages/RoboLances"));
+const Concorrentes = lazy(() => import("./pages/Concorrentes"));
+const Documentos = lazy(() => import("./pages/Documentos"));
+const ApoioJuridico = lazy(() => import("./pages/ApoioJuridico"));
+const ApoioContabil = lazy(() => import("./pages/ApoioContabil"));
+const Precificacao = lazy(() => import("./pages/Precificacao"));
+const AureliaPage = lazy(() => import("./pages/AureliaPage"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const MonitoramentoEditais = lazy(() => import("./pages/MonitoramentoEditais"));
+const Configuracoes = lazy(() => import("./pages/Configuracoes"));
+const Empresas = lazy(() => import("./pages/Empresas"));
+const AdminTemplates = lazy(() => import("./pages/AdminTemplates"));
+const Cadastro = lazy(() => import("./pages/Cadastro"));
+const FaqPage = lazy(() => import("./pages/FaqPage"));
+const Suporte = lazy(() => import("./pages/Suporte"));
+const AdminFinanceiro = lazy(() => import("./pages/AdminFinanceiro"));
+const AdminFontesFabricantes = lazy(() => import("./pages/AdminFontesFabricantes"));
+const MonitoramentoChat = lazy(() => import("./pages/MonitoramentoChat"));
+const AnaliseMercado = lazy(() => import("./pages/AnaliseMercado"));
+const LicitacoesEstrategicas = lazy(() => import("./pages/LicitacoesEstrategicas"));
+const AssessoriaCadastral = lazy(() => import("./pages/AssessoriaCadastral"));
+const Blog = lazy(() => import("./pages/Blog"));
+const Boletins = lazy(() => import("./pages/Boletins"));
+const Ebook = lazy(() => import("./pages/Ebook"));
+const PropostaTecnica = lazy(() => import("./pages/PropostaTecnica"));
+const HistoricoLicitacoes = lazy(() => import("./pages/HistoricoLicitacoes"));
+const Ferramentas = lazy(() => import("./pages/Ferramentas"));
+const GestaoContratos = lazy(() => import("./pages/GestaoContratos"));
+const Financeiro = lazy(() => import("./pages/Financeiro"));
+const WhatsAppCRM = lazy(() => import("./pages/WhatsAppCRM"));
+const Calendario = lazy(() => import("./pages/Calendario"));
+const TermosDeUso = lazy(() => import("./pages/TermosDeUso"));
+const PoliticaPrivacidade = lazy(() => import("./pages/PoliticaPrivacidade"));
+const LgpdPage = lazy(() => import("./pages/LgpdPage"));
+const TutorialPage = lazy(() => import("./pages/TutorialPage"));
+const ApiIntegracao = lazy(() => import("./pages/ApiIntegracao"));
+const IndicesRepactuacao = lazy(() => import("./pages/IndicesRepactuacao"));
+const RelatorioContabil = lazy(() => import("./pages/RelatorioContabil"));
+const AdminMarketing = lazy(() => import("./pages/AdminMarketing"));
+const AuditoriaAdmin = lazy(() => import("./pages/AuditoriaAdmin"));
+const MeusCompromissos = lazy(() => import("./pages/MeusCompromissos"));
+const WorkflowIA = lazy(() => import("./pages/WorkflowIA"));
+const EquipeColaboradores = lazy(() => import("./pages/EquipeColaboradores"));
+const AssistenteEspecializado = lazy(() => import("./pages/AssistenteEspecializado"));
+const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
+const CertificadoUpload = lazy(() => import("./pages/CertificadoUpload"));
+const PerfisAlerta = lazy(() => import("./pages/PerfisAlerta"));
+const SegurancaInformacao = lazy(() => import("./pages/SegurancaInformacao"));
+const ComplianceGovernanca = lazy(() => import("./pages/ComplianceGovernanca"));
+const StatusPlataforma = lazy(() => import("./pages/StatusPlataforma"));
+const SobreEmpresa = lazy(() => import("./pages/SobreEmpresa"));
+const ContatoDemo = lazy(() => import("./pages/ContatoDemo"));
+const CentralAjuda = lazy(() => import("./pages/CentralAjuda"));
+const PoliticaCookies = lazy(() => import("./pages/PoliticaCookies"));
+const PoliticaSLA = lazy(() => import("./pages/PoliticaSLA"));
+const Solucoes = lazy(() => import("./pages/Solucoes"));
+const AvisoLegal = lazy(() => import("./pages/AvisoLegal"));
+const DemoAmbiente = lazy(() => import("./pages/DemoAmbiente"));
+const DpaPage = lazy(() => import("./pages/DpaPage"));
+const AgentePage = lazy(() => import("./pages/AgentePage"));
+
 const queryClient = new QueryClient();
+
+const PageLoader = () => (
+  <div className="flex items-center justify-center h-screen bg-background">
+    <div className="flex flex-col items-center gap-4">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <span className="text-sm text-muted-foreground">Carregando módulo...</span>
+    </div>
+  </div>
+);
 
 const ProtectedPages = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute>{children}</ProtectedRoute>
@@ -103,6 +117,7 @@ const App = () => (
           <EmpresaProvider>
           <PropostaCartProvider>
             <MaintenanceGuard>
+            <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/landing" element={<Navigate to="/" replace />} />
@@ -178,6 +193,7 @@ const App = () => (
               <Route path="/agente" element={<PlanPages><AgentePage /></PlanPages>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
             <CookieConsentBanner />
             </MaintenanceGuard>
           </PropostaCartProvider>
