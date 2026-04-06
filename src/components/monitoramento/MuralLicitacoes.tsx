@@ -1477,7 +1477,9 @@ export default function MuralLicitacoes() {
                     </SelectContent>
                   </Select>
                 </div>
-              {/* Row 5: Datas */}
+              </div>
+
+              {/* Row 6: Datas */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Data de início de recebimento de propostas</label>
