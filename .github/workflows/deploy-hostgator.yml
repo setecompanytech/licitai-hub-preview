@@ -108,7 +108,9 @@ jobs:
           dangerous-clean-slate: true
 
       - name: Fix remote permissions via SSH
-        if: ${{ secrets.SSH_HOST != '' }}
+        if: ${{ env.HAS_SSH == 'true' }}
+        env:
+          HAS_SSH: ${{ secrets.SSH_HOST != '' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
