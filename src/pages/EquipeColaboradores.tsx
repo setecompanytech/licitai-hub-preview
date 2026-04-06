@@ -372,6 +372,61 @@ export default function EquipeColaboradores() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Permissions Dialog */}
+        <Dialog open={!!permDialog} onOpenChange={(v) => !v && setPermDialog(null)}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-accent" />
+                Permissões de {(permDialog as any)?.nome || 'Colaborador'}
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-xs text-muted-foreground mb-2">
+              Setor: <Badge className={`text-[10px] ${getEquipeInfo((permDialog as any)?.equipe || 'geral').color}`}>
+                {getEquipeInfo((permDialog as any)?.equipe || 'geral').label}
+              </Badge>
+              — Os módulos padrão do setor são habilitados automaticamente. Selecione módulos adicionais abaixo:
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {MODULOS_SISTEMA.map(mod => {
+                const isDefault = mod.setores.includes((permDialog as any)?.equipe || 'geral');
+                const checked = permissoesSel.includes(mod.value) || isDefault;
+                return (
+                  <label
+                    key={mod.value}
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors text-sm ${
+                      checked ? 'border-accent bg-accent/10' : 'border-border hover:bg-muted/50'
+                    } ${isDefault ? 'opacity-80' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={isDefault}
+                      onChange={() => {
+                        if (isDefault) return;
+                        setPermissoesSel(prev =>
+                          prev.includes(mod.value)
+                            ? prev.filter(v => v !== mod.value)
+                            : [...prev, mod.value]
+                        );
+                      }}
+                      className="accent-[hsl(var(--accent))]"
+                    />
+                    <span className="text-xs">{mod.label}</span>
+                    {isDefault && <Badge variant="outline" className="text-[8px] ml-auto">Padrão</Badge>}
+                  </label>
+                );
+              })}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPermDialog(null)}>Cancelar</Button>
+              <Button onClick={handleSavePermissoes} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                Salvar Permissões
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
