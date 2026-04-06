@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const SITE_URL = "https://praefectus.com.br";
+const SITE_URL = "https://app.praefectus.com.br";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {

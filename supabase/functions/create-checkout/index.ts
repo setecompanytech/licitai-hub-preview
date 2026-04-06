@@ -50,7 +50,7 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    const origin = req.headers.get("origin") || "https://praefectus.com.br";
+    const origin = req.headers.get("origin") || "https://app.praefectus.com.br";
     const resolvedSuccessPath = successPath || "/configuracoes?checkout=success&scroll=planos#plano";
     const resolvedCancelPath = cancelPath || "/configuracoes?checkout=cancel&scroll=planos#plano";
 

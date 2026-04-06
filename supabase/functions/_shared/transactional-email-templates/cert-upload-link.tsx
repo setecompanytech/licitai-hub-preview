@@ -65,7 +65,7 @@ export const template = {
     nome: 'João Silva',
     empresa: 'Empresa Exemplo LTDA',
     cnpj: '12.345.678/0001-90',
-    link: 'https://praefectus.com.br/certificado-upload?token=abc123',
+    link: 'https://app.praefectus.com.br/certificado-upload?token=abc123',
     expira: '01/04/2026 15:30',
   },
 } satisfies TemplateEntry
