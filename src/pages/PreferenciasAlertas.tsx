@@ -91,11 +91,16 @@ export default function PreferenciasAlertas() {
     if (cnpjLimpo.length !== 14) { toast.error('CNPJ inválido'); return; }
     setBuscandoCnpj(true);
     try {
-      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`);
-      if (!res.ok) throw new Error('CNPJ não encontrado');
-      const data = await res.json();
-      setForm(f => ({ ...f, razao_social: data.razao_social || '' }));
-      toast.success('Razão social preenchida automaticamente');
+      const { data, error } = await supabase.functions.invoke('consulta-cnpj', {
+        body: { cnpj: cnpjLimpo },
+      });
+      if (error) throw error;
+      if (data?.razao_social) {
+        setForm(f => ({ ...f, razao_social: data.razao_social }));
+        toast.success('Razão social preenchida automaticamente');
+      } else {
+        toast.error('CNPJ não encontrado');
+      }
     } catch {
       toast.error('Não foi possível consultar o CNPJ');
     } finally {
