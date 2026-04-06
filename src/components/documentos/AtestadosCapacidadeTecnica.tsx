@@ -441,7 +441,7 @@ ${rawText.slice(0, 12000)}`;
             return (
               <div key={doc.id} className="px-5 py-3 flex items-start justify-between hover:bg-muted/20 transition-colors">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <Icon className="w-4 h-4 text-accent" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -450,18 +450,28 @@ ${rawText.slice(0, 12000)}`;
                       <CheckCircle2 className="w-3.5 h-3.5 text-success" />
                       <span className="text-[10px] text-success font-medium">Cadastrado</span>
                     </div>
+                    {/* Key fields: Objeto, Cliente/Órgão, Ano */}
                     {doc.dados_extraidos?.objeto && (
-                      <p className="text-xs mt-1 text-foreground/80 line-clamp-2">{doc.dados_extraidos.objeto}</p>
+                      <p className="text-xs mt-1.5 font-medium text-foreground line-clamp-2">
+                        <span className="text-muted-foreground font-normal">Objeto: </span>
+                        {doc.dados_extraidos.objeto}
+                      </p>
                     )}
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
                       {doc.dados_extraidos?.orgao_emissor && (
-                        <Badge variant="secondary" className="text-[10px]">{doc.dados_extraidos.orgao_emissor}</Badge>
+                        <span className="text-xs text-foreground/80">
+                          <span className="text-muted-foreground">Cliente/Órgão: </span>
+                          <strong>{doc.dados_extraidos.orgao_emissor}</strong>
+                        </span>
+                      )}
+                      {doc.dados_extraidos?.ano_fornecimento && (
+                        <span className="text-xs text-foreground/80">
+                          <span className="text-muted-foreground">Ano: </span>
+                          <strong>{doc.dados_extraidos.ano_fornecimento}</strong>
+                        </span>
                       )}
                       {doc.dados_extraidos?.valor && (
                         <Badge variant="outline" className="text-[10px]">R$ {doc.dados_extraidos.valor}</Badge>
-                      )}
-                      {doc.dados_extraidos?.periodo && (
-                        <Badge variant="outline" className="text-[10px]">{doc.dados_extraidos.periodo}</Badge>
                       )}
                     </div>
                   </div>
