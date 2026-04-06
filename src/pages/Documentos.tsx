@@ -18,6 +18,7 @@ import {
   CalendarDays, Bot
 } from 'lucide-react';
 import MergeDocumentos from '@/components/documentos/MergeDocumentos';
+import AtestadosCapacidadeTecnica from '@/components/documentos/AtestadosCapacidadeTecnica';
 import AlertaVencimentoDocumentos from '@/components/documentos/AlertaVencimentoDocumentos';
 import ChecklistModalidade from '@/components/licitacoes/ChecklistModalidade';
 import { supabase } from '@/integrations/supabase/client';
