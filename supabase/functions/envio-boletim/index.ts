@@ -12,6 +12,22 @@ interface BoletimRequest {
   user_id?: string;
 }
 
+interface LicitacaoUnificada {
+  titulo: string;
+  orgao: string;
+  valor_estimado: number | null;
+  uf: string | null;
+  municipio: string | null;
+  data_abertura: string | null;
+  status: string | null;
+  numero_processo: string | null;
+  modalidade: string | null;
+  objeto: string | null;
+  codigo_uasg: string | null;
+  portal: string | null;
+  fonte: string;
+}
+
 const SEGMENTO_KEYWORDS: Record<string, string[]> = {
   generos_alimenticios: ['aliment', 'merenda', 'cesta básica', 'cesta basica', 'perecív', 'pereciv', 'hortifruti', 'gênero', 'genero', 'refeição', 'refeicao', 'rancho'],
   informatica: ['informática', 'informatica', 'computador', 'notebook', 'servidor', 'software', 'rede', 'impressora', 'toner', 'cartucho', 'monitor', 'tecnologia da informação', 'suprimento de informática', 'switch', 'firewall'],
@@ -30,22 +46,19 @@ const SEGMENTO_KEYWORDS: Record<string, string[]> = {
   equipamentos_industriais: ['máquina', 'maquina', 'ferramenta', 'equipamento industrial', 'equipamento pesado', 'gerador', 'compressor'],
 };
 
-function matchesSegmentos(titulo: string, segmentos: string[]): boolean {
+function matchesSegmentos(texto: string, segmentos: string[]): boolean {
   if (!segmentos || segmentos.length === 0) return true;
-  const tituloLower = titulo?.toLowerCase() || '';
+  const textoLower = texto?.toLowerCase() || '';
   return segmentos.some(segId => {
     const keywords = SEGMENTO_KEYWORDS[segId] || [];
-    return keywords.some(kw => tituloLower.includes(kw.toLowerCase()));
+    return keywords.some(kw => textoLower.includes(kw.toLowerCase()));
   });
 }
 
-// Fetch filtered licitações for a subscriber
-async function fetchLicitacoes(supabase: any, tipo: string, sub: any) {
-  const segmentos = sub.segmentos || [];
-  const ufsInteresse = sub.ufs_interesse || [];
-  const filtrarPorCnpj = sub.filtrar_alteracoes_por_cnpj ?? false;
-  const filtrarPorParticipacao = sub.filtrar_resultados_por_participacao ?? false;
-
+// ═══════════════════════════════════════════════
+// Fetch from monitoramento_editais
+// ═══════════════════════════════════════════════
+async function fetchMonitoramentoEditais(supabase: any, tipo: string, ufsInteresse: string[]): Promise<LicitacaoUnificada[]> {
   let query = supabase
     .from("monitoramento_editais")
     .select("titulo, orgao, valor_estimado, uf, municipio, data_abertura, status, numero_processo, modalidade, objeto, codigo_uasg, portal")
@@ -64,39 +77,132 @@ async function fetchLicitacoes(supabase: any, tipo: string, sub: any) {
     query = query.in("status", ["adjudicado", "homologado", "encerrado"]);
   }
 
-  const { data: licitacoes } = await query;
-  let filtered = licitacoes || [];
+  const { data } = await query;
+  return (data || []).map((l: any) => ({
+    titulo: l.titulo || l.objeto || '',
+    orgao: l.orgao || '',
+    valor_estimado: l.valor_estimado,
+    uf: l.uf,
+    municipio: l.municipio,
+    data_abertura: l.data_abertura,
+    status: l.status,
+    numero_processo: l.numero_processo,
+    modalidade: l.modalidade,
+    objeto: l.objeto || l.titulo,
+    codigo_uasg: l.codigo_uasg,
+    portal: l.portal,
+    fonte: 'monitoramento',
+  }));
+}
 
+// ═══════════════════════════════════════════════
+// Fetch from pncp_editais_cache (PNCP + Comprasnet)
+// ═══════════════════════════════════════════════
+async function fetchPncpEditaisCache(supabase: any, tipo: string, ufsInteresse: string[]): Promise<LicitacaoUnificada[]> {
+  // Get editais published in the last 24h
+  const ontem = new Date();
+  ontem.setDate(ontem.getDate() - 1);
+  const ontemISO = ontem.toISOString();
+
+  let query = supabase
+    .from("pncp_editais_cache")
+    .select("objeto, orgao, valor_total_estimado, uf, municipio, data_abertura_proposta, situacao, numero_compra, modalidade_nome, uasg_codigo, fonte, link_comprasnet, link_sistema_origem, data_publicacao_pncp, lei_base")
+    .gte("created_at", ontemISO)
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (ufsInteresse.length > 0) {
+    query = query.in("uf", ufsInteresse);
+  }
+
+  // Filter by situacao based on tipo
+  if (tipo === "manha") {
+    // New tenders — any situation that indicates open/published
+    query = query.in("situacao", ["Divulgada no PNCP", "Aberta", "Publicada", "divulgada"]);
+  } else if (tipo === "meiodia") {
+    query = query.in("situacao", ["Suspensa", "Revogada", "Anulada", "Retificada"]);
+  } else {
+    query = query.in("situacao", ["Homologada", "Adjudicada", "Encerrada", "Concluída"]);
+  }
+
+  const { data } = await query;
+  return (data || []).map((r: any) => {
+    const numero = r.numero_compra || '';
+    const modalidade = r.modalidade_nome || '';
+    const tituloFormatado = modalidade && numero
+      ? `${modalidade} Nº ${numero}`
+      : numero || modalidade || 'Processo sem número';
+
+    return {
+      titulo: tituloFormatado,
+      orgao: r.orgao || '',
+      valor_estimado: r.valor_total_estimado,
+      uf: r.uf,
+      municipio: r.municipio,
+      data_abertura: r.data_abertura_proposta,
+      status: r.situacao,
+      numero_processo: tituloFormatado,
+      modalidade: modalidade,
+      objeto: r.objeto,
+      codigo_uasg: r.uasg_codigo,
+      portal: r.link_comprasnet ? 'www.compras.gov.br' : r.link_sistema_origem ? 'PNCP' : '',
+      fonte: r.fonte || 'pncp',
+    };
+  });
+}
+
+// ═══════════════════════════════════════════════
+// Merge & deduplicate
+// ═══════════════════════════════════════════════
+function mergeAndDeduplicate(monitoramento: LicitacaoUnificada[], pncp: LicitacaoUnificada[]): LicitacaoUnificada[] {
+  const seen = new Set<string>();
+  const result: LicitacaoUnificada[] = [];
+
+  for (const item of [...pncp, ...monitoramento]) {
+    const key = `${item.orgao?.toLowerCase()?.slice(0, 30)}|${item.objeto?.toLowerCase()?.slice(0, 50)}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(item);
+    }
+  }
+
+  return result;
+}
+
+// ═══════════════════════════════════════════════
+// Apply subscriber filters
+// ═══════════════════════════════════════════════
+async function applyFilters(
+  supabase: any, tipo: string, sub: any, licitacoes: LicitacaoUnificada[]
+): Promise<LicitacaoUnificada[]> {
+  const segmentos = sub.segmentos || [];
+  let filtered = [...licitacoes];
+
+  // Segment filter for morning
   if (tipo === "manha" && segmentos.length > 0) {
-    filtered = filtered.filter((l: any) => matchesSegmentos(l.titulo || l.objeto, segmentos));
+    filtered = filtered.filter(l => matchesSegmentos(l.objeto || l.titulo, segmentos));
   }
 
-  if (tipo === "meiodia" && filtrarPorCnpj) {
-    filtered = await filterByCnpj(supabase, sub, filtered, licitacoes || []);
+  // CNPJ filter for midday
+  if (tipo === "meiodia" && (sub.filtrar_alteracoes_por_cnpj ?? false)) {
+    filtered = await filterByCnpj(supabase, sub, filtered, licitacoes);
   }
 
-  if (tipo === "tarde" && filtrarPorParticipacao) {
+  // Participation filter for afternoon
+  if (tipo === "tarde" && (sub.filtrar_resultados_por_participacao ?? false)) {
     filtered = await filterByParticipacao(supabase, sub, filtered);
   }
 
-  return filtered.slice(0, 20);
+  return filtered.slice(0, 30);
 }
 
-async function filterByCnpj(supabase: any, sub: any, filtered: any[], allLicitacoes: any[]) {
+async function filterByCnpj(supabase: any, sub: any, filtered: LicitacaoUnificada[], allLicitacoes: LicitacaoUnificada[]) {
   const { data: profile } = await supabase
-    .from("profiles")
-    .select("empresa_ativa_id")
-    .eq("user_id", sub.user_id)
-    .single();
-
+    .from("profiles").select("empresa_ativa_id").eq("user_id", sub.user_id).single();
   if (!profile?.empresa_ativa_id) return filtered;
 
   const { data: empresa } = await supabase
-    .from("empresas")
-    .select("cnpj, razao_social, nome_fantasia")
-    .eq("id", profile.empresa_ativa_id)
-    .single();
-
+    .from("empresas").select("cnpj, razao_social, nome_fantasia").eq("id", profile.empresa_ativa_id).single();
   if (!empresa) return filtered;
 
   const searchTerms = [
@@ -105,111 +211,153 @@ async function filterByCnpj(supabase: any, sub: any, filtered: any[], allLicitac
     empresa.nome_fantasia?.toLowerCase(),
   ].filter(Boolean) as string[];
 
-  let result = filtered.filter((l: any) => {
-    const texto = `${l.titulo} ${l.orgao}`.toLowerCase();
+  let result = filtered.filter(l => {
+    const texto = `${l.titulo} ${l.orgao} ${l.objeto}`.toLowerCase();
     return searchTerms.some(term => texto.includes(term));
   });
 
   const { data: userLicitacoes } = await supabase
-    .from("licitacoes")
-    .select("numero, orgao, objeto")
-    .eq("user_id", sub.user_id)
-    .not("status", "eq", "arquivado");
-
+    .from("licitacoes").select("numero").eq("user_id", sub.user_id).not("status", "eq", "arquivado");
   if (userLicitacoes?.length) {
-    const userNumeros = userLicitacoes.map((l: any) => l.numero).filter(Boolean);
-    const existing = new Set(result.map((l: any) => l.titulo));
+    const nums = userLicitacoes.map((l: any) => l.numero).filter(Boolean);
+    const existing = new Set(result.map(l => l.titulo));
     for (const l of allLicitacoes) {
-      if (!existing.has(l.titulo) && userNumeros.some((num: string) => l.titulo?.includes(num))) {
-        result.push(l);
-      }
+      if (!existing.has(l.titulo) && nums.some((n: string) => l.titulo?.includes(n))) result.push(l);
     }
   }
-
   return result;
 }
 
-async function filterByParticipacao(supabase: any, sub: any, filtered: any[]) {
+async function filterByParticipacao(supabase: any, sub: any, filtered: LicitacaoUnificada[]) {
   const { data: userLicitacoes } = await supabase
-    .from("licitacoes")
-    .select("numero, orgao, objeto, empresa_id")
-    .eq("user_id", sub.user_id);
-
+    .from("licitacoes").select("numero, empresa_id").eq("user_id", sub.user_id);
   if (!userLicitacoes?.length) return [];
 
-  const userNumeros = userLicitacoes.map((l: any) => l.numero).filter(Boolean);
+  const nums = userLicitacoes.map((l: any) => l.numero).filter(Boolean);
   const empresaIds = [...new Set(userLicitacoes.map((l: any) => l.empresa_id).filter(Boolean))];
-
   let cnpjs: string[] = [];
   if (empresaIds.length > 0) {
-    const { data: empresas } = await supabase
-      .from("empresas")
-      .select("cnpj")
-      .in("id", empresaIds as string[]);
+    const { data: empresas } = await supabase.from("empresas").select("cnpj").in("id", empresaIds as string[]);
     cnpjs = (empresas || []).map((e: any) => e.cnpj?.replace(/\D/g, '')).filter(Boolean);
   }
 
-  return filtered.filter((l: any) => {
-    const tituloLower = l.titulo?.toLowerCase() || '';
-    if (userNumeros.some((num: string) => tituloLower.includes(num.toLowerCase()))) return true;
-    if (cnpjs.some((cnpj: string) => tituloLower.includes(cnpj))) return true;
+  return filtered.filter(l => {
+    const texto = `${l.titulo} ${l.objeto}`.toLowerCase();
+    if (nums.some((n: string) => texto.includes(n.toLowerCase()))) return true;
+    if (cnpjs.some((c: string) => texto.includes(c))) return true;
     return false;
   });
 }
 
-// Send one email per licitação
-async function sendIndividualEmails(
-  supabaseUrl: string, 
-  supabaseServiceKey: string, 
-  supabase: any, 
-  sub: any, 
-  tipo: string, 
-  licitacoes: any[]
-) {
-  const results = [];
+// ═══════════════════════════════════════════════
+// Send email per licitação
+// ═══════════════════════════════════════════════
+async function sendEmail(supabaseUrl: string, serviceKey: string, email: string, tipo: string, lic: LicitacaoUnificada) {
+  const templateData: Record<string, any> = {
+    tipo,
+    data: new Date().toLocaleDateString("pt-BR"),
+    numero_pregao: lic.numero_processo || lic.titulo || '',
+    orgao: lic.orgao || '',
+    codigo_uasg: lic.codigo_uasg || '',
+    objeto: lic.objeto || lic.titulo || '',
+    municipio: lic.municipio || '',
+    uf: lic.uf || '',
+    valor_estimado: lic.valor_estimado ? `R$ ${Number(lic.valor_estimado).toLocaleString("pt-BR")}` : '',
+    data_abertura: lic.data_abertura || '',
+    modalidade: lic.modalidade || '',
+    portal: lic.portal || '',
+  };
 
-  for (const lic of licitacoes) {
-    try {
-      const templateData: Record<string, any> = {
-        tipo,
-        data: new Date().toLocaleDateString("pt-BR"),
-        numero_pregao: lic.numero_processo || lic.titulo || '',
-        orgao: lic.orgao || '',
-        codigo_uasg: lic.codigo_uasg || '',
-        objeto: lic.objeto || lic.titulo || '',
-        municipio: lic.municipio || '',
-        uf: lic.uf || '',
-        valor_estimado: lic.valor_estimado ? `R$ ${Number(lic.valor_estimado).toLocaleString("pt-BR")}` : '',
-        data_abertura: lic.data_abertura || '',
-        modalidade: lic.modalidade || '',
-        portal: lic.portal || '',
-      };
+  const res = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${serviceKey}`,
+      'apikey': serviceKey,
+    },
+    body: JSON.stringify({ templateName: 'boletim-diario', recipientEmail: email, templateData }),
+  });
 
-      const invokeRes = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseServiceKey}`,
-          'apikey': supabaseServiceKey,
-        },
-        body: JSON.stringify({
-          templateName: 'boletim-diario',
-          recipientEmail: sub.email,
-          templateData,
-        }),
-      });
-
-      const ok = invokeRes.ok;
-      const body = await invokeRes.text().catch(() => '');
-      results.push({ titulo: lic.titulo, success: ok, error: ok ? null : `HTTP ${invokeRes.status}: ${body}` });
-    } catch (err: any) {
-      results.push({ titulo: lic.titulo, success: false, error: err.message });
-    }
-  }
-
-  return results;
+  return { ok: res.ok, status: res.status, body: await res.text().catch(() => '') };
 }
 
+// ═══════════════════════════════════════════════
+// Send WhatsApp per licitação
+// ═══════════════════════════════════════════════
+async function sendWhatsApp(supabase: any, supabaseUrl: string, serviceKey: string, userId: string, telefone: string, lic: LicitacaoUnificada) {
+  const local = [lic.municipio, lic.uf].filter(Boolean).join('/');
+  const valor = lic.valor_estimado ? `R$ ${Number(lic.valor_estimado).toLocaleString("pt-BR")}` : '';
+
+  const mensagem = [
+    `PRAEFECTUS`,
+    ``,
+    lic.numero_processo || lic.titulo || 'Novo processo',
+    lic.orgao ? `Orgao: ${lic.orgao}` : '',
+    lic.objeto ? `Objeto: ${lic.objeto.slice(0, 200)}` : '',
+    local ? `Local: ${local}` : '',
+    valor ? `Valor: ${valor}` : '',
+    lic.data_abertura ? `Abertura: ${lic.data_abertura}` : '',
+    lic.portal ? `Portal: ${lic.portal}` : '',
+    ``,
+    `Acesse: https://app.praefectus.com.br/monitoramento-editais`,
+  ].filter(Boolean).join('\n');
+
+  try {
+    await fetch(`${supabaseUrl}/functions/v1/whatsapp-envio`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceKey}`,
+        'apikey': serviceKey,
+      },
+      body: JSON.stringify({
+        telefone,
+        setor: 'licitações',
+        user_id: userId,
+        tipo: 'alerta',
+        mensagem_custom: mensagem,
+      }),
+    });
+  } catch (err) {
+    console.error(`Erro WhatsApp para ${telefone}:`, err);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// Get WhatsApp number for subscriber
+// ═══════════════════════════════════════════════
+async function getWhatsAppNumber(supabase: any, userId: string): Promise<string | null> {
+  // Check boletim_preferencias for notificacao_push (WhatsApp enabled)
+  const { data: pref } = await supabase
+    .from("boletim_preferencias")
+    .select("notificacao_push")
+    .eq("user_id", userId)
+    .single();
+
+  if (!pref?.notificacao_push) return null;
+
+  // Get phone from whatsapp_config
+  const { data: whatsConfig } = await supabase
+    .from("whatsapp_config")
+    .select("numero_principal")
+    .eq("user_id", userId)
+    .single();
+
+  if (whatsConfig?.numero_principal) return whatsConfig.numero_principal;
+
+  // Fallback: check profiles
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("telefone")
+    .eq("user_id", userId)
+    .single();
+
+  return profile?.telefone || null;
+}
+
+// ═══════════════════════════════════════════════
+// Main handler
+// ═══════════════════════════════════════════════
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -221,17 +369,14 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { tipo, user_id }: BoletimRequest = await req.json();
-
     const prefColumn = tipo === "manha" ? "boletim_manha" : tipo === "meiodia" ? "boletim_meiodia" : "boletim_tarde";
 
     let query = supabase
       .from("boletim_preferencias")
-      .select("user_id, email, segmentos, ufs_interesse, filtrar_alteracoes_por_cnpj, filtrar_resultados_por_participacao")
+      .select("user_id, email, segmentos, ufs_interesse, filtrar_alteracoes_por_cnpj, filtrar_resultados_por_participacao, notificacao_push")
       .eq(prefColumn, true);
 
-    if (user_id) {
-      query = query.eq("user_id", user_id);
-    }
+    if (user_id) query = query.eq("user_id", user_id);
 
     const { data: subscribers, error: subError } = await query;
     if (subError) throw subError;
@@ -247,28 +392,60 @@ serve(async (req) => {
 
     for (const sub of subscribers) {
       try {
-        const licitacoes = await fetchLicitacoes(supabase, tipo, sub);
+        const ufsInteresse = (sub as any).ufs_interesse || [];
 
-        if (licitacoes.length === 0) {
+        // Fetch from both sources in parallel
+        const [monitoramento, pncpCache] = await Promise.all([
+          fetchMonitoramentoEditais(supabase, tipo, ufsInteresse),
+          fetchPncpEditaisCache(supabase, tipo, ufsInteresse),
+        ]);
+
+        // Merge and deduplicate
+        const merged = mergeAndDeduplicate(monitoramento, pncpCache);
+
+        // Apply subscriber-specific filters
+        const filtered = await applyFilters(supabase, tipo, sub, merged);
+
+        if (filtered.length === 0) {
           allResults.push({ email: sub.email, success: true, licitacoes_count: 0, detail: "Nenhuma licitação encontrada" });
           continue;
         }
 
-        const sendResults = await sendIndividualEmails(supabaseUrl, supabaseServiceKey, supabase, sub, tipo, licitacoes);
+        // Get WhatsApp number if enabled
+        const whatsappNumber = await getWhatsAppNumber(supabase, sub.user_id);
 
-        const successCount = sendResults.filter(r => r.success).length;
-        const failCount = sendResults.filter(r => !r.success).length;
+        let emailsOk = 0;
+        let emailsFail = 0;
 
-        // Log the batch
+        for (const lic of filtered) {
+          // Send email
+          const emailResult = await sendEmail(supabaseUrl, supabaseServiceKey, sub.email, tipo, lic);
+          if (emailResult.ok) emailsOk++; else emailsFail++;
+
+          // Send WhatsApp if enabled
+          if (whatsappNumber) {
+            await sendWhatsApp(supabase, supabaseUrl, supabaseServiceKey, sub.user_id, whatsappNumber, lic);
+          }
+        }
+
+        // Log
         await supabase.from("boletim_envios").insert({
           user_id: sub.user_id,
           tipo,
           email: sub.email,
-          status: failCount === 0 ? "enviado" : failCount === sendResults.length ? "erro" : "parcial",
-          erro: failCount > 0 ? `${failCount}/${sendResults.length} falharam` : null,
+          status: emailsFail === 0 ? "enviado" : emailsFail === filtered.length ? "erro" : "parcial",
+          erro: emailsFail > 0 ? `${emailsFail}/${filtered.length} falharam` : null,
         });
 
-        allResults.push({ email: sub.email, success: true, licitacoes_count: licitacoes.length, emails_sent: successCount, emails_failed: failCount });
+        allResults.push({
+          email: sub.email,
+          success: true,
+          licitacoes_count: filtered.length,
+          fontes: { monitoramento: monitoramento.length, pncp_comprasnet: pncpCache.length },
+          emails_sent: emailsOk,
+          emails_failed: emailsFail,
+          whatsapp: whatsappNumber ? 'enviado' : 'desabilitado',
+        });
       } catch (err: any) {
         allResults.push({ email: sub.email, success: false, error: err.message });
       }
