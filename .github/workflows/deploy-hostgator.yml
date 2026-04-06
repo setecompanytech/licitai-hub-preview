@@ -107,5 +107,20 @@ jobs:
           server-dir: ${{ secrets.FTP_SERVER_DIR || './public_html/' }}
           dangerous-clean-slate: true
 
+      - name: Fix remote permissions via LFTP
+        run: |
+          sudo apt-get install -y lftp
+          lftp -e "
+            set ftp:ssl-allow yes;
+            set ftp:ssl-force yes;
+            set ssl:verify-certificate no;
+            open -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} ftps://${{ secrets.FTP_SERVER }};
+            cd ${{ secrets.FTP_SERVER_DIR || './public_html/' }};
+            glob -a chmod 644 *;
+            glob -a chmod 644 .htaccess;
+            find . -d 0 | xargs -I{} chmod 755 {};
+            bye;
+          "
+
       - name: Success summary
-        run: echo "Deploy FTP concluído com sucesso."
+        run: echo "Deploy FTP concluído e permissões corrigidas."
