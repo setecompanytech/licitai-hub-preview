@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useSearchParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,7 @@ import MarcarInteresseDialog from '@/components/compromissos/MarcarInteresseDial
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 import AureliaEditalPanel from '@/components/aurelia/AureliaEditalPanel';
+import { MUNICIPIO_IBGE } from '@/constants/pncpMappings';
 
 type DetalhePNCP = {
   success: boolean;
