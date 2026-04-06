@@ -3,7 +3,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Send, Loader2, FileText, ClipboardCheck, DollarSign, Target, Scale, Zap } from 'lucide-react';
 import { streamAIChat, ChatMessage } from '@/lib/ai-stream';
-import ReactMarkdown from 'react-markdown';
+import { sanitizeAureliaOutput } from '@/prompts/aurelia-system-prompt';
 import { cn } from '@/lib/utils';
 
 const quickActions = [
