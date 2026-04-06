@@ -252,37 +252,106 @@ export default function Documentos() {
     setPendingManualDate('');
   };
 
+  const fileToBase64Images = async (file: File): Promise<{ name: string; dataUrl: string }[]> => {
+    if (file.type.startsWith('image/')) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve([{ name: file.name, dataUrl: reader.result as string }]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    if (file.type === 'application/pdf') {
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const pages = Math.min(pdf.numPages, 3);
+      const images: { name: string; dataUrl: string }[] = [];
+      for (let i = 1; i <= pages; i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d')!;
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        images.push({ name: `${file.name}_p${i}`, dataUrl: canvas.toDataURL('image/jpeg', 0.85) });
+      }
+      return images;
+    }
+
+    return [];
+  };
+
   const handleAIAnalysis = async () => {
     const idx = pendingUploadIdx.current;
-    if (idx === null) return;
+    if (idx === null || !pendingFile) return;
 
     setAnalyzingIdx(idx);
     
     try {
-      // Call AI to analyze the document for expiry date
-      const response = await supabase.functions.invoke('ai-chat', {
+      const images = await fileToBase64Images(pendingFile);
+      if (images.length === 0) {
+        toast.error('Formato de arquivo não suportado para análise por IA.');
+        setAnalyzingIdx(null);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('document-vision-extract', {
         body: {
-          messages: [
-            {
-              role: 'user',
-              content: `Analise o nome deste documento de habilitação para licitações e informe a validade padrão segundo a legislação brasileira. Documento: "${documentos[idx].nome}". Categoria: "${documentos[idx].categoria}". Responda APENAS com a data provável de vencimento no formato YYYY-MM-DD, calculando a partir de hoje (${format(new Date(), 'yyyy-MM-dd')}). Se não houver validade padrão, responda "SEM_VALIDADE".`
-            }
-          ]
-        }
+          fileName: documentos[idx].nome,
+          images,
+        },
       });
 
-      if (response.data) {
-        const text = typeof response.data === 'string' ? response.data : 
-          response.data?.choices?.[0]?.message?.content || '';
-        const dateMatch = text.match(/\d{4}-\d{2}-\d{2}/);
-        if (dateMatch) {
-          const suggestedDate = new Date(dateMatch[0]);
-          setPendingValidadeDate(suggestedDate);
-          setPendingManualDate(dateMatch[0]);
-          toast.success(`IA sugeriu validade: ${format(suggestedDate, 'dd/MM/yyyy')}`);
-        } else {
-          toast.info('IA não identificou uma data de validade padrão para este documento.');
+      if (error) throw error;
+
+      const rawResult = data?.text || '';
+      
+      // Try to find a date in common formats: DD/MM/YYYY, YYYY-MM-DD, or "VALIDADE" / "VÁLIDO ATÉ" patterns
+      const datePatterns = [
+        /(?:VALID(?:ADE|O)\s*(?:ATÉ)?|VAL\.?|VENCIMENTO|VALIDADE\s*DA\s*CNH)\s*[:\s]*(\d{2})[\/\-.](\d{2})[\/\-.](\d{4})/i,
+        /(\d{2})[\/\-.](\d{2})[\/\-.](\d{4})/g,
+        /(\d{4})-(\d{2})-(\d{2})/g,
+      ];
+
+      let foundDate: Date | null = null;
+
+      // First try the specific "validade" pattern
+      const validadeMatch = rawResult.match(datePatterns[0]);
+      if (validadeMatch) {
+        const d = new Date(`${validadeMatch[3]}-${validadeMatch[2]}-${validadeMatch[1]}`);
+        if (!isNaN(d.getTime())) foundDate = d;
+      }
+
+      // If not found, pick the latest future date from general patterns
+      if (!foundDate) {
+        const allDates: Date[] = [];
+        const ddmmyyyy = [...rawResult.matchAll(/(\d{2})[\/\-.](\d{2})[\/\-.](\d{4})/g)];
+        for (const m of ddmmyyyy) {
+          const d = new Date(`${m[3]}-${m[2]}-${m[1]}`);
+          if (!isNaN(d.getTime())) allDates.push(d);
         }
+        const yyyymmdd = [...rawResult.matchAll(/(\d{4})-(\d{2})-(\d{2})/g)];
+        for (const m of yyyymmdd) {
+          const d = new Date(m[0]);
+          if (!isNaN(d.getTime())) allDates.push(d);
+        }
+        // Pick latest date (most likely the expiration)
+        if (allDates.length > 0) {
+          allDates.sort((a, b) => b.getTime() - a.getTime());
+          foundDate = allDates[0];
+        }
+      }
+
+      if (foundDate) {
+        setPendingValidadeDate(foundDate);
+        setPendingManualDate(format(foundDate, 'yyyy-MM-dd'));
+        toast.success(`IA extraiu validade: ${format(foundDate, 'dd/MM/yyyy')}`);
+      } else {
+        toast.info('IA não identificou uma data de validade neste documento.');
       }
     } catch {
       toast.error('Erro na análise por IA. Informe a validade manualmente.');
