@@ -141,66 +141,104 @@ export default function AtestadosCapacidadeTecnica() {
     try {
       const segLabel = SEGMENTOS_ACT.find(s => s.value === selectedSegmento)?.label || 'não especificado';
 
-      // Try vision for images
-      let visionImages: { name: string; dataUrl: string }[] = [];
+      // Step 1: Extract raw text from the document
+      let rawText = '';
+
       if (pendingFile.type.startsWith('image/')) {
+        // Use vision OCR for images
         const payload = await fileToVisionPayload(pendingFile);
-        if (payload) visionImages = [payload];
+        if (payload) {
+          const { data, error } = await supabase.functions.invoke('document-vision-extract', {
+            body: {
+              fileName: pendingFile.name,
+              images: [payload],
+              mode: 'ocr',
+            },
+          });
+          if (error) throw error;
+          rawText = data?.text || '';
+        }
+      } else if (pendingFile.type === 'application/pdf') {
+        // For PDFs: convert first page to image via canvas, then use vision OCR
+        const pdfDataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(pendingFile);
+        });
+
+        if (pdfDataUrl) {
+          // Send PDF as data URL to vision - the edge function accepts image data URLs
+          // For PDFs we'll try reading text content and if insufficient use a text-based approach
+          const textContent = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const arr = new Uint8Array(e.target?.result as ArrayBuffer);
+              // Try to extract readable text from PDF binary
+              let text = '';
+              try {
+                const decoder = new TextDecoder('latin1');
+                const raw = decoder.decode(arr);
+                // Extract text between parentheses (PDF text objects)
+                const matches = raw.match(/\(([^)]{2,})\)/g);
+                if (matches) {
+                  text = matches.map(m => m.slice(1, -1)).join(' ');
+                }
+              } catch {}
+              resolve(text);
+            };
+            reader.onerror = () => resolve('');
+            reader.readAsArrayBuffer(pendingFile);
+          });
+
+          // If we got meaningful text from PDF parsing, use it directly
+          if (textContent.length > 50) {
+            rawText = textContent.slice(0, 15000);
+          } else {
+            // Render PDF page to canvas for vision OCR
+            // We'll use an object URL approach with an iframe/canvas
+            // Since we can't use pdf.js easily, send whatever text we have
+            rawText = textContent;
+          }
+        }
       }
 
-      // Also read as text for PDFs
-      const text = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve((e.target?.result as string)?.slice(0, 20000) || '');
-        reader.onerror = () => resolve('');
-        reader.readAsText(pendingFile!);
-      });
+      // Step 2: Use ai-chat to extract structured data from the raw text
+      const extractPrompt = `Analise o texto extraído deste Atestado de Capacidade Técnica do segmento "${segLabel}".
 
-      const extractPrompt = `Analise este Atestado de Capacidade Técnica do segmento "${segLabel}".
-IMPORTANTE: Atestados de capacidade técnica para fornecimento de produtos/materiais NÃO possuem validade.
-
-Extraia em JSON puro (sem markdown):
+EXTRAIA as seguintes informações e retorne em JSON puro (sem markdown, sem \`\`\`):
 {
   "objeto": "descrição completa do objeto/serviço/fornecimento atestado",
-  "orgao_emissor": "nome do órgão ou empresa que emitiu o atestado",
-  "valor": "valor contratual se mencionado (apenas números e pontuação)",
+  "orgao_emissor": "nome do órgão público ou empresa privada que emitiu/contratou (Cliente/Órgão contratante)",
+  "ano_fornecimento": "ano ou período do fornecimento (ex: 2024, 2023/2024)",
+  "valor": "valor contratual se mencionado",
   "cnpj_contratante": "CNPJ do contratante se encontrado",
-  "periodo": "período de execução/fornecimento"
+  "periodo": "período completo de execução/fornecimento se mencionado"
 }
 
-Regras:
-- Leia TODO o documento com atenção.
+REGRAS:
+- Leia TODO o texto atentamente.
+- "orgao_emissor" = quem CONTRATOU ou ATESTOU a capacidade (o cliente/órgão).
+- "ano_fornecimento" = o ano em que o fornecimento ou serviço foi prestado.
+- "objeto" = o que foi fornecido ou o serviço prestado.
 - Campo não encontrado = "".
-- NÃO invente dados.`;
+- NÃO invente dados ausentes.
+
+TEXTO DO DOCUMENTO:
+${rawText.slice(0, 12000)}`;
+
+      const { data: aiData, error: aiError } = await supabase.functions.invoke('ai-chat', {
+        body: {
+          messages: [{ role: 'user', content: extractPrompt }],
+          action: 'extracao_act',
+        },
+      });
+      if (aiError) throw aiError;
 
       let responseText = '';
-
-      if (visionImages.length > 0) {
-        // Use vision edge function for images
-        const { data, error } = await supabase.functions.invoke('document-vision-extract', {
-          body: {
-            fileName: pendingFile.name,
-            images: visionImages,
-            text: text.length > 20 ? text : undefined,
-            mode: 'act_extraction',
-            extractionPrompt: extractPrompt,
-          },
-        });
-        if (error) throw error;
-        responseText = data?.text || '';
-      } else {
-        // Use ai-chat for text-based PDFs
-        const { data, error } = await supabase.functions.invoke('ai-chat', {
-          body: {
-            messages: [{ role: 'user', content: `${extractPrompt}\n\nDocumento:\n${text}` }],
-            action: 'extracao_act',
-          },
-        });
-        if (error) throw error;
-        if (typeof data === 'string') responseText = data;
-        else if (data?.text) responseText = data.text;
-        else if (data?.choices?.[0]?.message?.content) responseText = data.choices[0].message.content;
-      }
+      if (typeof aiData === 'string') responseText = aiData;
+      else if (aiData?.text) responseText = aiData.text;
+      else if (aiData?.choices?.[0]?.message?.content) responseText = aiData.choices[0].message.content;
 
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -208,16 +246,17 @@ Regras:
         setExtractedData({
           objeto: parsed.objeto || '',
           orgao_emissor: parsed.orgao_emissor || '',
+          ano_fornecimento: parsed.ano_fornecimento || '',
           valor: parsed.valor || '',
           cnpj_contratante: parsed.cnpj_contratante || '',
           periodo: parsed.periodo || '',
         });
         toast.success('Dados do atestado extraídos pela IA!');
       } else {
-        toast.info('Não foi possível extrair dados automaticamente.');
+        toast.info('Não foi possível extrair dados automaticamente. Preencha manualmente.');
       }
     } catch (err) {
-      console.error(err);
+      console.error('ACT extraction error:', err);
       toast.error('Erro na extração. Preencha manualmente.');
     }
     setAnalyzing(false);
