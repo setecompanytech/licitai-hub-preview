@@ -209,7 +209,7 @@ export default function EquipeColaboradores() {
 
             <TabsContent value="membros">
               {/* Equipe summary cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
                 {EQUIPES.map(eq => {
                   const count = membros.filter(m => (m as any).equipe === eq.value || (!((m as any).equipe) && eq.value === 'geral')).length;
                   return (
