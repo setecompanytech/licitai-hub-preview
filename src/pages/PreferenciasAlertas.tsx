@@ -62,7 +62,12 @@ export default function PreferenciasAlertas() {
         canal_whatsapp: preferencias.canal_whatsapp,
         canal_push: preferencias.canal_push,
         email_notificacao: preferencias.email_notificacao || user?.email || '',
-        whatsapp_notificacao: preferencias.whatsapp_notificacao || '',
+        whatsapp_notificacao: (() => {
+          const raw = (preferencias.whatsapp_notificacao || '').replace(/\D/g, '').slice(0, 11);
+          if (raw.length > 7) return `(${raw.slice(0, 2)}) ${raw.slice(2, 7)}-${raw.slice(7)}`;
+          if (raw.length > 2) return `(${raw.slice(0, 2)}) ${raw.slice(2)}`;
+          return raw;
+        })(),
         frequencia: preferencias.frequencia || 'imediato',
         ativo: preferencias.ativo,
       });
