@@ -630,17 +630,57 @@ export default function MuralLicitacoes() {
     const externasDedup = licitacoesExternas.filter(e => !pncpKeys.has(`${e.numero}|${e.orgao}`));
     let items = [...licitacoesRaw, ...externasDedup];
 
+    // ── FILTROS PRIMÁRIOS (garantem consistência após merge PNCP) ──
+    // UF
+    if (ufFiltro !== 'all') {
+      items = items.filter(i => i.uf?.toUpperCase() === ufFiltro.toUpperCase());
+    }
+    // Município
+    if (municipioFiltro.trim()) {
+      const munNorm = normalizeText(municipioFiltro.trim());
+      items = items.filter(i => normalizeText(i.municipio || '').includes(munNorm));
+    }
+    // Modalidade
+    if (modalidadeFiltro !== 'all') {
+      const modLabel = MODALIDADES.find(m => m.value === modalidadeFiltro)?.label || modalidadeFiltro;
+      const modNorm = normalizeText(modLabel);
+      items = items.filter(i => normalizeText(i.modalidade || '').includes(modNorm));
+    }
+    // Texto livre (objeto + órgão)
+    if (searchSubmitted.trim()) {
+      const qNorm = normalizeText(searchSubmitted.trim());
+      items = items.filter(i =>
+        normalizeText(i.objeto || '').includes(qNorm) ||
+        normalizeText(i.orgao || '').includes(qNorm)
+      );
+    }
+    // Datas
+    if (dataInicio) {
+      const dStr = dataInicio.toISOString().split('T')[0];
+      items = items.filter(i => {
+        const pub = i.data_publicacao?.split('T')[0];
+        return pub && pub >= dStr;
+      });
+    }
+    if (dataFim) {
+      const dStr = dataFim.toISOString().split('T')[0];
+      items = items.filter(i => {
+        const pub = i.data_publicacao?.split('T')[0];
+        return pub && pub <= dStr;
+      });
+    }
+
+    // ── FILTROS AVANÇADOS ──
     if (portalFiltro !== 'all') {
       items = items.filter(i => i.portal?.toLowerCase() === portalFiltro.toLowerCase());
     }
-    // Client-side esfera filter using ESFERA_PNCP mapping
+    // Esfera
     if (esferaFiltro !== 'all') {
-      const esferaCodigo = ESFERA_PNCP[esferaFiltro.charAt(0).toUpperCase() + esferaFiltro.slice(1)] || '';
       items = items.filter(i => {
-        if (esferaCodigo && i.esferaNome) {
-          return i.esferaNome.toLowerCase() === esferaFiltro.toLowerCase();
+        if (i.esferaNome) {
+          return normalizeText(i.esferaNome) === normalizeText(esferaFiltro);
         }
-        return i.esferaNome?.toLowerCase().includes(esferaFiltro.toLowerCase());
+        return false;
       });
     }
     if (tipoInstrumentoFiltro !== 'all') {
