@@ -144,6 +144,23 @@ export default function EquipeColaboradores() {
     }
   };
 
+  const openPermDialog = (m: Membro) => {
+    setPermDialog(m);
+    setPermissoesSel(Array.isArray((m as any).permissoes) ? (m as any).permissoes : []);
+  };
+
+  const handleSavePermissoes = async () => {
+    if (!permDialog) return;
+    const { error } = await supabase.from('empresa_membros').update({ permissoes: permissoesSel } as any).eq('id', permDialog.id);
+    if (error) {
+      toast.error('Erro ao atualizar permissões');
+    } else {
+      toast.success('Permissões atualizadas');
+      setPermDialog(null);
+      loadMembros();
+    }
+  };
+
   const getEquipeInfo = (equipe: string) => EQUIPES.find(e => e.value === equipe) || EQUIPES[0];
 
   return (
