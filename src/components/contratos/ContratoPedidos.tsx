@@ -624,6 +624,28 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                         <span className="text-muted-foreground/50">—</span>
                       )}
                     </TableCell>
+                    {podeVerCustos && (
+                      <TableCell className="text-xs text-right">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          className="h-7 w-20 text-xs text-right inline-block"
+                          defaultValue={(p as any).custo_unitario || 0}
+                          onBlur={async (e) => {
+                            const custo = parseFloat(e.target.value) || 0;
+                            if (custo !== ((p as any).custo_unitario || 0)) {
+                              await supabase.from('contrato_pedidos').update({ custo_unitario: custo } as any).eq('id', p.id);
+                              load();
+                            }
+                          }}
+                        />
+                      </TableCell>
+                    )}
+                    {podeVerCustos && (
+                      <TableCell className="text-xs text-right font-medium text-destructive">
+                        {fmt((p as any).custo_total || 0)}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="flex gap-1">
                         {!p.nf_quitada && p.status === 'entregue' && (
