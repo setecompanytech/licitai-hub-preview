@@ -64,12 +64,18 @@ serve(async (req) => {
 
     const tipoLabel = tipo === "manha" ? "Novas Licitações — Manhã" : tipo === "meiodia" ? "Alterações e Avisos — Meio-dia" : "Resultados do Dia — Tarde";
 
-    // Send via transactional email queue
+    // Send via transactional email queue using direct fetch with service role auth
     const results = [];
     for (const sub of subscribers) {
       try {
-        const { error: invokeErr } = await supabase.functions.invoke('send-transactional-email', {
-          body: {
+        const invokeRes = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'apikey': supabaseServiceKey,
+          },
+          body: JSON.stringify({
             templateName: 'boletim-diario',
             recipientEmail: sub.email,
             templateData: {
@@ -83,8 +89,12 @@ serve(async (req) => {
                 valor: l.valor_estimado ? `R$ ${Number(l.valor_estimado).toLocaleString("pt-BR")}` : '–',
               })),
             },
-          },
+          }),
         });
+
+        const invokeOk = invokeRes.ok;
+        const invokeBody = await invokeRes.text().catch(() => '');
+        const invokeErr = invokeOk ? null : `HTTP ${invokeRes.status}: ${invokeBody}`;
 
         // Log the send
         await supabase.from("boletim_envios").insert({
@@ -92,10 +102,10 @@ serve(async (req) => {
           tipo,
           email: sub.email,
           status: invokeErr ? "erro" : "enviado",
-          erro: invokeErr?.message || null,
+          erro: invokeErr || null,
         });
 
-        results.push({ email: sub.email, success: !invokeErr });
+        results.push({ email: sub.email, success: invokeOk });
       } catch (err: any) {
         results.push({ email: sub.email, success: false, error: err.message });
       }
