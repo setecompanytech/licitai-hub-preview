@@ -38,8 +38,8 @@ interface EnvioResult {
 
 export default function EnvioProposta() {
   const { user } = useAuth();
-  const { empresa } = useEmpresa();
-  const { itens: cartItens } = usePropostaCart();
+  const { empresaAtiva } = useEmpresa();
+  const { pendingItems } = usePropostaCart();
   
   const [tab, setTab] = useState('itens');
   const [numeroPregao, setNumeroPregao] = useState('');
