@@ -124,9 +124,7 @@ export default function AureliaPage() {
                       : 'bg-card border border-border text-foreground'
                   )}>
                     {msg.role === 'assistant' ? (
-                      <div className="prose prose-sm max-w-none dark:prose-invert [&>*]:my-1">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
-                      </div>
+                      <div className="whitespace-pre-line">{sanitizeAureliaOutput(msg.content)}</div>
                     ) : msg.content}
                   </div>
                 </div>
