@@ -6,15 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import {
-  Plus, Trash2, Loader2, FileText, CheckCircle2, Clock,
-  AlertTriangle, Search, Copy, Barcode, Key, Send
+  Plus, Trash2, Loader2, CheckCircle2, Clock,
+  AlertTriangle, Search, Copy, Barcode, Send, ExternalLink
 } from 'lucide-react';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -24,8 +23,11 @@ type Boleto = {
   linha_digitavel: string | null; codigo_barras: string | null;
   valor_nominal: number; data_vencimento: string; data_pagamento: string | null;
   sacado_nome: string | null; sacado_cnpj_cpf: string | null;
+  sacado_endereco: string | null; sacado_cidade: string | null;
+  sacado_uf: string | null; sacado_cep: string | null;
   status: string; instrucoes: string | null; observacoes: string | null;
   contrato_id: string | null; conta_receber_id: string | null;
+  api_response: any;
 };
 
 const statusCfg: Record<string, { label: string; color: string }> = {
@@ -43,8 +45,10 @@ export default function Boletos() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [registrando, setRegistrando] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [apiConfigurada, setApiConfigurada] = useState(false);
+  const [checkingApi, setCheckingApi] = useState(true);
   const [form, setForm] = useState({
     numero_documento: '', valor_nominal: '', data_vencimento: '',
     sacado_nome: '', sacado_cnpj_cpf: '', sacado_endereco: '',
@@ -52,7 +56,20 @@ export default function Boletos() {
     instrucoes: '', observacoes: '',
   });
 
-  useEffect(() => { if (user && empresaAtiva) load(); }, [user, empresaAtiva]);
+  useEffect(() => { if (user && empresaAtiva) { checkApiStatus(); load(); } }, [user, empresaAtiva]);
+
+  const checkApiStatus = async () => {
+    setCheckingApi(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('emitir-boleto', {
+        body: { check: true },
+      });
+      setApiConfigurada(data?.configured === true && !error);
+    } catch {
+      setApiConfigurada(false);
+    }
+    setCheckingApi(false);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -65,8 +82,6 @@ export default function Boletos() {
       status: b.status === 'emitido' && b.data_vencimento < today ? 'vencido' : b.status,
     }));
     setBoletos(list);
-    // TODO: Check bank API config when available
-    setApiConfigurada(false);
     setLoading(false);
   };
 
@@ -89,24 +104,75 @@ export default function Boletos() {
     } as any);
     setSaving(false);
     if (error) { toast.error('Erro ao salvar boleto'); return; }
-    toast.success('Boleto registrado! Configure a API bancária para registro automático.');
+    toast.success(apiConfigurada
+      ? 'Boleto salvo! Clique em "Registrar" para emiti-lo via Stripe.'
+      : 'Boleto registrado localmente.');
     setDialogOpen(false);
     setForm({ numero_documento: '', valor_nominal: '', data_vencimento: '', sacado_nome: '', sacado_cnpj_cpf: '', sacado_endereco: '', sacado_cidade: '', sacado_uf: '', sacado_cep: '', instrucoes: '', observacoes: '' });
     load();
   };
 
-  const handleRegistrar = async (id: string) => {
+  const handleRegistrar = async (boleto: Boleto) => {
     if (!apiConfigurada) {
-      toast.error('API bancária não configurada. Configure nas integrações para registrar boletos automaticamente.');
+      toast.error('Stripe não disponível para emissão de boletos. Verifique a configuração.');
       return;
     }
-    // TODO: Call bank API edge function
-    toast.info('Funcionalidade disponível quando a API bancária estiver configurada.');
+    setRegistrando(boleto.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('emitir-boleto', {
+        body: {
+          boleto_id: boleto.id,
+          valor: boleto.valor_nominal,
+          vencimento: boleto.data_vencimento,
+          sacado_nome: boleto.sacado_nome,
+          sacado_cpf_cnpj: boleto.sacado_cnpj_cpf,
+          sacado_endereco: boleto.sacado_endereco,
+          sacado_cidade: boleto.sacado_cidade,
+          sacado_uf: boleto.sacado_uf,
+          sacado_cep: boleto.sacado_cep,
+          descricao: boleto.instrucoes || `Boleto ${boleto.numero_documento || ''}`,
+          numero_documento: boleto.numero_documento,
+          empresa_id: empresaAtiva!.id,
+        },
+      });
+
+      if (error || data?.error) {
+        toast.error(`Erro ao registrar boleto: ${data?.error || error?.message || 'Erro desconhecido'}`);
+        return;
+      }
+
+      if (data?.url_pagamento) {
+        toast.success(
+          <div className="space-y-1">
+            <p className="font-medium">Boleto registrado com sucesso!</p>
+            <a href={data.url_pagamento} target="_blank" rel="noopener noreferrer"
+              className="text-primary underline text-xs flex items-center gap-1">
+              <ExternalLink className="w-3 h-3" /> Ver boleto
+            </a>
+          </div>,
+          { duration: 10000 }
+        );
+      } else {
+        toast.success('Boleto registrado via Stripe!');
+      }
+      load();
+    } catch (err) {
+      toast.error('Falha ao comunicar com o serviço de boletos.');
+      console.error('[Boletos] Registro falhou:', err);
+    } finally {
+      setRegistrando(null);
+    }
   };
 
   const copiarLinha = (linha: string) => {
     navigator.clipboard.writeText(linha);
     toast.success('Linha digitável copiada!');
+  };
+
+  const abrirBoleto = (boleto: Boleto) => {
+    const url = boleto.api_response?.url_pagamento;
+    if (url) window.open(url, '_blank');
+    else toast.info('URL do boleto não disponível.');
   };
 
   const handleDelete = async (id: string) => {
@@ -129,12 +195,24 @@ export default function Boletos() {
   return (
     <div className="space-y-4">
       {/* API Status Banner */}
-      <Card className="p-3 border-warning/30 bg-warning/5">
+      <Card className={`p-3 ${apiConfigurada ? 'border-success/30 bg-success/5' : 'border-warning/30 bg-warning/5'}`}>
         <div className="flex items-center gap-2 text-xs">
-          <Key className="w-4 h-4 text-warning" />
+          {checkingApi ? (
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          ) : apiConfigurada ? (
+            <CheckCircle2 className="w-4 h-4 text-success" />
+          ) : (
+            <AlertTriangle className="w-4 h-4 text-warning" />
+          )}
           <div className="flex-1">
-            <span className="font-medium">API Bancária: </span>
-            <span className="text-muted-foreground">Não configurada. Boletos são registrados manualmente. Configure a integração com seu banco (Inter, BB, Itaú, Sicoob) para registro e emissão automática.</span>
+            <span className="font-medium">Stripe Boletos: </span>
+            {checkingApi ? (
+              <span className="text-muted-foreground">Verificando conexão...</span>
+            ) : apiConfigurada ? (
+              <span className="text-success">Conectado. Boletos serão emitidos via Stripe.</span>
+            ) : (
+              <span className="text-muted-foreground">Não disponível. Boletos são registrados apenas localmente.</span>
+            )}
           </div>
         </div>
       </Card>
@@ -160,7 +238,7 @@ export default function Boletos() {
               <div className="border-t pt-3 mt-2"><p className="text-xs font-semibold mb-2">Dados do Sacado (Pagador)</p></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label className="text-xs">Nome / Razão Social *</Label><Input value={form.sacado_nome} onChange={e => setForm(f => ({ ...f, sacado_nome: e.target.value }))} /></div>
-                <div><Label className="text-xs">CNPJ / CPF</Label><Input value={form.sacado_cnpj_cpf} onChange={e => setForm(f => ({ ...f, sacado_cnpj_cpf: e.target.value }))} /></div>
+                <div><Label className="text-xs">CNPJ / CPF *</Label><Input value={form.sacado_cnpj_cpf} onChange={e => setForm(f => ({ ...f, sacado_cnpj_cpf: e.target.value }))} placeholder="Obrigatório para Stripe" /></div>
               </div>
               <div><Label className="text-xs">Endereço</Label><Input value={form.sacado_endereco} onChange={e => setForm(f => ({ ...f, sacado_endereco: e.target.value }))} /></div>
               <div className="grid grid-cols-3 gap-3">
@@ -219,9 +297,19 @@ export default function Boletos() {
                             <Copy className="w-3.5 h-3.5" />
                           </Button>
                         )}
-                        {b.status === 'emitido' && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleRegistrar(b.id)} title="Registrar no banco">
-                            <Send className="w-3.5 h-3.5 text-accent" />
+                        {b.api_response?.url_pagamento && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => abrirBoleto(b)} title="Ver boleto">
+                            <ExternalLink className="w-3.5 h-3.5 text-primary" />
+                          </Button>
+                        )}
+                        {b.status === 'emitido' && apiConfigurada && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7"
+                            onClick={() => handleRegistrar(b)}
+                            disabled={registrando === b.id}
+                            title="Registrar via Stripe">
+                            {registrando === b.id
+                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              : <Send className="w-3.5 h-3.5 text-accent" />}
                           </Button>
                         )}
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(b.id)}>
