@@ -613,11 +613,6 @@ ${rawText.slice(0, 12000)}`;
                     />
                   </div>
                 </div>
-                      className="mt-0.5 text-xs h-8"
-                      placeholder="Ex: 01/2024 a 12/2024"
-                    />
-                  </div>
-                </div>
               </div>
             )}
 
