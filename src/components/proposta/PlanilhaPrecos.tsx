@@ -1,11 +1,15 @@
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Download, Upload } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Plus, Trash2, Download, Upload, Sparkles, Info, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { writeExcelFile, readExcelAsArrays } from '@/lib/excel-utils';
 import type { EditalItem } from './EditalUploader';
 import { valorPorExtenso } from '@/lib/numero-extenso';
+import { useEmpresa } from '@/contexts/EmpresaContext';
+import { calcularPrecoSugerido } from '@/hooks/usePrecoSugerido';
 
 interface PlanilhaPrecosProps {
   itens: EditalItem[];
@@ -14,6 +18,23 @@ interface PlanilhaPrecosProps {
 
 export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const { empresaAtiva } = useEmpresa();
+
+  const regime = empresaAtiva?.regime_tributario as 'simples_nacional' | 'lucro_presumido' | 'lucro_real' | undefined;
+  const uf = empresaAtiva?.uf || 'SP';
+  const cnae = empresaAtiva?.cnae_principal || '';
+
+  // Pre-calculate suggested prices for all items with custoAquisicao
+  const sugestoes = useMemo(() => {
+    if (!regime) return {};
+    const map: Record<number, number> = {};
+    itens.forEach((item, i) => {
+      if (item.custoAquisicao && item.custoAquisicao > 0) {
+        map[i] = calcularPrecoSugerido(item.custoAquisicao, regime, uf, cnae);
+      }
+    });
+    return map;
+  }, [itens, regime, uf, cnae]);
 
   const recalcExtenso = (item: EditalItem): EditalItem => {
     const unitVal = parseFloat(item.valorUnitario.replace(',', '.')) || 0;
@@ -39,6 +60,40 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
     setItens(updated);
   };
 
+  const aplicarSugestao = (index: number) => {
+    const preco = sugestoes[index];
+    if (!preco) return;
+    const updated = [...itens];
+    const qty = parseFloat(updated[index].quantidade.replace(',', '.')) || 0;
+    const total = preco * qty;
+    updated[index] = recalcExtenso({
+      ...updated[index],
+      valorUnitario: preco.toFixed(2),
+      valorTotal: total.toFixed(2),
+    });
+    setItens(updated);
+    toast.success('Preço sugerido aplicado! Tributos, frete, despesas e margem inclusos.');
+  };
+
+  const aplicarTodasSugestoes = () => {
+    const indices = Object.keys(sugestoes).map(Number);
+    if (indices.length === 0) return;
+    const updated = [...itens];
+    indices.forEach(i => {
+      const preco = sugestoes[i];
+      if (!preco) return;
+      const qty = parseFloat(updated[i].quantidade.replace(',', '.')) || 0;
+      const total = preco * qty;
+      updated[i] = recalcExtenso({
+        ...updated[i],
+        valorUnitario: preco.toFixed(2),
+        valorTotal: total.toFixed(2),
+      });
+    });
+    setItens(updated);
+    toast.success(`Preço sugerido aplicado a ${indices.length} itens!`);
+  };
+
   const addItem = () => {
     setItens([...itens, { item: String(itens.length + 1), descricao: '', quantidade: '', unidade: 'UN', marca: '', fabricante: '', modelo: '', valorUnitario: '', valorUnitarioExtenso: '', valorTotal: '', valorTotalExtenso: '' }]);
   };
@@ -48,6 +103,7 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
   };
 
   const valorGlobal = itens.reduce((sum, i) => sum + (parseFloat(i.valorTotal.replace(',', '.')) || 0), 0);
+  const itensComSugestao = Object.keys(sugestoes).length;
 
   // ── Excel Download ──
   const handleDownloadTemplate = async () => {
@@ -71,8 +127,6 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
 
     try {
       const allRows = await readExcelAsArrays(file);
-
-      // Skip header row
       const dataRows = allRows.slice(1).filter(r => r.some(cell => cell?.toString().trim()));
       if (dataRows.length === 0) {
         toast.error('Planilha vazia ou sem dados válidos.');
@@ -107,8 +161,31 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
     if (fileRef.current) fileRef.current.value = '';
   };
 
+  const regimeLabel = regime === 'simples_nacional' ? 'Simples Nacional'
+    : regime === 'lucro_presumido' ? 'Lucro Presumido'
+    : regime === 'lucro_real' ? 'Lucro Real' : '';
+
   return (
     <div className="space-y-3">
+      {/* Sugestão automática banner */}
+      {itensComSugestao > 0 && regime && (
+        <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 flex items-start gap-3">
+          <Sparkles className="w-5 h-5 text-accent shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">
+              Sugestão de Preço Disponível — {itensComSugestao} {itensComSugestao === 1 ? 'item' : 'itens'}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Com base no regime <strong>{regimeLabel}</strong> e UF <strong>{uf}</strong>, o sistema calculou preços que cobrem tributos, frete, despesas administrativas e margem de lucro (10%).
+              Os valores são sugestivos — você pode editá-los livremente.
+            </p>
+          </div>
+          <Button size="sm" variant="default" className="shrink-0" onClick={aplicarTodasSugestoes}>
+            <Check className="w-3.5 h-3.5 mr-1" /> Aplicar Todos
+          </Button>
+        </div>
+      )}
+
       {/* Excel actions */}
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
@@ -137,7 +214,7 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
               <th className="px-2 py-2 text-left w-24">Marca</th>
               <th className="px-2 py-2 text-left w-24">Fabricante</th>
               <th className="px-2 py-2 text-left w-24">Modelo</th>
-              <th className="px-2 py-2 text-left w-24">Vlr Unit. (R$)</th>
+              <th className="px-2 py-2 text-left w-28">Vlr Unit. (R$)</th>
               <th className="px-2 py-2 text-left w-36">Vlr Unit. Extenso</th>
               <th className="px-2 py-2 text-left w-24">Vlr Total (R$)</th>
               <th className="px-2 py-2 text-left w-36">Vlr Total Extenso</th>
@@ -145,52 +222,95 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
             </tr>
           </thead>
           <tbody>
-            {itens.map((item, i) => (
-              <tr key={i} className="border-t border-border/50">
-                <td className="px-2 py-1">
-                  <Input className="h-8 text-xs" value={item.item} onChange={e => updateItem(i, 'item', e.target.value)} />
-                </td>
-                <td className="px-2 py-1">
-                  <Input className="h-8 text-xs" value={item.descricao} onChange={e => updateItem(i, 'descricao', e.target.value)} />
-                </td>
-                <td className="px-2 py-1">
-                  <Input className="h-8 text-xs" value={item.quantidade} onChange={e => updateItem(i, 'quantidade', e.target.value)} />
-                </td>
-                <td className="px-2 py-1">
-                  <Input className="h-8 text-xs" value={item.unidade} onChange={e => updateItem(i, 'unidade', e.target.value)} />
-                </td>
-                <td className="px-2 py-1">
-                  <Input className="h-8 text-xs" value={item.marca} onChange={e => updateItem(i, 'marca', e.target.value)} placeholder="Marca" />
-                </td>
-                <td className="px-2 py-1">
-                  <Input className="h-8 text-xs" value={item.fabricante} onChange={e => updateItem(i, 'fabricante', e.target.value)} placeholder="Fabricante" />
-                </td>
-                <td className="px-2 py-1">
-                  <Input className="h-8 text-xs" value={item.modelo} onChange={e => updateItem(i, 'modelo', e.target.value)} placeholder="Modelo" />
-                </td>
-                <td className="px-2 py-1">
-                  <Input className="h-8 text-xs" value={item.valorUnitario} onChange={e => updateItem(i, 'valorUnitario', e.target.value)} />
-                </td>
-                <td className="px-2 py-1">
-                  <span className="text-xs text-muted-foreground italic leading-tight block truncate max-w-[140px]" title={item.valorUnitarioExtenso}>
-                    {item.valorUnitarioExtenso || '—'}
-                  </span>
-                </td>
-                <td className="px-2 py-1">
-                  <Input className="h-8 text-xs bg-muted/30" value={item.valorTotal} readOnly />
-                </td>
-                <td className="px-2 py-1">
-                  <span className="text-xs text-muted-foreground italic leading-tight block truncate max-w-[140px]" title={item.valorTotalExtenso}>
-                    {item.valorTotalExtenso || '—'}
-                  </span>
-                </td>
-                <td className="px-2 py-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeItem(i)}>
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </td>
-              </tr>
-            ))}
+            {itens.map((item, i) => {
+              const temSugestao = sugestoes[i] !== undefined;
+              const precoSug = sugestoes[i];
+              const valorAtual = parseFloat(item.valorUnitario.replace(',', '.')) || 0;
+              const usandoCusto = temSugestao && item.custoAquisicao && Math.abs(valorAtual - item.custoAquisicao) < 0.01;
+
+              return (
+                <tr key={i} className={`border-t border-border/50 ${usandoCusto ? 'bg-accent/5' : ''}`}>
+                  <td className="px-2 py-1">
+                    <Input className="h-8 text-xs" value={item.item} onChange={e => updateItem(i, 'item', e.target.value)} />
+                  </td>
+                  <td className="px-2 py-1">
+                    <Input className="h-8 text-xs" value={item.descricao} onChange={e => updateItem(i, 'descricao', e.target.value)} />
+                  </td>
+                  <td className="px-2 py-1">
+                    <Input className="h-8 text-xs" value={item.quantidade} onChange={e => updateItem(i, 'quantidade', e.target.value)} />
+                  </td>
+                  <td className="px-2 py-1">
+                    <Input className="h-8 text-xs" value={item.unidade} onChange={e => updateItem(i, 'unidade', e.target.value)} />
+                  </td>
+                  <td className="px-2 py-1">
+                    <Input className="h-8 text-xs" value={item.marca} onChange={e => updateItem(i, 'marca', e.target.value)} placeholder="Marca" />
+                  </td>
+                  <td className="px-2 py-1">
+                    <Input className="h-8 text-xs" value={item.fabricante} onChange={e => updateItem(i, 'fabricante', e.target.value)} placeholder="Fabricante" />
+                  </td>
+                  <td className="px-2 py-1">
+                    <Input className="h-8 text-xs" value={item.modelo} onChange={e => updateItem(i, 'modelo', e.target.value)} placeholder="Modelo" />
+                  </td>
+                  <td className="px-2 py-1">
+                    <div className="space-y-1">
+                      <Input className="h-8 text-xs" value={item.valorUnitario} onChange={e => updateItem(i, 'valorUnitario', e.target.value)} />
+                      {temSugestao && precoSug && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={() => aplicarSugestao(i)}
+                                className="flex items-center gap-1 text-[10px] text-accent hover:text-accent/80 transition-colors group w-full"
+                              >
+                                <Sparkles className="w-3 h-3 shrink-0" />
+                                <span className="font-medium">
+                                  Sugerido: R$ {precoSug.toFixed(2).replace('.', ',')}
+                                </span>
+                                {usandoCusto && (
+                                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-accent/40 text-accent">
+                                    Custo
+                                  </Badge>
+                                )}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-xs">
+                              <div className="text-xs space-y-1">
+                                <p className="font-semibold">Composição do Preço Sugerido</p>
+                                <p>Custo de aquisição: <strong>R$ {item.custoAquisicao?.toFixed(2).replace('.', ',')}</strong></p>
+                                <p>Regime: <strong>{regimeLabel}</strong></p>
+                                <p className="text-muted-foreground">
+                                  Inclui tributos ({uf}), frete (2%), desp. administrativas (5%) e margem de lucro (10%).
+                                </p>
+                                <p className="text-muted-foreground italic">BDI: {((precoSug / (item.custoAquisicao || 1) - 1) * 100).toFixed(1)}%</p>
+                                <p className="text-accent font-medium mt-1">Clique para aplicar</p>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-2 py-1">
+                    <span className="text-xs text-muted-foreground italic leading-tight block truncate max-w-[140px]" title={item.valorUnitarioExtenso}>
+                      {item.valorUnitarioExtenso || '—'}
+                    </span>
+                  </td>
+                  <td className="px-2 py-1">
+                    <Input className="h-8 text-xs bg-muted/30" value={item.valorTotal} readOnly />
+                  </td>
+                  <td className="px-2 py-1">
+                    <span className="text-xs text-muted-foreground italic leading-tight block truncate max-w-[140px]" title={item.valorTotalExtenso}>
+                      {item.valorTotalExtenso || '—'}
+                    </span>
+                  </td>
+                  <td className="px-2 py-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeItem(i)}>
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -211,6 +331,11 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
 
       <p className="text-xs text-muted-foreground italic">
         IMPORTANTE: Nos preços ofertados já estão inclusos frete, taxas, impostos e demais despesas.
+        {itensComSugestao > 0 && (
+          <span className="text-accent not-italic ml-1">
+            ✦ Os preços sugeridos foram calculados automaticamente com base no regime tributário da empresa.
+          </span>
+        )}
       </p>
     </div>
   );

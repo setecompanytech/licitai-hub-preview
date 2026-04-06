@@ -228,8 +228,9 @@ ${truncated}`
       valorUnitarioExtenso: valorPorExtenso(preco),
       valorTotal: valorTotal.toFixed(2).replace('.', ','),
       valorTotalExtenso: valorPorExtenso(valorTotal),
+      custoAquisicao: preco, // preço cotado = custo de aquisição
     });
-    toast.success(`Item "${item.descricao.slice(0, 40)}..." adicionado à proposta!`);
+    toast.success(`Item "${item.descricao.slice(0, 40)}..." adicionado à proposta com sugestão tributária!`);
   };
 
   const cotados = itens.filter(i => i.status === 'cotado');
