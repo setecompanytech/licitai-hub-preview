@@ -20,6 +20,7 @@ import {
   Upload, FileText, AlertTriangle, DollarSign, Receipt
 } from 'lucide-react';
 import GerarPreNotaDialog from './GerarPreNotaDialog';
+import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
