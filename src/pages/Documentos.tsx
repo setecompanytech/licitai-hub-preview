@@ -299,17 +299,16 @@ export default function Documentos() {
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke('extrair-representante-vision', {
+      const { data, error } = await supabase.functions.invoke('document-vision-extract', {
         body: {
           fileName: documentos[idx].nome,
           images,
-          text: `Documento: "${documentos[idx].nome}". Categoria: "${documentos[idx].categoria}".`,
         },
       });
 
       if (error) throw error;
 
-      const rawResult = data?.result || '';
+      const rawResult = data?.text || '';
       
       // Try to find a date in common formats: DD/MM/YYYY, YYYY-MM-DD, or "VALIDADE" / "VÁLIDO ATÉ" patterns
       const datePatterns = [
