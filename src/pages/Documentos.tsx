@@ -747,6 +747,9 @@ export default function Documentos() {
                 );
               })}
             </div>
+
+            {/* Atestados de Capacidade Técnica — subcategorias por segmento */}
+            <AtestadosCapacidadeTecnica />
           </TabsContent>
 
           <TabsContent value="merge">
