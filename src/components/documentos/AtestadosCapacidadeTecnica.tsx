@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,9 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import {
   Upload, Download, Trash2, Loader2, Bot,
   CheckCircle2, Plus, FileText,
@@ -47,6 +46,159 @@ type ACTDoc = {
   };
 };
 
+type VisionImage = {
+  name: string;
+  dataUrl: string;
+};
+
+type DocumentAnalysisPayload = {
+  images: VisionImage[];
+  supportText: string;
+};
+
+type ExtractionStatus = 'idle' | 'success' | 'warning' | 'error';
+
+const normalizeWhitespace = (value: string) => value.replace(/\s+/g, ' ').trim();
+
+const createEmptyExtractedData = (): NonNullable<ACTDoc['dados_extraidos']> => ({
+  objeto: '',
+  orgao_emissor: '',
+  ano_fornecimento: '',
+  valor: '',
+  cnpj_contratante: '',
+  periodo: '',
+});
+
+const hasExtractedContent = (value?: ACTDoc['dados_extraidos']) =>
+  Boolean(
+    value?.objeto ||
+    value?.orgao_emissor ||
+    value?.ano_fornecimento ||
+    value?.valor ||
+    value?.cnpj_contratante ||
+    value?.periodo,
+  );
+
+const formatFileSize = (bytes: number) => {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+};
+
+const imageFileToVisionPayload = async (file: File): Promise<VisionImage[]> =>
+  new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = () => {
+      try {
+        const maxDimension = 1800;
+        const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Não foi possível preparar a imagem para análise.'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve([{ name: file.name, dataUrl: canvas.toDataURL('image/jpeg', 0.9) }]);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Não foi possível abrir a imagem enviada.'));
+    };
+
+    img.src = objectUrl;
+  });
+
+const extractPdfSupportText = async (pdf: any, maxPages: number) => {
+  const pageTexts: string[] = [];
+
+  for (let i = 1; i <= maxPages; i += 1) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items
+      .map((item: any) => ('str' in item ? item.str : ''))
+      .join(' ');
+
+    pageTexts.push(pageText);
+  }
+
+  return normalizeWhitespace(pageTexts.join('\n'));
+};
+
+const renderPdfToVisionImages = async (pdf: any, fileName: string, maxPages: number): Promise<VisionImage[]> => {
+  const images: VisionImage[] = [];
+
+  for (let i = 1; i <= maxPages; i += 1) {
+    const page = await pdf.getPage(i);
+    const firstViewport = page.getViewport({ scale: 1 });
+    const scale = Math.min(
+      1.5,
+      1600 / Math.max(firstViewport.width, 1),
+      1600 / Math.max(firstViewport.height, 1),
+    );
+    const viewport = page.getViewport({ scale: Math.max(scale, 0.5) });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(viewport.width);
+    canvas.height = Math.round(viewport.height);
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) continue;
+
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    images.push({
+      name: `${fileName}_p${i}`,
+      dataUrl: canvas.toDataURL('image/jpeg', 0.88),
+    });
+  }
+
+  return images;
+};
+
+const buildDocumentAnalysisPayload = async (file: File): Promise<DocumentAnalysisPayload> => {
+  if (file.type.startsWith('image/')) {
+    return {
+      images: await imageFileToVisionPayload(file),
+      supportText: '',
+    };
+  }
+
+  if (file.type === 'application/pdf') {
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+
+    const arrayBuffer = await file.arrayBuffer();
+    let pdf: any;
+
+    try {
+      pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    } catch {
+      pdf = await pdfjsLib.getDocument({ data: arrayBuffer, disableWorker: true } as any).promise;
+    }
+
+    const maxPages = Math.min(pdf.numPages, 3);
+    const [supportText, images] = await Promise.all([
+      extractPdfSupportText(pdf, maxPages),
+      renderPdfToVisionImages(pdf, file.name, maxPages),
+    ]);
+
+    return { images, supportText };
+  }
+
+  return { images: [], supportText: '' };
+};
+
 export default function AtestadosCapacidadeTecnica() {
   const { user } = useAuth();
   const [docs, setDocs] = useState<ACTDoc[]>([]);
@@ -58,8 +210,11 @@ export default function AtestadosCapacidadeTecnica() {
   const [analyzing, setAnalyzing] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<ACTDoc['dados_extraidos']>();
+  const [extractionStatus, setExtractionStatus] = useState<ExtractionStatus>('idle');
+  const [extractionMessage, setExtractionMessage] = useState('');
   const [filterSegmento, setFilterSegmento] = useState<string>('todos');
   const [searchTerm, setSearchTerm] = useState('');
+  const [fileInputKey, setFileInputKey] = useState(0);
 
   const fetchDocs = useCallback(async () => {
     if (!user) return;
@@ -79,11 +234,25 @@ export default function AtestadosCapacidadeTecnica() {
 
   useEffect(() => { fetchDocs(); }, [fetchDocs]);
 
-  const openUploadDialog = () => {
+  const resetUploadDialog = () => {
     setSelectedSegmento('');
     setPendingFile(null);
     setExtractedData(undefined);
+    setExtractionStatus('idle');
+    setExtractionMessage('');
+    setFileInputKey((current) => current + 1);
+  };
+
+  const openUploadDialog = () => {
+    resetUploadDialog();
     setUploadDialogOpen(true);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setUploadDialogOpen(open);
+    if (!open) {
+      resetUploadDialog();
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,167 +268,64 @@ export default function AtestadosCapacidadeTecnica() {
       return;
     }
     setPendingFile(f);
-    e.target.value = '';
-  };
-
-  const fileToVisionPayload = async (file: File): Promise<{ name: string; dataUrl: string } | null> => {
-    return new Promise((resolve) => {
-      if (file.type.startsWith('image/')) {
-        const img = new Image();
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const dataUrl = e.target?.result as string;
-          img.onload = () => {
-            const maxDim = 1600;
-            let w = img.width, h = img.height;
-            if (w > maxDim || h > maxDim) {
-              const ratio = Math.min(maxDim / w, maxDim / h);
-              w = Math.round(w * ratio);
-              h = Math.round(h * ratio);
-            }
-            const canvas = document.createElement('canvas');
-            canvas.width = w;
-            canvas.height = h;
-            const ctx = canvas.getContext('2d');
-            ctx?.drawImage(img, 0, 0, w, h);
-            resolve({ name: file.name, dataUrl: canvas.toDataURL('image/jpeg', 0.85) });
-          };
-          img.onerror = () => resolve(null);
-          img.src = dataUrl;
-        };
-        reader.onerror = () => resolve(null);
-        reader.readAsDataURL(file);
-      } else {
-        resolve(null);
-      }
-    });
+    setExtractedData(undefined);
+    setExtractionStatus('idle');
+    setExtractionMessage('');
   };
 
   const handleAIExtract = async () => {
-    if (!pendingFile) return;
+    if (!pendingFile || !selectedSegmento) return;
     setAnalyzing(true);
+    setExtractionStatus('idle');
+    setExtractionMessage('');
+
     try {
-      const segLabel = SEGMENTOS_ACT.find(s => s.value === selectedSegmento)?.label || 'não especificado';
+      const payload = await buildDocumentAnalysisPayload(pendingFile);
 
-      // Step 1: Extract raw text from the document
-      let rawText = '';
-
-      if (pendingFile.type.startsWith('image/')) {
-        // Use vision OCR for images
-        const payload = await fileToVisionPayload(pendingFile);
-        if (payload) {
-          const { data, error } = await supabase.functions.invoke('document-vision-extract', {
-            body: {
-              fileName: pendingFile.name,
-              images: [payload],
-              mode: 'ocr',
-            },
-          });
-          if (error) throw error;
-          rawText = data?.text || '';
-        }
-      } else if (pendingFile.type === 'application/pdf') {
-        // For PDFs: convert first page to image via canvas, then use vision OCR
-        const pdfDataUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target?.result as string);
-          reader.onerror = () => resolve('');
-          reader.readAsDataURL(pendingFile);
-        });
-
-        if (pdfDataUrl) {
-          // Send PDF as data URL to vision - the edge function accepts image data URLs
-          // For PDFs we'll try reading text content and if insufficient use a text-based approach
-          const textContent = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              const arr = new Uint8Array(e.target?.result as ArrayBuffer);
-              // Try to extract readable text from PDF binary
-              let text = '';
-              try {
-                const decoder = new TextDecoder('latin1');
-                const raw = decoder.decode(arr);
-                // Extract text between parentheses (PDF text objects)
-                const matches = raw.match(/\(([^)]{2,})\)/g);
-                if (matches) {
-                  text = matches.map(m => m.slice(1, -1)).join(' ');
-                }
-              } catch {}
-              resolve(text);
-            };
-            reader.onerror = () => resolve('');
-            reader.readAsArrayBuffer(pendingFile);
-          });
-
-          // If we got meaningful text from PDF parsing, use it directly
-          if (textContent.length > 50) {
-            rawText = textContent.slice(0, 15000);
-          } else {
-            // Render PDF page to canvas for vision OCR
-            // We'll use an object URL approach with an iframe/canvas
-            // Since we can't use pdf.js easily, send whatever text we have
-            rawText = textContent;
-          }
-        }
+      if (payload.images.length === 0 && !payload.supportText.trim()) {
+        throw new Error('Não foi possível preparar o documento para leitura.');
       }
 
-      // Step 2: Use ai-chat to extract structured data from the raw text
-      const extractPrompt = `Analise o texto extraído deste Atestado de Capacidade Técnica do segmento "${segLabel}".
-
-EXTRAIA as seguintes informações e retorne em JSON puro (sem markdown, sem \`\`\`):
-{
-  "objeto": "descrição completa do objeto/serviço/fornecimento atestado",
-  "orgao_emissor": "nome do órgão público ou empresa privada que emitiu/contratou (Cliente/Órgão contratante)",
-  "ano_fornecimento": "ano ou período do fornecimento (ex: 2024, 2023/2024)",
-  "valor": "valor contratual se mencionado",
-  "cnpj_contratante": "CNPJ do contratante se encontrado",
-  "periodo": "período completo de execução/fornecimento se mencionado"
-}
-
-REGRAS:
-- Leia TODO o texto atentamente.
-- "orgao_emissor" = quem CONTRATOU ou ATESTOU a capacidade (o cliente/órgão).
-- "ano_fornecimento" = o ano em que o fornecimento ou serviço foi prestado.
-- "objeto" = o que foi fornecido ou o serviço prestado.
-- Campo não encontrado = "".
-- NÃO invente dados ausentes.
-
-TEXTO DO DOCUMENTO:
-${rawText.slice(0, 12000)}`;
-
-      const { data: aiData, error: aiError } = await supabase.functions.invoke('ai-chat', {
+      const { data: aiData, error: aiError } = await supabase.functions.invoke('extrair-atestado-capacidade', {
         body: {
-          messages: [{ role: 'user', content: extractPrompt }],
-          action: 'extracao_act',
+          fileName: pendingFile.name,
+          segmento: selectedSegmento,
+          images: payload.images,
+          text: payload.supportText,
         },
       });
       if (aiError) throw aiError;
 
-      let responseText = '';
-      if (typeof aiData === 'string') responseText = aiData;
-      else if (aiData?.text) responseText = aiData.text;
-      else if (aiData?.choices?.[0]?.message?.content) responseText = aiData.choices[0].message.content;
+      const parsed = aiData?.result ?? aiData ?? {};
+      const nextData = {
+        objeto: typeof parsed.objeto === 'string' ? parsed.objeto.trim() : '',
+        orgao_emissor: typeof parsed.orgao_emissor === 'string' ? parsed.orgao_emissor.trim() : '',
+        ano_fornecimento: typeof parsed.ano_fornecimento === 'string' ? parsed.ano_fornecimento.trim() : '',
+        valor: typeof parsed.valor === 'string' ? parsed.valor.trim() : '',
+        cnpj_contratante: typeof parsed.cnpj_contratante === 'string' ? parsed.cnpj_contratante.trim() : '',
+        periodo: typeof parsed.periodo === 'string' ? parsed.periodo.trim() : '',
+      };
 
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        setExtractedData({
-          objeto: parsed.objeto || '',
-          orgao_emissor: parsed.orgao_emissor || '',
-          ano_fornecimento: parsed.ano_fornecimento || '',
-          valor: parsed.valor || '',
-          cnpj_contratante: parsed.cnpj_contratante || '',
-          periodo: parsed.periodo || '',
-        });
-        toast.success('Dados do atestado extraídos pela IA!');
+      setExtractedData(nextData);
+
+      if (nextData.objeto || nextData.orgao_emissor || nextData.ano_fornecimento) {
+        setExtractionStatus('success');
+        setExtractionMessage('Leitura concluída. Objeto, Cliente/Órgão e Ano foram validados para revisão.');
+        toast.success('Dados do atestado extraídos com sucesso.');
       } else {
-        toast.info('Não foi possível extrair dados automaticamente. Preencha manualmente.');
+        setExtractionStatus('warning');
+        setExtractionMessage('A leitura foi executada, mas nenhum campo principal foi encontrado com confiança suficiente.');
+        toast.info('A IA não encontrou dados confiáveis. Revise e preencha manualmente se necessário.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('ACT extraction error:', err);
-      toast.error('Erro na extração. Preencha manualmente.');
+      setExtractedData(createEmptyExtractedData());
+      setExtractionStatus('error');
+      setExtractionMessage(err?.message || 'A leitura do documento falhou nesta tentativa.');
+      toast.error(err?.message || 'Erro na extração do documento.');
+    } finally {
+      setAnalyzing(false);
     }
-    setAnalyzing(false);
   };
 
   const handleUpload = async () => {
@@ -286,13 +352,14 @@ ${rawText.slice(0, 12000)}`;
         validade: null, // ACTs de fornecimento não possuem validade
         tamanho_bytes: pendingFile.size,
         segmento: selectedSegmento,
-        dados_extraidos: extractedData || null,
+        dados_extraidos: hasExtractedContent(extractedData) ? extractedData : null,
       });
       if (dbError) throw dbError;
 
       toast.success(`Atestado de "${segLabel}" adicionado!`);
+      resetUploadDialog();
       setUploadDialogOpen(false);
-      fetchDocs();
+      await fetchDocs();
     } catch (err: any) {
       toast.error(err.message || 'Erro ao salvar atestado.');
     }
@@ -498,7 +565,7 @@ ${rawText.slice(0, 12000)}`;
       )}
 
       {/* Upload Dialog */}
-      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+      <Dialog open={uploadDialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -540,11 +607,26 @@ ${rawText.slice(0, 12000)}`;
             <div>
               <Label className="text-xs">Arquivo (PDF/PNG/JPG)</Label>
               <Input
+                key={fileInputKey}
                 type="file"
                 accept=".pdf,.png,.jpg,.jpeg,.webp"
                 onChange={handleFileSelect}
                 className="mt-1"
               />
+
+              {pendingFile && (
+                <div className="mt-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">{pendingFile.name}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {pendingFile.type === 'application/pdf' ? 'PDF' : 'Imagem'} • {formatFileSize(pendingFile.size)}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] whitespace-nowrap">Arquivo selecionado</Badge>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* AI Extract button */}
@@ -558,6 +640,19 @@ ${rawText.slice(0, 12000)}`;
                 {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
                 {analyzing ? 'Extraindo dados com IA...' : 'Extrair Dados com IA'}
               </Button>
+            )}
+
+            {extractionStatus !== 'idle' && (
+              <div
+                className={cn(
+                  'rounded-lg border px-3 py-2 text-xs',
+                  extractionStatus === 'success' && 'border-success/30 bg-success/10 text-foreground',
+                  extractionStatus === 'warning' && 'border-warning/30 bg-warning/10 text-foreground',
+                  extractionStatus === 'error' && 'border-destructive/30 bg-destructive/10 text-foreground',
+                )}
+              >
+                {extractionMessage}
+              </div>
             )}
 
             {/* Extracted data display */}
