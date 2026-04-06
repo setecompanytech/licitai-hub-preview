@@ -11,14 +11,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, FileText, Download, ClipboardList, DollarSign } from 'lucide-react';
+import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, FileText, Download, ClipboardList, DollarSign, Truck, ShoppingCart, Briefcase } from 'lucide-react';
 import RelatorioAtividades from '@/components/equipe/RelatorioAtividades';
 import TarefasColaborador from '@/components/equipe/TarefasColaborador';
 import ComissoesColaborador from '@/components/equipe/ComissoesColaborador';
+import { MODULOS_SISTEMA } from '@/hooks/useMembroPermissoes';
 
 const EQUIPES = [
   { value: 'geral', label: 'Geral', icon: Settings, color: 'bg-muted text-muted-foreground' },
-  { value: 'juridico', label: 'Jurídico', icon: Scale, color: 'bg-blue-500/15 text-blue-600' },
+  { value: 'financeiro', label: 'Financeiro', icon: DollarSign, color: 'bg-green-500/15 text-green-600' },
+  { value: 'comercial', label: 'Comercial', icon: Briefcase, color: 'bg-blue-500/15 text-blue-600' },
+  { value: 'logistica', label: 'Logística', icon: Truck, color: 'bg-orange-500/15 text-orange-600' },
+  { value: 'juridico', label: 'Jurídico', icon: Scale, color: 'bg-indigo-500/15 text-indigo-600' },
   { value: 'contabil', label: 'Contábil', icon: Calculator, color: 'bg-emerald-500/15 text-emerald-600' },
   { value: 'licitacoes', label: 'Licitações', icon: Search, color: 'bg-amber-500/15 text-amber-600' },
   { value: 'documentos', label: 'Documentos', icon: FileText, color: 'bg-purple-500/15 text-purple-600' },
