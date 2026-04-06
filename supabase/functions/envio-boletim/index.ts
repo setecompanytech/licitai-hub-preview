@@ -12,7 +12,6 @@ interface BoletimRequest {
   user_id?: string;
 }
 
-// Mapping of segment IDs to search keywords for filtering
 const SEGMENTO_KEYWORDS: Record<string, string[]> = {
   generos_alimenticios: ['aliment', 'merenda', 'cesta básica', 'cesta basica', 'perecív', 'pereciv', 'hortifruti', 'gênero', 'genero', 'refeição', 'refeicao', 'rancho'],
   informatica: ['informática', 'informatica', 'computador', 'notebook', 'servidor', 'software', 'rede', 'impressora', 'toner', 'cartucho', 'monitor', 'tecnologia da informação', 'suprimento de informática', 'switch', 'firewall'],
@@ -32,12 +31,183 @@ const SEGMENTO_KEYWORDS: Record<string, string[]> = {
 };
 
 function matchesSegmentos(titulo: string, segmentos: string[]): boolean {
-  if (!segmentos || segmentos.length === 0) return true; // no filter = all
+  if (!segmentos || segmentos.length === 0) return true;
   const tituloLower = titulo?.toLowerCase() || '';
   return segmentos.some(segId => {
     const keywords = SEGMENTO_KEYWORDS[segId] || [];
     return keywords.some(kw => tituloLower.includes(kw.toLowerCase()));
   });
+}
+
+// Fetch filtered licitações for a subscriber
+async function fetchLicitacoes(supabase: any, tipo: string, sub: any) {
+  const segmentos = sub.segmentos || [];
+  const ufsInteresse = sub.ufs_interesse || [];
+  const filtrarPorCnpj = sub.filtrar_alteracoes_por_cnpj ?? false;
+  const filtrarPorParticipacao = sub.filtrar_resultados_por_participacao ?? false;
+
+  let query = supabase
+    .from("monitoramento_editais")
+    .select("titulo, orgao, valor_estimado, uf, municipio, data_abertura, status, numero_processo, modalidade, objeto, codigo_uasg, portal")
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (ufsInteresse.length > 0) {
+    query = query.in("uf", ufsInteresse);
+  }
+
+  if (tipo === "manha") {
+    query = query.eq("status", "novo");
+  } else if (tipo === "meiodia") {
+    query = query.in("status", ["suspenso", "cancelado", "adiado", "alterado"]);
+  } else {
+    query = query.in("status", ["adjudicado", "homologado", "encerrado"]);
+  }
+
+  const { data: licitacoes } = await query;
+  let filtered = licitacoes || [];
+
+  if (tipo === "manha" && segmentos.length > 0) {
+    filtered = filtered.filter((l: any) => matchesSegmentos(l.titulo || l.objeto, segmentos));
+  }
+
+  if (tipo === "meiodia" && filtrarPorCnpj) {
+    filtered = await filterByCnpj(supabase, sub, filtered, licitacoes || []);
+  }
+
+  if (tipo === "tarde" && filtrarPorParticipacao) {
+    filtered = await filterByParticipacao(supabase, sub, filtered);
+  }
+
+  return filtered.slice(0, 20);
+}
+
+async function filterByCnpj(supabase: any, sub: any, filtered: any[], allLicitacoes: any[]) {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("empresa_ativa_id")
+    .eq("user_id", sub.user_id)
+    .single();
+
+  if (!profile?.empresa_ativa_id) return filtered;
+
+  const { data: empresa } = await supabase
+    .from("empresas")
+    .select("cnpj, razao_social, nome_fantasia")
+    .eq("id", profile.empresa_ativa_id)
+    .single();
+
+  if (!empresa) return filtered;
+
+  const searchTerms = [
+    empresa.cnpj?.replace(/\D/g, ''),
+    empresa.razao_social?.toLowerCase(),
+    empresa.nome_fantasia?.toLowerCase(),
+  ].filter(Boolean) as string[];
+
+  let result = filtered.filter((l: any) => {
+    const texto = `${l.titulo} ${l.orgao}`.toLowerCase();
+    return searchTerms.some(term => texto.includes(term));
+  });
+
+  const { data: userLicitacoes } = await supabase
+    .from("licitacoes")
+    .select("numero, orgao, objeto")
+    .eq("user_id", sub.user_id)
+    .not("status", "eq", "arquivado");
+
+  if (userLicitacoes?.length) {
+    const userNumeros = userLicitacoes.map((l: any) => l.numero).filter(Boolean);
+    const existing = new Set(result.map((l: any) => l.titulo));
+    for (const l of allLicitacoes) {
+      if (!existing.has(l.titulo) && userNumeros.some((num: string) => l.titulo?.includes(num))) {
+        result.push(l);
+      }
+    }
+  }
+
+  return result;
+}
+
+async function filterByParticipacao(supabase: any, sub: any, filtered: any[]) {
+  const { data: userLicitacoes } = await supabase
+    .from("licitacoes")
+    .select("numero, orgao, objeto, empresa_id")
+    .eq("user_id", sub.user_id);
+
+  if (!userLicitacoes?.length) return [];
+
+  const userNumeros = userLicitacoes.map((l: any) => l.numero).filter(Boolean);
+  const empresaIds = [...new Set(userLicitacoes.map((l: any) => l.empresa_id).filter(Boolean))];
+
+  let cnpjs: string[] = [];
+  if (empresaIds.length > 0) {
+    const { data: empresas } = await supabase
+      .from("empresas")
+      .select("cnpj")
+      .in("id", empresaIds as string[]);
+    cnpjs = (empresas || []).map((e: any) => e.cnpj?.replace(/\D/g, '')).filter(Boolean);
+  }
+
+  return filtered.filter((l: any) => {
+    const tituloLower = l.titulo?.toLowerCase() || '';
+    if (userNumeros.some((num: string) => tituloLower.includes(num.toLowerCase()))) return true;
+    if (cnpjs.some((cnpj: string) => tituloLower.includes(cnpj))) return true;
+    return false;
+  });
+}
+
+// Send one email per licitação
+async function sendIndividualEmails(
+  supabaseUrl: string, 
+  supabaseServiceKey: string, 
+  supabase: any, 
+  sub: any, 
+  tipo: string, 
+  licitacoes: any[]
+) {
+  const results = [];
+
+  for (const lic of licitacoes) {
+    try {
+      const templateData: Record<string, any> = {
+        tipo,
+        data: new Date().toLocaleDateString("pt-BR"),
+        numero_pregao: lic.numero_processo || lic.titulo || '',
+        orgao: lic.orgao || '',
+        codigo_uasg: lic.codigo_uasg || '',
+        objeto: lic.objeto || lic.titulo || '',
+        municipio: lic.municipio || '',
+        uf: lic.uf || '',
+        valor_estimado: lic.valor_estimado ? `R$ ${Number(lic.valor_estimado).toLocaleString("pt-BR")}` : '',
+        data_abertura: lic.data_abertura || '',
+        modalidade: lic.modalidade || '',
+        portal: lic.portal || '',
+      };
+
+      const invokeRes = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+          'apikey': supabaseServiceKey,
+        },
+        body: JSON.stringify({
+          templateName: 'boletim-diario',
+          recipientEmail: sub.email,
+          templateData,
+        }),
+      });
+
+      const ok = invokeRes.ok;
+      const body = await invokeRes.text().catch(() => '');
+      results.push({ titulo: lic.titulo, success: ok, error: ok ? null : `HTTP ${invokeRes.status}: ${body}` });
+    } catch (err: any) {
+      results.push({ titulo: lic.titulo, success: false, error: err.message });
+    }
+  }
+
+  return results;
 }
 
 serve(async (req) => {
@@ -73,188 +243,39 @@ serve(async (req) => {
       );
     }
 
-    const results = [];
+    const allResults = [];
 
     for (const sub of subscribers) {
       try {
-        const segmentos = (sub as any).segmentos || [];
-        const ufsInteresse = (sub as any).ufs_interesse || [];
-        const filtrarPorCnpj = (sub as any).filtrar_alteracoes_por_cnpj ?? false;
-        const filtrarPorParticipacao = (sub as any).filtrar_resultados_por_participacao ?? false;
+        const licitacoes = await fetchLicitacoes(supabase, tipo, sub);
 
-        // Build the query for licitações based on tipo
-        let licitacoesQuery = supabase
-          .from("monitoramento_editais")
-          .select("titulo, orgao, valor_estimado, uf, municipio, data_abertura, status")
-          .order("created_at", { ascending: false })
-          .limit(50);
-
-        // Apply UF filter if set
-        if (ufsInteresse.length > 0) {
-          licitacoesQuery = licitacoesQuery.in("uf", ufsInteresse);
+        if (licitacoes.length === 0) {
+          allResults.push({ email: sub.email, success: true, licitacoes_count: 0, detail: "Nenhuma licitação encontrada" });
+          continue;
         }
 
-        if (tipo === "manha") {
-          // Morning: new tenders, filtered by segments and UF
-          licitacoesQuery = licitacoesQuery.eq("status", "novo");
-        } else if (tipo === "meiodia") {
-          // Midday: changes, suspensions, cancellations
-          licitacoesQuery = licitacoesQuery.in("status", ["suspenso", "cancelado", "adiado", "alterado"]);
-        } else {
-          // Afternoon: results, homologations
-          licitacoesQuery = licitacoesQuery.in("status", ["adjudicado", "homologado", "encerrado"]);
-        }
+        const sendResults = await sendIndividualEmails(supabaseUrl, supabaseServiceKey, supabase, sub, tipo, licitacoes);
 
-        const { data: licitacoes } = await licitacoesQuery;
+        const successCount = sendResults.filter(r => r.success).length;
+        const failCount = sendResults.filter(r => !r.success).length;
 
-        let filteredLicitacoes = licitacoes || [];
-
-        // Apply segment filter for morning bulletin
-        if (tipo === "manha" && segmentos.length > 0) {
-          filteredLicitacoes = filteredLicitacoes.filter(l => matchesSegmentos(l.titulo, segmentos));
-        }
-
-        // For meio-dia: filter by user's CNPJ/razão social if enabled
-        if (tipo === "meiodia" && filtrarPorCnpj) {
-          // Get user's empresa info
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("empresa_ativa_id")
-            .eq("user_id", sub.user_id)
-            .single();
-
-          if (profile?.empresa_ativa_id) {
-            const { data: empresa } = await supabase
-              .from("empresas")
-              .select("cnpj, razao_social, nome_fantasia")
-              .eq("id", profile.empresa_ativa_id)
-              .single();
-
-            if (empresa) {
-              const searchTerms = [
-                empresa.cnpj?.replace(/\D/g, ''),
-                empresa.razao_social?.toLowerCase(),
-                empresa.nome_fantasia?.toLowerCase(),
-              ].filter(Boolean) as string[];
-
-              // Also check monitoramento_editais with text search in titulo/orgao
-              filteredLicitacoes = filteredLicitacoes.filter(l => {
-                const textoCompleto = `${l.titulo} ${l.orgao}`.toLowerCase();
-                return searchTerms.some(term => textoCompleto.includes(term!));
-              });
-
-              // Additionally, search in the user's tracked licitações
-              const { data: userLicitacoes } = await supabase
-                .from("licitacoes")
-                .select("numero, orgao, objeto")
-                .eq("user_id", sub.user_id)
-                .not("status", "eq", "arquivado");
-
-              if (userLicitacoes && userLicitacoes.length > 0) {
-                const userNumeros = userLicitacoes.map(l => l.numero).filter(Boolean);
-                // Include any licitação whose titulo matches a tracked process number
-                const additionalMatches = (licitacoes || []).filter(l => {
-                  return userNumeros.some(num => l.titulo?.includes(num!));
-                });
-                // Merge without duplicates
-                const existingTitulos = new Set(filteredLicitacoes.map(l => l.titulo));
-                additionalMatches.forEach(m => {
-                  if (!existingTitulos.has(m.titulo)) {
-                    filteredLicitacoes.push(m);
-                  }
-                });
-              }
-            }
-          }
-        }
-
-        // For tarde: filter by participation history if enabled
-        if (tipo === "tarde" && filtrarPorParticipacao) {
-          // Get user's participated licitações
-          const { data: userLicitacoes } = await supabase
-            .from("licitacoes")
-            .select("numero, orgao, objeto, empresa_id")
-            .eq("user_id", sub.user_id);
-
-          if (userLicitacoes && userLicitacoes.length > 0) {
-            const userNumeros = userLicitacoes.map(l => l.numero).filter(Boolean);
-            const userOrgaos = userLicitacoes.map(l => l.orgao?.toLowerCase()).filter(Boolean);
-
-            // Also get empresa CNPJ for cross-reference
-            const empresaIds = [...new Set(userLicitacoes.map(l => l.empresa_id).filter(Boolean))];
-            let cnpjs: string[] = [];
-            if (empresaIds.length > 0) {
-              const { data: empresas } = await supabase
-                .from("empresas")
-                .select("cnpj")
-                .in("id", empresaIds as string[]);
-              cnpjs = (empresas || []).map(e => e.cnpj?.replace(/\D/g, '')).filter(Boolean) as string[];
-            }
-
-            filteredLicitacoes = filteredLicitacoes.filter(l => {
-              const tituloLower = l.titulo?.toLowerCase() || '';
-              const orgaoLower = l.orgao?.toLowerCase() || '';
-              // Match by process number
-              if (userNumeros.some(num => tituloLower.includes(num!.toLowerCase()))) return true;
-              // Match by orgão + CNPJ in text
-              if (cnpjs.some(cnpj => tituloLower.includes(cnpj!))) return true;
-              return false;
-            });
-          } else {
-            // No participation history — send empty
-            filteredLicitacoes = [];
-          }
-        }
-
-        // Limit to 20 results for the email
-        filteredLicitacoes = filteredLicitacoes.slice(0, 20);
-
-        // Send via transactional email
-        const invokeRes = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseServiceKey}`,
-            'apikey': supabaseServiceKey,
-          },
-          body: JSON.stringify({
-            templateName: 'boletim-diario',
-            recipientEmail: sub.email,
-            templateData: {
-              tipo,
-              data: new Date().toLocaleDateString("pt-BR"),
-              licitacoes: filteredLicitacoes.map(l => ({
-                titulo: l.titulo,
-                orgao: l.orgao,
-                municipio: l.municipio,
-                uf: l.uf,
-                valor: l.valor_estimado ? `R$ ${Number(l.valor_estimado).toLocaleString("pt-BR")}` : '–',
-              })),
-            },
-          }),
-        });
-
-        const invokeOk = invokeRes.ok;
-        const invokeBody = await invokeRes.text().catch(() => '');
-        const invokeErr = invokeOk ? null : `HTTP ${invokeRes.status}: ${invokeBody}`;
-
-        // Log the send
+        // Log the batch
         await supabase.from("boletim_envios").insert({
           user_id: sub.user_id,
           tipo,
           email: sub.email,
-          status: invokeErr ? "erro" : "enviado",
-          erro: invokeErr || null,
+          status: failCount === 0 ? "enviado" : failCount === sendResults.length ? "erro" : "parcial",
+          erro: failCount > 0 ? `${failCount}/${sendResults.length} falharam` : null,
         });
 
-        results.push({ email: sub.email, success: invokeOk, licitacoes_count: filteredLicitacoes.length });
+        allResults.push({ email: sub.email, success: true, licitacoes_count: licitacoes.length, emails_sent: successCount, emails_failed: failCount });
       } catch (err: any) {
-        results.push({ email: sub.email, success: false, error: err.message });
+        allResults.push({ email: sub.email, success: false, error: err.message });
       }
     }
 
     return new Response(
-      JSON.stringify({ sent: results.filter((r) => r.success).length, total: results.length, results }),
+      JSON.stringify({ sent: allResults.filter(r => r.success).length, total: allResults.length, results: allResults }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
