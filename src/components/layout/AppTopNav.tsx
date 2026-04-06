@@ -38,6 +38,7 @@ const navGroups: NavGroup[] = [
     title: 'Monitoramento',
     items: [
       { icon: Download, label: 'Editais & Licitações', path: '/monitoramento-editais' },
+      { icon: Bell, label: 'Central de Avisos', path: '/avisos' },
       { icon: Bell, label: 'Boletins Diários', path: '/boletins' },
       { icon: MessageSquare, label: 'Chat e Mural', path: '/monitoramento-chat' },
     ],
@@ -96,6 +97,7 @@ const navGroups: NavGroup[] = [
     items: [
       { icon: Building2, label: 'Empresas', path: '/empresas' },
       { icon: Users, label: 'Equipe', path: '/equipe' },
+      { icon: Bell, label: 'Preferências de Alertas', path: '/configuracoes/alertas' },
       { icon: Settings, label: 'Configurações', path: '/configuracoes' },
       { icon: HeadphonesIcon, label: 'Suporte', path: '/suporte' },
     ],

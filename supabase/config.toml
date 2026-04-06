@@ -60,4 +60,10 @@ project_id = "sbnlovigyifvrkgsoalj"
     verify_jwt = false
   [functions.handle-email-suppression]
     verify_jwt = false
+  [functions.monitorar-editais]
+    verify_jwt = false
+  [functions.monitorar-dou]
+    verify_jwt = false
+  [functions.processar-homologacoes]
+    verify_jwt = false
 
