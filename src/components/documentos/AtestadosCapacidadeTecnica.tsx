@@ -575,14 +575,23 @@ ${rawText.slice(0, 12000)}`;
                     placeholder="Descrição do objeto atestado"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-[10px] text-muted-foreground">Cliente / Órgão Contratante</Label>
+                  <Input
+                    value={extractedData.orgao_emissor || ''}
+                    onChange={e => setExtractedData(prev => ({ ...prev, orgao_emissor: e.target.value }))}
+                    className="mt-0.5 text-xs h-8"
+                    placeholder="Órgão público ou empresa contratante"
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <Label className="text-[10px] text-muted-foreground">Órgão Emissor</Label>
+                    <Label className="text-[10px] text-muted-foreground">Ano do Fornecimento</Label>
                     <Input
-                      value={extractedData.orgao_emissor || ''}
-                      onChange={e => setExtractedData(prev => ({ ...prev, orgao_emissor: e.target.value }))}
+                      value={extractedData.ano_fornecimento || ''}
+                      onChange={e => setExtractedData(prev => ({ ...prev, ano_fornecimento: e.target.value }))}
                       className="mt-0.5 text-xs h-8"
-                      placeholder="Órgão/empresa emissora"
+                      placeholder="Ex: 2024"
                     />
                   </div>
                   <div>
@@ -603,11 +612,7 @@ ${rawText.slice(0, 12000)}`;
                       placeholder="00.000.000/0000-00"
                     />
                   </div>
-                  <div>
-                    <Label className="text-[10px] text-muted-foreground">Período</Label>
-                    <Input
-                      value={extractedData.periodo || ''}
-                      onChange={e => setExtractedData(prev => ({ ...prev, periodo: e.target.value }))}
+                </div>
                       className="mt-0.5 text-xs h-8"
                       placeholder="Ex: 01/2024 a 12/2024"
                     />
