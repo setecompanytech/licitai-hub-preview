@@ -3,7 +3,7 @@ import { X, Send, Loader2, Minimize2, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { streamAIChat, ChatMessage } from '@/lib/ai-stream';
-import ReactMarkdown from 'react-markdown';
+import { sanitizeAureliaOutput } from '@/prompts/aurelia-system-prompt';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 
@@ -147,9 +147,7 @@ export default function AureliaChat() {
                       : 'aurelia-bubble-ai text-[hsl(215,14%,82%)]'
                   )}>
                     {msg.role === 'assistant' ? (
-                      <div className="prose prose-xs prose-invert max-w-none [&>*]:my-1 [&_li]:my-0.5">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
-                      </div>
+                      <div className="whitespace-pre-line">{sanitizeAureliaOutput(msg.content)}</div>
                     ) : msg.content}
                   </div>
                 </div>
