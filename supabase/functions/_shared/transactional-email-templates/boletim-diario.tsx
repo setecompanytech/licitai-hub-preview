@@ -18,18 +18,24 @@ interface BoletimDiarioProps {
   uf?: string
   valor_estimado?: string
   data_abertura?: string
-  endereco?: string
   modalidade?: string
   lei?: string
-  horario_edital?: string
-  horario_proposta?: string
   portal?: string
+  urgencia?: 'critica' | 'alta' | 'normal'  // critica=<24h, alta=24-72h
+  horas_restantes?: number
 }
 
 const tipoLabels: Record<string, { label: string; desc: string }> = {
   manha: { label: 'Novas Licitações — Manhã', desc: 'Nova oportunidade publicada' },
   meiodia: { label: 'Alterações e Avisos — Meio-dia', desc: 'Alteração ou aviso identificado' },
   tarde: { label: 'Resultados do Dia — Tarde', desc: 'Resultado publicado' },
+  lembrete: { label: 'Lembrete de Prazo', desc: 'Abertura iminente' },
+}
+
+const urgenciaLabels: Record<string, { texto: string; cor: string }> = {
+  critica: { texto: 'ABERTURA EM MENOS DE 24H', cor: '#b91c1c' },
+  alta: { texto: 'ABERTURA NAS PROXIMAS 72H', cor: '#b45309' },
+  normal: { texto: '', cor: '' },
 }
 
 const BoletimDiarioEmail = (props: BoletimDiarioProps) => {
@@ -47,14 +53,17 @@ const BoletimDiarioEmail = (props: BoletimDiarioProps) => {
     modalidade,
     lei,
     portal,
+    urgencia = 'normal',
+    horas_restantes,
   } = props
 
   const cfg = tipoLabels[tipo] || tipoLabels.manha
   const dataStr = data || new Date().toLocaleDateString('pt-BR')
   const localStr = [municipio, uf].filter(Boolean).join('/')
+  const urg = urgenciaLabels[urgencia] || urgenciaLabels.normal
 
   const previewText = numero_pregao
-    ? `${numero_pregao} ${localStr ? `PM ${localStr}` : ''}`
+    ? `${urgencia !== 'normal' ? urg.texto + ' — ' : ''}${numero_pregao} ${localStr ? `PM ${localStr}` : ''}`
     : `${cfg.label} — ${dataStr}`
 
   return (
@@ -71,10 +80,35 @@ const BoletimDiarioEmail = (props: BoletimDiarioProps) => {
 
           <Hr style={divider} />
 
+          {urgencia !== 'normal' && (
+            <Section style={{ padding: '12px 24px 0' }}>
+              <table cellPadding={0} cellSpacing={0} style={{ width: '100%' }}>
+                <tbody>
+                  <tr>
+                    <td style={{
+                      backgroundColor: urg.cor,
+                      color: '#ffffff',
+                      fontSize: '11px',
+                      fontWeight: '700' as const,
+                      letterSpacing: '1px',
+                      padding: '8px 14px',
+                      textTransform: 'uppercase' as const,
+                    }}>
+                      {urg.texto}
+                      {horas_restantes != null && horas_restantes > 0
+                        ? ` — ${horas_restantes}h restantes`
+                        : ''}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </Section>
+          )}
+
           {orgao && (
             <Section style={bodySection}>
               <Text style={orgaoText}>{orgao.toUpperCase()}</Text>
-              {codigo_uasg && <Text style={fieldText}>Código da UASG: {codigo_uasg}</Text>}
+              {codigo_uasg && <Text style={fieldText}>Codigo da UASG: {codigo_uasg}</Text>}
               {numero_pregao && (
                 <Text style={fieldText}>
                   {numero_pregao}
@@ -111,7 +145,7 @@ const BoletimDiarioEmail = (props: BoletimDiarioProps) => {
               Aviso enviado automaticamente pelo {SITE_NAME}.
             </Text>
             <Text style={footerText}>
-              Gerencie suas preferências de boletim nas configurações do sistema.
+              Gerencie suas preferencias de boletim nas configuracoes do sistema.
             </Text>
           </Section>
 
@@ -124,32 +158,40 @@ const BoletimDiarioEmail = (props: BoletimDiarioProps) => {
 export const template = {
   component: BoletimDiarioEmail,
   subject: (data: Record<string, any>) => {
+    const urgPrefix = data.urgencia === 'critica'
+      ? 'URGENTE — '
+      : data.urgencia === 'alta'
+        ? 'PRAZO — '
+        : '';
+
     if (data.numero_pregao) {
       const local = [data.municipio, data.uf].filter(Boolean).join('/')
-      return `${data.numero_pregao}${local ? ` PM ${local}` : ''}`
+      return `${urgPrefix}${data.numero_pregao}${local ? ` PM ${local}` : ''}`
     }
     const cfg = tipoLabels[data.tipo] || tipoLabels.manha
-    return `${cfg.label} — ${data.data || new Date().toLocaleDateString('pt-BR')}`
+    return `${urgPrefix}${cfg.label} — ${data.data || new Date().toLocaleDateString('pt-BR')}`
   },
-  displayName: 'Boletim Diário',
+  displayName: 'Boletim Diario',
   previewData: {
-    tipo: 'manha',
+    tipo: 'lembrete',
     data: '06/04/2026',
-    numero_pregao: 'Pregão Eletrônico Nº 90014/2026',
+    numero_pregao: 'Pregao Eletronico No 90014/2026',
     orgao: 'PREFEITURA MUNICIPAL DE IRITUIA',
     codigo_uasg: '980469',
-    objeto: 'Aquisição DE CESTAS BÁSICAS PARA ATENDER AS NECESSIDADES DA SECRETARIA MUNICIPAL DE TRABALHO E PROMOÇÃO SOCIAL DO MUNICÍPIO DE IRITUIA/PA.',
-    municipio: 'Irituía',
+    objeto: 'Aquisicao DE CESTAS BASICAS PARA ATENDER AS NECESSIDADES DA SECRETARIA MUNICIPAL DE TRABALHO E PROMOCAO SOCIAL DO MUNICIPIO DE IRITUIA/PA.',
+    municipio: 'Irituia',
     uf: 'PA',
     valor_estimado: 'R$ 450.000,00',
-    data_abertura: 'em 17/04/2026 às 09:00Hs, no endereço: www.compras.gov.br',
-    modalidade: 'Pregão Eletrônico',
-    lei: 'Lei Nº 14.133/2021',
+    data_abertura: 'em 17/04/2026 as 09:00Hs, no endereco: www.compras.gov.br',
+    modalidade: 'Pregao Eletronico',
+    lei: 'Lei No 14.133/2021',
     portal: 'www.compras.gov.br',
+    urgencia: 'critica',
+    horas_restantes: 18,
   },
 } satisfies TemplateEntry
 
-// Styles — clean, technical, minimal
+// Styles
 const main = { backgroundColor: '#ffffff', fontFamily: "'Arial', 'Helvetica', sans-serif" }
 const container = { backgroundColor: '#ffffff', padding: '0', margin: '0 auto', maxWidth: '640px' }
 const headerSection = { padding: '20px 24px 12px' }
