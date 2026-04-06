@@ -56,6 +56,8 @@ export default function EquipeColaboradores() {
   const [invitePapel, setInvitePapel] = useState('operador');
   const [inviteEquipes, setInviteEquipes] = useState<string[]>(['geral']);
   const [saving, setSaving] = useState(false);
+  const [permDialog, setPermDialog] = useState<Membro | null>(null);
+  const [permissoesSel, setPermissoesSel] = useState<string[]>([]);
 
   const currentMembro = empresas.find(e => e.empresa_id === empresaAtiva?.id);
   const isAdmin = currentMembro?.papel === 'admin';
