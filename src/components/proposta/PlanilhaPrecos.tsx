@@ -229,7 +229,7 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
               const usandoCusto = temSugestao && item.custoAquisicao && Math.abs(valorAtual - item.custoAquisicao) < 0.01;
 
               return (
-                <tr key={i} className={`border-t border-border/50 ${usandoCusto ? 'bg-yellow-500/5' : ''}`}>
+                <tr key={i} className={`border-t border-border/50 ${usandoCusto ? 'bg-accent/5' : ''}`}>
                   <td className="px-2 py-1">
                     <Input className="h-8 text-xs" value={item.item} onChange={e => updateItem(i, 'item', e.target.value)} />
                   </td>
