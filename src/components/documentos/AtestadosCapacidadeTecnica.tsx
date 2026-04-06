@@ -6,18 +6,17 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import {
-  Upload, Download, Trash2, Loader2, CalendarDays, Bot,
-  CheckCircle2, AlertTriangle, Clock, Plus, FileText,
+  Upload, Download, Trash2, Loader2, Bot,
+  CheckCircle2, Plus, FileText,
   ShoppingBasket, Monitor, Sparkles, Package, Utensils,
-  Wrench, Shirt, Pill, Building2, FolderOpen
+  Wrench, Shirt, Pill, Building2, FolderOpen, Filter, Search
 } from 'lucide-react';
 
 const SEGMENTOS_ACT = [
@@ -47,24 +46,6 @@ type ACTDoc = {
   };
 };
 
-type ACTStatus = 'ok' | 'pendente' | 'vencido';
-
-function getACTStatus(validade?: string): ACTStatus {
-  if (!validade) return 'ok';
-  const v = new Date(validade);
-  const now = new Date();
-  if (v < now) return 'vencido';
-  const diff = (v.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-  if (diff <= 30) return 'pendente';
-  return 'ok';
-}
-
-const statusConfig = {
-  ok: { icon: CheckCircle2, color: 'text-success', label: 'Regular' },
-  pendente: { icon: Clock, color: 'text-warning', label: 'A vencer' },
-  vencido: { icon: AlertTriangle, color: 'text-destructive', label: 'Vencido' },
-};
-
 export default function AtestadosCapacidadeTecnica() {
   const { user } = useAuth();
   const [docs, setDocs] = useState<ACTDoc[]>([]);
@@ -72,13 +53,12 @@ export default function AtestadosCapacidadeTecnica() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedSegmento, setSelectedSegmento] = useState('');
   const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const [pendingValidade, setPendingValidade] = useState<Date | undefined>();
-  const [pendingManualDate, setPendingManualDate] = useState('');
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<ACTDoc['dados_extraidos']>();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [filterSegmento, setFilterSegmento] = useState<string>('todos');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const fetchDocs = useCallback(async () => {
     if (!user) return;
@@ -98,11 +78,9 @@ export default function AtestadosCapacidadeTecnica() {
 
   useEffect(() => { fetchDocs(); }, [fetchDocs]);
 
-  const openUploadDialog = (segmento: string) => {
-    setSelectedSegmento(segmento);
+  const openUploadDialog = () => {
+    setSelectedSegmento('');
     setPendingFile(null);
-    setPendingValidade(undefined);
-    setPendingManualDate('');
     setExtractedData(undefined);
     setUploadDialogOpen(true);
   };
@@ -123,13 +101,53 @@ export default function AtestadosCapacidadeTecnica() {
     e.target.value = '';
   };
 
+  const fileToVisionPayload = async (file: File): Promise<{ name: string; dataUrl: string } | null> => {
+    return new Promise((resolve) => {
+      if (file.type.startsWith('image/')) {
+        const img = new Image();
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const dataUrl = e.target?.result as string;
+          img.onload = () => {
+            const maxDim = 1600;
+            let w = img.width, h = img.height;
+            if (w > maxDim || h > maxDim) {
+              const ratio = Math.min(maxDim / w, maxDim / h);
+              w = Math.round(w * ratio);
+              h = Math.round(h * ratio);
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, w, h);
+            resolve({ name: file.name, dataUrl: canvas.toDataURL('image/jpeg', 0.85) });
+          };
+          img.onerror = () => resolve(null);
+          img.src = dataUrl;
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+      } else {
+        resolve(null);
+      }
+    });
+  };
+
   const handleAIExtract = async () => {
     if (!pendingFile) return;
     setAnalyzing(true);
     try {
-      const segLabel = SEGMENTOS_ACT.find(s => s.value === selectedSegmento)?.label || selectedSegmento;
+      const segLabel = SEGMENTOS_ACT.find(s => s.value === selectedSegmento)?.label || 'não especificado';
 
-      // Read file as text for AI
+      // Try vision for images
+      let visionImages: { name: string; dataUrl: string }[] = [];
+      if (pendingFile.type.startsWith('image/')) {
+        const payload = await fileToVisionPayload(pendingFile);
+        if (payload) visionImages = [payload];
+      }
+
+      // Also read as text for PDFs
       const text = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onload = (e) => resolve((e.target?.result as string)?.slice(0, 20000) || '');
@@ -137,37 +155,50 @@ export default function AtestadosCapacidadeTecnica() {
         reader.readAsText(pendingFile!);
       });
 
-      const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: {
-          messages: [{
-            role: 'user',
-            content: `Analise este Atestado de Capacidade Técnica do segmento "${segLabel}" e extraia em JSON:
+      const extractPrompt = `Analise este Atestado de Capacidade Técnica do segmento "${segLabel}".
+IMPORTANTE: Atestados de capacidade técnica para fornecimento de produtos/materiais NÃO possuem validade.
+
+Extraia em JSON puro (sem markdown):
 {
-  "objeto": "descrição do objeto/serviço atestado",
-  "orgao_emissor": "órgão ou empresa que emitiu o atestado",
-  "valor": "valor contratual se mencionado",
+  "objeto": "descrição completa do objeto/serviço/fornecimento atestado",
+  "orgao_emissor": "nome do órgão ou empresa que emitiu o atestado",
+  "valor": "valor contratual se mencionado (apenas números e pontuação)",
   "cnpj_contratante": "CNPJ do contratante se encontrado",
-  "periodo": "período de execução",
-  "validade": "data de validade no formato DD/MM/AAAA se encontrada"
+  "periodo": "período de execução/fornecimento"
 }
 
-Documento:
-${text}`
-          }],
-          action: 'extracao_act',
-        },
-      });
+Regras:
+- Leia TODO o documento com atenção.
+- Campo não encontrado = "".
+- NÃO invente dados.`;
 
-      if (error) throw error;
-
-      // Parse response - handle streaming or direct
       let responseText = '';
-      if (typeof data === 'string') {
-        responseText = data;
-      } else if (data?.text) {
-        responseText = data.text;
-      } else if (data?.choices?.[0]?.message?.content) {
-        responseText = data.choices[0].message.content;
+
+      if (visionImages.length > 0) {
+        // Use vision edge function for images
+        const { data, error } = await supabase.functions.invoke('document-vision-extract', {
+          body: {
+            fileName: pendingFile.name,
+            images: visionImages,
+            text: text.length > 20 ? text : undefined,
+            mode: 'act_extraction',
+            extractionPrompt: extractPrompt,
+          },
+        });
+        if (error) throw error;
+        responseText = data?.text || '';
+      } else {
+        // Use ai-chat for text-based PDFs
+        const { data, error } = await supabase.functions.invoke('ai-chat', {
+          body: {
+            messages: [{ role: 'user', content: `${extractPrompt}\n\nDocumento:\n${text}` }],
+            action: 'extracao_act',
+          },
+        });
+        if (error) throw error;
+        if (typeof data === 'string') responseText = data;
+        else if (data?.text) responseText = data.text;
+        else if (data?.choices?.[0]?.message?.content) responseText = data.choices[0].message.content;
       }
 
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -180,19 +211,6 @@ ${text}`
           cnpj_contratante: parsed.cnpj_contratante || '',
           periodo: parsed.periodo || '',
         });
-
-        // Try to extract date from validade field
-        if (parsed.validade) {
-          const dateMatch = parsed.validade.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-          if (dateMatch) {
-            const d = new Date(`${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`);
-            if (!isNaN(d.getTime())) {
-              setPendingValidade(d);
-              setPendingManualDate(format(d, 'yyyy-MM-dd'));
-            }
-          }
-        }
-
         toast.success('Dados do atestado extraídos pela IA!');
       } else {
         toast.info('Não foi possível extrair dados automaticamente.');
@@ -211,7 +229,6 @@ ${text}`
     try {
       const segLabel = SEGMENTOS_ACT.find(s => s.value === selectedSegmento)?.label || selectedSegmento;
       const nome = `ACT – ${segLabel}`;
-      const slug = nome.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60);
       const ext = pendingFile.name.split('.').pop();
       const path = `${user.id}/act-${selectedSegmento}-${Date.now()}.${ext}`;
 
@@ -220,20 +237,13 @@ ${text}`
         .upload(path, pendingFile, { upsert: true });
       if (uploadError) throw uploadError;
 
-      let validadeStr: string | undefined;
-      if (pendingValidade) {
-        validadeStr = format(pendingValidade, 'yyyy-MM-dd');
-      } else if (pendingManualDate) {
-        validadeStr = pendingManualDate;
-      }
-
       const { error: dbError } = await supabase.from('documentos').insert({
         user_id: user.id,
         nome,
         tipo: 'Qualificação Técnica',
         descricao: extractedData?.objeto || `Atestado de Capacidade Técnica - ${segLabel}`,
         arquivo_path: path,
-        validade: validadeStr || null,
+        validade: null, // ACTs de fornecimento não possuem validade
         tamanho_bytes: pendingFile.size,
         segmento: selectedSegmento,
         dados_extraidos: extractedData || null,
@@ -279,17 +289,28 @@ ${text}`
     URL.revokeObjectURL(url);
   };
 
-  // Group docs by segmento
-  const docsBySegmento = SEGMENTOS_ACT.map(seg => ({
-    ...seg,
-    docs: docs.filter(d => d.segmento === seg.value),
-  }));
+  // Filter docs
+  const filteredDocs = docs.filter(d => {
+    if (filterSegmento !== 'todos' && d.segmento !== filterSegmento) return false;
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      const obj = d.dados_extraidos?.objeto?.toLowerCase() || '';
+      const org = d.dados_extraidos?.orgao_emissor?.toLowerCase() || '';
+      const seg = SEGMENTOS_ACT.find(s => s.value === d.segmento)?.label.toLowerCase() || '';
+      if (!obj.includes(term) && !org.includes(term) && !seg.includes(term)) return false;
+    }
+    return true;
+  });
 
   const totalDocs = docs.length;
   const segmentosComDoc = new Set(docs.map(d => d.segmento)).size;
 
+  // Segments that have docs (for filter chips)
+  const segmentosAtivos = SEGMENTOS_ACT.filter(s => docs.some(d => d.segmento === s.value));
+
   return (
     <div className="bg-card rounded-xl border border-border/50 shadow-sm">
+      {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-border/50">
         <div className="flex items-center gap-2">
           <FolderOpen className="w-4 h-4 text-accent" />
@@ -300,91 +321,126 @@ ${text}`
           <Badge variant="secondary" className="text-xs">
             {totalDocs} atestado{totalDocs !== 1 ? 's' : ''} em {segmentosComDoc} segmento{segmentosComDoc !== 1 ? 's' : ''}
           </Badge>
+          <Button size="sm" onClick={openUploadDialog} className="gap-1 text-xs">
+            <Plus className="w-3 h-3" />
+            Adicionar Atestado
+          </Button>
         </div>
       </div>
 
+      {/* Filters */}
+      {totalDocs > 0 && (
+        <div className="px-5 py-2.5 border-b border-border/30 space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar atestado..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-8 h-8 text-xs"
+              />
+            </div>
+            <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              onClick={() => setFilterSegmento('todos')}
+              className={cn(
+                'px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors border',
+                filterSegmento === 'todos'
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-muted/50 text-muted-foreground border-border/50 hover:bg-muted'
+              )}
+            >
+              Todos ({totalDocs})
+            </button>
+            {segmentosAtivos.map(seg => {
+              const count = docs.filter(d => d.segmento === seg.value).length;
+              const Icon = seg.icon;
+              return (
+                <button
+                  key={seg.value}
+                  onClick={() => setFilterSegmento(seg.value)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors border flex items-center gap-1',
+                    filterSegmento === seg.value
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-muted/50 text-muted-foreground border-border/50 hover:bg-muted'
+                  )}
+                >
+                  <Icon className="w-3 h-3" />
+                  {seg.label} ({count})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Docs list */}
       {loading ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
         </div>
+      ) : filteredDocs.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+          <FileText className="w-8 h-8 mb-2 opacity-40" />
+          <p className="text-sm">{totalDocs === 0 ? 'Nenhum atestado cadastrado' : 'Nenhum resultado para o filtro'}</p>
+          {totalDocs === 0 && (
+            <Button size="sm" variant="outline" className="mt-3 gap-1" onClick={openUploadDialog}>
+              <Plus className="w-3 h-3" /> Adicionar primeiro atestado
+            </Button>
+          )}
+        </div>
       ) : (
         <div className="divide-y divide-border/30">
-          {docsBySegmento.map(seg => {
-            const Icon = seg.icon;
+          {filteredDocs.map(doc => {
+            const seg = SEGMENTOS_ACT.find(s => s.value === doc.segmento);
+            const Icon = seg?.icon || ShoppingBasket;
             return (
-              <div key={seg.value} className="px-5 py-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Icon className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">{seg.label}</p>
-                      <p className="text-[10px] text-muted-foreground">{seg.sublabel}</p>
+              <div key={doc.id} className="px-5 py-3 flex items-start justify-between hover:bg-muted/20 transition-colors">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-4 h-4 text-accent" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="text-[10px]">{seg?.label || doc.segmento}</Badge>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                      <span className="text-[10px] text-success font-medium">Cadastrado</span>
+                    </div>
+                    {doc.dados_extraidos?.objeto && (
+                      <p className="text-xs mt-1 text-foreground/80 line-clamp-2">{doc.dados_extraidos.objeto}</p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      {doc.dados_extraidos?.orgao_emissor && (
+                        <Badge variant="secondary" className="text-[10px]">{doc.dados_extraidos.orgao_emissor}</Badge>
+                      )}
+                      {doc.dados_extraidos?.valor && (
+                        <Badge variant="outline" className="text-[10px]">R$ {doc.dados_extraidos.valor}</Badge>
+                      )}
+                      {doc.dados_extraidos?.periodo && (
+                        <Badge variant="outline" className="text-[10px]">{doc.dados_extraidos.periodo}</Badge>
+                      )}
                     </div>
                   </div>
+                </div>
+                <div className="flex gap-1 flex-shrink-0 ml-2">
+                  <Button size="sm" variant="ghost" onClick={() => handleDownload(doc)} title="Baixar">
+                    <Download className="w-3.5 h-3.5" />
+                  </Button>
                   <Button
                     size="sm"
-                    variant="outline"
-                    onClick={() => openUploadDialog(seg.value)}
-                    className="gap-1 text-xs"
+                    variant="ghost"
+                    onClick={() => handleRemove(doc)}
+                    disabled={removingId === doc.id}
+                    className="text-destructive hover:text-destructive"
+                    title="Remover"
                   >
-                    <Plus className="w-3 h-3" />
-                    Adicionar
+                    {removingId === doc.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                   </Button>
                 </div>
-
-                {seg.docs.length === 0 ? (
-                  <p className="text-xs text-muted-foreground/60 ml-6">Nenhum atestado neste segmento</p>
-                ) : (
-                  <div className="space-y-2 ml-6">
-                    {seg.docs.map(doc => {
-                      const status = getACTStatus(doc.validade);
-                      const cfg = statusConfig[status];
-                      const StatusIcon = cfg.icon;
-                      return (
-                        <div key={doc.id} className="flex items-start justify-between p-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                          <div className="flex items-start gap-2 flex-1 min-w-0">
-                            <StatusIcon className={`w-3.5 h-3.5 mt-0.5 ${cfg.color}`} />
-                            <div className="min-w-0">
-                              {doc.dados_extraidos?.objeto && (
-                                <p className="text-xs font-medium truncate">{doc.dados_extraidos.objeto}</p>
-                              )}
-                              <div className="flex flex-wrap items-center gap-1 mt-0.5">
-                                {doc.dados_extraidos?.orgao_emissor && (
-                                  <Badge variant="secondary" className="text-[10px]">{doc.dados_extraidos.orgao_emissor}</Badge>
-                                )}
-                                {doc.dados_extraidos?.valor && (
-                                  <Badge variant="outline" className="text-[10px]">R$ {doc.dados_extraidos.valor}</Badge>
-                                )}
-                                <Badge variant="outline" className={`text-[10px] ${cfg.color}`}>{cfg.label}</Badge>
-                              </div>
-                              {doc.validade && (
-                                <p className="text-[10px] text-muted-foreground mt-0.5">
-                                  <CalendarDays className="w-2.5 h-2.5 inline mr-0.5" />
-                                  Validade: {new Date(doc.validade).toLocaleDateString('pt-BR')}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex gap-1 flex-shrink-0">
-                            <Button size="sm" variant="ghost" onClick={() => handleDownload(doc)} title="Baixar">
-                              <Download className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleRemove(doc)}
-                              disabled={removingId === doc.id}
-                              className="text-destructive hover:text-destructive"
-                              title="Remover"
-                            >
-                              {removingId === doc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
             );
           })}
@@ -402,9 +458,32 @@ ${text}`
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="text-sm font-medium bg-muted/50 p-2 rounded flex items-center gap-2">
-              {(() => { const s = SEGMENTOS_ACT.find(s => s.value === selectedSegmento); const I = s?.icon || Package; return <I className="w-4 h-4 text-accent" />; })()}
-              {SEGMENTOS_ACT.find(s => s.value === selectedSegmento)?.label}
+            {/* Segment selector */}
+            <div>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Segmento
+              </Label>
+              <Select value={selectedSegmento} onValueChange={setSelectedSegmento}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Selecione o segmento do atestado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SEGMENTOS_ACT.map(seg => {
+                    const Icon = seg.icon;
+                    return (
+                      <SelectItem key={seg.value} value={seg.value}>
+                        <div className="flex items-center gap-2">
+                          <Icon className="w-4 h-4 text-muted-foreground" />
+                          <div>
+                            <span className="text-sm">{seg.label}</span>
+                            <span className="text-[10px] text-muted-foreground ml-1.5">– {seg.sublabel}</span>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* File */}
@@ -419,7 +498,7 @@ ${text}`
             </div>
 
             {/* AI Extract button */}
-            {pendingFile && (
+            {pendingFile && selectedSegmento && (
               <Button
                 variant="outline"
                 className="w-full gap-2 border-accent/30 text-accent hover:bg-accent/10"
@@ -437,106 +516,67 @@ ${text}`
                 <p className="text-xs font-semibold text-accent flex items-center gap-1">
                   <Bot className="w-3 h-3" /> Dados Extraídos pela IA
                 </p>
-                {extractedData.objeto && (
+                <div>
+                  <Label className="text-[10px] text-muted-foreground">Objeto</Label>
+                  <Textarea
+                    value={extractedData.objeto || ''}
+                    onChange={e => setExtractedData(prev => ({ ...prev, objeto: e.target.value }))}
+                    className="mt-0.5 text-xs min-h-[50px]"
+                    placeholder="Descrição do objeto atestado"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label className="text-[10px] text-muted-foreground">Objeto</Label>
-                    <Textarea
-                      value={extractedData.objeto}
-                      onChange={e => setExtractedData(prev => ({ ...prev, objeto: e.target.value }))}
-                      className="mt-0.5 text-xs min-h-[50px]"
+                    <Label className="text-[10px] text-muted-foreground">Órgão Emissor</Label>
+                    <Input
+                      value={extractedData.orgao_emissor || ''}
+                      onChange={e => setExtractedData(prev => ({ ...prev, orgao_emissor: e.target.value }))}
+                      className="mt-0.5 text-xs h-8"
+                      placeholder="Órgão/empresa emissora"
                     />
                   </div>
-                )}
-                <div className="grid grid-cols-2 gap-2">
-                  {extractedData.orgao_emissor && (
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Órgão Emissor</Label>
-                      <Input
-                        value={extractedData.orgao_emissor}
-                        onChange={e => setExtractedData(prev => ({ ...prev, orgao_emissor: e.target.value }))}
-                        className="mt-0.5 text-xs h-8"
-                      />
-                    </div>
-                  )}
-                  {extractedData.valor && (
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Valor</Label>
-                      <Input
-                        value={extractedData.valor}
-                        onChange={e => setExtractedData(prev => ({ ...prev, valor: e.target.value }))}
-                        className="mt-0.5 text-xs h-8"
-                      />
-                    </div>
-                  )}
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Valor</Label>
+                    <Input
+                      value={extractedData.valor || ''}
+                      onChange={e => setExtractedData(prev => ({ ...prev, valor: e.target.value }))}
+                      className="mt-0.5 text-xs h-8"
+                      placeholder="Valor contratual"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">CNPJ Contratante</Label>
+                    <Input
+                      value={extractedData.cnpj_contratante || ''}
+                      onChange={e => setExtractedData(prev => ({ ...prev, cnpj_contratante: e.target.value }))}
+                      className="mt-0.5 text-xs h-8"
+                      placeholder="00.000.000/0000-00"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Período</Label>
+                    <Input
+                      value={extractedData.periodo || ''}
+                      onChange={e => setExtractedData(prev => ({ ...prev, periodo: e.target.value }))}
+                      className="mt-0.5 text-xs h-8"
+                      placeholder="Ex: 01/2024 a 12/2024"
+                    />
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Validade */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Data de Validade
-              </Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal',
-                      !pendingValidade && 'text-muted-foreground'
-                    )}
-                  >
-                    <CalendarDays className="mr-2 h-4 w-4" />
-                    {pendingValidade ? format(pendingValidade, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione a validade'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={pendingValidade}
-                    onSelect={(d) => {
-                      setPendingValidade(d);
-                      if (d) setPendingManualDate(format(d, 'yyyy-MM-dd'));
-                    }}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-              <div>
-                <Label className="text-[10px] text-muted-foreground">Ou digite: DD/MM/AAAA</Label>
-                <Input
-                  placeholder="DD/MM/AAAA"
-                  value={pendingManualDate ? (() => {
-                    try {
-                      const d = new Date(pendingManualDate);
-                      return isNaN(d.getTime()) ? pendingManualDate : format(d, 'dd/MM/yyyy');
-                    } catch { return pendingManualDate; }
-                  })() : ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const match = val.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-                    if (match) {
-                      const d = new Date(`${match[3]}-${match[2]}-${match[1]}`);
-                      if (!isNaN(d.getTime())) {
-                        setPendingValidade(d);
-                        setPendingManualDate(format(d, 'yyyy-MM-dd'));
-                        return;
-                      }
-                    }
-                    setPendingManualDate(val);
-                  }}
-                  className="mt-1"
-                />
-              </div>
-            </div>
+            {/* Info about validity */}
+            <p className="text-[11px] text-muted-foreground italic">
+              ℹ️ Atestados de capacidade técnica para fornecimento não possuem validade e permanecem válidos permanentemente.
+            </p>
           </div>
 
           <DialogFooter className="flex gap-2">
             <Button variant="ghost" onClick={() => setUploadDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleUpload} disabled={uploading || !pendingFile}>
+            <Button onClick={handleUpload} disabled={uploading || !pendingFile || !selectedSegmento}>
               {uploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
               Enviar Atestado
             </Button>
