@@ -1697,8 +1697,8 @@ export default function MuralLicitacoes() {
           )}
         </div>
 
-        {/* Active filter badges */}
-        {(searchSubmitted || uasgSubmitted || segmentoFiltro !== 'all' || ordenacao.campo !== 'data_publicacao' || ordenacao.direcao !== 'desc') && (
+        {/* Active filter badges — removable chips for ALL filter types */}
+        {(searchSubmitted || uasgSubmitted || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || modalidadeFiltro !== 'all' || tipoInstrumentoFiltro !== 'all' || orgaoFiltro || unidadeFiltro || portalFiltro !== 'all' || segmentoFiltro !== 'all' || dataInicio || dataFim || ordenacao.campo !== 'data_publicacao' || ordenacao.direcao !== 'desc') && (
           <div className="flex items-center gap-2 flex-wrap mt-3">
             {searchSubmitted && (
               <Badge variant="outline" className="gap-1 text-xs">
@@ -1716,10 +1716,90 @@ export default function MuralLicitacoes() {
                 </button>
               </Badge>
             )}
+            {ufFiltro !== 'all' && (
+              <Badge variant="outline" className="gap-1 text-xs bg-info/10 text-info border-info/30">
+                <MapPin className="w-3 h-3" /> UF: {ufFiltro}
+                <button onClick={() => { setUfFiltro('all'); setMunicipioFiltro(''); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {municipioFiltro && (
+              <Badge variant="outline" className="gap-1 text-xs bg-info/10 text-info border-info/30">
+                <MapPin className="w-3 h-3" /> Município: {municipioFiltro}
+                <button onClick={() => { setMunicipioFiltro(''); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {esferaFiltro !== 'all' && (
+              <Badge variant="outline" className="gap-1 text-xs bg-accent/10 text-accent border-accent/30">
+                <Landmark className="w-3 h-3" /> Esfera: {esferaFiltro}
+                <button onClick={() => { setEsferaFiltro('all'); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {modalidadeFiltro !== 'all' && (
+              <Badge variant="outline" className="gap-1 text-xs bg-accent/10 text-accent border-accent/30">
+                <Gavel className="w-3 h-3" /> {MODALIDADES.find(m => m.value === modalidadeFiltro)?.label || modalidadeFiltro}
+                <button onClick={() => { setModalidadeFiltro('all'); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {tipoInstrumentoFiltro !== 'all' && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                <FileText className="w-3 h-3" /> {TIPOS_INSTRUMENTO.find(t => t.value === tipoInstrumentoFiltro)?.label || tipoInstrumentoFiltro}
+                <button onClick={() => { setTipoInstrumentoFiltro('all'); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {orgaoFiltro && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                <Building2 className="w-3 h-3" /> Órgão: {orgaoFiltro}
+                <button onClick={() => { setOrgaoFiltro(''); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {unidadeFiltro && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                Unidade: {unidadeFiltro}
+                <button onClick={() => { setUnidadeFiltro(''); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {portalFiltro !== 'all' && (
+              <Badge variant="outline" className="gap-1 text-xs bg-success/10 text-success border-success/30">
+                <Globe className="w-3 h-3" /> Portal: {portalFiltro}
+                <button onClick={() => { setPortalFiltro('all'); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
             {segmentoFiltro !== 'all' && (
               <Badge variant="outline" className="gap-1 text-xs bg-accent/10 text-accent border-accent/30">
                 <Package className="w-3 h-3" /> Segmento: {segmentoFiltro}
                 <button onClick={() => { setSegmentoFiltro('all'); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {dataInicio && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                <CalendarDays className="w-3 h-3" /> De: {format(dataInicio, 'dd/MM/yyyy')}
+                <button onClick={() => { setDataInicio(undefined); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {dataFim && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                <CalendarDays className="w-3 h-3" /> Até: {format(dataFim, 'dd/MM/yyyy')}
+                <button onClick={() => { setDataFim(undefined); setPagina(1); }}>
                   <X className="w-3 h-3" />
                 </button>
               </Badge>
