@@ -445,7 +445,13 @@ export default function MuralLicitacoes() {
         const modLabel = MODALIDADES.find(m => m.value === modalidadeFiltro);
         if (modLabel) query = query.eq('modalidade_id', modLabel.cod);
       }
+      // Municipality filter — exact match from IBGE-sourced name
       if (municipioFiltro.trim()) query = query.ilike('municipio', `%${municipioFiltro.trim()}%`);
+      // Esfera filter — applied at cache level when possible
+      if (esferaFiltro !== 'all') {
+        const esferaCodigo = esferaFiltro === 'Federal' ? 'F' : esferaFiltro === 'Estadual' ? 'E' : esferaFiltro === 'Municipal' ? 'M' : esferaFiltro === 'Distrital' ? 'D' : '';
+        if (esferaCodigo) query = query.eq('esfera_id', esferaCodigo);
+      }
       if (dataInicio) query = query.gte('data_publicacao_pncp', dataInicio.toISOString().split('T')[0]);
       if (dataFim) query = query.lte('data_publicacao_pncp', dataFim.toISOString().split('T')[0] + 'T23:59:59');
 
@@ -461,7 +467,7 @@ export default function MuralLicitacoes() {
       console.error('Cache load error:', err);
       return 0;
     }
-  }, [ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro]);
+  }, [ufFiltro, modalidadeFiltro, esferaFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro]);
 
   // ── FASE 2: Sincronização em tempo real com PNCP (background) ──
   const sincronizarPNCP = useCallback(async () => {
