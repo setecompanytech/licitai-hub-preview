@@ -18,6 +18,7 @@ import {
   CalendarDays, Bot
 } from 'lucide-react';
 import MergeDocumentos from '@/components/documentos/MergeDocumentos';
+import AtestadosCapacidadeTecnica from '@/components/documentos/AtestadosCapacidadeTecnica';
 import AlertaVencimentoDocumentos from '@/components/documentos/AlertaVencimentoDocumentos';
 import ChecklistModalidade from '@/components/licitacoes/ChecklistModalidade';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,7 +60,7 @@ const checklistDocumentos: Documento[] = [
   { nome: 'Certidão Negativa de Débitos Municipais', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ausente' },
   { nome: 'CNDT – Certidão Trabalhista', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ausente' },
   { nome: 'Registro no CREA/CAU', categoria: 'Qualificação Técnica', artigo: 'Art. 67', status: 'ausente' },
-  { nome: 'Atestado de Capacidade Técnica', categoria: 'Qualificação Técnica', artigo: 'Art. 67', status: 'ausente' },
+  // Atestado de Capacidade Técnica é gerenciado pelo componente dedicado com subcategorias por segmento
   { nome: 'CAT – Certidão de Acervo Técnico', categoria: 'Qualificação Técnica', artigo: 'Art. 67', status: 'ausente' },
   { nome: 'Balanço Patrimonial (último exercício)', categoria: 'Qualif. Econômico-Financeira', artigo: 'Art. 69', status: 'ausente' },
   { nome: 'Certidão Negativa de Falência', categoria: 'Qualif. Econômico-Financeira', artigo: 'Art. 69', status: 'ausente' },
@@ -746,6 +747,9 @@ export default function Documentos() {
                 );
               })}
             </div>
+
+            {/* Atestados de Capacidade Técnica — subcategorias por segmento */}
+            <AtestadosCapacidadeTecnica />
           </TabsContent>
 
           <TabsContent value="merge">

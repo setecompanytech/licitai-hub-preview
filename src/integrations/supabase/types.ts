@@ -3294,10 +3294,12 @@ export type Database = {
           arquivo_path: string | null
           arquivo_url: string | null
           created_at: string
+          dados_extraidos: Json | null
           descricao: string | null
           id: string
           licitacao_id: string | null
           nome: string
+          segmento: string | null
           tamanho_bytes: number | null
           tipo: string
           updated_at: string
@@ -3308,10 +3310,12 @@ export type Database = {
           arquivo_path?: string | null
           arquivo_url?: string | null
           created_at?: string
+          dados_extraidos?: Json | null
           descricao?: string | null
           id?: string
           licitacao_id?: string | null
           nome: string
+          segmento?: string | null
           tamanho_bytes?: number | null
           tipo?: string
           updated_at?: string
@@ -3322,10 +3326,12 @@ export type Database = {
           arquivo_path?: string | null
           arquivo_url?: string | null
           created_at?: string
+          dados_extraidos?: Json | null
           descricao?: string | null
           id?: string
           licitacao_id?: string | null
           nome?: string
+          segmento?: string | null
           tamanho_bytes?: number | null
           tipo?: string
           updated_at?: string
