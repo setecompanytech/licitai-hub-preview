@@ -126,7 +126,7 @@ function copyWatermark() {
 function antiFraming() {
   if (window.self !== window.top) {
     try {
-      const allowedHosts = ['praefectus.com.br', 'lovable.app', 'lovable.dev'];
+      const allowedHosts = ['praefectus.com.br', 'app.praefectus.com.br', 'lovable.app', 'lovable.dev'];
       const parentHost = new URL(document.referrer).hostname;
       const isAllowed = allowedHosts.some(h => parentHost.endsWith(h));
       if (!isAllowed) {
