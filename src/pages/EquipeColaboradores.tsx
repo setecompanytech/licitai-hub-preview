@@ -83,24 +83,21 @@ export default function EquipeColaboradores() {
     setSaving(true);
 
     const userId = crypto.randomUUID();
-    let hasError = false;
+    const equipePrincipal = inviteEquipes[0] || 'geral';
 
-    for (const equipe of inviteEquipes) {
-      const { error } = await supabase.from('empresa_membros').insert({
-        empresa_id: empresaAtiva.id,
-        user_id: userId,
-        papel: invitePapel as any,
-        equipe,
-        nome: inviteNome || inviteEmail,
-        email: inviteEmail,
-      } as any);
-      if (error) {
-        toast.error(`Erro ao adicionar na equipe ${equipe}: ${error.message}`);
-        hasError = true;
-      }
-    }
+    const { error } = await supabase.from('empresa_membros').insert({
+      empresa_id: empresaAtiva.id,
+      user_id: userId,
+      papel: invitePapel as any,
+      equipe: equipePrincipal,
+      nome: inviteNome || inviteEmail,
+      email: inviteEmail,
+      permissoes: inviteEquipes,
+    } as any);
 
-    if (!hasError) {
+    if (error) {
+      toast.error(`Erro ao adicionar colaborador: ${error.message}`);
+    } else {
       const labels = inviteEquipes.map(e => EQUIPES.find(eq => eq.value === e)?.label).join(', ');
       toast.success(`Colaborador ${inviteNome || inviteEmail} adicionado às equipes: ${labels}`);
       setShowInvite(false);
