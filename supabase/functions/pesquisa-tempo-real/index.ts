@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
                     dataAbertura: e.dataAbertura || '–',
                     url: e.url || '',
                   })),
-                  link: 'https://praefectus.com.br/monitoramento-editais',
+                  link: 'https://app.praefectus.com.br/monitoramento-editais',
                 },
               },
             })
@@ -298,7 +298,7 @@ Deno.serve(async (req) => {
               `${i + 1}. *${e.orgao}*${e.uf ? ` (${e.uf})` : ''}\n   ${e.titulo.slice(0, 80)}${e.valor ? `\n   💰 ${e.valor}` : ''}${e.modalidade ? `\n   📋 ${e.modalidade}` : ''}`
             ).join('\n\n')
 
-            const mensagem = `🔔 *PRAEFECTUS — Novas Licitações*\n\n${novosEditais.length} processo(s) encontrado(s):\n\n${linhas}${novosEditais.length > 5 ? `\n\n... e mais ${novosEditais.length - 5} processo(s)` : ''}\n\n📲 Acesse: https://praefectus.com.br/monitoramento-editais`
+            const mensagem = `🔔 *PRAEFECTUS — Novas Licitações*\n\n${novosEditais.length} processo(s) encontrado(s):\n\n${linhas}${novosEditais.length > 5 ? `\n\n... e mais ${novosEditais.length - 5} processo(s)` : ''}\n\n📲 Acesse: https://app.praefectus.com.br/monitoramento-editais`
 
             await supabase.functions.invoke('whatsapp-envio', {
               body: {
