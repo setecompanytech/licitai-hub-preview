@@ -96,9 +96,12 @@ export default function PreferenciasAlertas() {
         body: { cnpj: cnpjLimpo },
       });
       if (error) throw error;
-      if (data?.razao_social) {
-        setForm(f => ({ ...f, razao_social: data.razao_social }));
+      const razao = data?.razaoSocial || data?.razao_social;
+      if (razao) {
+        setForm(f => ({ ...f, razao_social: razao }));
         toast.success('Razão social preenchida automaticamente');
+      } else if (data?.error) {
+        toast.error(data.error);
       } else {
         toast.error('CNPJ não encontrado');
       }
