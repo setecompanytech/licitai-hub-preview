@@ -23,6 +23,7 @@ import ChecklistModalidade from '@/components/licitacoes/ChecklistModalidade';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 type DocStatus = 'ok' | 'pendente' | 'vencido' | 'ausente';
 
@@ -34,6 +35,16 @@ type Documento = {
   validade?: string;
   arquivo?: string;
   storagePath?: string;
+};
+
+type VisionImage = {
+  name: string;
+  dataUrl: string;
+};
+
+type DocumentAnalysisPayload = {
+  images: VisionImage[];
+  supportText: string;
 };
 
 // Checklist de documentos exigidos pela Lei 14.133/2021 — status começa como 'ausente'
@@ -62,6 +73,213 @@ const statusConfig: Record<DocStatus, { icon: typeof CheckCircle2; color: string
   pendente: { icon: Clock, color: 'text-warning', label: 'Pendente' },
   vencido: { icon: AlertTriangle, color: 'text-destructive', label: 'Vencido' },
   ausente: { icon: AlertTriangle, color: 'text-destructive', label: 'Ausente' },
+};
+
+const normalizeWhitespace = (value: string) => value.replace(/\s+/g, ' ').trim();
+
+const buildDate = (year: number, month: number, day: number): Date | null => {
+  const parsed = new Date(year, month - 1, day);
+
+  if (Number.isNaN(parsed.getTime())) return null;
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return parsed;
+};
+
+const scoreDateCandidate = (sourceText: string, matchIndex: number, date: Date) => {
+  const upperSource = sourceText.toUpperCase();
+  const context = upperSource.slice(Math.max(0, matchIndex - 64), Math.min(upperSource.length, matchIndex + 64));
+  const now = new Date();
+  const diffDays = (date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+
+  let score = 0;
+
+  if (/(VALID(?:ADE|O)|V[ÁA]LID[OA]\s*AT[ÉE]|VENC(?:IMENTO)?|EXPIRA(?:ÇÃO|CAO)?|PRAZO\s+DE\s+VALIDADE|DATA\s+DE\s+VALIDADE|VALIDADE\s+DA\s+CNH|VIG[ÊE]NCIA)/.test(context)) {
+    score += 12;
+  }
+
+  if (/(AT[ÉE]|ATÉ|AT\.)/.test(context)) {
+    score += 2;
+  }
+
+  if (/(NASC(?:IMENTO)?|EMISS[ÃA]O|EXPEDI[ÇC][ÃA]O|1.?\s*HABILITA[ÇC][ÃA]O|DOC(?:\.\s*IDENTIDADE|UMENTO)?|IDENTIDADE|RG\b|CPF\b|RENACH|REGISTRO)/.test(context)) {
+    score -= 8;
+  }
+
+  if (date.getFullYear() >= 2000 && date.getFullYear() <= 2100) {
+    score += 1;
+  }
+
+  if (diffDays > -3650 && diffDays < 3650 * 15) {
+    score += 1;
+  }
+
+  if (diffDays >= 0) {
+    score += 1;
+  }
+
+  return score;
+};
+
+const extractValidityDateFromText = (rawText: string): Date | null => {
+  if (!rawText?.trim()) return null;
+
+  const text = normalizeWhitespace(rawText);
+  const candidates: { date: Date; score: number }[] = [];
+  const patterns = [
+    {
+      regex: /(\d{2})\s*[\/\-.]\s*(\d{2})\s*[\/\-.]\s*(\d{4})/g,
+      build: (match: RegExpExecArray) => buildDate(Number(match[3]), Number(match[2]), Number(match[1])),
+    },
+    {
+      regex: /(\d{4})\s*[\/\-.]\s*(\d{2})\s*[\/\-.]\s*(\d{2})/g,
+      build: (match: RegExpExecArray) => buildDate(Number(match[1]), Number(match[2]), Number(match[3])),
+    },
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of text.matchAll(pattern.regex)) {
+      if (typeof match.index !== 'number') continue;
+      const fullMatch = match[0];
+      const execMatch = Object.assign([fullMatch, ...match.slice(1)], { index: match.index }) as unknown as RegExpExecArray;
+      const parsedDate = pattern.build(execMatch);
+
+      if (!parsedDate) continue;
+
+      candidates.push({
+        date: parsedDate,
+        score: scoreDateCandidate(text, match.index, parsedDate),
+      });
+    }
+  }
+
+  if (candidates.length === 0) return null;
+
+  const positiveCandidates = candidates
+    .filter((candidate) => candidate.score > 0)
+    .sort((a, b) => b.score - a.score || b.date.getTime() - a.date.getTime());
+
+  if (positiveCandidates.length > 0) {
+    return positiveCandidates[0].date;
+  }
+
+  return candidates
+    .sort((a, b) => b.date.getTime() - a.date.getTime())[0]
+    ?.date ?? null;
+};
+
+const imageFileToVisionPayload = async (file: File): Promise<VisionImage[]> =>
+  new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = () => {
+      try {
+        const maxDimension = 1800;
+        const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Não foi possível preparar a imagem para análise.'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve([{ name: file.name, dataUrl: canvas.toDataURL('image/jpeg', 0.9) }]);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Não foi possível abrir a imagem enviada.'));
+    };
+
+    img.src = objectUrl;
+  });
+
+const extractPdfSupportText = async (pdf: any, maxPages: number) => {
+  const pageTexts: string[] = [];
+
+  for (let i = 1; i <= maxPages; i += 1) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items
+      .map((item: any) => ('str' in item ? item.str : ''))
+      .join(' ');
+
+    pageTexts.push(pageText);
+  }
+
+  return normalizeWhitespace(pageTexts.join('\n'));
+};
+
+const renderPdfToVisionImages = async (pdf: any, fileName: string, maxPages: number): Promise<VisionImage[]> => {
+  const images: VisionImage[] = [];
+
+  for (let i = 1; i <= maxPages; i += 1) {
+    const page = await pdf.getPage(i);
+    const firstViewport = page.getViewport({ scale: 1 });
+    const scale = Math.min(2, 1600 / Math.max(firstViewport.width, 1));
+    const viewport = page.getViewport({ scale: Math.max(scale, 1) });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(viewport.width);
+    canvas.height = Math.round(viewport.height);
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) continue;
+
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    images.push({
+      name: `${fileName}_p${i}`,
+      dataUrl: canvas.toDataURL('image/jpeg', 0.88),
+    });
+  }
+
+  return images;
+};
+
+const buildDocumentAnalysisPayload = async (file: File): Promise<DocumentAnalysisPayload> => {
+  if (file.type.startsWith('image/')) {
+    return {
+      images: await imageFileToVisionPayload(file),
+      supportText: '',
+    };
+  }
+
+  if (file.type === 'application/pdf') {
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+
+    const arrayBuffer = await file.arrayBuffer();
+    let pdf: any;
+
+    try {
+      pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    } catch {
+      pdf = await pdfjsLib.getDocument({ data: arrayBuffer, disableWorker: true } as any).promise;
+    }
+
+    const maxPages = Math.min(pdf.numPages, 3);
+    const [supportText, images] = await Promise.all([
+      extractPdfSupportText(pdf, maxPages),
+      renderPdfToVisionImages(pdf, file.name, maxPages),
+    ]);
+
+    return { images, supportText };
+  }
+
+  return { images: [], supportText: '' };
 };
 
 export default function Documentos() {
@@ -252,39 +470,6 @@ export default function Documentos() {
     setPendingManualDate('');
   };
 
-  const fileToBase64Images = async (file: File): Promise<{ name: string; dataUrl: string }[]> => {
-    if (file.type.startsWith('image/')) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve([{ name: file.name, dataUrl: reader.result as string }]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-
-    if (file.type === 'application/pdf') {
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      const pages = Math.min(pdf.numPages, 3);
-      const images: { name: string; dataUrl: string }[] = [];
-      for (let i = 1; i <= pages; i++) {
-        const page = await pdf.getPage(i);
-        const viewport = page.getViewport({ scale: 1.5 });
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext('2d')!;
-        await page.render({ canvasContext: ctx, viewport }).promise;
-        images.push({ name: `${file.name}_p${i}`, dataUrl: canvas.toDataURL('image/jpeg', 0.85) });
-      }
-      return images;
-    }
-
-    return [];
-  };
-
   const handleAIAnalysis = async () => {
     const idx = pendingUploadIdx.current;
     if (idx === null || !pendingFile) return;
@@ -292,10 +477,18 @@ export default function Documentos() {
     setAnalyzingIdx(idx);
     
     try {
-      const images = await fileToBase64Images(pendingFile);
-      if (images.length === 0) {
-        toast.error('Formato de arquivo não suportado para análise por IA.');
-        setAnalyzingIdx(null);
+      const { images, supportText } = await buildDocumentAnalysisPayload(pendingFile);
+      const localSuggestion = extractValidityDateFromText(supportText);
+
+      if (localSuggestion) {
+        setPendingValidadeDate(localSuggestion);
+        setPendingManualDate(format(localSuggestion, 'yyyy-MM-dd'));
+        toast.success(`Validade identificada: ${format(localSuggestion, 'dd/MM/yyyy')}`);
+        return;
+      }
+
+      if (images.length === 0 && supportText.length < 10) {
+        toast.error('Não foi possível preparar o arquivo para análise automática.');
         return;
       }
 
@@ -303,57 +496,34 @@ export default function Documentos() {
         body: {
           fileName: documentos[idx].nome,
           images,
+          text: supportText,
+          mode: 'document_validity',
         },
       });
 
       if (error) throw error;
 
-      const rawResult = data?.text || '';
-      
-      // Try to find a date in common formats: DD/MM/YYYY, YYYY-MM-DD, or "VALIDADE" / "VÁLIDO ATÉ" patterns
-      const datePatterns = [
-        /(?:VALID(?:ADE|O)\s*(?:ATÉ)?|VAL\.?|VENCIMENTO|VALIDADE\s*DA\s*CNH)\s*[:\s]*(\d{2})[\/\-.](\d{2})[\/\-.](\d{4})/i,
-        /(\d{2})[\/\-.](\d{2})[\/\-.](\d{4})/g,
-        /(\d{4})-(\d{2})-(\d{2})/g,
-      ];
+      const aiSuggestion = typeof data?.validityDate === 'string'
+        ? extractValidityDateFromText(data.validityDate)
+        : null;
 
-      let foundDate: Date | null = null;
+      const fallbackText = [
+        typeof data?.evidenceText === 'string' ? data.evidenceText : '',
+        typeof data?.text === 'string' ? data.text : '',
+        supportText,
+      ].filter(Boolean).join('\n');
 
-      // First try the specific "validade" pattern
-      const validadeMatch = rawResult.match(datePatterns[0]);
-      if (validadeMatch) {
-        const d = new Date(`${validadeMatch[3]}-${validadeMatch[2]}-${validadeMatch[1]}`);
-        if (!isNaN(d.getTime())) foundDate = d;
-      }
-
-      // If not found, pick the latest future date from general patterns
-      if (!foundDate) {
-        const allDates: Date[] = [];
-        const ddmmyyyy = [...rawResult.matchAll(/(\d{2})[\/\-.](\d{2})[\/\-.](\d{4})/g)];
-        for (const m of ddmmyyyy) {
-          const d = new Date(`${m[3]}-${m[2]}-${m[1]}`);
-          if (!isNaN(d.getTime())) allDates.push(d);
-        }
-        const yyyymmdd = [...rawResult.matchAll(/(\d{4})-(\d{2})-(\d{2})/g)];
-        for (const m of yyyymmdd) {
-          const d = new Date(m[0]);
-          if (!isNaN(d.getTime())) allDates.push(d);
-        }
-        // Pick latest date (most likely the expiration)
-        if (allDates.length > 0) {
-          allDates.sort((a, b) => b.getTime() - a.getTime());
-          foundDate = allDates[0];
-        }
-      }
+      const foundDate = aiSuggestion ?? extractValidityDateFromText(fallbackText);
 
       if (foundDate) {
         setPendingValidadeDate(foundDate);
         setPendingManualDate(format(foundDate, 'yyyy-MM-dd'));
-        toast.success(`IA extraiu validade: ${format(foundDate, 'dd/MM/yyyy')}`);
+        toast.success(`Validade identificada: ${format(foundDate, 'dd/MM/yyyy')}`);
       } else {
-        toast.info('IA não identificou uma data de validade neste documento.');
+        toast.info('Não identifiquei uma data de validade neste documento.');
       }
-    } catch {
+    } catch (error) {
+      console.error(error);
       toast.error('Erro na análise por IA. Informe a validade manualmente.');
     } finally {
       setAnalyzingIdx(null);
