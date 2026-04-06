@@ -3328,6 +3328,50 @@ export type Database = {
         }
         Relationships: []
       }
+      distribuicoes_realizadas: {
+        Row: {
+          canal: string
+          edital_id: string | null
+          enviado_em: string | null
+          erro: string | null
+          id: string
+          status: string
+          tentativas: number | null
+          user_id: string
+          wamid: string | null
+        }
+        Insert: {
+          canal?: string
+          edital_id?: string | null
+          enviado_em?: string | null
+          erro?: string | null
+          id?: string
+          status?: string
+          tentativas?: number | null
+          user_id: string
+          wamid?: string | null
+        }
+        Update: {
+          canal?: string
+          edital_id?: string | null
+          enviado_em?: string | null
+          erro?: string | null
+          id?: string
+          status?: string
+          tentativas?: number | null
+          user_id?: string
+          wamid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distribuicoes_realizadas_edital_id_fkey"
+            columns: ["edital_id"]
+            isOneToOne: false
+            referencedRelation: "editais_coletados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_templates: {
         Row: {
           ativo: boolean
@@ -3476,6 +3520,83 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      editais_coletados: {
+        Row: {
+          created_at: string | null
+          data_abertura: string | null
+          data_publicacao: string | null
+          distribuido: boolean | null
+          id: string
+          identificador_ext: string
+          modalidade: string | null
+          municipio: string | null
+          numero: string | null
+          objeto: string
+          orgao: string
+          palavras_chave: string[] | null
+          pdf_storage_path: string | null
+          portal_id: string | null
+          segmento_codigo: string | null
+          segmento_nome: string | null
+          uf: string | null
+          url_edital: string | null
+          url_pdf: string | null
+          valor_estimado: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          data_abertura?: string | null
+          data_publicacao?: string | null
+          distribuido?: boolean | null
+          id?: string
+          identificador_ext: string
+          modalidade?: string | null
+          municipio?: string | null
+          numero?: string | null
+          objeto: string
+          orgao: string
+          palavras_chave?: string[] | null
+          pdf_storage_path?: string | null
+          portal_id?: string | null
+          segmento_codigo?: string | null
+          segmento_nome?: string | null
+          uf?: string | null
+          url_edital?: string | null
+          url_pdf?: string | null
+          valor_estimado?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          data_abertura?: string | null
+          data_publicacao?: string | null
+          distribuido?: boolean | null
+          id?: string
+          identificador_ext?: string
+          modalidade?: string | null
+          municipio?: string | null
+          numero?: string | null
+          objeto?: string
+          orgao?: string
+          palavras_chave?: string[] | null
+          pdf_storage_path?: string | null
+          portal_id?: string | null
+          segmento_codigo?: string | null
+          segmento_nome?: string | null
+          uf?: string | null
+          url_edital?: string | null
+          url_pdf?: string | null
+          valor_estimado?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "editais_coletados_portal_id_fkey"
+            columns: ["portal_id"]
+            isOneToOne: false
+            referencedRelation: "portais_monitorados"
             referencedColumns: ["id"]
           },
         ]
@@ -5470,6 +5591,48 @@ export type Database = {
           status?: string | null
           total_registros?: number | null
           ufs_processadas?: string[] | null
+        }
+        Relationships: []
+      }
+      portais_monitorados: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          endpoint_api: string | null
+          id: string
+          intervalo_min: number | null
+          nome: string
+          tipo: string
+          uf: string | null
+          ultima_coleta: string | null
+          url_base: string
+          xpath_lista: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          endpoint_api?: string | null
+          id?: string
+          intervalo_min?: number | null
+          nome: string
+          tipo?: string
+          uf?: string | null
+          ultima_coleta?: string | null
+          url_base: string
+          xpath_lista?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          endpoint_api?: string | null
+          id?: string
+          intervalo_min?: number | null
+          nome?: string
+          tipo?: string
+          uf?: string | null
+          ultima_coleta?: string | null
+          url_base?: string
+          xpath_lista?: string | null
         }
         Relationships: []
       }
