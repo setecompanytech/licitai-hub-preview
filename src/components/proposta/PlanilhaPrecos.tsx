@@ -267,7 +267,7 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
                                   Sugerido: R$ {precoSug.toFixed(2).replace('.', ',')}
                                 </span>
                                 {usandoCusto && (
-                                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-yellow-500/40 text-yellow-600">
+                                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-accent/40 text-accent">
                                     Custo
                                   </Badge>
                                 )}
