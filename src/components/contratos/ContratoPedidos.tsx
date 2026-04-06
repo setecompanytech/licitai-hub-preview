@@ -58,6 +58,8 @@ const tiposDocumento = [
 export default function ContratoPedidos({ contratoId }: { contratoId: string }) {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
+  const { isFinanceiro, isAdmin } = useMembroPermissoes();
+  const podeVerCustos = isFinanceiro || isAdmin;
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [itens, setItens] = useState<ContratoItem[]>([]);
   const [nfsSync, setNfsSync] = useState<NotaFiscalSync[]>([]);
