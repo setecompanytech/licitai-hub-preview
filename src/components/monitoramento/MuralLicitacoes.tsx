@@ -274,6 +274,37 @@ export default function MuralLicitacoes() {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlInitRef = useRef(false);
 
+  // Load filters from URL on mount
+  useEffect(() => {
+    if (urlInitRef.current) return;
+    urlInitRef.current = true;
+    const uf = searchParams.get('uf');
+    const municipio = searchParams.get('municipio');
+    const esfera = searchParams.get('esfera');
+    const modalidade = searchParams.get('modalidade');
+    const q = searchParams.get('q');
+    const portal = searchParams.get('portal');
+    if (uf) setUfFiltro(uf);
+    if (municipio) setMunicipioFiltro(municipio);
+    if (esfera) setEsferaFiltro(esfera);
+    if (modalidade) setModalidadeFiltro(modalidade);
+    if (q) { setSearchTerm(q); setSearchSubmitted(q); }
+    if (portal) setPortalFiltro(portal);
+  }, []);
+
+  // Sync filters to URL
+  useEffect(() => {
+    if (!urlInitRef.current) return;
+    const params: Record<string, string> = {};
+    if (ufFiltro !== 'all') params.uf = ufFiltro;
+    if (municipioFiltro) params.municipio = municipioFiltro;
+    if (esferaFiltro !== 'all') params.esfera = esferaFiltro;
+    if (modalidadeFiltro !== 'all') params.modalidade = modalidadeFiltro;
+    if (searchSubmitted) params.q = searchSubmitted;
+    if (portalFiltro !== 'all') params.portal = portalFiltro;
+    setSearchParams(params, { replace: true });
+  }, [ufFiltro, municipioFiltro, esferaFiltro, modalidadeFiltro, searchSubmitted, portalFiltro, setSearchParams]);
+
   // Configurações de pesquisa automática
   const [configCarregada, setConfigCarregada] = useState(false);
   const [segmentosPrioritarios, setSegmentosPrioritarios] = useState<string[]>([]);
@@ -293,7 +324,6 @@ export default function MuralLicitacoes() {
         if (priorizar) {
           const ufSede = data.uf_sede;
           if (ufSede && ufFiltro === 'all') setUfFiltro(ufSede);
-          // Município da sede NÃO é auto-aplicado como filtro para não restringir demais os resultados
         }
       }
       setConfigCarregada(true);
