@@ -26,6 +26,33 @@ interface LicitacaoUnificada {
   codigo_uasg: string | null;
   portal: string | null;
   fonte: string;
+  urgencia?: 'critica' | 'alta' | 'normal';
+  horas_restantes?: number;
+}
+
+function parseDataAberturaSimples(raw: string | null): Date | null {
+  if (!raw) return null;
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
+  if (isoMatch) {
+    const [, y, m, d, h = '09', min = '00'] = isoMatch;
+    return new Date(`${y}-${m}-${d}T${h}:${min}:00-03:00`);
+  }
+  const brMatch = raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if (brMatch) {
+    const [, dd, mm, yy] = brMatch;
+    const timeMatch = raw.match(/(\d{2}):(\d{2})/);
+    return new Date(`${yy}-${mm}-${dd}T${timeMatch ? timeMatch[1] : '09'}:${timeMatch ? timeMatch[2] : '00'}:00-03:00`);
+  }
+  return null;
+}
+
+function classificarUrgencia(lic: LicitacaoUnificada): LicitacaoUnificada {
+  const dataAb = parseDataAberturaSimples(lic.data_abertura);
+  if (!dataAb) return { ...lic, urgencia: 'normal' };
+  const horas = Math.max(0, Math.round((dataAb.getTime() - Date.now()) / (1000 * 60 * 60)));
+  if (horas <= 24) return { ...lic, urgencia: 'critica', horas_restantes: horas };
+  if (horas <= 72) return { ...lic, urgencia: 'alta', horas_restantes: horas };
+  return { ...lic, urgencia: 'normal', horas_restantes: horas };
 }
 
 const SEGMENTO_KEYWORDS: Record<string, string[]> = {
@@ -193,6 +220,13 @@ async function applyFilters(
     filtered = await filterByParticipacao(supabase, sub, filtered);
   }
 
+  // Classify urgency and sort: critica first, then alta, then normal
+  filtered = filtered.map(classificarUrgencia);
+  filtered.sort((a, b) => {
+    const order = { critica: 0, alta: 1, normal: 2 };
+    return (order[a.urgencia || 'normal'] ?? 2) - (order[b.urgencia || 'normal'] ?? 2);
+  });
+
   return filtered.slice(0, 30);
 }
 
@@ -266,6 +300,8 @@ async function sendEmail(supabaseUrl: string, serviceKey: string, email: string,
     data_abertura: lic.data_abertura || '',
     modalidade: lic.modalidade || '',
     portal: lic.portal || '',
+    urgencia: lic.urgencia || 'normal',
+    horas_restantes: lic.horas_restantes,
   };
 
   const res = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
