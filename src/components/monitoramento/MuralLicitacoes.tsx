@@ -1478,14 +1478,17 @@ export default function MuralLicitacoes() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Municípios</label>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
+                    Municípios
+                    {carregandoMunicipios && <Loader2 className="w-3 h-3 animate-spin inline ml-1.5" />}
+                  </label>
                   <Select
                     value={municipioFiltro}
                     onValueChange={v => { setMunicipioFiltro(v === 'all' ? '' : v); setPagina(1); }}
-                    disabled={loading || ufFiltro === 'all'}
+                    disabled={loading || ufFiltro === 'all' || carregandoMunicipios}
                   >
                     <SelectTrigger className="w-full h-10 text-xs">
-                      <SelectValue placeholder={ufFiltro === 'all' ? 'Selecione uma UF primeiro' : 'Todos os municípios'} />
+                      <SelectValue placeholder={ufFiltro === 'all' ? 'Selecione uma UF primeiro' : carregandoMunicipios ? 'Carregando...' : 'Todos os municípios'} />
                     </SelectTrigger>
                     <SelectContent className="max-h-60">
                       <SelectItem value="all">Todos os municípios</SelectItem>
