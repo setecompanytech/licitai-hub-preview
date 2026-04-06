@@ -14,6 +14,7 @@ import { template as confirmacaoPedido } from './confirmacao-pedido.tsx'
 import { template as notificacaoSistema } from './notificacao-sistema.tsx'
 import { template as alertaLicitacao } from './alerta-licitacao.tsx'
 import { template as certUploadLink } from './cert-upload-link.tsx'
+import { template as boletimDiario } from './boletim-diario.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'boas-vindas': boasVindas,
@@ -21,4 +22,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'notificacao-sistema': notificacaoSistema,
   'alerta-licitacao': alertaLicitacao,
   'cert-upload-link': certUploadLink,
+  'boletim-diario': boletimDiario,
 }
