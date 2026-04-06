@@ -5,7 +5,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 
 export type Setor = 'geral' | 'financeiro' | 'comercial' | 'logistica' | 'juridico' | 'contabil' | 'licitacoes' | 'documentos';
 
-export const MODULOS_SISTEMA = [
+export const MODULOS_SISTEMA: { value: string; label: string; setores: string[] }[] = [
   { value: 'contratos', label: 'Gestão de Contratos', setores: ['comercial', 'financeiro'] },
   { value: 'pedidos', label: 'Pedidos / Ordens', setores: ['comercial', 'logistica'] },
   { value: 'custos', label: 'Custos e Despesas', setores: ['financeiro'] },
@@ -17,7 +17,7 @@ export const MODULOS_SISTEMA = [
   { value: 'contabil', label: 'Contábil', setores: ['contabil'] },
   { value: 'dashboard_custos', label: 'Dashboard Custos/Margem', setores: ['financeiro'] },
   { value: 'comissoes', label: 'Comissões', setores: ['financeiro', 'comercial'] },
-] as const;
+];
 
 export type ModuloSistema = typeof MODULOS_SISTEMA[number]['value'];
 
