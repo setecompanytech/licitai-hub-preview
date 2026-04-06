@@ -273,6 +273,9 @@ export default function EquipeColaboradores() {
                                 ))}
                               </SelectContent>
                             </Select>
+                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => openPermDialog(m)} title="Gerenciar Permissões">
+                              <Shield className="w-4 h-4" />
+                            </Button>
                             <Button variant="ghost" size="icon" className="text-destructive/60 hover:text-destructive h-8 w-8" onClick={() => handleRemove(m.id, (m as any).nome || 'Colaborador')}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
