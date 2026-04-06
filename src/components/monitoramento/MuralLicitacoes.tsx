@@ -620,6 +620,10 @@ export default function MuralLicitacoes() {
     return unique;
   }, [licitacoesRaw, licitacoesExternas]);
 
+  // Helper: normalize text removing accents for matching
+  const normalizeText = (text: string) =>
+    text.toLowerCase().normalize("NFD").replace(/\p{Mn}/gu, "");
+
   const licitacoesFiltradas = useMemo(() => {
     // Merge PNCP + external results, deduplicating by numero+orgao
     const pncpKeys = new Set(licitacoesRaw.map(i => `${i.numero}|${i.orgao}`));
@@ -629,29 +633,37 @@ export default function MuralLicitacoes() {
     if (portalFiltro !== 'all') {
       items = items.filter(i => i.portal?.toLowerCase() === portalFiltro.toLowerCase());
     }
+    // Client-side esfera filter using ESFERA_PNCP mapping
     if (esferaFiltro !== 'all') {
-      items = items.filter(i => i.esferaNome?.toLowerCase().includes(esferaFiltro.toLowerCase()));
+      const esferaCodigo = ESFERA_PNCP[esferaFiltro.charAt(0).toUpperCase() + esferaFiltro.slice(1)] || '';
+      items = items.filter(i => {
+        if (esferaCodigo && i.esferaNome) {
+          return i.esferaNome.toLowerCase() === esferaFiltro.toLowerCase();
+        }
+        return i.esferaNome?.toLowerCase().includes(esferaFiltro.toLowerCase());
+      });
     }
     if (tipoInstrumentoFiltro !== 'all') {
       const tipoLabel = TIPOS_INSTRUMENTO.find(t => t.value === tipoInstrumentoFiltro)?.label || '';
       items = items.filter(i => i.tipoInstrumentoNome?.toLowerCase().includes(tipoLabel.toLowerCase()));
     }
+    // Normalized accent-insensitive text matching for orgao and unidade
     if (unidadeFiltro.trim()) {
-      const term = unidadeFiltro.trim().toLowerCase();
-      items = items.filter(i => i.unidadeOrgao?.toLowerCase().includes(term));
+      const term = normalizeText(unidadeFiltro.trim());
+      items = items.filter(i => normalizeText(i.unidadeOrgao || '').includes(term));
     }
     if (orgaoFiltro.trim()) {
-      const term = orgaoFiltro.trim().toLowerCase();
-      items = items.filter(i => i.orgao?.toLowerCase().includes(term));
+      const term = normalizeText(orgaoFiltro.trim());
+      items = items.filter(i => normalizeText(i.orgao || '').includes(term));
     }
 
     // ── FILTRO DE SEGMENTO ──
     if (segmentoFiltro !== 'all') {
-      const segLower = segmentoFiltro.toLowerCase();
+      const segNorm = normalizeText(segmentoFiltro);
       items = items.filter(i => {
-        const obj = i.objeto?.toLowerCase() || '';
-        const mod = i.modalidade?.toLowerCase() || '';
-        return obj.includes(segLower) || mod.includes(segLower);
+        const obj = normalizeText(i.objeto || '');
+        const mod = normalizeText(i.modalidade || '');
+        return obj.includes(segNorm) || mod.includes(segNorm);
       });
     }
 
