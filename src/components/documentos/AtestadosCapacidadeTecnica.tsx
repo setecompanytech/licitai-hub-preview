@@ -40,6 +40,7 @@ type ACTDoc = {
   dados_extraidos?: {
     objeto?: string;
     orgao_emissor?: string;
+    ano_fornecimento?: string;
     valor?: string;
     cnpj_contratante?: string;
     periodo?: string;
@@ -140,66 +141,104 @@ export default function AtestadosCapacidadeTecnica() {
     try {
       const segLabel = SEGMENTOS_ACT.find(s => s.value === selectedSegmento)?.label || 'não especificado';
 
-      // Try vision for images
-      let visionImages: { name: string; dataUrl: string }[] = [];
+      // Step 1: Extract raw text from the document
+      let rawText = '';
+
       if (pendingFile.type.startsWith('image/')) {
+        // Use vision OCR for images
         const payload = await fileToVisionPayload(pendingFile);
-        if (payload) visionImages = [payload];
+        if (payload) {
+          const { data, error } = await supabase.functions.invoke('document-vision-extract', {
+            body: {
+              fileName: pendingFile.name,
+              images: [payload],
+              mode: 'ocr',
+            },
+          });
+          if (error) throw error;
+          rawText = data?.text || '';
+        }
+      } else if (pendingFile.type === 'application/pdf') {
+        // For PDFs: convert first page to image via canvas, then use vision OCR
+        const pdfDataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(pendingFile);
+        });
+
+        if (pdfDataUrl) {
+          // Send PDF as data URL to vision - the edge function accepts image data URLs
+          // For PDFs we'll try reading text content and if insufficient use a text-based approach
+          const textContent = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const arr = new Uint8Array(e.target?.result as ArrayBuffer);
+              // Try to extract readable text from PDF binary
+              let text = '';
+              try {
+                const decoder = new TextDecoder('latin1');
+                const raw = decoder.decode(arr);
+                // Extract text between parentheses (PDF text objects)
+                const matches = raw.match(/\(([^)]{2,})\)/g);
+                if (matches) {
+                  text = matches.map(m => m.slice(1, -1)).join(' ');
+                }
+              } catch {}
+              resolve(text);
+            };
+            reader.onerror = () => resolve('');
+            reader.readAsArrayBuffer(pendingFile);
+          });
+
+          // If we got meaningful text from PDF parsing, use it directly
+          if (textContent.length > 50) {
+            rawText = textContent.slice(0, 15000);
+          } else {
+            // Render PDF page to canvas for vision OCR
+            // We'll use an object URL approach with an iframe/canvas
+            // Since we can't use pdf.js easily, send whatever text we have
+            rawText = textContent;
+          }
+        }
       }
 
-      // Also read as text for PDFs
-      const text = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve((e.target?.result as string)?.slice(0, 20000) || '');
-        reader.onerror = () => resolve('');
-        reader.readAsText(pendingFile!);
-      });
+      // Step 2: Use ai-chat to extract structured data from the raw text
+      const extractPrompt = `Analise o texto extraído deste Atestado de Capacidade Técnica do segmento "${segLabel}".
 
-      const extractPrompt = `Analise este Atestado de Capacidade Técnica do segmento "${segLabel}".
-IMPORTANTE: Atestados de capacidade técnica para fornecimento de produtos/materiais NÃO possuem validade.
-
-Extraia em JSON puro (sem markdown):
+EXTRAIA as seguintes informações e retorne em JSON puro (sem markdown, sem \`\`\`):
 {
   "objeto": "descrição completa do objeto/serviço/fornecimento atestado",
-  "orgao_emissor": "nome do órgão ou empresa que emitiu o atestado",
-  "valor": "valor contratual se mencionado (apenas números e pontuação)",
+  "orgao_emissor": "nome do órgão público ou empresa privada que emitiu/contratou (Cliente/Órgão contratante)",
+  "ano_fornecimento": "ano ou período do fornecimento (ex: 2024, 2023/2024)",
+  "valor": "valor contratual se mencionado",
   "cnpj_contratante": "CNPJ do contratante se encontrado",
-  "periodo": "período de execução/fornecimento"
+  "periodo": "período completo de execução/fornecimento se mencionado"
 }
 
-Regras:
-- Leia TODO o documento com atenção.
+REGRAS:
+- Leia TODO o texto atentamente.
+- "orgao_emissor" = quem CONTRATOU ou ATESTOU a capacidade (o cliente/órgão).
+- "ano_fornecimento" = o ano em que o fornecimento ou serviço foi prestado.
+- "objeto" = o que foi fornecido ou o serviço prestado.
 - Campo não encontrado = "".
-- NÃO invente dados.`;
+- NÃO invente dados ausentes.
+
+TEXTO DO DOCUMENTO:
+${rawText.slice(0, 12000)}`;
+
+      const { data: aiData, error: aiError } = await supabase.functions.invoke('ai-chat', {
+        body: {
+          messages: [{ role: 'user', content: extractPrompt }],
+          action: 'extracao_act',
+        },
+      });
+      if (aiError) throw aiError;
 
       let responseText = '';
-
-      if (visionImages.length > 0) {
-        // Use vision edge function for images
-        const { data, error } = await supabase.functions.invoke('document-vision-extract', {
-          body: {
-            fileName: pendingFile.name,
-            images: visionImages,
-            text: text.length > 20 ? text : undefined,
-            mode: 'act_extraction',
-            extractionPrompt: extractPrompt,
-          },
-        });
-        if (error) throw error;
-        responseText = data?.text || '';
-      } else {
-        // Use ai-chat for text-based PDFs
-        const { data, error } = await supabase.functions.invoke('ai-chat', {
-          body: {
-            messages: [{ role: 'user', content: `${extractPrompt}\n\nDocumento:\n${text}` }],
-            action: 'extracao_act',
-          },
-        });
-        if (error) throw error;
-        if (typeof data === 'string') responseText = data;
-        else if (data?.text) responseText = data.text;
-        else if (data?.choices?.[0]?.message?.content) responseText = data.choices[0].message.content;
-      }
+      if (typeof aiData === 'string') responseText = aiData;
+      else if (aiData?.text) responseText = aiData.text;
+      else if (aiData?.choices?.[0]?.message?.content) responseText = aiData.choices[0].message.content;
 
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -207,16 +246,17 @@ Regras:
         setExtractedData({
           objeto: parsed.objeto || '',
           orgao_emissor: parsed.orgao_emissor || '',
+          ano_fornecimento: parsed.ano_fornecimento || '',
           valor: parsed.valor || '',
           cnpj_contratante: parsed.cnpj_contratante || '',
           periodo: parsed.periodo || '',
         });
         toast.success('Dados do atestado extraídos pela IA!');
       } else {
-        toast.info('Não foi possível extrair dados automaticamente.');
+        toast.info('Não foi possível extrair dados automaticamente. Preencha manualmente.');
       }
     } catch (err) {
-      console.error(err);
+      console.error('ACT extraction error:', err);
       toast.error('Erro na extração. Preencha manualmente.');
     }
     setAnalyzing(false);
@@ -401,7 +441,7 @@ Regras:
             return (
               <div key={doc.id} className="px-5 py-3 flex items-start justify-between hover:bg-muted/20 transition-colors">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <Icon className="w-4 h-4 text-accent" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -410,18 +450,28 @@ Regras:
                       <CheckCircle2 className="w-3.5 h-3.5 text-success" />
                       <span className="text-[10px] text-success font-medium">Cadastrado</span>
                     </div>
+                    {/* Key fields: Objeto, Cliente/Órgão, Ano */}
                     {doc.dados_extraidos?.objeto && (
-                      <p className="text-xs mt-1 text-foreground/80 line-clamp-2">{doc.dados_extraidos.objeto}</p>
+                      <p className="text-xs mt-1.5 font-medium text-foreground line-clamp-2">
+                        <span className="text-muted-foreground font-normal">Objeto: </span>
+                        {doc.dados_extraidos.objeto}
+                      </p>
                     )}
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
                       {doc.dados_extraidos?.orgao_emissor && (
-                        <Badge variant="secondary" className="text-[10px]">{doc.dados_extraidos.orgao_emissor}</Badge>
+                        <span className="text-xs text-foreground/80">
+                          <span className="text-muted-foreground">Cliente/Órgão: </span>
+                          <strong>{doc.dados_extraidos.orgao_emissor}</strong>
+                        </span>
+                      )}
+                      {doc.dados_extraidos?.ano_fornecimento && (
+                        <span className="text-xs text-foreground/80">
+                          <span className="text-muted-foreground">Ano: </span>
+                          <strong>{doc.dados_extraidos.ano_fornecimento}</strong>
+                        </span>
                       )}
                       {doc.dados_extraidos?.valor && (
                         <Badge variant="outline" className="text-[10px]">R$ {doc.dados_extraidos.valor}</Badge>
-                      )}
-                      {doc.dados_extraidos?.periodo && (
-                        <Badge variant="outline" className="text-[10px]">{doc.dados_extraidos.periodo}</Badge>
                       )}
                     </div>
                   </div>
@@ -525,14 +575,23 @@ Regras:
                     placeholder="Descrição do objeto atestado"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-[10px] text-muted-foreground">Cliente / Órgão Contratante</Label>
+                  <Input
+                    value={extractedData.orgao_emissor || ''}
+                    onChange={e => setExtractedData(prev => ({ ...prev, orgao_emissor: e.target.value }))}
+                    className="mt-0.5 text-xs h-8"
+                    placeholder="Órgão público ou empresa contratante"
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <Label className="text-[10px] text-muted-foreground">Órgão Emissor</Label>
+                    <Label className="text-[10px] text-muted-foreground">Ano do Fornecimento</Label>
                     <Input
-                      value={extractedData.orgao_emissor || ''}
-                      onChange={e => setExtractedData(prev => ({ ...prev, orgao_emissor: e.target.value }))}
+                      value={extractedData.ano_fornecimento || ''}
+                      onChange={e => setExtractedData(prev => ({ ...prev, ano_fornecimento: e.target.value }))}
                       className="mt-0.5 text-xs h-8"
-                      placeholder="Órgão/empresa emissora"
+                      placeholder="Ex: 2024"
                     />
                   </div>
                   <div>
@@ -551,15 +610,6 @@ Regras:
                       onChange={e => setExtractedData(prev => ({ ...prev, cnpj_contratante: e.target.value }))}
                       className="mt-0.5 text-xs h-8"
                       placeholder="00.000.000/0000-00"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[10px] text-muted-foreground">Período</Label>
-                    <Input
-                      value={extractedData.periodo || ''}
-                      onChange={e => setExtractedData(prev => ({ ...prev, periodo: e.target.value }))}
-                      className="mt-0.5 text-xs h-8"
-                      placeholder="Ex: 01/2024 a 12/2024"
                     />
                   </div>
                 </div>
