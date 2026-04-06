@@ -131,6 +131,29 @@ const TIPOS_INSTRUMENTO = [
   { value: 'aviso_dispensa', label: 'Aviso de Dispensa de Licitação' },
 ];
 
+const SEGMENTOS_FILTRO = [
+  'Tecnologia da Informação', 'Material Hospitalar', 'Construção Civil', 'Alimentação',
+  'Serviços de Limpeza', 'Segurança', 'Transporte', 'Mobiliário', 'Equipamentos',
+  'Material de Escritório', 'Uniformes e EPI', 'Combustíveis', 'Veículos',
+  'Medicamentos', 'Laboratório', 'Telecomunicações', 'Engenharia',
+];
+
+type OrdenacaoConfig = {
+  campo: 'data_publicacao' | 'data_abertura' | 'data_encerramento' | 'valor_estimado';
+  direcao: 'asc' | 'desc';
+};
+
+const OPCOES_ORDENACAO = [
+  { campo: 'data_publicacao', direcao: 'desc', label: 'Publicação (mais recentes)' },
+  { campo: 'data_publicacao', direcao: 'asc', label: 'Publicação (mais antigos)' },
+  { campo: 'data_abertura', direcao: 'desc', label: 'Abertura (mais recentes)' },
+  { campo: 'data_abertura', direcao: 'asc', label: 'Abertura (mais antigos)' },
+  { campo: 'data_encerramento', direcao: 'asc', label: 'Encerramento (próximos)' },
+  { campo: 'data_encerramento', direcao: 'desc', label: 'Encerramento (distantes)' },
+  { campo: 'valor_estimado', direcao: 'desc', label: 'Valor (maior primeiro)' },
+  { campo: 'valor_estimado', direcao: 'asc', label: 'Valor (menor primeiro)' },
+] as const;
+
 const ESFERAS = [
   { value: 'federal', label: 'Federal' },
   { value: 'estadual', label: 'Estadual' },
@@ -190,6 +213,8 @@ export default function MuralLicitacoes() {
   const [portalFiltro, setPortalFiltro] = useState<string>('all');
   const [municipioFiltro, setMunicipioFiltro] = useState('');
   const [unidadeFiltro, setUnidadeFiltro] = useState('');
+  const [segmentoFiltro, setSegmentoFiltro] = useState<string>('all');
+  const [ordenacao, setOrdenacao] = useState<OrdenacaoConfig>({ campo: 'data_publicacao', direcao: 'desc' });
   const [orgaoFiltro, setOrgaoFiltro] = useState('');
   
   // Toggle portais externos (Firecrawl)
@@ -536,20 +561,49 @@ export default function MuralLicitacoes() {
       items = items.filter(i => i.orgao?.toLowerCase().includes(term));
     }
 
-    // Priorizar por segmentos prioritários
-    if (segmentosPrioritarios.length > 0) {
-      const termsLower = segmentosPrioritarios.map(s => s.toLowerCase());
-      items.sort((a, b) => {
-        const aMatch = termsLower.some(t => a.objeto?.toLowerCase().includes(t) || a.orgao?.toLowerCase().includes(t));
-        const bMatch = termsLower.some(t => b.objeto?.toLowerCase().includes(t) || b.orgao?.toLowerCase().includes(t));
-        if (aMatch && !bMatch) return -1;
-        if (!aMatch && bMatch) return 1;
-        return 0;
+    // ── FILTRO DE SEGMENTO ──
+    if (segmentoFiltro !== 'all') {
+      const segLower = segmentoFiltro.toLowerCase();
+      items = items.filter(i => {
+        const obj = i.objeto?.toLowerCase() || '';
+        const mod = i.modalidade?.toLowerCase() || '';
+        return obj.includes(segLower) || mod.includes(segLower);
       });
     }
 
+    // ── ORDENAÇÃO DETERMINÍSTICA (sempre no array, nunca aleatório) ──
+    const campoMap: Record<string, keyof LicitacaoMural> = {
+      data_publicacao: 'data_publicacao',
+      data_abertura: 'data_abertura',
+      data_encerramento: 'data_encerramento',
+      valor_estimado: 'valor_estimado',
+    };
+    const campoKey = campoMap[ordenacao.campo] || 'data_publicacao';
+    const asc = ordenacao.direcao === 'asc';
+
+    items.sort((a, b) => {
+      const va = a[campoKey];
+      const vb = b[campoKey];
+      // Nulls always last
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+
+      if (campoKey === 'valor_estimado') {
+        const diff = (va as number) - (vb as number);
+        return asc ? diff : -diff;
+      }
+      // Date comparison
+      const da = new Date(va as string).getTime();
+      const db = new Date(vb as string).getTime();
+      if (isNaN(da) && isNaN(db)) return 0;
+      if (isNaN(da)) return 1;
+      if (isNaN(db)) return -1;
+      return asc ? da - db : db - da;
+    });
+
     return items;
-  }, [licitacoesRaw, licitacoesExternas, esferaFiltro, tipoInstrumentoFiltro, portalFiltro, unidadeFiltro, orgaoFiltro, segmentosPrioritarios]);
+  }, [licitacoesRaw, licitacoesExternas, esferaFiltro, tipoInstrumentoFiltro, portalFiltro, unidadeFiltro, orgaoFiltro, segmentoFiltro, ordenacao]);
 
   // Sincronizar licitacoes e totalResultados com os dados filtrados
   useEffect(() => {
@@ -1260,7 +1314,7 @@ export default function MuralLicitacoes() {
             <div className="flex items-center gap-2 text-sm font-semibold">
               <SlidersHorizontal className="w-4 h-4 text-accent" />
               FILTROS
-              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || portalFiltro !== 'all' || dataInicio || dataFim) && (
+              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || portalFiltro !== 'all' || segmentoFiltro !== 'all' || dataInicio || dataFim) && (
                 <Badge className="bg-accent/10 text-accent border-accent/20 text-[9px]">Ativos</Badge>
               )}
             </div>
@@ -1385,7 +1439,47 @@ export default function MuralLicitacoes() {
                 </div>
               </div>
 
-              {/* Row 5: Datas */}
+              {/* Row 5: Segmento + Ordenação */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Segmento / Ramo</label>
+                  <Select value={segmentoFiltro} onValueChange={v => { setSegmentoFiltro(v); setPagina(1); }}>
+                    <SelectTrigger className="w-full h-10 text-xs">
+                      <Package className="w-3 h-3 mr-1 text-muted-foreground" />
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      <SelectItem value="all">Todos os segmentos</SelectItem>
+                      {SEGMENTOS_FILTRO.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      {segmentosPrioritarios.filter(s => !SEGMENTOS_FILTRO.includes(s)).map(s => (
+                        <SelectItem key={s} value={s}>{s} ⭐</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Ordenar por</label>
+                  <Select
+                    value={`${ordenacao.campo}_${ordenacao.direcao}`}
+                    onValueChange={v => {
+                      const opt = OPCOES_ORDENACAO.find(o => `${o.campo}_${o.direcao}` === v);
+                      if (opt) { setOrdenacao({ campo: opt.campo as OrdenacaoConfig['campo'], direcao: opt.direcao as OrdenacaoConfig['direcao'] }); setPagina(1); }
+                    }}
+                  >
+                    <SelectTrigger className="w-full h-10 text-xs">
+                      <ListOrdered className="w-3 h-3 mr-1 text-muted-foreground" />
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {OPCOES_ORDENACAO.map(o => (
+                        <SelectItem key={`${o.campo}_${o.direcao}`} value={`${o.campo}_${o.direcao}`}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Row 6: Datas */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Data de início de recebimento de propostas</label>
@@ -1425,7 +1519,7 @@ export default function MuralLicitacoes() {
               </div>
 
               {/* Clear all filters */}
-              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || portalFiltro !== 'all' || dataInicio || dataFim) && (
+              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || portalFiltro !== 'all' || segmentoFiltro !== 'all' || dataInicio || dataFim) && (
                 <div className="flex justify-end pt-1">
                   <Button
                     variant="ghost"
@@ -1436,6 +1530,8 @@ export default function MuralLicitacoes() {
                       setOrgaoFiltro(''); setUnidadeFiltro('');
                       setUfFiltro('all'); setMunicipioFiltro('');
                       setEsferaFiltro('all'); setPortalFiltro('all');
+                      setSegmentoFiltro('all');
+                      setOrdenacao({ campo: 'data_publicacao', direcao: 'desc' });
                       setDataInicio(undefined); setDataFim(undefined);
                       setPagina(1);
                     }}
@@ -1449,7 +1545,7 @@ export default function MuralLicitacoes() {
         </div>
 
         {/* Active filter badges */}
-        {(searchSubmitted || uasgSubmitted) && (
+        {(searchSubmitted || uasgSubmitted || segmentoFiltro !== 'all' || ordenacao.campo !== 'data_publicacao' || ordenacao.direcao !== 'desc') && (
           <div className="flex items-center gap-2 flex-wrap mt-3">
             {searchSubmitted && (
               <Badge variant="outline" className="gap-1 text-xs">
@@ -1463,6 +1559,22 @@ export default function MuralLicitacoes() {
               <Badge variant="outline" className="gap-1 text-xs bg-primary/5 border-primary/20">
                 <Building2 className="w-3 h-3" /> UASG/CNPJ: {uasgSubmitted}
                 <button onClick={() => { setUasgSubmitted(''); setUasgTerm(''); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {segmentoFiltro !== 'all' && (
+              <Badge variant="outline" className="gap-1 text-xs bg-accent/10 text-accent border-accent/30">
+                <Package className="w-3 h-3" /> Segmento: {segmentoFiltro}
+                <button onClick={() => { setSegmentoFiltro('all'); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {(ordenacao.campo !== 'data_publicacao' || ordenacao.direcao !== 'desc') && (
+              <Badge variant="outline" className="gap-1 text-xs bg-muted/50">
+                <ListOrdered className="w-3 h-3" /> {OPCOES_ORDENACAO.find(o => o.campo === ordenacao.campo && o.direcao === ordenacao.direcao)?.label}
+                <button onClick={() => { setOrdenacao({ campo: 'data_publicacao', direcao: 'desc' }); setPagina(1); }}>
                   <X className="w-3 h-3" />
                 </button>
               </Badge>
