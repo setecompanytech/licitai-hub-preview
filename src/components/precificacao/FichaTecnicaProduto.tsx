@@ -82,8 +82,9 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
       valorUnitarioExtenso: valorPorExtenso(preco),
       valorTotal: preco.toFixed(2).replace('.', ','),
       valorTotalExtenso: valorPorExtenso(preco),
+      custoAquisicao: preco, // preço cotado = custo de aquisição
     });
-    toast.success('Produto adicionado à proposta comercial!');
+    toast.success('Produto adicionado à proposta com sugestão tributária!');
   };
 
   const images = ficha?.imagens?.length ? ficha.imagens : (produto.image_url ? [produto.image_url] : []);
