@@ -2852,6 +2852,8 @@ export type Database = {
           contrato_id: string
           contrato_item_id: string | null
           created_at: string
+          custo_total: number
+          custo_unitario: number
           data_entrega: string | null
           data_pedido: string | null
           data_quitacao: string | null
@@ -2872,6 +2874,8 @@ export type Database = {
           contrato_id: string
           contrato_item_id?: string | null
           created_at?: string
+          custo_total?: number
+          custo_unitario?: number
           data_entrega?: string | null
           data_pedido?: string | null
           data_quitacao?: string | null
@@ -2892,6 +2896,8 @@ export type Database = {
           contrato_id?: string
           contrato_item_id?: string | null
           created_at?: string
+          custo_total?: number
+          custo_unitario?: number
           data_entrega?: string | null
           data_pedido?: string | null
           data_quitacao?: string | null
@@ -2928,6 +2934,7 @@ export type Database = {
       contratos: {
         Row: {
           created_at: string
+          custo_total_pedidos: number
           data_assinatura: string | null
           data_fim: string | null
           data_inicio: string | null
@@ -2954,6 +2961,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          custo_total_pedidos?: number
           data_assinatura?: string | null
           data_fim?: string | null
           data_inicio?: string | null
@@ -2980,6 +2988,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          custo_total_pedidos?: number
           data_assinatura?: string | null
           data_fim?: string | null
           data_inicio?: string | null
@@ -3531,6 +3540,7 @@ export type Database = {
           id: string
           nome: string | null
           papel: Database["public"]["Enums"]["empresa_papel"]
+          permissoes: Json | null
           user_id: string
         }
         Insert: {
@@ -3541,6 +3551,7 @@ export type Database = {
           id?: string
           nome?: string | null
           papel?: Database["public"]["Enums"]["empresa_papel"]
+          permissoes?: Json | null
           user_id: string
         }
         Update: {
@@ -3551,6 +3562,7 @@ export type Database = {
           id?: string
           nome?: string | null
           papel?: Database["public"]["Enums"]["empresa_papel"]
+          permissoes?: Json | null
           user_id?: string
         }
         Relationships: [
