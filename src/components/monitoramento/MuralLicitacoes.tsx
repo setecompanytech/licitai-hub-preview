@@ -561,20 +561,49 @@ export default function MuralLicitacoes() {
       items = items.filter(i => i.orgao?.toLowerCase().includes(term));
     }
 
-    // Priorizar por segmentos prioritários
-    if (segmentosPrioritarios.length > 0) {
-      const termsLower = segmentosPrioritarios.map(s => s.toLowerCase());
-      items.sort((a, b) => {
-        const aMatch = termsLower.some(t => a.objeto?.toLowerCase().includes(t) || a.orgao?.toLowerCase().includes(t));
-        const bMatch = termsLower.some(t => b.objeto?.toLowerCase().includes(t) || b.orgao?.toLowerCase().includes(t));
-        if (aMatch && !bMatch) return -1;
-        if (!aMatch && bMatch) return 1;
-        return 0;
+    // ── FILTRO DE SEGMENTO ──
+    if (segmentoFiltro !== 'all') {
+      const segLower = segmentoFiltro.toLowerCase();
+      items = items.filter(i => {
+        const obj = i.objeto?.toLowerCase() || '';
+        const mod = i.modalidade?.toLowerCase() || '';
+        return obj.includes(segLower) || mod.includes(segLower);
       });
     }
 
+    // ── ORDENAÇÃO DETERMINÍSTICA (sempre no array, nunca aleatório) ──
+    const campoMap: Record<string, keyof LicitacaoMural> = {
+      data_publicacao: 'data_publicacao',
+      data_abertura: 'data_abertura',
+      data_encerramento: 'data_encerramento',
+      valor_estimado: 'valor_estimado',
+    };
+    const campoKey = campoMap[ordenacao.campo] || 'data_publicacao';
+    const asc = ordenacao.direcao === 'asc';
+
+    items.sort((a, b) => {
+      const va = a[campoKey];
+      const vb = b[campoKey];
+      // Nulls always last
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+
+      if (campoKey === 'valor_estimado') {
+        const diff = (va as number) - (vb as number);
+        return asc ? diff : -diff;
+      }
+      // Date comparison
+      const da = new Date(va as string).getTime();
+      const db = new Date(vb as string).getTime();
+      if (isNaN(da) && isNaN(db)) return 0;
+      if (isNaN(da)) return 1;
+      if (isNaN(db)) return -1;
+      return asc ? da - db : db - da;
+    });
+
     return items;
-  }, [licitacoesRaw, licitacoesExternas, esferaFiltro, tipoInstrumentoFiltro, portalFiltro, unidadeFiltro, orgaoFiltro, segmentosPrioritarios]);
+  }, [licitacoesRaw, licitacoesExternas, esferaFiltro, tipoInstrumentoFiltro, portalFiltro, unidadeFiltro, orgaoFiltro, segmentoFiltro, ordenacao]);
 
   // Sincronizar licitacoes e totalResultados com os dados filtrados
   useEffect(() => {
