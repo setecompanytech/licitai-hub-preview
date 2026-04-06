@@ -392,7 +392,13 @@ export default function PreferenciasAlertas() {
                       placeholder="(XX) XXXXX-XXXX"
                       className="text-sm"
                       value={form.whatsapp_notificacao}
-                      onChange={e => setForm(f => ({ ...f, whatsapp_notificacao: e.target.value }))}
+                      onChange={e => {
+                        const raw = e.target.value.replace(/\D/g, '').slice(0, 11);
+                        let formatted = raw;
+                        if (raw.length > 2) formatted = `(${raw.slice(0, 2)}) ${raw.slice(2)}`;
+                        if (raw.length > 7) formatted = `(${raw.slice(0, 2)}) ${raw.slice(2, 7)}-${raw.slice(7)}`;
+                        setForm(f => ({ ...f, whatsapp_notificacao: formatted }));
+                      }}
                     />
                   )}
                 </div>
