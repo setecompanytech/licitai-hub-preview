@@ -62,7 +62,12 @@ export default function PreferenciasAlertas() {
         canal_whatsapp: preferencias.canal_whatsapp,
         canal_push: preferencias.canal_push,
         email_notificacao: preferencias.email_notificacao || user?.email || '',
-        whatsapp_notificacao: preferencias.whatsapp_notificacao || '',
+        whatsapp_notificacao: (() => {
+          const raw = (preferencias.whatsapp_notificacao || '').replace(/\D/g, '').slice(0, 11);
+          if (raw.length > 7) return `(${raw.slice(0, 2)}) ${raw.slice(2, 7)}-${raw.slice(7)}`;
+          if (raw.length > 2) return `(${raw.slice(0, 2)}) ${raw.slice(2)}`;
+          return raw;
+        })(),
         frequencia: preferencias.frequencia || 'imediato',
         ativo: preferencias.ativo,
       });
@@ -392,7 +397,13 @@ export default function PreferenciasAlertas() {
                       placeholder="(XX) XXXXX-XXXX"
                       className="text-sm"
                       value={form.whatsapp_notificacao}
-                      onChange={e => setForm(f => ({ ...f, whatsapp_notificacao: e.target.value }))}
+                      onChange={e => {
+                        const raw = e.target.value.replace(/\D/g, '').slice(0, 11);
+                        let formatted = raw;
+                        if (raw.length > 2) formatted = `(${raw.slice(0, 2)}) ${raw.slice(2)}`;
+                        if (raw.length > 7) formatted = `(${raw.slice(0, 2)}) ${raw.slice(2, 7)}-${raw.slice(7)}`;
+                        setForm(f => ({ ...f, whatsapp_notificacao: formatted }));
+                      }}
                     />
                   )}
                 </div>
