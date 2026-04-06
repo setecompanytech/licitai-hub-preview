@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { FileText, ClipboardCheck, AlertTriangle, ThumbsUp } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
+import { sanitizeAureliaOutput } from '@/prompts/aurelia-system-prompt';
 import AureliaQuickCard from './AureliaQuickCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Send, Loader2 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { cn } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 interface EditalData {
@@ -146,7 +147,7 @@ export default function AureliaEditalPanel({ edital, empresa }: AureliaEditalPan
                   msg.role === 'user' ? 'aurelia-bubble-user text-[hsl(215,14%,92%)]' : 'aurelia-bubble-ai text-[hsl(215,14%,82%)]'
                 )}>
                   {msg.role === 'assistant' ? (
-                    <div className="prose prose-xs prose-invert max-w-none"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
+                    <div className="whitespace-pre-line">{sanitizeAureliaOutput(msg.content)}</div>
                   ) : msg.content}
                 </div>
               </div>
