@@ -1545,7 +1545,7 @@ export default function MuralLicitacoes() {
         </div>
 
         {/* Active filter badges */}
-        {(searchSubmitted || uasgSubmitted) && (
+        {(searchSubmitted || uasgSubmitted || segmentoFiltro !== 'all' || ordenacao.campo !== 'data_publicacao' || ordenacao.direcao !== 'desc') && (
           <div className="flex items-center gap-2 flex-wrap mt-3">
             {searchSubmitted && (
               <Badge variant="outline" className="gap-1 text-xs">
@@ -1559,6 +1559,22 @@ export default function MuralLicitacoes() {
               <Badge variant="outline" className="gap-1 text-xs bg-primary/5 border-primary/20">
                 <Building2 className="w-3 h-3" /> UASG/CNPJ: {uasgSubmitted}
                 <button onClick={() => { setUasgSubmitted(''); setUasgTerm(''); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {segmentoFiltro !== 'all' && (
+              <Badge variant="outline" className="gap-1 text-xs bg-accent/10 text-accent border-accent/30">
+                <Package className="w-3 h-3" /> Segmento: {segmentoFiltro}
+                <button onClick={() => { setSegmentoFiltro('all'); setPagina(1); }}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {(ordenacao.campo !== 'data_publicacao' || ordenacao.direcao !== 'desc') && (
+              <Badge variant="outline" className="gap-1 text-xs bg-muted/50">
+                <ListOrdered className="w-3 h-3" /> {OPCOES_ORDENACAO.find(o => o.campo === ordenacao.campo && o.direcao === ordenacao.direcao)?.label}
+                <button onClick={() => { setOrdenacao({ campo: 'data_publicacao', direcao: 'desc' }); setPagina(1); }}>
                   <X className="w-3 h-3" />
                 </button>
               </Badge>
