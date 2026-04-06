@@ -220,6 +220,13 @@ async function applyFilters(
     filtered = await filterByParticipacao(supabase, sub, filtered);
   }
 
+  // Classify urgency and sort: critica first, then alta, then normal
+  filtered = filtered.map(classificarUrgencia);
+  filtered.sort((a, b) => {
+    const order = { critica: 0, alta: 1, normal: 2 };
+    return (order[a.urgencia || 'normal'] ?? 2) - (order[b.urgencia || 'normal'] ?? 2);
+  });
+
   return filtered.slice(0, 30);
 }
 
