@@ -1543,8 +1543,12 @@ export type Database = {
           boletim_tarde: boolean
           created_at: string
           email: string
+          filtrar_alteracoes_por_cnpj: boolean | null
+          filtrar_resultados_por_participacao: boolean | null
           id: string
           notificacao_push: boolean
+          segmentos: string[] | null
+          ufs_interesse: string[] | null
           updated_at: string
           user_id: string
         }
@@ -1554,8 +1558,12 @@ export type Database = {
           boletim_tarde?: boolean
           created_at?: string
           email: string
+          filtrar_alteracoes_por_cnpj?: boolean | null
+          filtrar_resultados_por_participacao?: boolean | null
           id?: string
           notificacao_push?: boolean
+          segmentos?: string[] | null
+          ufs_interesse?: string[] | null
           updated_at?: string
           user_id: string
         }
@@ -1565,8 +1573,12 @@ export type Database = {
           boletim_tarde?: boolean
           created_at?: string
           email?: string
+          filtrar_alteracoes_por_cnpj?: boolean | null
+          filtrar_resultados_por_participacao?: boolean | null
           id?: string
           notificacao_push?: boolean
+          segmentos?: string[] | null
+          ufs_interesse?: string[] | null
           updated_at?: string
           user_id?: string
         }
