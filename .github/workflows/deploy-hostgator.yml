@@ -107,5 +107,20 @@ jobs:
           server-dir: ${{ secrets.FTP_SERVER_DIR || './public_html/' }}
           dangerous-clean-slate: true
 
+      - name: Fix remote permissions via SSH
+        if: ${{ secrets.SSH_HOST != '' }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            cd ~/public_html
+            find . -type d -exec chmod 755 {} \;
+            find . -type f -exec chmod 644 {} \;
+            chmod 644 .htaccess
+            echo "Permissões corrigidas com sucesso."
+
       - name: Success summary
-        run: echo "Deploy FTP concluído com sucesso."
+        run: echo "Deploy FTP concluído e permissões corrigidas."
