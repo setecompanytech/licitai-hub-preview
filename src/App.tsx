@@ -42,6 +42,7 @@ const FaqPage = lazy(() => import("./pages/FaqPage"));
 const Suporte = lazy(() => import("./pages/Suporte"));
 const AdminFinanceiro = lazy(() => import("./pages/AdminFinanceiro"));
 const AdminFontesFabricantes = lazy(() => import("./pages/AdminFontesFabricantes"));
+const PainelDistribuicao = lazy(() => import("./pages/PainelDistribuicao"));
 const MonitoramentoChat = lazy(() => import("./pages/MonitoramentoChat"));
 const AnaliseMercado = lazy(() => import("./pages/AnaliseMercado"));
 const LicitacoesEstrategicas = lazy(() => import("./pages/LicitacoesEstrategicas"));
@@ -149,6 +150,7 @@ const App = () => (
               <Route path="/admin/fontes-fabricantes" element={<ProtectedPages><AdminFontesFabricantes /></ProtectedPages>} />
               <Route path="/admin/marketing" element={<ProtectedPages><AdminMarketing /></ProtectedPages>} />
               <Route path="/admin/auditoria" element={<ProtectedPages><AdminGuard><AuditoriaAdmin /></AdminGuard></ProtectedPages>} />
+              <Route path="/admin/distribuicao" element={<ProtectedPages><AdminGuard><PainelDistribuicao /></AdminGuard></ProtectedPages>} />
               <Route path="/monitoramento-chat" element={<ProtectedPages><MonitoramentoChat /></ProtectedPages>} />
               <Route path="/analise-mercado" element={<PlanPages><AnaliseMercado /></PlanPages>} />
               <Route path="/licitacoes-estrategicas" element={<ProtectedPages><LicitacoesEstrategicas /></ProtectedPages>} />
