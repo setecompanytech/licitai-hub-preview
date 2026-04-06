@@ -131,6 +131,29 @@ const TIPOS_INSTRUMENTO = [
   { value: 'aviso_dispensa', label: 'Aviso de Dispensa de Licitação' },
 ];
 
+const SEGMENTOS_FILTRO = [
+  'Tecnologia da Informação', 'Material Hospitalar', 'Construção Civil', 'Alimentação',
+  'Serviços de Limpeza', 'Segurança', 'Transporte', 'Mobiliário', 'Equipamentos',
+  'Material de Escritório', 'Uniformes e EPI', 'Combustíveis', 'Veículos',
+  'Medicamentos', 'Laboratório', 'Telecomunicações', 'Engenharia',
+];
+
+type OrdenacaoConfig = {
+  campo: 'data_publicacao' | 'data_abertura' | 'data_encerramento' | 'valor_estimado';
+  direcao: 'asc' | 'desc';
+};
+
+const OPCOES_ORDENACAO = [
+  { campo: 'data_publicacao', direcao: 'desc', label: 'Publicação (mais recentes)' },
+  { campo: 'data_publicacao', direcao: 'asc', label: 'Publicação (mais antigos)' },
+  { campo: 'data_abertura', direcao: 'desc', label: 'Abertura (mais recentes)' },
+  { campo: 'data_abertura', direcao: 'asc', label: 'Abertura (mais antigos)' },
+  { campo: 'data_encerramento', direcao: 'asc', label: 'Encerramento (próximos)' },
+  { campo: 'data_encerramento', direcao: 'desc', label: 'Encerramento (distantes)' },
+  { campo: 'valor_estimado', direcao: 'desc', label: 'Valor (maior primeiro)' },
+  { campo: 'valor_estimado', direcao: 'asc', label: 'Valor (menor primeiro)' },
+] as const;
+
 const ESFERAS = [
   { value: 'federal', label: 'Federal' },
   { value: 'estadual', label: 'Estadual' },
