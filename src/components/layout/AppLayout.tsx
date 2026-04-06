@@ -6,6 +6,7 @@ import AppTopNav from './AppTopNav';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
 import { Bell, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette, Zap, Download } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
+import AlertaBadge from '@/components/alertas/AlertaBadge';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import AureliaChat from '@/components/aurelia/AureliaChat';
 import GlobalSearch from '@/components/search/GlobalSearch';
@@ -115,6 +116,8 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
           <div className="hidden sm:block">
             <ThemeToggle />
           </div>
+
+          <AlertaBadge />
 
           <button
             className="relative p-2 rounded-lg hover:bg-muted transition-colors"
