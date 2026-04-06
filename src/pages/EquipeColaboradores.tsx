@@ -82,30 +82,33 @@ export default function EquipeColaboradores() {
     if (!empresaAtiva || !user || !inviteEmail.trim() || inviteEquipes.length === 0) return;
     setSaving(true);
 
-    const userId = crypto.randomUUID();
-    const equipePrincipal = inviteEquipes[0] || 'geral';
+    try {
+      const { data, error } = await supabase.functions.invoke('invite-member', {
+        body: {
+          email: inviteEmail.trim(),
+          nome: inviteNome || inviteEmail.trim(),
+          papel: invitePapel,
+          equipe: inviteEquipes,
+          permissoes: inviteEquipes,
+          empresa_id: empresaAtiva.id,
+        },
+      });
 
-    const { error } = await supabase.from('empresa_membros').insert({
-      empresa_id: empresaAtiva.id,
-      user_id: userId,
-      papel: invitePapel as any,
-      equipe: equipePrincipal,
-      nome: inviteNome || inviteEmail,
-      email: inviteEmail,
-      permissoes: inviteEquipes,
-    } as any);
-
-    if (error) {
-      toast.error(`Erro ao adicionar colaborador: ${error.message}`);
-    } else {
-      const labels = inviteEquipes.map(e => EQUIPES.find(eq => eq.value === e)?.label).join(', ');
-      toast.success(`Colaborador ${inviteNome || inviteEmail} adicionado às equipes: ${labels}`);
-      setShowInvite(false);
-      setInviteEmail('');
-      setInviteNome('');
-      setInvitePapel('operador');
-      setInviteEquipes(['geral']);
-      loadMembros();
+      if (error) {
+        toast.error(`Erro ao convidar colaborador: ${error.message}`);
+      } else if (data?.error) {
+        toast.error(data.error);
+      } else {
+        toast.success(data?.message || 'Colaborador convidado com sucesso!');
+        setShowInvite(false);
+        setInviteEmail('');
+        setInviteNome('');
+        setInvitePapel('operador');
+        setInviteEquipes(['geral']);
+        loadMembros();
+      }
+    } catch (err: any) {
+      toast.error(`Erro inesperado: ${err.message}`);
     }
     setSaving(false);
   };
