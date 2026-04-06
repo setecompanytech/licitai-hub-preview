@@ -42,6 +42,8 @@ export interface EditalItem {
   valorUnitarioExtenso: string;
   valorTotal: string;
   valorTotalExtenso: string;
+  /** Custo de aquisição (compra) unitário — usado para sugestão automática de preço de venda */
+  custoAquisicao?: number;
 }
 
 export default function EditalUploader({ onExtracted, isExtracting, setIsExtracting, licitacaoId }: EditalUploaderProps) {
