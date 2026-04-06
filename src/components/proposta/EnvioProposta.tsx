@@ -64,9 +64,9 @@ export default function EnvioProposta() {
     const verificar = async () => {
       // Verificar credencial do portal
       const { data: cred } = await supabase
-        .from('credenciais_portais')
+        .from('credenciais_portais' as any)
         .select('id')
-        .eq('empresa_id', empresaAtiva?.id)
+        .eq('empresa_id', empresaAtiva?.id ?? '')
         .eq('portal', portal)
         .maybeSingle();
       setTemCredencial(!!cred);
