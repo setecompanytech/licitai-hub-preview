@@ -293,6 +293,8 @@ async function sendEmail(supabaseUrl: string, serviceKey: string, email: string,
     data_abertura: lic.data_abertura || '',
     modalidade: lic.modalidade || '',
     portal: lic.portal || '',
+    urgencia: lic.urgencia || 'normal',
+    horas_restantes: lic.horas_restantes,
   };
 
   const res = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
