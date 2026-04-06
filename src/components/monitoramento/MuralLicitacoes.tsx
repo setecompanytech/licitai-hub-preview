@@ -1314,7 +1314,7 @@ export default function MuralLicitacoes() {
             <div className="flex items-center gap-2 text-sm font-semibold">
               <SlidersHorizontal className="w-4 h-4 text-accent" />
               FILTROS
-              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || portalFiltro !== 'all' || dataInicio || dataFim) && (
+              {(tipoInstrumentoFiltro !== 'all' || modalidadeFiltro !== 'all' || orgaoFiltro || unidadeFiltro || ufFiltro !== 'all' || municipioFiltro || esferaFiltro !== 'all' || portalFiltro !== 'all' || segmentoFiltro !== 'all' || dataInicio || dataFim) && (
                 <Badge className="bg-accent/10 text-accent border-accent/20 text-[9px]">Ativos</Badge>
               )}
             </div>
