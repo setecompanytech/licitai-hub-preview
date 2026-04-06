@@ -59,7 +59,7 @@ export default function EnvioProposta() {
 
   // Verificar credenciais e status do agente
   useEffect(() => {
-    if (!empresa?.id || !portal) return;
+    if (!empresaAtiva?.id || !portal) return;
     
     const verificar = async () => {
       // Verificar credencial do portal
@@ -83,14 +83,14 @@ export default function EnvioProposta() {
     };
 
     verificar();
-  }, [empresa?.id, portal, user]);
+  }, [empresaAtiva?.id, portal, user]);
 
   const itensFormatados = pendingItems.map((item, idx) => ({
     numero: idx + 1,
     descricao: item.descricao || '',
     quantidade: parseFloat(item.quantidade) || 1,
     unidade: item.unidade || 'UN',
-    valor_unitario: parseFloat(item.valorUnitario) || 0 || 0,
+    valor_unitario: parseFloat(item.valorUnitario) || 0,
     marca: item.marca || '',
     modelo: item.modelo || '',
     fabricante: item.fabricante || '',
@@ -101,7 +101,7 @@ export default function EnvioProposta() {
       toast.error('Informe o número do pregão');
       return;
     }
-    if (!empresa?.id) {
+    if (!empresaAtiva?.id) {
       toast.error('Selecione uma empresa');
       return;
     }
