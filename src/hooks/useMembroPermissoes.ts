@@ -19,7 +19,7 @@ export const MODULOS_SISTEMA: { value: string; label: string; setores: string[] 
   { value: 'comissoes', label: 'Comissões', setores: ['financeiro', 'comercial'] },
 ];
 
-export type ModuloSistema = typeof MODULOS_SISTEMA[number]['value'];
+export type ModuloSistema = string;
 
 interface MembroInfo {
   setor: Setor;
