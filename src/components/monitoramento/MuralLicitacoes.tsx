@@ -15,8 +15,8 @@ import {
   Search, MapPin, Building2, CalendarDays, RefreshCw, Globe, Loader2,
   ExternalLink, DollarSign, FileText, ChevronLeft, ChevronRight, Eye,
   X, AlertTriangle, CheckCircle2, Clock, Gavel, Star, StarOff, Download,
-  FileDown, Link2, Package, Scale, ShieldCheck, Info, ListOrdered,
-  SlidersHorizontal, ChevronDown, ChevronUp, Landmark, Sparkles
+  FileDown, Link2, Package, Scale, ShieldCheck, Info,
+  SlidersHorizontal, ChevronDown, ChevronUp, Landmark, Sparkles, ArrowDown, ArrowUp
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
@@ -143,16 +143,33 @@ type OrdenacaoConfig = {
   direcao: 'asc' | 'desc';
 };
 
-const OPCOES_ORDENACAO = [
-  { campo: 'data_publicacao', direcao: 'desc', label: 'Publicação (mais recentes)' },
-  { campo: 'data_publicacao', direcao: 'asc', label: 'Publicação (mais antigos)' },
-  { campo: 'data_abertura', direcao: 'desc', label: 'Abertura (mais recentes)' },
-  { campo: 'data_abertura', direcao: 'asc', label: 'Abertura (mais antigos)' },
-  { campo: 'data_encerramento', direcao: 'asc', label: 'Encerramento (próximos)' },
-  { campo: 'data_encerramento', direcao: 'desc', label: 'Encerramento (distantes)' },
-  { campo: 'valor_estimado', direcao: 'desc', label: 'Valor (maior primeiro)' },
-  { campo: 'valor_estimado', direcao: 'asc', label: 'Valor (menor primeiro)' },
-] as const;
+const CAMPOS_ORDENACAO: Array<{
+  campo: OrdenacaoConfig['campo'];
+  label: string;
+  icon: typeof CalendarDays;
+}> = [
+  { campo: 'data_publicacao', label: 'Publicação', icon: CalendarDays },
+  { campo: 'data_abertura', label: 'Abertura', icon: Clock },
+  { campo: 'data_encerramento', label: 'Encerramento', icon: CalendarDays },
+  { campo: 'valor_estimado', label: 'Valor estimado', icon: DollarSign },
+];
+
+const getOrdenacaoResumo = ({ campo, direcao }: OrdenacaoConfig) => {
+  if (campo === 'valor_estimado') {
+    return direcao === 'desc' ? 'Maior → menor' : 'Menor → maior';
+  }
+
+  if (campo === 'data_encerramento') {
+    return direcao === 'asc' ? 'Prazos mais próximos' : 'Prazos mais distantes';
+  }
+
+  return direcao === 'desc' ? 'Mais recentes' : 'Mais antigos';
+};
+
+const getOrdenacaoLabel = (config: OrdenacaoConfig) => {
+  const campo = CAMPOS_ORDENACAO.find((item) => item.campo === config.campo)?.label ?? 'Publicação';
+  return `${campo} · ${getOrdenacaoResumo(config)}`;
+};
 
 const ESFERAS = [
   { value: 'federal', label: 'Federal' },
@@ -604,6 +621,11 @@ export default function MuralLicitacoes() {
 
     return items;
   }, [licitacoesRaw, licitacoesExternas, esferaFiltro, tipoInstrumentoFiltro, portalFiltro, unidadeFiltro, orgaoFiltro, segmentoFiltro, ordenacao]);
+
+  const campoOrdenacaoAtual = CAMPOS_ORDENACAO.find((item) => item.campo === ordenacao.campo) ?? CAMPOS_ORDENACAO[0];
+  const CampoOrdenacaoAtualIcon = campoOrdenacaoAtual.icon;
+  const DirecaoOrdenacaoAtualIcon = ordenacao.direcao === 'asc' ? ArrowUp : ArrowDown;
+  const rotuloOrdenacaoAtual = getOrdenacaoLabel(ordenacao);
 
   // Sincronizar licitacoes e totalResultados com os dados filtrados
   useEffect(() => {
@@ -1458,24 +1480,89 @@ export default function MuralLicitacoes() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Ordenar por</label>
-                  <Select
-                    value={`${ordenacao.campo}_${ordenacao.direcao}`}
-                    onValueChange={v => {
-                      const opt = OPCOES_ORDENACAO.find(o => `${o.campo}_${o.direcao}` === v);
-                      if (opt) { setOrdenacao({ campo: opt.campo as OrdenacaoConfig['campo'], direcao: opt.direcao as OrdenacaoConfig['direcao'] }); setPagina(1); }
-                    }}
-                  >
-                    <SelectTrigger className="w-full h-10 text-xs">
-                      <ListOrdered className="w-3 h-3 mr-1 text-muted-foreground" />
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {OPCOES_ORDENACAO.map(o => (
-                        <SelectItem key={`${o.campo}_${o.direcao}`} value={`${o.campo}_${o.direcao}`}>{o.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Classificação</label>
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                    <Select
+                      value={ordenacao.campo}
+                      onValueChange={(campo) => {
+                        setOrdenacao((prev) => ({ ...prev, campo: campo as OrdenacaoConfig['campo'] }));
+                        setPagina(1);
+                      }}
+                    >
+                      <SelectTrigger className="w-full h-10 text-xs">
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <CampoOrdenacaoAtualIcon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                          <span className="truncate">{campoOrdenacaoAtual.label}</span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CAMPOS_ORDENACAO.map(({ campo, label, icon: Icon }) => (
+                          <SelectItem key={campo} value={campo}>
+                            <div className="flex items-center gap-2">
+                              <Icon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                              <span>{label}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <div className="flex items-center rounded-md border border-input bg-background p-1">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              'h-8 w-8 rounded-sm text-muted-foreground hover:text-foreground',
+                              ordenacao.direcao === 'desc' && 'bg-muted text-foreground shadow-sm hover:bg-muted'
+                            )}
+                            onClick={() => {
+                              setOrdenacao((prev) => ({ ...prev, direcao: 'desc' }));
+                              setPagina(1);
+                            }}
+                            aria-label={getOrdenacaoResumo({ campo: ordenacao.campo, direcao: 'desc' })}
+                            aria-pressed={ordenacao.direcao === 'desc'}
+                          >
+                            <ArrowDown className="w-4 h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{getOrdenacaoResumo({ campo: ordenacao.campo, direcao: 'desc' })}</p>
+                        </TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              'h-8 w-8 rounded-sm text-muted-foreground hover:text-foreground',
+                              ordenacao.direcao === 'asc' && 'bg-muted text-foreground shadow-sm hover:bg-muted'
+                            )}
+                            onClick={() => {
+                              setOrdenacao((prev) => ({ ...prev, direcao: 'asc' }));
+                              setPagina(1);
+                            }}
+                            aria-label={getOrdenacaoResumo({ campo: ordenacao.campo, direcao: 'asc' })}
+                            aria-pressed={ordenacao.direcao === 'asc'}
+                          >
+                            <ArrowUp className="w-4 h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{getOrdenacaoResumo({ campo: ordenacao.campo, direcao: 'asc' })}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </div>
+                  <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <DirecaoOrdenacaoAtualIcon className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">{rotuloOrdenacaoAtual}</span>
+                  </p>
                 </div>
               </div>
 
@@ -1573,7 +1660,9 @@ export default function MuralLicitacoes() {
             )}
             {(ordenacao.campo !== 'data_publicacao' || ordenacao.direcao !== 'desc') && (
               <Badge variant="outline" className="gap-1 text-xs bg-muted/50">
-                <ListOrdered className="w-3 h-3" /> {OPCOES_ORDENACAO.find(o => o.campo === ordenacao.campo && o.direcao === ordenacao.direcao)?.label}
+                <CampoOrdenacaoAtualIcon className="w-3 h-3" />
+                <DirecaoOrdenacaoAtualIcon className="w-3 h-3" />
+                {rotuloOrdenacaoAtual}
                 <button onClick={() => { setOrdenacao({ campo: 'data_publicacao', direcao: 'desc' }); setPagina(1); }}>
                   <X className="w-3 h-3" />
                 </button>
