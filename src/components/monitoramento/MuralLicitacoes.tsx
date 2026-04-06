@@ -739,7 +739,7 @@ export default function MuralLicitacoes() {
     });
 
     return items;
-  }, [licitacoesRaw, licitacoesExternas, esferaFiltro, tipoInstrumentoFiltro, portalFiltro, unidadeFiltro, orgaoFiltro, segmentoFiltro, ordenacao]);
+  }, [licitacoesRaw, licitacoesExternas, ufFiltro, municipioFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, esferaFiltro, tipoInstrumentoFiltro, portalFiltro, unidadeFiltro, orgaoFiltro, segmentoFiltro, ordenacao]);
 
   const campoOrdenacaoAtual = CAMPOS_ORDENACAO.find((item) => item.campo === ordenacao.campo) ?? CAMPOS_ORDENACAO[0];
   const CampoOrdenacaoAtualIcon = campoOrdenacaoAtual.icon;
