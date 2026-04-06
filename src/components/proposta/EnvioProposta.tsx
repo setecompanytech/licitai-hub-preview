@@ -66,7 +66,7 @@ export default function EnvioProposta() {
       const { data: cred } = await supabase
         .from('credenciais_portais')
         .select('id')
-        .eq('empresa_id', empresa.id)
+        .eq('empresa_id', empresaAtiva?.id)
         .eq('portal', portal)
         .maybeSingle();
       setTemCredencial(!!cred);
@@ -85,12 +85,12 @@ export default function EnvioProposta() {
     verificar();
   }, [empresa?.id, portal, user]);
 
-  const itensFormatados = cartItens.map((item, idx) => ({
+  const itensFormatados = pendingItems.map((item, idx) => ({
     numero: idx + 1,
-    descricao: item.descricao || item.nome || '',
-    quantidade: item.quantidade || 1,
+    descricao: item.descricao || '',
+    quantidade: parseFloat(item.quantidade) || 1,
     unidade: item.unidade || 'UN',
-    valor_unitario: item.precoUnitario || item.preco || 0,
+    valor_unitario: parseFloat(item.valorUnitario) || 0 || 0,
     marca: item.marca || '',
     modelo: item.modelo || '',
     fabricante: item.fabricante || '',
@@ -140,7 +140,7 @@ export default function EnvioProposta() {
         body: JSON.stringify({
           portal,
           numero_pregao: numeroPregao,
-          empresa_id: empresa.id,
+          empresa_id: empresaAtiva?.id,
           itens: itensFormatados,
           declaracoes: {
             me_epp: declaracoes.meEpp,
