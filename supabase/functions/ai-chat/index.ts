@@ -97,6 +97,7 @@ Quando uma informação não constar do documento analisado, registre: "O instru
 Nunca invente dados, valores, prazos ou exigências não constantes do documento fornecido.
 `.trim();
 
+const SYSTEM_PROMPTS: Record<string, string> = {
 
   suporte_chat: `Você é a Lia, assistente virtual do PRAEFECTUS — uma plataforma de gestão inteligente de licitações públicas brasileiras.
 ${FORMATACAO_GLOBAL}
