@@ -3,9 +3,10 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import {
   DollarSign, TrendingUp, TrendingDown, Package, ShoppingCart, AlertTriangle,
-  Calendar, Percent, Loader2, Receipt
+  Calendar, Percent, Loader2, Receipt, Lock
 } from 'lucide-react';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -13,6 +14,9 @@ const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', c
 export default function ContratoDashboard({ contratoId }: { contratoId: string }) {
   const [data, setData] = useState<{ contrato: any; itens: any[]; pedidos: any[]; custos: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
+  const { temPermissao, isFinanceiro, isAdmin } = useMembroPermissoes();
+
+  const podeVerCustos = isFinanceiro || isAdmin;
 
   useEffect(() => {
     const load = async () => {
@@ -39,12 +43,21 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const c = data.contrato;
     const pedidosAtivos = data.pedidos.filter((p: any) => p.status !== 'cancelado');
     const faturamento = pedidosAtivos.reduce((s: number, p: any) => s + (p.valor_total || 0), 0);
-    const totalCustos = data.custos.reduce((s: number, cc: any) => s + (cc.valor || 0), 0);
+    
+    // Custos from contrato_custos table
+    const totalCustosTabela = data.custos.reduce((s: number, cc: any) => s + (cc.valor || 0), 0);
     const custosDiretos = data.custos.filter((cc: any) => cc.tipo === 'custo_direto').reduce((s: number, cc: any) => s + cc.valor, 0);
     const tributos = data.custos.filter((cc: any) => cc.tipo === 'tributo').reduce((s: number, cc: any) => s + cc.valor, 0);
     const frete = data.custos.filter((cc: any) => cc.tipo === 'frete_logistica').reduce((s: number, cc: any) => s + cc.valor, 0);
     const despAdmin = data.custos.filter((cc: any) => cc.tipo === 'despesa_administrativa').reduce((s: number, cc: any) => s + cc.valor, 0);
-    const lucroBruto = faturamento - custosDiretos;
+    
+    // Custos from pedidos (custo_total field)
+    const custoPedidos = pedidosAtivos.reduce((s: number, p: any) => s + (p.custo_total || 0), 0);
+    
+    // Total costs = table costs + pedido costs
+    const totalCustos = totalCustosTabela + custoPedidos;
+    
+    const lucroBruto = faturamento - custosDiretos - custoPedidos;
     const lucroLiquido = faturamento - totalCustos;
     const pctConsumo = c.valor_global > 0 ? (c.valor_consumido / c.valor_global) * 100 : 0;
     const diasRestantes = c.data_fim ? Math.ceil((new Date(c.data_fim).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
@@ -52,13 +65,13 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const meses: Record<string, number> = {};
     pedidosAtivos.forEach((p: any) => { if (p.data_pedido) { const k = p.data_pedido.substring(0, 7); meses[k] = (meses[k] || 0) + (p.valor_total || 0); } });
     const pedidosPorMes = Object.entries(meses).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
-    return { c, pedidosAtivos, faturamento, totalCustos, custosDiretos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, itensAlertaSaldo, pedidosPorMes };
+    return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, itensAlertaSaldo, pedidosPorMes };
   }, [data]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!calc) return <Card className="p-8 text-center text-muted-foreground">Contrato não encontrado</Card>;
 
-  const { c, pedidosAtivos, faturamento, totalCustos, custosDiretos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, itensAlertaSaldo, pedidosPorMes } = calc;
+  const { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, itensAlertaSaldo, pedidosPorMes } = calc;
   const margemBruta = faturamento > 0 ? (lucroBruto / faturamento) * 100 : 0;
   const margemLiquida = faturamento > 0 ? (lucroLiquido / faturamento) * 100 : 0;
 
@@ -74,6 +87,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         </div>
       )}
 
+      {/* Cards visíveis para todos */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className="p-4">
           <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] mb-1"><DollarSign className="w-3.5 h-3.5" /> Valor Global</div>
@@ -96,42 +110,50 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Card className="p-4 border-l-4 border-l-accent">
-          <div className="text-[10px] text-muted-foreground mb-1">Faturamento</div>
-          <p className="text-lg font-bold">{fmt(faturamento)}</p>
-        </Card>
-        <Card className="p-4 border-l-4 border-l-destructive">
-          <div className="text-[10px] text-muted-foreground mb-1">Custos Totais</div>
-          <p className="text-lg font-bold text-destructive">{fmt(totalCustos)}</p>
-        </Card>
-        <Card className={`p-4 border-l-4 ${lucroBruto >= 0 ? 'border-l-success' : 'border-l-destructive'}`}>
-          <div className="text-[10px] text-muted-foreground mb-1">Lucro Bruto</div>
-          <p className={`text-lg font-bold ${lucroBruto >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(lucroBruto)}</p>
-          <p className="text-[9px] text-muted-foreground">Margem: {margemBruta.toFixed(1)}%</p>
-        </Card>
-        <Card className={`p-4 border-l-4 ${lucroLiquido >= 0 ? 'border-l-success' : 'border-l-destructive'}`}>
-          <div className="text-[10px] text-muted-foreground mb-1">Lucro Líquido</div>
-          <p className={`text-lg font-bold ${lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(lucroLiquido)}</p>
-          <p className="text-[9px] text-muted-foreground">Margem: {margemLiquida.toFixed(1)}%</p>
-        </Card>
-      </div>
+      {/* Cards financeiros - apenas admin/financeiro */}
+      {podeVerCustos && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card className="p-4 border-l-4 border-l-accent">
+            <div className="text-[10px] text-muted-foreground mb-1">Faturamento</div>
+            <p className="text-lg font-bold">{fmt(faturamento)}</p>
+          </Card>
+          <Card className="p-4 border-l-4 border-l-destructive">
+            <div className="text-[10px] text-muted-foreground mb-1">Custos Totais</div>
+            <p className="text-lg font-bold text-destructive">{fmt(totalCustos)}</p>
+            {custoPedidos > 0 && (
+              <p className="text-[9px] text-muted-foreground">Custos pedidos: {fmt(custoPedidos)}</p>
+            )}
+          </Card>
+          <Card className={`p-4 border-l-4 ${lucroBruto >= 0 ? 'border-l-success' : 'border-l-destructive'}`}>
+            <div className="text-[10px] text-muted-foreground mb-1">Lucro Bruto</div>
+            <p className={`text-lg font-bold ${lucroBruto >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(lucroBruto)}</p>
+            <p className="text-[9px] text-muted-foreground">Margem: {margemBruta.toFixed(1)}%</p>
+          </Card>
+          <Card className={`p-4 border-l-4 ${lucroLiquido >= 0 ? 'border-l-success' : 'border-l-destructive'}`}>
+            <div className="text-[10px] text-muted-foreground mb-1">Lucro Líquido</div>
+            <p className={`text-lg font-bold ${lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(lucroLiquido)}</p>
+            <p className="text-[9px] text-muted-foreground">Margem: {margemLiquida.toFixed(1)}%</p>
+          </Card>
+        </div>
+      )}
 
-      {totalCustos > 0 && (
+      {/* Composição de custos - apenas admin/financeiro */}
+      {podeVerCustos && totalCustos > 0 && (
         <Card className="p-4">
           <h4 className="text-xs font-semibold mb-3 flex items-center gap-1.5"><Receipt className="w-4 h-4 text-accent" /> Composição de Custos</h4>
           <div className="space-y-2">
             {[
-              { label: 'Custos Diretos', valor: custosDiretos, color: 'bg-accent' },
-              { label: 'Desp. Administrativas', valor: despAdmin, color: 'bg-primary' },
+              { label: 'Custos Diretos (Pedidos)', valor: custoPedidos, color: 'bg-primary' },
+              { label: 'Custos Diretos (Outros)', valor: custosDiretos, color: 'bg-accent' },
+              { label: 'Desp. Administrativas', valor: despAdmin, color: 'bg-secondary' },
               { label: 'Frete / Logística', valor: frete, color: 'bg-warning' },
               { label: 'Tributos', valor: tributos, color: 'bg-destructive' },
-              { label: 'Outros', valor: totalCustos - custosDiretos - despAdmin - frete - tributos, color: 'bg-muted-foreground' },
+              { label: 'Outros', valor: totalCustosTabela - custosDiretos - despAdmin - frete - tributos, color: 'bg-muted-foreground' },
             ].filter(x => x.valor > 0).map(item => {
               const pct = totalCustos > 0 ? (item.valor / totalCustos) * 100 : 0;
               return (
                 <div key={item.label} className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground w-36">{item.label}</span>
+                  <span className="text-xs text-muted-foreground w-40">{item.label}</span>
                   <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
                     <div className={`h-full ${item.color} rounded-full`} style={{ width: `${pct}%` }} />
                   </div>
@@ -140,6 +162,16 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                 </div>
               );
             })}
+          </div>
+        </Card>
+      )}
+
+      {/* Aviso para não-financeiros */}
+      {!podeVerCustos && (
+        <Card className="p-4 border border-dashed border-muted-foreground/30">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs">
+            <Lock className="w-4 h-4" />
+            <span>Custos, margens e lucratividade são visíveis apenas para o setor Financeiro e Administradores.</span>
           </div>
         </Card>
       )}

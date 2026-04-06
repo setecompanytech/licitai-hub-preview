@@ -11,14 +11,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, FileText, Download, ClipboardList, DollarSign } from 'lucide-react';
+import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, FileText, Download, ClipboardList, DollarSign, Truck, ShoppingCart, Briefcase } from 'lucide-react';
 import RelatorioAtividades from '@/components/equipe/RelatorioAtividades';
 import TarefasColaborador from '@/components/equipe/TarefasColaborador';
 import ComissoesColaborador from '@/components/equipe/ComissoesColaborador';
+import { MODULOS_SISTEMA } from '@/hooks/useMembroPermissoes';
 
 const EQUIPES = [
   { value: 'geral', label: 'Geral', icon: Settings, color: 'bg-muted text-muted-foreground' },
-  { value: 'juridico', label: 'Jurídico', icon: Scale, color: 'bg-blue-500/15 text-blue-600' },
+  { value: 'financeiro', label: 'Financeiro', icon: DollarSign, color: 'bg-green-500/15 text-green-600' },
+  { value: 'comercial', label: 'Comercial', icon: Briefcase, color: 'bg-blue-500/15 text-blue-600' },
+  { value: 'logistica', label: 'Logística', icon: Truck, color: 'bg-orange-500/15 text-orange-600' },
+  { value: 'juridico', label: 'Jurídico', icon: Scale, color: 'bg-indigo-500/15 text-indigo-600' },
   { value: 'contabil', label: 'Contábil', icon: Calculator, color: 'bg-emerald-500/15 text-emerald-600' },
   { value: 'licitacoes', label: 'Licitações', icon: Search, color: 'bg-amber-500/15 text-amber-600' },
   { value: 'documentos', label: 'Documentos', icon: FileText, color: 'bg-purple-500/15 text-purple-600' },
@@ -52,6 +56,8 @@ export default function EquipeColaboradores() {
   const [invitePapel, setInvitePapel] = useState('operador');
   const [inviteEquipes, setInviteEquipes] = useState<string[]>(['geral']);
   const [saving, setSaving] = useState(false);
+  const [permDialog, setPermDialog] = useState<Membro | null>(null);
+  const [permissoesSel, setPermissoesSel] = useState<string[]>([]);
 
   const currentMembro = empresas.find(e => e.empresa_id === empresaAtiva?.id);
   const isAdmin = currentMembro?.papel === 'admin';
@@ -138,6 +144,23 @@ export default function EquipeColaboradores() {
     }
   };
 
+  const openPermDialog = (m: Membro) => {
+    setPermDialog(m);
+    setPermissoesSel(Array.isArray((m as any).permissoes) ? (m as any).permissoes : []);
+  };
+
+  const handleSavePermissoes = async () => {
+    if (!permDialog) return;
+    const { error } = await supabase.from('empresa_membros').update({ permissoes: permissoesSel } as any).eq('id', permDialog.id);
+    if (error) {
+      toast.error('Erro ao atualizar permissões');
+    } else {
+      toast.success('Permissões atualizadas');
+      setPermDialog(null);
+      loadMembros();
+    }
+  };
+
   const getEquipeInfo = (equipe: string) => EQUIPES.find(e => e.value === equipe) || EQUIPES[0];
 
   return (
@@ -186,7 +209,7 @@ export default function EquipeColaboradores() {
 
             <TabsContent value="membros">
               {/* Equipe summary cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
                 {EQUIPES.map(eq => {
                   const count = membros.filter(m => (m as any).equipe === eq.value || (!((m as any).equipe) && eq.value === 'geral')).length;
                   return (
@@ -250,6 +273,9 @@ export default function EquipeColaboradores() {
                                 ))}
                               </SelectContent>
                             </Select>
+                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => openPermDialog(m)} title="Gerenciar Permissões">
+                              <Shield className="w-4 h-4" />
+                            </Button>
                             <Button variant="ghost" size="icon" className="text-destructive/60 hover:text-destructive h-8 w-8" onClick={() => handleRemove(m.id, (m as any).nome || 'Colaborador')}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -342,6 +368,61 @@ export default function EquipeColaboradores() {
               <Button variant="outline" onClick={() => setShowInvite(false)}>Cancelar</Button>
               <Button onClick={handleInvite} disabled={saving || !inviteEmail.trim() || inviteEquipes.length === 0} className="bg-accent hover:bg-accent/90 text-accent-foreground">
                 {saving ? 'Adicionando...' : 'Adicionar'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Permissions Dialog */}
+        <Dialog open={!!permDialog} onOpenChange={(v) => !v && setPermDialog(null)}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-accent" />
+                Permissões de {(permDialog as any)?.nome || 'Colaborador'}
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-xs text-muted-foreground mb-2">
+              Setor: <Badge className={`text-[10px] ${getEquipeInfo((permDialog as any)?.equipe || 'geral').color}`}>
+                {getEquipeInfo((permDialog as any)?.equipe || 'geral').label}
+              </Badge>
+              — Os módulos padrão do setor são habilitados automaticamente. Selecione módulos adicionais abaixo:
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {MODULOS_SISTEMA.map(mod => {
+                const isDefault = mod.setores.includes((permDialog as any)?.equipe || 'geral');
+                const checked = permissoesSel.includes(mod.value) || isDefault;
+                return (
+                  <label
+                    key={mod.value}
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors text-sm ${
+                      checked ? 'border-accent bg-accent/10' : 'border-border hover:bg-muted/50'
+                    } ${isDefault ? 'opacity-80' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={isDefault}
+                      onChange={() => {
+                        if (isDefault) return;
+                        setPermissoesSel(prev =>
+                          prev.includes(mod.value)
+                            ? prev.filter(v => v !== mod.value)
+                            : [...prev, mod.value]
+                        );
+                      }}
+                      className="accent-[hsl(var(--accent))]"
+                    />
+                    <span className="text-xs">{mod.label}</span>
+                    {isDefault && <Badge variant="outline" className="text-[8px] ml-auto">Padrão</Badge>}
+                  </label>
+                );
+              })}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPermDialog(null)}>Cancelar</Button>
+              <Button onClick={handleSavePermissoes} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                Salvar Permissões
               </Button>
             </DialogFooter>
           </DialogContent>

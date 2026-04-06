@@ -20,6 +20,7 @@ import {
   Upload, FileText, AlertTriangle, DollarSign, Receipt
 } from 'lucide-react';
 import GerarPreNotaDialog from './GerarPreNotaDialog';
+import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -57,6 +58,8 @@ const tiposDocumento = [
 export default function ContratoPedidos({ contratoId }: { contratoId: string }) {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
+  const { isFinanceiro, isAdmin } = useMembroPermissoes();
+  const podeVerCustos = isFinanceiro || isAdmin;
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [itens, setItens] = useState<ContratoItem[]>([]);
   const [nfsSync, setNfsSync] = useState<NotaFiscalSync[]>([]);
@@ -574,6 +577,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <TableHead className="text-xs text-center">Status</TableHead>
                 <TableHead className="text-xs">NF Comercial</TableHead>
                 <TableHead className="text-xs">NF-e Financeiro</TableHead>
+                {podeVerCustos && <TableHead className="text-xs text-right">Custo Unit</TableHead>}
+                {podeVerCustos && <TableHead className="text-xs text-right">Custo Total</TableHead>}
                 <TableHead className="text-xs w-20"></TableHead>
               </TableRow>
             </TableHeader>
@@ -619,6 +624,28 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                         <span className="text-muted-foreground/50">—</span>
                       )}
                     </TableCell>
+                    {podeVerCustos && (
+                      <TableCell className="text-xs text-right">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          className="h-7 w-20 text-xs text-right inline-block"
+                          defaultValue={(p as any).custo_unitario || 0}
+                          onBlur={async (e) => {
+                            const custo = parseFloat(e.target.value) || 0;
+                            if (custo !== ((p as any).custo_unitario || 0)) {
+                              await supabase.from('contrato_pedidos').update({ custo_unitario: custo } as any).eq('id', p.id);
+                              load();
+                            }
+                          }}
+                        />
+                      </TableCell>
+                    )}
+                    {podeVerCustos && (
+                      <TableCell className="text-xs text-right font-medium text-destructive">
+                        {fmt((p as any).custo_total || 0)}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="flex gap-1">
                         {!p.nf_quitada && p.status === 'entregue' && (
