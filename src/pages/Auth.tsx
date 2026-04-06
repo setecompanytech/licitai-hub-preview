@@ -121,7 +121,7 @@ export default function Auth() {
         setStep('mfa');
         return;
       }
-    } catch {}
+    } catch (error) { console.warn('[Auth] MFA check failed', error); }
     navigate(redirectAfterAuth);
   };
 
@@ -137,7 +137,8 @@ export default function Auth() {
       const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
       const text = await response.text();
       return text.split('\n').some(line => line.startsWith(suffix));
-    } catch {
+    } catch (error) {
+      console.warn('[Auth] Password breach check failed', error);
       return false; // fail open if API unreachable
     }
   };
