@@ -134,6 +134,7 @@ const adminItems: NavItem[] = [
   { icon: Target, label: 'Fontes Fabricantes', path: '/admin/fontes-fabricantes' },
   { icon: TrendingUp, label: 'Marketing', path: '/admin/marketing' },
   { icon: BarChart3, label: 'Relatório Contábil', path: '/relatorio-contabil' },
+  { icon: Send, label: 'Distribuição', path: '/admin/distribuicao' },
 ];
 
 interface AppSidebarProps {
