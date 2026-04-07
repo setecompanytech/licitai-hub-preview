@@ -97,16 +97,42 @@ export default function EditalUploader({ onExtracted, isExtracting, setIsExtract
       return;
     }
 
-    // Use up to 60k chars but prioritize beginning + end of document (prazos/condições often at end)
+    // Smart text slicing: prioritize Head (metadata), TR/items section (middle), and Tail (conditions)
     const fullText = text.trim();
     let truncated: string;
-    if (fullText.length <= 60000) {
+    if (fullText.length <= 80000) {
       truncated = fullText;
     } else {
-      // Take first 40k and last 20k to capture both items and conditions/prazos
-      const head = fullText.slice(0, 40000);
-      const tail = fullText.slice(-20000);
-      truncated = head + '\n\n[...]\n\n' + tail;
+      // Find Termo de Referência / items section in the middle of the document
+      const trPatterns = [
+        /termo\s+de\s+refer[eê]ncia/i,
+        /especifica[çc][ãa]o\s+t[ée]cnica/i,
+        /planilha\s+de\s+(itens|pre[çc]os)/i,
+        /objeto\s+da\s+licita[çc][ãa]o/i,
+        /dos\s+itens/i,
+        /descri[çc][ãa]o\s+dos?\s+itens?/i,
+      ];
+
+      let trStart = -1;
+      for (const pattern of trPatterns) {
+        const match = fullText.search(pattern);
+        if (match > 0) {
+          trStart = Math.max(0, match - 500); // small lookback for context
+          break;
+        }
+      }
+
+      const head = fullText.slice(0, 25000);
+      const tail = fullText.slice(-15000);
+
+      if (trStart > 25000 && trStart < fullText.length - 15000) {
+        // TR is in the middle — grab a 30k window around it
+        const trChunk = fullText.slice(trStart, trStart + 30000);
+        truncated = head + '\n\n[... TERMO DE REFERÊNCIA ...]\n\n' + trChunk + '\n\n[...]\n\n' + tail;
+      } else {
+        // TR not found in middle or is within head/tail already — use 40k head + 20k tail
+        truncated = fullText.slice(0, 40000) + '\n\n[...]\n\n' + tail;
+      }
     }
 
     setProgress('Analisando edital com IA...');
@@ -162,6 +188,9 @@ REGRAS CRÍTICAS:
 - NÃO invente valores de referência que não existem no documento
 - Se não encontrar um campo, use string vazia ""
 - Retorne APENAS JSON válido
+- ATENÇÃO: os itens podem estar no TERMO DE REFERÊNCIA (Anexo I), em tabelas de preços, ou em seções como "DOS ITENS", "PLANILHA DE PREÇOS", "ESPECIFICAÇÕES TÉCNICAS"
+- Procure itens em TODAS as seções do documento, incluindo anexos e termos de referência
+- Itens podem estar numerados como "Item 1", "Lote 1", ou em formato tabular com colunas
 
 TEXTO DO DOCUMENTO:
 ${truncated}`
