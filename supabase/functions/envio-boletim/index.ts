@@ -514,16 +514,44 @@ serve(async (req) => {
           continue;
         }
 
+        // Deduplicate: remove editais already sent to this user in last 24h
+        const deduplicated = await deduplicateForUser(supabase, sub.user_id, filtered);
+
+        if (deduplicated.length === 0) {
+          allResults.push({ email: sub.email, success: true, licitacoes_count: 0, detail: "Todos editais já enviados anteriormente" });
+          continue;
+        }
+
         // Get WhatsApp number if enabled
         const whatsappNumber = await getWhatsAppNumber(supabase, sub.user_id);
 
         let emailsOk = 0;
         let emailsFail = 0;
 
-        for (const lic of filtered) {
-          // Send email
-          const emailResult = await sendEmail(supabaseUrl, supabaseServiceKey, sub.email, tipo, lic);
-          if (emailResult.ok) emailsOk++; else emailsFail++;
+        for (let i = 0; i < deduplicated.length; i++) {
+          const lic = deduplicated[i];
+
+          // Generate dynamic subject
+          const dynamicSubject = generateDynamicSubject(tipo, deduplicated, i);
+
+          // Send email with dynamic subject override
+          const emailResult = await sendEmail(supabaseUrl, supabaseServiceKey, sub.email, tipo, lic, dynamicSubject);
+          if (emailResult.ok) {
+            emailsOk++;
+            // Log to notificacoes_enviadas for future deduplication
+            await supabase.from("notificacoes_enviadas").insert({
+              user_id: sub.user_id,
+              alerta_ref_id: lic.numero_processo || lic.titulo || '',
+              alerta_tipo: "boletim_" + tipo,
+              alerta_titulo: (lic.objeto || lic.titulo || '').substring(0, 120),
+              canal: "email",
+              destinatario: sub.email,
+              status: "enviado",
+              enviado_em: new Date().toISOString(),
+            });
+          } else {
+            emailsFail++;
+          }
 
           // Send WhatsApp if enabled
           if (whatsappNumber) {
@@ -536,14 +564,16 @@ serve(async (req) => {
           user_id: sub.user_id,
           tipo,
           email: sub.email,
-          status: emailsFail === 0 ? "enviado" : emailsFail === filtered.length ? "erro" : "parcial",
-          erro: emailsFail > 0 ? `${emailsFail}/${filtered.length} falharam` : null,
+          status: emailsFail === 0 ? "enviado" : emailsFail === deduplicated.length ? "erro" : "parcial",
+          erro: emailsFail > 0 ? `${emailsFail}/${deduplicated.length} falharam` : null,
         });
 
         allResults.push({
           email: sub.email,
           success: true,
-          licitacoes_count: filtered.length,
+          licitacoes_count: deduplicated.length,
+          licitacoes_filtradas: filtered.length,
+          licitacoes_deduplicadas: filtered.length - deduplicated.length,
           fontes: { monitoramento: monitoramento.length, pncp_comprasnet: pncpCache.length },
           emails_sent: emailsOk,
           emails_failed: emailsFail,
