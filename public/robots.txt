@@ -12,5 +12,10 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /functions/
+Disallow: /auth/
+Disallow: /rest/
+Disallow: /storage/
 
 Sitemap: https://praefectus.com.br/sitemap.xml
