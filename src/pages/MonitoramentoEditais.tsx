@@ -271,6 +271,9 @@ export default function MonitoramentoEditais() {
             <GuiaComprasGov />
             <ConfiguracaoPesquisaTab />
           </TabsContent>
+          <TabsContent value="editais-licitacoes">
+            <EditaisLicitacoes />
+          </TabsContent>
         </Tabs>
       </div>
     </AppLayout>
