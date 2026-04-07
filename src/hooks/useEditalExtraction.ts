@@ -199,9 +199,17 @@ export function useEditalExtraction() {
     return true;
   }, [user]);
 
-  const invokeExtraction = useCallback(async (textoEdital: string, skipMinLength = false): Promise<ExtractedItemPayload[]> => {
+  const invokeExtraction = useCallback(async (
+    textoEdital: string,
+    skipMinLength = false,
+    extraParams?: { pdf_base64?: string; pdf_url?: string; orgao_cnpj?: string; ano_compra?: number; sequencial?: number }
+  ): Promise<ExtractedItemPayload[]> => {
     const { data, error } = await supabase.functions.invoke('extrair-itens-edital', {
-      body: { texto_edital: textoEdital, skip_min_length: skipMinLength },
+      body: {
+        texto_edital: textoEdital,
+        skip_min_length: skipMinLength,
+        ...extraParams,
+      },
     });
 
     if (error || !data?.success) {
@@ -213,8 +221,24 @@ export function useEditalExtraction() {
 
   const extrairItensDoTexto = useCallback(async (
     fileText: string,
-    opts?: { skipValidation?: boolean }
+    opts?: { skipValidation?: boolean; pdf_base64?: string; pdf_url?: string; orgao_cnpj?: string; ano_compra?: number; sequencial?: number }
   ): Promise<ExtractedItemPayload[]> => {
+    // Se PDF base64 ou URL disponível, enviar direto (sem chunking - Claude processa nativo)
+    if (opts?.pdf_base64 || opts?.pdf_url) {
+      try {
+        const directItems = await invokeExtraction('', true, {
+          pdf_base64: opts.pdf_base64,
+          pdf_url: opts.pdf_url,
+          orgao_cnpj: opts.orgao_cnpj,
+          ano_compra: opts.ano_compra,
+          sequencial: opts.sequencial,
+        });
+        if (directItems.length > 0) return directItems;
+      } catch (e) {
+        console.warn('[useEditalExtraction] PDF direto falhou, tentando texto:', e);
+      }
+    }
+
     const normalizedText = sanitizeExtractionText(fileText).replace(/\s+/g, ' ').trim();
     const lowerText = normalizedText.toLowerCase();
     const extractionMarkers = [
