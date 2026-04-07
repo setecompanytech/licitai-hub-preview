@@ -28,6 +28,7 @@ import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 import AureliaEditalPanel from '@/components/aurelia/AureliaEditalPanel';
 import { MUNICIPIO_IBGE } from '@/constants/pncpMappings';
+import { MODALIDADE_PNCP, ESFERA_PNCP } from '@/constants/pncpMappings';
 
 type DetalhePNCP = {
   success: boolean;
@@ -208,6 +209,8 @@ export default function MuralLicitacoes() {
   const [error, setError] = useState<string | null>(null);
   const [pagina, setPagina] = useState(1);
   const ultimaBuscaRef = useRef(0);
+  const [ultimaSync, setUltimaSync] = useState<Date | null>(null);
+  const [totalCacheGlobal, setTotalCacheGlobal] = useState(0);
 
   // Filtros principais
   const [ufFiltro, setUfFiltro] = useState<string>('all');
@@ -430,33 +433,55 @@ export default function MuralLicitacoes() {
     leiBase: item.lei_base || null,
   });
 
-  // ── FASE 1: Carregamento instantâneo do cache local ──
+  // ── FASE 1: Busca instantânea via RPC (< 150ms) ──
   const carregarCache = useCallback(async (requestId?: number) => {
     try {
-      let query = supabase.from('pncp_editais_cache').select('*');
-      if (ufFiltro !== 'all') query = query.eq('uf', ufFiltro);
-      if (searchSubmitted) query = query.ilike('objeto', `%${searchSubmitted}%`);
-      if (uasgSubmitted) {
-        const clean = uasgSubmitted.replace(/[.\-\/\s]/g, '');
-        if (clean.length === 14 || clean.length === 11) query = query.eq('cnpj_orgao', clean);
-      }
-      if (modalidadeFiltro !== 'all') {
-        const modLabel = MODALIDADES.find(m => m.value === modalidadeFiltro);
-        if (modLabel) query = query.eq('modalidade_id', modLabel.cod);
-      }
-      // Municipality filter — exact match from IBGE-sourced name
-      if (municipioFiltro.trim()) query = query.ilike('municipio', `%${municipioFiltro.trim()}%`);
-      // Esfera filter — applied at cache level when possible
-      if (esferaFiltro !== 'all') {
-        const esferaCodigo = esferaFiltro === 'Federal' ? 'F' : esferaFiltro === 'Estadual' ? 'E' : esferaFiltro === 'Municipal' ? 'M' : esferaFiltro === 'Distrital' ? 'D' : '';
-        if (esferaCodigo) query = query.eq('esfera_id', esferaCodigo);
-      }
-      if (dataInicio) query = query.gte('data_publicacao_pncp', dataInicio.toISOString().split('T')[0]);
-      if (dataFim) query = query.lte('data_publicacao_pncp', dataFim.toISOString().split('T')[0] + 'T23:59:59');
+      // Converter filtros UI → parâmetros RPC
+      const modalidadeId = modalidadeFiltro !== 'all'
+        ? (MODALIDADES.find(m => m.value === modalidadeFiltro)?.cod ?? null)
+        : null;
+      const esferaCodigo = esferaFiltro !== 'all'
+        ? (esferaFiltro === 'Federal' ? 'F' : esferaFiltro === 'Estadual' ? 'E' : esferaFiltro === 'Municipal' ? 'M' : esferaFiltro === 'Distrital' ? 'D' : null)
+        : null;
+      const municipioIbge = municipioFiltro.trim() ? (MUNICIPIO_IBGE[municipioFiltro.trim()] || null) : null;
 
-      query = query.order('data_publicacao_pncp', { ascending: false }).limit(1000);
-      const { data } = await query;
-      const items = data?.map(mapToMural) ?? [];
+      const { data, error: rpcError } = await supabase.rpc(
+        'busca_editais_instantanea' as any,
+        {
+          p_q: searchSubmitted?.trim() || null,
+          p_uf: ufFiltro !== 'all' ? ufFiltro : null,
+          p_municipio_ibge: municipioIbge,
+          p_esfera: esferaCodigo,
+          p_modalidade_id: modalidadeId,
+          p_segmento: null,
+          p_data_inicio: dataInicio ? dataInicio.toISOString().split('T')[0] : null,
+          p_data_fim: dataFim ? dataFim.toISOString().split('T')[0] : null,
+          p_ordenacao: 'data_publicacao',
+          p_direcao: 'desc',
+          p_pagina: pagina,
+          p_tamanho: 50,
+        }
+      );
+
+      if (rpcError) {
+        console.error('[BUSCA INSTANTÂNEA] RPC error, falling back to query builder:', rpcError);
+        // Fallback ao query builder original
+        let query = supabase.from('pncp_editais_cache').select('*');
+        if (ufFiltro !== 'all') query = query.eq('uf', ufFiltro);
+        if (searchSubmitted) query = query.ilike('objeto', `%${searchSubmitted}%`);
+        if (modalidadeId) query = query.eq('modalidade_id', modalidadeId);
+        if (esferaCodigo) query = query.eq('esfera_id', esferaCodigo);
+        if (dataInicio) query = query.gte('data_publicacao_pncp', dataInicio.toISOString().split('T')[0]);
+        if (dataFim) query = query.lte('data_publicacao_pncp', dataFim.toISOString().split('T')[0] + 'T23:59:59');
+        query = query.order('data_publicacao_pncp', { ascending: false }).limit(1000);
+        const { data: fallbackData } = await query;
+        const items = fallbackData?.map(mapToMural) ?? [];
+        if (requestId !== undefined && requestId !== ultimaBuscaRef.current) return [];
+        setLicitacoesRaw(items);
+        return items;
+      }
+
+      const items = (data ?? []).map(mapToMural);
 
       if (requestId !== undefined && requestId !== ultimaBuscaRef.current) {
         return [];
@@ -468,7 +493,7 @@ export default function MuralLicitacoes() {
       console.error('Cache load error:', err);
       return [];
     }
-  }, [ufFiltro, modalidadeFiltro, esferaFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro]);
+  }, [ufFiltro, modalidadeFiltro, esferaFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro, pagina]);
 
   // ── FASE 2: Sincronização em tempo real com PNCP (background) ──
   const sincronizarPNCP = useCallback(async (requestId?: number, cacheItems: LicitacaoMural[] = []) => {
@@ -797,6 +822,35 @@ export default function MuralLicitacoes() {
   useEffect(() => {
     if (user) carregarMural();
   }, [carregarMural, user]);
+
+  // ── Status da sincronização (total e última atualização) ──
+  useEffect(() => {
+    supabase
+      .from('pncp_editais_cache')
+      .select('*', { count: 'exact', head: true })
+      .then(({ count }) => setTotalCacheGlobal(count ?? 0));
+    supabase
+      .from('pncp_editais_cache')
+      .select('updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        if (data?.updated_at) setUltimaSync(new Date(data.updated_at));
+      });
+  }, []);
+
+  // Realtime: atualizar contagem quando novos editais chegam
+  useEffect(() => {
+    const canal = supabase
+      .channel('mural-sync-status')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pncp_editais_cache' }, () => {
+        setUltimaSync(new Date());
+        setTotalCacheGlobal(prev => prev + 1);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(canal); };
+  }, []);
 
   // Trigger external search when toggle is on and search changes
   useEffect(() => {
@@ -1394,6 +1448,16 @@ export default function MuralLicitacoes() {
               <p className="text-[10px] sm:text-[11px] text-muted-foreground">
                 Dados em tempo real da API oficial do Portal Nacional de Contratações Públicas
               </p>
+              {totalCacheGlobal > 0 && (
+                <p className="text-[10px] text-muted-foreground/70 flex items-center gap-1 mt-0.5">
+                  <CheckCircle2 className="w-3 h-3 text-success" />
+                  {totalCacheGlobal.toLocaleString('pt-BR')} editais indexados
+                  {ultimaSync && (() => {
+                    const min = Math.floor((Date.now() - ultimaSync.getTime()) / 60000);
+                    return ` · atualizado há ${min < 1 ? 'menos de 1 min' : min + ' min'}`;
+                  })()}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
