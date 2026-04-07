@@ -90,6 +90,7 @@ export default function Index() {
         <ValorChart data={chartValor} />
       </div>
       <OnboardingWizard open={showOnboarding} onClose={dismissOnboarding} />
+      <ColaboradorIdentificacaoModal />
     </AppLayout>
   );
 }
