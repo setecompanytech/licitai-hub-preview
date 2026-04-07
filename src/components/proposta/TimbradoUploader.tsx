@@ -241,10 +241,27 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         const hPath = (data as any).cabecalho_path || data.timbrado_path || null;
         const fUrl = (data as any).rodape_url || null;
         const fPath = (data as any).rodape_path || null;
-        setHeader({ url: hUrl, path: hPath });
-        setFooter({ url: fUrl, path: fPath });
-        setTimbradoUrl(hUrl);
-        if (hUrl && fUrl) setSplitDone(true);
+
+        // If saved URL points to a non-image file (e.g. .docx), clear it
+        // so the user can re-upload properly
+        const isValidImage = (url: string | null) => !url || /\.(png|jpe?g|webp|svg)(\?|$)/i.test(url);
+
+        if (isValidImage(hUrl)) {
+          setHeader({ url: hUrl, path: hPath });
+          setTimbradoUrl(hUrl);
+        } else {
+          // Non-image timbrado URL — don't use as image, reset so user can re-upload
+          setHeader({ url: null, path: null });
+          setTimbradoUrl(null);
+        }
+
+        if (isValidImage(fUrl)) {
+          setFooter({ url: fUrl, path: fPath });
+        } else {
+          setFooter({ url: null, path: null });
+        }
+
+        if (isValidImage(hUrl) && hUrl && isValidImage(fUrl) && fUrl) setSplitDone(true);
       });
   }, [empresaId]);
 
