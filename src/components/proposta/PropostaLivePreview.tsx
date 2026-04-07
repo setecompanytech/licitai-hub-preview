@@ -112,7 +112,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
       }}
     >
       {/* Marca d'água */}
-      {usarMarcaDagua && timbradoUrl && (
+      {usarMarcaDagua && timbradoUrl && /\.(png|jpe?g|webp|svg)(\?|$)/i.test(timbradoUrl) && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
           <img src={timbradoUrl} alt="" className="w-[250px] h-[250px] object-contain opacity-[0.05]" style={{ transform: 'rotate(-25deg)' }} />
         </div>
@@ -120,7 +120,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
 
       <div className="relative z-10 space-y-4">
         {/* ── TIMBRADO ── */}
-        {timbradoUrl ? (
+        {timbradoUrl && /\.(png|jpe?g|webp|svg)(\?|$)/i.test(timbradoUrl) ? (
           <div className="border-b-2 border-black pb-3 mb-3 text-center">
             <img src={timbradoUrl} alt="Timbrado" className="h-16 max-w-[280px] object-contain mx-auto" />
           </div>
