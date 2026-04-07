@@ -188,6 +188,9 @@ REGRAS CRÍTICAS:
 - NÃO invente valores de referência que não existem no documento
 - Se não encontrar um campo, use string vazia ""
 - Retorne APENAS JSON válido
+- ATENÇÃO: os itens podem estar no TERMO DE REFERÊNCIA (Anexo I), em tabelas de preços, ou em seções como "DOS ITENS", "PLANILHA DE PREÇOS", "ESPECIFICAÇÕES TÉCNICAS"
+- Procure itens em TODAS as seções do documento, incluindo anexos e termos de referência
+- Itens podem estar numerados como "Item 1", "Lote 1", ou em formato tabular com colunas
 
 TEXTO DO DOCUMENTO:
 ${truncated}`
