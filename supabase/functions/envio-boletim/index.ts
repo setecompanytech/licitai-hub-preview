@@ -137,10 +137,10 @@ async function fetchPncpEditaisCache(supabase: any, tipo: string, ufsInteresse: 
 
   let query = supabase
     .from("pncp_editais_cache")
-    .select("objeto, orgao, valor_total_estimado, uf, municipio, data_abertura_proposta, situacao, numero_compra, modalidade_nome, uasg_codigo, fonte, link_comprasnet, link_sistema_origem, data_publicacao_pncp, lei_base")
+    .select("objeto, orgao, valor_total_estimado, uf, municipio, data_abertura_proposta, situacao, numero_compra, modalidade_nome, uasg_codigo, fonte, link_comprasnet, link_sistema_origem, data_publicacao_pncp, lei_base, cnpj_orgao")
     .gte("created_at", ontemISO)
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(500);
 
   if (ufsInteresse.length > 0) {
     query = query.in("uf", ufsInteresse);
@@ -149,11 +149,11 @@ async function fetchPncpEditaisCache(supabase: any, tipo: string, ufsInteresse: 
   // Filter by situacao based on tipo
   if (tipo === "manha") {
     // New tenders — any situation that indicates open/published
-    query = query.in("situacao", ["Divulgada no PNCP", "Aberta", "Publicada", "divulgada"]);
+    query = query.in("situacao", ["Divulgada no PNCP", "Aberta", "Publicada", "divulgada", "Em andamento", "Suspensa e Reaberta"]);
   } else if (tipo === "meiodia") {
-    query = query.in("situacao", ["Suspensa", "Revogada", "Anulada", "Retificada"]);
+    query = query.in("situacao", ["Suspensa", "Revogada", "Anulada", "Retificada", "Adiada"]);
   } else {
-    query = query.in("situacao", ["Homologada", "Adjudicada", "Encerrada", "Concluída"]);
+    query = query.in("situacao", ["Homologada", "Adjudicada", "Encerrada", "Concluída", "Deserta", "Fracassada"]);
   }
 
   const { data } = await query;
@@ -163,6 +163,12 @@ async function fetchPncpEditaisCache(supabase: any, tipo: string, ufsInteresse: 
     const tituloFormatado = modalidade && numero
       ? `${modalidade} Nº ${numero}`
       : numero || modalidade || 'Processo sem número';
+
+    // Build best URL available
+    const urlEdital = r.link_sistema_origem || null;
+    const urlPortal = r.link_comprasnet ||
+      (r.cnpj_orgao && numero ? `https://pncp.gov.br/app/editais/${r.cnpj_orgao}/${new Date().getFullYear()}/${numero}` : null) ||
+      (numero ? `https://pncp.gov.br/app/editais?q=${encodeURIComponent(numero)}` : null);
 
     return {
       titulo: tituloFormatado,
@@ -176,7 +182,9 @@ async function fetchPncpEditaisCache(supabase: any, tipo: string, ufsInteresse: 
       modalidade: modalidade,
       objeto: r.objeto,
       codigo_uasg: r.uasg_codigo,
-      portal: r.link_comprasnet ? 'www.compras.gov.br' : r.link_sistema_origem ? 'PNCP' : '',
+      portal: r.link_comprasnet ? 'Compras.gov.br' : 'PNCP',
+      url_edital: urlEdital,
+      url_portal: urlPortal,
       fonte: r.fonte || 'pncp',
     };
   });
