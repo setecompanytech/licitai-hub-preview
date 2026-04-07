@@ -87,7 +87,7 @@ export default function CotacaoEditalAutoIA() {
       }
 
       const itemsCotados: ItemCotado[] = parsed
-        .map((item, index) => {
+        .map<ItemCotado>((item, index) => {
           const quantidade = Number(item.quantidade ?? 1);
 
           return {
