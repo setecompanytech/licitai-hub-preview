@@ -87,23 +87,42 @@ export default function EditalUploader({ onExtracted, isExtracting, setIsExtract
     setProgress('Lendo documento...');
     let content = '';
 
-    const text = await extractTextFromFile(editalFile);
+    const text = await extractTextFromFile(editalFile, 150, true);
     if (!text || text.trim().length < 50) {
       toast.error('Não foi possível extrair texto do documento. Verifique se o arquivo não está protegido ou corrompido.');
       setIsExtracting(false);
       setProgress('');
       return;
     }
-    const truncated = text.slice(0, 20000);
+
+    // Use up to 60k chars but prioritize beginning + end of document (prazos/condições often at end)
+    const fullText = text.trim();
+    let truncated: string;
+    if (fullText.length <= 60000) {
+      truncated = fullText;
+    } else {
+      // Take first 40k and last 20k to capture both items and conditions/prazos
+      const head = fullText.slice(0, 40000);
+      const tail = fullText.slice(-20000);
+      truncated = head + '\n\n[...]\n\n' + tail;
+    }
 
     setProgress('Analisando edital com IA...');
 
     await streamAIChat({
       messages: [{
         role: 'user',
-        content: `Você é um extrator de dados de editais de licitação pública. Analise o texto REAL do documento abaixo e extraia os dados estruturados.
+        content: `Você é um extrator especializado de dados de editais de licitação pública brasileira. Analise o texto REAL do documento abaixo e extraia TODOS os dados estruturados.
 
 REGRA FUNDAMENTAL: Extraia SOMENTE informações que REALMENTE existem no texto. NÃO invente dados. NÃO suponha valores. Se uma informação não está no documento, use string vazia "".
+
+ATENÇÃO ESPECIAL — busque cuidadosamente TODOS estes campos no documento:
+1. PRAZO DE ENTREGA — pode estar em seções como "Das Condições de Entrega", "Da Entrega", "Prazo de Execução", "Do Fornecimento", no Termo de Referência ou em Cláusulas do Contrato
+2. LOCAL DE ENTREGA — pode estar nas mesmas seções acima, geralmente com endereço completo
+3. PRAZO/CONDIÇÕES DE PAGAMENTO — seções como "Do Pagamento", "Das Condições de Pagamento"
+4. LIQUIDAÇÃO/NFe — como deve ser emitida a Nota Fiscal e condições de liquidação
+5. PRAZO DE VALIDADE DA PROPOSTA — geralmente 60 dias, mas extraia o valor EXATO do edital
+6. GARANTIA — prazo de garantia dos produtos/serviços conforme o edital
 
 Retorne APENAS JSON válido, sem explicações:
 {
@@ -112,17 +131,19 @@ Retorne APENAS JSON válido, sem explicações:
   "modalidade": "modalidade EXATA (Pregão Eletrônico, Concorrência, Dispensa, etc)",
   "objeto": "descrição EXATA do objeto conforme escrito no edital",
   "valorEstimado": "valor estimado EXATO se mencionado no documento",
-  "prazoValidade": "prazo de validade da proposta conforme o edital",
-  "prazoPagamento": "condições/prazo de pagamento EXATOS conforme o edital",
-  "prazoEntrega": "prazo de entrega EXATO conforme o edital",
-  "localEntrega": "local de entrega EXATO conforme o edital",
-  "liquidacaoNfe": "condições de liquidação e NF conforme o edital",
+  "prazoValidade": "prazo de validade da proposta conforme o edital (ex: '60 dias corridos')",
+  "prazoPagamento": "condições/prazo de pagamento COMPLETOS conforme o edital, incluindo forma de pagamento",
+  "prazoEntrega": "prazo de entrega COMPLETO conforme o edital (ex: 'Até 15 dias úteis após emissão da Ordem de Fornecimento')",
+  "localEntrega": "local de entrega COMPLETO com endereço conforme o edital",
+  "liquidacaoNfe": "condições de liquidação e emissão de Nota Fiscal conforme o edital",
+  "garantia": "prazo e condições de garantia conforme o edital",
+  "condicoesEntrega": "horários, dias, agendamento e outras condições de entrega conforme o edital",
   "itens": [
     {
       "item": "1",
-      "descricao": "descrição FIEL ao documento, incluindo especificações técnicas",
+      "descricao": "descrição FIEL e COMPLETA ao documento, incluindo TODAS as especificações técnicas",
       "quantidade": "quantidade EXATA conforme o edital",
-      "unidade": "unidade de medida EXATA (UN, CX, PCT, KG, etc)",
+      "unidade": "unidade de medida EXATA (UN, CX, PCT, KG, PACOTES, etc)",
       "marca": "marca se especificada no edital ou vazio",
       "fabricante": "fabricante se especificado ou vazio",
       "modelo": "modelo se especificado ou vazio",
@@ -133,7 +154,8 @@ Retorne APENAS JSON válido, sem explicações:
 }
 
 REGRAS CRÍTICAS:
-- Copie descrições FIELMENTE do documento. Se o edital diz "Papel A4 75g/m²", retorne exatamente isso
+- Copie descrições FIELMENTE do documento, incluindo especificações técnicas completas
+- NÃO resuma nem abrevie as descrições dos itens — copie na íntegra
 - NÃO substitua por produtos diferentes do que está escrito
 - NÃO invente valores de referência que não existem no documento
 - Se não encontrar um campo, use string vazia ""
