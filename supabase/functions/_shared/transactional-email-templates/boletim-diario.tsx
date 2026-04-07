@@ -1,7 +1,7 @@
 /// <reference types="npm:@types/react@18.3.1" />
 import * as React from 'npm:react@18.3.1'
 import {
-  Body, Container, Head, Heading, Html, Preview, Text, Hr, Section,
+  Body, Container, Head, Heading, Html, Preview, Text, Hr, Section, Button, Link,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
@@ -21,7 +21,9 @@ interface BoletimDiarioProps {
   modalidade?: string
   lei?: string
   portal?: string
-  urgencia?: 'critica' | 'alta' | 'normal'  // critica=<24h, alta=24-72h
+  url_edital?: string
+  url_portal?: string
+  urgencia?: 'critica' | 'alta' | 'normal'
   horas_restantes?: number
 }
 
@@ -53,6 +55,8 @@ const BoletimDiarioEmail = (props: BoletimDiarioProps) => {
     modalidade,
     lei,
     portal,
+    url_edital,
+    url_portal,
     urgencia = 'normal',
     horas_restantes,
   } = props
@@ -61,6 +65,9 @@ const BoletimDiarioEmail = (props: BoletimDiarioProps) => {
   const dataStr = data || new Date().toLocaleDateString('pt-BR')
   const localStr = [municipio, uf].filter(Boolean).join('/')
   const urg = urgenciaLabels[urgencia] || urgenciaLabels.normal
+
+  // Determine the best link to show
+  const linkEdital = url_edital || url_portal || null
 
   const previewText = numero_pregao
     ? `${urgencia !== 'normal' ? urg.texto + ' — ' : ''}${numero_pregao} ${localStr ? `PM ${localStr}` : ''}`
@@ -138,6 +145,23 @@ const BoletimDiarioEmail = (props: BoletimDiarioProps) => {
             </Section>
           )}
 
+          {/* Link para o edital / portal */}
+          {linkEdital && (
+            <Section style={{ padding: '16px 24px 4px' }}>
+              <Button
+                href={linkEdital}
+                style={btnEdital}
+              >
+                Acessar Edital no Portal
+              </Button>
+              <Text style={linkSmall}>
+                <Link href={linkEdital} style={{ color: '#1a5276', fontSize: '11px' }}>
+                  {linkEdital.length > 80 ? linkEdital.substring(0, 80) + '...' : linkEdital}
+                </Link>
+              </Text>
+            </Section>
+          )}
+
           <Hr style={divider} />
 
           <Section style={footerSection}>
@@ -166,7 +190,7 @@ export const template = {
 
     if (data.numero_pregao) {
       const local = [data.municipio, data.uf].filter(Boolean).join('/')
-      return `${urgPrefix}${data.numero_pregao}${local ? ` PM ${local}` : ''}`
+      return `${urgPrefix}${data.numero_pregao}${local ? ` - ${data.orgao?.substring(0, 30) || ''} ${local}` : ''}`
     }
     const cfg = tipoLabels[data.tipo] || tipoLabels.manha
     return `${urgPrefix}${cfg.label} — ${data.data || new Date().toLocaleDateString('pt-BR')}`
@@ -174,20 +198,20 @@ export const template = {
   displayName: 'Boletim Diario',
   previewData: {
     tipo: 'lembrete',
-    data: '06/04/2026',
-    numero_pregao: 'Pregao Eletronico No 90014/2026',
-    orgao: 'PREFEITURA MUNICIPAL DE IRITUIA',
-    codigo_uasg: '980469',
-    objeto: 'Aquisicao DE CESTAS BASICAS PARA ATENDER AS NECESSIDADES DA SECRETARIA MUNICIPAL DE TRABALHO E PROMOCAO SOCIAL DO MUNICIPIO DE IRITUIA/PA.',
-    municipio: 'Irituia',
+    data: '07/04/2026',
+    numero_pregao: 'Pregao Eletronico No PE/004.2026',
+    orgao: 'CAMARA MUNICIPAL DE TRAIRAO',
+    codigo_uasg: 'CMT',
+    objeto: 'REGISTRO DE PRECO PARA FUTURA E EVENTUAL CONTRATACAO DE EMPRESA ESPECIALIZADA NO FORNECIMENTO DE REFEICOES PRONTAS TIPO MARMITA, REFEICAO COMERCIAL, SERVICOS DE COFFEE BREAK, PARA ATENDER AS DEMANDAS DA CAMARA MUNICIPAL DE TRAIRAO',
+    municipio: 'Trairao',
     uf: 'PA',
-    valor_estimado: 'R$ 450.000,00',
-    data_abertura: 'em 17/04/2026 as 09:00Hs, no endereco: www.compras.gov.br',
+    valor_estimado: 'R$ 388.711,50',
+    data_abertura: '2026-04-07T10:00:00+00:00',
     modalidade: 'Pregao Eletronico',
-    lei: 'Lei No 14.133/2021',
-    portal: 'www.compras.gov.br',
+    portal: 'PNCP',
+    url_edital: 'https://pncp.gov.br/app/editais/12345678000190/2026/1',
     urgencia: 'critica',
-    horas_restantes: 18,
+    horas_restantes: 7,
   },
 } satisfies TemplateEntry
 
@@ -205,3 +229,14 @@ const objetoLabel = { fontSize: '13px', color: '#333333', margin: '0 0 4px', lin
 const objetoValue = { fontWeight: '700' as const }
 const footerSection = { padding: '16px 24px 20px' }
 const footerText = { fontSize: '11px', color: '#999999', margin: '0 0 2px', lineHeight: '1.5' }
+const btnEdital = {
+  backgroundColor: '#0c2d48',
+  color: '#ffffff',
+  fontSize: '13px',
+  fontWeight: '700' as const,
+  padding: '10px 24px',
+  textDecoration: 'none',
+  display: 'inline-block' as const,
+  borderRadius: '4px',
+}
+const linkSmall = { fontSize: '11px', color: '#666666', margin: '6px 0 0', lineHeight: '1.4' }
