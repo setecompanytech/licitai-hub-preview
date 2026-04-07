@@ -254,7 +254,7 @@ export function useEditalExtraction() {
 
     for (const chunk of chunks) {
       try {
-        const chunkItems = await invokeExtraction(chunk);
+        const chunkItems = await invokeExtraction(chunk, !!opts?.skipValidation);
         if (chunkItems.length > 0) {
           extractedItems.push(...chunkItems);
           hasSuccessfulChunk = true;
