@@ -21,6 +21,8 @@ interface LicitacaoComPrazo {
   horas_restantes: number;
   urgencia: 'critica' | 'alta';
   fonte: string;
+  url_edital: string | null;
+  url_portal: string | null;
 }
 
 // Parse various date formats from data_abertura fields
@@ -93,6 +95,11 @@ serve(async (req) => {
       const modalidade = r.modalidade_nome || '';
       const numero = r.numero_compra || '';
       
+      const urlEdital = r.link_sistema_origem || null;
+      const urlPortal = r.link_comprasnet ||
+        (r.cnpj_orgao && numero ? `https://pncp.gov.br/app/editais/${r.cnpj_orgao}/${new Date().getFullYear()}/${numero}` : null) ||
+        (numero ? `https://pncp.gov.br/app/editais?q=${encodeURIComponent(numero)}` : null);
+
       licitacoesUrgentes.push({
         numero_processo: modalidade && numero ? `${modalidade} Nº ${numero}` : numero || modalidade,
         orgao: r.orgao || '',
@@ -103,10 +110,12 @@ serve(async (req) => {
         data_abertura: r.data_abertura_proposta || '',
         codigo_uasg: r.uasg_codigo,
         modalidade: modalidade,
-        portal: r.link_comprasnet ? 'www.compras.gov.br' : 'PNCP',
+        portal: r.link_comprasnet ? 'Compras.gov.br' : 'PNCP',
         horas_restantes: horas,
         urgencia: horas <= 24 ? 'critica' : 'alta',
         fonte: r.fonte || 'pncp',
+        url_edital: urlEdital,
+        url_portal: urlPortal,
       });
     }
 
