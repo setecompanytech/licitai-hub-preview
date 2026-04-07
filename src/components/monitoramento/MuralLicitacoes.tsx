@@ -242,8 +242,8 @@ export default function MuralLicitacoes() {
   const [incluirExternos, setIncluirExternos] = useState(false);
   const [loadingExternos, setLoadingExternos] = useState(false);
   const [licitacoesExternas, setLicitacoesExternas] = useState<LicitacaoMural[]>([]);
-  // Dynamic municipality loading from IBGE API
-  const [municipiosUfSelecionada, setMunicipiosUfSelecionada] = useState<string[]>([]);
+  // Dynamic municipality loading from IBGE API (with IBGE codes)
+  const [municipiosUfSelecionada, setMunicipiosUfSelecionada] = useState<Array<{ nome: string; id: string }>>([]);
   const [carregandoMunicipios, setCarregandoMunicipios] = useState(false);
 
   useEffect(() => {
@@ -255,19 +255,19 @@ export default function MuralLicitacoes() {
     fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${ufFiltro}/municipios?orderBy=nome`)
       .then(r => r.json())
       .then((data: any[]) => {
-        setMunicipiosUfSelecionada(data.map((m: any) => m.nome as string));
+        setMunicipiosUfSelecionada(data.map((m: any) => ({ nome: m.nome as string, id: String(m.id) })));
       })
       .catch(() => {
         // Fallback to static data if IBGE API fails
-        const fallback: string[] = [];
+        const fallback: Array<{ nome: string; id: string }> = [];
         for (const regiao of Object.values(REGIOES_ESTADOS)) {
           const estado = regiao.estados.find(e => e.uf === ufFiltro);
           if (estado) {
-            fallback.push(...estado.cidades);
+            fallback.push(...estado.cidades.map(c => ({ nome: c, id: MUNICIPIO_IBGE[c] || '' })));
             break;
           }
         }
-        setMunicipiosUfSelecionada(fallback.sort((a, b) => a.localeCompare(b)));
+        setMunicipiosUfSelecionada(fallback.sort((a, b) => a.nome.localeCompare(b.nome)));
       })
       .finally(() => setCarregandoMunicipios(false));
   }, [ufFiltro]);
@@ -443,7 +443,11 @@ export default function MuralLicitacoes() {
       const esferaCodigo = esferaFiltro !== 'all'
         ? (esferaFiltro === 'Federal' ? 'F' : esferaFiltro === 'Estadual' ? 'E' : esferaFiltro === 'Municipal' ? 'M' : esferaFiltro === 'Distrital' ? 'D' : null)
         : null;
-      const municipioIbge = municipioFiltro.trim() ? (MUNICIPIO_IBGE[municipioFiltro.trim()] || null) : null;
+      // Try dynamic IBGE code first, then static dictionary, then pass municipality name for text fallback
+      const dynamicMunicipio = municipiosUfSelecionada.find(m => m.nome === municipioFiltro.trim());
+      const municipioIbge = municipioFiltro.trim()
+        ? (dynamicMunicipio?.id || MUNICIPIO_IBGE[municipioFiltro.trim()] || municipioFiltro.trim())
+        : null;
 
       const { data, error: rpcError } = await supabase.rpc(
         'busca_editais_instantanea' as any,
@@ -456,8 +460,8 @@ export default function MuralLicitacoes() {
           p_segmento: null,
           p_data_inicio: dataInicio ? dataInicio.toISOString().split('T')[0] : null,
           p_data_fim: dataFim ? dataFim.toISOString().split('T')[0] : null,
-          p_ordenacao: 'data_publicacao',
-          p_direcao: 'desc',
+          p_ordenacao: ordenacao.campo === 'valor_estimado' ? 'valor' : ordenacao.campo,
+          p_direcao: ordenacao.direcao,
           p_pagina: pagina,
           p_tamanho: 50,
         }
@@ -493,7 +497,7 @@ export default function MuralLicitacoes() {
       console.error('Cache load error:', err);
       return [];
     }
-  }, [ufFiltro, modalidadeFiltro, esferaFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro, pagina]);
+  }, [ufFiltro, modalidadeFiltro, esferaFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro, municipiosUfSelecionada, ordenacao, pagina]);
 
   // ── FASE 2: Sincronização em tempo real com PNCP (background) ──
   const sincronizarPNCP = useCallback(async (requestId?: number, cacheItems: LicitacaoMural[] = []) => {
@@ -1659,7 +1663,7 @@ export default function MuralLicitacoes() {
                     <SelectContent className="max-h-60">
                       <SelectItem value="all">Todos os municípios</SelectItem>
                       {municipiosUfSelecionada.map(m => (
-                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                        <SelectItem key={m.id || m.nome} value={m.nome}>{m.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
