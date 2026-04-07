@@ -62,12 +62,13 @@ export default function EnvioProposta() {
     if (!empresaAtiva?.id || !portal) return;
     
     const verificar = async () => {
-      // Verificar credencial do portal
+      if (!user) return;
+      // Verificar credencial do portal (mesma tabela usada pelo Robô de Lances)
       const { data: cred } = await supabase
-        .from('credenciais_portais' as any)
+        .from('credenciais_portais_safe' as any)
         .select('id')
-        .eq('empresa_id', empresaAtiva?.id ?? '')
-        .eq('portal', portal)
+        .eq('user_id', user.id)
+        .eq('portal_id', portal)
         .maybeSingle();
       setTemCredencial(!!cred);
 
