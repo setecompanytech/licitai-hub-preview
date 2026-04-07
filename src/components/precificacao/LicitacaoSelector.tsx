@@ -213,7 +213,7 @@ export default function LicitacaoSelector({
       }
 
       const fileBlob = base64ToBlob(data.arquivo.conteudo_base64, data.arquivo.content_type || 'application/pdf');
-      return extractTextFromBlob(fileBlob, data.arquivo.nome || 'edital.pdf');
+      return extractTextFromBlob(fileBlob, data.arquivo.nome || 'edital.pdf', 150, true);
     } catch (error) {
       console.error('Erro ao baixar edital oficial para extração:', error);
       return '';
@@ -291,7 +291,7 @@ export default function LicitacaoSelector({
           const { data: fileData } = await supabase.storage.from('documentos').download(doc.arquivo_path);
           if (!fileData) continue;
 
-          const extractedText = await extractTextFromBlob(fileData, doc.nome || doc.arquivo_path);
+          const extractedText = await extractTextFromBlob(fileData, doc.nome || doc.arquivo_path, 150, true);
           if (extractedText.length >= 500) {
             editalText = extractedText;
             break;
@@ -305,14 +305,16 @@ export default function LicitacaoSelector({
         editalText = await tryDownloadOfficialEdital(lic);
       }
 
-      if (!editalText || editalText.trim().length < 500) {
+      const textLength = editalText?.trim().length || 0;
+      if (!editalText || textLength < 50) {
         setItensCount(0);
         onItensLoaded?.([]);
         toast.warning('Não foi possível obter o edital completo. Adicione manualmente na planilha abaixo.');
         return;
       }
 
-      const extracted = await extrairItensIA(licitacaoId, editalText, { forceReExtract: true });
+      const shouldSkipValidation = textLength < 500;
+      const extracted = await extrairItensIA(licitacaoId, editalText, { forceReExtract: true, skipValidation: shouldSkipValidation });
 
       if (extracted.length > 0) {
         const mappedItens: LicitacaoItemAutoFill[] = extracted.map((item) => ({
