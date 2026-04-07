@@ -43,7 +43,7 @@ export default function EnvioProposta() {
   
   const [tab, setTab] = useState('itens');
   const [numeroPregao, setNumeroPregao] = useState('');
-  const [portal, setPortal] = useState('comprasgov');
+  const [portal, setPortal] = useState('compras-gov');
   const [declaracoes, setDeclaracoes] = useState({
     meEpp: false,
     inexistenciaFato: false,
