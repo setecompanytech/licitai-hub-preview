@@ -9,9 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AnaliseCapag from '@/components/licitacoes/AnaliseCapag';
 import AureliaEditalPanel from '@/components/aurelia/AureliaEditalPanel';
+import { useLicitacoesEstrategicas } from '@/hooks/useLicitacoesEstrategicas';
 import {
-  Target, TrendingUp, Star, AlertTriangle, CheckCircle2,
-  Brain, Zap, Eye, BookmarkPlus, Filter, ArrowUpDown, Landmark, Search, MapPin
+  Target, Star, AlertTriangle, CheckCircle2,
+  Brain, Zap, Eye, BookmarkPlus, Landmark, Search, MapPin,
+  Loader2, RefreshCw, ExternalLink
 } from 'lucide-react';
 
 const UFS_BRASIL = [
@@ -26,25 +28,6 @@ const UFS_BRASIL = [
   { sigla: 'SC', nome: 'Santa Catarina' }, { sigla: 'SP', nome: 'São Paulo' }, { sigla: 'SE', nome: 'Sergipe' },
   { sigla: 'TO', nome: 'Tocantins' },
 ];
-
-type LicitacaoEstrategica = {
-  id: string;
-  numero: string;
-  orgao: string;
-  objeto: string;
-  valor: number;
-  dataAbertura: string;
-  scoreRelevancia: number;
-  scoreViabilidade: number;
-  scoreConcorrencia: number;
-  scoreGeral: number;
-  fatoresPositivos: string[];
-  fatoresRisco: string[];
-  recomendacao: 'alta' | 'media' | 'baixa';
-  salva: boolean;
-};
-
-const estrategicas: LicitacaoEstrategica[] = [];
 
 const recomendacaoConfig = {
   alta: { label: 'Recomendada', color: 'bg-success/15 text-success border-success/30', icon: Star },
@@ -61,6 +44,9 @@ export default function LicitacoesEstrategicas() {
   const [capagMunicipio, setCapagMunicipio] = useState('');
   const [capagOrgaoInput, setCapagOrgaoInput] = useState('');
   const [capagOrgao, setCapagOrgao] = useState<{ orgao: string; uf?: string; municipio?: string } | null>(null);
+  const [filtroUf, setFiltroUf] = useState('');
+
+  const { licitacoes, loading, fonteClassificacao, recarregar } = useLicitacoesEstrategicas();
 
   const iniciarCapag = () => {
     if (!capagOrgaoInput.trim()) return;
@@ -71,7 +57,14 @@ export default function LicitacoesEstrategicas() {
     });
   };
 
-  const filtradas = estrategicas.filter(l => filtro === 'todas' || l.recomendacao === filtro);
+  const filtradas = licitacoes.filter(l => filtro === 'todas' || l.recomendacao === filtro);
+
+  const contadores = {
+    todas: licitacoes.length,
+    alta: licitacoes.filter(l => l.recomendacao === 'alta').length,
+    media: licitacoes.filter(l => l.recomendacao === 'media').length,
+    baixa: licitacoes.filter(l => l.recomendacao === 'baixa').length,
+  };
 
   return (
     <AppLayout>
@@ -87,9 +80,14 @@ export default function LicitacoesEstrategicas() {
             </p>
           </div>
           <div className="flex items-center gap-2 self-start sm:self-auto">
-            <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30">
-              <Brain className="w-3 h-3 mr-1" /> Análise por IA
-            </Badge>
+            {fonteClassificacao && (
+              <Badge variant="outline" className={fonteClassificacao === 'ia' ? 'bg-accent/15 text-accent border-accent/30' : 'bg-muted text-muted-foreground'}>
+                <Brain className="w-3 h-3 mr-1" /> {fonteClassificacao === 'ia' ? 'Classificada por IA' : 'Sem IA'}
+              </Badge>
+            )}
+            <Button variant="outline" size="sm" onClick={() => recarregar(filtroUf || undefined)} disabled={loading}>
+              <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} /> Atualizar
+            </Button>
           </div>
         </div>
 
@@ -105,136 +103,172 @@ export default function LicitacoesEstrategicas() {
 
           <TabsContent value="oportunidades" className="space-y-4 mt-4">
             {/* Filtros */}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 items-center">
               {(['todas', 'alta', 'media', 'baixa'] as const).map(f => (
                 <Button key={f} variant={filtro === f ? 'default' : 'outline'} size="sm" onClick={() => setFiltro(f)}
                   className={filtro === f ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}>
-                  {f === 'todas' ? 'Todas' : f === 'alta' ? '⭐ Alta' : f === 'media' ? '⚠️ Média' : '🔻 Baixa'}
+                  {f === 'todas' ? `Todas (${contadores.todas})` : f === 'alta' ? `⭐ Alta (${contadores.alta})` : f === 'media' ? `⚠️ Média (${contadores.media})` : `🔻 Baixa (${contadores.baixa})`}
                 </Button>
               ))}
+              <div className="ml-auto">
+                <Select value={filtroUf} onValueChange={(v) => { setFiltroUf(v === 'todas' ? '' : v); recarregar(v === 'todas' ? undefined : v); }}>
+                  <SelectTrigger className="w-36 h-8 text-xs">
+                    <SelectValue placeholder="Filtrar UF" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todas">Todas UFs</SelectItem>
+                    {UFS_BRASIL.map(uf => (
+                      <SelectItem key={uf.sigla} value={uf.sigla}>{uf.sigla}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+
+            {/* Loading */}
+            {loading && (
+              <Card className="border-dashed border-2 border-accent/30">
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <Loader2 className="w-8 h-8 text-accent animate-spin" />
+                  <p className="text-sm text-muted-foreground">Analisando licitações com IA...</p>
+                  <p className="text-xs text-muted-foreground">Isso pode levar alguns segundos</p>
+                </div>
+              </Card>
+            )}
 
             {/* Lista */}
-            <div className="space-y-4">
-              {filtradas.length === 0 && (
-                <Card className="border-dashed border-2 border-muted-foreground/20">
-                  <div className="flex flex-col items-center justify-center py-12 gap-3">
-                    <Target className="w-10 h-10 text-muted-foreground/30" />
-                    <p className="text-sm text-muted-foreground">Nenhuma licitação estratégica encontrada</p>
-                    <p className="text-xs text-muted-foreground">As oportunidades aparecerão aqui conforme o monitoramento identificar licitações compatíveis com seu perfil.</p>
-                  </div>
-                </Card>
-              )}
-              {filtradas.map(lic => {
-                const cfg = recomendacaoConfig[lic.recomendacao];
-                const isExpanded = expandido === lic.id;
-                return (
-                  <Card key={lic.id} className="p-5 hover:shadow-md transition-shadow">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-bold text-sm">{lic.numero}</span>
-                          <Badge variant="outline" className={cfg.color + ' text-[10px]'}>
-                            <cfg.icon className="w-3 h-3 mr-1" /> {cfg.label}
-                          </Badge>
-                          {lic.salva && <Star className="w-4 h-4 text-warning fill-warning" />}
-                        </div>
-                        <p className="text-sm text-foreground">{lic.objeto}</p>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span>{lic.orgao}</span>
-                          <span>•</span>
-                          <span>{new Date(lic.dataAbertura).toLocaleDateString('pt-BR')}</span>
-                          <span>•</span>
-                          <span className="font-medium text-foreground">{formatCurrency(lic.valor)}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 ml-4">
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-accent">{lic.scoreGeral}%</div>
-                          <p className="text-[10px] text-muted-foreground">Score Geral</p>
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <Button size="sm" variant="outline" onClick={() => setExpandido(isExpanded ? null : lic.id)}>
-                            <Eye className="w-3 h-3 mr-1" /> {isExpanded ? 'Recolher' : 'Detalhes'}
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => { setCapagOrgaoInput(lic.orgao); setCapagOrgao({ orgao: lic.orgao }); }}>
-                            <Landmark className="w-3 h-3 mr-1" /> CAPAG
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <BookmarkPlus className="w-3 h-3 mr-1" /> Salvar
-                          </Button>
-                        </div>
-                      </div>
+            {!loading && (
+              <div className="space-y-4">
+                {filtradas.length === 0 && (
+                  <Card className="border-dashed border-2 border-muted-foreground/20">
+                    <div className="flex flex-col items-center justify-center py-12 gap-3">
+                      <Target className="w-10 h-10 text-muted-foreground/30" />
+                      <p className="text-sm text-muted-foreground">Nenhuma licitação estratégica encontrada</p>
+                      <p className="text-xs text-muted-foreground">
+                        {licitacoes.length === 0
+                          ? 'Não há licitações com abertura futura no momento. Tente atualizar.'
+                          : 'Nenhuma licitação corresponde ao filtro selecionado.'}
+                      </p>
                     </div>
-
-                    {isExpanded && (
-                      <div className="mt-4 pt-4 border-t border-border/50 space-y-4">
-                        <div className="grid grid-cols-3 gap-4">
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Relevância</p>
-                            <Progress value={lic.scoreRelevancia} className="h-2" />
-                            <p className="text-xs font-medium mt-1">{lic.scoreRelevancia}%</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Viabilidade</p>
-                            <Progress value={lic.scoreViabilidade} className="h-2" />
-                            <p className="text-xs font-medium mt-1">{lic.scoreViabilidade}%</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Concorrência (favorável)</p>
-                            <Progress value={lic.scoreConcorrencia} className="h-2" />
-                            <p className="text-xs font-medium mt-1">{lic.scoreConcorrencia}%</p>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <h4 className="text-xs font-semibold text-success mb-2 flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3" /> Fatores Positivos
-                            </h4>
-                            <ul className="space-y-1">
-                              {lic.fatoresPositivos.map((f, i) => (
-                                <li key={i} className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Zap className="w-3 h-3 text-success" /> {f}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                          <div>
-                            <h4 className="text-xs font-semibold text-destructive mb-2 flex items-center gap-1">
-                              <AlertTriangle className="w-3 h-3" /> Fatores de Risco
-                            </h4>
-                            <ul className="space-y-1">
-                              {lic.fatoresRisco.map((f, i) => (
-                                <li key={i} className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <AlertTriangle className="w-3 h-3 text-destructive" /> {f}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-
-                        {/* AURÉLIA — Análise automática */}
-                        <AureliaEditalPanel
-                          edital={{
-                            titulo: lic.numero,
-                            objeto: lic.objeto,
-                            orgao: lic.orgao,
-                            valor: formatCurrency(lic.valor),
-                            modalidade: 'Licitação',
-                            dataAbertura: lic.dataAbertura,
-                          }}
-                        />
-                      </div>
-                    )}
                   </Card>
-                );
-              })}
-            </div>
+                )}
+                {filtradas.map(lic => {
+                  const cfg = recomendacaoConfig[lic.recomendacao];
+                  const isExpanded = expandido === lic.id;
+                  return (
+                    <Card key={lic.id} className="p-5 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="font-bold text-sm truncate">{lic.numero}</span>
+                            <Badge variant="outline" className={cfg.color + ' text-[10px]'}>
+                              <cfg.icon className="w-3 h-3 mr-1" /> {cfg.label}
+                            </Badge>
+                            {lic.modalidade && (
+                              <Badge variant="secondary" className="text-[10px]">{lic.modalidade}</Badge>
+                            )}
+                            {lic.salva && <Star className="w-4 h-4 text-warning fill-warning" />}
+                          </div>
+                          <p className="text-sm text-foreground line-clamp-2">{lic.objeto}</p>
+                          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                            <span>{lic.orgao}</span>
+                            {lic.uf && <><span>•</span><span>{lic.uf}{lic.municipio ? ` - ${lic.municipio}` : ''}</span></>}
+                            <span>•</span>
+                            <span>{new Date(lic.dataAbertura).toLocaleDateString('pt-BR')}</span>
+                            <span>•</span>
+                            <span className="font-medium text-foreground">{formatCurrency(lic.valor)}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 ml-2 flex-shrink-0">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-accent">{lic.scoreGeral}%</div>
+                            <p className="text-[10px] text-muted-foreground">Score</p>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <Button size="sm" variant="outline" onClick={() => setExpandido(isExpanded ? null : lic.id)}>
+                              <Eye className="w-3 h-3 mr-1" /> {isExpanded ? 'Recolher' : 'Detalhes'}
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => { setCapagOrgaoInput(lic.orgao); setCapagOrgao({ orgao: lic.orgao, uf: lic.uf || undefined }); }}>
+                              <Landmark className="w-3 h-3 mr-1" /> CAPAG
+                            </Button>
+                            {lic.linkOrigem && (
+                              <Button size="sm" variant="outline" asChild>
+                                <a href={lic.linkOrigem} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="w-3 h-3 mr-1" /> Edital
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="mt-4 pt-4 border-t border-border/50 space-y-4">
+                          <div className="grid grid-cols-3 gap-4">
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Relevância</p>
+                              <Progress value={lic.scoreRelevancia} className="h-2" />
+                              <p className="text-xs font-medium mt-1">{lic.scoreRelevancia}%</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Viabilidade</p>
+                              <Progress value={lic.scoreViabilidade} className="h-2" />
+                              <p className="text-xs font-medium mt-1">{lic.scoreViabilidade}%</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Concorrência (favorável)</p>
+                              <Progress value={lic.scoreConcorrencia} className="h-2" />
+                              <p className="text-xs font-medium mt-1">{lic.scoreConcorrencia}%</p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <h4 className="text-xs font-semibold text-success mb-2 flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3" /> Fatores Positivos
+                              </h4>
+                              <ul className="space-y-1">
+                                {lic.fatoresPositivos.map((f, i) => (
+                                  <li key={i} className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Zap className="w-3 h-3 text-success flex-shrink-0" /> {f}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-semibold text-destructive mb-2 flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3" /> Fatores de Risco
+                              </h4>
+                              <ul className="space-y-1">
+                                {lic.fatoresRisco.map((f, i) => (
+                                  <li key={i} className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <AlertTriangle className="w-3 h-3 text-destructive flex-shrink-0" /> {f}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+
+                          <AureliaEditalPanel
+                            edital={{
+                              titulo: lic.numero,
+                              objeto: lic.objeto,
+                              orgao: lic.orgao,
+                              valor: formatCurrency(lic.valor),
+                              modalidade: lic.modalidade || 'Licitação',
+                              dataAbertura: lic.dataAbertura,
+                            }}
+                          />
+                        </div>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="capag" className="mt-4 space-y-4">
-            {/* Filtros CAPAG */}
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <MapPin className="w-4 h-4 text-accent" />
@@ -252,37 +286,25 @@ export default function LicitacoesEstrategicas() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Input
-                  placeholder="Município (opcional)"
-                  value={capagMunicipio}
-                  onChange={e => setCapagMunicipio(e.target.value)}
-                  disabled={!capagUf || capagUf === 'federal'}
-                />
-                <Input
-                  placeholder="Nome do órgão / ente"
-                  value={capagOrgaoInput}
-                  onChange={e => setCapagOrgaoInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && iniciarCapag()}
-                />
+                <Input placeholder="Município (opcional)" value={capagMunicipio} onChange={e => setCapagMunicipio(e.target.value)} disabled={!capagUf || capagUf === 'federal'} />
+                <Input placeholder="Nome do órgão / ente" value={capagOrgaoInput} onChange={e => setCapagOrgaoInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && iniciarCapag()} />
                 <Button onClick={iniciarCapag} disabled={!capagOrgaoInput.trim()} className="bg-accent hover:bg-accent/90 text-accent-foreground">
                   <Search className="w-4 h-4 mr-2" /> Analisar CAPAG
                 </Button>
               </div>
-              {/* Atalhos rápidos */}
-              {estrategicas.length > 0 && (
+              {licitacoes.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   <span className="text-[10px] text-muted-foreground mr-1 self-center">Atalhos:</span>
-                  {[...new Set(estrategicas.map(l => l.orgao))].map(org => (
+                  {[...new Set(licitacoes.map(l => l.orgao))].slice(0, 5).map(org => (
                     <Button key={org} variant="ghost" size="sm" className="h-6 text-[10px] px-2"
                       onClick={() => { setCapagOrgaoInput(org); setCapagOrgao({ orgao: org, uf: capagUf || undefined, municipio: capagMunicipio || undefined }); }}>
-                    {org}
+                      {org.length > 40 ? org.slice(0, 40) + '…' : org}
                     </Button>
                   ))}
                 </div>
               )}
             </Card>
 
-            {/* Resultado */}
             {capagOrgao ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
