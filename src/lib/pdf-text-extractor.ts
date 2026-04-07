@@ -105,18 +105,29 @@ async function extractTextFromPDFData(
 
   const extractedText = normalizeExtractedText(pages.join('\n\n'));
 
-  if (!shouldUsePdfVisionFallback(extractedText)) {
+  if (!shouldUsePdfVisionFallback(extractedText) && !isEdital) {
+    return extractedText;
+  }
+
+  // For editais or documents with insufficient text, use vision OCR with more pages
+  const visionPageLimit = isEdital ? PDF_VISION_PAGE_LIMIT_EDITAL : PDF_VISION_PAGE_LIMIT;
+  const shouldFallback = isEdital
+    ? extractedText.length < 2000
+    : shouldUsePdfVisionFallback(extractedText);
+
+  if (!shouldFallback && !isEdital) {
     return extractedText;
   }
 
   try {
-    const pageImages = await renderPdfPagesToVisionInputs(pdf, Math.min(totalPages, PDF_VISION_PAGE_LIMIT));
+    const pageImages = await renderPdfPagesToVisionInputs(pdf, Math.min(totalPages, visionPageLimit));
     if (pageImages.length === 0) {
       return extractedText;
     }
 
     const visionText = await runVisionExtraction(pageImages, fileName);
-    return normalizeExtractedText([extractedText, visionText].filter(Boolean).join('\n\n'));
+    const combined = normalizeExtractedText([extractedText, visionText].filter(Boolean).join('\n\n'));
+    return combined.length > extractedText.length ? combined : extractedText;
   } catch {
     return extractedText;
   }
