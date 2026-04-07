@@ -1,12 +1,10 @@
 import { useMemo } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { FileText, Building2, User, CreditCard, Scale, Eye } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import type { EditalItem } from '@/components/proposta/EditalUploader';
 
 interface LivePreviewProps {
-  // Empresa
   empresa?: {
     razao_social?: string;
     nome_fantasia?: string | null;
@@ -24,7 +22,6 @@ interface LivePreviewProps {
   email: string;
   inscEstadual: string;
   inscMunicipal: string;
-  // Representante
   repNome: string;
   repCpf: string;
   repRg: string;
@@ -34,7 +31,6 @@ interface LivePreviewProps {
   repNacionalidade: string;
   repEstadoCivil: string;
   repEndereco: string;
-  // Licitação
   numeroLicitacao: string;
   orgao: string;
   modalidade: string;
@@ -47,17 +43,13 @@ interface LivePreviewProps {
   garantia?: string;
   condicoesEntrega?: string;
   liquidacaoNfe?: string;
-  // Planilha
   itens: EditalItem[];
-  // Declarações
   declaracoesAtivas: string[];
-  // Bancário
   banco: string;
   agencia: string;
   conta: string;
   tipoConta: string;
   pix: string;
-  // Format
   fontFamily: string;
   fontSize: number;
   timbradoUrl: string | null;
@@ -83,7 +75,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
     [itensValidos]
   );
 
-  const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const dataAtual = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
 
   const hasAnyData = orgao || objeto || empresa?.razao_social || repNome || itensValidos.length > 0;
 
@@ -99,15 +91,24 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
     );
   }
 
+  const enderecoCompleto = [
+    empresa?.endereco,
+    empresa?.complemento,
+    empresa?.bairro,
+    empresa?.municipio && empresa?.uf ? `${empresa.municipio}/${empresa.uf}` : empresa?.municipio,
+    empresa?.cep ? `CEP: ${empresa.cep}` : null,
+  ].filter(Boolean).join(', ');
+
   return (
     <div
       className="bg-white dark:bg-card rounded-lg shadow-inner border border-border/30 relative overflow-hidden"
       style={{
-        fontFamily: `'${fontFamily}', 'Times New Roman', Times, serif`,
+        fontFamily: `'${fontFamily}', Arial, Helvetica, sans-serif`,
         fontSize: `${Math.max(fontSize - 2, 9)}pt`,
-        lineHeight: '1.5',
+        lineHeight: '1.6',
         padding: '24px',
         minHeight: '600px',
+        color: '#000',
       }}
     >
       {/* Marca d'água */}
@@ -117,64 +118,58 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
         </div>
       )}
 
-      <div className="relative z-10 space-y-4 text-foreground">
-        {/* Timbrado */}
-        {timbradoUrl && (
-          <div className="border-b border-border/30 pb-3 mb-3">
-            <img src={timbradoUrl} alt="Timbrado" className="h-12 max-w-[200px] object-contain" />
+      <div className="relative z-10 space-y-4">
+        {/* ── TIMBRADO ── */}
+        {timbradoUrl ? (
+          <div className="border-b-2 border-black pb-3 mb-3 text-center">
+            <img src={timbradoUrl} alt="Timbrado" className="h-16 max-w-[280px] object-contain mx-auto" />
           </div>
-        )}
+        ) : empresa?.razao_social ? (
+          <div className="border-b-2 border-black pb-3 mb-3 text-center">
+            <p className="font-black text-sm uppercase tracking-widest">{empresa.razao_social}</p>
+            <p className="text-[10px] text-gray-500 mt-1">CNPJ: {empresa.cnpj}</p>
+          </div>
+        ) : null}
 
-        {/* Cabeçalho / Endereçamento */}
+        {/* ── DESTINATÁRIO ── */}
         {orgao && (
-          <div className="text-center space-y-1">
-            <p className="font-bold text-xs uppercase tracking-wide">PROPOSTA COMERCIAL</p>
-            {numeroLicitacao && <p className="text-[10px] text-muted-foreground">{modalidade} nº {numeroLicitacao}</p>}
-            <p className="text-[10px]">Ao {orgao}</p>
+          <div className="mb-3" style={{ lineHeight: '1.8' }}>
+            <span className="text-lg italic block mb-1">A</span>
+            <p className="font-bold text-[10px]">{orgao}</p>
           </div>
         )}
 
-        {/* Dados da Empresa */}
+        {/* ── CABEÇALHO DA PROPOSTA ── */}
+        <div className="text-center mb-4">
+          <span className="font-black text-xs uppercase tracking-wide border-2 border-black px-4 py-1 inline-block">
+            PROPOSTA COMERCIAL
+          </span>
+          {numeroLicitacao && (
+            <p className="text-[10px] mt-1.5">
+              Ref.: {modalidade || 'Pregão Eletrônico'} Nº {numeroLicitacao}
+            </p>
+          )}
+        </div>
+
+        {/* ── APRESENTAÇÃO ── */}
         {empresa?.razao_social && (
-          <div className="space-y-1">
-            <p className="font-bold text-[10px] uppercase tracking-wide border-b border-border/40 pb-0.5 mb-1">
-              Identificação do Proponente
-            </p>
-            <div className="text-[9px] space-y-0.5">
-              <p><strong>Razão Social:</strong> {empresa.razao_social}</p>
-              <p><strong>CNPJ:</strong> {empresa.cnpj}</p>
-              {empresa.endereco && <p><strong>Endereço:</strong> {empresa.endereco}{empresa.complemento ? `, ${empresa.complemento}` : ''}{empresa.bairro ? ` - ${empresa.bairro}` : ''}</p>}
-              {(empresa.municipio || empresa.uf) && <p><strong>Cidade/UF:</strong> {empresa.municipio}/{empresa.uf}{empresa.cep ? ` · CEP: ${empresa.cep}` : ''}</p>}
-              {telefone && <p><strong>Tel:</strong> {telefone}</p>}
-              {email && <p><strong>E-mail:</strong> {email}</p>}
-              {inscEstadual && <p><strong>IE:</strong> {inscEstadual}</p>}
-              {inscMunicipal && <p><strong>IM:</strong> {inscMunicipal}</p>}
-            </div>
+          <div className="text-[9px] text-justify mb-4">
+            A empresa <strong>{empresa.razao_social}</strong>, devidamente inscrita no Ministério da Fazenda sob o
+            CNPJ nº. <strong>{empresa.cnpj}</strong>{enderecoCompleto ? `, com sede na ${enderecoCompleto}` : ''},
+            por intermédio de seu representante legal, infra-assinado, apresenta a seguinte
+            <strong> PROPOSTA COMERCIAL:</strong>
           </div>
         )}
 
-        {/* Objeto */}
-        {objeto && (
-          <div className="space-y-1">
-            <p className="font-bold text-[10px] uppercase tracking-wide border-b border-border/40 pb-0.5 mb-1">
-              Objeto
-            </p>
-            <p className="text-[9px] text-justify">{objeto}</p>
-          </div>
-        )}
-
-        {/* Planilha de Preços */}
+        {/* ── TABELA DE ITENS ── */}
         {itensValidos.length > 0 && (
           <div className="space-y-1">
-            <p className="font-bold text-[10px] uppercase tracking-wide border-b border-border/40 pb-0.5 mb-1">
-              Planilha de Preços
-            </p>
-            <div className="overflow-x-auto rounded border border-border/40">
+            <div className="overflow-x-auto rounded border border-black">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-foreground/90">
-                    {['Item', 'Un', 'Qtd', 'Especificação Técnica', 'Marca', 'Vl. Unit.', 'Extenso', 'Vl. Total', 'Extenso'].map(h => (
-                      <TableHead key={h} className="font-bold text-background text-[7px] py-1 px-1 text-center whitespace-nowrap">
+                  <TableRow className="bg-gray-800">
+                    {['ITEM', 'UNID', 'QTDE', 'ESPECIFICAÇÃO TÉCNICA', 'MARCA', 'VL. UNIT.', 'EXTENSO', 'VL. TOTAL', 'EXTENSO'].map(h => (
+                      <TableHead key={h} className="font-bold text-white text-[7px] py-1 px-1 text-center whitespace-nowrap border border-black">
                         {h}
                       </TableHead>
                     ))}
@@ -185,132 +180,177 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
                     const vlUnit = parseFloat(item.valorUnitario?.replace(',', '.') || '0') || 0;
                     const vlTotal = parseFloat(item.valorTotal?.replace(',', '.') || '0') || 0;
                     return (
-                      <TableRow key={idx} className={idx % 2 === 0 ? 'bg-muted/20' : ''}>
-                        <TableCell className="text-[7px] py-0.5 px-1 text-center">{item.item}</TableCell>
-                        <TableCell className="text-[7px] py-0.5 px-1 text-center">{item.unidade}</TableCell>
-                        <TableCell className="text-[7px] py-0.5 px-1 text-center">{item.quantidade}</TableCell>
-                        <TableCell className="text-[7px] py-0.5 px-1 max-w-[120px]" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{item.descricao}</TableCell>
-                        <TableCell className="text-[7px] py-0.5 px-1 text-center">{item.marca || '-'}</TableCell>
-                        <TableCell className="text-[7px] py-0.5 px-1 text-center">R$ {item.valorUnitario}</TableCell>
-                        <TableCell className="text-[7px] py-0.5 px-1 text-center italic text-muted-foreground">
+                      <TableRow key={idx}>
+                        <TableCell className="text-[7px] py-0.5 px-1 text-center font-bold border border-black">{item.item}</TableCell>
+                        <TableCell className="text-[7px] py-0.5 px-1 text-center border border-black">{item.unidade}</TableCell>
+                        <TableCell className="text-[7px] py-0.5 px-1 text-center border border-black">{item.quantidade}</TableCell>
+                        <TableCell className="text-[7px] py-0.5 px-1 border border-black" style={{ whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: '120px' }}>{item.descricao}</TableCell>
+                        <TableCell className="text-[7px] py-0.5 px-1 text-center border border-black">{item.marca || '-'}</TableCell>
+                        <TableCell className="text-[7px] py-0.5 px-1 text-right border border-black">R$ {item.valorUnitario}</TableCell>
+                        <TableCell className="text-[7px] py-0.5 px-1 text-center italic text-gray-600 border border-black">
                           {vlUnit > 0 ? valorPorExtenso(vlUnit) : '-'}
                         </TableCell>
-                        <TableCell className="text-[7px] py-0.5 px-1 text-center">R$ {item.valorTotal}</TableCell>
-                        <TableCell className="text-[7px] py-0.5 px-1 text-center italic text-muted-foreground">
+                        <TableCell className="text-[7px] py-0.5 px-1 text-right font-bold border border-black">R$ {item.valorTotal}</TableCell>
+                        <TableCell className="text-[7px] py-0.5 px-1 text-center italic text-gray-600 border border-black">
                           {vlTotal > 0 ? valorPorExtenso(vlTotal) : '-'}
                         </TableCell>
                       </TableRow>
                     );
                   })}
+                  {/* Total row */}
+                  <TableRow className="bg-gray-100">
+                    <TableCell colSpan={7} className="text-[8px] py-1 px-2 text-right font-bold border-2 border-black italic">
+                      {valorGlobal > 0 ? valorPorExtenso(valorGlobal) : '...'}
+                    </TableCell>
+                    <TableCell colSpan={2} className="text-[9px] py-1 px-2 text-center font-bold border-2 border-black">
+                      {formatCurrency(valorGlobal)}
+                    </TableCell>
+                  </TableRow>
                 </TableBody>
               </Table>
             </div>
-            <p className="text-[9px] font-bold text-right">
-              Valor Global: {formatCurrency(valorGlobal)}
-              <span className="text-[8px] font-normal text-muted-foreground block">
-                ({valorGlobal > 0 ? valorPorExtenso(valorGlobal) : '...'})
-              </span>
-            </p>
           </div>
         )}
 
-        {/* Inclusão de encargos */}
+        {/* ── ENCARGOS ── */}
         {itensValidos.length > 0 && (
-          <div className="space-y-1">
-            <p className="text-[9px] text-justify">
-              Nos valores propostos acima, estão inclusos todos e quaisquer encargos inerentes ao fornecimento do objeto desta proposta, tais como: tributos, taxas, transportes, carregamento, descarregamento, encargos sociais, trabalhistas, frete, seguro, e outros que, direta e indiretamente, incidam sobre o perfeito e integral cumprimento da proposta apresentada.
-            </p>
+          <p className="text-[9px] text-justify">
+            Nos valores propostos acima, estão inclusos todos e quaisquer encargos inerentes ao fornecimento do objeto desta proposta, tais como: tributos, taxas, transportes, carregamento, descarregamento, encargos sociais, trabalhistas, frete, seguro, e outros que, direta e indiretamente, incidam sobre o perfeito e integral cumprimento da proposta apresentada.
+          </p>
+        )}
+
+        {/* ── CONDIÇÕES DE PAGAMENTO ── */}
+        {prazoPagamento && (
+          <div className="text-[9px]">
+            <p className="font-black underline uppercase text-[10px] mb-0.5">Condições de Pagamento:</p>
+            <p className="text-justify">{prazoPagamento}</p>
           </div>
         )}
 
-        {/* Dados Bancários — inline */}
-        {banco && (
-          <div className="space-y-1">
-            <p className="font-bold text-[10px] uppercase tracking-wide border-b border-border/40 pb-0.5 mb-1">
-              Dados Bancários
-            </p>
-            <div className="text-[9px] space-y-0.5">
-              <p><strong>Banco:</strong> {banco}{agencia ? ` · Agência: ${agencia}` : ''}{conta ? ` · ${tipoConta}: ${conta}` : ''}</p>
-              {pix && <p><strong>PIX:</strong> {pix}</p>}
-            </div>
+        {/* ── CONDIÇÕES DE ENTREGA ── */}
+        {prazoEntrega && (
+          <div className="text-[9px]">
+            <p className="font-black underline uppercase text-[10px] mb-0.5">Condições de Entrega:</p>
+            <p className="text-justify">{prazoEntrega}</p>
           </div>
         )}
 
-        {/* Prazos e Condições */}
-        {(prazoValidade || prazoPagamento || prazoEntrega || localEntrega || garantia || condicoesEntrega || liquidacaoNfe) && (
-          <div className="space-y-1">
-            <p className="font-bold text-[10px] uppercase tracking-wide border-b border-border/40 pb-0.5 mb-1">
-              Prazos e Condições
-            </p>
-            <div className="text-[9px] space-y-1">
-              {prazoValidade && (
-                <p><strong>Validade da Proposta:</strong> {prazoValidade}</p>
-              )}
-              {prazoPagamento && (
-                <p><strong>Condições de Pagamento:</strong> {prazoPagamento}</p>
-              )}
-              {prazoEntrega && (
-                <p><strong>Prazo de Entrega:</strong> {prazoEntrega}</p>
-              )}
-              {condicoesEntrega && (
-                <p><strong>Condições de Entrega:</strong> {condicoesEntrega}</p>
-              )}
-              {localEntrega && (
-                <p><strong>Local de Entrega:</strong> {localEntrega}</p>
-              )}
-              {garantia && (
-                <p><strong>Garantia:</strong> {garantia}</p>
-              )}
-              {liquidacaoNfe && (
-                <p><strong>Liquidação / NFe:</strong> {liquidacaoNfe}</p>
-              )}
-            </div>
+        {/* ── LOCAL DE ENTREGA ── */}
+        {localEntrega && (
+          <div className="text-[9px]">
+            <p className="font-black underline uppercase text-[10px] mb-0.5">Local de Entrega:</p>
+            <p className="text-justify">{localEntrega}</p>
           </div>
         )}
 
-        {/* Declarações */}
+        {/* ── CONDIÇÕES ESPECIAIS ── */}
+        {condicoesEntrega && (
+          <div className="text-[9px]">
+            <p className="font-black underline uppercase text-[10px] mb-0.5">Condições Especiais:</p>
+            <p className="text-justify">{condicoesEntrega}</p>
+          </div>
+        )}
+
+        {/* ── LIQUIDAÇÃO/NFe ── */}
+        {liquidacaoNfe && (
+          <div className="text-[9px]">
+            <p className="font-black underline uppercase text-[10px] mb-0.5">Liquidação / Nota Fiscal:</p>
+            <p className="text-justify">{liquidacaoNfe}</p>
+          </div>
+        )}
+
+        {/* ── GARANTIA ── */}
+        {garantia && (
+          <div className="text-[9px]">
+            <p className="font-black underline uppercase text-[10px] mb-0.5">Garantia:</p>
+            <p className="text-justify">{garantia}</p>
+          </div>
+        )}
+
+        {/* ── VALIDADE ── */}
+        {prazoValidade && (
+          <div className="text-[9px]">
+            <p className="font-black underline uppercase text-[10px] mb-0.5">Prazo de Validade desta Proposta:</p>
+            <p>O prazo de validade da proposta não será inferior a <strong>{prazoValidade}</strong>, a contar da data de sua apresentação.</p>
+          </div>
+        )}
+
+        {/* ── DECLARAÇÕES LEGAIS ── */}
         {declaracoesAtivas.length > 0 && (
           <div className="space-y-1">
-            <p className="font-bold text-[10px] uppercase tracking-wide border-b border-border/40 pb-0.5 mb-1">
-              Declarações
+            <p className="font-black underline uppercase text-[10px] mb-0.5">Declarações</p>
+            <p className="text-[9px] text-justify mb-1">
+              DECLARA-SE que os produtos/serviços constantes desta proposta comercial ofertada atendem
+              fielmente as Especificações Técnicas constantes do Termo de Referência – Anexo I do
+              respectivo Edital.
             </p>
+            <p className="text-[9px] font-bold">DECLARA-SE também:</p>
             <div className="text-[9px] space-y-0.5">
               {declaracoesAtivas.map((d, i) => (
-                <p key={i} className="flex gap-1.5">
-                  <span className="text-accent font-bold">✓</span>
-                  <span>{d}</span>
+                <p key={i} className="text-justify">
+                  <strong>Declaração</strong> {d}
                 </p>
               ))}
             </div>
           </div>
         )}
 
-        {/* Representante e Assinatura */}
-        {repNome && (
-          <div className="space-y-1 pt-2">
-            <p className="font-bold text-[10px] uppercase tracking-wide border-b border-border/40 pb-0.5 mb-1">
-              Responsável pela Assinatura do Contrato
-            </p>
-            <div className="text-[9px] space-y-0.5">
-              <p><strong>Nome:</strong> {repNome}</p>
-              {repEstadoCivil && <p><strong>Estado Civil:</strong> {repEstadoCivil}{repNaturalidade ? `. Profissão: Empresário` : ''}{repCargo ? `. Cargo/Função: ${repCargo}` : ''}</p>}
-              {repCpf && <p><strong>CPF:</strong> {repCpf}{repRg ? ` · RG: ${repRg}` : ''}{repOrgaoExp ? ` — ${repOrgaoExp}` : ''}</p>}
-              {repEndereco && <p><strong>Endereço:</strong> {repEndereco}</p>}
-            </div>
+        {/* ── IDENTIFICAÇÃO DA EMPRESA ── */}
+        {empresa?.razao_social && (
+          <div className="border-t border-gray-400 pt-3 mt-3 text-[9px] space-y-0.5" style={{ lineHeight: '1.8' }}>
+            <p><strong>Razão Social:</strong> {empresa.razao_social}. <strong>CNPJ/MF:</strong> {empresa.cnpj}.</p>
+            {enderecoCompleto && <p><strong>Endereço:</strong> {enderecoCompleto}.</p>}
+            {telefone && <p><strong>Telefone/WhatsApp:</strong> {telefone}</p>}
+            {email && <p><strong>E-mail:</strong> {email}</p>}
+            {inscEstadual && <p><strong>IE:</strong> {inscEstadual}</p>}
+            {inscMunicipal && <p><strong>IM:</strong> {inscMunicipal}</p>}
+            {banco && (
+              <p>
+                <strong>Banco:</strong> {banco}
+                {agencia && <> · <strong>Agência:</strong> {agencia}</>}
+                {conta && <>. <strong>{tipoConta}:</strong> {conta}.</>}
+                {pix && <> <strong>PIX:</strong> {pix}</>}
+              </p>
+            )}
           </div>
         )}
 
-        {/* Assinatura */}
-        <div className="pt-6 text-center space-y-3">
-          <p className="text-[9px]">
-            {empresa?.municipio || '________'}/{empresa?.uf || '__'}, {dataAtual}
+        {/* ── RESPONSÁVEL ── */}
+        {repNome && (
+          <div className="text-[9px] mt-3">
+            <p className="font-black underline uppercase text-[10px] mb-1">
+              Responsável pela Assinatura do Contrato:
+            </p>
+            <p><strong>Nome:</strong> {repNome}</p>
+            {repEstadoCivil && (
+              <p>
+                <strong>Estado Civil:</strong> {repEstadoCivil}.
+                {repCargo && <> <strong>Cargo/Função:</strong> {repCargo}.</>}
+              </p>
+            )}
+            {repCpf && (
+              <p>
+                <strong>CPF:</strong> {repCpf}
+                {repRg && <> · <strong>RG:</strong> {repRg}</>}
+                {repOrgaoExp && <> — {repOrgaoExp}</>}
+              </p>
+            )}
+            {repEndereco && <p><strong>Endereço:</strong> {repEndereco}</p>}
+          </div>
+        )}
+
+        {/* ── ASSINATURA ── */}
+        <div className="pt-6 text-right space-y-2">
+          <p className="text-[9px] mb-8">
+            {empresa?.municipio || '________'}/{empresa?.uf || '__'}, {dataAtual}.
           </p>
-          <div className="border-b border-foreground/40 w-48 mx-auto mt-8" />
-          <p className="text-[9px] font-bold">{empresa?.razao_social || '(Razão Social)'}</p>
-          <p className="text-[8px] text-muted-foreground">CNPJ: {empresa?.cnpj || ''}</p>
-          <p className="text-[9px] font-bold mt-2">{repNome || '(Nome do Representante)'}</p>
-          {repCpf && <p className="text-[8px] text-muted-foreground">CPF: {repCpf}</p>}
-          {repCargo && <p className="text-[8px] text-muted-foreground">{repCargo}</p>}
+          <div className="inline-block text-center border-t border-black pt-1.5 min-w-[200px]">
+            <p className="text-[9px] font-bold">{empresa?.razao_social || '(Razão Social)'}</p>
+            <p className="text-[8px] text-gray-500">CNPJ: {empresa?.cnpj || ''}</p>
+            {repNome && <p className="text-[9px] font-bold mt-1">{repNome}</p>}
+            {repCpf && <p className="text-[8px] text-gray-500">CPF: {repCpf}</p>}
+            {repCargo && <p className="text-[8px] text-gray-500">{repCargo}</p>}
+          </div>
         </div>
       </div>
     </div>
