@@ -243,8 +243,8 @@ export function useEditalExtraction() {
     ];
     const markerHits = extractionMarkers.filter((marker) => lowerText.includes(marker)).length;
 
-    if (normalizedText.length < MIN_TEXT_LENGTH || markerHits < 2) {
-      toast.error('Não há texto real suficiente do edital para extrair itens com fidelidade.');
+    if (!opts?.skipValidation && (normalizedText.length < MIN_TEXT_LENGTH || markerHits < 2)) {
+      toast.error('Não há texto real suficiente do edital para extrair itens com fidelidade. Tente enviar o edital em formato PDF ou DOC.');
       return [];
     }
 
