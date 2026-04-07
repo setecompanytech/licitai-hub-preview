@@ -279,7 +279,7 @@ export default function LicitacaoSelector({
       if (!editalText || editalText.trim().length < 500) {
         setItensCount(0);
         onItensLoaded?.([]);
-        toast.error('Não foi possível obter texto legível do edital real; os itens antigos não serão mais reaproveitados.');
+        toast.warning('Não foi possível obter o edital completo. Adicione manualmente na planilha abaixo.');
         return;
       }
 
