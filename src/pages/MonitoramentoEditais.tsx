@@ -36,6 +36,7 @@ import ConfiguracaoPesquisaTab from "@/components/monitoramento/ConfiguracaoPesq
 import DispensaEletronicaTab from "@/components/monitoramento/DispensaEletronicaTab";
 import MuralLicitacoes from "@/components/monitoramento/MuralLicitacoes";
 import GuiaComprasGov from "@/components/monitoramento/GuiaComprasGov";
+import EditaisLicitacoes from "@/pages/monitoramento/EditaisLicitacoes";
 import { TODOS_PORTAIS } from "@/data/portais-compras";
 
 
@@ -194,6 +195,10 @@ export default function MonitoramentoEditais() {
               Portais ({portaisMonitorados.length})
             </TabsTrigger>
             <TabsTrigger value="config">Configuração de Pesquisa</TabsTrigger>
+            <TabsTrigger value="editais-licitacoes">
+              <List className="w-4 h-4 mr-1" />
+              Editais e Licitações
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="mural">
@@ -265,6 +270,9 @@ export default function MonitoramentoEditais() {
           <TabsContent value="config" className="space-y-4">
             <GuiaComprasGov />
             <ConfiguracaoPesquisaTab />
+          </TabsContent>
+          <TabsContent value="editais-licitacoes">
+            <EditaisLicitacoes />
           </TabsContent>
         </Tabs>
       </div>
