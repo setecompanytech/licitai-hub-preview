@@ -278,10 +278,96 @@ export default function LicitacaoSelector({
       return;
     }
 
-    toast.info('Nenhum item estruturado confiável foi encontrado. Iniciando extração automática do edital...');
+    toast.info('Buscando itens do edital...');
     setExtracting(true);
 
     try {
+      // ══════════ CAMADA 1: API PNCP (itens estruturados) ══════════
+      let cnpjOrgao: string | undefined;
+      let anoCompra: string | undefined;
+      let sequencialCompra: string | undefined;
+      let numeroControle: string | undefined;
+
+      const { data: cacheMatch } = await supabase
+        .from('pncp_editais_cache')
+        .select('cnpj_orgao, ano_compra, sequencial_compra, numero_controle_pncp')
+        .or(`numero_compra.eq.${lic.numero},numero_compra.ilike.%${lic.numero}%`)
+        .limit(5);
+
+      if (cacheMatch && cacheMatch.length > 0) {
+        const orgaoLower = (lic.orgao || '').toLowerCase();
+        const best = cacheMatch.find((c: any) =>
+          (c.orgao || '').toLowerCase().includes(orgaoLower.substring(0, 15))
+        ) || cacheMatch[0];
+
+        cnpjOrgao = (best as any).cnpj_orgao || undefined;
+        anoCompra = (best as any).ano_compra || undefined;
+        sequencialCompra = (best as any).sequencial_compra || undefined;
+        numeroControle = (best as any).numero_controle_pncp || undefined;
+      }
+
+      if (cnpjOrgao && anoCompra && sequencialCompra) {
+        console.log('[LicitacaoSelector] Tentando CAMADA 1 - API PNCP itens...');
+
+        try {
+          const { data: pncpResult, error: pncpError } = await supabase.functions.invoke('extrair-itens-edital', {
+            body: {
+              numero_controle: numeroControle,
+              orgao_cnpj: cnpjOrgao,
+              ano_compra: parseInt(anoCompra),
+              sequencial: parseInt(sequencialCompra),
+            },
+          });
+
+          if (!pncpError && pncpResult?.success && pncpResult.data?.length > 0) {
+            const fonte = pncpResult.fonte || 'PNCP_API';
+            const pncpItens = pncpResult.data;
+
+            // Save to licitacao_itens for persistence
+            const itemsToSave = pncpItens.map((p: any, idx: number) => ({
+              licitacao_id: licitacaoId,
+              user_id: user.id,
+              numero: parseInt(String(p.item ?? idx + 1), 10) || (idx + 1),
+              descricao: p.descricao || '',
+              quantidade: p.quantidade || 1,
+              unidade: p.unidade || 'UN',
+              valor_unitario: p.valor_unitario || 0,
+              valor_total: p.valor_total || (p.valor_unitario || 0) * (p.quantidade || 1),
+              lote: p.lote || 'Único',
+              marca: p.marca || null,
+              fabricante: p.fabricante || null,
+              modelo: p.modelo || null,
+              origem: fonte === 'PNCP_API' ? 'pncp' : 'ia',
+            }));
+
+            await deleteAllItens(licitacaoId);
+            const { data: savedItens } = await supabase
+              .from('licitacao_itens')
+              .insert(itemsToSave)
+              .select();
+
+            if (savedItens && savedItens.length > 0) {
+              const mappedItens = mapItensToAutofill(savedItens);
+              setItensCount(mappedItens.length);
+              onItensLoaded?.(mappedItens);
+              const fonteLabel = fonte === 'PNCP_API' ? 'API PNCP Oficial' : 'IA';
+              toast.success(`${mappedItens.length} itens extraídos via ${fonteLabel}!`);
+              return;
+            }
+          }
+
+          // If PNCP returned a pdf_url, log it
+          if (pncpResult?.pdf_url) {
+            console.log('[LicitacaoSelector] PDF do edital disponível:', pncpResult.pdf_url);
+          }
+        } catch (pncpErr) {
+          console.warn('[LicitacaoSelector] CAMADA 1 falhou:', pncpErr);
+        }
+      }
+
+      // ══════════ CAMADA 2: Extração via texto do edital (IA) ══════════
+      console.log('[LicitacaoSelector] CAMADA 2 - Extração via texto/PDF...');
+
       let editalText = '';
 
       for (const doc of docs) {
@@ -331,7 +417,7 @@ export default function LicitacaoSelector({
       } else {
         setItensCount(0);
         onItensLoaded?.([]);
-        toast.info('Não foi possível extrair itens automaticamente desta licitação com fidelidade.');
+        toast.info('Não foi possível extrair itens automaticamente. Adicione manualmente na planilha abaixo.');
       }
     } catch (err) {
       console.error('Erro na extração automática:', err);
