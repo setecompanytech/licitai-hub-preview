@@ -199,9 +199,9 @@ export function useEditalExtraction() {
     return true;
   }, [user]);
 
-  const invokeExtraction = useCallback(async (textoEdital: string): Promise<ExtractedItemPayload[]> => {
+  const invokeExtraction = useCallback(async (textoEdital: string, skipMinLength = false): Promise<ExtractedItemPayload[]> => {
     const { data, error } = await supabase.functions.invoke('extrair-itens-edital', {
-      body: { texto_edital: textoEdital },
+      body: { texto_edital: textoEdital, skip_min_length: skipMinLength },
     });
 
     if (error || !data?.success) {
