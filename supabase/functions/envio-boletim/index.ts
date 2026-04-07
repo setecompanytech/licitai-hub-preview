@@ -349,7 +349,7 @@ async function filterByParticipacao(supabase: any, sub: any, filtered: Licitacao
 // ═══════════════════════════════════════════════
 // Send email per licitação
 // ═══════════════════════════════════════════════
-async function sendEmail(supabaseUrl: string, serviceKey: string, email: string, tipo: string, lic: LicitacaoUnificada) {
+async function sendEmail(supabaseUrl: string, serviceKey: string, email: string, tipo: string, lic: LicitacaoUnificada, subjectOverride?: string) {
   const templateData: Record<string, any> = {
     tipo,
     data: new Date().toLocaleDateString("pt-BR"),
@@ -369,6 +369,17 @@ async function sendEmail(supabaseUrl: string, serviceKey: string, email: string,
     horas_restantes: lic.horas_restantes,
   };
 
+  const payload: Record<string, any> = {
+    templateName: 'boletim-diario',
+    recipientEmail: email,
+    templateData,
+  };
+
+  // Override subject if provided
+  if (subjectOverride) {
+    payload.subjectOverride = subjectOverride;
+  }
+
   const res = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
     method: 'POST',
     headers: {
@@ -376,7 +387,7 @@ async function sendEmail(supabaseUrl: string, serviceKey: string, email: string,
       'Authorization': `Bearer ${serviceKey}`,
       'apikey': serviceKey,
     },
-    body: JSON.stringify({ templateName: 'boletim-diario', recipientEmail: email, templateData }),
+    body: JSON.stringify(payload),
   });
 
   return { ok: res.ok, status: res.status, body: await res.text().catch(() => '') };
