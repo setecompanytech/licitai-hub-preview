@@ -43,7 +43,7 @@ export async function extractTextFromBlob(
   }
 
   if (name.endsWith('.pdf') || type.includes('pdf')) {
-    return extractTextFromPDFData(await blob.arrayBuffer(), maxPages, fileName);
+    return extractTextFromPDFData(await blob.arrayBuffer(), maxPages, fileName, isEdital);
   }
 
   if (name.endsWith('.docx') || type.includes('officedocument.wordprocessingml.document')) {
