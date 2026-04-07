@@ -239,7 +239,58 @@ async function applyFilters(
     return (order[a.urgencia || 'normal'] ?? 2) - (order[b.urgencia || 'normal'] ?? 2);
   });
 
-  return filtered.slice(0, 30);
+  return filtered.slice(0, 50);
+}
+
+// ═══════════════════════════════════════════════
+// Deduplication: remove editais already sent to this user
+// ═══════════════════════════════════════════════
+async function deduplicateForUser(
+  supabase: any, userId: string, licitacoes: LicitacaoUnificada[]
+): Promise<LicitacaoUnificada[]> {
+  if (licitacoes.length === 0) return [];
+
+  const janela24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: jaEnviados } = await supabase
+    .from("notificacoes_enviadas")
+    .select("alerta_ref_id")
+    .eq("user_id", userId)
+    .eq("canal", "email")
+    .in("status", ["enviado", "entregue"])
+    .gte("enviado_em", janela24h);
+
+  if (!jaEnviados || jaEnviados.length === 0) return licitacoes;
+
+  const idsEnviados = new Set(jaEnviados.map((n: any) => n.alerta_ref_id));
+
+  return licitacoes.filter(lic => {
+    const refId = lic.numero_processo || lic.titulo || '';
+    return !idsEnviados.has(refId);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// Generate dynamic subject line
+// ═══════════════════════════════════════════════
+function generateDynamicSubject(tipo: string, licitacoes: LicitacaoUnificada[], index: number): string {
+  const total = licitacoes.length;
+  const urgentes = licitacoes.filter(l => l.urgencia === 'critica').length;
+  const lic = licitacoes[index];
+
+  // If there's urgency info on this specific item
+  if (lic.urgencia === 'critica') {
+    const local = [lic.municipio, lic.uf].filter(Boolean).join('/');
+    return `URGENTE — ${lic.numero_processo || lic.titulo}${local ? ` - ${local}` : ''} [${index + 1}/${total}]`;
+  }
+
+  if (lic.urgencia === 'alta') {
+    return `PRAZO — ${lic.numero_processo || lic.titulo} [${index + 1}/${total}]`;
+  }
+
+  // Normal — include count context
+  const prefix = total > 1 ? `[${index + 1}/${total}] ` : '';
+  return `${prefix}${lic.numero_processo || lic.titulo} — ${lic.orgao?.substring(0, 30) || 'Novo edital'}`;
 }
 
 async function filterByCnpj(supabase: any, sub: any, filtered: LicitacaoUnificada[], allLicitacoes: LicitacaoUnificada[]) {
