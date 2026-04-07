@@ -1,3 +1,5 @@
+import { chamarClaude, parsearJson, arrayParaBase64 } from "../_shared/claude-client.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -25,14 +27,12 @@ function cleanString(value: unknown): string | null {
 function parseNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value !== "string") return null;
-
   const cleaned = value
     .replace(/R\$/gi, "")
     .replace(/\s+/g, "")
     .replace(/\.(?=\d{3}(\D|$))/g, "")
     .replace(/,/g, ".")
     .replace(/[^\d.-]/g, "");
-
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -40,13 +40,11 @@ function parseNumber(value: unknown): number | null {
 function normalizeItem(item: ItemEdital, index: number) {
   const descricao = cleanString(item.descricao);
   if (!descricao) return null;
-
   const quantidade = parseNumber(item.quantidade);
   const valorUnitario = parseNumber(item.valor_unitario);
   const valorTotalOriginal = parseNumber(item.valor_total);
   const valorTotal = valorTotalOriginal ?? (quantidade != null && valorUnitario != null ? quantidade * valorUnitario : null);
   const numero = cleanString(String(item.item ?? "")) ?? String(index + 1);
-
   return {
     item: numero,
     descricao,
@@ -61,7 +59,6 @@ function normalizeItem(item: ItemEdital, index: number) {
   };
 }
 
-// Parse PNCP numero_controle format: {CNPJ}-{SEQ}-{NUM}/{ANO}
 function parsePNCPNumeroControle(nc: string): { cnpj: string; seq: number; ano: number } | null {
   if (!nc) return null;
   const match = nc.replace(/\s/g, "").match(/^(\d{14})-(\d+)-\d+\/(\d{4})$/);
@@ -71,51 +68,66 @@ function parsePNCPNumeroControle(nc: string): { cnpj: string; seq: number; ano: 
 
 // Extract JSON from AI response - handles both tool_calls and content responses
 function extractItensFromAIResponse(result: any): ItemEdital[] {
-  // Try tool_calls first
   const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
   if (toolCall?.function?.arguments) {
     try {
       const parsed = JSON.parse(toolCall.function.arguments);
-      if (Array.isArray(parsed?.itens)) {
-        console.log(`[extrair-itens] Parsed ${parsed.itens.length} itens from tool_calls`);
-        return parsed.itens;
-      }
-    } catch (e) {
-      console.warn("[extrair-itens] Failed to parse tool_calls arguments:", String(e));
-    }
+      if (Array.isArray(parsed?.itens)) return parsed.itens;
+    } catch {}
   }
-
-  // Fallback: try content (text response with JSON)
   const content = result.choices?.[0]?.message?.content;
   if (content && typeof content === "string") {
     try {
-      // Remove markdown code blocks if present
       const cleaned = content.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        if (Array.isArray(parsed?.itens)) {
-          console.log(`[extrair-itens] Parsed ${parsed.itens.length} itens from content`);
-          return parsed.itens;
-        }
+        if (Array.isArray(parsed?.itens)) return parsed.itens;
       }
-      // Try as array directly
       const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
       if (arrayMatch) {
         const arr = JSON.parse(arrayMatch[0]);
-        if (Array.isArray(arr) && arr.length > 0) {
-          console.log(`[extrair-itens] Parsed ${arr.length} itens from content array`);
-          return arr;
-        }
+        if (Array.isArray(arr) && arr.length > 0) return arr;
       }
-    } catch (e) {
-      console.warn("[extrair-itens] Failed to parse content as JSON:", String(e));
-    }
+    } catch {}
   }
-
-  console.warn("[extrair-itens] No itens found in AI response");
   return [];
 }
+
+const CLAUDE_SYSTEM_ITENS = `Você é especialista em extração de dados de licitações públicas brasileiras (Lei 14.133/2021 e 8.666/93).
+
+REGRAS DE EXTRAÇÃO — seguir rigorosamente:
+1. Extraia TODOS os itens/lotes sem exceção
+2. Copie descrições LITERALMENTE — nunca resuma ou altere
+3. Preserve especificações técnicas completas (normas, dimensões, composição)
+4. Tabelas multi-página: consolide todos os itens em um único array
+5. Lotes: extraia cada item individualmente com lote preenchido
+6. Valores: use o número exato do documento. null se ausente.
+7. CATMAT/CATSER: extraia o código se constar (4-8 dígitos)
+
+Retorne SOMENTE JSON válido — sem markdown, sem texto antes ou depois.`;
+
+const CLAUDE_PROMPT_ITENS = `Leia TODAS as páginas deste documento e extraia os itens de licitação.
+
+Retorne JSON neste formato exato:
+{
+  "itens": [
+    {
+      "item": 1,
+      "descricao": "descrição completa do item",
+      "quantidade": 100,
+      "unidade": "UN",
+      "valor_unitario": 25.00,
+      "valor_total": 2500.00,
+      "lote": "Único",
+      "marca": null,
+      "fabricante": null,
+      "modelo": null
+    }
+  ]
+}
+
+Se não encontrar itens, retorne {"itens": []}.`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -124,7 +136,85 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { texto_edital, skip_min_length, numero_controle, orgao_cnpj, ano_compra, sequencial } = body;
+    const {
+      texto_edital,
+      skip_min_length,
+      numero_controle,
+      orgao_cnpj,
+      ano_compra,
+      sequencial,
+      // Novos parâmetros para PDF nativo
+      pdf_base64,
+      pdf_url,
+    } = body;
+
+    // ══════════════════════════════════════════════
+    // CAMADA 0: PDF nativo via Claude (sem conversão)
+    // ══════════════════════════════════════════════
+    const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+
+    if (pdf_base64 && ANTHROPIC_KEY) {
+      try {
+        const tamanhoMB = (pdf_base64.length * 0.75) / 1024 / 1024;
+        console.log(`[extrair-itens] CAMADA 0 - Claude PDF nativo ${tamanhoMB.toFixed(1)}MB`);
+
+        const resposta = await chamarClaude(
+          CLAUDE_PROMPT_ITENS,
+          { pdfBase64: pdf_base64 },
+          { sistema: CLAUDE_SYSTEM_ITENS, maxTokens: 8000, cacheEphemeral: true }
+        );
+
+        const dados = parsearJson(resposta);
+        const rawItens: any[] = dados?.itens || [];
+        const itens = rawItens.map((item: any, idx: number) => normalizeItem(item, idx)).filter(Boolean);
+
+        if (itens.length > 0) {
+          console.log(`[extrair-itens] Claude extraiu ${itens.length} itens do PDF`);
+          return new Response(JSON.stringify({
+            success: true,
+            data: itens,
+            total: itens.length,
+            fonte: "CLAUDE_PDF",
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      } catch (e) {
+        console.warn("[extrair-itens] Claude PDF falhou:", String(e));
+      }
+    }
+
+    // Download PDF from URL and try Claude
+    if (pdf_url && ANTHROPIC_KEY && !pdf_base64) {
+      try {
+        const r = await fetch(pdf_url, { signal: AbortSignal.timeout(20000) });
+        if (r.ok) {
+          const downloadedBase64 = await arrayParaBase64(await r.arrayBuffer());
+          const tamanhoMB = (downloadedBase64.length * 0.75) / 1024 / 1024;
+          console.log(`[extrair-itens] CAMADA 0 - Claude PDF via URL ${tamanhoMB.toFixed(1)}MB`);
+
+          const resposta = await chamarClaude(
+            CLAUDE_PROMPT_ITENS,
+            { pdfBase64: downloadedBase64 },
+            { sistema: CLAUDE_SYSTEM_ITENS, maxTokens: 8000, cacheEphemeral: true }
+          );
+
+          const dados = parsearJson(resposta);
+          const rawItens: any[] = dados?.itens || [];
+          const itens = rawItens.map((item: any, idx: number) => normalizeItem(item, idx)).filter(Boolean);
+
+          if (itens.length > 0) {
+            console.log(`[extrair-itens] Claude extraiu ${itens.length} itens do PDF (URL)`);
+            return new Response(JSON.stringify({
+              success: true,
+              data: itens,
+              total: itens.length,
+              fonte: "CLAUDE_PDF_URL",
+            }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        }
+      } catch (e) {
+        console.warn("[extrair-itens] Claude PDF URL falhou:", String(e));
+      }
+    }
 
     // ══════════════════════════════════════════════
     // CAMADA 1: API PNCP de itens (dados estruturados)
@@ -135,11 +225,7 @@ Deno.serve(async (req) => {
 
     if (numero_controle && !cnpj) {
       const parsed = parsePNCPNumeroControle(numero_controle);
-      if (parsed) {
-        cnpj = parsed.cnpj;
-        seq = parsed.seq;
-        ano = parsed.ano;
-      }
+      if (parsed) { cnpj = parsed.cnpj; seq = parsed.seq; ano = parsed.ano; }
     }
 
     if (cnpj && ano && seq) {
@@ -158,7 +244,6 @@ Deno.serve(async (req) => {
 
           if (itensPNCP.length > 0) {
             console.log(`[extrair-itens] PNCP retornou ${itensPNCP.length} itens`);
-
             const itens = itensPNCP.map((item: any, idx: number) => ({
               item: item.numeroItem ?? idx + 1,
               descricao: item.descricao ?? item.descricaoItem ?? "",
@@ -177,13 +262,8 @@ Deno.serve(async (req) => {
             })).filter((i: any) => i.descricao && i.descricao.trim().length > 0);
 
             return new Response(JSON.stringify({
-              success: true,
-              data: itens,
-              total: itens.length,
-              fonte: "PNCP_API",
-            }), {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
+              success: true, data: itens, total: itens.length, fonte: "PNCP_API",
+            }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
         }
       } catch (e) {
@@ -192,139 +272,66 @@ Deno.serve(async (req) => {
     }
 
     // ══════════════════════════════════════════════
-    // CAMADA 2: Extração via IA do texto do edital
+    // CAMADA 2: Buscar PDF do PNCP → Claude nativo
     // ══════════════════════════════════════════════
+    if (cnpj && ano && seq && ANTHROPIC_KEY) {
+      console.log("[extrair-itens] CAMADA 2 - Buscando PDF do PNCP para Claude...");
+      const pncpPdfBase64 = await buscarPdfPNCP(cnpj, ano, seq);
 
-    // If we have PNCP params but no texto_edital, try downloading the PDF from PNCP archives
+      if (pncpPdfBase64) {
+        try {
+          const resposta = await chamarClaude(
+            CLAUDE_PROMPT_ITENS,
+            { pdfBase64: pncpPdfBase64 },
+            { sistema: CLAUDE_SYSTEM_ITENS, maxTokens: 8000, cacheEphemeral: true }
+          );
+
+          const dados = parsearJson(resposta);
+          const rawItens: any[] = dados?.itens || [];
+          const itens = rawItens.map((item: any, idx: number) => normalizeItem(item, idx)).filter(Boolean);
+
+          if (itens.length > 0) {
+            console.log(`[extrair-itens] Claude PNCP PDF extraiu ${itens.length} itens`);
+            return new Response(JSON.stringify({
+              success: true, data: itens, total: itens.length, fonte: "CLAUDE_PNCP_PDF",
+            }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        } catch (e) {
+          console.warn("[extrair-itens] Claude PNCP PDF falhou:", String(e));
+        }
+      }
+    }
+
+    // ══════════════════════════════════════════════
+    // CAMADA 3: Extração via Gemini (texto puro) — fallback
+    // ══════════════════════════════════════════════
     let textoParaIA = texto_edital;
 
+    // If no text and we have PNCP params, try downloading archives for Gemini Vision fallback
     if ((!textoParaIA || textoParaIA.trim().length < 50) && cnpj && ano && seq) {
-      console.log("[extrair-itens] CAMADA 2 - Tentando buscar arquivos PNCP para fallback IA...");
       const urlArquivos = `https://pncp.gov.br/api/consulta/v1/orgaos/${cnpj}/compras/${ano}/${seq}/arquivos?pagina=1&tamanhoPagina=20`;
-
       try {
         const respArq = await fetch(urlArquivos, {
           headers: { "Accept": "application/json" },
           signal: AbortSignal.timeout(15000),
         });
-
         if (respArq.ok) {
           const dataArq = await respArq.json();
           const arquivos: any[] = dataArq?.data ?? (Array.isArray(dataArq) ? dataArq : []);
-
-          // Find the edital document
           const editalArq = arquivos.find((a: any) =>
             (a.titulo ?? "").toLowerCase().includes("edital") ||
-            (a.tipoDocumentoNome ?? "").toLowerCase().includes("edital") ||
-            (a.tipoDocumentoDescricao ?? "").toLowerCase().includes("edital")
+            (a.tipoDocumentoNome ?? "").toLowerCase().includes("edital")
           ) ?? arquivos.find((a: any) =>
-            (a.titulo ?? "").toLowerCase().includes("termo") ||
-            (a.tipoDocumentoNome ?? "").toLowerCase().includes("termo")
+            (a.titulo ?? "").toLowerCase().includes("termo")
           ) ?? arquivos[0];
-
           const pdfUrl = editalArq?.url ?? editalArq?.uri ?? null;
 
           if (pdfUrl) {
-            console.log("[extrair-itens] PDF encontrado:", pdfUrl);
-            // Try to download and use Gemini Vision to read PDF
-            const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-            if (LOVABLE_API_KEY) {
-              try {
-                console.log("[extrair-itens] Tentando ler PDF via Gemini Vision...");
-                const pdfResp = await fetch(pdfUrl, {
-                  signal: AbortSignal.timeout(20000),
-                });
-                
-                if (pdfResp.ok) {
-                  const pdfBytes = new Uint8Array(await pdfResp.arrayBuffer());
-                  const base64Pdf = btoa(String.fromCharCode(...pdfBytes));
-                  
-                  // Use Gemini to extract text from PDF
-                  const visionResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      model: "google/gemini-2.5-flash",
-                      messages: [
-                        {
-                          role: "user",
-                          content: [
-                            {
-                              type: "text",
-                              text: `Extraia TODOS os itens/lotes deste edital de licitação. Para cada item retorne: numero_item, descricao, quantidade, unidade, valor_unitario, valor_total, lote, marca. Retorne APENAS JSON válido no formato: {"itens": [...]}. Se não encontrar itens, retorne {"itens": []}.`,
-                            },
-                            {
-                              type: "image_url",
-                              image_url: {
-                                url: `data:application/pdf;base64,${base64Pdf}`,
-                              },
-                            },
-                          ],
-                        },
-                      ],
-                    }),
-                  });
-
-                  if (visionResp.ok) {
-                    const visionData = await visionResp.json();
-                    const visionContent = visionData.choices?.[0]?.message?.content || "";
-                    const jsonClean = visionContent.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
-                    const jsonMatch = jsonClean.match(/\{[\s\S]*\}/);
-                    
-                    if (jsonMatch) {
-                      const parsed = JSON.parse(jsonMatch[0]);
-                      const rawItens: any[] = parsed?.itens || [];
-                      
-                      if (rawItens.length > 0) {
-                        const itens = rawItens.map((item: any, idx: number) => {
-                          return normalizeItem({
-                            item: item.numero_item ?? item.item ?? idx + 1,
-                            descricao: item.descricao,
-                            quantidade: item.quantidade,
-                            unidade: item.unidade_medida ?? item.unidade,
-                            valor_unitario: item.valor_unitario,
-                            valor_total: item.valor_total,
-                            lote: item.lote,
-                            marca: item.marca,
-                            fabricante: item.fabricante,
-                            modelo: item.modelo,
-                          }, idx);
-                        }).filter(Boolean);
-
-                        if (itens.length > 0) {
-                          console.log(`[extrair-itens] Gemini Vision extraiu ${itens.length} itens do PDF`);
-                          return new Response(JSON.stringify({
-                            success: true,
-                            data: itens,
-                            total: itens.length,
-                            fonte: "IA_VISION",
-                          }), {
-                            headers: { ...corsHeaders, "Content-Type": "application/json" },
-                          });
-                        }
-                      }
-                    }
-                  }
-                }
-              } catch (e) {
-                console.warn("[extrair-itens] Gemini Vision falhou:", String(e));
-              }
-            }
-
-            // If Vision failed, return pdf_url for client-side fallback
             return new Response(JSON.stringify({
-              success: false,
-              data: [],
-              total: 0,
-              fonte: "manual",
+              success: false, data: [], total: 0, fonte: "manual",
               pdf_url: pdfUrl,
               mensagem: "Itens não disponíveis via API. O PDF do edital está disponível para extração manual ou upload.",
-            }), {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
+            }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
         }
       } catch (e) {
@@ -332,26 +339,18 @@ Deno.serve(async (req) => {
       }
     }
 
-    // If we have text, do AI extraction
-    if (!textoParaIA || typeof textoParaIA !== "string" || textoParaIA.trim().length < (skip_min_length ? 50 : 500)) {
+    if (!textoParaIA || typeof textoParaIA !== "string" || textoParaIA.trim().length < (skip_min_length ? 50 : 200)) {
       return new Response(JSON.stringify({
-        success: false,
-        data: [],
-        error: "Texto do edital muito curto ou ausente",
-        fonte: "manual",
-        mensagem: "Não foi possível obter dados estruturados. Preencha manualmente.",
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+        success: false, data: [], error: "Texto do edital muito curto ou ausente",
+        fonte: "manual", mensagem: "Não foi possível obter dados estruturados. Preencha manualmente.",
+      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     const truncated = textoParaIA.slice(0, 120000);
-
-    console.log("[extrair-itens] CAMADA 2 - Extraindo via IA (texto)..., comprimento:", truncated.length);
+    console.log("[extrair-itens] CAMADA 3 - Extraindo via Gemini (texto)..., comprimento:", truncated.length);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -414,30 +413,52 @@ ${truncated}`,
 
     const result = await response.json();
     const rawItens = extractItensFromAIResponse(result);
+    const itens = rawItens.map((item: ItemEdital, idx: number) => normalizeItem(item, idx)).filter(Boolean);
 
-    const itens = rawItens
-      .map((item: ItemEdital, idx: number) => normalizeItem(item, idx))
-      .filter(Boolean);
-
-    console.log(`[extrair-itens] IA retornou ${rawItens.length} itens brutos, ${itens.length} normalizados`);
+    console.log(`[extrair-itens] Gemini retornou ${rawItens.length} itens brutos, ${itens.length} normalizados`);
 
     return new Response(JSON.stringify({
-      success: true,
-      data: itens,
-      total: itens.length,
-      fonte: "IA",
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+      success: true, data: itens, total: itens.length, fonte: "IA",
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
     console.error("extrair-itens-edital error:", error);
     return new Response(JSON.stringify({
       success: false,
       error: error instanceof Error ? error.message : "Erro desconhecido",
       fonte: "erro",
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
+
+// ── HELPERS ──────────────────────────────────────────────────
+
+async function buscarPdfPNCP(cnpj: string, ano: number, seq: number): Promise<string | null> {
+  const url = `https://pncp.gov.br/api/consulta/v1/orgaos/${cnpj}/compras/${ano}/${seq}/arquivos?pagina=1&tamanhoPagina=20`;
+  try {
+    const r = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!r.ok) return null;
+    const { data: arquivos = [] } = await r.json();
+
+    const prioridade = (a: any) => {
+      const t = (a.titulo ?? "").toLowerCase();
+      if (t.includes("termo de refer")) return 0;
+      if (/\btr\b/.test(t)) return 1;
+      if (t.includes("edital")) return 2;
+      if (t.includes("planilha") || t.includes("item")) return 3;
+      return 10;
+    };
+
+    const melhor = [...arquivos].sort((a: any, b: any) => prioridade(a) - prioridade(b))[0];
+    if (!melhor?.url) return null;
+
+    const pdfResp = await fetch(melhor.url, { signal: AbortSignal.timeout(25000) });
+    if (!pdfResp.ok) return null;
+
+    return arrayParaBase64(await pdfResp.arrayBuffer());
+  } catch {
+    return null;
+  }
+}

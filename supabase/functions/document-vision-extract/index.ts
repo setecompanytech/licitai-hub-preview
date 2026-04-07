@@ -1,3 +1,5 @@
+import { chamarClaude, parsearJson, arrayParaBase64 } from "../_shared/claude-client.ts";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
@@ -33,15 +35,13 @@ REGRAS OBRIGATÓRIAS:
 type VisionImage = {
   name?: string;
   dataUrl?: string;
+  base64?: string;
+  mimeType?: string;
 };
 
 function parseToolArguments(value: unknown) {
   if (typeof value !== 'string') return null;
-  try {
-    return JSON.parse(value);
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(value); } catch { return null; }
 }
 
 function getGatewayErrorMessage(data: any) {
@@ -57,7 +57,6 @@ async function callGateway(lovableKey: string, body: Record<string, unknown>) {
     },
     body: JSON.stringify(body),
   });
-
   const data = await response.json();
   return { response, data };
 }
@@ -82,32 +81,169 @@ Deno.serve(async (req) => {
 
   try {
     const lovableKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!lovableKey) {
-      return new Response(JSON.stringify({ error: 'LOVABLE_API_KEY não configurada.' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
 
-    const { fileName = 'documento', images = [], text = '', mode = 'ocr' } = await req.json();
-    const sanitizedImages = (Array.isArray(images) ? images : [])
-      .filter((image: VisionImage) => typeof image?.dataUrl === 'string' && image.dataUrl.startsWith('data:image/'))
-      .slice(0, 4);
-    const supportText = typeof text === 'string' ? text.trim().slice(0, 12000) : '';
+    const { fileName = 'documento', images = [], text = '', mode = 'ocr', pdf_base64, pdf_url } = await req.json();
+
     const isValidityMode = mode === 'document_validity';
 
-    if (sanitizedImages.length === 0 && !supportText) {
-      return new Response(JSON.stringify({ error: 'Nenhuma imagem ou texto válido foi enviado.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // ══════════════════════════════════════════════
+    // ROTA 1: PDF nativo via Claude (sem conversão para imagem)
+    // ══════════════════════════════════════════════
+    if (anthropicKey && (pdf_base64 || pdf_url)) {
+      try {
+        let base64 = pdf_base64;
+        if (!base64 && pdf_url) {
+          const r = await fetch(pdf_url, { signal: AbortSignal.timeout(15000) });
+          if (r.ok) base64 = await arrayParaBase64(await r.arrayBuffer());
+        }
+
+        if (base64) {
+          const promptClaude = isValidityMode
+            ? `Arquivo: ${fileName}. Identifique a data de validade real deste documento. Retorne JSON: {"validityDate": "YYYY-MM-DD ou vazio", "evidenceText": "trecho literal", "documentType": "tipo"}`
+            : `Arquivo: ${fileName}. Extraia todo o texto visível com fidelidade literal.`;
+
+          const sistema = isValidityMode ? VALIDITY_SYSTEM_PROMPT : SYSTEM_PROMPT;
+
+          const resultado = await chamarClaude(
+            promptClaude,
+            { pdfBase64: base64 },
+            { sistema, maxTokens: 6000 }
+          );
+
+          if (isValidityMode) {
+            try {
+              const parsed = parsearJson(resultado);
+              return new Response(JSON.stringify({
+                text: resultado,
+                validityDate: parsed.validityDate || '',
+                evidenceText: parsed.evidenceText || '',
+                documentType: parsed.documentType || '',
+                _motor: 'claude_pdf',
+              }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+            } catch {
+              // Fall through to Gemini
+            }
+          } else {
+            return new Response(JSON.stringify({
+              text: resultado,
+              _motor: 'claude_pdf',
+            }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+        }
+      } catch (e) {
+        console.warn('[document-vision] Claude PDF falhou, tentando Gemini:', String(e));
+      }
+    }
+
+    // ══════════════════════════════════════════════
+    // ROTA 2: Imagens via Claude (até 20 imagens, vs 4 do Gemini)
+    // ══════════════════════════════════════════════
+    const sanitizedImages = (Array.isArray(images) ? images : [])
+      .filter((image: VisionImage) => {
+        const url = image?.dataUrl || image?.base64;
+        return typeof url === 'string' && (url.startsWith('data:image/') || image?.base64);
+      });
+
+    if (anthropicKey && sanitizedImages.length > 0) {
+      try {
+        const imagensParaEnviar = sanitizedImages.slice(0, 20);
+
+        const blocos: any[] = imagensParaEnviar.map((img: VisionImage) => {
+          let base64Data = img.base64 || '';
+          let mediaType = img.mimeType || 'image/jpeg';
+
+          if (!base64Data && img.dataUrl) {
+            const match = img.dataUrl.match(/^data:(image\/[^;]+);base64,(.+)$/);
+            if (match) {
+              mediaType = match[1];
+              base64Data = match[2];
+            }
+          }
+
+          return {
+            type: "image",
+            source: { type: "base64", media_type: mediaType, data: base64Data },
+          };
+        });
+
+        const promptText = isValidityMode
+          ? `Arquivo: ${fileName}. Identifique a data de validade real do documento. Retorne JSON: {"validityDate": "YYYY-MM-DD ou vazio", "evidenceText": "trecho literal", "documentType": "tipo"}`
+          : `Arquivo: ${fileName}. Extraia o texto visível com fidelidade literal.`;
+
+        blocos.push({ type: "text", text: promptText });
+
+        const sistema = isValidityMode ? VALIDITY_SYSTEM_PROMPT : SYSTEM_PROMPT;
+
+        const resp = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": anthropicKey,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 6000,
+            system: sistema,
+            messages: [{ role: "user", content: blocos }],
+          }),
+          signal: AbortSignal.timeout(60000),
+        });
+
+        if (resp.ok) {
+          const data = await resp.json();
+          const texto = data.content
+            ?.filter((b: any) => b.type === "text")
+            .map((b: any) => b.text)
+            .join("") ?? "";
+
+          if (isValidityMode) {
+            try {
+              const parsed = parsearJson(texto);
+              return new Response(JSON.stringify({
+                text: texto,
+                validityDate: parsed.validityDate || '',
+                evidenceText: parsed.evidenceText || '',
+                documentType: parsed.documentType || '',
+                _motor: 'claude_images',
+              }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+            } catch {
+              // Fall through to Gemini
+            }
+          } else {
+            return new Response(JSON.stringify({
+              text: texto,
+              _motor: 'claude_images',
+            }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+        }
+      } catch (e) {
+        console.warn('[document-vision] Claude imagens falhou, tentando Gemini:', String(e));
+      }
+    }
+
+    // ══════════════════════════════════════════════
+    // ROTA 3: Gemini (fallback para texto ou imagens com 4 limite)
+    // ══════════════════════════════════════════════
+    if (!lovableKey) {
+      return new Response(JSON.stringify({ error: 'Nenhuma chave de IA configurada.' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const oversizedImage = sanitizedImages.find((image: VisionImage) => (image.dataUrl?.length || 0) > 5_500_000);
-    if (oversizedImage) {
-      return new Response(JSON.stringify({ error: 'Uma das imagens excede o tamanho máximo permitido para OCR.' }), {
-        status: 413,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    const geminiImages = sanitizedImages
+      .filter((image: VisionImage) => {
+        const size = (image.dataUrl?.length || 0);
+        return size > 0 && size <= 5_500_000;
+      })
+      .slice(0, 4);
+
+    const supportText = typeof text === 'string' ? text.trim().slice(0, 12000) : '';
+
+    if (geminiImages.length === 0 && !supportText) {
+      return new Response(JSON.stringify({ error: 'Nenhuma imagem ou texto válido foi enviado.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -118,15 +254,10 @@ Deno.serve(async (req) => {
           ? `Arquivo: ${fileName}. Identifique a data de validade real do documento.`
           : `Arquivo: ${fileName}. Extraia o texto visível com fidelidade literal.`,
       },
-      ...(supportText ? [{
-        type: 'text',
-        text: `Texto OCR de apoio (pode conter ruído):\n${supportText}`,
-      }] : []),
-      ...(includeImages ? sanitizedImages.map((image: VisionImage) => ({
+      ...(supportText ? [{ type: 'text', text: `Texto OCR de apoio (pode conter ruído):\n${supportText}` }] : []),
+      ...(includeImages ? geminiImages.map((image: VisionImage) => ({
         type: 'image_url',
-        image_url: {
-          url: image.dataUrl,
-        },
+        image_url: { url: image.dataUrl },
       })) : []),
     ];
 
@@ -135,10 +266,7 @@ Deno.serve(async (req) => {
       temperature: 0.1,
       messages: [
         { role: 'system', content: isValidityMode ? VALIDITY_SYSTEM_PROMPT : SYSTEM_PROMPT },
-        {
-          role: 'user',
-          content: buildContent(true),
-        },
+        { role: 'user', content: buildContent(true) },
       ],
     };
 
@@ -167,17 +295,14 @@ Deno.serve(async (req) => {
 
     let { response, data } = await callGateway(lovableKey, requestBody);
 
-    if (!response.ok && sanitizedImages.length > 0 && supportText) {
+    if (!response.ok && geminiImages.length > 0 && supportText) {
       const rawMessage = getGatewayErrorMessage(data);
       if (rawMessage.includes('Unable to process input image')) {
         ({ response, data } = await callGateway(lovableKey, {
           ...requestBody,
           messages: [
             { role: 'system', content: isValidityMode ? VALIDITY_SYSTEM_PROMPT : SYSTEM_PROMPT },
-            {
-              role: 'user',
-              content: buildContent(false),
-            },
+            { role: 'user', content: buildContent(false) },
           ],
         }));
       }
@@ -191,7 +316,6 @@ Deno.serve(async (req) => {
         : response.status === 402
           ? 'Créditos de IA insuficientes para analisar o documento.'
           : gatewayError;
-
       return new Response(JSON.stringify({ error: errorMessage }), {
         status: response.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -203,23 +327,21 @@ Deno.serve(async (req) => {
       const evidenceText = typeof toolArgs?.evidenceText === 'string' ? toolArgs.evidenceText.trim() : '';
       const validityDate = typeof toolArgs?.validityDate === 'string' ? toolArgs.validityDate.trim() : '';
       const documentType = typeof toolArgs?.documentType === 'string' ? toolArgs.documentType.trim() : '';
-      const text = extractResponseText(data?.choices?.[0]?.message?.content);
+      const responseText = extractResponseText(data?.choices?.[0]?.message?.content);
 
-      return new Response(JSON.stringify({ text, validityDate, evidenceText, documentType }), {
+      return new Response(JSON.stringify({ text: responseText, validityDate, evidenceText, documentType }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const text = extractResponseText(data?.choices?.[0]?.message?.content);
-
-    return new Response(JSON.stringify({ text }), {
+    const responseText = extractResponseText(data?.choices?.[0]?.message?.content);
+    return new Response(JSON.stringify({ text: responseText }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('document-vision-extract fatal error:', error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Erro interno.' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
