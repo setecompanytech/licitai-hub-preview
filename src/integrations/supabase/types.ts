@@ -3738,7 +3738,10 @@ export type Database = {
           empresa_id: string
           equipe: string | null
           id: string
+          identificacao_completa: boolean
+          login_individual: string | null
           nome: string | null
+          nome_individual: string | null
           papel: Database["public"]["Enums"]["empresa_papel"]
           permissoes: Json | null
           user_id: string
@@ -3749,7 +3752,10 @@ export type Database = {
           empresa_id: string
           equipe?: string | null
           id?: string
+          identificacao_completa?: boolean
+          login_individual?: string | null
           nome?: string | null
+          nome_individual?: string | null
           papel?: Database["public"]["Enums"]["empresa_papel"]
           permissoes?: Json | null
           user_id: string
@@ -3760,7 +3766,10 @@ export type Database = {
           empresa_id?: string
           equipe?: string | null
           id?: string
+          identificacao_completa?: boolean
+          login_individual?: string | null
           nome?: string | null
+          nome_individual?: string | null
           papel?: Database["public"]["Enums"]["empresa_papel"]
           permissoes?: Json | null
           user_id?: string
