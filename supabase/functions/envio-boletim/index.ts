@@ -312,6 +312,8 @@ async function sendEmail(supabaseUrl: string, serviceKey: string, email: string,
     data_abertura: lic.data_abertura || '',
     modalidade: lic.modalidade || '',
     portal: lic.portal || '',
+    url_edital: lic.url_edital || '',
+    url_portal: lic.url_portal || '',
     urgencia: lic.urgencia || 'normal',
     horas_restantes: lic.horas_restantes,
   };
@@ -335,6 +337,7 @@ async function sendEmail(supabaseUrl: string, serviceKey: string, email: string,
 async function sendWhatsApp(supabase: any, supabaseUrl: string, serviceKey: string, userId: string, telefone: string, lic: LicitacaoUnificada) {
   const local = [lic.municipio, lic.uf].filter(Boolean).join('/');
   const valor = lic.valor_estimado ? `R$ ${Number(lic.valor_estimado).toLocaleString("pt-BR")}` : '';
+  const linkEdital = lic.url_edital || lic.url_portal || '';
 
   const mensagem = [
     `PRAEFECTUS`,
@@ -346,6 +349,7 @@ async function sendWhatsApp(supabase: any, supabaseUrl: string, serviceKey: stri
     valor ? `Valor: ${valor}` : '',
     lic.data_abertura ? `Abertura: ${lic.data_abertura}` : '',
     lic.portal ? `Portal: ${lic.portal}` : '',
+    linkEdital ? `Edital: ${linkEdital}` : '',
     ``,
     `Acesse: https://app.praefectus.com.br/monitoramento-editais`,
   ].filter(Boolean).join('\n');
