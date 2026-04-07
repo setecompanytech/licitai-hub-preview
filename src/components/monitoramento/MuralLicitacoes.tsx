@@ -27,8 +27,7 @@ import MarcarInteresseDialog from '@/components/compromissos/MarcarInteresseDial
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 import AureliaEditalPanel from '@/components/aurelia/AureliaEditalPanel';
-import { MUNICIPIO_IBGE, ESFERA_PNCP } from '@/constants/pncpMappings';
-import { usePNCPSearch } from '@/hooks/usePNCPSearch';
+import { MUNICIPIO_IBGE } from '@/constants/pncpMappings';
 
 type DetalhePNCP = {
   success: boolean;
@@ -205,11 +204,10 @@ function buildPncpUrl(lic: LicitacaoMural): string | null {
 export default function MuralLicitacoes() {
   const { user } = useAuth();
   const { iniciarProcesso } = useLicitacaoIntegration();
-  const [licitacoes, setLicitacoes] = useState<LicitacaoMural[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pagina, setPagina] = useState(1);
-  const [totalResultados, setTotalResultados] = useState(0);
+  const ultimaBuscaRef = useRef(0);
 
   // Filtros principais
   const [ufFiltro, setUfFiltro] = useState<string>('all');
@@ -433,7 +431,7 @@ export default function MuralLicitacoes() {
   });
 
   // ── FASE 1: Carregamento instantâneo do cache local ──
-  const carregarCache = useCallback(async () => {
+  const carregarCache = useCallback(async (requestId?: number) => {
     try {
       let query = supabase.from('pncp_editais_cache').select('*');
       if (ufFiltro !== 'all') query = query.eq('uf', ufFiltro);
@@ -458,20 +456,22 @@ export default function MuralLicitacoes() {
 
       query = query.order('data_publicacao_pncp', { ascending: false }).limit(1000);
       const { data } = await query;
-      if (data && data.length > 0) {
-        const items = data.map(mapToMural);
-        setLicitacoesRaw(items);
-        return items.length;
+      const items = data?.map(mapToMural) ?? [];
+
+      if (requestId !== undefined && requestId !== ultimaBuscaRef.current) {
+        return [];
       }
-      return 0;
+
+      setLicitacoesRaw(items);
+      return items;
     } catch (err) {
       console.error('Cache load error:', err);
-      return 0;
+      return [];
     }
   }, [ufFiltro, modalidadeFiltro, esferaFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro]);
 
   // ── FASE 2: Sincronização em tempo real com PNCP (background) ──
-  const sincronizarPNCP = useCallback(async () => {
+  const sincronizarPNCP = useCallback(async (requestId?: number, cacheItems: LicitacaoMural[] = []) => {
     setSincronizando(true);
     try {
       const session = await supabase.auth.getSession();
@@ -504,44 +504,59 @@ export default function MuralLicitacoes() {
       const data = await response.json();
       const items: LicitacaoMural[] = (data.items || []).map(mapToMural);
 
-      // Merge: use live data as primary, keeping any extras from cache
-      setLicitacoesRaw(prev => {
-        const liveKeys = new Set(items.map(i => `${i.cnpjOrgao}-${i.anoCompra}-${i.sequencialCompra}`).filter(k => k !== 'null-null-null'));
-        const cacheOnlyItems = prev.filter(p => {
-          const key = `${p.cnpjOrgao}-${p.anoCompra}-${p.sequencialCompra}`;
-          return key === 'null-null-null' || !liveKeys.has(key);
-        });
-        return [...items, ...cacheOnlyItems];
+      if (requestId !== undefined && requestId !== ultimaBuscaRef.current) {
+        return;
+      }
+
+      // Merge only with cache from the same search context to avoid stale/general results.
+      const liveKeys = new Set(items.map(i => `${i.cnpjOrgao}-${i.anoCompra}-${i.sequencialCompra}`).filter(k => k !== 'null-null-null'));
+      const cacheOnlyItems = cacheItems.filter(p => {
+        const key = `${p.cnpjOrgao}-${p.anoCompra}-${p.sequencialCompra}`;
+        return key === 'null-null-null' || !liveKeys.has(key);
       });
+
+      setLicitacoesRaw([...items, ...cacheOnlyItems]);
     } catch (err) {
       console.error('PNCP sync error:', err);
       // Only show error if we have zero data at all
-      if (licitacoesRaw.length === 0) {
+      if ((requestId === undefined || requestId === ultimaBuscaRef.current) && cacheItems.length === 0) {
         setError('Não foi possível conectar ao PNCP. Tente novamente em instantes.');
       }
       // If we have cached data, silently ignore sync failure
     } finally {
-      setSincronizando(false);
+      if (requestId === undefined || requestId === ultimaBuscaRef.current) {
+        setSincronizando(false);
+      }
     }
-  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro]);
+  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro, esferaFiltro]);
 
   // ── Carregamento principal: cache primeiro, depois PNCP em background ──
   const carregarMural = useCallback(async () => {
+    const requestId = ultimaBuscaRef.current + 1;
+    ultimaBuscaRef.current = requestId;
+
     setLoading(true);
     setError(null);
     try {
-      const cacheCount = await carregarCache();
+      const cacheItems = await carregarCache(requestId);
+
+      if (requestId !== ultimaBuscaRef.current) {
+        return;
+      }
+
       // Se temos cache, libera a UI imediatamente
-      if (cacheCount > 0) {
+      if (cacheItems.length > 0) {
         setLoading(false);
       }
       // Sincroniza com PNCP em background
-      await sincronizarPNCP();
+      await sincronizarPNCP(requestId, cacheItems);
     } catch (err) {
       console.error(err);
       setError('Erro ao carregar licitações. Tente novamente.');
     } finally {
-      setLoading(false);
+      if (requestId === ultimaBuscaRef.current) {
+        setLoading(false);
+      }
     }
   }, [carregarCache, sincronizarPNCP]);
 
@@ -624,6 +639,8 @@ export default function MuralLicitacoes() {
   const normalizeText = (text: string) =>
     text.toLowerCase().normalize("NFD").replace(/\p{Mn}/gu, "");
 
+  const getDateOnly = (value?: string | null) => value?.split('T')[0] ?? null;
+
   const licitacoesFiltradas = useMemo(() => {
     // Merge PNCP + external results, deduplicating by numero+orgao
     const pncpKeys = new Set(licitacoesRaw.map(i => `${i.numero}|${i.orgao}`));
@@ -654,19 +671,30 @@ export default function MuralLicitacoes() {
         normalizeText(i.orgao || '').includes(qNorm)
       );
     }
-    // Datas
+    // UASG / CNPJ do órgão
+    if (uasgSubmitted.trim()) {
+      const termNorm = normalizeText(uasgSubmitted.trim());
+      const termDigits = uasgSubmitted.replace(/\D/g, '');
+      items = items.filter(i => {
+        const cnpjDigits = (i.cnpjOrgao || '').replace(/\D/g, '');
+        return (termDigits.length > 0 && cnpjDigits.includes(termDigits)) ||
+          normalizeText(i.orgao || '').includes(termNorm) ||
+          normalizeText(i.numero || '').includes(termNorm);
+      });
+    }
+    // Datas de recebimento de propostas (não de publicação)
     if (dataInicio) {
       const dStr = dataInicio.toISOString().split('T')[0];
       items = items.filter(i => {
-        const pub = i.data_publicacao?.split('T')[0];
-        return pub && pub >= dStr;
+        const inicioRecebimento = getDateOnly(i.data_abertura || i.data_publicacao);
+        return inicioRecebimento && inicioRecebimento >= dStr;
       });
     }
     if (dataFim) {
       const dStr = dataFim.toISOString().split('T')[0];
       items = items.filter(i => {
-        const pub = i.data_publicacao?.split('T')[0];
-        return pub && pub <= dStr;
+        const fimRecebimento = getDateOnly(i.data_encerramento || i.data_abertura || i.data_publicacao);
+        return fimRecebimento && fimRecebimento <= dStr;
       });
     }
 
@@ -739,18 +767,32 @@ export default function MuralLicitacoes() {
     });
 
     return items;
-  }, [licitacoesRaw, licitacoesExternas, ufFiltro, municipioFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, esferaFiltro, tipoInstrumentoFiltro, portalFiltro, unidadeFiltro, orgaoFiltro, segmentoFiltro, ordenacao]);
+  }, [licitacoesRaw, licitacoesExternas, ufFiltro, municipioFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, esferaFiltro, tipoInstrumentoFiltro, portalFiltro, unidadeFiltro, orgaoFiltro, segmentoFiltro, ordenacao, uasgSubmitted]);
+
+  const totalResultados = licitacoesFiltradas.length;
+
+  const totaisFiltradosPorFonte = useMemo(() => {
+    return licitacoesFiltradas.reduce(
+      (acc, lic) => {
+        if (lic.id.startsWith('ext-')) {
+          acc.externos += 1;
+        } else if (lic.fonte === 'comprasnet') {
+          acc.comprasGov += 1;
+        } else {
+          acc.pncp += 1;
+        }
+        return acc;
+      },
+      { pncp: 0, comprasGov: 0, externos: 0 }
+    );
+  }, [licitacoesFiltradas]);
+
+  const totalFontesFiltradas = totaisFiltradosPorFonte.pncp + totaisFiltradosPorFonte.comprasGov + totaisFiltradosPorFonte.externos;
 
   const campoOrdenacaoAtual = CAMPOS_ORDENACAO.find((item) => item.campo === ordenacao.campo) ?? CAMPOS_ORDENACAO[0];
   const CampoOrdenacaoAtualIcon = campoOrdenacaoAtual.icon;
   const DirecaoOrdenacaoAtualIcon = ordenacao.direcao === 'asc' ? ArrowUp : ArrowDown;
   const rotuloOrdenacaoAtual = getOrdenacaoLabel(ordenacao);
-
-  // Sincronizar licitacoes e totalResultados com os dados filtrados
-  useEffect(() => {
-    setLicitacoes(licitacoesFiltradas);
-    setTotalResultados(licitacoesFiltradas.length);
-  }, [licitacoesFiltradas]);
 
   useEffect(() => {
     if (user) carregarMural();
@@ -1885,8 +1927,8 @@ export default function MuralLicitacoes() {
                {`${totalResultados} licitações • Sincronizando com PNCP...`}
              </>
            ) :
-           loadingExternos ? `${licitacoesRaw.length} do PNCP • Buscando portais externos...` :
-           `${totalResultados} licitações encontradas${licitacoesExternas.length > 0 ? ` (${licitacoesRaw.length} PNCP + ${licitacoesExternas.length} externos)` : ''}`}
+            loadingExternos ? `${totalResultados} licitações filtradas • Buscando portais externos...` :
+            `${totalResultados} licitações encontradas${totalFontesFiltradas > 0 ? ` (${totaisFiltradosPorFonte.pncp} PNCP${totaisFiltradosPorFonte.comprasGov > 0 ? ` + ${totaisFiltradosPorFonte.comprasGov} Compras.gov` : ''}${totaisFiltradosPorFonte.externos > 0 ? ` + ${totaisFiltradosPorFonte.externos} externos` : ''})` : ''}`}
         </p>
         <div className="flex items-center gap-2 flex-shrink-0">
           <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/30 gap-1 whitespace-nowrap">
@@ -1898,9 +1940,9 @@ export default function MuralLicitacoes() {
             </Badge>
           )}
           {(() => {
-            const totalComprasnet = licitacoesRaw.filter(l => l.fonte === 'comprasnet').length;
-            const totalPncp = licitacoesRaw.filter(l => l.fonte !== 'comprasnet').length;
-            if (totalComprasnet > 0) {
+            const totalComprasnet = totaisFiltradosPorFonte.comprasGov;
+            const totalPncp = totaisFiltradosPorFonte.pncp;
+            if (totalComprasnet > 0 || totalPncp > 0) {
               return (
                 <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                   PNCP: {totalPncp} · Compras.gov: {totalComprasnet}
@@ -1940,9 +1982,9 @@ export default function MuralLicitacoes() {
       )}
 
       {/* Cards grid (TCMPA-style) */}
-      {!loading && licitacoes.length > 0 && (
+      {!loading && licitacoesFiltradas.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {licitacoes.map((lic, idx) => {
+          {licitacoesFiltradas.map((lic, idx) => {
             const isFav = favoritos.has(`${lic.numero}|${lic.orgao}`);
             const isDownloading = downloading === lic.id;
             const scoreInfo = scoresMap.get(lic.id);
@@ -2093,7 +2135,7 @@ export default function MuralLicitacoes() {
       )}
 
       {/* Empty state */}
-      {!loading && licitacoes.length === 0 && !error && (
+      {!loading && licitacoesFiltradas.length === 0 && !error && (
         <Card className="p-8 text-center">
           <Gavel className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">Nenhuma licitação encontrada para os filtros selecionados.</p>
@@ -2102,7 +2144,7 @@ export default function MuralLicitacoes() {
       )}
 
       {/* Pagination */}
-      {!loading && licitacoes.length > 0 && (
+      {!loading && licitacoesFiltradas.length > 0 && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground">
             Página {pagina} • {totalResultados} resultado(s)
@@ -2111,7 +2153,7 @@ export default function MuralLicitacoes() {
             <Button variant="outline" size="sm" disabled={pagina <= 1} onClick={() => setPagina(p => p - 1)} className="gap-1 text-xs">
               <ChevronLeft className="w-3.5 h-3.5" /> Anterior
             </Button>
-            <Button variant="outline" size="sm" disabled={licitacoes.length < 50} onClick={() => setPagina(p => p + 1)} className="gap-1 text-xs">
+            <Button variant="outline" size="sm" disabled={licitacoesFiltradas.length < 50} onClick={() => setPagina(p => p + 1)} className="gap-1 text-xs">
               Próxima <ChevronRight className="w-3.5 h-3.5" />
             </Button>
           </div>
