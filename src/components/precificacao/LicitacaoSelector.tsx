@@ -157,12 +157,38 @@ export default function LicitacaoSelector({
   };
 
   const tryDownloadOfficialEdital = useCallback(async (lic: LicitacaoResumo): Promise<string> => {
-    if (!lic.url_edital) return '';
-
     try {
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
       if (!token) return '';
+
+      // Try to find PNCP identifiers from cache by matching numero/orgao
+      let cnpjOrgao: string | undefined;
+      let anoCompra: string | undefined;
+      let sequencialCompra: string | undefined;
+
+      const { data: cacheMatch } = await supabase
+        .from('pncp_editais_cache')
+        .select('cnpj_orgao, ano_compra, sequencial_compra, numero_controle_pncp')
+        .or(`numero_compra.eq.${lic.numero},numero_compra.ilike.%${lic.numero}%`)
+        .limit(5);
+
+      if (cacheMatch && cacheMatch.length > 0) {
+        // Prefer exact orgao match
+        const orgaoLower = (lic.orgao || '').toLowerCase();
+        const best = cacheMatch.find((c: any) =>
+          (c.orgao || '').toLowerCase().includes(orgaoLower.substring(0, 15))
+        ) || cacheMatch[0];
+
+        cnpjOrgao = (best as any).cnpj_orgao || undefined;
+        anoCompra = (best as any).ano_compra || undefined;
+        sequencialCompra = (best as any).sequencial_compra || undefined;
+      }
+
+      const hasUrl = lic.url_edital && lic.url_edital.trim().length > 0;
+      const hasPncpIds = cnpjOrgao && anoCompra && sequencialCompra;
+
+      if (!hasUrl && !hasPncpIds) return '';
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-edital`, {
         method: 'POST',
@@ -172,9 +198,12 @@ export default function LicitacaoSelector({
         },
         body: JSON.stringify({
           numero: lic.numero,
-          url: lic.url_edital,
+          url: lic.url_edital || undefined,
           orgao: lic.orgao,
           objeto: lic.objeto,
+          cnpjOrgao,
+          anoCompra,
+          sequencialCompra,
         }),
       });
 
