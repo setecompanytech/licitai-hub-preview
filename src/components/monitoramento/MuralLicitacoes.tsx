@@ -242,8 +242,8 @@ export default function MuralLicitacoes() {
   const [incluirExternos, setIncluirExternos] = useState(false);
   const [loadingExternos, setLoadingExternos] = useState(false);
   const [licitacoesExternas, setLicitacoesExternas] = useState<LicitacaoMural[]>([]);
-  // Dynamic municipality loading from IBGE API
-  const [municipiosUfSelecionada, setMunicipiosUfSelecionada] = useState<string[]>([]);
+  // Dynamic municipality loading from IBGE API (with IBGE codes)
+  const [municipiosUfSelecionada, setMunicipiosUfSelecionada] = useState<Array<{ nome: string; id: string }>>([]);
   const [carregandoMunicipios, setCarregandoMunicipios] = useState(false);
 
   useEffect(() => {
@@ -255,19 +255,19 @@ export default function MuralLicitacoes() {
     fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${ufFiltro}/municipios?orderBy=nome`)
       .then(r => r.json())
       .then((data: any[]) => {
-        setMunicipiosUfSelecionada(data.map((m: any) => m.nome as string));
+        setMunicipiosUfSelecionada(data.map((m: any) => ({ nome: m.nome as string, id: String(m.id) })));
       })
       .catch(() => {
         // Fallback to static data if IBGE API fails
-        const fallback: string[] = [];
+        const fallback: Array<{ nome: string; id: string }> = [];
         for (const regiao of Object.values(REGIOES_ESTADOS)) {
           const estado = regiao.estados.find(e => e.uf === ufFiltro);
           if (estado) {
-            fallback.push(...estado.cidades);
+            fallback.push(...estado.cidades.map(c => ({ nome: c, id: MUNICIPIO_IBGE[c] || '' })));
             break;
           }
         }
-        setMunicipiosUfSelecionada(fallback.sort((a, b) => a.localeCompare(b)));
+        setMunicipiosUfSelecionada(fallback.sort((a, b) => a.nome.localeCompare(b.nome)));
       })
       .finally(() => setCarregandoMunicipios(false));
   }, [ufFiltro]);
