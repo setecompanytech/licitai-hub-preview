@@ -3591,15 +3591,7 @@ export type Database = {
           url_pdf?: string | null
           valor_estimado?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "editais_coletados_portal_id_fkey"
-            columns: ["portal_id"]
-            isOneToOne: false
-            referencedRelation: "portais_monitorados"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       editais_favoritos: {
         Row: {
@@ -5039,44 +5031,72 @@ export type Database = {
       }
       notificacoes_enviadas: {
         Row: {
-          alerta_id: string | null
+          agendado_para: string | null
+          alerta_ref_id: string | null
+          alerta_tipo: string | null
+          alerta_titulo: string | null
           canal: string
+          created_at: string | null
+          destinatario: string | null
+          entregue_em: string | null
           enviado_em: string | null
-          erro: string | null
+          erro_codigo: string | null
+          erro_mensagem: string | null
           id: string
+          lido_em: string | null
+          max_tentativas: number | null
+          push_token: string | null
+          resend_id: string | null
           status: string
           tentativas: number | null
           user_id: string
+          wamid: string | null
         }
         Insert: {
-          alerta_id?: string | null
+          agendado_para?: string | null
+          alerta_ref_id?: string | null
+          alerta_tipo?: string | null
+          alerta_titulo?: string | null
           canal: string
+          created_at?: string | null
+          destinatario?: string | null
+          entregue_em?: string | null
           enviado_em?: string | null
-          erro?: string | null
+          erro_codigo?: string | null
+          erro_mensagem?: string | null
           id?: string
-          status: string
+          lido_em?: string | null
+          max_tentativas?: number | null
+          push_token?: string | null
+          resend_id?: string | null
+          status?: string
           tentativas?: number | null
           user_id: string
+          wamid?: string | null
         }
         Update: {
-          alerta_id?: string | null
+          agendado_para?: string | null
+          alerta_ref_id?: string | null
+          alerta_tipo?: string | null
+          alerta_titulo?: string | null
           canal?: string
+          created_at?: string | null
+          destinatario?: string | null
+          entregue_em?: string | null
           enviado_em?: string | null
-          erro?: string | null
+          erro_codigo?: string | null
+          erro_mensagem?: string | null
           id?: string
+          lido_em?: string | null
+          max_tentativas?: number | null
+          push_token?: string | null
+          resend_id?: string | null
           status?: string
           tentativas?: number | null
           user_id?: string
+          wamid?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "notificacoes_enviadas_alerta_id_fkey"
-            columns: ["alerta_id"]
-            isOneToOne: false
-            referencedRelation: "alertas_gerados"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       nuvem_fiscal_config: {
         Row: {
@@ -5605,11 +5625,14 @@ export type Database = {
           id: string
           intervalo_min: number | null
           nome: string
+          status_atual: string | null
           tipo: string
+          total_coletados: number | null
           uf: string | null
           ultima_coleta: string | null
+          ultimo_erro: string | null
+          updated_at: string | null
           url_base: string
-          xpath_lista: string | null
         }
         Insert: {
           ativo?: boolean | null
@@ -5618,11 +5641,14 @@ export type Database = {
           id?: string
           intervalo_min?: number | null
           nome: string
+          status_atual?: string | null
           tipo?: string
+          total_coletados?: number | null
           uf?: string | null
           ultima_coleta?: string | null
+          ultimo_erro?: string | null
+          updated_at?: string | null
           url_base: string
-          xpath_lista?: string | null
         }
         Update: {
           ativo?: boolean | null
@@ -5631,11 +5657,14 @@ export type Database = {
           id?: string
           intervalo_min?: number | null
           nome?: string
+          status_atual?: string | null
           tipo?: string
+          total_coletados?: number | null
           uf?: string | null
           ultima_coleta?: string | null
+          ultimo_erro?: string | null
+          updated_at?: string | null
           url_base?: string
-          xpath_lista?: string | null
         }
         Relationships: []
       }
@@ -6712,6 +6741,7 @@ export type Database = {
           descricao: string | null
           id: string
           nome: string
+          palavras_chave: string[] | null
         }
         Insert: {
           ativo?: boolean | null
@@ -6721,6 +6751,7 @@ export type Database = {
           descricao?: string | null
           id?: string
           nome: string
+          palavras_chave?: string[] | null
         }
         Update: {
           ativo?: boolean | null
@@ -6730,6 +6761,7 @@ export type Database = {
           descricao?: string | null
           id?: string
           nome?: string
+          palavras_chave?: string[] | null
         }
         Relationships: []
       }
@@ -8511,6 +8543,18 @@ export type Database = {
       is_empresa_member: {
         Args: { _empresa_id: string; _user_id: string }
         Returns: boolean
+      }
+      metricas_notificacoes: {
+        Args: { p_dias?: number }
+        Returns: {
+          canal: string
+          entregues: number
+          enviados: number
+          falhos: number
+          taxa_entrega: number
+          taxa_sucesso: number
+          total: number
+        }[]
       }
       move_to_dlq: {
         Args: {
