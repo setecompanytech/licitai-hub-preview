@@ -68,11 +68,11 @@ serve(async (req) => {
 
     const { data: editaisPncp } = await supabase
       .from("pncp_editais_cache")
-      .select("objeto, orgao, valor_total_estimado, uf, municipio, data_abertura_proposta, numero_compra, modalidade_nome, uasg_codigo, fonte, link_comprasnet, situacao")
+      .select("objeto, orgao, valor_total_estimado, uf, municipio, data_abertura_proposta, numero_compra, modalidade_nome, uasg_codigo, fonte, link_comprasnet, link_sistema_origem, situacao, cnpj_orgao")
       .gte("data_abertura_proposta", agora.toISOString())
       .lte("data_abertura_proposta", em72h.toISOString())
-      .in("situacao", ["Divulgada no PNCP", "Aberta", "Publicada", "divulgada"])
-      .limit(200);
+      .in("situacao", ["Divulgada no PNCP", "Aberta", "Publicada", "divulgada", "Em andamento", "Suspensa e Reaberta"])
+      .limit(500);
 
     // 2. Fetch from monitoramento_editais with upcoming dates
     const { data: editaisMonit } = await supabase
