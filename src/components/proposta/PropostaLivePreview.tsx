@@ -146,7 +146,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
           </span>
           {numeroLicitacao && (
             <p className="text-[10px] mt-1.5">
-              Ref.: {modalidade || 'Pregão Eletrônico'} Nº {numeroLicitacao}
+              Ref.: {numeroLicitacao}{modalidade ? ` - ${modalidade}` : ''}
             </p>
           )}
         </div>
