@@ -225,7 +225,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
       let textoParaAnalise = '';
       if (editalFile) {
         const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
-        textoParaAnalise = await extractTextFromFile(editalFile);
+        textoParaAnalise = await extractTextFromFile(editalFile, 150, true);
       } else if (licitacaoIdRef) {
         // Try to get edital text from licitacao data
         const { data: lic } = await supabase
@@ -244,7 +244,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
 
       // AI extraction
       if (licitacaoIdRef) {
-        const saved = await extrairItensIA(licitacaoIdRef, textoParaAnalise, { forceReExtract: true });
+        const saved = await extrairItensIA(licitacaoIdRef, textoParaAnalise, { forceReExtract: true, skipValidation: !!editalFile });
         const disputeItems = licitacaoItensToDispute(saved);
         applyImportedItems(disputeItems);
         if (disputeItems.length > 0) {
@@ -421,11 +421,11 @@ ${truncated}`
 
     try {
       const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
-      const text = await extractTextFromFile(editalFile);
+      const text = await extractTextFromFile(editalFile, 150, true);
 
       // If we have a licitacaoId, use centralized extraction that persists
       if (licitacaoIdRef) {
-        const saved = await extrairItensIA(licitacaoIdRef, text, { forceReExtract: true });
+        const saved = await extrairItensIA(licitacaoIdRef, text, { forceReExtract: true, skipValidation: true });
         const disputeItems = licitacaoItensToDispute(saved);
         applyImportedItems(disputeItems);
         if (disputeItems.length > 0) setStep(1);

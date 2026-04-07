@@ -199,9 +199,9 @@ export function useEditalExtraction() {
     return true;
   }, [user]);
 
-  const invokeExtraction = useCallback(async (textoEdital: string): Promise<ExtractedItemPayload[]> => {
+  const invokeExtraction = useCallback(async (textoEdital: string, skipMinLength = false): Promise<ExtractedItemPayload[]> => {
     const { data, error } = await supabase.functions.invoke('extrair-itens-edital', {
-      body: { texto_edital: textoEdital },
+      body: { texto_edital: textoEdital, skip_min_length: skipMinLength },
     });
 
     if (error || !data?.success) {
@@ -214,7 +214,7 @@ export function useEditalExtraction() {
   const extrairItensIA = useCallback(async (
     licitacaoId: string,
     fileText: string,
-    opts?: { forceReExtract?: boolean }
+    opts?: { forceReExtract?: boolean; skipValidation?: boolean }
   ): Promise<LicitacaoItem[]> => {
     if (!user) return [];
 
@@ -243,8 +243,8 @@ export function useEditalExtraction() {
     ];
     const markerHits = extractionMarkers.filter((marker) => lowerText.includes(marker)).length;
 
-    if (normalizedText.length < MIN_TEXT_LENGTH || markerHits < 2) {
-      toast.error('Não há texto real suficiente do edital para extrair itens com fidelidade.');
+    if (!opts?.skipValidation && (normalizedText.length < MIN_TEXT_LENGTH || markerHits < 2)) {
+      toast.error('Não há texto real suficiente do edital para extrair itens com fidelidade. Tente enviar o edital em formato PDF ou DOC.');
       return [];
     }
 
@@ -254,7 +254,7 @@ export function useEditalExtraction() {
 
     for (const chunk of chunks) {
       try {
-        const chunkItems = await invokeExtraction(chunk);
+        const chunkItems = await invokeExtraction(chunk, !!opts?.skipValidation);
         if (chunkItems.length > 0) {
           extractedItems.push(...chunkItems);
           hasSuccessfulChunk = true;

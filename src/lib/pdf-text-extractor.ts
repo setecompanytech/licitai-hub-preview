@@ -6,6 +6,7 @@ import ExcelJS from 'exceljs';
 
 const DEFAULT_MAX_PAGES = 150;
 const PDF_VISION_PAGE_LIMIT = 5;
+const PDF_VISION_PAGE_LIMIT_EDITAL = 20;
 const SPREADSHEET_SHEET_LIMIT = 4;
 const SPREADSHEET_ROW_LIMIT = 80;
 const SPREADSHEET_COL_LIMIT = 16;
@@ -24,14 +25,15 @@ function normalizeExtractedText(text: string): string {
     .trim();
 }
 
-export async function extractTextFromFile(file: File, maxPages = DEFAULT_MAX_PAGES): Promise<string> {
-  return extractTextFromBlob(file, file.name, maxPages);
+export async function extractTextFromFile(file: File, maxPages = DEFAULT_MAX_PAGES, isEdital = false): Promise<string> {
+  return extractTextFromBlob(file, file.name, maxPages, isEdital);
 }
 
 export async function extractTextFromBlob(
   blob: Blob,
   fileName = 'documento.pdf',
-  maxPages = DEFAULT_MAX_PAGES
+  maxPages = DEFAULT_MAX_PAGES,
+  isEdital = false,
 ): Promise<string> {
   const name = fileName.toLowerCase();
   const type = blob.type.toLowerCase();
@@ -41,7 +43,7 @@ export async function extractTextFromBlob(
   }
 
   if (name.endsWith('.pdf') || type.includes('pdf')) {
-    return extractTextFromPDFData(await blob.arrayBuffer(), maxPages, fileName);
+    return extractTextFromPDFData(await blob.arrayBuffer(), maxPages, fileName, isEdital);
   }
 
   if (name.endsWith('.docx') || type.includes('officedocument.wordprocessingml.document')) {
@@ -75,6 +77,7 @@ async function extractTextFromPDFData(
   arrayBuffer: ArrayBuffer,
   maxPages: number,
   fileName: string,
+  isEdital = false,
 ): Promise<string> {
   const pdfjsLib = await import('pdfjs-dist');
   const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
@@ -102,18 +105,29 @@ async function extractTextFromPDFData(
 
   const extractedText = normalizeExtractedText(pages.join('\n\n'));
 
-  if (!shouldUsePdfVisionFallback(extractedText)) {
+  if (!shouldUsePdfVisionFallback(extractedText) && !isEdital) {
+    return extractedText;
+  }
+
+  // For editais or documents with insufficient text, use vision OCR with more pages
+  const visionPageLimit = isEdital ? PDF_VISION_PAGE_LIMIT_EDITAL : PDF_VISION_PAGE_LIMIT;
+  const shouldFallback = isEdital
+    ? extractedText.length < 2000
+    : shouldUsePdfVisionFallback(extractedText);
+
+  if (!shouldFallback && !isEdital) {
     return extractedText;
   }
 
   try {
-    const pageImages = await renderPdfPagesToVisionInputs(pdf, Math.min(totalPages, PDF_VISION_PAGE_LIMIT));
+    const pageImages = await renderPdfPagesToVisionInputs(pdf, Math.min(totalPages, visionPageLimit));
     if (pageImages.length === 0) {
       return extractedText;
     }
 
     const visionText = await runVisionExtraction(pageImages, fileName);
-    return normalizeExtractedText([extractedText, visionText].filter(Boolean).join('\n\n'));
+    const combined = normalizeExtractedText([extractedText, visionText].filter(Boolean).join('\n\n'));
+    return combined.length > extractedText.length ? combined : extractedText;
   } catch {
     return extractedText;
   }

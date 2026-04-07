@@ -67,9 +67,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { texto_edital } = await req.json();
+    const { texto_edital, skip_min_length } = await req.json();
 
-    if (!texto_edital || typeof texto_edital !== "string" || texto_edital.trim().length < 500) {
+    if (!texto_edital || typeof texto_edital !== "string" || texto_edital.trim().length < (skip_min_length ? 50 : 500)) {
       return new Response(JSON.stringify({ success: false, error: "Texto do edital muito curto ou ausente" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
