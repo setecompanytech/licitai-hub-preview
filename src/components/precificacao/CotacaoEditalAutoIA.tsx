@@ -7,11 +7,11 @@ import {
   ShoppingCart, TrendingDown, Package, AlertCircle, Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { streamAIChat } from '@/lib/ai-stream';
 import { supabase } from '@/integrations/supabase/client';
 import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
+import { useEditalExtraction } from '@/hooks/useEditalExtraction';
 
 type EditalItemExtracted = {
   item: string;
@@ -49,6 +49,7 @@ export default function CotacaoEditalAutoIA() {
   const [currentItem, setCurrentItem] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const { addItem, pendingItems } = usePropostaCart();
+  const { extrairItensDoTexto } = useEditalExtraction();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -67,81 +68,50 @@ export default function CotacaoEditalAutoIA() {
     if (fileRef.current) fileRef.current.value = '';
   };
 
-  // Step 1: Extract items from the edital using AI
   const handleExtractItems = async () => {
-    if (!file) return;
+    if (!file || isExtracting) return;
+
     setIsExtracting(true);
     setItens([]);
 
     try {
-      const text = await extractTextFromFile(file);
-      if (!text || text.trim().length < 50) {
-        toast.error('Não foi possível extrair texto do documento. Verifique se o arquivo não está protegido.');
-        setIsExtracting(false);
+      const text = await extractTextFromFile(file, 150, true);
+      if (!text || text.trim().length < 20) {
+        toast.error('Não foi possível ler conteúdo suficiente do documento.');
         return;
       }
-      const truncated = text.slice(0, 25000);
-      let content = '';
 
-      await streamAIChat({
-        messages: [{
-          role: 'user',
-        content: `Você é um extrator de dados de editais de licitação. Analise o texto REAL do documento abaixo e extraia TODOS os itens para cotação.
+      const parsed = await extrairItensDoTexto(text, { skipValidation: true });
+      if (parsed.length === 0) {
+        return;
+      }
 
-IMPORTANTE: Extraia SOMENTE os itens que REALMENTE existem no texto. NÃO invente, NÃO suponha, NÃO adivinhe itens.
-Se o edital pede "Papel A4", retorne "Papel A4". Se pede "Toner HP 83A", retorne "Toner HP 83A".
-NÃO substitua por produtos diferentes do que está escrito no documento.
+      const itemsCotados: ItemCotado[] = parsed
+        .map<ItemCotado>((item, index) => {
+          const quantidade = Number(item.quantidade ?? 1);
 
-Retorne APENAS um JSON array válido, sem markdown, sem explicações:
-[
-  {"item": "1", "descricao": "descrição EXATA conforme o documento", "quantidade": 10, "unidade": "UN"},
-  {"item": "2", "descricao": "...", "quantidade": 5, "unidade": "CX"}
-]
+          return {
+            item: String(item.item ?? index + 1),
+            descricao: item.descricao?.trim() || '',
+            quantidade: Number.isFinite(quantidade) && quantidade > 0 ? quantidade : 1,
+            unidade: item.unidade?.trim() || 'UN',
+            status: 'pendente',
+            fornecedores: [],
+          };
+        })
+        .filter((item) => item.descricao.length > 0);
 
-REGRAS:
-- Copie a descrição FIELMENTE do documento, incluindo especificações técnicas, marcas e modelos mencionados
-- Quantidade e unidade devem ser EXATOS conforme o edital
-- Se não encontrar itens estruturados, retorne []
-- NUNCA invente itens que não estão no documento
+      if (itemsCotados.length === 0) {
+        toast.warning('Nenhum item encontrado no documento.');
+        return;
+      }
 
-TEXTO DO DOCUMENTO:
-${truncated}`
-        }],
-        action: 'analise_edital',
-        onDelta: (chunk) => { content += chunk; },
-        onDone: () => {
-          try {
-            const jsonMatch = content.match(/\[[\s\S]*\]/);
-            if (!jsonMatch) {
-              toast.error('Não foi possível extrair itens do edital.');
-              setIsExtracting(false);
-              return;
-            }
-            const parsed: EditalItemExtracted[] = JSON.parse(jsonMatch[0]);
-            if (parsed.length === 0) {
-              toast.warning('Nenhum item encontrado no documento.');
-              setIsExtracting(false);
-              return;
-            }
-            const itemsCotados: ItemCotado[] = parsed.map(p => ({
-              ...p,
-              status: 'pendente',
-              fornecedores: [],
-            }));
-            setItens(itemsCotados);
-            toast.success(`${parsed.length} itens extraídos do edital!`);
-          } catch {
-            toast.error('Erro ao processar itens do edital.');
-          }
-          setIsExtracting(false);
-        },
-        onError: (err) => {
-          toast.error(err);
-          setIsExtracting(false);
-        },
-      });
-    } catch {
-      toast.error('Erro ao ler o arquivo.');
+      setItens(itemsCotados);
+      toast.success(`${itemsCotados.length} itens extraídos do edital!`);
+    } catch (error) {
+      console.error('Erro ao extrair itens da precificação:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao ler o arquivo.');
+    } finally {
       setIsExtracting(false);
     }
   };
