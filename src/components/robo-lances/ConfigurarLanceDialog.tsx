@@ -244,7 +244,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
 
       // AI extraction
       if (licitacaoIdRef) {
-        const saved = await extrairItensIA(licitacaoIdRef, textoParaAnalise, { forceReExtract: true });
+        const saved = await extrairItensIA(licitacaoIdRef, textoParaAnalise, { forceReExtract: true, skipValidation: !!editalFile });
         const disputeItems = licitacaoItensToDispute(saved);
         applyImportedItems(disputeItems);
         if (disputeItems.length > 0) {
@@ -425,7 +425,7 @@ ${truncated}`
 
       // If we have a licitacaoId, use centralized extraction that persists
       if (licitacaoIdRef) {
-        const saved = await extrairItensIA(licitacaoIdRef, text, { forceReExtract: true });
+        const saved = await extrairItensIA(licitacaoIdRef, text, { forceReExtract: true, skipValidation: true });
         const disputeItems = licitacaoItensToDispute(saved);
         applyImportedItems(disputeItems);
         if (disputeItems.length > 0) setStep(1);
