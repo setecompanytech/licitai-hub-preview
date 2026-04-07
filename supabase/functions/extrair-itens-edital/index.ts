@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
       try {
         const respArq = await fetch(urlArquivos, {
           headers: { "Accept": "application/json" },
-          signal: AbortSignal.timeout(8000),
+          signal: AbortSignal.timeout(15000),
         });
 
         if (respArq.ok) {
