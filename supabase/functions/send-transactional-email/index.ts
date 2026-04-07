@@ -295,9 +295,10 @@ Deno.serve(async (req) => {
     { plainText: true }
   )
 
-  // Resolve subject — supports static string or dynamic function
-  const resolvedSubject =
-    typeof template.subject === 'function'
+  // Resolve subject — subjectOverride takes priority, then template function/string
+  const resolvedSubject = subjectOverride
+    ? subjectOverride
+    : typeof template.subject === 'function'
       ? template.subject(templateData)
       : template.subject
 
