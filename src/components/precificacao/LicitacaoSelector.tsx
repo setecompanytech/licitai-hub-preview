@@ -305,14 +305,16 @@ export default function LicitacaoSelector({
         editalText = await tryDownloadOfficialEdital(lic);
       }
 
-      if (!editalText || editalText.trim().length < 500) {
+      const textLength = editalText?.trim().length || 0;
+      if (!editalText || textLength < 50) {
         setItensCount(0);
         onItensLoaded?.([]);
         toast.warning('Não foi possível obter o edital completo. Adicione manualmente na planilha abaixo.');
         return;
       }
 
-      const extracted = await extrairItensIA(licitacaoId, editalText, { forceReExtract: true });
+      const shouldSkipValidation = textLength < 500;
+      const extracted = await extrairItensIA(licitacaoId, editalText, { forceReExtract: true, skipValidation: shouldSkipValidation });
 
       if (extracted.length > 0) {
         const mappedItens: LicitacaoItemAutoFill[] = extracted.map((item) => ({
