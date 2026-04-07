@@ -8,6 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { Upload, ImageIcon, X, Loader2, FileText, Eye, ArrowUp, ArrowDown, Printer, RotateCw, Settings2, Ruler, FileImage, Monitor, Scissors, SplitSquareHorizontal, CheckCircle2, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import JSZip from 'jszip';
 
 interface TimbradoUploaderProps {
   empresaId: string | undefined;
@@ -30,6 +31,11 @@ function isImageUrl(url: string) {
 
 function isImageFile(file: File) {
   return file.type.startsWith('image/');
+}
+
+function isDocxFile(file: File) {
+  return file.name.toLowerCase().endsWith('.docx') ||
+    file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 }
 
 type UploadSlot = {
@@ -69,7 +75,6 @@ const DEFAULT_SETUP: PageSetup = {
   footerHeight: 2,
 };
 
-/** Crop a portion of an image and return a Blob */
 function cropImageToBlob(
   img: HTMLImageElement,
   region: 'top' | 'bottom',
@@ -104,6 +109,111 @@ function cropImageToBlob(
   });
 }
 
+async function extractDocxHeaderFooterImages(file: File): Promise<{ headerBlob: Blob | null; footerBlob: Blob | null }> {
+  const zip = await JSZip.loadAsync(file);
+
+  const findImageRefs = (xml: string): string[] => {
+    const refs: string[] = [];
+    const matches = xml.matchAll(/r:(?:embed|link)="(rId\d+)"/g);
+    for (const m of matches) refs.push(m[1]);
+    return refs;
+  };
+
+  const resolveRefs = (relsXml: string, rIds: string[]): string[] => {
+    const paths: string[] = [];
+    for (const rId of rIds) {
+      const regex = new RegExp(`Id="${rId}"[^>]*Target="([^"]+)"`, 'i');
+      const match = relsXml.match(regex);
+      if (match) paths.push(match[1]);
+    }
+    return paths;
+  };
+
+  const getImageBlob = async (relPath: string): Promise<Blob | null> => {
+    const fullPath = relPath.startsWith('/') ? relPath.slice(1) : `word/${relPath}`;
+    const entry = zip.file(fullPath);
+    if (!entry) return null;
+    const data = await entry.async('arraybuffer');
+    const ext = fullPath.split('.').pop()?.toLowerCase() || 'png';
+    const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', emf: 'image/emf', wmf: 'image/wmf' };
+    return new Blob([data], { type: mimeMap[ext] || 'image/png' });
+  };
+
+  let headerBlob: Blob | null = null;
+  let footerBlob: Blob | null = null;
+
+  for (const name of Object.keys(zip.files)) {
+    if (/^word\/header\d*\.xml$/i.test(name)) {
+      const xml = await zip.file(name)!.async('text');
+      const rIds = findImageRefs(xml);
+      if (rIds.length === 0) continue;
+
+      const relsName = name.replace('word/', 'word/_rels/') + '.rels';
+      const relsFile = zip.file(relsName);
+      if (!relsFile) continue;
+
+      const relsXml = await relsFile.async('text');
+      const paths = resolveRefs(relsXml, rIds);
+
+      for (const p of paths) {
+        const blob = await getImageBlob(p);
+        if (blob && blob.size > 500) {
+          headerBlob = blob;
+          break;
+        }
+      }
+      if (headerBlob) break;
+    }
+  }
+
+  for (const name of Object.keys(zip.files)) {
+    if (/^word\/footer\d*\.xml$/i.test(name)) {
+      const xml = await zip.file(name)!.async('text');
+      const rIds = findImageRefs(xml);
+      if (rIds.length === 0) continue;
+
+      const relsName = name.replace('word/', 'word/_rels/') + '.rels';
+      const relsFile = zip.file(relsName);
+      if (!relsFile) continue;
+
+      const relsXml = await relsFile.async('text');
+      const paths = resolveRefs(relsXml, rIds);
+
+      for (const p of paths) {
+        const blob = await getImageBlob(p);
+        if (blob && blob.size > 500) {
+          footerBlob = blob;
+          break;
+        }
+      }
+      if (footerBlob) break;
+    }
+  }
+
+  if (!headerBlob && !footerBlob) {
+    const mediaImages: Blob[] = [];
+    for (const name of Object.keys(zip.files)) {
+      if (/^word\/media\//i.test(name) && /\.(png|jpe?g|gif|bmp)$/i.test(name)) {
+        const entry = zip.file(name);
+        if (!entry) continue;
+        const data = await entry.async('arraybuffer');
+        const ext = name.split('.').pop()?.toLowerCase() || 'png';
+        const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp' };
+        const blob = new Blob([data], { type: mimeMap[ext] || 'image/png' });
+        if (blob.size > 500) mediaImages.push(blob);
+      }
+    }
+    if (mediaImages.length >= 2) {
+      headerBlob = mediaImages[0];
+      footerBlob = mediaImages[mediaImages.length - 1];
+    } else if (mediaImages.length === 1) {
+      headerBlob = mediaImages[0];
+    }
+  }
+
+  return { headerBlob, footerBlob };
+}
+
 export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUrl }: TimbradoUploaderProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [header, setHeader] = useState<UploadSlot>({ url: null, path: null });
@@ -113,10 +223,9 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
   const [pageSetup, setPageSetup] = useState<PageSetup>(DEFAULT_SETUP);
   const [previewTab, setPreviewTab] = useState<string>('preview');
 
-  // Split editor state
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
-  const [headerSplit, setHeaderSplit] = useState(15); // top % for header
-  const [footerSplit, setFooterSplit] = useState(10); // bottom % for footer
+  const [headerSplit, setHeaderSplit] = useState(15);
+  const [footerSplit, setFooterSplit] = useState(10);
   const [splitting, setSplitting] = useState(false);
   const [splitDone, setSplitDone] = useState(false);
 
@@ -139,7 +248,6 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
       });
   }, [empresaId]);
 
-  /** Upload a single file as the full timbrado, then show split editor */
   const handleFileSelected = async (file: File) => {
     if (!empresaId) return;
     const ext = '.' + file.name.split('.').pop()?.toLowerCase();
@@ -152,42 +260,92 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
     setUploading(true);
     setSplitDone(false);
 
-    if (isImageFile(file)) {
-      // For images: show split editor
-      const localUrl = URL.createObjectURL(file);
-      setSourceImageUrl(localUrl);
+    try {
+      if (isImageFile(file)) {
+        const localUrl = URL.createObjectURL(file);
+        setSourceImageUrl(localUrl);
 
-      // Also upload the full timbrado
-      const path = `${empresaId}/timbrado_full.png`;
-      await supabase.storage.from('timbrados').upload(path, file, { upsert: true });
+        const path = `${empresaId}/timbrado_full.png`;
+        await supabase.storage.from('timbrados').upload(path, file, { upsert: true });
 
+        setUploading(false);
+        toast.success('Imagem carregada! Ajuste as áreas de cabeçalho e rodapé abaixo.');
+      } else if (isDocxFile(file)) {
+        toast.info('Extraindo cabeçalho e rodapé do documento Word...');
+
+        const { headerBlob, footerBlob } = await extractDocxHeaderFooterImages(file);
+
+        if (!headerBlob && !footerBlob) {
+          toast.error('Não foi possível extrair imagens do documento. O arquivo não contém cabeçalho ou rodapé com imagens.');
+          setUploading(false);
+          return;
+        }
+
+        let headerUrl = '';
+        let headerPath = '';
+        if (headerBlob) {
+          headerPath = `${empresaId}/cabecalho.png`;
+          const { error: hErr } = await supabase.storage.from('timbrados').upload(headerPath, headerBlob, { upsert: true, contentType: 'image/png' });
+          if (hErr) throw hErr;
+          const { data: hSigned } = await supabase.storage.from('timbrados').createSignedUrl(headerPath, 31536000);
+          headerUrl = hSigned?.signedUrl || '';
+        }
+
+        let footerUrl = '';
+        let footerPath = '';
+        if (footerBlob) {
+          footerPath = `${empresaId}/rodape.png`;
+          const { error: fErr } = await supabase.storage.from('timbrados').upload(footerPath, footerBlob, { upsert: true, contentType: 'image/png' });
+          if (fErr) throw fErr;
+          const { data: fSigned } = await supabase.storage.from('timbrados').createSignedUrl(footerPath, 31536000);
+          footerUrl = fSigned?.signedUrl || '';
+        }
+
+        await supabase.from('empresas').update({
+          cabecalho_path: headerPath || null,
+          cabecalho_url: headerUrl || null,
+          timbrado_path: headerPath || null,
+          timbrado_url: headerUrl || null,
+          rodape_path: footerPath || null,
+          rodape_url: footerUrl || null,
+        }).eq('id', empresaId);
+
+        setHeader({ url: headerUrl || null, path: headerPath || null });
+        setFooter({ url: footerUrl || null, path: footerPath || null });
+        setTimbradoUrl(headerUrl || null);
+        setSplitDone(true);
+
+        const parts = [headerBlob ? 'cabeçalho' : '', footerBlob ? 'rodapé' : ''].filter(Boolean).join(' e ');
+        toast.success(`${parts.charAt(0).toUpperCase() + parts.slice(1)} extraído(s) do documento Word com sucesso!`);
+        setUploading(false);
+      } else {
+        const path = `${empresaId}/cabecalho${ext}`;
+        const { error } = await supabase.storage.from('timbrados').upload(path, file, { upsert: true });
+        if (error) { toast.error('Erro: ' + error.message); setUploading(false); return; }
+
+        const { data: signedData } = await supabase.storage.from('timbrados').createSignedUrl(path, 31536000);
+        const publicUrl = signedData?.signedUrl || '';
+
+        await supabase.from('empresas').update({
+          cabecalho_path: path,
+          cabecalho_url: publicUrl,
+          timbrado_path: path,
+          timbrado_url: publicUrl,
+        }).eq('id', empresaId);
+
+        setHeader({ url: publicUrl, path });
+        setTimbradoUrl(publicUrl);
+        setSplitDone(true);
+        setUploading(false);
+        toast.success('Documento enviado como timbrado!');
+      }
+    } catch (err: any) {
+      console.error('Erro ao processar timbrado:', err);
+      toast.error('Erro ao processar arquivo: ' + (err.message || 'desconhecido'));
       setUploading(false);
-      toast.success('Arquivo carregado! Ajuste as áreas de cabeçalho e rodapé abaixo.');
-    } else {
-      // For non-image files (PDF, Word): upload as header directly (legacy behavior)
-      const path = `${empresaId}/cabecalho${ext}`;
-      const { error } = await supabase.storage.from('timbrados').upload(path, file, { upsert: true });
-      if (error) { toast.error('Erro: ' + error.message); setUploading(false); return; }
-
-      const { data: signedData } = await supabase.storage.from('timbrados').createSignedUrl(path, 31536000);
-      const publicUrl = signedData?.signedUrl || '';
-
-      await supabase.from('empresas').update({
-        cabecalho_path: path,
-        cabecalho_url: publicUrl,
-        timbrado_path: path,
-        timbrado_url: publicUrl,
-      }).eq('id', empresaId);
-
-      setHeader({ url: publicUrl, path });
-      setTimbradoUrl(publicUrl);
-      setSplitDone(true);
-      setUploading(false);
-      toast.success('Documento enviado como cabeçalho! Para rodapé, envie outro arquivo ou use uma imagem para recorte automático.');
     }
   };
 
-  /** Apply the split: crop header and footer from the source image */
   const applySplit = useCallback(async () => {
     if (!sourceImageUrl || !empresaId) return;
     setSplitting(true);
@@ -201,25 +359,20 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         img.src = sourceImageUrl;
       });
 
-      // Crop header (top portion)
       const headerBlob = await cropImageToBlob(img, 'top', headerSplit);
       const headerPath = `${empresaId}/cabecalho.png`;
       const { error: hErr } = await supabase.storage.from('timbrados').upload(headerPath, headerBlob, { upsert: true, contentType: 'image/png' });
       if (hErr) throw hErr;
-
       const { data: hSigned } = await supabase.storage.from('timbrados').createSignedUrl(headerPath, 31536000);
       const headerUrl = hSigned?.signedUrl || '';
 
-      // Crop footer (bottom portion)
       const footerBlob = await cropImageToBlob(img, 'bottom', footerSplit);
       const footerPath = `${empresaId}/rodape.png`;
       const { error: fErr } = await supabase.storage.from('timbrados').upload(footerPath, footerBlob, { upsert: true, contentType: 'image/png' });
       if (fErr) throw fErr;
-
       const { data: fSigned } = await supabase.storage.from('timbrados').createSignedUrl(footerPath, 31536000);
       const footerUrl = fSigned?.signedUrl || '';
 
-      // Save to DB
       await supabase.from('empresas').update({
         cabecalho_path: headerPath,
         cabecalho_url: headerUrl,
@@ -279,7 +432,6 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
     </div>
   );
 
-  /** Split editor with visual preview */
   const renderSplitEditor = () => {
     if (!sourceImageUrl) return null;
 
@@ -294,14 +446,8 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           Ajuste os controles para definir a área do <strong className="text-foreground">cabeçalho</strong> (topo) e <strong className="text-foreground">rodapé</strong> (base) do seu timbrado.
         </p>
 
-        {/* Visual preview with overlay guides */}
         <div className="relative rounded-lg overflow-hidden border border-border bg-white">
-          <img
-            src={sourceImageUrl}
-            alt="Timbrado completo"
-            className="w-full h-auto"
-          />
-          {/* Header overlay */}
+          <img src={sourceImageUrl} alt="Timbrado completo" className="w-full h-auto" />
           <div
             className="absolute top-0 left-0 right-0 bg-accent/15 border-b-2 border-dashed border-accent transition-all pointer-events-none"
             style={{ height: `${headerSplit}%` }}
@@ -310,7 +456,6 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
               Cabeçalho ({headerSplit}%)
             </div>
           </div>
-          {/* Footer overlay */}
           <div
             className="absolute bottom-0 left-0 right-0 bg-accent/15 border-t-2 border-dashed border-accent transition-all pointer-events-none"
             style={{ height: `${footerSplit}%` }}
@@ -319,7 +464,6 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
               Rodapé ({footerSplit}%)
             </div>
           </div>
-          {/* Middle zone label */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <span className="bg-muted/80 text-muted-foreground text-[10px] px-2 py-1 rounded-full backdrop-blur-sm">
               Área de conteúdo
@@ -327,45 +471,25 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           </div>
         </div>
 
-        {/* Sliders */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label className="text-xs font-medium flex items-center gap-1.5">
               <ArrowUp className="w-3.5 h-3.5 text-accent" />
               Cabeçalho — {headerSplit}% do topo
             </Label>
-            <Slider
-              value={[headerSplit]}
-              onValueChange={([v]) => setHeaderSplit(v)}
-              min={5}
-              max={40}
-              step={1}
-              className="w-full"
-            />
+            <Slider value={[headerSplit]} onValueChange={([v]) => setHeaderSplit(v)} min={5} max={40} step={1} className="w-full" />
           </div>
           <div className="space-y-2">
             <Label className="text-xs font-medium flex items-center gap-1.5">
               <ArrowDown className="w-3.5 h-3.5 text-accent" />
               Rodapé — {footerSplit}% da base
             </Label>
-            <Slider
-              value={[footerSplit]}
-              onValueChange={([v]) => setFooterSplit(v)}
-              min={3}
-              max={30}
-              step={1}
-              className="w-full"
-            />
+            <Slider value={[footerSplit]} onValueChange={([v]) => setFooterSplit(v)} min={3} max={30} step={1} className="w-full" />
           </div>
         </div>
 
-        {/* Apply button */}
         <div className="flex items-center gap-2">
-          <Button
-            onClick={applySplit}
-            disabled={splitting}
-            className="gap-2"
-          >
+          <Button onClick={applySplit} disabled={splitting} className="gap-2">
             {splitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <SplitSquareHorizontal className="w-4 h-4" />}
             {splitting ? 'Recortando...' : 'Aplicar Recorte'}
           </Button>
@@ -380,13 +504,11 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
     );
   };
 
-  /** Show extracted header & footer results */
   const renderExtractedResults = () => {
     if (!header.url && !footer.url) return null;
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {/* Header result */}
         <div className="bg-muted/30 rounded-lg border border-border/50 overflow-hidden">
           <div className="px-3 py-2 border-b border-border/30 flex items-center gap-2">
             <ArrowUp className="w-3.5 h-3.5 text-accent" />
@@ -405,12 +527,11 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
             </div>
           ) : (
             <div className="p-3 text-center">
-              <span className="text-xs text-muted-foreground italic">Não definido</span>
+              <span className="text-xs text-muted-foreground italic">Não encontrado no documento</span>
             </div>
           )}
         </div>
 
-        {/* Footer result */}
         <div className="bg-muted/30 rounded-lg border border-border/50 overflow-hidden">
           <div className="px-3 py-2 border-b border-border/30 flex items-center gap-2">
             <ArrowDown className="w-3.5 h-3.5 text-accent" />
@@ -429,7 +550,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
             </div>
           ) : (
             <div className="p-3 text-center">
-              <span className="text-xs text-muted-foreground italic">Não definido</span>
+              <span className="text-xs text-muted-foreground italic">Não encontrado no documento</span>
             </div>
           )}
         </div>
@@ -573,24 +694,19 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           <div className="absolute border border-dashed border-accent/30 pointer-events-none"
             style={{ top: mTop, left: mLeft, right: mRight, bottom: mBottom }} />
 
-          {/* Header area */}
           <div className="absolute overflow-hidden" style={{ top: 0, left: 0, right: 0, height: mTop + hHeight }}>
             <div className="absolute inset-0 bg-accent/5 border-b border-dashed border-accent/20" />
             {header.url && isImageUrl(header.url) ? (
-              <img src={header.url} alt="Cabeçalho" className="relative z-10 w-full h-full object-fill" />
-            ) : header.url ? (
-              <div className="relative z-10 w-full h-full flex items-center justify-center text-muted-foreground">
-                <FileText className="w-3 h-3" />
-                <span style={{ fontSize: Math.max(8, hHeight * 0.3) }}>Cabeçalho</span>
-              </div>
+              <img src={header.url} alt="Cabeçalho" className="relative z-10 w-full h-full object-contain" />
             ) : (
               <div className="relative z-10 w-full h-full flex items-center justify-center">
-                <span className="text-muted-foreground/40 italic" style={{ fontSize: Math.max(7, hHeight * 0.25) }}>Área do cabeçalho</span>
+                <span className="text-muted-foreground/40 italic" style={{ fontSize: Math.max(7, hHeight * 0.25) }}>
+                  {header.url ? 'Cabeçalho' : 'Área do cabeçalho'}
+                </span>
               </div>
             )}
           </div>
 
-          {/* Content area */}
           <div className="absolute overflow-hidden" style={{ top: contentTop, left: mLeft, right: mRight, height: Math.max(contentHeight, 20) }}>
             <div className="p-2 space-y-1.5">
               {Array.from({ length: Math.max(3, Math.floor(contentHeight / 12)) }).map((_, i) => (
@@ -599,19 +715,15 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
             </div>
           </div>
 
-          {/* Footer area */}
           <div className="absolute overflow-hidden" style={{ bottom: 0, left: 0, right: 0, height: mBottom + fHeight }}>
             <div className="absolute inset-0 bg-accent/5 border-t border-dashed border-accent/20" />
             {footer.url && isImageUrl(footer.url) ? (
-              <img src={footer.url} alt="Rodapé" className="relative z-10 w-full h-full object-fill" />
-            ) : footer.url ? (
-              <div className="relative z-10 w-full h-full flex items-center justify-center text-muted-foreground">
-                <FileText className="w-3 h-3" />
-                <span style={{ fontSize: Math.max(8, fHeight * 0.3) }}>Rodapé</span>
-              </div>
+              <img src={footer.url} alt="Rodapé" className="relative z-10 w-full h-full object-contain" />
             ) : (
               <div className="relative z-10 w-full h-full flex items-center justify-center">
-                <span className="text-muted-foreground/40 italic" style={{ fontSize: Math.max(7, fHeight * 0.25) }}>Área do rodapé</span>
+                <span className="text-muted-foreground/40 italic" style={{ fontSize: Math.max(7, fHeight * 0.25) }}>
+                  {footer.url ? 'Rodapé' : 'Área do rodapé'}
+                </span>
               </div>
             )}
           </div>
@@ -644,7 +756,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
             Papel Timbrado / Marca d'Água
           </Label>
           <p className="text-xs text-muted-foreground mt-1">
-            Envie uma única imagem do seu papel timbrado. O sistema identifica e recorta automaticamente o cabeçalho e rodapé.
+            Envie uma imagem ou documento Word do seu papel timbrado. O sistema extrai automaticamente o cabeçalho e rodapé.
           </p>
         </div>
         <Button
@@ -658,7 +770,6 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         </Button>
       </div>
 
-      {/* Single upload area */}
       {!hasAnyContent ? (
         <button
           type="button"
@@ -675,18 +786,15 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           <span className="text-xs text-muted-foreground text-center max-w-sm">
             PNG, JPG, WEBP, SVG, PDF ou Word — Máx. 10MB
             <br />
-            <span className="text-accent/80">O sistema recorta cabeçalho e rodapé automaticamente</span>
+            <span className="text-accent/80">Documentos Word: extração automática de cabeçalho e rodapé</span>
           </span>
         </button>
       ) : (
         <div className="space-y-4">
-          {/* Split editor (for images) */}
           {sourceImageUrl && renderSplitEditor()}
 
-          {/* Extracted results */}
           {renderExtractedResults()}
 
-          {/* Actions */}
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => fileRef.current?.click()}>
               <Upload className="w-3.5 h-3.5" />
@@ -697,16 +805,6 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
               Remover tudo
             </Button>
           </div>
-
-          {/* Tip for non-image files */}
-          {!sourceImageUrl && (header.url || footer.url) && (
-            <div className="flex items-start gap-2 bg-muted/20 rounded-lg p-3 border border-border/30">
-              <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground">Dica:</strong> Para recorte automático do cabeçalho e rodapé, envie uma <strong>imagem</strong> (PNG, JPG) do seu papel timbrado. Arquivos PDF e Word são usados como cabeçalho completo.
-              </p>
-            </div>
-          )}
         </div>
       )}
 
@@ -722,7 +820,6 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         }}
       />
 
-      {/* Print Preview & Page Setup panel */}
       {showPreview && (
         <div className="border border-border rounded-xl bg-card shadow-md overflow-hidden">
           <div className="bg-muted/50 border-b border-border px-4 py-2.5 flex items-center justify-between">
