@@ -25,6 +25,8 @@ interface LicitacaoUnificada {
   objeto: string | null;
   codigo_uasg: string | null;
   portal: string | null;
+  url_edital: string | null;
+  url_portal: string | null;
   fonte: string;
   urgencia?: 'critica' | 'alta' | 'normal';
   horas_restantes?: number;
@@ -88,9 +90,9 @@ function matchesSegmentos(texto: string, segmentos: string[]): boolean {
 async function fetchMonitoramentoEditais(supabase: any, tipo: string, ufsInteresse: string[]): Promise<LicitacaoUnificada[]> {
   let query = supabase
     .from("monitoramento_editais")
-    .select("titulo, orgao, valor_estimado, uf, municipio, data_abertura, status, numero_processo, modalidade, objeto, codigo_uasg, portal")
+    .select("titulo, orgao, valor_estimado, uf, municipio, data_abertura, status, numero_processo, modalidade, objeto, codigo_uasg, portal, url_edital")
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(200);
 
   if (ufsInteresse.length > 0) {
     query = query.in("uf", ufsInteresse);
@@ -118,6 +120,8 @@ async function fetchMonitoramentoEditais(supabase: any, tipo: string, ufsInteres
     objeto: l.objeto || l.titulo,
     codigo_uasg: l.codigo_uasg,
     portal: l.portal,
+    url_edital: l.url_edital || null,
+    url_portal: null,
     fonte: 'monitoramento',
   }));
 }
