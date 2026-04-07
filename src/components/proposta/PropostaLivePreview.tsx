@@ -276,24 +276,29 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
         )}
 
         {/* ── DECLARAÇÕES LEGAIS ── */}
-        {declaracoesAtivas.length > 0 && (
-          <div className="space-y-1">
-            <p className="font-black underline uppercase text-[10px] mb-0.5">Declarações</p>
-            <p className="text-[9px] text-justify mb-1">
-              DECLARA-SE que os produtos/serviços constantes desta proposta comercial ofertada atendem
-              fielmente as Especificações Técnicas constantes do Termo de Referência – Anexo I do
-              respectivo Edital.
-            </p>
-            <p className="text-[9px] font-bold">DECLARA-SE também:</p>
-            <div className="text-[9px] space-y-0.5">
-              {declaracoesAtivas.map((d, i) => (
-                <p key={i} className="text-justify">
-                  <strong>Declaração</strong> {d}
-                </p>
-              ))}
-            </div>
+        <div className="space-y-1.5">
+          <p className="font-black underline uppercase text-[10px] mb-1">DECLARAMOS AINDA, SOB AS PENAS DA LEI:</p>
+          <div className="text-[9px] space-y-1">
+            {[
+              'Nos comprometemos a fornecer os produtos e serviços deste Edital, nas condições e exigências estabelecidas no Edital;',
+              'Declaramos que o(s) objeto(s) será(ão) entregue(s) estritamente de acordo com as especificações, condições, exigências constantes no Edital;',
+              'Que estamos de pleno acordo com todas as condições e exigências estabelecidas no Edital e seus Anexos, bem como aceitamos todas as obrigações e responsabilidades especificadas no Edital, Termo de Referência e instrumento de Contrato;',
+              'Estar cientes da responsabilidade administrativa, civil e penal, bem como ter tomado conhecimento de todas as informações e condições necessárias à correta cotação do objeto licitado;',
+              'Que os preços propostos estão incluídos todos os custos e despesas, frete, taxas e impostos, tributos, encargos fiscais, comerciais, sociais e trabalhistas, transporte, inclusive desembaraço alfandegário e outros inerentes ao objeto relativo a este procedimento licitatório, inclusive despesas necessárias ao cumprimento integral do objeto, não sendo considerados pleitos de acréscimos a esse ou a qualquer título posteriormente, observadas ainda as isenções previstas na legislação;',
+              'Que cumpriremos todos os prazos estabelecidos no Edital e seus Anexos;',
+              'Que os valores ofertados na proposta serão fixos e irreajustáveis;',
+            ].map((texto, i) => (
+              <div key={i} className="flex gap-1.5 pl-1">
+                <span className="font-bold mt-0">•</span>
+                <p className="text-justify flex-1">{texto}</p>
+              </div>
+            ))}
           </div>
-        )}
+          <p className="text-[9px] text-justify mt-2">
+            Caso nos seja adjudicado o objeto da licitação, comprometemos a assinar o contrato no prazo
+            determinado no documento de convocação, e para esse fim fornecemos os seguintes dados:
+          </p>
+        </div>
 
         {/* ── IDENTIFICAÇÃO DA EMPRESA ── */}
         {empresa?.razao_social && (
