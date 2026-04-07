@@ -44,6 +44,9 @@ interface LivePreviewProps {
   prazoPagamento: string;
   prazoEntrega: string;
   localEntrega: string;
+  garantia?: string;
+  condicoesEntrega?: string;
+  liquidacaoNfe?: string;
   // Planilha
   itens: EditalItem[];
   // Declarações
