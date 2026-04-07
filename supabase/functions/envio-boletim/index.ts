@@ -239,7 +239,58 @@ async function applyFilters(
     return (order[a.urgencia || 'normal'] ?? 2) - (order[b.urgencia || 'normal'] ?? 2);
   });
 
-  return filtered.slice(0, 30);
+  return filtered.slice(0, 50);
+}
+
+// ═══════════════════════════════════════════════
+// Deduplication: remove editais already sent to this user
+// ═══════════════════════════════════════════════
+async function deduplicateForUser(
+  supabase: any, userId: string, licitacoes: LicitacaoUnificada[]
+): Promise<LicitacaoUnificada[]> {
+  if (licitacoes.length === 0) return [];
+
+  const janela24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: jaEnviados } = await supabase
+    .from("notificacoes_enviadas")
+    .select("alerta_ref_id")
+    .eq("user_id", userId)
+    .eq("canal", "email")
+    .in("status", ["enviado", "entregue"])
+    .gte("enviado_em", janela24h);
+
+  if (!jaEnviados || jaEnviados.length === 0) return licitacoes;
+
+  const idsEnviados = new Set(jaEnviados.map((n: any) => n.alerta_ref_id));
+
+  return licitacoes.filter(lic => {
+    const refId = lic.numero_processo || lic.titulo || '';
+    return !idsEnviados.has(refId);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// Generate dynamic subject line
+// ═══════════════════════════════════════════════
+function generateDynamicSubject(tipo: string, licitacoes: LicitacaoUnificada[], index: number): string {
+  const total = licitacoes.length;
+  const urgentes = licitacoes.filter(l => l.urgencia === 'critica').length;
+  const lic = licitacoes[index];
+
+  // If there's urgency info on this specific item
+  if (lic.urgencia === 'critica') {
+    const local = [lic.municipio, lic.uf].filter(Boolean).join('/');
+    return `URGENTE — ${lic.numero_processo || lic.titulo}${local ? ` - ${local}` : ''} [${index + 1}/${total}]`;
+  }
+
+  if (lic.urgencia === 'alta') {
+    return `PRAZO — ${lic.numero_processo || lic.titulo} [${index + 1}/${total}]`;
+  }
+
+  // Normal — include count context
+  const prefix = total > 1 ? `[${index + 1}/${total}] ` : '';
+  return `${prefix}${lic.numero_processo || lic.titulo} — ${lic.orgao?.substring(0, 30) || 'Novo edital'}`;
 }
 
 async function filterByCnpj(supabase: any, sub: any, filtered: LicitacaoUnificada[], allLicitacoes: LicitacaoUnificada[]) {
@@ -298,7 +349,7 @@ async function filterByParticipacao(supabase: any, sub: any, filtered: Licitacao
 // ═══════════════════════════════════════════════
 // Send email per licitação
 // ═══════════════════════════════════════════════
-async function sendEmail(supabaseUrl: string, serviceKey: string, email: string, tipo: string, lic: LicitacaoUnificada) {
+async function sendEmail(supabaseUrl: string, serviceKey: string, email: string, tipo: string, lic: LicitacaoUnificada, subjectOverride?: string) {
   const templateData: Record<string, any> = {
     tipo,
     data: new Date().toLocaleDateString("pt-BR"),
@@ -318,6 +369,17 @@ async function sendEmail(supabaseUrl: string, serviceKey: string, email: string,
     horas_restantes: lic.horas_restantes,
   };
 
+  const payload: Record<string, any> = {
+    templateName: 'boletim-diario',
+    recipientEmail: email,
+    templateData,
+  };
+
+  // Override subject if provided
+  if (subjectOverride) {
+    payload.subjectOverride = subjectOverride;
+  }
+
   const res = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
     method: 'POST',
     headers: {
@@ -325,7 +387,7 @@ async function sendEmail(supabaseUrl: string, serviceKey: string, email: string,
       'Authorization': `Bearer ${serviceKey}`,
       'apikey': serviceKey,
     },
-    body: JSON.stringify({ templateName: 'boletim-diario', recipientEmail: email, templateData }),
+    body: JSON.stringify(payload),
   });
 
   return { ok: res.ok, status: res.status, body: await res.text().catch(() => '') };
@@ -463,16 +525,44 @@ serve(async (req) => {
           continue;
         }
 
+        // Deduplicate: remove editais already sent to this user in last 24h
+        const deduplicated = await deduplicateForUser(supabase, sub.user_id, filtered);
+
+        if (deduplicated.length === 0) {
+          allResults.push({ email: sub.email, success: true, licitacoes_count: 0, detail: "Todos editais já enviados anteriormente" });
+          continue;
+        }
+
         // Get WhatsApp number if enabled
         const whatsappNumber = await getWhatsAppNumber(supabase, sub.user_id);
 
         let emailsOk = 0;
         let emailsFail = 0;
 
-        for (const lic of filtered) {
-          // Send email
-          const emailResult = await sendEmail(supabaseUrl, supabaseServiceKey, sub.email, tipo, lic);
-          if (emailResult.ok) emailsOk++; else emailsFail++;
+        for (let i = 0; i < deduplicated.length; i++) {
+          const lic = deduplicated[i];
+
+          // Generate dynamic subject
+          const dynamicSubject = generateDynamicSubject(tipo, deduplicated, i);
+
+          // Send email with dynamic subject override
+          const emailResult = await sendEmail(supabaseUrl, supabaseServiceKey, sub.email, tipo, lic, dynamicSubject);
+          if (emailResult.ok) {
+            emailsOk++;
+            // Log to notificacoes_enviadas for future deduplication
+            await supabase.from("notificacoes_enviadas").insert({
+              user_id: sub.user_id,
+              alerta_ref_id: lic.numero_processo || lic.titulo || '',
+              alerta_tipo: "boletim_" + tipo,
+              alerta_titulo: (lic.objeto || lic.titulo || '').substring(0, 120),
+              canal: "email",
+              destinatario: sub.email,
+              status: "enviado",
+              enviado_em: new Date().toISOString(),
+            });
+          } else {
+            emailsFail++;
+          }
 
           // Send WhatsApp if enabled
           if (whatsappNumber) {
@@ -485,14 +575,16 @@ serve(async (req) => {
           user_id: sub.user_id,
           tipo,
           email: sub.email,
-          status: emailsFail === 0 ? "enviado" : emailsFail === filtered.length ? "erro" : "parcial",
-          erro: emailsFail > 0 ? `${emailsFail}/${filtered.length} falharam` : null,
+          status: emailsFail === 0 ? "enviado" : emailsFail === deduplicated.length ? "erro" : "parcial",
+          erro: emailsFail > 0 ? `${emailsFail}/${deduplicated.length} falharam` : null,
         });
 
         allResults.push({
           email: sub.email,
           success: true,
-          licitacoes_count: filtered.length,
+          licitacoes_count: deduplicated.length,
+          licitacoes_filtradas: filtered.length,
+          licitacoes_deduplicadas: filtered.length - deduplicated.length,
           fontes: { monitoramento: monitoramento.length, pncp_comprasnet: pncpCache.length },
           emails_sent: emailsOk,
           emails_failed: emailsFail,

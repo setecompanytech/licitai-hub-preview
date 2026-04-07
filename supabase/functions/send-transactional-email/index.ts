@@ -60,6 +60,7 @@ Deno.serve(async (req) => {
   let idempotencyKey: string
   let messageId: string
   let templateData: Record<string, any> = {}
+  let subjectOverride: string | undefined
   try {
     const body = await req.json()
     templateName = body.templateName || body.template_name
@@ -68,6 +69,9 @@ Deno.serve(async (req) => {
     idempotencyKey = body.idempotencyKey || body.idempotency_key || messageId
     if (body.templateData && typeof body.templateData === 'object') {
       templateData = body.templateData
+    }
+    if (body.subjectOverride && typeof body.subjectOverride === 'string') {
+      subjectOverride = body.subjectOverride
     }
   } catch {
     return new Response(
@@ -291,9 +295,10 @@ Deno.serve(async (req) => {
     { plainText: true }
   )
 
-  // Resolve subject — supports static string or dynamic function
-  const resolvedSubject =
-    typeof template.subject === 'function'
+  // Resolve subject — subjectOverride takes priority, then template function/string
+  const resolvedSubject = subjectOverride
+    ? subjectOverride
+    : typeof template.subject === 'function'
       ? template.subject(templateData)
       : template.subject
 
