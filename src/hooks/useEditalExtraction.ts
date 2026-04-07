@@ -211,20 +211,10 @@ export function useEditalExtraction() {
     return Array.isArray(data.data) ? (data.data as ExtractedItemPayload[]) : [];
   }, []);
 
-  const extrairItensIA = useCallback(async (
-    licitacaoId: string,
+  const extrairItensDoTexto = useCallback(async (
     fileText: string,
-    opts?: { forceReExtract?: boolean; skipValidation?: boolean }
-  ): Promise<LicitacaoItem[]> => {
-    if (!user) return [];
-
-    if (!opts?.forceReExtract) {
-      const existing = await fetchItens(licitacaoId);
-      if (existing.length > 0) return existing;
-    } else {
-      await deleteAllItens(licitacaoId);
-    }
-
+    opts?: { skipValidation?: boolean }
+  ): Promise<ExtractedItemPayload[]> => {
     const normalizedText = sanitizeExtractionText(fileText).replace(/\s+/g, ' ').trim();
     const lowerText = normalizedText.toLowerCase();
     const extractionMarkers = [
@@ -250,21 +240,21 @@ export function useEditalExtraction() {
 
     const chunks = buildExtractionChunks(fileText);
     const extractedItems: ExtractedItemPayload[] = [];
-    let hasSuccessfulChunk = false;
+    let hasProcessedChunk = false;
 
     for (const chunk of chunks) {
       try {
         const chunkItems = await invokeExtraction(chunk, !!opts?.skipValidation);
+        hasProcessedChunk = true;
         if (chunkItems.length > 0) {
           extractedItems.push(...chunkItems);
-          hasSuccessfulChunk = true;
         }
       } catch (error) {
         console.error('Erro ao extrair chunk do edital:', error);
       }
     }
 
-    if (!hasSuccessfulChunk) {
+    if (!hasProcessedChunk) {
       toast.error('Não foi possível extrair itens do edital.');
       return [];
     }
@@ -284,6 +274,26 @@ export function useEditalExtraction() {
       return [];
     }
 
+    return parsed;
+  }, [invokeExtraction]);
+
+  const extrairItensIA = useCallback(async (
+    licitacaoId: string,
+    fileText: string,
+    opts?: { forceReExtract?: boolean; skipValidation?: boolean }
+  ): Promise<LicitacaoItem[]> => {
+    if (!user) return [];
+
+    if (!opts?.forceReExtract) {
+      const existing = await fetchItens(licitacaoId);
+      if (existing.length > 0) return existing;
+    } else {
+      await deleteAllItens(licitacaoId);
+    }
+
+    const parsed = await extrairItensDoTexto(fileText, { skipValidation: opts?.skipValidation });
+    if (parsed.length === 0) return [];
+
     const itemsToSave: Partial<LicitacaoItemInsert>[] = parsed.map((p, idx) => ({
       numero: parseInt(String(p.item ?? idx + 1), 10) || (idx + 1),
       descricao: p.descricao || '',
@@ -301,7 +311,7 @@ export function useEditalExtraction() {
     const saved = await saveItensManual(licitacaoId, itemsToSave);
     toast.success(`${saved.length} itens extraídos e salvos!`);
     return saved;
-  }, [user, fetchItens, saveItensManual, deleteAllItens, invokeExtraction]);
+  }, [user, fetchItens, saveItensManual, deleteAllItens, extrairItensDoTexto]);
 
   return {
     fetchItens,
@@ -310,6 +320,7 @@ export function useEditalExtraction() {
     deleteItem,
     deleteLote,
     deleteAllItens,
+    extrairItensDoTexto,
     extrairItensIA,
   };
 }
