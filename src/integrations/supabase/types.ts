@@ -5439,6 +5439,7 @@ export type Database = {
           numero_compra: string | null
           numero_controle_pncp: string | null
           objeto: string | null
+          objeto_tsv: unknown
           orgao: string | null
           pncp_id: string
           retificacao: boolean
@@ -5481,6 +5482,7 @@ export type Database = {
           numero_compra?: string | null
           numero_controle_pncp?: string | null
           objeto?: string | null
+          objeto_tsv?: unknown
           orgao?: string | null
           pncp_id: string
           retificacao?: boolean
@@ -5523,6 +5525,7 @@ export type Database = {
           numero_compra?: string | null
           numero_controle_pncp?: string | null
           objeto?: string | null
+          objeto_tsv?: unknown
           orgao?: string | null
           pncp_id?: string
           retificacao?: boolean
@@ -8419,6 +8422,54 @@ export type Database = {
       }
     }
     Functions: {
+      busca_editais_instantanea: {
+        Args: {
+          p_data_fim?: string
+          p_data_inicio?: string
+          p_direcao?: string
+          p_esfera?: string
+          p_modalidade_id?: number
+          p_municipio_ibge?: string
+          p_ordenacao?: string
+          p_pagina?: number
+          p_q?: string
+          p_segmento?: string
+          p_tamanho?: number
+          p_uf?: string
+        }
+        Returns: {
+          ano_compra: string
+          cnpj_orgao: string
+          data_abertura_proposta: string
+          data_encerramento_proposta: string
+          data_publicacao_pncp: string
+          esfera_id: string
+          fonte: string
+          id: string
+          lei_base: string
+          link_comprasnet: string
+          link_sistema_origem: string
+          modalidade_id: number
+          modalidade_nome: string
+          municipio: string
+          municipio_ibge: string
+          numero_compra: string
+          numero_controle_pncp: string
+          objeto: string
+          orgao: string
+          pncp_id: string
+          rank_busca: number
+          sequencial_compra: string
+          situacao: string
+          srp: boolean
+          tipo_instrumento: string
+          total_count: number
+          uf: string
+          unidade_orgao: string
+          url_pncp: string
+          valor_total_estimado: number
+        }[]
+      }
       calcular_metricas_agente: {
         Args: { p_empresa_id: string }
         Returns: Json
