@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, ImageIcon, X, Loader2, FileText, Eye, ArrowUp, ArrowDown, Printer, RotateCw, Settings2, Ruler, FileImage, Monitor } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { Upload, ImageIcon, X, Loader2, FileText, Eye, ArrowUp, ArrowDown, Printer, RotateCw, Settings2, Ruler, FileImage, Monitor, Scissors, SplitSquareHorizontal, CheckCircle2, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -25,6 +26,10 @@ const ALLOWED_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.pdf', '.doc', 
 
 function isImageUrl(url: string) {
   return /\.(png|jpe?g|webp|svg)(\?|$)/i.test(url);
+}
+
+function isImageFile(file: File) {
+  return file.type.startsWith('image/');
 }
 
 type UploadSlot = {
@@ -64,16 +69,56 @@ const DEFAULT_SETUP: PageSetup = {
   footerHeight: 2,
 };
 
+/** Crop a portion of an image and return a Blob */
+function cropImageToBlob(
+  img: HTMLImageElement,
+  region: 'top' | 'bottom',
+  splitPercent: number,
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return reject(new Error('Canvas not supported'));
+
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+
+    if (region === 'top') {
+      const cropH = Math.round(h * (splitPercent / 100));
+      canvas.width = w;
+      canvas.height = cropH;
+      ctx.drawImage(img, 0, 0, w, cropH, 0, 0, w, cropH);
+    } else {
+      const startY = Math.round(h * (1 - splitPercent / 100));
+      const cropH = h - startY;
+      canvas.width = w;
+      canvas.height = cropH;
+      ctx.drawImage(img, 0, startY, w, cropH, 0, 0, w, cropH);
+    }
+
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('Falha ao recortar imagem'))),
+      'image/png',
+      1,
+    );
+  });
+}
+
 export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUrl }: TimbradoUploaderProps) {
-  const headerRef = useRef<HTMLInputElement>(null);
-  const footerRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [header, setHeader] = useState<UploadSlot>({ url: null, path: null });
   const [footer, setFooter] = useState<UploadSlot>({ url: null, path: null });
-  const [uploadingHeader, setUploadingHeader] = useState(false);
-  const [uploadingFooter, setUploadingFooter] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [pageSetup, setPageSetup] = useState<PageSetup>(DEFAULT_SETUP);
   const [previewTab, setPreviewTab] = useState<string>('preview');
+
+  // Split editor state
+  const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
+  const [headerSplit, setHeaderSplit] = useState(15); // top % for header
+  const [footerSplit, setFooterSplit] = useState(10); // bottom % for footer
+  const [splitting, setSplitting] = useState(false);
+  const [splitDone, setSplitDone] = useState(false);
 
   useEffect(() => {
     if (!empresaId) return;
@@ -90,10 +135,12 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         setHeader({ url: hUrl, path: hPath });
         setFooter({ url: fUrl, path: fPath });
         setTimbradoUrl(hUrl);
+        if (hUrl && fUrl) setSplitDone(true);
       });
   }, [empresaId]);
 
-  const handleUpload = async (file: File, slot: 'header' | 'footer') => {
+  /** Upload a single file as the full timbrado, then show split editor */
+  const handleFileSelected = async (file: File) => {
     if (!empresaId) return;
     const ext = '.' + file.name.split('.').pop()?.toLowerCase();
     if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTS.includes(ext)) {
@@ -102,141 +149,117 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
     }
     if (file.size > 10 * 1024 * 1024) { toast.error('Máximo 10MB.'); return; }
 
-    const setLoading = slot === 'header' ? setUploadingHeader : setUploadingFooter;
-    setLoading(true);
+    setUploading(true);
+    setSplitDone(false);
 
-    const prefix = slot === 'header' ? 'cabecalho' : 'rodape';
-    const path = `${empresaId}/${prefix}${ext}`;
+    if (isImageFile(file)) {
+      // For images: show split editor
+      const localUrl = URL.createObjectURL(file);
+      setSourceImageUrl(localUrl);
 
-    const { error } = await supabase.storage.from('timbrados').upload(path, file, { upsert: true });
-    if (error) { toast.error('Erro: ' + error.message); setLoading(false); return; }
+      // Also upload the full timbrado
+      const path = `${empresaId}/timbrado_full.png`;
+      await supabase.storage.from('timbrados').upload(path, file, { upsert: true });
 
-    // Bucket is private - generate a long-lived signed URL (1 year)
-    const { data: signedData, error: signError } = await supabase.storage.from('timbrados').createSignedUrl(path, 31536000);
-    if (signError || !signedData?.signedUrl) { toast.error('Erro ao gerar URL: ' + (signError?.message || 'desconhecido')); setLoading(false); return; }
-    const publicUrl = signedData.signedUrl;
+      setUploading(false);
+      toast.success('Arquivo carregado! Ajuste as áreas de cabeçalho e rodapé abaixo.');
+    } else {
+      // For non-image files (PDF, Word): upload as header directly (legacy behavior)
+      const path = `${empresaId}/cabecalho${ext}`;
+      const { error } = await supabase.storage.from('timbrados').upload(path, file, { upsert: true });
+      if (error) { toast.error('Erro: ' + error.message); setUploading(false); return; }
 
-    const updateFields: Record<string, any> = {
-      [`${prefix}_path`]: path,
-      [`${prefix}_url`]: publicUrl,
-    };
-    if (slot === 'header') {
-      updateFields.timbrado_path = path;
-      updateFields.timbrado_url = publicUrl;
-    }
+      const { data: signedData } = await supabase.storage.from('timbrados').createSignedUrl(path, 31536000);
+      const publicUrl = signedData?.signedUrl || '';
 
-    await supabase.from('empresas').update(updateFields).eq('id', empresaId);
+      await supabase.from('empresas').update({
+        cabecalho_path: path,
+        cabecalho_url: publicUrl,
+        timbrado_path: path,
+        timbrado_url: publicUrl,
+      }).eq('id', empresaId);
 
-    if (slot === 'header') {
       setHeader({ url: publicUrl, path });
       setTimbradoUrl(publicUrl);
-    } else {
-      setFooter({ url: publicUrl, path });
+      setSplitDone(true);
+      setUploading(false);
+      toast.success('Documento enviado como cabeçalho! Para rodapé, envie outro arquivo ou use uma imagem para recorte automático.');
     }
-
-    setLoading(false);
-    toast.success(`${slot === 'header' ? 'Cabeçalho' : 'Rodapé'} enviado com sucesso!`);
   };
 
-  const handleRemove = async (slot: 'header' | 'footer') => {
+  /** Apply the split: crop header and footer from the source image */
+  const applySplit = useCallback(async () => {
+    if (!sourceImageUrl || !empresaId) return;
+    setSplitting(true);
+
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = sourceImageUrl;
+      });
+
+      // Crop header (top portion)
+      const headerBlob = await cropImageToBlob(img, 'top', headerSplit);
+      const headerPath = `${empresaId}/cabecalho.png`;
+      const { error: hErr } = await supabase.storage.from('timbrados').upload(headerPath, headerBlob, { upsert: true, contentType: 'image/png' });
+      if (hErr) throw hErr;
+
+      const { data: hSigned } = await supabase.storage.from('timbrados').createSignedUrl(headerPath, 31536000);
+      const headerUrl = hSigned?.signedUrl || '';
+
+      // Crop footer (bottom portion)
+      const footerBlob = await cropImageToBlob(img, 'bottom', footerSplit);
+      const footerPath = `${empresaId}/rodape.png`;
+      const { error: fErr } = await supabase.storage.from('timbrados').upload(footerPath, footerBlob, { upsert: true, contentType: 'image/png' });
+      if (fErr) throw fErr;
+
+      const { data: fSigned } = await supabase.storage.from('timbrados').createSignedUrl(footerPath, 31536000);
+      const footerUrl = fSigned?.signedUrl || '';
+
+      // Save to DB
+      await supabase.from('empresas').update({
+        cabecalho_path: headerPath,
+        cabecalho_url: headerUrl,
+        timbrado_path: headerPath,
+        timbrado_url: headerUrl,
+        rodape_path: footerPath,
+        rodape_url: footerUrl,
+      }).eq('id', empresaId);
+
+      setHeader({ url: headerUrl, path: headerPath });
+      setFooter({ url: footerUrl, path: footerPath });
+      setTimbradoUrl(headerUrl);
+      setSplitDone(true);
+      toast.success('Cabeçalho e rodapé extraídos com sucesso!');
+    } catch (err: any) {
+      toast.error('Erro ao recortar: ' + (err.message || 'desconhecido'));
+    } finally {
+      setSplitting(false);
+    }
+  }, [sourceImageUrl, empresaId, headerSplit, footerSplit]);
+
+  const handleRemoveAll = async () => {
     if (!empresaId) return;
-    const prefix = slot === 'header' ? 'cabecalho' : 'rodape';
-    const updateFields: Record<string, any> = {
-      [`${prefix}_path`]: null,
-      [`${prefix}_url`]: null,
-    };
-    if (slot === 'header') {
-      updateFields.timbrado_path = null;
-      updateFields.timbrado_url = null;
-    }
-    await supabase.from('empresas').update(updateFields).eq('id', empresaId);
-    if (slot === 'header') {
-      setHeader({ url: null, path: null });
-      setTimbradoUrl(null);
-    } else {
-      setFooter({ url: null, path: null });
-    }
-    toast.success(`${slot === 'header' ? 'Cabeçalho' : 'Rodapé'} removido.`);
+    await supabase.from('empresas').update({
+      cabecalho_path: null, cabecalho_url: null,
+      timbrado_path: null, timbrado_url: null,
+      rodape_path: null, rodape_url: null,
+    }).eq('id', empresaId);
+    setHeader({ url: null, path: null });
+    setFooter({ url: null, path: null });
+    setTimbradoUrl(null);
+    setSourceImageUrl(null);
+    setSplitDone(false);
+    toast.success('Timbrado removido.');
   };
 
   const paper = PAPER_SIZES[pageSetup.paperSize];
   const isLandscape = pageSetup.orientation === 'landscape';
   const pageW = isLandscape ? paper.h : paper.w;
   const pageH = isLandscape ? paper.w : paper.h;
-
-  const renderSlot = (
-    slot: 'header' | 'footer',
-    data: UploadSlot,
-    inputRef: React.RefObject<HTMLInputElement>,
-    uploading: boolean,
-  ) => {
-    const label = slot === 'header' ? 'Cabeçalho' : 'Rodapé';
-    const Icon = slot === 'header' ? ArrowUp : ArrowDown;
-    const fileName = data.url ? decodeURIComponent(data.url.split('/').pop() || '') : '';
-
-    return (
-      <div className="space-y-2">
-        <Label className="flex items-center gap-2 text-sm font-semibold">
-          <Icon className="w-4 h-4 text-accent" />
-          {label}
-        </Label>
-
-        {data.url ? (
-          <div className="bg-muted/30 rounded-lg border border-border/50 overflow-hidden">
-            <div className="flex items-center gap-3 p-3">
-              {isImageUrl(data.url) ? (
-                <img src={data.url} alt={label} className="h-12 max-w-[180px] object-contain rounded border border-border/50 bg-white p-1" />
-              ) : (
-                <div className="h-12 w-12 rounded border border-border/50 bg-white flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-accent" />
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">{label} carregado</p>
-                <p className="text-xs text-muted-foreground truncate">{fileName}</p>
-              </div>
-            </div>
-            <div className="flex gap-1.5 px-3 pb-3">
-              <Button variant="outline" size="sm" className="text-xs" asChild>
-                <a href={data.url} target="_blank" rel="noopener noreferrer">
-                  <Eye className="w-3.5 h-3.5 mr-1" /> Ver
-                </a>
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs" onClick={() => inputRef.current?.click()}>
-                <Upload className="w-3.5 h-3.5 mr-1" /> Trocar
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs text-destructive hover:text-destructive" onClick={() => handleRemove(slot)}>
-                <X className="w-3.5 h-3.5 mr-1" /> Excluir
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={uploading || !empresaId}
-            className="w-full border-2 border-dashed border-border rounded-lg p-4 flex flex-col items-center gap-1.5 hover:border-accent/50 hover:bg-muted/30 transition-colors disabled:opacity-50"
-          >
-            {uploading ? <Loader2 className="w-6 h-6 animate-spin text-accent" /> : <Upload className="w-6 h-6 text-muted-foreground" />}
-            <span className="text-sm font-medium">{uploading ? 'Enviando...' : `Enviar ${label.toLowerCase()}`}</span>
-            <span className="text-xs text-muted-foreground">PNG, JPG, WEBP, SVG, PDF ou Word — Máx. 10MB</span>
-          </button>
-        )}
-
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/svg+xml,application/pdf,.doc,.docx"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleUpload(file, slot);
-            e.target.value = '';
-          }}
-        />
-      </div>
-    );
-  };
 
   const renderMarginInput = (label: string, field: keyof PageSetup, unit = 'cm') => (
     <div className="space-y-1">
@@ -256,9 +279,166 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
     </div>
   );
 
+  /** Split editor with visual preview */
+  const renderSplitEditor = () => {
+    if (!sourceImageUrl) return null;
+
+    return (
+      <div className="space-y-4 border border-accent/20 rounded-xl bg-accent/5 p-4">
+        <div className="flex items-center gap-2">
+          <Scissors className="w-4 h-4 text-accent" />
+          <span className="text-sm font-semibold">Recorte Automático de Cabeçalho e Rodapé</span>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Ajuste os controles para definir a área do <strong className="text-foreground">cabeçalho</strong> (topo) e <strong className="text-foreground">rodapé</strong> (base) do seu timbrado.
+        </p>
+
+        {/* Visual preview with overlay guides */}
+        <div className="relative rounded-lg overflow-hidden border border-border bg-white">
+          <img
+            src={sourceImageUrl}
+            alt="Timbrado completo"
+            className="w-full h-auto"
+          />
+          {/* Header overlay */}
+          <div
+            className="absolute top-0 left-0 right-0 bg-accent/15 border-b-2 border-dashed border-accent transition-all pointer-events-none"
+            style={{ height: `${headerSplit}%` }}
+          >
+            <div className="absolute bottom-1 left-2 bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+              Cabeçalho ({headerSplit}%)
+            </div>
+          </div>
+          {/* Footer overlay */}
+          <div
+            className="absolute bottom-0 left-0 right-0 bg-accent/15 border-t-2 border-dashed border-accent transition-all pointer-events-none"
+            style={{ height: `${footerSplit}%` }}
+          >
+            <div className="absolute top-1 left-2 bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+              Rodapé ({footerSplit}%)
+            </div>
+          </div>
+          {/* Middle zone label */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="bg-muted/80 text-muted-foreground text-[10px] px-2 py-1 rounded-full backdrop-blur-sm">
+              Área de conteúdo
+            </span>
+          </div>
+        </div>
+
+        {/* Sliders */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="text-xs font-medium flex items-center gap-1.5">
+              <ArrowUp className="w-3.5 h-3.5 text-accent" />
+              Cabeçalho — {headerSplit}% do topo
+            </Label>
+            <Slider
+              value={[headerSplit]}
+              onValueChange={([v]) => setHeaderSplit(v)}
+              min={5}
+              max={40}
+              step={1}
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-medium flex items-center gap-1.5">
+              <ArrowDown className="w-3.5 h-3.5 text-accent" />
+              Rodapé — {footerSplit}% da base
+            </Label>
+            <Slider
+              value={[footerSplit]}
+              onValueChange={([v]) => setFooterSplit(v)}
+              min={3}
+              max={30}
+              step={1}
+              className="w-full"
+            />
+          </div>
+        </div>
+
+        {/* Apply button */}
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={applySplit}
+            disabled={splitting}
+            className="gap-2"
+          >
+            {splitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <SplitSquareHorizontal className="w-4 h-4" />}
+            {splitting ? 'Recortando...' : 'Aplicar Recorte'}
+          </Button>
+          {splitDone && (
+            <span className="flex items-center gap-1 text-xs text-green-600">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Recorte aplicado
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  /** Show extracted header & footer results */
+  const renderExtractedResults = () => {
+    if (!header.url && !footer.url) return null;
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {/* Header result */}
+        <div className="bg-muted/30 rounded-lg border border-border/50 overflow-hidden">
+          <div className="px-3 py-2 border-b border-border/30 flex items-center gap-2">
+            <ArrowUp className="w-3.5 h-3.5 text-accent" />
+            <span className="text-xs font-semibold">Cabeçalho</span>
+          </div>
+          {header.url ? (
+            <div className="p-3">
+              {isImageUrl(header.url) ? (
+                <img src={header.url} alt="Cabeçalho" className="w-full h-auto max-h-24 object-contain rounded border border-border/30 bg-white p-1" />
+              ) : (
+                <div className="h-16 flex items-center justify-center rounded border border-border/30 bg-white">
+                  <FileText className="w-6 h-6 text-accent" />
+                  <span className="text-xs ml-2 text-muted-foreground">Documento carregado</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="p-3 text-center">
+              <span className="text-xs text-muted-foreground italic">Não definido</span>
+            </div>
+          )}
+        </div>
+
+        {/* Footer result */}
+        <div className="bg-muted/30 rounded-lg border border-border/50 overflow-hidden">
+          <div className="px-3 py-2 border-b border-border/30 flex items-center gap-2">
+            <ArrowDown className="w-3.5 h-3.5 text-accent" />
+            <span className="text-xs font-semibold">Rodapé</span>
+          </div>
+          {footer.url ? (
+            <div className="p-3">
+              {isImageUrl(footer.url) ? (
+                <img src={footer.url} alt="Rodapé" className="w-full h-auto max-h-24 object-contain rounded border border-border/30 bg-white p-1" />
+              ) : (
+                <div className="h-16 flex items-center justify-center rounded border border-border/30 bg-white">
+                  <FileText className="w-6 h-6 text-accent" />
+                  <span className="text-xs ml-2 text-muted-foreground">Documento carregado</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="p-3 text-center">
+              <span className="text-xs text-muted-foreground italic">Não definido</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderPageSetupPanel = () => (
     <div className="space-y-5">
-      {/* Orientation toggle */}
       <div className="space-y-2">
         <Label className="text-xs font-semibold flex items-center gap-1.5">
           <RotateCw className="w-3.5 h-3.5 text-accent" />
@@ -278,15 +458,11 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
               <div className="m-1 space-y-0.5">
                 <div className={`h-0.5 rounded-full ${pageSetup.orientation === 'portrait' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
                 <div className={`h-0.5 w-3/4 rounded-full ${pageSetup.orientation === 'portrait' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
-                <div className={`h-0.5 rounded-full ${pageSetup.orientation === 'portrait' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
               </div>
             </div>
             <span className="text-xs font-medium">Retrato</span>
-            {pageSetup.orientation === 'portrait' && (
-              <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-accent" />
-            )}
+            {pageSetup.orientation === 'portrait' && <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-accent" />}
           </button>
-
           <button
             type="button"
             onClick={() => setPageSetup(prev => ({ ...prev, orientation: 'landscape' }))}
@@ -300,30 +476,21 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
               <div className="m-1 space-y-0.5">
                 <div className={`h-0.5 rounded-full ${pageSetup.orientation === 'landscape' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
                 <div className={`h-0.5 w-3/4 rounded-full ${pageSetup.orientation === 'landscape' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
-                <div className={`h-0.5 rounded-full ${pageSetup.orientation === 'landscape' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
               </div>
             </div>
             <span className="text-xs font-medium">Paisagem</span>
-            {pageSetup.orientation === 'landscape' && (
-              <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-accent" />
-            )}
+            {pageSetup.orientation === 'landscape' && <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-accent" />}
           </button>
         </div>
       </div>
 
-      {/* Paper size */}
       <div className="space-y-2">
         <Label className="text-xs font-semibold flex items-center gap-1.5">
           <FileImage className="w-3.5 h-3.5 text-accent" />
           Tamanho do Papel
         </Label>
-        <Select
-          value={pageSetup.paperSize}
-          onValueChange={(v) => setPageSetup(prev => ({ ...prev, paperSize: v as PaperSize }))}
-        >
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
+        <Select value={pageSetup.paperSize} onValueChange={(v) => setPageSetup(prev => ({ ...prev, paperSize: v as PaperSize }))}>
+          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
             {Object.entries(PAPER_SIZES).map(([key, { label }]) => (
               <SelectItem key={key} value={key} className="text-xs">{label}</SelectItem>
@@ -332,7 +499,6 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         </Select>
       </div>
 
-      {/* Margins */}
       <div className="space-y-2">
         <Label className="text-xs font-semibold flex items-center gap-1.5">
           <Ruler className="w-3.5 h-3.5 text-accent" />
@@ -346,7 +512,6 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         </div>
       </div>
 
-      {/* Header/Footer height */}
       <div className="space-y-2">
         <Label className="text-xs font-semibold flex items-center gap-1.5">
           <Settings2 className="w-3.5 h-3.5 text-accent" />
@@ -356,51 +521,26 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           {renderMarginInput('Altura Cabeçalho', 'headerHeight')}
           {renderMarginInput('Altura Rodapé', 'footerHeight')}
         </div>
-        <p className="text-[10px] text-muted-foreground mt-1">
-          Define a altura reservada para o cabeçalho e rodapé dentro das margens da página.
-        </p>
       </div>
 
-      {/* Quick presets */}
       <div className="space-y-2">
         <Label className="text-xs font-semibold">Predefinições Rápidas</Label>
         <div className="flex flex-wrap gap-1.5">
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-[11px] h-7"
-            onClick={() => setPageSetup({ ...DEFAULT_SETUP, orientation: pageSetup.orientation, paperSize: pageSetup.paperSize })}
-          >
+          <Button variant="outline" size="sm" className="text-[11px] h-7"
+            onClick={() => setPageSetup({ ...DEFAULT_SETUP, orientation: pageSetup.orientation, paperSize: pageSetup.paperSize })}>
             NBR 14724 (ABNT)
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-[11px] h-7"
-            onClick={() => setPageSetup(prev => ({
-              ...prev,
-              marginTop: 2.54, marginBottom: 2.54, marginLeft: 2.54, marginRight: 2.54,
-              headerHeight: 1.27, footerHeight: 1.27,
-            }))}
-          >
+          <Button variant="outline" size="sm" className="text-[11px] h-7"
+            onClick={() => setPageSetup(prev => ({ ...prev, marginTop: 2.54, marginBottom: 2.54, marginLeft: 2.54, marginRight: 2.54, headerHeight: 1.27, footerHeight: 1.27 }))}>
             Padrão Office
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-[11px] h-7"
-            onClick={() => setPageSetup(prev => ({
-              ...prev,
-              marginTop: 1.5, marginBottom: 1.5, marginLeft: 1.5, marginRight: 1.5,
-              headerHeight: 1, footerHeight: 1,
-            }))}
-          >
+          <Button variant="outline" size="sm" className="text-[11px] h-7"
+            onClick={() => setPageSetup(prev => ({ ...prev, marginTop: 1.5, marginBottom: 1.5, marginLeft: 1.5, marginRight: 1.5, headerHeight: 1, footerHeight: 1 }))}>
             Margens Estreitas
           </Button>
         </div>
       </div>
 
-      {/* Dimensions info */}
       <div className="bg-muted/30 rounded-lg p-3 border border-border/40">
         <p className="text-[11px] text-muted-foreground leading-relaxed">
           <strong className="text-foreground">Dimensões finais:</strong>{' '}
@@ -414,147 +554,74 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
   );
 
   const renderPagePreview = () => {
-    // Scale factor: fit page into a container of max 460px width
     const scaleFactor = 460 / pageW;
     const displayW = pageW * scaleFactor;
     const displayH = pageH * scaleFactor;
-
     const mTop = pageSetup.marginTop * 10 * scaleFactor;
     const mBottom = pageSetup.marginBottom * 10 * scaleFactor;
     const mLeft = pageSetup.marginLeft * 10 * scaleFactor;
     const mRight = pageSetup.marginRight * 10 * scaleFactor;
     const hHeight = pageSetup.headerHeight * 10 * scaleFactor;
     const fHeight = pageSetup.footerHeight * 10 * scaleFactor;
-
     const contentTop = mTop + hHeight;
     const contentBottom = displayH - mBottom - fHeight;
     const contentHeight = contentBottom - contentTop;
 
     return (
       <div className="flex flex-col items-center gap-4">
-        {/* Page frame */}
-        <div
-          className="relative bg-white border border-border/80 shadow-lg"
-          style={{ width: displayW, height: displayH }}
-        >
-          {/* Margin guides (dashed) */}
-          <div
-            className="absolute border border-dashed border-accent/30 pointer-events-none"
-            style={{
-              top: mTop,
-              left: mLeft,
-              right: mRight,
-              bottom: mBottom,
-            }}
-          />
+        <div className="relative bg-white border border-border/80 shadow-lg" style={{ width: displayW, height: displayH }}>
+          <div className="absolute border border-dashed border-accent/30 pointer-events-none"
+            style={{ top: mTop, left: mLeft, right: mRight, bottom: mBottom }} />
 
           {/* Header area */}
-          <div
-            className="absolute overflow-hidden"
-            style={{
-              top: 0,
-              left: 0,
-              right: 0,
-              height: mTop + hHeight,
-            }}
-          >
+          <div className="absolute overflow-hidden" style={{ top: 0, left: 0, right: 0, height: mTop + hHeight }}>
             <div className="absolute inset-0 bg-accent/5 border-b border-dashed border-accent/20" />
-            {header.url ? (
-              isImageUrl(header.url) ? (
-                <img src={header.url} alt="Cabeçalho" className="relative z-10 w-full h-full object-fill" />
-              ) : (
-                <div className="relative z-10 w-full h-full flex items-center justify-center text-muted-foreground">
-                  <FileText className="w-3 h-3" />
-                  <span style={{ fontSize: Math.max(8, hHeight * 0.3) }}>Cabeçalho</span>
-                </div>
-              )
+            {header.url && isImageUrl(header.url) ? (
+              <img src={header.url} alt="Cabeçalho" className="relative z-10 w-full h-full object-fill" />
+            ) : header.url ? (
+              <div className="relative z-10 w-full h-full flex items-center justify-center text-muted-foreground">
+                <FileText className="w-3 h-3" />
+                <span style={{ fontSize: Math.max(8, hHeight * 0.3) }}>Cabeçalho</span>
+              </div>
             ) : (
               <div className="relative z-10 w-full h-full flex items-center justify-center">
-                <span className="text-muted-foreground/40 italic" style={{ fontSize: Math.max(7, hHeight * 0.25) }}>
-                  Área do cabeçalho
-                </span>
+                <span className="text-muted-foreground/40 italic" style={{ fontSize: Math.max(7, hHeight * 0.25) }}>Área do cabeçalho</span>
               </div>
             )}
           </div>
 
           {/* Content area */}
-          <div
-            className="absolute overflow-hidden"
-            style={{
-              top: contentTop,
-              left: mLeft,
-              right: mRight,
-              height: Math.max(contentHeight, 20),
-            }}
-          >
+          <div className="absolute overflow-hidden" style={{ top: contentTop, left: mLeft, right: mRight, height: Math.max(contentHeight, 20) }}>
             <div className="p-2 space-y-1.5">
               {Array.from({ length: Math.max(3, Math.floor(contentHeight / 12)) }).map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-muted/25 rounded-sm"
-                  style={{
-                    height: Math.max(3, scaleFactor * 2.5),
-                    width: `${60 + Math.sin(i * 1.7) * 30}%`,
-                  }}
-                />
+                <div key={i} className="bg-muted/25 rounded-sm" style={{ height: Math.max(3, scaleFactor * 2.5), width: `${60 + Math.sin(i * 1.7) * 30}%` }} />
               ))}
             </div>
           </div>
 
           {/* Footer area */}
-          <div
-            className="absolute overflow-hidden"
-            style={{
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: mBottom + fHeight,
-            }}
-          >
+          <div className="absolute overflow-hidden" style={{ bottom: 0, left: 0, right: 0, height: mBottom + fHeight }}>
             <div className="absolute inset-0 bg-accent/5 border-t border-dashed border-accent/20" />
-            {footer.url ? (
-              isImageUrl(footer.url) ? (
-                <img src={footer.url} alt="Rodapé" className="relative z-10 w-full h-full object-fill" />
-              ) : (
-                <div className="relative z-10 w-full h-full flex items-center justify-center text-muted-foreground">
-                  <FileText className="w-3 h-3" />
-                  <span style={{ fontSize: Math.max(8, fHeight * 0.3) }}>Rodapé</span>
-                </div>
-              )
+            {footer.url && isImageUrl(footer.url) ? (
+              <img src={footer.url} alt="Rodapé" className="relative z-10 w-full h-full object-fill" />
+            ) : footer.url ? (
+              <div className="relative z-10 w-full h-full flex items-center justify-center text-muted-foreground">
+                <FileText className="w-3 h-3" />
+                <span style={{ fontSize: Math.max(8, fHeight * 0.3) }}>Rodapé</span>
+              </div>
             ) : (
               <div className="relative z-10 w-full h-full flex items-center justify-center">
-                <span className="text-muted-foreground/40 italic" style={{ fontSize: Math.max(7, fHeight * 0.25) }}>
-                  Área do rodapé
-                </span>
+                <span className="text-muted-foreground/40 italic" style={{ fontSize: Math.max(7, fHeight * 0.25) }}>Área do rodapé</span>
               </div>
             )}
           </div>
 
-          {/* Corner labels for margins */}
-          <span className="absolute text-[8px] text-accent/50 select-none" style={{ top: 2, left: mLeft }}>
-            {pageSetup.marginTop}cm
-          </span>
-          <span className="absolute text-[8px] text-accent/50 select-none" style={{ bottom: 2, left: mLeft }}>
-            {pageSetup.marginBottom}cm
-          </span>
-          <span className="absolute text-[8px] text-accent/50 select-none rotate-90 origin-top-left" style={{ top: mTop, left: 2 }}>
-            {pageSetup.marginLeft}cm
-          </span>
-
-          {/* Page number simulation */}
-          <span
-            className="absolute text-muted-foreground/40 select-none"
-            style={{
-              fontSize: Math.max(7, scaleFactor * 3),
-              top: mTop * 0.3,
-              right: mRight + 4,
-            }}
-          >
-            1
-          </span>
+          <span className="absolute text-[8px] text-accent/50 select-none" style={{ top: 2, left: mLeft }}>{pageSetup.marginTop}cm</span>
+          <span className="absolute text-[8px] text-accent/50 select-none" style={{ bottom: 2, left: mLeft }}>{pageSetup.marginBottom}cm</span>
+          <span className="absolute text-[8px] text-accent/50 select-none rotate-90 origin-top-left" style={{ top: mTop, left: 2 }}>{pageSetup.marginLeft}cm</span>
+          <span className="absolute text-muted-foreground/40 select-none" style={{ fontSize: Math.max(7, scaleFactor * 3), top: mTop * 0.3, right: mRight + 4 }}>1</span>
         </div>
 
-        {/* Info bar */}
         <div className="flex items-center gap-3 text-[10px] text-muted-foreground bg-muted/20 rounded-md px-3 py-1.5">
           <span className="font-medium text-foreground">{PAPER_SIZES[pageSetup.paperSize].label}</span>
           <span>•</span>
@@ -566,6 +633,8 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
     );
   };
 
+  const hasAnyContent = header.url || footer.url || sourceImageUrl;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -575,7 +644,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
             Papel Timbrado / Marca d'Água
           </Label>
           <p className="text-xs text-muted-foreground mt-1">
-            Cabeçalho e rodapé utilizados em Propostas Comerciais, declarações, petições, recursos, planilhas de composição e demais documentos oficiais.
+            Envie uma única imagem do seu papel timbrado. O sistema identifica e recorta automaticamente o cabeçalho e rodapé.
           </p>
         </div>
         <Button
@@ -589,39 +658,86 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         </Button>
       </div>
 
-      {/* Upload slots */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {renderSlot('header', header, headerRef as any, uploadingHeader)}
-        {renderSlot('footer', footer, footerRef as any, uploadingFooter)}
-      </div>
+      {/* Single upload area */}
+      {!hasAnyContent ? (
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading || !empresaId}
+          className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 hover:border-accent/50 hover:bg-muted/30 transition-colors disabled:opacity-50"
+        >
+          {uploading ? (
+            <Loader2 className="w-8 h-8 animate-spin text-accent" />
+          ) : (
+            <Upload className="w-8 h-8 text-muted-foreground" />
+          )}
+          <span className="text-sm font-semibold">{uploading ? 'Processando...' : 'Enviar papel timbrado'}</span>
+          <span className="text-xs text-muted-foreground text-center max-w-sm">
+            PNG, JPG, WEBP, SVG, PDF ou Word — Máx. 10MB
+            <br />
+            <span className="text-accent/80">O sistema recorta cabeçalho e rodapé automaticamente</span>
+          </span>
+        </button>
+      ) : (
+        <div className="space-y-4">
+          {/* Split editor (for images) */}
+          {sourceImageUrl && renderSplitEditor()}
+
+          {/* Extracted results */}
+          {renderExtractedResults()}
+
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => fileRef.current?.click()}>
+              <Upload className="w-3.5 h-3.5" />
+              Trocar arquivo
+            </Button>
+            <Button variant="outline" size="sm" className="text-xs text-destructive hover:text-destructive gap-1.5" onClick={handleRemoveAll}>
+              <X className="w-3.5 h-3.5" />
+              Remover tudo
+            </Button>
+          </div>
+
+          {/* Tip for non-image files */}
+          {!sourceImageUrl && (header.url || footer.url) && (
+            <div className="flex items-start gap-2 bg-muted/20 rounded-lg p-3 border border-border/30">
+              <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                <strong className="text-foreground">Dica:</strong> Para recorte automático do cabeçalho e rodapé, envie uma <strong>imagem</strong> (PNG, JPG) do seu papel timbrado. Arquivos PDF e Word são usados como cabeçalho completo.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/svg+xml,application/pdf,.doc,.docx"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleFileSelected(file);
+          e.target.value = '';
+        }}
+      />
 
       {/* Print Preview & Page Setup panel */}
       {showPreview && (
         <div className="border border-border rounded-xl bg-card shadow-md overflow-hidden">
-          {/* Toolbar */}
           <div className="bg-muted/50 border-b border-border px-4 py-2.5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Monitor className="w-4 h-4 text-accent" />
               <span className="text-sm font-semibold text-foreground">Configurar Página</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Button
-                variant={pageSetup.orientation === 'portrait' ? 'default' : 'outline'}
-                size="sm"
-                className="h-7 text-[11px] gap-1"
-                onClick={() => setPageSetup(prev => ({ ...prev, orientation: 'portrait' }))}
-              >
-                <div className="w-3 h-4 border border-current rounded-[1px]" />
-                Retrato
+              <Button variant={pageSetup.orientation === 'portrait' ? 'default' : 'outline'} size="sm" className="h-7 text-[11px] gap-1"
+                onClick={() => setPageSetup(prev => ({ ...prev, orientation: 'portrait' }))}>
+                <div className="w-3 h-4 border border-current rounded-[1px]" />Retrato
               </Button>
-              <Button
-                variant={pageSetup.orientation === 'landscape' ? 'default' : 'outline'}
-                size="sm"
-                className="h-7 text-[11px] gap-1"
-                onClick={() => setPageSetup(prev => ({ ...prev, orientation: 'landscape' }))}
-              >
-                <div className="w-4 h-3 border border-current rounded-[1px]" />
-                Paisagem
+              <Button variant={pageSetup.orientation === 'landscape' ? 'default' : 'outline'} size="sm" className="h-7 text-[11px] gap-1"
+                onClick={() => setPageSetup(prev => ({ ...prev, orientation: 'landscape' }))}>
+                <div className="w-4 h-3 border border-current rounded-[1px]" />Paisagem
               </Button>
             </div>
           </div>
@@ -630,16 +746,10 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
             <div className="px-4 pt-2 border-b border-border/50">
               <TabsList className="h-8 bg-muted/30">
                 <TabsTrigger value="preview" className="text-xs gap-1.5 h-7">
-                  <Eye className="w-3.5 h-3.5" />
-                  Visualizar Impressão
+                  <Eye className="w-3.5 h-3.5" />Visualizar Impressão
                 </TabsTrigger>
                 <TabsTrigger value="page" className="text-xs gap-1.5 h-7">
-                  <Settings2 className="w-3.5 h-3.5" />
-                  Página
-                </TabsTrigger>
-                <TabsTrigger value="header-footer" className="text-xs gap-1.5 h-7">
-                  <FileImage className="w-3.5 h-3.5" />
-                  Cabeçalho/Rodapé
+                  <Settings2 className="w-3.5 h-3.5" />Página
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -647,92 +757,8 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
             <TabsContent value="preview" className="m-0 p-6 bg-muted/10">
               {renderPagePreview()}
             </TabsContent>
-
             <TabsContent value="page" className="m-0 p-5">
               {renderPageSetupPanel()}
-            </TabsContent>
-
-            <TabsContent value="header-footer" className="m-0 p-5">
-              <div className="space-y-5">
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold flex items-center gap-1.5">
-                    <ArrowUp className="w-3.5 h-3.5 text-accent" />
-                    Cabeçalho
-                  </Label>
-                  {header.url ? (
-                    <div className="flex items-center gap-3 bg-muted/20 rounded-lg p-3 border border-border/40">
-                      {isImageUrl(header.url) ? (
-                        <img src={header.url} alt="Cabeçalho" className="h-10 max-w-[140px] object-contain rounded bg-white border border-border/30 p-0.5" />
-                      ) : (
-                        <FileText className="w-8 h-8 text-accent" />
-                      )}
-                      <div className="flex-1">
-                        <p className="text-xs font-medium">Cabeçalho carregado</p>
-                        <p className="text-[10px] text-muted-foreground">Altura reservada: {pageSetup.headerHeight} cm</p>
-                      </div>
-                      <Button variant="outline" size="sm" className="text-[11px] h-7" onClick={() => headerRef.current?.click()}>
-                        <Upload className="w-3 h-3 mr-1" /> Trocar
-                      </Button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => headerRef.current?.click()}
-                      className="w-full border-2 border-dashed border-border rounded-lg p-4 flex flex-col items-center gap-1.5 hover:border-accent/50 hover:bg-muted/20 transition-colors"
-                    >
-                      <Upload className="w-5 h-5 text-muted-foreground" />
-                      <span className="text-xs font-medium">Enviar cabeçalho</span>
-                      <span className="text-[10px] text-muted-foreground">PNG, JPG, SVG, PDF ou Word</span>
-                    </button>
-                  )}
-                  {renderMarginInput('Altura da área do cabeçalho', 'headerHeight')}
-                </div>
-
-                <div className="border-t border-border/30" />
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold flex items-center gap-1.5">
-                    <ArrowDown className="w-3.5 h-3.5 text-accent" />
-                    Rodapé
-                  </Label>
-                  {footer.url ? (
-                    <div className="flex items-center gap-3 bg-muted/20 rounded-lg p-3 border border-border/40">
-                      {isImageUrl(footer.url) ? (
-                        <img src={footer.url} alt="Rodapé" className="h-10 max-w-[140px] object-contain rounded bg-white border border-border/30 p-0.5" />
-                      ) : (
-                        <FileText className="w-8 h-8 text-accent" />
-                      )}
-                      <div className="flex-1">
-                        <p className="text-xs font-medium">Rodapé carregado</p>
-                        <p className="text-[10px] text-muted-foreground">Altura reservada: {pageSetup.footerHeight} cm</p>
-                      </div>
-                      <Button variant="outline" size="sm" className="text-[11px] h-7" onClick={() => footerRef.current?.click()}>
-                        <Upload className="w-3 h-3 mr-1" /> Trocar
-                      </Button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => footerRef.current?.click()}
-                      className="w-full border-2 border-dashed border-border rounded-lg p-4 flex flex-col items-center gap-1.5 hover:border-accent/50 hover:bg-muted/20 transition-colors"
-                    >
-                      <Upload className="w-5 h-5 text-muted-foreground" />
-                      <span className="text-xs font-medium">Enviar rodapé</span>
-                      <span className="text-[10px] text-muted-foreground">PNG, JPG, SVG, PDF ou Word</span>
-                    </button>
-                  )}
-                  {renderMarginInput('Altura da área do rodapé', 'footerHeight')}
-                </div>
-
-                {/* Visual indicator */}
-                <div className="bg-muted/20 rounded-lg p-3 border border-border/30">
-                  <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    💡 <strong className="text-foreground">Dica:</strong> O cabeçalho e rodapé são posicionados dentro das margens superiores e inferiores da página.
-                    Ajuste a altura para garantir que a imagem não sobreponha o conteúdo. Alterne para a aba{' '}
-                    <strong className="text-foreground">Visualizar Impressão</strong> para ver o resultado em tempo real.
-                  </p>
-                </div>
-              </div>
             </TabsContent>
           </Tabs>
         </div>
