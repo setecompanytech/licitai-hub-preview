@@ -21,6 +21,8 @@ interface LicitacaoComPrazo {
   horas_restantes: number;
   urgencia: 'critica' | 'alta';
   fonte: string;
+  url_edital: string | null;
+  url_portal: string | null;
 }
 
 // Parse various date formats from data_abertura fields
@@ -68,18 +70,18 @@ serve(async (req) => {
 
     const { data: editaisPncp } = await supabase
       .from("pncp_editais_cache")
-      .select("objeto, orgao, valor_total_estimado, uf, municipio, data_abertura_proposta, numero_compra, modalidade_nome, uasg_codigo, fonte, link_comprasnet, situacao")
+      .select("objeto, orgao, valor_total_estimado, uf, municipio, data_abertura_proposta, numero_compra, modalidade_nome, uasg_codigo, fonte, link_comprasnet, link_sistema_origem, situacao, cnpj_orgao")
       .gte("data_abertura_proposta", agora.toISOString())
       .lte("data_abertura_proposta", em72h.toISOString())
-      .in("situacao", ["Divulgada no PNCP", "Aberta", "Publicada", "divulgada"])
-      .limit(200);
+      .in("situacao", ["Divulgada no PNCP", "Aberta", "Publicada", "divulgada", "Em andamento", "Suspensa e Reaberta"])
+      .limit(500);
 
     // 2. Fetch from monitoramento_editais with upcoming dates
     const { data: editaisMonit } = await supabase
       .from("monitoramento_editais")
-      .select("titulo, orgao, valor_estimado, uf, municipio, data_abertura, numero_processo, modalidade, objeto, codigo_uasg, portal")
+      .select("titulo, orgao, valor_estimado, uf, municipio, data_abertura, numero_processo, modalidade, objeto, codigo_uasg, portal, url_edital")
       .eq("status", "novo")
-      .limit(200);
+      .limit(500);
 
     // 3. Build unified list with urgency classification
     const licitacoesUrgentes: LicitacaoComPrazo[] = [];
@@ -93,6 +95,11 @@ serve(async (req) => {
       const modalidade = r.modalidade_nome || '';
       const numero = r.numero_compra || '';
       
+      const urlEdital = r.link_sistema_origem || null;
+      const urlPortal = r.link_comprasnet ||
+        (r.cnpj_orgao && numero ? `https://pncp.gov.br/app/editais/${r.cnpj_orgao}/${new Date().getFullYear()}/${numero}` : null) ||
+        (numero ? `https://pncp.gov.br/app/editais?q=${encodeURIComponent(numero)}` : null);
+
       licitacoesUrgentes.push({
         numero_processo: modalidade && numero ? `${modalidade} Nº ${numero}` : numero || modalidade,
         orgao: r.orgao || '',
@@ -103,10 +110,12 @@ serve(async (req) => {
         data_abertura: r.data_abertura_proposta || '',
         codigo_uasg: r.uasg_codigo,
         modalidade: modalidade,
-        portal: r.link_comprasnet ? 'www.compras.gov.br' : 'PNCP',
+        portal: r.link_comprasnet ? 'Compras.gov.br' : 'PNCP',
         horas_restantes: horas,
         urgencia: horas <= 24 ? 'critica' : 'alta',
         fonte: r.fonte || 'pncp',
+        url_edital: urlEdital,
+        url_portal: urlPortal,
       });
     }
 
@@ -130,6 +139,8 @@ serve(async (req) => {
         horas_restantes: horas,
         urgencia: horas <= 24 ? 'critica' : 'alta',
         fonte: 'monitoramento',
+        url_edital: r.url_edital || null,
+        url_portal: null,
       });
     }
 
@@ -229,6 +240,8 @@ serve(async (req) => {
             data_abertura: lic.data_abertura,
             modalidade: lic.modalidade || '',
             portal: lic.portal || '',
+            url_edital: lic.url_edital || '',
+            url_portal: lic.url_portal || '',
             urgencia: lic.urgencia,
             horas_restantes: lic.horas_restantes,
           };
@@ -256,6 +269,7 @@ serve(async (req) => {
               ? `URGENTE — Abertura em ${lic.horas_restantes}h`
               : `PRAZO — Abertura em ${lic.horas_restantes}h`;
 
+            const linkEdital = lic.url_edital || lic.url_portal || '';
             const msg = [
               `PRAEFECTUS — LEMBRETE`,
               ``,
@@ -266,6 +280,7 @@ serve(async (req) => {
               lic.objeto ? `Objeto: ${lic.objeto.slice(0, 200)}` : '',
               local ? `Local: ${local}` : '',
               lic.data_abertura ? `Abertura: ${lic.data_abertura}` : '',
+              linkEdital ? `Edital: ${linkEdital}` : '',
               ``,
               `Acesse: https://app.praefectus.com.br/monitoramento-editais`,
             ].filter(Boolean).join('\n');

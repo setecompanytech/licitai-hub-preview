@@ -25,6 +25,8 @@ interface LicitacaoUnificada {
   objeto: string | null;
   codigo_uasg: string | null;
   portal: string | null;
+  url_edital: string | null;
+  url_portal: string | null;
   fonte: string;
   urgencia?: 'critica' | 'alta' | 'normal';
   horas_restantes?: number;
@@ -88,9 +90,9 @@ function matchesSegmentos(texto: string, segmentos: string[]): boolean {
 async function fetchMonitoramentoEditais(supabase: any, tipo: string, ufsInteresse: string[]): Promise<LicitacaoUnificada[]> {
   let query = supabase
     .from("monitoramento_editais")
-    .select("titulo, orgao, valor_estimado, uf, municipio, data_abertura, status, numero_processo, modalidade, objeto, codigo_uasg, portal")
+    .select("titulo, orgao, valor_estimado, uf, municipio, data_abertura, status, numero_processo, modalidade, objeto, codigo_uasg, portal, url_edital")
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(200);
 
   if (ufsInteresse.length > 0) {
     query = query.in("uf", ufsInteresse);
@@ -118,6 +120,8 @@ async function fetchMonitoramentoEditais(supabase: any, tipo: string, ufsInteres
     objeto: l.objeto || l.titulo,
     codigo_uasg: l.codigo_uasg,
     portal: l.portal,
+    url_edital: l.url_edital || null,
+    url_portal: null,
     fonte: 'monitoramento',
   }));
 }
@@ -133,10 +137,10 @@ async function fetchPncpEditaisCache(supabase: any, tipo: string, ufsInteresse: 
 
   let query = supabase
     .from("pncp_editais_cache")
-    .select("objeto, orgao, valor_total_estimado, uf, municipio, data_abertura_proposta, situacao, numero_compra, modalidade_nome, uasg_codigo, fonte, link_comprasnet, link_sistema_origem, data_publicacao_pncp, lei_base")
+    .select("objeto, orgao, valor_total_estimado, uf, municipio, data_abertura_proposta, situacao, numero_compra, modalidade_nome, uasg_codigo, fonte, link_comprasnet, link_sistema_origem, data_publicacao_pncp, lei_base, cnpj_orgao")
     .gte("created_at", ontemISO)
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(500);
 
   if (ufsInteresse.length > 0) {
     query = query.in("uf", ufsInteresse);
@@ -145,11 +149,11 @@ async function fetchPncpEditaisCache(supabase: any, tipo: string, ufsInteresse: 
   // Filter by situacao based on tipo
   if (tipo === "manha") {
     // New tenders — any situation that indicates open/published
-    query = query.in("situacao", ["Divulgada no PNCP", "Aberta", "Publicada", "divulgada"]);
+    query = query.in("situacao", ["Divulgada no PNCP", "Aberta", "Publicada", "divulgada", "Em andamento", "Suspensa e Reaberta"]);
   } else if (tipo === "meiodia") {
-    query = query.in("situacao", ["Suspensa", "Revogada", "Anulada", "Retificada"]);
+    query = query.in("situacao", ["Suspensa", "Revogada", "Anulada", "Retificada", "Adiada"]);
   } else {
-    query = query.in("situacao", ["Homologada", "Adjudicada", "Encerrada", "Concluída"]);
+    query = query.in("situacao", ["Homologada", "Adjudicada", "Encerrada", "Concluída", "Deserta", "Fracassada"]);
   }
 
   const { data } = await query;
@@ -159,6 +163,12 @@ async function fetchPncpEditaisCache(supabase: any, tipo: string, ufsInteresse: 
     const tituloFormatado = modalidade && numero
       ? `${modalidade} Nº ${numero}`
       : numero || modalidade || 'Processo sem número';
+
+    // Build best URL available
+    const urlEdital = r.link_sistema_origem || null;
+    const urlPortal = r.link_comprasnet ||
+      (r.cnpj_orgao && numero ? `https://pncp.gov.br/app/editais/${r.cnpj_orgao}/${new Date().getFullYear()}/${numero}` : null) ||
+      (numero ? `https://pncp.gov.br/app/editais?q=${encodeURIComponent(numero)}` : null);
 
     return {
       titulo: tituloFormatado,
@@ -172,7 +182,9 @@ async function fetchPncpEditaisCache(supabase: any, tipo: string, ufsInteresse: 
       modalidade: modalidade,
       objeto: r.objeto,
       codigo_uasg: r.uasg_codigo,
-      portal: r.link_comprasnet ? 'www.compras.gov.br' : r.link_sistema_origem ? 'PNCP' : '',
+      portal: r.link_comprasnet ? 'Compras.gov.br' : 'PNCP',
+      url_edital: urlEdital,
+      url_portal: urlPortal,
       fonte: r.fonte || 'pncp',
     };
   });
@@ -300,6 +312,8 @@ async function sendEmail(supabaseUrl: string, serviceKey: string, email: string,
     data_abertura: lic.data_abertura || '',
     modalidade: lic.modalidade || '',
     portal: lic.portal || '',
+    url_edital: lic.url_edital || '',
+    url_portal: lic.url_portal || '',
     urgencia: lic.urgencia || 'normal',
     horas_restantes: lic.horas_restantes,
   };
@@ -323,6 +337,7 @@ async function sendEmail(supabaseUrl: string, serviceKey: string, email: string,
 async function sendWhatsApp(supabase: any, supabaseUrl: string, serviceKey: string, userId: string, telefone: string, lic: LicitacaoUnificada) {
   const local = [lic.municipio, lic.uf].filter(Boolean).join('/');
   const valor = lic.valor_estimado ? `R$ ${Number(lic.valor_estimado).toLocaleString("pt-BR")}` : '';
+  const linkEdital = lic.url_edital || lic.url_portal || '';
 
   const mensagem = [
     `PRAEFECTUS`,
@@ -334,6 +349,7 @@ async function sendWhatsApp(supabase: any, supabaseUrl: string, serviceKey: stri
     valor ? `Valor: ${valor}` : '',
     lic.data_abertura ? `Abertura: ${lic.data_abertura}` : '',
     lic.portal ? `Portal: ${lic.portal}` : '',
+    linkEdital ? `Edital: ${linkEdital}` : '',
     ``,
     `Acesse: https://app.praefectus.com.br/monitoramento-editais`,
   ].filter(Boolean).join('\n');
