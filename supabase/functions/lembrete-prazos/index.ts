@@ -139,6 +139,8 @@ serve(async (req) => {
         horas_restantes: horas,
         urgencia: horas <= 24 ? 'critica' : 'alta',
         fonte: 'monitoramento',
+        url_edital: r.url_edital || null,
+        url_portal: null,
       });
     }
 
