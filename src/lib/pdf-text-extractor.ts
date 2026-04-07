@@ -25,8 +25,8 @@ function normalizeExtractedText(text: string): string {
     .trim();
 }
 
-export async function extractTextFromFile(file: File, maxPages = DEFAULT_MAX_PAGES): Promise<string> {
-  return extractTextFromBlob(file, file.name, maxPages);
+export async function extractTextFromFile(file: File, maxPages = DEFAULT_MAX_PAGES, isEdital = false): Promise<string> {
+  return extractTextFromBlob(file, file.name, maxPages, isEdital);
 }
 
 export async function extractTextFromBlob(
