@@ -79,9 +79,9 @@ serve(async (req) => {
     // 2. Fetch from monitoramento_editais with upcoming dates
     const { data: editaisMonit } = await supabase
       .from("monitoramento_editais")
-      .select("titulo, orgao, valor_estimado, uf, municipio, data_abertura, numero_processo, modalidade, objeto, codigo_uasg, portal")
+      .select("titulo, orgao, valor_estimado, uf, municipio, data_abertura, numero_processo, modalidade, objeto, codigo_uasg, portal, url_edital")
       .eq("status", "novo")
-      .limit(200);
+      .limit(500);
 
     // 3. Build unified list with urgency classification
     const licitacoesUrgentes: LicitacaoComPrazo[] = [];
