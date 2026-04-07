@@ -225,7 +225,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
       let textoParaAnalise = '';
       if (editalFile) {
         const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
-        textoParaAnalise = await extractTextFromFile(editalFile);
+        textoParaAnalise = await extractTextFromFile(editalFile, 150, true);
       } else if (licitacaoIdRef) {
         // Try to get edital text from licitacao data
         const { data: lic } = await supabase
@@ -421,7 +421,7 @@ ${truncated}`
 
     try {
       const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
-      const text = await extractTextFromFile(editalFile);
+      const text = await extractTextFromFile(editalFile, 150, true);
 
       // If we have a licitacaoId, use centralized extraction that persists
       if (licitacaoIdRef) {
