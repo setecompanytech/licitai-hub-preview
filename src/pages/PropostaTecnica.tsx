@@ -91,6 +91,8 @@ export default function PropostaTecnica() {
   const [prazoEntrega, setPrazoEntrega] = useState('');
   const [localEntrega, setLocalEntrega] = useState('');
   const [liquidacaoNfe, setLiquidacaoNfe] = useState('');
+  const [garantia, setGarantia] = useState('');
+  const [condicoesEntrega, setCondicoesEntrega] = useState('');
   const [editalRawText, setEditalRawText] = useState('');
 
   // Planilha de preços
