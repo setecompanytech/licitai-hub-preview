@@ -443,7 +443,11 @@ export default function MuralLicitacoes() {
       const esferaCodigo = esferaFiltro !== 'all'
         ? (esferaFiltro === 'Federal' ? 'F' : esferaFiltro === 'Estadual' ? 'E' : esferaFiltro === 'Municipal' ? 'M' : esferaFiltro === 'Distrital' ? 'D' : null)
         : null;
-      const municipioIbge = municipioFiltro.trim() ? (MUNICIPIO_IBGE[municipioFiltro.trim()] || null) : null;
+      // Try dynamic IBGE code first, then static dictionary, then pass municipality name for text fallback
+      const dynamicMunicipio = municipiosUfSelecionada.find(m => m.nome === municipioFiltro.trim());
+      const municipioIbge = municipioFiltro.trim()
+        ? (dynamicMunicipio?.id || MUNICIPIO_IBGE[municipioFiltro.trim()] || municipioFiltro.trim())
+        : null;
 
       const { data, error: rpcError } = await supabase.rpc(
         'busca_editais_instantanea' as any,
@@ -456,8 +460,8 @@ export default function MuralLicitacoes() {
           p_segmento: null,
           p_data_inicio: dataInicio ? dataInicio.toISOString().split('T')[0] : null,
           p_data_fim: dataFim ? dataFim.toISOString().split('T')[0] : null,
-          p_ordenacao: 'data_publicacao',
-          p_direcao: 'desc',
+          p_ordenacao: ordenacao.campo === 'valor_estimado' ? 'valor' : ordenacao.campo,
+          p_direcao: ordenacao.direcao,
           p_pagina: pagina,
           p_tamanho: 50,
         }
@@ -1659,7 +1663,7 @@ export default function MuralLicitacoes() {
                     <SelectContent className="max-h-60">
                       <SelectItem value="all">Todos os municípios</SelectItem>
                       {municipiosUfSelecionada.map(m => (
-                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                        <SelectItem key={m.id || m.nome} value={m.nome}>{m.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
