@@ -214,7 +214,7 @@ export function useEditalExtraction() {
   const extrairItensIA = useCallback(async (
     licitacaoId: string,
     fileText: string,
-    opts?: { forceReExtract?: boolean }
+    opts?: { forceReExtract?: boolean; skipValidation?: boolean }
   ): Promise<LicitacaoItem[]> => {
     if (!user) return [];
 
