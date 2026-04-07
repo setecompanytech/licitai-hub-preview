@@ -581,7 +581,7 @@ export default function Configuracoes() {
             <PlanoAssinatura />
             <PlanoVerificacao />
             {isAdmin && <AnalyseCustosPlanos />}
-            <AnaliseCNPJAdicional />
+            {isAdmin && <AnaliseCNPJAdicional />}
           </TabsContent>
 
           {/* ── Tab: Segurança ── */}
