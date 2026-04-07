@@ -240,6 +240,8 @@ serve(async (req) => {
             data_abertura: lic.data_abertura,
             modalidade: lic.modalidade || '',
             portal: lic.portal || '',
+            url_edital: lic.url_edital || '',
+            url_portal: lic.url_portal || '',
             urgencia: lic.urgencia,
             horas_restantes: lic.horas_restantes,
           };
@@ -267,6 +269,7 @@ serve(async (req) => {
               ? `URGENTE — Abertura em ${lic.horas_restantes}h`
               : `PRAZO — Abertura em ${lic.horas_restantes}h`;
 
+            const linkEdital = lic.url_edital || lic.url_portal || '';
             const msg = [
               `PRAEFECTUS — LEMBRETE`,
               ``,
@@ -277,6 +280,7 @@ serve(async (req) => {
               lic.objeto ? `Objeto: ${lic.objeto.slice(0, 200)}` : '',
               local ? `Local: ${local}` : '',
               lic.data_abertura ? `Abertura: ${lic.data_abertura}` : '',
+              linkEdital ? `Edital: ${linkEdital}` : '',
               ``,
               `Acesse: https://app.praefectus.com.br/monitoramento-editais`,
             ].filter(Boolean).join('\n');
