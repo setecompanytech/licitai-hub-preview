@@ -69,6 +69,54 @@ function parsePNCPNumeroControle(nc: string): { cnpj: string; seq: number; ano: 
   return { cnpj: match[1], seq: parseInt(match[2]), ano: parseInt(match[3]) };
 }
 
+// Extract JSON from AI response - handles both tool_calls and content responses
+function extractItensFromAIResponse(result: any): ItemEdital[] {
+  // Try tool_calls first
+  const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
+  if (toolCall?.function?.arguments) {
+    try {
+      const parsed = JSON.parse(toolCall.function.arguments);
+      if (Array.isArray(parsed?.itens)) {
+        console.log(`[extrair-itens] Parsed ${parsed.itens.length} itens from tool_calls`);
+        return parsed.itens;
+      }
+    } catch (e) {
+      console.warn("[extrair-itens] Failed to parse tool_calls arguments:", String(e));
+    }
+  }
+
+  // Fallback: try content (text response with JSON)
+  const content = result.choices?.[0]?.message?.content;
+  if (content && typeof content === "string") {
+    try {
+      // Remove markdown code blocks if present
+      const cleaned = content.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (Array.isArray(parsed?.itens)) {
+          console.log(`[extrair-itens] Parsed ${parsed.itens.length} itens from content`);
+          return parsed.itens;
+        }
+      }
+      // Try as array directly
+      const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
+      if (arrayMatch) {
+        const arr = JSON.parse(arrayMatch[0]);
+        if (Array.isArray(arr) && arr.length > 0) {
+          console.log(`[extrair-itens] Parsed ${arr.length} itens from content array`);
+          return arr;
+        }
+      }
+    } catch (e) {
+      console.warn("[extrair-itens] Failed to parse content as JSON:", String(e));
+    }
+  }
+
+  console.warn("[extrair-itens] No itens found in AI response");
+  return [];
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -178,7 +226,95 @@ Deno.serve(async (req) => {
 
           if (pdfUrl) {
             console.log("[extrair-itens] PDF encontrado:", pdfUrl);
-            // We can't read PDFs in Deno easily, so we return info for the client
+            // Try to download and use Gemini Vision to read PDF
+            const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+            if (LOVABLE_API_KEY) {
+              try {
+                console.log("[extrair-itens] Tentando ler PDF via Gemini Vision...");
+                const pdfResp = await fetch(pdfUrl, {
+                  signal: AbortSignal.timeout(20000),
+                });
+                
+                if (pdfResp.ok) {
+                  const pdfBytes = new Uint8Array(await pdfResp.arrayBuffer());
+                  const base64Pdf = btoa(String.fromCharCode(...pdfBytes));
+                  
+                  // Use Gemini to extract text from PDF
+                  const visionResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      model: "google/gemini-2.5-flash",
+                      messages: [
+                        {
+                          role: "user",
+                          content: [
+                            {
+                              type: "text",
+                              text: `Extraia TODOS os itens/lotes deste edital de licitação. Para cada item retorne: numero_item, descricao, quantidade, unidade, valor_unitario, valor_total, lote, marca. Retorne APENAS JSON válido no formato: {"itens": [...]}. Se não encontrar itens, retorne {"itens": []}.`,
+                            },
+                            {
+                              type: "image_url",
+                              image_url: {
+                                url: `data:application/pdf;base64,${base64Pdf}`,
+                              },
+                            },
+                          ],
+                        },
+                      ],
+                    }),
+                  });
+
+                  if (visionResp.ok) {
+                    const visionData = await visionResp.json();
+                    const visionContent = visionData.choices?.[0]?.message?.content || "";
+                    const jsonClean = visionContent.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
+                    const jsonMatch = jsonClean.match(/\{[\s\S]*\}/);
+                    
+                    if (jsonMatch) {
+                      const parsed = JSON.parse(jsonMatch[0]);
+                      const rawItens: any[] = parsed?.itens || [];
+                      
+                      if (rawItens.length > 0) {
+                        const itens = rawItens.map((item: any, idx: number) => {
+                          return normalizeItem({
+                            item: item.numero_item ?? item.item ?? idx + 1,
+                            descricao: item.descricao,
+                            quantidade: item.quantidade,
+                            unidade: item.unidade_medida ?? item.unidade,
+                            valor_unitario: item.valor_unitario,
+                            valor_total: item.valor_total,
+                            lote: item.lote,
+                            marca: item.marca,
+                            fabricante: item.fabricante,
+                            modelo: item.modelo,
+                          }, idx);
+                        }).filter(Boolean);
+
+                        if (itens.length > 0) {
+                          console.log(`[extrair-itens] Gemini Vision extraiu ${itens.length} itens do PDF`);
+                          return new Response(JSON.stringify({
+                            success: true,
+                            data: itens,
+                            total: itens.length,
+                            fonte: "IA_VISION",
+                          }), {
+                            headers: { ...corsHeaders, "Content-Type": "application/json" },
+                          });
+                        }
+                      }
+                    }
+                  }
+                }
+              } catch (e) {
+                console.warn("[extrair-itens] Gemini Vision falhou:", String(e));
+              }
+            }
+
+            // If Vision failed, return pdf_url for client-side fallback
             return new Response(JSON.stringify({
               success: false,
               data: [],
@@ -215,7 +351,7 @@ Deno.serve(async (req) => {
 
     const truncated = textoParaIA.slice(0, 120000);
 
-    console.log("[extrair-itens] CAMADA 2 - Extraindo via IA...");
+    console.log("[extrair-itens] CAMADA 2 - Extraindo via IA (texto)..., comprimento:", truncated.length);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -228,49 +364,42 @@ Deno.serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: "Você é um extrator técnico de itens de editais e termos de referência. Extraia SOMENTE itens que aparecem literalmente no texto. Nunca invente, nunca complete lacunas, nunca substitua um produto por outro semelhante. Preserve rigorosamente a ordem original do documento e a descrição fiel de cada item.",
+            content: `Você é um extrator técnico de itens de editais e termos de referência de licitações públicas brasileiras.
+Extraia SOMENTE itens que aparecem literalmente no texto. Nunca invente dados.
+Preserve rigorosamente a ordem original e a descrição fiel de cada item.
+
+IMPORTANTE: Retorne APENAS um JSON válido no formato abaixo, sem markdown, sem explicações:
+{
+  "itens": [
+    {
+      "item": 1,
+      "descricao": "descrição completa do item",
+      "quantidade": 100,
+      "unidade": "UN",
+      "valor_unitario": 25.00,
+      "valor_total": 2500.00,
+      "lote": "Único",
+      "marca": null,
+      "fabricante": null,
+      "modelo": null
+    }
+  ]
+}`,
           },
           {
             role: "user",
-            content: `Extraia TODOS os itens/lotes do documento abaixo em formato estruturado.\n\nREGRAS CRÍTICAS:\n- Extraia do primeiro ao último item, sem interromper a lista no meio\n- Mantenha a mesma ordem do documento\n- Copie a descrição literalmente\n- Se quantidade, unidade, lote, marca, fabricante, modelo ou valores não aparecerem, use null\n- Se o documento não tiver lista de itens suficiente para extração fiel, retorne um array vazio\n- Não use markdown, não explique nada, apenas preencha a chamada da função\n\nTEXTO DO EDITAL:\n${truncated}`,
+            content: `Extraia TODOS os itens/lotes do documento abaixo.
+
+REGRAS:
+- Extraia do primeiro ao último item, sem interromper a lista
+- Copie a descrição literalmente
+- Se quantidade, unidade, lote, marca, fabricante, modelo ou valores não aparecerem, use null
+- Se o documento não tiver itens, retorne {"itens": []}
+
+TEXTO DO EDITAL:
+${truncated}`,
           },
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "extrair_itens_edital",
-              description: "Extrai itens estruturados de um edital ou termo de referência com fidelidade documental",
-              parameters: {
-                type: "object",
-                properties: {
-                  itens: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        item: { type: ["string", "number", "null"] },
-                        descricao: { type: ["string", "null"] },
-                        quantidade: { type: ["number", "string", "null"] },
-                        unidade: { type: ["string", "null"] },
-                        valor_unitario: { type: ["number", "string", "null"] },
-                        valor_total: { type: ["number", "string", "null"] },
-                        lote: { type: ["string", "null"] },
-                        marca: { type: ["string", "null"] },
-                        fabricante: { type: ["string", "null"] },
-                        modelo: { type: ["string", "null"] },
-                      },
-                      additionalProperties: false,
-                    },
-                  },
-                },
-                required: ["itens"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "extrair_itens_edital" } },
       }),
     });
 
@@ -284,16 +413,13 @@ Deno.serve(async (req) => {
     }
 
     const result = await response.json();
-    const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
+    const rawItens = extractItensFromAIResponse(result);
 
-    if (!toolCall?.function?.arguments) {
-      throw new Error("IA não retornou dados estruturados");
-    }
+    const itens = rawItens
+      .map((item: ItemEdital, idx: number) => normalizeItem(item, idx))
+      .filter(Boolean);
 
-    const parsed = JSON.parse(toolCall.function.arguments);
-    const itens = Array.isArray(parsed?.itens)
-      ? parsed.itens.map(normalizeItem).filter(Boolean)
-      : [];
+    console.log(`[extrair-itens] IA retornou ${rawItens.length} itens brutos, ${itens.length} normalizados`);
 
     return new Response(JSON.stringify({
       success: true,
