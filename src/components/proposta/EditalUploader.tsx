@@ -26,6 +26,8 @@ export interface ExtractedEditalData {
   prazoEntrega: string;
   localEntrega: string;
   liquidacaoNfe: string;
+  garantia: string;
+  condicoesEntrega: string;
   itens: EditalItem[];
   rawText: string;
 }
