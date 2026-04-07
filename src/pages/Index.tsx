@@ -11,6 +11,7 @@ import { useAnalyticsData } from '@/hooks/useAnalyticsData';
 import { Eye, Send, Trophy, TrendingUp, DollarSign, Zap, XCircle, Clock, Gavel, FileCheck2, Database } from 'lucide-react';
 import RelatorioGerencialPDF from '@/components/relatorios/RelatorioGerencialPDF';
 import OnboardingWizard, { useOnboarding } from '@/components/onboarding/OnboardingWizard';
+import ColaboradorIdentificacaoModal from '@/components/auth/ColaboradorIdentificacaoModal';
 import { useNavigate } from 'react-router-dom';
 
 const formatCurrency = (v: number) =>
