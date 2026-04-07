@@ -91,6 +91,8 @@ export default function PropostaTecnica() {
   const [prazoEntrega, setPrazoEntrega] = useState('');
   const [localEntrega, setLocalEntrega] = useState('');
   const [liquidacaoNfe, setLiquidacaoNfe] = useState('');
+  const [garantia, setGarantia] = useState('');
+  const [condicoesEntrega, setCondicoesEntrega] = useState('');
   const [editalRawText, setEditalRawText] = useState('');
 
   // Planilha de preços
@@ -818,9 +820,17 @@ export default function PropostaTecnica() {
                   <Label className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-accent" /> Local de Entrega</Label>
                   <Input value={localEntrega} onChange={e => setLocalEntrega(e.target.value)} />
                 </div>
-                <div className="space-y-2 md:col-span-2">
+                <div className="space-y-2">
                   <Label>Condições de Liquidação / NFe</Label>
                   <Input placeholder="Conforme edital" value={liquidacaoNfe} onChange={e => setLiquidacaoNfe(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Garantia</Label>
+                  <Input placeholder="Conforme Lei 8.078/1990 (CDC)" value={garantia} onChange={e => setGarantia(e.target.value)} />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Condições Especiais de Entrega</Label>
+                  <Input placeholder="Ex: Entrega parcelada conforme cronograma..." value={condicoesEntrega} onChange={e => setCondicoesEntrega(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -1193,6 +1203,9 @@ export default function PropostaTecnica() {
                     prazoPagamento={prazoPagamento}
                     prazoEntrega={prazoEntrega}
                     localEntrega={localEntrega}
+                    garantia={garantia}
+                    condicoesEntrega={condicoesEntrega}
+                    liquidacaoNfe={liquidacaoNfe}
                     itens={itens}
                     declaracoesAtivas={declaracoesAtivasLabels}
                     banco={banco}
