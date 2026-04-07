@@ -111,14 +111,88 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
   const { fetchItens, extrairItensDoTexto, extrairItensIA } = useEditalExtraction();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<0 | 1 | 2>(editingLance ? 1 : 0);
-...
-  // Shared AI text extraction (no licitacaoId)
+
+  // Step 0 – Import
+  const [licitacoes, setLicitacoes] = useState<LicitacaoRow[]>([]);
+  const [loadingLicitacoes, setLoadingLicitacoes] = useState(false);
+  const [searchLic, setSearchLic] = useState('');
+  const [selectedLicId, setSelectedLicId] = useState<string | null>(null);
+  const [loadingItems, setLoadingItems] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>('todos');
+
+  // Step 0 – AI Extraction
+  const [editalFile, setEditalFile] = useState<File | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [showEditalUpload, setShowEditalUpload] = useState(false);
+  const [autoExtractTriggered, setAutoExtractTriggered] = useState(false);
+  const editalFileRef = useRef<HTMLInputElement>(null);
+
+  // Step 1 fields
+  const [edital, setEdital] = useState(editingLance?.edital || '');
+  const [portal, setPortal] = useState(editingLance?.portal || '');
+  const [decrementoMin, setDecrementoMin] = useState(editingLance?.decrementoMin?.toString() || '');
+  const [decrementoPercentual, setDecrementoPercentual] = useState(editingLance?.decrementoPercentual?.toString() || '1.5');
+  const [intervaloSegundos, setIntervaloSegundos] = useState(editingLance?.intervaloSegundos?.toString() || '30');
+  const [maxLances, setMaxLances] = useState(editingLance?.maxLances?.toString() || '20');
+  const [modoAutomatico, setModoAutomatico] = useState(editingLance?.modoAutomatico ?? true);
+  const [horario, setHorario] = useState(editingLance?.horario || '');
+
+  // Step 2 fields
+  const [tipoDisputa, setTipoDisputa] = useState<'item' | 'lote'>(editingLance?.tipoDisputa || 'item');
+  const [itens, setItens] = useState<DisputeItem[]>(editingLance?.itens || []);
+  const [licitacaoIdRef, setLicitacaoIdRef] = useState<string | undefined>(editingLance?.licitacaoId);
+
+  // Step 2 – User edits R$ values directly; % is auto-calculated
+  const [valorInicialInput, setValorInicialInput] = useState(editingLance ? String(editingLance.valorInicial) : '');
+  const [valorMinimoInput, setValorMinimoInput] = useState(editingLance ? String(editingLance.valorMinimo) : '');
+
+  // New item form
+  const [novoDesc, setNovoDesc] = useState('');
+  const [novoQtd, setNovoQtd] = useState('1');
+  const [novoUnidade, setNovoUnidade] = useState('UN');
+  const [novoValorRef, setNovoValorRef] = useState('');
+  const [novoLote, setNovoLote] = useState('');
+
+  // ── Auto-calculated values from items ──
+  const somaReferencia = useMemo(() => {
+    return itens.reduce((sum, item) => sum + (item.valorReferencia * item.quantidade), 0);
+  }, [itens]);
+
+  const valorInicial = parseFloat(valorInicialInput) || 0;
+  const valorMinimo = parseFloat(valorMinimoInput) || 0;
+
+  const pctDescontoInicial = useMemo(() => {
+    if (somaReferencia <= 0) return 0;
+    return Math.round(((somaReferencia - valorInicial) / somaReferencia) * 10000) / 100;
+  }, [somaReferencia, valorInicial]);
+
+  const pctDescontoMinimo = useMemo(() => {
+    if (somaReferencia <= 0) return 0;
+    return Math.round(((somaReferencia - valorMinimo) / somaReferencia) * 10000) / 100;
+  }, [somaReferencia, valorMinimo]);
+
+  const inexequibilidadeInicial = pctDescontoInicial > 50;
+  const inexequibilidadeMinimo = pctDescontoMinimo > 50;
+
+  const applyImportedItems = (importedItems: DisputeItem[]) => {
+    setItens(importedItems);
+    const uniqueLotes = [...new Set(importedItems.map(i => i.lote))].filter(l => l && l !== 'Único');
+    if (uniqueLotes.length > 1 || (uniqueLotes.length === 1 && importedItems.filter(i => i.lote === uniqueLotes[0]).length > 1)) {
+      setTipoDisputa('lote');
+    } else {
+      setTipoDisputa('item');
+    }
+    if (importedItems.length > 0) {
+      const total = importedItems.reduce((s, i) => s + (i.valorReferencia * i.quantidade), 0);
+      setValorInicialInput(String(Math.round(total * 0.95 * 100) / 100));
+      setValorMinimoInput(String(Math.round(total * 0.80 * 100) / 100));
+    }
+  };
+
   const extractFromText = useCallback(async (text: string): Promise<DisputeItem[]> => {
     try {
       const parsed = await extrairItensDoTexto(text, { skipValidation: true });
-      if (parsed.length === 0) {
-        return [];
-      }
+      if (parsed.length === 0) return [];
 
       const extractedItems: DisputeItem[] = parsed.map((p, idx) => ({
         id: crypto.randomUUID(),
@@ -144,7 +218,138 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
       return [];
     }
   }, [extrairItensDoTexto]);
-...
+
+  const fetchLicitacoes = useCallback(async () => {
+    if (!user) return;
+    setLoadingLicitacoes(true);
+    try {
+      const { data, error } = await supabase
+        .from('licitacoes')
+        .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, portal, data_encerramento')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setLicitacoes((data as LicitacaoRow[]) || []);
+    } catch {
+      toast.error('Erro ao carregar processos.');
+    } finally {
+      setLoadingLicitacoes(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (open && step === 0) {
+      fetchLicitacoes();
+    }
+  }, [open, step, fetchLicitacoes]);
+
+  const handleAutoExtractItems = useCallback(async () => {
+    if (isExtracting) return;
+    setIsExtracting(true);
+
+    try {
+      if (licitacaoIdRef) {
+        const centralItens = await fetchItens(licitacaoIdRef);
+        if (centralItens.length > 0) {
+          const importedItems = licitacaoItensToDispute(centralItens);
+          applyImportedItems(importedItems);
+          toast.success(`${importedItems.length} itens carregados automaticamente!`);
+          setIsExtracting(false);
+          return;
+        }
+      }
+
+      let textoParaAnalise = '';
+      if (editalFile) {
+        const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
+        textoParaAnalise = await extractTextFromFile(editalFile, 150, true);
+      } else if (licitacaoIdRef) {
+        const { data: lic } = await supabase
+          .from('licitacoes')
+          .select('objeto, observacoes')
+          .eq('id', licitacaoIdRef)
+          .single();
+        textoParaAnalise = [lic?.objeto, lic?.observacoes].filter(Boolean).join('\n');
+      }
+
+      if (!textoParaAnalise || textoParaAnalise.length < 20) {
+        toast.info('Envie o edital (PDF/DOC) para extrair itens automaticamente, ou cadastre manualmente.');
+        setIsExtracting(false);
+        return;
+      }
+
+      if (licitacaoIdRef) {
+        const saved = await extrairItensIA(licitacaoIdRef, textoParaAnalise, { forceReExtract: true, skipValidation: !!editalFile });
+        const disputeItems = licitacaoItensToDispute(saved);
+        applyImportedItems(disputeItems);
+        if (disputeItems.length > 0) {
+          toast.success(`${disputeItems.length} itens extraídos automaticamente via IA!`);
+        } else {
+          toast.info('Nenhum item encontrado. Cadastre manualmente ou envie o edital.');
+        }
+      } else {
+        await extractFromText(textoParaAnalise);
+      }
+    } catch (err) {
+      console.error('Auto-extract error:', err);
+      toast.error('Erro na extração automática. Cadastre os itens manualmente.');
+    } finally {
+      setIsExtracting(false);
+    }
+  }, [isExtracting, licitacaoIdRef, fetchItens, editalFile, extrairItensIA, extractFromText]);
+
+  useEffect(() => {
+    if (step === 2 && itens.length === 0 && !autoExtractTriggered && (licitacaoIdRef || editalFile)) {
+      setAutoExtractTriggered(true);
+      handleAutoExtractItems();
+    }
+  }, [step, itens.length, autoExtractTriggered, licitacaoIdRef, editalFile, handleAutoExtractItems]);
+
+  const handleImportLicitacao = async (lic: LicitacaoRow) => {
+    setSelectedLicId(lic.id);
+    setLoadingItems(true);
+
+    setEdital(lic.numero);
+    setPortal(lic.portal || '');
+    setLicitacaoIdRef(lic.id);
+
+    if (lic.data_encerramento) {
+      try {
+        const d = new Date(lic.data_encerramento);
+        setHorario(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+      } catch {
+      }
+    }
+
+    try {
+      const centralItens = await fetchItens(lic.id);
+      const importedItems = licitacaoItensToDispute(centralItens);
+      applyImportedItems(importedItems);
+
+      const itemCount = importedItems.length;
+      toast.success(
+        itemCount > 0
+          ? `✅ Processo importado com ${itemCount} ${itemCount === 1 ? 'item' : 'itens'}!`
+          : '✅ Dados do processo importados! Cadastre os itens manualmente no Passo 3.'
+      );
+    } catch {
+      toast.error('Erro ao importar itens do processo.');
+    } finally {
+      setLoadingItems(false);
+      setStep(1);
+    }
+  };
+
+  const handleEditalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (f.size > 15 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo 15MB.');
+      return;
+    }
+    setEditalFile(f);
+  };
+
   const handleExtractFromEdital = async () => {
     if (!editalFile) return;
     setIsExtracting(true);
@@ -153,7 +358,6 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
       const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
       const text = await extractTextFromFile(editalFile, 150, true);
 
-      // If we have a licitacaoId, use centralized extraction that persists
       if (licitacaoIdRef) {
         const saved = await extrairItensIA(licitacaoIdRef, text, { forceReExtract: true, skipValidation: true });
         const disputeItems = licitacaoItensToDispute(saved);
@@ -161,9 +365,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
         if (disputeItems.length > 0) setStep(1);
       } else {
         const extractedItems = await extractFromText(text);
-        if (extractedItems.length > 0) {
-          setStep(1);
-        }
+        if (extractedItems.length > 0) setStep(1);
       }
     } catch {
       toast.error('Erro ao ler o arquivo.');
