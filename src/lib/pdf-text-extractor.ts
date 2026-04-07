@@ -32,7 +32,8 @@ export async function extractTextFromFile(file: File, maxPages = DEFAULT_MAX_PAG
 export async function extractTextFromBlob(
   blob: Blob,
   fileName = 'documento.pdf',
-  maxPages = DEFAULT_MAX_PAGES
+  maxPages = DEFAULT_MAX_PAGES,
+  isEdital = false,
 ): Promise<string> {
   const name = fileName.toLowerCase();
   const type = blob.type.toLowerCase();
