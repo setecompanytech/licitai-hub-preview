@@ -17,7 +17,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 
 const PORTAIS_SUPORTADOS = [
-  { id: 'comprasgov', nome: 'Compras.gov.br', tipo: 'federal', icon: '🏛️' },
+  { id: 'compras-gov', nome: 'Compras.gov.br', tipo: 'federal', icon: '🏛️' },
   { id: 'bll', nome: 'BLL Compras', tipo: 'privado', icon: '🟢' },
   { id: 'licitacoes-e', nome: 'Licitações-e (BB)', tipo: 'federal', icon: '🏦' },
   { id: 'bnc', nome: 'Bolsa Nacional de Compras', tipo: 'privado', icon: '🔵' },
