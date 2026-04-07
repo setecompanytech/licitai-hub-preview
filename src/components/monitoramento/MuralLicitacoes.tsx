@@ -497,7 +497,7 @@ export default function MuralLicitacoes() {
       console.error('Cache load error:', err);
       return [];
     }
-  }, [ufFiltro, modalidadeFiltro, esferaFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro, pagina]);
+  }, [ufFiltro, modalidadeFiltro, esferaFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro, municipiosUfSelecionada, ordenacao, pagina]);
 
   // ── FASE 2: Sincronização em tempo real com PNCP (background) ──
   const sincronizarPNCP = useCallback(async (requestId?: number, cacheItems: LicitacaoMural[] = []) => {
