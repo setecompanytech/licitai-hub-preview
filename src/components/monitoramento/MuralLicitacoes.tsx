@@ -660,9 +660,15 @@ export default function MuralLicitacoes() {
     return unique;
   }, [licitacoesRaw, licitacoesExternas]);
 
-  // Helper: normalize text removing accents for matching
+  // Helper: normalize text removing accents and punctuation for resilient matching
   const normalizeText = (text: string) =>
-    text.toLowerCase().normalize("NFD").replace(/\p{Mn}/gu, "");
+    text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{Mn}/gu, "")
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
 
   const getDateOnly = (value?: string | null) => value?.split('T')[0] ?? null;
 
