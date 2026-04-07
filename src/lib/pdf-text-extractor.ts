@@ -77,6 +77,7 @@ async function extractTextFromPDFData(
   arrayBuffer: ArrayBuffer,
   maxPages: number,
   fileName: string,
+  isEdital = false,
 ): Promise<string> {
   const pdfjsLib = await import('pdfjs-dist');
   const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
