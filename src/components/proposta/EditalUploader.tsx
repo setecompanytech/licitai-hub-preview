@@ -230,6 +230,8 @@ ${truncated}`
               prazoEntrega: data.prazoEntrega || '',
               localEntrega: data.localEntrega || '',
               liquidacaoNfe: data.liquidacaoNfe || '',
+              garantia: data.garantia || '',
+              condicoesEntrega: data.condicoesEntrega || '',
               itens,
               rawText: truncated,
             });
@@ -349,7 +351,7 @@ ${truncated}`
                   numeroLicitacao: '', orgao: '', modalidade: 'Pregão Eletrônico',
                   objeto: '', valorEstimado: '', prazoValidade: '60 dias corridos',
                   prazoPagamento: '', prazoEntrega: '', localEntrega: '',
-                  liquidacaoNfe: '', itens, rawText: '',
+                  liquidacaoNfe: '', garantia: '', condicoesEntrega: '', itens, rawText: '',
                 });
                 setExtracted(true);
                 setIsExtracting(false);
