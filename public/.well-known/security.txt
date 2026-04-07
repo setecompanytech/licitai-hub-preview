@@ -1,0 +1,5 @@
+Contact: mailto:compliance@praefectus.com.br
+Contact: mailto:dpo@praefectus.com.br
+Preferred-Languages: pt-BR, en
+Canonical: https://levo-licita.lovable.app/.well-known/security.txt
+Expires: 2027-04-07T00:00:00.000Z
