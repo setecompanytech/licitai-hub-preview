@@ -117,7 +117,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
             <ThemeToggle />
           </div>
 
-          <AlertaBadge />
+          
 
           <button
             className="relative p-2 rounded-lg hover:bg-muted transition-colors"
