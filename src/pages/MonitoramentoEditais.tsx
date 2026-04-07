@@ -195,6 +195,10 @@ export default function MonitoramentoEditais() {
               Portais ({portaisMonitorados.length})
             </TabsTrigger>
             <TabsTrigger value="config">Configuração de Pesquisa</TabsTrigger>
+            <TabsTrigger value="editais-licitacoes">
+              <List className="w-4 h-4 mr-1" />
+              Editais e Licitações
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="mural">
