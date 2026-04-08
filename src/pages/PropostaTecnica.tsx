@@ -301,7 +301,7 @@ export default function PropostaTecnica() {
     }
   }, [hasPending, pendingItems, clearPending]);
 
-  const handleEditalExtracted = (data: ExtractedEditalData) => {
+  const handleEditalExtracted = async (data: ExtractedEditalData) => {
     if (data.numeroLicitacao) setNumeroLicitacao(data.numeroLicitacao);
     if (data.orgao) setOrgao(data.orgao);
     if (data.modalidade) setModalidade(data.modalidade);
@@ -314,6 +314,28 @@ export default function PropostaTecnica() {
     if (data.liquidacaoNfe) setLiquidacaoNfe(data.liquidacaoNfe);
     if (data.itens && data.itens.length > 0) setItens(data.itens);
     if (data.rawText) setEditalRawText(data.rawText);
+
+    // Auto-create a process if none is linked
+    if (!processoId && user && (data.numeroLicitacao || data.orgao)) {
+      const { data: newProc } = await supabase
+        .from('licitacoes')
+        .insert({
+          user_id: user.id,
+          numero: data.numeroLicitacao || 'Processo Manual',
+          orgao: data.orgao || '',
+          objeto: data.objeto || '',
+          modalidade: data.modalidade || 'Pregão Eletrônico',
+          valor_estimado: data.valorEstimado ? parseFloat(data.valorEstimado.replace(/[^\d,.-]/g, '').replace(',', '.')) || null : null,
+          status: 'proposta',
+        })
+        .select('id')
+        .single();
+      if (newProc) {
+        setProcessoId(newProc.id);
+        toast.info('Processo licitatório criado automaticamente.');
+      }
+    }
+
     toast.info('Dados extraídos! Avance para revisá-los.');
   };
 
