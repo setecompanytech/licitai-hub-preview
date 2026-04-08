@@ -861,7 +861,7 @@ Responda APENAS em JSON, sem markdown:
         )}
 
         {searchMode === 'edital' && (
-          <div className="bg-card border border-border/50 rounded-xl p-5 space-y-1">
+          <div className="bg-card border border-border/50 rounded-xl p-5 space-y-4">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="w-5 h-5 text-accent" />
               <h3 className="font-semibold text-sm">Cotação Automática por Edital / Termo de Referência</h3>
@@ -871,6 +871,19 @@ Responda APENAS em JSON, sem markdown:
               Envie o edital ou TR completo. A IA extrairá todos os itens e cotará cada um automaticamente nos +30 marketplaces integrados.
             </p>
             <CotacaoEditalAutoIA />
+
+            {/* Planilha de Custos integrada */}
+            <div className="mt-4 pt-4 border-t border-border/30">
+              <div className="flex items-center gap-2 mb-2">
+                <FileSpreadsheet className="w-4 h-4 text-accent" />
+                <h4 className="text-xs font-semibold text-foreground">Planilha de Custos — Extração Estruturada</h4>
+                <Badge variant="outline" className="text-[9px] ml-auto">Upload + Planilha</Badge>
+              </div>
+              <p className="text-[11px] text-muted-foreground mb-3">
+                Extraia os itens do edital em formato de planilha editável com exportação Excel.
+              </p>
+              <PlanilhaCustosEdital />
+            </div>
           </div>
         )}
 
