@@ -228,6 +228,7 @@ export default function MuralLicitacoes() {
   const [buscaDiretaAberta, setBuscaDiretaAberta] = useState(false);
   const [buscaDiretaTerm, setBuscaDiretaTerm] = useState('');
   const [loadingBuscaDireta, setLoadingBuscaDireta] = useState(false);
+  const [cadastroManualAberto, setCadastroManualAberto] = useState(false);
 
   // Filtros avançados (estilo PNCP)
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
