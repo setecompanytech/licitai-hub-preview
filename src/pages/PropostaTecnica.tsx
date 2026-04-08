@@ -266,6 +266,49 @@ export default function PropostaTecnica() {
     }
   };
 
+  // Clear all form fields to start a new proposal
+  const limparFormulario = useCallback(async () => {
+    setNumeroLicitacao('');
+    setOrgao('');
+    setModalidade('Pregão Eletrônico');
+    setObjeto('');
+    setValorEstimado('');
+    setPrazoValidade('60 dias corridos');
+    setPrazoPagamento('Até 30 dias após recebimento definitivo e apresentação da Nota Fiscal');
+    setPrazoEntrega('');
+    setLocalEntrega('');
+    setLiquidacaoNfe('');
+    setGarantia('');
+    setCondicoesEntrega('');
+    setEditalRawText('');
+    setItens([{ item: '1', descricao: '', quantidade: '', unidade: 'UN', marca: '', fabricante: '', modelo: '', valorUnitario: '', valorUnitarioExtenso: '', valorTotal: '', valorTotalExtenso: '' }]);
+    setRepNome('');
+    setRepCpf('');
+    setRepRg('');
+    setRepOrgaoExp('');
+    setRepCargo('');
+    setRepNaturalidade('');
+    setRepNacionalidade('Brasileira');
+    setRepEstadoCivil('');
+    setRepEndereco('');
+    setBanco('');
+    setAgencia('');
+    setConta('');
+    setTipoConta('Conta Corrente');
+    setPix('');
+    setTelefone('');
+    setEmail('');
+    setInscEstadual('');
+    setInscMunicipal('');
+    setDeclaracoes(Object.fromEntries(DECLARACOES_PADRAO.map(d => [d.key, true])));
+    setDeclaracoesCustom([]);
+    setProposal('');
+    setCurrentStep(1);
+    setProcessoId(null);
+    if (rascunhoId) await deleteRascunho();
+    toast.success('Formulário limpo. Pronto para uma nova proposta!');
+  }, [rascunhoId, deleteRascunho, setProcessoId]);
+
   // Auto-save on form changes
   useEffect(() => {
     const data = collectFormData();
@@ -608,7 +651,8 @@ export default function PropostaTecnica() {
 
               {/* Quick summary of extracted data */}
               {(editalRawText || numeroLicitacao) && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+                <div className="space-y-3 pt-2">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
                     { label: 'Órgão', value: orgao, icon: Building2 },
                     { label: 'Licitação', value: numeroLicitacao, icon: FileText },
