@@ -54,6 +54,7 @@ interface LivePreviewProps {
   fontSize: number;
   timbradoUrl: string | null;
   usarMarcaDagua: boolean;
+  pageOrientation?: 'portrait' | 'landscape';
 }
 
 const formatCurrency = (v: number) =>
@@ -67,6 +68,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
     garantia, condicoesEntrega, liquidacaoNfe,
     itens, declaracoesAtivas, banco, agencia, conta, tipoConta, pix,
     fontFamily, fontSize, timbradoUrl, usarMarcaDagua,
+    pageOrientation = 'portrait',
   } = props;
 
   const itensValidos = useMemo(() => itens.filter(i => i.descricao.trim()), [itens]);
@@ -101,13 +103,15 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
 
   return (
     <div
-      className="bg-white dark:bg-card rounded-lg shadow-inner border border-border/30 relative overflow-hidden"
+      className="bg-white dark:bg-card rounded-lg shadow-inner border border-border/30 relative overflow-hidden transition-all duration-300"
       style={{
         fontFamily: `'${fontFamily}', Arial, Helvetica, sans-serif`,
         fontSize: `${Math.max(fontSize - 2, 9)}pt`,
         lineHeight: '1.6',
         padding: '24px',
-        minHeight: '600px',
+        minHeight: pageOrientation === 'landscape' ? '420px' : '600px',
+        aspectRatio: pageOrientation === 'landscape' ? '297 / 210' : '210 / 297',
+        maxWidth: pageOrientation === 'landscape' ? '100%' : '595px',
         color: '#000',
       }}
     >
