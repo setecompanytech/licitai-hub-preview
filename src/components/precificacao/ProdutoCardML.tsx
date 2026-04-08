@@ -676,6 +676,18 @@ export function PesquisaResultML({
               )}
             </p>
           </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleSaveAllToCatalog}
+              disabled={savingAll}
+              className="text-xs"
+            >
+              {savingAll ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+              Arquivar Cotação
+            </Button>
+          </div>
           <div className="flex items-center gap-3 flex-wrap">
             {/* Sort */}
             <div className="flex items-center gap-1.5">
