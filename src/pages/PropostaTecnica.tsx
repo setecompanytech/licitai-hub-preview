@@ -682,6 +682,8 @@ export default function PropostaTecnica() {
                   </Button>
                 </div>
               )}
+            </div>
+          )}
 
           {/* Step 2: Empresa */}
           {currentStep === 2 && (
