@@ -132,6 +132,7 @@ export default function PropostaTecnica() {
   const [fontSize, setFontSize] = useState(12);
   const [lineSpacing, setLineSpacing] = useState('1.5');
   const [marginStyle, setMarginStyle] = useState('ABNT (3/2 cm)');
+  const [pageOrientation, setPageOrientation] = useState<'portrait' | 'landscape'>('portrait');
 
   // ── Rascunho (Draft) ──
   const { loadRascunho, autoSave, saving, lastSaved, markLoaded, deleteRascunho, rascunhoId } = useRascunho<any>({
@@ -148,7 +149,7 @@ export default function PropostaTecnica() {
     repNaturalidade, repNacionalidade, repEstadoCivil, repEndereco,
     banco, agencia, conta, tipoConta, pix, telefone, email,
     inscEstadual, inscMunicipal, declaracoes, declaracoesCustom,
-    fontFamily, fontSize, lineSpacing, marginStyle, currentStep,
+    fontFamily, fontSize, lineSpacing, marginStyle, pageOrientation, currentStep,
     timbradoUrl, usarMarcaDagua,
   }), [
     numeroLicitacao, orgao, modalidade, objeto, valorEstimado,
@@ -157,7 +158,7 @@ export default function PropostaTecnica() {
     repNaturalidade, repNacionalidade, repEstadoCivil, repEndereco,
     banco, agencia, conta, tipoConta, pix, telefone, email,
     inscEstadual, inscMunicipal, declaracoes, declaracoesCustom,
-    fontFamily, fontSize, lineSpacing, marginStyle, currentStep,
+    fontFamily, fontSize, lineSpacing, marginStyle, pageOrientation, currentStep,
     timbradoUrl, usarMarcaDagua,
   ]);
 
@@ -202,6 +203,7 @@ export default function PropostaTecnica() {
         if (data.fontSize) setFontSize(data.fontSize);
         if (data.lineSpacing) setLineSpacing(data.lineSpacing);
         if (data.marginStyle) setMarginStyle(data.marginStyle);
+        if (data.pageOrientation) setPageOrientation(data.pageOrientation);
         if (data.currentStep) setCurrentStep(data.currentStep);
         if (typeof data.usarMarcaDagua === 'boolean') setUsarMarcaDagua(data.usarMarcaDagua);
         toast.info('Rascunho restaurado automaticamente.');
@@ -407,7 +409,7 @@ export default function PropostaTecnica() {
     const parts: string[] = [];
 
     parts.push(`## Preferências de Formatação`);
-    parts.push(`- Fonte: ${fontFamily}, Tamanho: ${fontSize}pt, Espaçamento: ${lineSpacing}, Margens: ${marginStyle}`);
+    parts.push(`- Fonte: ${fontFamily}, Tamanho: ${fontSize}pt, Espaçamento: ${lineSpacing}, Margens: ${marginStyle}, Orientação: ${pageOrientation === 'portrait' ? 'Retrato' : 'Paisagem'}`);
 
     if (empresaAtiva) {
       parts.push(`\n## Dados da Empresa Licitante`);
@@ -1120,6 +1122,46 @@ export default function PropostaTecnica() {
                 </div>
               </div>
 
+              {/* Orientação da Página */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Orientação da Página</Label>
+                <div className="grid grid-cols-2 gap-3 max-w-xs">
+                  <button
+                    type="button"
+                    onClick={() => setPageOrientation('portrait')}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                      pageOrientation === 'portrait'
+                        ? 'border-accent bg-accent/5 shadow-sm'
+                        : 'border-border hover:border-accent/30 hover:bg-muted/30'
+                    }`}
+                  >
+                    <div className={`w-8 h-11 rounded-sm border-2 ${pageOrientation === 'portrait' ? 'border-accent bg-accent/10' : 'border-muted-foreground/30 bg-muted/20'}`}>
+                      <div className="m-1 space-y-0.5">
+                        <div className={`h-0.5 rounded-full ${pageOrientation === 'portrait' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
+                        <div className={`h-0.5 w-3/4 rounded-full ${pageOrientation === 'portrait' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium">Retrato</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPageOrientation('landscape')}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                      pageOrientation === 'landscape'
+                        ? 'border-accent bg-accent/5 shadow-sm'
+                        : 'border-border hover:border-accent/30 hover:bg-muted/30'
+                    }`}
+                  >
+                    <div className={`w-11 h-8 rounded-sm border-2 ${pageOrientation === 'landscape' ? 'border-accent bg-accent/10' : 'border-muted-foreground/30 bg-muted/20'}`}>
+                      <div className="m-1 space-y-0.5">
+                        <div className={`h-0.5 rounded-full ${pageOrientation === 'landscape' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
+                        <div className={`h-0.5 w-3/4 rounded-full ${pageOrientation === 'landscape' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium">Paisagem</span>
+                  </button>
+                </div>
+              </div>
 
               {/* Envio da Proposta */}
               <div className="border-t border-border/50 pt-4 space-y-2">
@@ -1244,6 +1286,7 @@ export default function PropostaTecnica() {
                   }}
                   telefone={telefone}
                   email={email}
+                  pageOrientation={pageOrientation}
                 />
                 <Button variant="outline" size="sm" onClick={handleCopy}>
                   {copied ? <CheckCircle className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}

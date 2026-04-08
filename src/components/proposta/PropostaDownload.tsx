@@ -63,6 +63,7 @@ export interface PropostaDownloadProps {
   };
   telefone?: string;
   email?: string;
+  pageOrientation?: 'portrait' | 'landscape';
 }
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -146,7 +147,8 @@ function parseMarkdownTable(lines: string[]): { headers: string[]; rows: string[
 
 export default function PropostaDownload({
   proposal, numeroLicitacao, timbradoUrl,
-  empresaData, repData, bancData, itens, licitacaoData, telefone, email
+  empresaData, repData, bancData, itens, licitacaoData, telefone, email,
+  pageOrientation = 'portrait'
 }: PropostaDownloadProps) {
 
   const handlePDF = async (orientation: 'portrait' | 'landscape' = 'portrait') => {
@@ -475,21 +477,21 @@ export default function PropostaDownload({
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <Button variant="outline" size="sm" onClick={() => handlePDF('portrait')}>
+      <Button variant="outline" size="sm" onClick={() => handlePDF(pageOrientation)}>
         <FileText className="w-4 h-4 mr-1 text-destructive" />
-        PDF Retrato
+        PDF {pageOrientation === 'landscape' ? 'Paisagem' : 'Retrato'}
       </Button>
-      <Button variant="outline" size="sm" onClick={() => handlePDF('landscape')}>
+      <Button variant="outline" size="sm" onClick={() => handlePDF(pageOrientation === 'portrait' ? 'landscape' : 'portrait')}>
         <FileText className="w-4 h-4 mr-1 text-destructive" />
-        PDF Paisagem
+        PDF {pageOrientation === 'portrait' ? 'Paisagem' : 'Retrato'}
       </Button>
-      <Button variant="outline" size="sm" onClick={() => handleWord(false)}>
+      <Button variant="outline" size="sm" onClick={() => handleWord(pageOrientation === 'landscape')}>
         <File className="w-4 h-4 mr-1 text-blue-500" />
-        Word Retrato
+        Word {pageOrientation === 'landscape' ? 'Paisagem' : 'Retrato'}
       </Button>
-      <Button variant="outline" size="sm" onClick={() => handleWord(true)}>
+      <Button variant="outline" size="sm" onClick={() => handleWord(pageOrientation !== 'landscape')}>
         <File className="w-4 h-4 mr-1 text-blue-500" />
-        Word Paisagem
+        Word {pageOrientation === 'portrait' ? 'Paisagem' : 'Retrato'}
       </Button>
       <Button variant="outline" size="sm" onClick={handleExcel}>
         <Sheet className="w-4 h-4 mr-1 text-green-500" />

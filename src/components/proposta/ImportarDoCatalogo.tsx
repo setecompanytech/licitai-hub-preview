@@ -3,8 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Package, ShoppingCart, Loader2, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Package, ShoppingCart, Loader2, FileText, ChevronDown, ChevronUp, CheckSquare } from 'lucide-react';
+import { useProcessoAtivo, type ProcessoResumo } from '@/hooks/useProcessoAtivo';
 import { toast } from 'sonner';
 
 const formatCurrency = (v: number) =>
@@ -34,11 +36,13 @@ interface Props {
 
 export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitacaoId }: Props) {
   const { user } = useAuth();
+  const { fetchProcessos } = useProcessoAtivo();
   const [expanded, setExpanded] = useState(false);
   const [items, setItems] = useState<CatalogoItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filterLicitacao, setFilterLicitacao] = useState(licitacaoNumero || 'todos');
+  const [filterLicitacao, setFilterLicitacao] = useState(licitacaoId || licitacaoNumero || 'todos');
   const [licitacoes, setLicitacoes] = useState<string[]>([]);
+  const [processos, setProcessos] = useState<ProcessoResumo[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const selectFields = 'id, descricao, quantidade, unidade, marca, fabricante, modelo, preco_unitario, preco_total, tipo_calculo, licitacao_numero, licitacao_orgao, licitacao_id';
 
@@ -87,6 +91,9 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
       const lics = [...new Set(data.filter((d: any) => d.licitacao_numero).map((d: any) => d.licitacao_numero as string))];
       setLicitacoes(lics);
     }
+    // Load user processes for the filter dropdown
+    const procs = await fetchProcessos();
+    setProcessos(procs);
     setLoading(false);
   };
 
@@ -95,15 +102,27 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
   }, [expanded, user, licitacaoId, licitacaoNumero]);
 
   useEffect(() => {
-    setFilterLicitacao(licitacaoNumero || 'todos');
+    setFilterLicitacao(licitacaoId || licitacaoNumero || 'todos');
     setSelected(new Set());
   }, [licitacaoNumero, licitacaoId]);
 
   const filteredItems = items.filter(i => {
-    if (licitacaoId && i.licitacao_id === licitacaoId) return true;
-    if (filterLicitacao !== 'todos' && i.licitacao_numero !== filterLicitacao) return false;
-    return true;
+    if (filterLicitacao === 'todos') return true;
+    // Filter by licitacao_id (process ID)
+    if (i.licitacao_id === filterLicitacao) return true;
+    // Fallback: filter by licitacao_numero
+    if (i.licitacao_numero === filterLicitacao) return true;
+    return false;
   });
+
+  const allSelected = filteredItems.length > 0 && filteredItems.every(i => selected.has(i.id));
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filteredItems.map(i => i.id)));
+    }
+  };
 
   const toggleSelect = (id: string) => {
     setSelected(prev => {
@@ -136,19 +155,28 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
 
       {expanded && (
         <div className="p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Select value={filterLicitacao} onValueChange={setFilterLicitacao}>
-              <SelectTrigger className="h-8 text-xs w-[250px]">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={filterLicitacao} onValueChange={(v) => { setFilterLicitacao(v); setSelected(new Set()); }}>
+              <SelectTrigger className="h-8 text-xs w-[280px]">
                 <FileText className="w-3 h-3 mr-1" />
                 <SelectValue placeholder="Filtrar por licitação" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-[300px]">
                 <SelectItem value="todos">Todas as licitações</SelectItem>
-                {licitacoes.map(l => (
-                  <SelectItem key={l} value={l}>{l}</SelectItem>
+                {processos.map(p => (
+                  <SelectItem key={p.id} value={p.id}>
+                    <span className="font-medium">{p.numero || 'S/N'}</span>
+                    {p.orgao ? <span className="text-muted-foreground ml-1">— {p.orgao}</span> : null}
+                  </SelectItem>
+                ))}
+                {licitacoes.filter(l => !processos.some(p => p.numero === l)).map(l => (
+                  <SelectItem key={`num-${l}`} value={l}>{l}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <Button variant="outline" size="sm" onClick={toggleSelectAll} className="h-8 text-xs gap-1">
+              <CheckSquare className="w-3 h-3" /> {allSelected ? 'Desmarcar todos' : 'Marcar todos'}
+            </Button>
             {selected.size > 0 && (
               <Button size="sm" onClick={handleImport} className="bg-accent hover:bg-accent/90 text-accent-foreground h-8">
                 <ShoppingCart className="w-3 h-3 mr-1" /> Importar {selected.size} item(ns)
