@@ -183,11 +183,12 @@ export default function CadastroManualEdital({ open, onOpenChange, onSuccess }: 
     setSalvando(true);
     try {
       const modNome = MODALIDADES_OPCOES.find(m => m.value === modalidadeId)?.label || null;
-      const fonteId = `manual-${user.id}-${Date.now()}`;
+      const pncpId = `manual-${user.id}-${Date.now()}`;
 
       const { error } = await supabase.from('pncp_editais_cache').insert({
+        pncp_id: pncpId,
         fonte: 'Manual',
-        fonte_id: fonteId,
+        fonte_id: pncpId,
         objeto: objeto.trim(),
         orgao: orgao.trim(),
         numero_compra: numeroCompra.trim() || null,
