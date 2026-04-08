@@ -790,7 +790,7 @@ Responda APENAS em JSON, sem markdown:
               onChange={(e) => setSpecText(e.target.value)}
               className="min-h-[100px] text-sm"
             />
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <input
                 ref={specFileRef}
                 type="file"
@@ -802,25 +802,26 @@ Responda APENAS em JSON, sem markdown:
                 variant="outline"
                 size="sm"
                 onClick={() => specFileRef.current?.click()}
+                className="shrink-0 max-w-[280px] truncate"
               >
-                <Upload className="w-3.5 h-3.5 mr-1" />
-                {specFile ? specFile.name : 'Upload Edital/TR'}
+                <Upload className="w-3.5 h-3.5 mr-1 shrink-0" />
+                <span className="truncate">{specFile ? specFile.name : 'Upload Edital/TR'}</span>
               </Button>
               {specFile && (
-                <Button variant="ghost" size="sm" onClick={() => { setSpecFile(null); if (specFileRef.current) specFileRef.current.value = ''; }}>
+                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => { setSpecFile(null); if (specFileRef.current) specFileRef.current.value = ''; }}>
                   <X className="w-3.5 h-3.5 mr-1" /> Remover
                 </Button>
               )}
-              <div className="ml-auto">
+              <div className="ml-auto shrink-0">
                 <Button
                   onClick={handleSpecSearch}
                   disabled={isExtractingSpec || isSearchingAI || (!specText.trim() && !specFile)}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground min-w-[180px]"
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground whitespace-nowrap"
                 >
                   {isExtractingSpec ? (
-                    <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Extraindo especificação...</>
+                    <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Extraindo...</>
                   ) : isSearchingAI ? (
-                    <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Buscando produtos...</>
+                    <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Buscando...</>
                   ) : (
                     <><FileSearch className="w-4 h-4 mr-1" /> Buscar Produto Fiel</>
                   )}
