@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   Upload, FileText, Loader2, X, Sparkles, Download, Trash2,
   Plus, CheckCircle, Edit3, Save, Package, FileSpreadsheet,
+  ShoppingCart, TrendingDown, TrendingUp, Minus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { extractTextFromFile } from '@/lib/pdf-text-extractor';
@@ -13,6 +14,7 @@ import { useEditalExtraction } from '@/hooks/useEditalExtraction';
 import { writeExcelFile } from '@/lib/excel-utils';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface PlanilhaItem {
   item: number;
