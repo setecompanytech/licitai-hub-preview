@@ -43,15 +43,36 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
   const loadItems = async () => {
     if (!user) return;
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from('catalogo_itens_precificados')
-      .select('id, descricao, quantidade, unidade, marca, fabricante, modelo, preco_unitario, preco_total, tipo_calculo, licitacao_numero, licitacao_orgao')
+      .select('id, descricao, quantidade, unidade, marca, fabricante, modelo, preco_unitario, preco_total, tipo_calculo, licitacao_numero, licitacao_orgao, licitacao_id')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
+
+    // If a specific process is linked, prioritize its items
+    if (licitacaoId) {
+      query = query.eq('licitacao_id', licitacaoId);
+    }
+
+    const { data, error } = await query;
     if (!error && data) {
-      setItems(data as CatalogoItem[]);
+      setItems(data as any[]);
       const lics = [...new Set(data.filter((d: any) => d.licitacao_numero).map((d: any) => d.licitacao_numero as string))];
       setLicitacoes(lics);
+
+      // If licitacaoId filter returned nothing, try all items
+      if (licitacaoId && data.length === 0) {
+        const { data: allData } = await supabase
+          .from('catalogo_itens_precificados')
+          .select('id, descricao, quantidade, unidade, marca, fabricante, modelo, preco_unitario, preco_total, tipo_calculo, licitacao_numero, licitacao_orgao, licitacao_id')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        if (allData) {
+          setItems(allData as any[]);
+          const allLics = [...new Set(allData.filter((d: any) => d.licitacao_numero).map((d: any) => d.licitacao_numero as string))];
+          setLicitacoes(allLics);
+        }
+      }
     }
     setLoading(false);
   };
