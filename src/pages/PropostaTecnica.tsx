@@ -23,7 +23,7 @@ import { toast } from 'sonner';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import EditalUploader, { type ExtractedEditalData, type EditalItem } from '@/components/proposta/EditalUploader';
 import PlanilhaPrecos from '@/components/proposta/PlanilhaPrecos';
-import TimbradoUploader from '@/components/proposta/TimbradoUploader';
+import { Link } from 'react-router-dom';
 import EnvioProposta from '@/components/proposta/EnvioProposta';
 import PropostaDownload from '@/components/proposta/PropostaDownload';
 import PropostaRenderer from '@/components/proposta/PropostaRenderer';
@@ -69,16 +69,9 @@ export default function PropostaTecnica() {
   const [showPreview, setShowPreview] = useState(!isMobile);
   const resultRef = useRef<HTMLDivElement>(null);
 
-  // Timbrado / Marca d'água
-  const [timbradoUrl, setTimbradoUrl] = useState<string | null>(empresaAtiva?.timbrado_url ?? null);
+  // Timbrado – centralizado em Configurações Gerais
+  const timbradoUrl = empresaAtiva?.timbrado_url ?? null;
   const [usarMarcaDagua, setUsarMarcaDagua] = useState(true);
-
-  // Auto-sync timbrado when empresa changes
-  useEffect(() => {
-    if (empresaAtiva?.timbrado_url) {
-      setTimbradoUrl(empresaAtiva.timbrado_url);
-    }
-  }, [empresaAtiva?.timbrado_url]);
 
   // Form fields
   const [numeroLicitacao, setNumeroLicitacao] = useState('');
@@ -941,11 +934,11 @@ export default function PropostaTecnica() {
           )}
 
           {/* Step 7: Formatação e Marca d'Água */}
-          {currentStep === 7 && (
+           {currentStep === 7 && (
             <div className="space-y-6">
               <div className="flex items-center gap-2 mb-1">
                 <Settings2 className="w-5 h-5 text-accent" />
-                <h2 className="font-semibold text-lg">Formatação e Marca d'Água</h2>
+                <h2 className="font-semibold text-lg">Formatação</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -991,9 +984,25 @@ export default function PropostaTecnica() {
                 </div>
               </div>
 
-              <div className="border-t border-border/50 pt-4 space-y-4">
-                <p className="font-medium text-sm flex items-center gap-2"><Stamp className="w-4 h-4 text-accent" /> Timbrado e Marca d'Água</p>
-                <TimbradoUploader empresaId={empresaAtiva?.id} timbradoUrl={timbradoUrl} setTimbradoUrl={setTimbradoUrl} />
+              {/* Timbrado info */}
+              <div className="border-t border-border/50 pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="font-medium text-sm flex items-center gap-2"><Stamp className="w-4 h-4 text-accent" /> Timbrado e Marca d'Água</p>
+                  {timbradoUrl ? (
+                    <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/20">
+                      <CheckCircle className="w-3 h-3 mr-1" /> Timbrado configurado
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px] bg-warning/10 text-warning border-warning/20">
+                      Nenhum timbrado
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  O timbrado é gerenciado centralmente em{' '}
+                  <Link to="/configuracoes" className="text-accent hover:underline font-medium">Configurações Gerais</Link>{' '}
+                  e será aplicado automaticamente a todos os documentos gerados (propostas, planilhas, declarações, recursos, etc.).
+                </p>
                 <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
                   usarMarcaDagua ? 'border-accent/30 bg-accent/5' : 'border-border/50 hover:bg-muted/30'
                 }`}>
