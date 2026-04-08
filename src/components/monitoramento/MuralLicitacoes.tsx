@@ -1483,6 +1483,15 @@ export default function MuralLicitacoes() {
               <Link2 className="w-3.5 h-3.5" />
               Busca Direta
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCadastroManualAberto(true)}
+              className="gap-1.5 border-accent/30 text-accent hover:bg-accent/10 text-xs"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              Cadastrar Edital
+            </Button>
             <div className="flex items-center gap-2 bg-card border border-border/50 rounded-lg px-2.5 py-1.5">
               <Sparkles className="w-3.5 h-3.5 text-accent flex-shrink-0" />
               <label htmlFor="toggle-externos" className="text-[11px] sm:text-xs font-medium cursor-pointer select-none whitespace-nowrap">
@@ -2259,6 +2268,12 @@ export default function MuralLicitacoes() {
           onSuccess={() => setEditalInteresse(null)}
         />
       )}
+
+      <CadastroManualEdital
+        open={cadastroManualAberto}
+        onOpenChange={setCadastroManualAberto}
+        onSuccess={carregarMural}
+      />
     </div>
   );
 }
