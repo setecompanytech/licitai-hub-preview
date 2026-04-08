@@ -3644,6 +3644,121 @@ export type Database = {
         }
         Relationships: []
       }
+      edital_itens_extraidos: {
+        Row: {
+          aprovado_em: string | null
+          aprovado_por: string | null
+          codigo_catmat: string | null
+          confidence_score: number | null
+          created_at: string | null
+          descricao: string
+          empresa_id: string | null
+          erros: Json | null
+          especificacoes: string | null
+          estrategia_extracao: string | null
+          exclusivo_me_epp: boolean | null
+          fabricante: string | null
+          fonte_extracao: string | null
+          id: string
+          licitacao_id: string | null
+          marca: string | null
+          modelo: string | null
+          numero_item: number | null
+          numero_lote: number | null
+          quantidade: number | null
+          requer_revisao: boolean | null
+          status: string | null
+          unidade: string | null
+          updated_at: string | null
+          user_id: string
+          valor_total: number | null
+          valor_unitario: number | null
+          warnings: Json | null
+        }
+        Insert: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          codigo_catmat?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          descricao: string
+          empresa_id?: string | null
+          erros?: Json | null
+          especificacoes?: string | null
+          estrategia_extracao?: string | null
+          exclusivo_me_epp?: boolean | null
+          fabricante?: string | null
+          fonte_extracao?: string | null
+          id?: string
+          licitacao_id?: string | null
+          marca?: string | null
+          modelo?: string | null
+          numero_item?: number | null
+          numero_lote?: number | null
+          quantidade?: number | null
+          requer_revisao?: boolean | null
+          status?: string | null
+          unidade?: string | null
+          updated_at?: string | null
+          user_id: string
+          valor_total?: number | null
+          valor_unitario?: number | null
+          warnings?: Json | null
+        }
+        Update: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          codigo_catmat?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          descricao?: string
+          empresa_id?: string | null
+          erros?: Json | null
+          especificacoes?: string | null
+          estrategia_extracao?: string | null
+          exclusivo_me_epp?: boolean | null
+          fabricante?: string | null
+          fonte_extracao?: string | null
+          id?: string
+          licitacao_id?: string | null
+          marca?: string | null
+          modelo?: string | null
+          numero_item?: number | null
+          numero_lote?: number | null
+          quantidade?: number | null
+          requer_revisao?: boolean | null
+          status?: string | null
+          unidade?: string | null
+          updated_at?: string | null
+          user_id?: string
+          valor_total?: number | null
+          valor_unitario?: number | null
+          warnings?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edital_itens_extraidos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edital_itens_extraidos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edital_itens_extraidos_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_send_log: {
         Row: {
           created_at: string
