@@ -326,7 +326,7 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const { descricao, codigoCatmat, especificacoes, empresaId, itemEditalId, modo = 'manual' } = await req.json();
+    const { descricao, codigoCatmat, especificacoes, empresaId, itemEditalId, modo = 'manual', unidade, quantidade } = await req.json();
 
     if (!descricao) {
       return new Response(JSON.stringify({ error: 'descricao obrigatória' }),
@@ -355,7 +355,7 @@ Deno.serve(async (req) => {
     let queryNorm: any;
     try {
       const { data } = await supabase.functions.invoke('price-search-normalizer', {
-        body: { descricao, codigoCatmat, especificacoes },
+        body: { descricao, codigoCatmat, especificacoes, unidade, quantidade },
       });
       queryNorm = data;
     } catch {
