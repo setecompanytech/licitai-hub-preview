@@ -670,6 +670,9 @@ Responda APENAS em JSON, sem markdown:
             <TabsTrigger value="inteligencia" className="gap-1.5">
               <Bot className="w-3.5 h-3.5" /> Inteligência de Preços
             </TabsTrigger>
+            <TabsTrigger value="extracao-itens" className="gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" /> Extração de Itens
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="marketplaces" className="space-y-4">
