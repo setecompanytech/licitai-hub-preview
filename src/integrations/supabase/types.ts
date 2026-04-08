@@ -3917,6 +3917,7 @@ export type Database = {
           certificado_tipo: string | null
           certificado_validade: string | null
           cnae_principal: string | null
+          cnaes_secundarios: string[] | null
           cnpj: string
           complemento: string | null
           created_at: string
@@ -3955,6 +3956,7 @@ export type Database = {
           certificado_tipo?: string | null
           certificado_validade?: string | null
           cnae_principal?: string | null
+          cnaes_secundarios?: string[] | null
           cnpj: string
           complemento?: string | null
           created_at?: string
@@ -3993,6 +3995,7 @@ export type Database = {
           certificado_tipo?: string | null
           certificado_validade?: string | null
           cnae_principal?: string | null
+          cnaes_secundarios?: string[] | null
           cnpj?: string
           complemento?: string | null
           created_at?: string

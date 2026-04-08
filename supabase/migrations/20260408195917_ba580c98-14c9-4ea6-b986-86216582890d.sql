@@ -1,0 +1,1 @@
+ALTER TABLE public.empresas ADD COLUMN cnaes_secundarios text[] DEFAULT NULL;
