@@ -123,6 +123,27 @@ function validarItens(itens: any[]): any[] {
   });
 }
 
+function buildSuccessResponse(itens: any[], fonte: string) {
+  const validados = validarItens(itens);
+  const total = validados.length;
+  const comErro = validados.filter((i: any) => i.erros?.length > 0).length;
+  const confiancaMedia = total > 0
+    ? validados.reduce((acc: number, i: any) => acc + (i.confidence_score || 0), 0) / total
+    : 0;
+
+  return new Response(JSON.stringify({
+    success: true,
+    data: validados,
+    total,
+    fonte,
+    meta: {
+      confianca_media: Math.round(confiancaMedia * 100) / 100,
+      itens_com_erro: comErro,
+      requer_revisao: comErro > 0 || confiancaMedia < 0.8,
+    },
+  }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
 function parsePNCPNumeroControle(nc: string): { cnpj: string; seq: number; ano: number } | null {
   if (!nc) return null;
   const match = nc.replace(/\s/g, "").match(/^(\d{14})-(\d+)-\d+\/(\d{4})$/);
