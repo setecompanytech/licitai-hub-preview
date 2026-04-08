@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { normalizeUfs } from "@/constants/ufsBrasil";
 
 export type TipoAlerta =
   | "novo_edital" | "alteracao" | "suspensao"
@@ -79,13 +80,43 @@ export const useAlertas = () => {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [pagina, setPagina] = useState(1);
+  const [ufsPreferidas, setUfsPreferidas] = useState<string[]>([]);
   const ITENS_POR_PAGINA = 20;
+
+  useEffect(() => {
+    if (!user?.id) {
+      setUfsPreferidas([]);
+      return;
+    }
+
+    let ativo = true;
+
+    const carregarUfsPreferidas = async () => {
+      const [preferenciasResp, configuracoesResp] = await Promise.all([
+        supabase.from("preferencias_alertas" as any).select("ufs").eq("user_id", user.id).maybeSingle(),
+        supabase.from("configuracoes").select("ufs_interesse").eq("user_id", user.id).maybeSingle(),
+      ]);
+
+      if (!ativo) return;
+
+      const preferenciasUfs = ((preferenciasResp.data as { ufs?: string[] } | null)?.ufs) || [];
+      const configuracoesUfs = configuracoesResp.data?.ufs_interesse || [];
+      setUfsPreferidas(normalizeUfs([...(preferenciasUfs || []), ...(configuracoesUfs || [])]));
+    };
+
+    carregarUfsPreferidas();
+
+    return () => {
+      ativo = false;
+    };
+  }, [user?.id]);
 
   const buscarAlertas = useCallback(async (filtros: FiltrosAlertas = {}) => {
     if (!user?.id) return;
     setLoading(true);
     setErro(null);
     try {
+      const ufsAtivas = filtros.ufs?.length ? normalizeUfs(filtros.ufs) : ufsPreferidas;
       let query = supabase
         .from("alertas_gerados" as any)
         .select("*", { count: "exact" })
@@ -93,7 +124,7 @@ export const useAlertas = () => {
         .eq("arquivado", filtros.arquivado ?? false);
 
       if (filtros.tipos?.length) query = query.in("tipo", filtros.tipos);
-      if (filtros.ufs?.length) query = query.in("uf", filtros.ufs);
+      if (ufsAtivas.length) query = query.in("uf", ufsAtivas);
       if (filtros.lido !== undefined) query = query.eq("lido", filtros.lido);
       if (filtros.urgente !== undefined) query = query.eq("urgente", filtros.urgente);
       if (filtros.dataInicio) query = query.gte("created_at", filtros.dataInicio);
@@ -114,23 +145,28 @@ export const useAlertas = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, pagina]);
+  }, [user?.id, pagina, ufsPreferidas]);
 
   const atualizarContadores = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const [{ count: nl }, { count: urg }] = await Promise.all([
-        supabase.from("alertas_gerados" as any).select("*", { count: "exact", head: true })
-          .eq("user_id", user.id).eq("lido", false).eq("arquivado", false),
-        supabase.from("alertas_gerados" as any).select("*", { count: "exact", head: true })
-          .eq("user_id", user.id).eq("urgente", true).eq("lido", false).eq("arquivado", false),
-      ]);
+      let naoLidosQuery = supabase.from("alertas_gerados" as any).select("*", { count: "exact", head: true })
+        .eq("user_id", user.id).eq("lido", false).eq("arquivado", false);
+      let urgentesQuery = supabase.from("alertas_gerados" as any).select("*", { count: "exact", head: true })
+        .eq("user_id", user.id).eq("urgente", true).eq("lido", false).eq("arquivado", false);
+
+      if (ufsPreferidas.length > 0) {
+        naoLidosQuery = naoLidosQuery.in("uf", ufsPreferidas);
+        urgentesQuery = urgentesQuery.in("uf", ufsPreferidas);
+      }
+
+      const [{ count: nl }, { count: urg }] = await Promise.all([naoLidosQuery, urgentesQuery]);
       setNaoLidos(nl ?? 0);
       setUrgentes(urg ?? 0);
     } catch (e) {
       console.warn("Falha ao buscar contadores", e);
     }
-  }, [user?.id]);
+  }, [user?.id, ufsPreferidas]);
 
   const marcarComoLido = useCallback(async (alertaId: string) => {
     try {
@@ -169,13 +205,16 @@ export const useAlertas = () => {
         filter: `user_id=eq.${user.id}`,
       }, (payload) => {
         const novoAlerta = payload.new as Alerta;
+        if (ufsPreferidas.length > 0 && novoAlerta.uf && !ufsPreferidas.includes(novoAlerta.uf)) {
+          return;
+        }
         setAlertas(prev => [novoAlerta, ...prev]);
         setNaoLidos(prev => prev + 1);
         if (novoAlerta.urgente) setUrgentes(prev => prev + 1);
       })
       .subscribe();
     return () => { supabase.removeChannel(canal); };
-  }, [user?.id]);
+  }, [user?.id, ufsPreferidas]);
 
   useEffect(() => { atualizarContadores(); }, [atualizarContadores]);
 
