@@ -933,7 +933,7 @@ export default function PropostaTecnica() {
             </div>
           )}
 
-          {/* Step 7: Formatação e Marca d'Água */}
+          {/* Step 7: Formatação */}
            {currentStep === 7 && (
             <div className="space-y-6">
               <div className="flex items-center gap-2 mb-1">
@@ -984,35 +984,6 @@ export default function PropostaTecnica() {
                 </div>
               </div>
 
-              {/* Timbrado info */}
-              <div className="border-t border-border/50 pt-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium text-sm flex items-center gap-2"><Stamp className="w-4 h-4 text-accent" /> Timbrado e Marca d'Água</p>
-                  {timbradoUrl ? (
-                    <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/20">
-                      <CheckCircle className="w-3 h-3 mr-1" /> Timbrado configurado
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-[10px] bg-warning/10 text-warning border-warning/20">
-                      Nenhum timbrado
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  O timbrado é gerenciado centralmente em{' '}
-                  <Link to="/configuracoes" className="text-accent hover:underline font-medium">Configurações Gerais</Link>{' '}
-                  e será aplicado automaticamente a todos os documentos gerados (propostas, planilhas, declarações, recursos, etc.).
-                </p>
-                <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                  usarMarcaDagua ? 'border-accent/30 bg-accent/5' : 'border-border/50 hover:bg-muted/30'
-                }`}>
-                  <Checkbox checked={usarMarcaDagua} onCheckedChange={(v) => setUsarMarcaDagua(!!v)} />
-                  <div>
-                    <p className="text-sm font-medium">Aplicar logomarca como marca d'água</p>
-                    <p className="text-xs text-muted-foreground">A logomarca do timbrado será exibida como fundo translúcido em todas as páginas</p>
-                  </div>
-                </label>
-              </div>
 
               {/* Envio da Proposta */}
               <div className="border-t border-border/50 pt-4 space-y-2">
