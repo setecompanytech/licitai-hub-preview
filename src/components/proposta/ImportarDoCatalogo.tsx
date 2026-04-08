@@ -28,9 +28,10 @@ interface CatalogoItem {
 interface Props {
   onImport: (items: CatalogoItem[]) => void;
   licitacaoNumero?: string;
+  licitacaoId?: string | null;
 }
 
-export default function ImportarDoCatalogo({ onImport, licitacaoNumero }: Props) {
+export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitacaoId }: Props) {
   const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const [items, setItems] = useState<CatalogoItem[]>([]);
