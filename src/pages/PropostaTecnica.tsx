@@ -266,6 +266,49 @@ export default function PropostaTecnica() {
     }
   };
 
+  // Clear all form fields to start a new proposal
+  const limparFormulario = useCallback(async () => {
+    setNumeroLicitacao('');
+    setOrgao('');
+    setModalidade('Pregão Eletrônico');
+    setObjeto('');
+    setValorEstimado('');
+    setPrazoValidade('60 dias corridos');
+    setPrazoPagamento('Até 30 dias após recebimento definitivo e apresentação da Nota Fiscal');
+    setPrazoEntrega('');
+    setLocalEntrega('');
+    setLiquidacaoNfe('');
+    setGarantia('');
+    setCondicoesEntrega('');
+    setEditalRawText('');
+    setItens([{ item: '1', descricao: '', quantidade: '', unidade: 'UN', marca: '', fabricante: '', modelo: '', valorUnitario: '', valorUnitarioExtenso: '', valorTotal: '', valorTotalExtenso: '' }]);
+    setRepNome('');
+    setRepCpf('');
+    setRepRg('');
+    setRepOrgaoExp('');
+    setRepCargo('');
+    setRepNaturalidade('');
+    setRepNacionalidade('Brasileira');
+    setRepEstadoCivil('');
+    setRepEndereco('');
+    setBanco('');
+    setAgencia('');
+    setConta('');
+    setTipoConta('Conta Corrente');
+    setPix('');
+    setTelefone('');
+    setEmail('');
+    setInscEstadual('');
+    setInscMunicipal('');
+    setDeclaracoes(Object.fromEntries(DECLARACOES_PADRAO.map(d => [d.key, true])));
+    setDeclaracoesCustom([]);
+    setProposal('');
+    setCurrentStep(1);
+    setProcessoId(null);
+    if (rascunhoId) await deleteRascunho();
+    toast.success('Formulário limpo. Pronto para uma nova proposta!');
+  }, [rascunhoId, deleteRascunho, setProcessoId]);
+
   // Auto-save on form changes
   useEffect(() => {
     const data = collectFormData();
@@ -608,24 +651,35 @@ export default function PropostaTecnica() {
 
               {/* Quick summary of extracted data */}
               {(editalRawText || numeroLicitacao) && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-                  {[
-                    { label: 'Órgão', value: orgao, icon: Building2 },
-                    { label: 'Licitação', value: numeroLicitacao, icon: FileText },
-                    { label: 'Itens', value: `${totalItens} encontrado(s)`, icon: CreditCard },
-                    { label: 'Modalidade', value: modalidade, icon: Receipt },
-                  ].map((s, i) => {
-                    const Icon = s.icon;
-                    return (
-                      <div key={i} className="bg-accent/5 rounded-lg p-3 border border-accent/10">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <Icon className="w-3.5 h-3.5 text-accent" />
-                          <span className="text-[10px] text-muted-foreground font-medium">{s.label}</span>
+                <div className="space-y-3 pt-2">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { label: 'Órgão', value: orgao, icon: Building2 },
+                      { label: 'Licitação', value: numeroLicitacao, icon: FileText },
+                      { label: 'Itens', value: `${totalItens} encontrado(s)`, icon: CreditCard },
+                      { label: 'Modalidade', value: modalidade, icon: Receipt },
+                    ].map((s, i) => {
+                      const Icon = s.icon;
+                      return (
+                        <div key={i} className="bg-accent/5 rounded-lg p-3 border border-accent/10">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Icon className="w-3.5 h-3.5 text-accent" />
+                            <span className="text-[10px] text-muted-foreground font-medium">{s.label}</span>
+                          </div>
+                          <p className="text-xs font-semibold text-foreground truncate">{s.value || '—'}</p>
                         </div>
-                        <p className="text-xs font-semibold text-foreground truncate">{s.value || '—'}</p>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    onClick={limparFormulario}
+                  >
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Limpar e iniciar nova proposta
+                  </Button>
                 </div>
               )}
             </div>
