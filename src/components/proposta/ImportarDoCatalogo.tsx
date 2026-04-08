@@ -21,6 +21,7 @@ interface CatalogoItem {
   preco_unitario: number;
   preco_total: number;
   tipo_calculo: string;
+  licitacao_id: string | null;
   licitacao_numero: string | null;
   licitacao_orgao: string | null;
 }
