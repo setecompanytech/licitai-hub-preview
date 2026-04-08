@@ -62,6 +62,7 @@ export default function PropostaTecnica() {
   const { empresaAtiva } = useEmpresa();
   const { user } = useAuth();
   const { pendingItems, clearPending, hasPending } = usePropostaCart();
+  const { processoId, setProcessoId } = useProcessoAtivo();
   const isMobile = useIsMobile();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
