@@ -63,7 +63,7 @@ export default function PropostaTecnica() {
   const { empresaAtiva } = useEmpresa();
   const { user } = useAuth();
   const { pendingItems, clearPending, hasPending } = usePropostaCart();
-  const { processoId, setProcessoId } = useProcessoAtivo();
+  const { processoId, setProcessoId, ensureProcesso } = useProcessoAtivo();
   const isMobile = useIsMobile();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -372,21 +372,15 @@ export default function PropostaTecnica() {
 
     // Auto-create a process if none is linked
     if (!processoId && user && (data.numeroLicitacao || data.orgao)) {
-      const { data: newProc } = await supabase
-        .from('licitacoes')
-        .insert({
-          user_id: user.id,
-          numero: data.numeroLicitacao || 'Processo Manual',
-          orgao: data.orgao || '',
-          objeto: data.objeto || '',
-          modalidade: data.modalidade || 'Pregão Eletrônico',
-          valor_estimado: data.valorEstimado ? parseFloat(data.valorEstimado.replace(/[^\d,.-]/g, '').replace(',', '.')) || null : null,
-          status: 'proposta',
-        })
-        .select('id')
-        .single();
-      if (newProc) {
-        setProcessoId(newProc.id);
+      const linkedId = await ensureProcesso({
+        numero: data.numeroLicitacao || 'Processo Manual',
+        orgao: data.orgao || '',
+        objeto: data.objeto || '',
+        modalidade: data.modalidade || 'Pregão Eletrônico',
+        valorEstimado: data.valorEstimado ? parseFloat(data.valorEstimado.replace(/[^\d,.-]/g, '').replace(',', '.')) || null : undefined,
+      });
+      if (linkedId) {
+        setProcessoId(linkedId);
         toast.info('Processo licitatório criado automaticamente.');
       }
     }
@@ -647,7 +641,7 @@ export default function PropostaTecnica() {
                 Envie o edital (PDF, DOC, DOCX ou TXT) para que a IA extraia automaticamente: órgão gerenciador, número do processo,
                 objeto, planilha de itens com quantidades e preços, prazos de validade, pagamento, entrega e local de entrega.
               </p>
-              <EditalUploader onExtracted={handleEditalExtracted} isExtracting={isExtracting} setIsExtracting={setIsExtracting} />
+              <EditalUploader onExtracted={handleEditalExtracted} isExtracting={isExtracting} setIsExtracting={setIsExtracting} licitacaoId={processoId || undefined} />
 
               {/* Quick summary of extracted data */}
               {(editalRawText || numeroLicitacao) && (
