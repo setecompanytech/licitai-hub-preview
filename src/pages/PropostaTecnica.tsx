@@ -132,6 +132,7 @@ export default function PropostaTecnica() {
   const [fontSize, setFontSize] = useState(12);
   const [lineSpacing, setLineSpacing] = useState('1.5');
   const [marginStyle, setMarginStyle] = useState('ABNT (3/2 cm)');
+  const [pageOrientation, setPageOrientation] = useState<'portrait' | 'landscape'>('portrait');
 
   // ── Rascunho (Draft) ──
   const { loadRascunho, autoSave, saving, lastSaved, markLoaded, deleteRascunho, rascunhoId } = useRascunho<any>({
@@ -148,7 +149,7 @@ export default function PropostaTecnica() {
     repNaturalidade, repNacionalidade, repEstadoCivil, repEndereco,
     banco, agencia, conta, tipoConta, pix, telefone, email,
     inscEstadual, inscMunicipal, declaracoes, declaracoesCustom,
-    fontFamily, fontSize, lineSpacing, marginStyle, currentStep,
+    fontFamily, fontSize, lineSpacing, marginStyle, pageOrientation, currentStep,
     timbradoUrl, usarMarcaDagua,
   }), [
     numeroLicitacao, orgao, modalidade, objeto, valorEstimado,
@@ -157,7 +158,7 @@ export default function PropostaTecnica() {
     repNaturalidade, repNacionalidade, repEstadoCivil, repEndereco,
     banco, agencia, conta, tipoConta, pix, telefone, email,
     inscEstadual, inscMunicipal, declaracoes, declaracoesCustom,
-    fontFamily, fontSize, lineSpacing, marginStyle, currentStep,
+    fontFamily, fontSize, lineSpacing, marginStyle, pageOrientation, currentStep,
     timbradoUrl, usarMarcaDagua,
   ]);
 
