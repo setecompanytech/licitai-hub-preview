@@ -148,6 +148,15 @@ export function useRascunho<T extends Record<string, any>>({
     setLoaded(true);
   }, []);
 
+  // Reset state when licitacaoId changes
+  useEffect(() => {
+    setRascunhoId(null);
+    setLastSaved(null);
+    dataRef.current = null;
+    initialLoadDone.current = false;
+    setLoaded(false);
+  }, [licitacaoId]);
+
   // Cleanup timer on unmount
   useEffect(() => {
     return () => {
