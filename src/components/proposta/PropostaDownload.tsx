@@ -81,10 +81,38 @@ function getFilename(numero: string) {
   return base;
 }
 
+/** Strip HTML/CSS blocks, raw tags and markdown code fences from AI output */
+function sanitizeProposalText(raw: string): string {
+  let text = raw;
+  // Remove ```markdown ... ``` or ```html ... ``` code fences
+  text = text.replace(/```(?:markdown|html|css)?\s*\n?/gi, '');
+  // Remove <style>...</style> blocks (multiline)
+  text = text.replace(/<style[\s\S]*?<\/style>/gi, '');
+  // Remove <script>...</script> blocks
+  text = text.replace(/<script[\s\S]*?<\/script>/gi, '');
+  // Remove standalone HTML tags like <html>, </html>, <head>, </head>, <body>, </body>, <meta ...>, <div>, </div>
+  text = text.replace(/<\/?(html|head|body|meta|div|span|br|hr|img|link|!DOCTYPE)[^>]*\/?>/gi, '');
+  // Remove MSO/XML conditional comments
+  text = text.replace(/<!--\[if[\s\S]*?<!\[endif\]-->/gi, '');
+  text = text.replace(/<!--.*?-->/g, '');
+  // Remove lines that look like raw CSS (e.g. "margin-top: 10px;" or "font-family: ...")
+  text = text.replace(/^[\s]*([\w-]+\s*:\s*[^|]+;\s*)$/gm, '');
+  // Remove lone CSS braces
+  text = text.replace(/^\s*[{}]\s*$/gm, '');
+  // Remove CSS selectors (e.g. "body {", "table, th, td {", "h2 {")
+  text = text.replace(/^\s*[\w\s,.#:>+~*-]+\{\s*$/gm, '');
+  // Remove @page rules
+  text = text.replace(/@page\s*\{[^}]*\}/gi, '');
+  // Clean up excessive blank lines
+  text = text.replace(/\n{3,}/g, '\n\n');
+  return text.trim();
+}
+
 /** Parse AI markdown into sections */
 function parseSections(text: string) {
+  const clean = sanitizeProposalText(text);
   const sections: { title: string; lines: string[] }[] = [];
-  const parts = text.split(/^(#{1,3}\s+.+)$/gm);
+  const parts = clean.split(/^(#{1,3}\s+.+)$/gm);
   let currentTitle = '';
   let currentLines: string[] = [];
 
