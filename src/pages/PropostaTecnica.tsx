@@ -1286,6 +1286,7 @@ export default function PropostaTecnica() {
                   }}
                   telefone={telefone}
                   email={email}
+                  pageOrientation={pageOrientation}
                 />
                 <Button variant="outline" size="sm" onClick={handleCopy}>
                   {copied ? <CheckCircle className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}

@@ -63,6 +63,7 @@ export interface PropostaDownloadProps {
   };
   telefone?: string;
   email?: string;
+  pageOrientation?: 'portrait' | 'landscape';
 }
 
 function triggerDownload(blob: Blob, filename: string) {
