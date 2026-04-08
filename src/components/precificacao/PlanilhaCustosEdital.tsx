@@ -297,9 +297,43 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
       totalRow,
     ];
 
+    // Build sources sheet
+    const fontesHeader = ['Item', 'Fonte', 'Produto', 'Preço', 'Link'];
+    const fontesRows = itens
+      .filter(it => it.fontes && it.fontes.length > 0)
+      .flatMap(it => (it.fontes || []).map(f => [
+        it.item,
+        f.fonte === 'mercadolivre' ? 'Mercado Livre' :
+        f.fonte === 'pncp_ata' ? 'PNCP (Ata)' :
+        f.fonte === 'pncp_contratacao' ? 'PNCP' :
+        f.fonte === 'kabum' ? 'KaBuM!' :
+        f.fonte,
+        f.titulo,
+        f.preco,
+        f.url || '',
+      ]));
+
+    const sheets: any[] = [
+      { name: 'Planilha de Preços', data, colWidths: [8, 60, 12, 18, 8, 18, 18, 22, 18, 18] },
+    ];
+
+    if (fontesRows.length > 0) {
+      sheets.push({
+        name: 'Fontes de Referência',
+        data: [
+          ['FONTES DE REFERÊNCIA — LINKS DAS COTAÇÕES'],
+          [`Data: ${new Date().toLocaleDateString('pt-BR')}`],
+          [],
+          fontesHeader,
+          ...fontesRows,
+        ],
+        colWidths: [8, 20, 60, 18, 60],
+      });
+    }
+
     await writeExcelFile(
       `Planilha_Precos_${new Date().toISOString().slice(0, 10)}.xlsx`,
-      [{ name: 'Planilha de Preços', data, colWidths: [8, 60, 12, 18, 8, 18, 18, 22, 18, 18] }]
+      sheets
     );
     toast.success('Planilha de preços exportada!');
   };
