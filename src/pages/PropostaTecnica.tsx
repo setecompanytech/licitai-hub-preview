@@ -652,28 +652,36 @@ export default function PropostaTecnica() {
               {/* Quick summary of extracted data */}
               {(editalRawText || numeroLicitacao) && (
                 <div className="space-y-3 pt-2">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { label: 'Órgão', value: orgao, icon: Building2 },
-                    { label: 'Licitação', value: numeroLicitacao, icon: FileText },
-                    { label: 'Itens', value: `${totalItens} encontrado(s)`, icon: CreditCard },
-                    { label: 'Modalidade', value: modalidade, icon: Receipt },
-                  ].map((s, i) => {
-                    const Icon = s.icon;
-                    return (
-                      <div key={i} className="bg-accent/5 rounded-lg p-3 border border-accent/10">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <Icon className="w-3.5 h-3.5 text-accent" />
-                          <span className="text-[10px] text-muted-foreground font-medium">{s.label}</span>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { label: 'Órgão', value: orgao, icon: Building2 },
+                      { label: 'Licitação', value: numeroLicitacao, icon: FileText },
+                      { label: 'Itens', value: `${totalItens} encontrado(s)`, icon: CreditCard },
+                      { label: 'Modalidade', value: modalidade, icon: Receipt },
+                    ].map((s, i) => {
+                      const Icon = s.icon;
+                      return (
+                        <div key={i} className="bg-accent/5 rounded-lg p-3 border border-accent/10">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Icon className="w-3.5 h-3.5 text-accent" />
+                            <span className="text-[10px] text-muted-foreground font-medium">{s.label}</span>
+                          </div>
+                          <p className="text-xs font-semibold text-foreground truncate">{s.value || '—'}</p>
                         </div>
-                        <p className="text-xs font-semibold text-foreground truncate">{s.value || '—'}</p>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    onClick={limparFormulario}
+                  >
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Limpar e iniciar nova proposta
+                  </Button>
                 </div>
               )}
-            </div>
-          )}
 
           {/* Step 2: Empresa */}
           {currentStep === 2 && (
