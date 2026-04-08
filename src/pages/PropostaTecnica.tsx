@@ -1122,6 +1122,46 @@ export default function PropostaTecnica() {
                 </div>
               </div>
 
+              {/* Orientação da Página */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Orientação da Página</Label>
+                <div className="grid grid-cols-2 gap-3 max-w-xs">
+                  <button
+                    type="button"
+                    onClick={() => setPageOrientation('portrait')}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                      pageOrientation === 'portrait'
+                        ? 'border-accent bg-accent/5 shadow-sm'
+                        : 'border-border hover:border-accent/30 hover:bg-muted/30'
+                    }`}
+                  >
+                    <div className={`w-8 h-11 rounded-sm border-2 ${pageOrientation === 'portrait' ? 'border-accent bg-accent/10' : 'border-muted-foreground/30 bg-muted/20'}`}>
+                      <div className="m-1 space-y-0.5">
+                        <div className={`h-0.5 rounded-full ${pageOrientation === 'portrait' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
+                        <div className={`h-0.5 w-3/4 rounded-full ${pageOrientation === 'portrait' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium">Retrato</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPageOrientation('landscape')}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                      pageOrientation === 'landscape'
+                        ? 'border-accent bg-accent/5 shadow-sm'
+                        : 'border-border hover:border-accent/30 hover:bg-muted/30'
+                    }`}
+                  >
+                    <div className={`w-11 h-8 rounded-sm border-2 ${pageOrientation === 'landscape' ? 'border-accent bg-accent/10' : 'border-muted-foreground/30 bg-muted/20'}`}>
+                      <div className="m-1 space-y-0.5">
+                        <div className={`h-0.5 rounded-full ${pageOrientation === 'landscape' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
+                        <div className={`h-0.5 w-3/4 rounded-full ${pageOrientation === 'landscape' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium">Paisagem</span>
+                  </button>
+                </div>
+              </div>
 
               {/* Envio da Proposta */}
               <div className="border-t border-border/50 pt-4 space-y-2">
