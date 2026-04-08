@@ -589,6 +589,7 @@ export function PesquisaResultML({
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortMode, setSortMode] = useState<'relevante' | 'menor' | 'maior'>('relevante');
   const [fichaItem, setFichaItem] = useState<FornecedorML | null>(null);
+  const [savingAll, setSavingAll] = useState(false);
   const quickAdd = useQuickAddToProposta();
   const { user } = useAuth();
 
@@ -598,6 +599,51 @@ export function PesquisaResultML({
       return;
     }
     saveItemToCatalog(item, user.id);
+  };
+
+  const handleSaveAllToCatalog = async () => {
+    if (!user || !data?.fornecedores?.length) return;
+    setSavingAll(true);
+    try {
+      const rows = data.fornecedores.map((item) => {
+        const allImages = (item.images?.length ? item.images : (item.image_url ? [item.image_url] : [])).filter(isValidImageUrl);
+        return {
+          user_id: user.id,
+          tipo_calculo: 'produto',
+          descricao: item.produto.substring(0, 300),
+          quantidade: 1,
+          unidade: 'UN',
+          marca: item.marca || null,
+          fabricante: item.marca || null,
+          modelo: item.modelo || null,
+          custo_unitario: item.preco,
+          preco_unitario: item.preco,
+          preco_total: item.preco,
+          detalhes: {
+            image_url: allImages[0] || null,
+            images: allImages.slice(0, 6),
+            loja: item.loja,
+            url: getEffectiveUrl(item),
+            condicao: item.condicao,
+            frete: item.frete,
+            avaliacao: item.avaliacao,
+            preco_original: item.preco_original,
+          },
+        };
+      });
+
+      const { error } = await supabase.from('catalogo_itens_precificados').insert(rows);
+      if (error) {
+        toast.error('Erro ao salvar no catálogo');
+        console.error(error);
+      } else {
+        toast.success(`${rows.length} produto(s) arquivado(s) no catálogo! Disponível na Proposta Comercial.`);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao salvar no catálogo');
+    }
+    setSavingAll(false);
   };
 
   if (isLoading) return <LoadingSkeleton />;
@@ -629,6 +675,18 @@ export function PesquisaResultML({
                 </span>
               )}
             </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleSaveAllToCatalog}
+              disabled={savingAll}
+              className="text-xs"
+            >
+              {savingAll ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+              Arquivar Cotação
+            </Button>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             {/* Sort */}

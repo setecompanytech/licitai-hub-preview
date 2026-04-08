@@ -352,8 +352,21 @@ export default function Precificacao() {
       const result = data.data as PesquisaMLResult;
       if (result && result.fornecedores?.length > 0) {
         setAiParsedData(result);
-        setAiResult(JSON.stringify(result));
+        const resultJson = JSON.stringify(result);
+        setAiResult(resultJson);
         toast.success(`${result.fornecedores.length} produtos encontrados em ${Object.keys(data.data.fontes_consultadas || {}).length} marketplaces!`);
+
+        // Auto-arquivar pesquisa no histórico
+        if (user) {
+          supabase.from('pesquisas_preco').insert({
+            user_id: user.id,
+            termo_busca: search,
+            categoria: 'todos',
+            resultado: resultJson,
+          }).then(({ error: saveErr }) => {
+            if (!saveErr) console.log('Pesquisa auto-arquivada');
+          });
+        }
       } else {
         toast.warning('Nenhum produto encontrado nos marketplaces. Tente outro termo.');
         setAiResult('');
