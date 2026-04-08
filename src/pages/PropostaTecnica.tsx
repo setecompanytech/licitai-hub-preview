@@ -933,7 +933,7 @@ export default function PropostaTecnica() {
             </div>
           )}
 
-          {/* Step 7: Formatação e Marca d'Água */}
+          {/* Step 7: Formatação */}
            {currentStep === 7 && (
             <div className="space-y-6">
               <div className="flex items-center gap-2 mb-1">
