@@ -27,6 +27,7 @@ import MarcarInteresseDialog from '@/components/compromissos/MarcarInteresseDial
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 import AureliaEditalPanel from '@/components/aurelia/AureliaEditalPanel';
+import CadastroManualEdital from '@/components/monitoramento/CadastroManualEdital';
 import { MUNICIPIO_IBGE } from '@/constants/pncpMappings';
 import { MODALIDADE_PNCP, ESFERA_PNCP } from '@/constants/pncpMappings';
 import { getUfPreferencial } from '@/constants/ufsBrasil';
