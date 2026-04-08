@@ -394,6 +394,19 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
               )}
             </div>
             <div className="flex gap-2 flex-wrap">
+              <Button
+                size="sm"
+                variant="default"
+                onClick={handleCotarTodos}
+                disabled={isCotando}
+                className="bg-primary hover:bg-primary/90"
+              >
+                {isCotando ? (
+                  <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Cotando...</>
+                ) : (
+                  <><ShoppingCart className="w-3.5 h-3.5 mr-1" /> Cotar Todos</>
+                )}
+              </Button>
               <Button variant="outline" size="sm" onClick={addEmptyItem}>
                 <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Item
               </Button>
@@ -409,6 +422,31 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
               </Button>
             </div>
           </div>
+
+          {/* Cotação progress */}
+          {isCotando && (
+            <div className="space-y-2">
+              <Progress value={cotacaoProgress} className="h-2" />
+              <p className="text-xs text-muted-foreground text-center">
+                Cotando itens... {cotacaoProgress}%
+              </p>
+            </div>
+          )}
+
+          {/* Cotação messages */}
+          {cotacaoMsgs.length > 0 && (
+            <div className="bg-muted/20 border border-border/30 rounded-lg p-3 max-h-40 overflow-y-auto space-y-0.5">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-semibold text-foreground">Resultado da Cotação</span>
+                <Button variant="ghost" size="sm" className="h-5 px-2 text-[10px]" onClick={() => setCotacaoMsgs([])}>
+                  Limpar
+                </Button>
+              </div>
+              {cotacaoMsgs.map((msg, i) => (
+                <p key={i} className="text-[11px] text-muted-foreground">{msg}</p>
+              ))}
+            </div>
+          )}
 
           {/* Table */}
           <div className="border border-border/40 rounded-lg overflow-x-auto">
