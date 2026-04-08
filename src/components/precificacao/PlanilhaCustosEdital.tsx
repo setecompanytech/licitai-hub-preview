@@ -99,11 +99,23 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
         const marca = closest?.ean?.replace('Marca: ', '') || closest?.vendedor || '';
         const valorTotal = Math.round(bestPrice * it.quantidade * 100) / 100;
 
+        // Store top 3 sources with URLs
+        const topFontes = results
+          .filter((r: any) => r.preco_unitario > 0 && r.url)
+          .slice(0, 3)
+          .map((r: any) => ({
+            fonte: r.fonte || 'marketplace',
+            titulo: (r.titulo || '').slice(0, 120),
+            url: r.url || '',
+            preco: r.preco_unitario,
+          }));
+
         setItens(prev => prev.map((item, i) => i === idx ? {
           ...item,
           valorUnitario: Math.round(bestPrice * 100) / 100,
           valorTotal,
           marca: item.marca || marca,
+          fontes: topFontes.length > 0 ? topFontes : undefined,
         } : item));
 
         // Calc diff vs reference
