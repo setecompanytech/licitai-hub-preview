@@ -25,10 +25,28 @@ interface PropostaRendererProps {
   };
 }
 
+/** Strip HTML/CSS blocks and raw tags from AI output */
+function sanitizeProposalText(raw: string): string {
+  let text = raw;
+  text = text.replace(/```(?:markdown|html|css)?\s*\n?/gi, '');
+  text = text.replace(/<style[\s\S]*?<\/style>/gi, '');
+  text = text.replace(/<script[\s\S]*?<\/script>/gi, '');
+  text = text.replace(/<\/?(html|head|body|meta|div|span|br|hr|img|link|!DOCTYPE)[^>]*\/?>/gi, '');
+  text = text.replace(/<!--\[if[\s\S]*?<!\[endif\]-->/gi, '');
+  text = text.replace(/<!--.*?-->/g, '');
+  text = text.replace(/^[\s]*([\w-]+\s*:\s*[^|]+;\s*)$/gm, '');
+  text = text.replace(/^\s*[{}]\s*$/gm, '');
+  text = text.replace(/^\s*[\w\s,.#:>+~*-]+\{\s*$/gm, '');
+  text = text.replace(/@page\s*\{[^}]*\}/gi, '');
+  text = text.replace(/\n{3,}/g, '\n\n');
+  return text.trim();
+}
+
 /** Parse structured sections from the AI markdown proposal */
 function parseSections(text: string) {
+  const clean = sanitizeProposalText(text);
   const sections: { title: string; content: string }[] = [];
-  const parts = text.split(/^(#{1,3}\s+.+)$/gm);
+  const parts = clean.split(/^(#{1,3}\s+.+)$/gm);
 
   let currentTitle = '';
   let currentContent = '';
