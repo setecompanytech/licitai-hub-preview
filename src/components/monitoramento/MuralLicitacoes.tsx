@@ -114,18 +114,18 @@ const UFS_BRASIL = [
 
 const MODALIDADES = [
   { value: 'pregão eletrônico', label: 'Pregão Eletrônico', cod: 6 },
-  { value: 'concorrência', label: 'Concorrência', cod: 4 },
-  { value: 'concorrência - eletrônica', label: 'Concorrência Eletrônica', cod: 5 },
-  { value: 'dispensa de licitação', label: 'Dispensa de Licitação', cod: 7 },
-  { value: 'inexigibilidade', label: 'Inexigibilidade', cod: 8 },
-  { value: 'credenciamento', label: 'Credenciamento', cod: 11 },
-  { value: 'leilão', label: 'Leilão', cod: 1 },
+  { value: 'pregão presencial', label: 'Pregão Presencial', cod: 7 },
+  { value: 'concorrência eletrônica', label: 'Concorrência Eletrônica', cod: 4 },
+  { value: 'concorrência presencial', label: 'Concorrência Presencial', cod: 5 },
+  { value: 'dispensa de licitação', label: 'Dispensa de Licitação', cod: 8 },
+  { value: 'inexigibilidade', label: 'Inexigibilidade', cod: 9 },
+  { value: 'credenciamento', label: 'Credenciamento', cod: 12 },
+  { value: 'leilão eletrônico', label: 'Leilão Eletrônico', cod: 1 },
+  { value: 'leilão presencial', label: 'Leilão Presencial', cod: 13 },
   { value: 'diálogo competitivo', label: 'Diálogo Competitivo', cod: 2 },
   { value: 'concurso', label: 'Concurso', cod: 3 },
-  { value: 'manifestação de interesse', label: 'Manifestação de Interesse', cod: 9 },
-  { value: 'pré-qualificação', label: 'Pré-qualificação', cod: 10 },
-  { value: 'leilão - eletrônico', label: 'Leilão Eletrônico', cod: 12 },
-  { value: 'concurso - eletrônico', label: 'Concurso Eletrônico', cod: 13 },
+  { value: 'manifestação de interesse', label: 'Manifestação de Interesse', cod: 10 },
+  { value: 'pré-qualificação', label: 'Pré-qualificação', cod: 11 },
 ];
 
 const TIPOS_INSTRUMENTO = [
@@ -2113,8 +2113,16 @@ export default function MuralLicitacoes() {
                   </div>
                 </div>
 
-                {/* Número */}
-                <p className="text-[10px] font-mono text-muted-foreground mb-1">{lic.numero}</p>
+                {/* Número + Modalidade */}
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-[10px] font-mono text-muted-foreground">{lic.numero}</p>
+                  {lic.modalidade && lic.modalidade !== 'Não informada' && (
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-medium bg-primary/5 text-primary border-primary/20">
+                      <Gavel className="w-2.5 h-2.5 mr-0.5" />
+                      {lic.modalidade}
+                    </Badge>
+                  )}
+                </div>
 
                 {/* Objeto */}
                 <Tooltip delayDuration={400}>
