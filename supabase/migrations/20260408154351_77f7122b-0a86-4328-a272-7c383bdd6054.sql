@@ -1,0 +1,1 @@
+DELETE FROM price_search_cache WHERE expira_em < now() OR estatisticas->>'total_registros' = '0';
