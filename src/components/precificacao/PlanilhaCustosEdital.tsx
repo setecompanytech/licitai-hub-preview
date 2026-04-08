@@ -537,8 +537,21 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
                       />
                     </td>
                     <td className="px-3 py-2 text-right text-xs font-semibold">
-                      {it.valorTotal != null ? (
-                        <span className="text-primary">{formatCurrency(it.valorTotal)}</span>
+                      {it.valorTotal != null && it.valorTotal > 0 ? (
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="text-primary">{formatCurrency(it.valorTotal)}</span>
+                          {it.valorUnitarioRef != null && it.valorUnitarioRef > 0 && it.valorUnitario != null && it.valorUnitario > 0 && (() => {
+                            const diff = ((it.valorUnitario - it.valorUnitarioRef) / it.valorUnitarioRef) * 100;
+                            const isLower = diff < -1;
+                            const isHigher = diff > 1;
+                            return (
+                              <span className={`text-[10px] flex items-center gap-0.5 ${isLower ? 'text-green-600' : isHigher ? 'text-red-500' : 'text-muted-foreground'}`}>
+                                {isLower ? <TrendingDown className="w-3 h-3" /> : isHigher ? <TrendingUp className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+                                {diff > 0 ? '+' : ''}{diff.toFixed(1)}%
+                              </span>
+                            );
+                          })()}
+                        </div>
                       ) : '—'}
                     </td>
                     <td className="px-3 py-2 text-center">
