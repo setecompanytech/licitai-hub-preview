@@ -174,21 +174,41 @@ export default function CnaesSecundarios() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
+      // Also update cnae_principal if returned and currently empty
+      const cnaePrincipalRetornado = data?.cnaePrincipal || '';
+      if (cnaePrincipalRetornado && !empresaAtiva.cnae_principal) {
+        await supabase
+          .from('empresas')
+          .update({ cnae_principal: cnaePrincipalRetornado } as any)
+          .eq('id', empresaAtiva.id);
+      }
+
       const imported = extractCnaesFromConsulta(data);
-      if (imported.length === 0) {
-        if (!options?.silent) toast.info('Nenhum CNAE secundário foi encontrado no CNPJ.');
+      if (imported.length === 0 && !cnaePrincipalRetornado) {
+        if (!options?.silent) toast.info('Nenhum CNAE foi encontrado no CNPJ.');
         return;
       }
 
-      setCnaes(imported);
-      await persistCnaes(imported, options?.silent ? undefined : `${imported.length} CNAEs secundários sincronizados do CNPJ`);
+      if (imported.length > 0) {
+        setCnaes(imported);
+        await persistCnaes(imported);
+      }
+
+      await reloadEmpresas();
+
+      if (!options?.silent) {
+        const msgs: string[] = [];
+        if (cnaePrincipalRetornado && !empresaAtiva.cnae_principal) msgs.push('CNAE principal atualizado');
+        if (imported.length > 0) msgs.push(`${imported.length} CNAEs secundários sincronizados`);
+        toast.success(msgs.join(' · ') || 'Dados sincronizados do CNPJ');
+      }
     } catch (error: any) {
       console.error('CNPJ CNAE sync error:', error);
       if (!options?.silent) toast.error(error.message || 'Erro ao sincronizar CNAEs do CNPJ');
     } finally {
       setLoadingSync(false);
     }
-  }, [empresaAtiva?.cnpj, persistCnaes]);
+  }, [empresaAtiva?.cnpj, empresaAtiva?.cnae_principal, empresaAtiva?.id, persistCnaes, reloadEmpresas]);
 
   useEffect(() => {
     if (!empresaAtiva?.id || !empresaAtiva?.cnpj || empresaCnaes.length > 0) return;
