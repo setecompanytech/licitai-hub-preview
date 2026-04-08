@@ -160,8 +160,9 @@ export default function PropostaTecnica() {
     timbradoUrl, usarMarcaDagua,
   ]);
 
-  // Restore draft on mount
+  // Load draft and catalog items when process changes
   useEffect(() => {
+    setProposal('');
     loadRascunho().then(data => {
       if (data) {
         if (data.numeroLicitacao) setNumeroLicitacao(data.numeroLicitacao);
@@ -201,13 +202,56 @@ export default function PropostaTecnica() {
         if (data.lineSpacing) setLineSpacing(data.lineSpacing);
         if (data.marginStyle) setMarginStyle(data.marginStyle);
         if (data.currentStep) setCurrentStep(data.currentStep);
-        // timbradoUrl agora vem de empresaAtiva (Configurações Gerais)
         if (typeof data.usarMarcaDagua === 'boolean') setUsarMarcaDagua(data.usarMarcaDagua);
         toast.info('Rascunho restaurado automaticamente.');
+      } else if (processoId) {
+        // No draft found — try to load process data from licitacoes table
+        loadProcessoData(processoId);
       }
       markLoaded();
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [processoId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load licitacao data when selecting a process without existing draft
+  const loadProcessoData = async (lid: string) => {
+    if (!user) return;
+    const { data: lic } = await supabase
+      .from('licitacoes')
+      .select('numero, orgao, objeto, modalidade, valor_estimado')
+      .eq('id', lid)
+      .single();
+    if (lic) {
+      if (lic.numero) setNumeroLicitacao(lic.numero);
+      if (lic.orgao) setOrgao(lic.orgao);
+      if (lic.objeto) setObjeto(lic.objeto);
+      if (lic.modalidade) setModalidade(lic.modalidade);
+      if (lic.valor_estimado) setValorEstimado(String(lic.valor_estimado));
+    }
+
+    // Also try to import priced items from catalog
+    const { data: catalogItems } = await supabase
+      .from('catalogo_itens_precificados')
+      .select('descricao, quantidade, unidade, marca, fabricante, modelo, preco_unitario, preco_total')
+      .eq('user_id', user.id)
+      .eq('licitacao_id', lid);
+    if (catalogItems && catalogItems.length > 0) {
+      const mapped = catalogItems.map((ci: any, idx: number) => ({
+        item: String(idx + 1),
+        descricao: ci.descricao || '',
+        quantidade: String(ci.quantidade || 1),
+        unidade: ci.unidade || 'UN',
+        marca: ci.marca || '',
+        fabricante: ci.fabricante || '',
+        modelo: ci.modelo || '',
+        valorUnitario: (ci.preco_unitario || 0).toFixed(2).replace('.', ','),
+        valorUnitarioExtenso: valorPorExtenso(ci.preco_unitario || 0),
+        valorTotal: (ci.preco_total || 0).toFixed(2).replace('.', ','),
+        valorTotalExtenso: valorPorExtenso(ci.preco_total || 0),
+      }));
+      setItens(mapped);
+      toast.success(`${mapped.length} item(ns) carregado(s) da precificação deste processo.`);
+    }
+  };
 
   // Auto-save on form changes
   useEffect(() => {
