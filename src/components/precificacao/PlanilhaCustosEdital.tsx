@@ -93,7 +93,7 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
           .filter((r: any) => r.preco_unitario > 0)
           .sort((a: any, b: any) => Math.abs(a.preco_unitario - bestPrice) - Math.abs(b.preco_unitario - bestPrice))[0];
 
-        const marca = closest?.vendedor || closest?.ean?.replace('Marca: ', '') || '';
+        const marca = closest?.ean?.replace('Marca: ', '') || closest?.vendedor || '';
         const valorTotal = Math.round(bestPrice * it.quantidade * 100) / 100;
 
         setItens(prev => prev.map((item, i) => i === idx ? {
