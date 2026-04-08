@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,8 +32,10 @@ import PropostaLivePreview from '@/components/proposta/PropostaLivePreview';
 import DadosEmpresaUploader, { type ExtractedEmpresaData } from '@/components/proposta/DadosEmpresaUploader';
 import BancoSelector from '@/components/proposta/BancoSelector';
 import ImportarDoCatalogo from '@/components/proposta/ImportarDoCatalogo';
+import ProcessoSelector from '@/components/proposta/ProcessoSelector';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useRascunho } from '@/hooks/useRascunho';
+import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 
 const STEPS = [
   { id: 1, label: 'Edital', icon: FileText, desc: 'Upload e extração IA' },
@@ -60,6 +63,7 @@ export default function PropostaTecnica() {
   const { empresaAtiva } = useEmpresa();
   const { user } = useAuth();
   const { pendingItems, clearPending, hasPending } = usePropostaCart();
+  const { processoId, setProcessoId } = useProcessoAtivo();
   const isMobile = useIsMobile();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -132,7 +136,7 @@ export default function PropostaTecnica() {
   // ── Rascunho (Draft) ──
   const { loadRascunho, autoSave, saving, lastSaved, markLoaded, deleteRascunho, rascunhoId } = useRascunho<any>({
     modulo: 'proposta',
-    licitacaoId: null,
+    licitacaoId: processoId || null,
     debounceMs: 3000,
   });
 
@@ -157,8 +161,9 @@ export default function PropostaTecnica() {
     timbradoUrl, usarMarcaDagua,
   ]);
 
-  // Restore draft on mount
+  // Load draft and catalog items when process changes
   useEffect(() => {
+    setProposal('');
     loadRascunho().then(data => {
       if (data) {
         if (data.numeroLicitacao) setNumeroLicitacao(data.numeroLicitacao);
@@ -198,13 +203,56 @@ export default function PropostaTecnica() {
         if (data.lineSpacing) setLineSpacing(data.lineSpacing);
         if (data.marginStyle) setMarginStyle(data.marginStyle);
         if (data.currentStep) setCurrentStep(data.currentStep);
-        // timbradoUrl agora vem de empresaAtiva (Configurações Gerais)
         if (typeof data.usarMarcaDagua === 'boolean') setUsarMarcaDagua(data.usarMarcaDagua);
         toast.info('Rascunho restaurado automaticamente.');
+      } else if (processoId) {
+        // No draft found — try to load process data from licitacoes table
+        loadProcessoData(processoId);
       }
       markLoaded();
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [processoId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load licitacao data when selecting a process without existing draft
+  const loadProcessoData = async (lid: string) => {
+    if (!user) return;
+    const { data: lic } = await supabase
+      .from('licitacoes')
+      .select('numero, orgao, objeto, modalidade, valor_estimado')
+      .eq('id', lid)
+      .single();
+    if (lic) {
+      if (lic.numero) setNumeroLicitacao(lic.numero);
+      if (lic.orgao) setOrgao(lic.orgao);
+      if (lic.objeto) setObjeto(lic.objeto);
+      if (lic.modalidade) setModalidade(lic.modalidade);
+      if (lic.valor_estimado) setValorEstimado(String(lic.valor_estimado));
+    }
+
+    // Also try to import priced items from catalog
+    const { data: catalogItems } = await supabase
+      .from('catalogo_itens_precificados')
+      .select('descricao, quantidade, unidade, marca, fabricante, modelo, preco_unitario, preco_total')
+      .eq('user_id', user.id)
+      .eq('licitacao_id', lid);
+    if (catalogItems && catalogItems.length > 0) {
+      const mapped = catalogItems.map((ci: any, idx: number) => ({
+        item: String(idx + 1),
+        descricao: ci.descricao || '',
+        quantidade: String(ci.quantidade || 1),
+        unidade: ci.unidade || 'UN',
+        marca: ci.marca || '',
+        fabricante: ci.fabricante || '',
+        modelo: ci.modelo || '',
+        valorUnitario: (ci.preco_unitario || 0).toFixed(2).replace('.', ','),
+        valorUnitarioExtenso: valorPorExtenso(ci.preco_unitario || 0),
+        valorTotal: (ci.preco_total || 0).toFixed(2).replace('.', ','),
+        valorTotalExtenso: valorPorExtenso(ci.preco_total || 0),
+      }));
+      setItens(mapped);
+      toast.success(`${mapped.length} item(ns) carregado(s) da precificação deste processo.`);
+    }
+  };
 
   // Auto-save on form changes
   useEffect(() => {
@@ -253,7 +301,7 @@ export default function PropostaTecnica() {
     }
   }, [hasPending, pendingItems, clearPending]);
 
-  const handleEditalExtracted = (data: ExtractedEditalData) => {
+  const handleEditalExtracted = async (data: ExtractedEditalData) => {
     if (data.numeroLicitacao) setNumeroLicitacao(data.numeroLicitacao);
     if (data.orgao) setOrgao(data.orgao);
     if (data.modalidade) setModalidade(data.modalidade);
@@ -266,6 +314,28 @@ export default function PropostaTecnica() {
     if (data.liquidacaoNfe) setLiquidacaoNfe(data.liquidacaoNfe);
     if (data.itens && data.itens.length > 0) setItens(data.itens);
     if (data.rawText) setEditalRawText(data.rawText);
+
+    // Auto-create a process if none is linked
+    if (!processoId && user && (data.numeroLicitacao || data.orgao)) {
+      const { data: newProc } = await supabase
+        .from('licitacoes')
+        .insert({
+          user_id: user.id,
+          numero: data.numeroLicitacao || 'Processo Manual',
+          orgao: data.orgao || '',
+          objeto: data.objeto || '',
+          modalidade: data.modalidade || 'Pregão Eletrônico',
+          valor_estimado: data.valorEstimado ? parseFloat(data.valorEstimado.replace(/[^\d,.-]/g, '').replace(',', '.')) || null : null,
+          status: 'proposta',
+        })
+        .select('id')
+        .single();
+      if (newProc) {
+        setProcessoId(newProc.id);
+        toast.info('Processo licitatório criado automaticamente.');
+      }
+    }
+
     toast.info('Dados extraídos! Avance para revisá-los.');
   };
 
@@ -462,6 +532,11 @@ export default function PropostaTecnica() {
               {showPreview ? 'Ocultar Preview' : 'Mostrar Preview'}
             </Button>
           )}
+        </div>
+
+        {/* Process Selector */}
+        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-3">
+          <ProcessoSelector />
         </div>
 
         {/* Split-screen layout */}
@@ -872,6 +947,7 @@ export default function PropostaTecnica() {
                   toast.success(`${catalogItems.length} item(ns) importado(s) do catálogo!`);
                 }}
                 licitacaoNumero={numeroLicitacao}
+                licitacaoId={processoId}
               />
 
               <PlanilhaPrecos itens={itens} setItens={setItens} />
