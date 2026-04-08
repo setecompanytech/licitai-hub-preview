@@ -409,7 +409,7 @@ export default function PropostaTecnica() {
     const parts: string[] = [];
 
     parts.push(`## Preferências de Formatação`);
-    parts.push(`- Fonte: ${fontFamily}, Tamanho: ${fontSize}pt, Espaçamento: ${lineSpacing}, Margens: ${marginStyle}`);
+    parts.push(`- Fonte: ${fontFamily}, Tamanho: ${fontSize}pt, Espaçamento: ${lineSpacing}, Margens: ${marginStyle}, Orientação: ${pageOrientation === 'portrait' ? 'Retrato' : 'Paisagem'}`);
 
     if (empresaAtiva) {
       parts.push(`\n## Dados da Empresa Licitante`);
