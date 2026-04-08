@@ -84,7 +84,8 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
         return;
       }
 
-      const planilha: PlanilhaItem[] = parsed.map((p, i) => {
+      // Map all extracted items
+      const allItems: PlanilhaItem[] = parsed.map((p, i) => {
         const qty = Number(p.quantidade ?? 1);
         const vlrUnit = p.valor_unitario ? Number(p.valor_unitario) : null;
         const vlrTotal = p.valor_total ? Number(p.valor_total) : null;
@@ -102,6 +103,25 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
         };
       }).filter(it => it.descricao.length > 0);
 
+      // Deduplicate by item number — keep the most complete version
+      const itemMap = new Map<number, PlanilhaItem>();
+      for (const it of allItems) {
+        const existing = itemMap.get(it.item);
+        if (!existing) {
+          itemMap.set(it.item, it);
+          continue;
+        }
+        // Score: prefer items with reference values and longer descriptions
+        const scoreOf = (x: PlanilhaItem) =>
+          (x.valorUnitarioRef != null ? 2 : 0) +
+          (x.valorTotalRef != null ? 2 : 0) +
+          (x.descricao.length > existing.descricao.length ? 1 : 0);
+        if (scoreOf(it) > scoreOf(existing)) {
+          itemMap.set(it.item, it);
+        }
+      }
+
+      const planilha = Array.from(itemMap.values()).sort((a, b) => a.item - b.item);
       setItens(planilha);
       toast.success(`${planilha.length} itens extraídos com sucesso!`);
     } catch (e) {
