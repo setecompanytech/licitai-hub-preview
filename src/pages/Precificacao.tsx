@@ -13,9 +13,8 @@ import {
   ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText, Loader2, Bot,
   Filter, Save, History, Trash2, Eye, CalendarIcon,
   MapPin, Globe, ChevronRight, Tag, X, Truck, CheckSquare, Square, Store, Award,
-  Building2, Upload, ShieldCheck, FileSearch, Clipboard, Sparkles, Calculator, FileSpreadsheet
+  Building2, Upload, ShieldCheck, Sparkles, Calculator
 } from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
@@ -27,10 +26,8 @@ import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
 import { PesquisaResultML, type PesquisaMLResult } from '@/components/precificacao/ProdutoCardML';
 import { useAuth } from '@/contexts/AuthContext';
-import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 import PainelPrecosGov from '@/components/precificacao/PainelPrecosGov';
-import CotacaoEditalAutoIA from '@/components/precificacao/CotacaoEditalAutoIA';
 import CalculadoraUnificada from '@/components/precificacao/CalculadoraUnificada';
 import CatalogoPrecificados from '@/components/precificacao/CatalogoPrecificados';
 import FontesManager from '@/components/precificacao/FontesManager';
@@ -97,164 +94,7 @@ export default function Precificacao() {
   const abortRef = useRef(false);
   const { user } = useAuth();
 
-  // Spec-based search state
-  const [searchMode, setSearchMode] = useState<'simple' | 'spec' | 'edital'>('simple');
-  const [specText, setSpecText] = useState('');
-  const [specFile, setSpecFile] = useState<File | null>(null);
-  const [isExtractingSpec, setIsExtractingSpec] = useState(false);
-  const [extractedTerms, setExtractedTerms] = useState<string[]>([]);
-  const specFileRef = useRef<HTMLInputElement>(null);
 
-  const handleSpecFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) setSpecFile(file);
-  };
-
-  const handleSpecSearch = async () => {
-    let textToAnalyze = specText.trim();
-
-    // If file uploaded, extract text using proper PDF/DOCX parser
-    if (specFile && !textToAnalyze) {
-      setIsExtractingSpec(true);
-      try {
-        textToAnalyze = await extractTextFromFile(specFile);
-        if (!textToAnalyze || textToAnalyze.trim().length < 30) {
-          toast.error('Não foi possível extrair texto do documento. Verifique se o arquivo não está protegido.');
-          setIsExtractingSpec(false);
-          return;
-        }
-      } catch {
-        toast.error('Erro ao ler o arquivo. Tente colar o texto diretamente.');
-        setIsExtractingSpec(false);
-        return;
-      }
-    }
-
-    if (!textToAnalyze) {
-      toast.error('Cole a especificação técnica ou faça upload de um documento.');
-      return;
-    }
-
-    setIsExtractingSpec(true);
-
-    try {
-      // Use AI to extract searchable product terms from the spec
-      let extracted = '';
-      await streamAIChat({
-        messages: [{ role: 'user', content: textToAnalyze }],
-        action: 'extrair-spec',
-        context: `Você é um especialista em especificações técnicas de produtos para licitações públicas.
-Analise a especificação técnica abaixo e extraia os termos de busca mais precisos para encontrar o produto EXATO nos marketplaces.
-
-REGRAS:
-1. Identifique: marca, modelo, capacidade, dimensões, voltagem, cor e quaisquer características técnicas distintivas
-2. Gere de 1 a 3 termos de busca otimizados, do mais específico ao mais genérico
-3. O primeiro termo deve incluir marca + modelo exatos (se disponíveis)
-4. O segundo pode ser marca + tipo + capacidade principal
-5. O terceiro pode ser tipo genérico + características-chave
-
-Responda APENAS em JSON, sem markdown:
-{"termos": ["termo1 mais específico", "termo2 intermediário", "termo3 genérico"], "produto_identificado": "nome resumido do produto"}`,
-        onDelta: (d) => { extracted += d; },
-        onDone: () => {},
-        onError: (err) => { toast.error('Erro na extração: ' + err); },
-      });
-
-      // Parse the AI response
-      let cleanJson = extracted.trim();
-      if (cleanJson.startsWith('```')) {
-        cleanJson = cleanJson.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
-      }
-      const parsed = JSON.parse(cleanJson);
-      const termos: string[] = parsed.termos || [];
-      const produtoId = parsed.produto_identificado || termos[0] || '';
-
-      if (termos.length === 0) {
-        toast.error('Não foi possível identificar o produto na especificação.');
-        setIsExtractingSpec(false);
-        return;
-      }
-
-      setExtractedTerms(termos);
-      toast.success(`Produto identificado: ${produtoId}. Buscando nos marketplaces...`);
-
-      // Now search with the most specific term first
-      setSearch(termos[0]);
-      setIsExtractingSpec(false);
-      setIsSearchingAI(true);
-      setCurrentSearchTerm(termos[0]);
-      resetAllFilters();
-      setAiResult('');
-      setAiParsedData(null);
-
-      // Search with multiple terms in parallel for better coverage
-      const allResults: any[] = [];
-      const searchPromises = termos.slice(0, 2).map(async (termo) => {
-        const { data, error } = await supabase.functions.invoke('pesquisa-preco-real', {
-          body: { termo },
-        });
-        if (!error && data?.success && data.data?.fornecedores) {
-          return data.data.fornecedores;
-        }
-        return [];
-      });
-
-      const results = await Promise.allSettled(searchPromises);
-      const seenUrls = new Set<string>();
-      for (const r of results) {
-        if (r.status === 'fulfilled') {
-          for (const f of r.value) {
-            const key = (f.url || '').split('?')[0];
-            if (!seenUrls.has(key)) {
-              seenUrls.add(key);
-              allResults.push(f);
-            }
-          }
-        }
-      }
-
-      allResults.sort((a: any, b: any) => a.preco - b.preco);
-
-      if (allResults.length > 0) {
-        const precos = allResults.map((f: any) => f.preco);
-        const min = Math.min(...precos);
-        const max = Math.max(...precos);
-        const avg = precos.reduce((a: number, b: number) => a + b, 0) / precos.length;
-        const minF = allResults.find((f: any) => f.preco === min);
-        const maxF = allResults.find((f: any) => f.preco === max);
-
-        const result: PesquisaMLResult = {
-          produto: produtoId,
-          data_pesquisa: new Date().toLocaleDateString('pt-BR'),
-          categoria: 'Especificação Técnica',
-          fornecedores: allResults,
-          resumo: {
-            menor_preco: min,
-            maior_preco: max,
-            preco_medio: Math.round(avg * 100) / 100,
-            variacao: min > 0 ? `${(((max - min) / min) * 100).toFixed(1)}%` : '0%',
-            fornecedor_menor: minF?.loja || '',
-            fornecedor_maior: maxF?.loja || '',
-            recomendacao: `Busca por especificação técnica: ${allResults.length} produtos encontrados para "${produtoId}".`,
-          },
-        };
-
-        setAiParsedData(result);
-        setAiResult(JSON.stringify(result));
-        toast.success(`${allResults.length} produtos encontrados fiéis à especificação!`);
-      } else {
-        toast.warning('Nenhum produto compatível encontrado. Tente outra especificação.');
-      }
-
-      setIsSearchingAI(false);
-    } catch (e) {
-      console.error('Erro spec search:', e);
-      toast.error('Erro ao processar especificação técnica.');
-      setIsExtractingSpec(false);
-      setIsSearchingAI(false);
-    }
-  };
-  
 
   const availableEstados = selectedRegiao !== 'todos'
     ? REGIOES_ESTADOS[selectedRegiao]?.estados || []
@@ -717,109 +557,51 @@ Responda APENAS em JSON, sem markdown:
           </div>
         )}
 
-        {/* Search Mode Toggle */}
-        <div className="flex items-center gap-2 mb-2">
+        {/* Simple Search */}
+        <div className="flex gap-2 w-full max-w-2xl">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Ex: Notebook Dell i7, Monitor 24'', Toner HP..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAISearch()}
+              className="pl-9"
+            />
+          </div>
           <Button
-            variant={searchMode === 'simple' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSearchMode('simple')}
-            className={searchMode === 'simple' ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}
+            onClick={handleAISearch}
+            disabled={isSearchingAI}
+            className="bg-accent hover:bg-accent/90 text-accent-foreground min-w-[120px]"
           >
-            <Search className="w-3.5 h-3.5 mr-1" /> Busca Simples
+            {isSearchingAI ? (
+              <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Pesquisando...</>
+            ) : (
+              <><Search className="w-4 h-4 mr-1" /> BUSCAR</>
+            )}
           </Button>
           <Button
-            variant={searchMode === 'spec' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSearchMode('spec')}
-            className={searchMode === 'spec' ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}
+            variant="outline"
+            size="default"
+            onClick={() => setShowHistory(!showHistory)}
+            className="min-w-[120px]"
           >
-            <FileSearch className="w-3.5 h-3.5 mr-1" /> Busca por Especificação
-          </Button>
-          <Button
-            variant={searchMode === 'edital' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSearchMode('edital')}
-            className={searchMode === 'edital' ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}
-          >
-            <Sparkles className="w-3.5 h-3.5 mr-1" /> Cotação por Edital (IA)
+            <History className="w-4 h-4 mr-1" /> Histórico
           </Button>
         </div>
 
-        {searchMode === 'simple' ? (
-          /* Simple Search */
-          <div className="flex gap-2 w-full max-w-2xl">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Ex: Notebook Dell i7, Monitor 24'', Toner HP..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAISearch()}
-                className="pl-9"
-              />
-            </div>
-            <Button
-              onClick={handleAISearch}
-              disabled={isSearchingAI}
-              className="bg-accent hover:bg-accent/90 text-accent-foreground min-w-[120px]"
-            >
-              {isSearchingAI ? (
-                <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Pesquisando...</>
-              ) : (
-                <><Search className="w-4 h-4 mr-1" /> BUSCAR</>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              size="default"
-              onClick={() => setShowHistory(!showHistory)}
-              className="min-w-[120px]"
-            >
-              <History className="w-4 h-4 mr-1" /> Histórico
-            </Button>
+        {/* Planilha de Custos — Extração por IA */}
+        <div className="bg-card border border-border/50 rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Sparkles className="w-4 h-4 text-accent" />
+            <h3 className="text-sm font-semibold">Planilha de Custos — Extração por IA</h3>
+            <Badge variant="outline" className="text-[10px] ml-auto">Upload + Extração + Cotação</Badge>
           </div>
-        ) : (
-          /* Spec-based Search — Planilha de Custos por Extração IA */
-          <div className="bg-card border border-border/50 rounded-xl p-4 space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Sparkles className="w-4 h-4 text-accent" />
-              <h3 className="text-sm font-semibold">Planilha de Custos — Extração por IA</h3>
-              <Badge variant="outline" className="text-[10px] ml-auto">Upload + Extração</Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Envie o Edital, Termo de Referência ou Anexo e a IA extrairá automaticamente todos os itens em uma planilha editável. Os valores unitário e total serão cotados e preenchidos pelo sistema.
-            </p>
-            <PlanilhaCustosEdital />
-          </div>
-        )}
-
-        {searchMode === 'edital' && (
-          <div className="bg-card border border-border/50 rounded-xl p-5 space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-5 h-5 text-accent" />
-              <h3 className="font-semibold text-sm">Cotação Automática por Edital / Termo de Referência</h3>
-              <Badge variant="outline" className="text-[10px] ml-auto">IA + Scraping Real</Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mb-3">
-              Envie o edital ou TR completo. A IA extrairá todos os itens e cotará cada um automaticamente nos +30 marketplaces integrados.
-            </p>
-            <CotacaoEditalAutoIA />
-
-            {/* Planilha de Custos integrada */}
-            <div className="mt-4 pt-4 border-t border-border/30">
-              <div className="flex items-center gap-2 mb-2">
-                <FileSpreadsheet className="w-4 h-4 text-accent" />
-                <h4 className="text-xs font-semibold text-foreground">Planilha de Custos — Extração Estruturada</h4>
-                <Badge variant="outline" className="text-[9px] ml-auto">Upload + Planilha</Badge>
-              </div>
-              <p className="text-[11px] text-muted-foreground mb-3">
-                Extraia os itens do edital em formato de planilha editável com exportação Excel.
-              </p>
-              <PlanilhaCustosEdital />
-            </div>
-          </div>
-        )}
-
+          <p className="text-xs text-muted-foreground">
+            Envie o Edital, Termo de Referência ou Anexo e a IA extrairá automaticamente todos os itens em uma planilha editável. Use "Cotar Todos" para preencher valores automaticamente.
+          </p>
+          <PlanilhaCustosEdital />
+        </div>
 
         {/* Saved Searches History */}
         {showHistory && (
