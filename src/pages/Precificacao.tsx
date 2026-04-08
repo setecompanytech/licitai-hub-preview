@@ -779,84 +779,17 @@ Responda APENAS em JSON, sem markdown:
             </Button>
           </div>
         ) : (
-          /* Spec-based Search */
-          <div className="bg-card border border-border/50 rounded-xl p-4 space-y-3 max-w-3xl">
+          /* Spec-based Search — Planilha de Custos por Extração IA */
+          <div className="bg-card border border-border/50 rounded-xl p-4 space-y-3">
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="w-4 h-4 text-accent" />
-              <h3 className="text-sm font-semibold">Busca por Especificação Técnica</h3>
-              <Badge variant="outline" className="text-[10px] ml-auto">IA</Badge>
+              <h3 className="text-sm font-semibold">Planilha de Custos — Extração por IA</h3>
+              <Badge variant="outline" className="text-[10px] ml-auto">Upload + Extração</Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              Cole a especificação técnica do produto ou faça upload do documento (edital/TR). A IA identificará o produto exato e buscará nos marketplaces.
+              Envie o Edital, Termo de Referência ou Anexo e a IA extrairá automaticamente todos os itens em uma planilha editável. Os valores unitário e total serão cotados e preenchidos pelo sistema.
             </p>
-            <Textarea
-              placeholder="Cole aqui a especificação técnica do produto...&#10;&#10;Ex: Notebook, processador Intel Core i7-1365U, 16GB RAM DDR5, SSD 512GB NVMe, tela 14'' Full HD IPS, placa de vídeo integrada Intel Iris Xe, Windows 11 Pro, garantia on-site 36 meses..."
-              value={specText}
-              onChange={(e) => setSpecText(e.target.value)}
-              className="min-h-[100px] text-sm"
-            />
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                ref={specFileRef}
-                type="file"
-                accept=".pdf,.doc,.docx,.txt,.xlsx,.xls"
-                onChange={handleSpecFileChange}
-                className="hidden"
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => specFileRef.current?.click()}
-                className="shrink-0 max-w-[280px] truncate"
-              >
-                <Upload className="w-3.5 h-3.5 mr-1 shrink-0" />
-                <span className="truncate">{specFile ? specFile.name : 'Upload Edital/TR'}</span>
-              </Button>
-              {specFile && (
-                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => { setSpecFile(null); if (specFileRef.current) specFileRef.current.value = ''; }}>
-                  <X className="w-3.5 h-3.5 mr-1" /> Remover
-                </Button>
-              )}
-              <div className="ml-auto shrink-0">
-                <Button
-                  onClick={handleSpecSearch}
-                  disabled={isExtractingSpec || isSearchingAI || (!specText.trim() && !specFile)}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground whitespace-nowrap"
-                >
-                  {isExtractingSpec ? (
-                    <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Extraindo...</>
-                  ) : isSearchingAI ? (
-                    <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Buscando...</>
-                  ) : (
-                    <><FileSearch className="w-4 h-4 mr-1" /> Buscar Produto Fiel</>
-                  )}
-                </Button>
-              </div>
-            </div>
-            {extractedTerms.length > 0 && (
-              <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-border/30">
-                <span className="text-[11px] text-muted-foreground font-medium">Termos extraídos:</span>
-                {extractedTerms.map((t, i) => (
-                  <Badge key={i} variant="secondary" className="text-[10px] cursor-pointer hover:bg-primary/10"
-                    onClick={() => { setSearch(t); setSearchMode('simple'); }}>
-                    {i === 0 ? '🎯' : i === 1 ? '🔍' : '📦'} {t}
-                  </Badge>
-                ))}
-              </div>
-            )}
-
-            {/* Planilha de Custos - Extração de Itens via Upload */}
-            <div className="mt-4 pt-4 border-t border-border/30">
-              <div className="flex items-center gap-2 mb-2">
-                <FileText className="w-4 h-4 text-accent" />
-                <h4 className="text-xs font-semibold text-foreground">Planilha de Custos — Extração por IA</h4>
-                <Badge variant="outline" className="text-[9px] ml-auto">Upload + Extração</Badge>
-              </div>
-              <p className="text-[11px] text-muted-foreground mb-3">
-                Envie o edital/TR e a IA extrairá todos os itens em uma planilha editável com campos para valor unitário e total.
-              </p>
-              <PlanilhaCustosEdital />
-            </div>
+            <PlanilhaCustosEdital />
           </div>
         )}
 
