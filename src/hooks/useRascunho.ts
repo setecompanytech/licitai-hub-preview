@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-type Modulo = 'proposta' | 'precificacao';
+type Modulo = 'proposta' | 'precificacao' | 'precificacao_planilha';
 
 interface UseRascunhoOptions {
   modulo: Modulo;

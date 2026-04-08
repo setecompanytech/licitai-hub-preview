@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEditalExtraction } from '@/hooks/useEditalExtraction';
+import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileText, Search, Loader2, Download, Trash2, CheckCircle, Brain } from 'lucide-react';
 import { toast } from 'sonner';
-import { extractTextFromBlob } from '@/lib/pdf-text-extractor';
 
 type LicitacaoResumo = {
   id: string;
@@ -42,6 +42,7 @@ export type LicitacaoItemAutoFill = {
 };
 
 interface LicitacaoSelectorProps {
+  licitacaoId?: string | null;
   licitacaoNumero: string;
   setLicitacaoNumero: (v: string) => void;
   licitacaoOrgao: string;
@@ -49,18 +50,8 @@ interface LicitacaoSelectorProps {
   onItensLoaded?: (itens: LicitacaoItemAutoFill[]) => void;
 }
 
-function base64ToBlob(base64: string, contentType = 'application/pdf'): Blob {
-  const byteCharacters = atob(base64);
-  const byteNumbers = new Array(byteCharacters.length);
-
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i);
-  }
-
-  return new Blob([new Uint8Array(byteNumbers)], { type: contentType });
-}
-
 export default function LicitacaoSelector({
+  licitacaoId = null,
   licitacaoNumero,
   setLicitacaoNumero,
   licitacaoOrgao,
@@ -69,6 +60,7 @@ export default function LicitacaoSelector({
 }: LicitacaoSelectorProps) {
   const { user } = useAuth();
   const { extrairItensIA, deleteAllItens } = useEditalExtraction();
+  const { fetchLinkedLicitacao, findPncpCacheMatch, resolveLinkedEditalText } = useLinkedEditalSource();
   const [licitacoes, setLicitacoes] = useState<LicitacaoResumo[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingItens, setLoadingItens] = useState(false);
@@ -156,77 +148,14 @@ export default function LicitacaoSelector({
     }));
   };
 
-  const tryDownloadOfficialEdital = useCallback(async (lic: LicitacaoResumo): Promise<string> => {
-    try {
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-      if (!token) return '';
-
-      // Try to find PNCP identifiers from cache by matching numero/orgao
-      let cnpjOrgao: string | undefined;
-      let anoCompra: string | undefined;
-      let sequencialCompra: string | undefined;
-
-      const { data: cacheMatch } = await supabase
-        .from('pncp_editais_cache')
-        .select('cnpj_orgao, ano_compra, sequencial_compra, numero_controle_pncp')
-        .or(`numero_compra.eq.${lic.numero},numero_compra.ilike.%${lic.numero}%`)
-        .limit(5);
-
-      if (cacheMatch && cacheMatch.length > 0) {
-        // Prefer exact orgao match
-        const orgaoLower = (lic.orgao || '').toLowerCase();
-        const best = cacheMatch.find((c: any) =>
-          (c.orgao || '').toLowerCase().includes(orgaoLower.substring(0, 15))
-        ) || cacheMatch[0];
-
-        cnpjOrgao = (best as any).cnpj_orgao || undefined;
-        anoCompra = (best as any).ano_compra || undefined;
-        sequencialCompra = (best as any).sequencial_compra || undefined;
-      }
-
-      const hasUrl = lic.url_edital && lic.url_edital.trim().length > 0;
-      const hasPncpIds = cnpjOrgao && anoCompra && sequencialCompra;
-
-      if (!hasUrl && !hasPncpIds) return '';
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-edital`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          numero: lic.numero,
-          url: lic.url_edital || undefined,
-          orgao: lic.orgao,
-          objeto: lic.objeto,
-          cnpjOrgao,
-          anoCompra,
-          sequencialCompra,
-        }),
-      });
-
-      const data = (await response.json()) as DownloadEditalResponse;
-      if (!response.ok || !data?.success || data.tipo !== 'arquivo_direto' || !data.arquivo?.conteudo_base64) {
-        return '';
-      }
-
-      const fileBlob = base64ToBlob(data.arquivo.conteudo_base64, data.arquivo.content_type || 'application/pdf');
-      return extractTextFromBlob(fileBlob, data.arquivo.nome || 'edital.pdf', 150, true);
-    } catch (error) {
-      console.error('Erro ao baixar edital oficial para extração:', error);
-      return '';
-    }
-  }, []);
-
-  const handleSelect = async (licitacaoId: string) => {
+  const handleSelect = useCallback(async (targetLicitacaoId: string) => {
     if (!user) return;
 
-    const lic = licitacoesMarcadas.find((item) => item.id === licitacaoId);
+    const lic = licitacoesMarcadas.find((item) => item.id === targetLicitacaoId)
+      || await fetchLinkedLicitacao(targetLicitacaoId);
     if (!lic) return;
 
-    setSelectedId(licitacaoId);
+    setSelectedId(targetLicitacaoId);
     setLicitacaoNumero(lic.numero || '');
     setLicitacaoOrgao(lic.orgao || '');
     setLoadingItens(true);
@@ -235,14 +164,14 @@ export default function LicitacaoSelector({
       supabase
         .from('documentos')
         .select('id, arquivo_path, nome, tipo, created_at')
-        .eq('licitacao_id', licitacaoId)
+        .eq('licitacao_id', targetLicitacaoId)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(10),
       supabase
         .from('licitacao_itens')
         .select('descricao, quantidade, unidade, valor_unitario, valor_total, lote, origem')
-        .eq('licitacao_id', licitacaoId)
+        .eq('licitacao_id', targetLicitacaoId)
         .eq('user_id', user.id)
         .order('numero', { ascending: true }),
     ]);
@@ -267,7 +196,7 @@ export default function LicitacaoSelector({
     const shouldPurgeStaleAiItems = existingItens.length > 0 && existingAreOnlyAi && !hasLinkedDocument;
 
     if (shouldPurgeStaleAiItems) {
-      await deleteAllItens(licitacaoId);
+      await deleteAllItens(targetLicitacaoId);
       setItensCount(0);
       onItensLoaded?.([]);
       toast.warning('Itens automáticos antigos foram removidos porque não havia um edital confiável vinculado.');
@@ -283,28 +212,11 @@ export default function LicitacaoSelector({
 
     try {
       // ══════════ CAMADA 1: API PNCP (itens estruturados) ══════════
-      let cnpjOrgao: string | undefined;
-      let anoCompra: string | undefined;
-      let sequencialCompra: string | undefined;
-      let numeroControle: string | undefined;
-
-      const { data: cacheMatch } = await supabase
-        .from('pncp_editais_cache')
-        .select('cnpj_orgao, ano_compra, sequencial_compra, numero_controle_pncp')
-        .or(`numero_compra.eq.${lic.numero},numero_compra.ilike.%${lic.numero}%`)
-        .limit(5);
-
-      if (cacheMatch && cacheMatch.length > 0) {
-        const orgaoLower = (lic.orgao || '').toLowerCase();
-        const best = cacheMatch.find((c: any) =>
-          (c.orgao || '').toLowerCase().includes(orgaoLower.substring(0, 15))
-        ) || cacheMatch[0];
-
-        cnpjOrgao = (best as any).cnpj_orgao || undefined;
-        anoCompra = (best as any).ano_compra || undefined;
-        sequencialCompra = (best as any).sequencial_compra || undefined;
-        numeroControle = (best as any).numero_controle_pncp || undefined;
-      }
+      const cacheMatch = await findPncpCacheMatch({ numero: lic.numero, orgao: lic.orgao } as LicitacaoResumo);
+      const cnpjOrgao = cacheMatch?.cnpj_orgao || undefined;
+      const anoCompra = cacheMatch?.ano_compra || undefined;
+      const sequencialCompra = cacheMatch?.sequencial_compra || undefined;
+      const numeroControle = cacheMatch?.numero_controle_pncp || undefined;
 
       if (cnpjOrgao && anoCompra && sequencialCompra) {
         console.log('[LicitacaoSelector] Tentando CAMADA 1 - API PNCP itens...');
@@ -325,7 +237,7 @@ export default function LicitacaoSelector({
 
             // Save to licitacao_itens for persistence
             const itemsToSave = pncpItens.map((p: any, idx: number) => ({
-              licitacao_id: licitacaoId,
+              licitacao_id: targetLicitacaoId,
               user_id: user.id,
               numero: parseInt(String(p.item ?? idx + 1), 10) || (idx + 1),
               descricao: p.descricao || '',
@@ -340,7 +252,7 @@ export default function LicitacaoSelector({
               origem: fonte === 'PNCP_API' ? 'pncp' : 'ia',
             }));
 
-            await deleteAllItens(licitacaoId);
+            await deleteAllItens(targetLicitacaoId);
             const { data: savedItens } = await supabase
               .from('licitacao_itens')
               .insert(itemsToSave)
@@ -368,28 +280,8 @@ export default function LicitacaoSelector({
       // ══════════ CAMADA 2: Extração via texto do edital (IA) ══════════
       console.log('[LicitacaoSelector] CAMADA 2 - Extração via texto/PDF...');
 
-      let editalText = '';
-
-      for (const doc of docs) {
-        if (!doc.arquivo_path) continue;
-
-        try {
-          const { data: fileData } = await supabase.storage.from('documentos').download(doc.arquivo_path);
-          if (!fileData) continue;
-
-          const extractedText = await extractTextFromBlob(fileData, doc.nome || doc.arquivo_path, 150, true);
-          if (extractedText.length >= 500) {
-            editalText = extractedText;
-            break;
-          }
-        } catch (error) {
-          console.error('Erro ao ler documento vinculado:', error);
-        }
-      }
-
-      if (!editalText.trim()) {
-        editalText = await tryDownloadOfficialEdital(lic);
-      }
+      const resolvedEdital = await resolveLinkedEditalText(targetLicitacaoId);
+      const editalText = resolvedEdital.text;
 
       const textLength = editalText?.trim().length || 0;
       if (!editalText || textLength < 50) {
@@ -400,7 +292,7 @@ export default function LicitacaoSelector({
       }
 
       const shouldSkipValidation = textLength < 500;
-      const extracted = await extrairItensIA(licitacaoId, editalText, { forceReExtract: true, skipValidation: shouldSkipValidation });
+      const extracted = await extrairItensIA(targetLicitacaoId, editalText, { forceReExtract: true, skipValidation: shouldSkipValidation });
 
       if (extracted.length > 0) {
         const mappedItens: LicitacaoItemAutoFill[] = extracted.map((item) => ({
@@ -427,7 +319,17 @@ export default function LicitacaoSelector({
     } finally {
       setExtracting(false);
     }
-  };
+  }, [user, licitacoesMarcadas, fetchLinkedLicitacao, setLicitacaoNumero, setLicitacaoOrgao, deleteAllItens, onItensLoaded, findPncpCacheMatch, resolveLinkedEditalText, extrairItensIA]);
+
+  useEffect(() => {
+    if (!licitacaoId || !user || loading || loadingItens || extracting || selectedId === licitacaoId) return;
+
+    const lic = licitacoesMarcadas.find((item) => item.id === licitacaoId);
+    if (lic?.orgao) setFilterOrgao(lic.orgao);
+    if (lic?.numero) setFilterNumero(lic.numero);
+
+    handleSelect(licitacaoId);
+  }, [licitacaoId, user, loading, loadingItens, extracting, selectedId, licitacoesMarcadas, handleSelect]);
 
   const handleClear = () => {
     setSelectedId(null);
@@ -459,6 +361,11 @@ export default function LicitacaoSelector({
         <Badge variant="outline" className="text-[10px]">
           {licitacoesMarcadas.length} processo(s) disponível(is)
         </Badge>
+        {licitacaoId && (
+          <Badge className="text-[10px] bg-accent/15 text-accent border-0">
+            Processo vinculado sincronizado
+          </Badge>
+        )}
         {favoritosKeys.size > 0 && (
           <span className="text-[10px] text-muted-foreground">Editais marcados aparecem primeiro na lista.</span>
         )}

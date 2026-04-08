@@ -647,6 +647,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
 
       {/* ── Vinculação com Licitação (Smart Selector) ── */}
       <LicitacaoSelector
+        licitacaoId={licitacaoId}
         licitacaoNumero={licitacaoNumero}
         setLicitacaoNumero={setLicitacaoNumero}
         licitacaoOrgao={licitacaoOrgao}

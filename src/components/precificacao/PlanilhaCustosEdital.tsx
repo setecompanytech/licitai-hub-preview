@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,8 @@ import {
 import { toast } from 'sonner';
 import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 import { useEditalExtraction } from '@/hooks/useEditalExtraction';
+import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
+import { useRascunho } from '@/hooks/useRascunho';
 import { writeExcelFile } from '@/lib/excel-utils';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
@@ -57,13 +59,131 @@ export default function PlanilhaCustosEdital({
   const [file, setFile] = useState<File | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [itens, setItens] = useState<PlanilhaItem[]>([]);
+  const [sourceLabel, setSourceLabel] = useState('');
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [isCotando, setIsCotando] = useState(false);
   const [cotacaoProgress, setCotacaoProgress] = useState(0);
   const [cotacaoMsgs, setCotacaoMsgs] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
-  const { extrairItensDoTexto } = useEditalExtraction();
+  const { extrairItensDoTexto, fetchItens, saveItensManual, deleteAllItens } = useEditalExtraction();
+  const { resolveLinkedEditalText } = useLinkedEditalSource();
   const { addItem, pendingItems } = usePropostaCart();
+  const { loadRascunho, autoSave, saving, lastSaved, markLoaded } = useRascunho<{ itens: PlanilhaItem[]; sourceLabel?: string | null }>({
+    modulo: 'precificacao_planilha',
+    licitacaoId: licitacaoId || null,
+    debounceMs: 2500,
+  });
+
+  const mapParsedToPlanilha = useCallback((parsed: Array<any>): PlanilhaItem[] => {
+    const allItems: PlanilhaItem[] = parsed.map((p, i) => {
+      const qty = Number(p.quantidade ?? 1);
+      const vlrUnit = p.valor_unitario ? Number(p.valor_unitario) : null;
+      const vlrTotal = p.valor_total ? Number(p.valor_total) : null;
+      return {
+        item: Number(p.item ?? i + 1),
+        descricao: (p.descricao || '').trim(),
+        quantidade: Number.isFinite(qty) && qty > 0 ? qty : 1,
+        unidade: (p.unidade || 'UN').trim(),
+        catmat: p.catmat || p.codigo_catmat || '',
+        valorUnitarioRef: vlrUnit ?? undefined,
+        valorTotalRef: vlrTotal ?? undefined,
+        valorUnitario: null,
+        valorTotal: null,
+        marca: (p.marca || '').trim(),
+      };
+    }).filter((item) => item.descricao.length > 0);
+
+    const itemMap = new Map<number, PlanilhaItem>();
+    for (const item of allItems) {
+      const existing = itemMap.get(item.item);
+      if (!existing) {
+        itemMap.set(item.item, item);
+        continue;
+      }
+
+      const scoreOf = (value: PlanilhaItem) => (
+        (value.valorUnitarioRef != null ? 2 : 0)
+        + (value.valorTotalRef != null ? 2 : 0)
+        + (value.descricao.length > existing.descricao.length ? 1 : 0)
+      );
+
+      if (scoreOf(item) > scoreOf(existing)) {
+        itemMap.set(item.item, item);
+      }
+    }
+
+    return Array.from(itemMap.values()).sort((a, b) => a.item - b.item);
+  }, []);
+
+  const mapLinkedItensToPlanilha = useCallback((linkedItens: Array<any>): PlanilhaItem[] => {
+    return linkedItens.map((item, index) => ({
+      item: Number(item.numero ?? index + 1),
+      descricao: item.descricao || '',
+      quantidade: Number(item.quantidade || 1),
+      unidade: item.unidade || 'UN',
+      catmat: '',
+      valorUnitarioRef: item.valor_unitario || undefined,
+      valorTotalRef: item.valor_total || undefined,
+      valorUnitario: null,
+      valorTotal: null,
+      marca: item.marca || '',
+    }));
+  }, []);
+
+  const persistReferenceItems = useCallback(async (parsed: Array<any>) => {
+    if (!licitacaoId || parsed.length === 0) return;
+
+    await deleteAllItens(licitacaoId);
+    await saveItensManual(licitacaoId, parsed.map((item, idx) => ({
+      numero: parseInt(String(item.item ?? idx + 1), 10) || (idx + 1),
+      descricao: item.descricao || '',
+      quantidade: Number(item.quantidade || 1),
+      unidade: item.unidade || 'UN',
+      valor_unitario: Number(item.valor_unitario || 0),
+      valor_total: Number(item.valor_total || (Number(item.valor_unitario || 0) * Number(item.quantidade || 1))),
+      lote: item.lote || 'Único',
+      marca: item.marca || null,
+      fabricante: item.fabricante || null,
+      modelo: item.modelo || null,
+      origem: 'ia',
+    })));
+  }, [licitacaoId, deleteAllItens, saveItensManual]);
+
+  useEffect(() => {
+    let ativo = true;
+
+    loadRascunho().then(async (data) => {
+      if (!ativo) return;
+
+      if (data?.itens?.length) {
+        setItens(data.itens);
+        setSourceLabel(data.sourceLabel || 'rascunho salvo');
+        markLoaded();
+        return;
+      }
+
+      if (licitacaoId) {
+        const linkedItens = await fetchItens(licitacaoId);
+        if (!ativo) return;
+
+        if (linkedItens.length > 0) {
+          setItens(mapLinkedItensToPlanilha(linkedItens));
+          setSourceLabel('itens do processo vinculado');
+        }
+      }
+
+      markLoaded();
+    });
+
+    return () => {
+      ativo = false;
+    };
+  }, [loadRascunho, licitacaoId, fetchItens, mapLinkedItensToPlanilha, markLoaded]);
+
+  useEffect(() => {
+    const titulo = licitacaoNumero ? `Planilha de custos — ${licitacaoNumero}` : 'Planilha de custos';
+    autoSave({ itens, sourceLabel }, titulo);
+  }, [itens, sourceLabel, licitacaoNumero, autoSave]);
 
   const handleCotarTodos = async () => {
     if (itens.length === 0 || isCotando) return;
@@ -160,13 +280,47 @@ export default function PlanilhaCustosEdital({
     }
     setFile(f);
     setItens([]);
+    setSourceLabel('upload manual');
   };
 
   const handleRemoveFile = () => {
     setFile(null);
     setItens([]);
+    setSourceLabel('');
     if (fileRef.current) fileRef.current.value = '';
   };
+
+  const handleExtractFromLinkedProcess = useCallback(async () => {
+    if (!licitacaoId || isExtracting) return;
+
+    setIsExtracting(true);
+    try {
+      const resolved = await resolveLinkedEditalText(licitacaoId);
+      const text = resolved.text.trim();
+
+      if (text.length < 50) {
+        toast.warning('Não foi possível obter o edital vinculado. Faça upload manual ou revise o processo na Gestão.');
+        return;
+      }
+
+      const parsed = await extrairItensDoTexto(text, { skipValidation: text.length < 500 });
+      if (parsed.length === 0) {
+        toast.warning('Nenhum item identificado no edital vinculado.');
+        return;
+      }
+
+      const planilha = mapParsedToPlanilha(parsed);
+      setItens(planilha);
+      setSourceLabel(resolved.source || 'processo vinculado');
+      await persistReferenceItems(parsed);
+      toast.success(`${planilha.length} itens carregados do processo vinculado!`);
+    } catch (error) {
+      console.error('Erro ao usar edital do processo vinculado:', error);
+      toast.error('Não foi possível usar o edital do processo vinculado.');
+    } finally {
+      setIsExtracting(false);
+    }
+  }, [licitacaoId, isExtracting, resolveLinkedEditalText, extrairItensDoTexto, mapParsedToPlanilha, persistReferenceItems]);
 
   const handleExtract = async () => {
     if (!file || isExtracting) return;
@@ -186,45 +340,10 @@ export default function PlanilhaCustosEdital({
         return;
       }
 
-      // Map all extracted items
-      const allItems: PlanilhaItem[] = parsed.map((p, i) => {
-        const qty = Number(p.quantidade ?? 1);
-        const vlrUnit = p.valor_unitario ? Number(p.valor_unitario) : null;
-        const vlrTotal = p.valor_total ? Number(p.valor_total) : null;
-        return {
-          item: Number(p.item ?? i + 1),
-          descricao: (p.descricao || '').trim(),
-          quantidade: Number.isFinite(qty) && qty > 0 ? qty : 1,
-          unidade: (p.unidade || 'UN').trim(),
-          catmat: '',
-          valorUnitarioRef: vlrUnit ?? undefined,
-          valorTotalRef: vlrTotal ?? undefined,
-          valorUnitario: null,
-          valorTotal: null,
-          marca: (p.marca || '').trim(),
-        };
-      }).filter(it => it.descricao.length > 0);
-
-      // Deduplicate by item number — keep the most complete version
-      const itemMap = new Map<number, PlanilhaItem>();
-      for (const it of allItems) {
-        const existing = itemMap.get(it.item);
-        if (!existing) {
-          itemMap.set(it.item, it);
-          continue;
-        }
-        // Score: prefer items with reference values and longer descriptions
-        const scoreOf = (x: PlanilhaItem) =>
-          (x.valorUnitarioRef != null ? 2 : 0) +
-          (x.valorTotalRef != null ? 2 : 0) +
-          (x.descricao.length > existing.descricao.length ? 1 : 0);
-        if (scoreOf(it) > scoreOf(existing)) {
-          itemMap.set(it.item, it);
-        }
-      }
-
-      const planilha = Array.from(itemMap.values()).sort((a, b) => a.item - b.item);
+      const planilha = mapParsedToPlanilha(parsed);
       setItens(planilha);
+      setSourceLabel(file.name);
+      await persistReferenceItems(parsed);
       toast.success(`${planilha.length} itens extraídos com sucesso!`);
     } catch (e) {
       console.error('Erro extração planilha:', e);
@@ -408,24 +527,50 @@ export default function PlanilhaCustosEdital({
       />
 
       {!file ? (
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 hover:border-accent/50 hover:bg-muted/30 transition-colors"
-        >
-          <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
-            <Upload className="w-6 h-6 text-accent" />
-          </div>
-          <span className="text-sm font-semibold text-foreground">
-            Envie o Edital, Termo de Referência ou Anexo
-          </span>
-          <span className="text-xs text-muted-foreground">
-            A IA extrairá itens com descrição, quantidade, unidade e valores de referência
-          </span>
-          <span className="text-[10px] text-muted-foreground/70">
-            PDF, Word, Excel, Imagens (JPG/PNG), TXT — Máx. 20MB
-          </span>
-        </button>
+        <div className="space-y-3">
+          {licitacaoId && (
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-accent/20 bg-accent/5 px-3 py-2">
+              <div>
+                <p className="text-xs font-medium text-foreground">Processo vinculado pronto para uso</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Use o edital já associado ao processo para extrair itens sem novo upload.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleExtractFromLinkedProcess}
+                disabled={isExtracting}
+                className="shrink-0"
+              >
+                {isExtracting ? (
+                  <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Carregando...</>
+                ) : (
+                  <><Link2 className="w-3.5 h-3.5 mr-1" /> Usar processo vinculado</>
+                )}
+              </Button>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 hover:border-accent/50 hover:bg-muted/30 transition-colors"
+          >
+            <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
+              <Upload className="w-6 h-6 text-accent" />
+            </div>
+            <span className="text-sm font-semibold text-foreground">
+              Envie o Edital, Termo de Referência ou Anexo
+            </span>
+            <span className="text-xs text-muted-foreground">
+              A IA extrairá itens com descrição, quantidade, unidade e valores de referência
+            </span>
+            <span className="text-[10px] text-muted-foreground/70">
+              PDF, Word, Excel, Imagens (JPG/PNG), TXT — Máx. 20MB
+            </span>
+          </button>
+        </div>
       ) : (
         <div className="bg-muted/30 rounded-xl p-4 border border-border/50">
           <div className="flex items-center gap-3">
@@ -465,6 +610,11 @@ export default function PlanilhaCustosEdital({
             <div className="flex items-center gap-2">
               <FileSpreadsheet className="w-5 h-5 text-accent" />
               <span className="text-sm font-semibold">{itens.length} itens</span>
+            {sourceLabel && (
+              <Badge variant="outline" className="text-[10px]">
+                {sourceLabel}
+              </Badge>
+            )}
               {totalRef > 0 && (
                 <Badge variant="outline" className="text-[10px]">
                   Ref: {formatCurrency(totalRef)}
@@ -475,6 +625,11 @@ export default function PlanilhaCustosEdital({
                   Total: {formatCurrency(totalGeral)}
                 </Badge>
               )}
+            {lastSaved && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+                {saving ? 'Salvando...' : `Salvo ${lastSaved.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
+              </span>
+            )}
             </div>
             <div className="flex gap-2 flex-wrap">
               <Button
