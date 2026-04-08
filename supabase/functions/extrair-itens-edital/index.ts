@@ -255,12 +255,7 @@ Deno.serve(async (req) => {
 
         if (itens.length > 0) {
           console.log(`[extrair-itens] Claude extraiu ${itens.length} itens do PDF`);
-          return new Response(JSON.stringify({
-            success: true,
-            data: itens,
-            total: itens.length,
-            fonte: "CLAUDE_PDF",
-          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return buildSuccessResponse(itens, "CLAUDE_PDF");
         }
       } catch (e) {
         console.warn("[extrair-itens] Claude PDF falhou:", String(e));
@@ -288,12 +283,7 @@ Deno.serve(async (req) => {
 
           if (itens.length > 0) {
             console.log(`[extrair-itens] Claude extraiu ${itens.length} itens do PDF (URL)`);
-            return new Response(JSON.stringify({
-              success: true,
-              data: itens,
-              total: itens.length,
-              fonte: "CLAUDE_PDF_URL",
-            }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            return buildSuccessResponse(itens, "CLAUDE_PDF_URL");
           }
         }
       } catch (e) {
@@ -346,9 +336,7 @@ Deno.serve(async (req) => {
               situacao: item.situacaoCompraItemNome ?? null,
             })).filter((i: any) => i.descricao && i.descricao.trim().length > 0);
 
-            return new Response(JSON.stringify({
-              success: true, data: itens, total: itens.length, fonte: "PNCP_API",
-            }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            return buildSuccessResponse(itens, "PNCP_API");
           }
         }
       } catch (e) {
@@ -377,9 +365,7 @@ Deno.serve(async (req) => {
 
           if (itens.length > 0) {
             console.log(`[extrair-itens] Claude PNCP PDF extraiu ${itens.length} itens`);
-            return new Response(JSON.stringify({
-              success: true, data: itens, total: itens.length, fonte: "CLAUDE_PNCP_PDF",
-            }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            return buildSuccessResponse(itens, "CLAUDE_PNCP_PDF");
           }
         } catch (e) {
           console.warn("[extrair-itens] Claude PNCP PDF falhou:", String(e));
@@ -502,9 +488,7 @@ ${truncated}`,
 
     console.log(`[extrair-itens] Gemini retornou ${rawItens.length} itens brutos, ${itens.length} normalizados`);
 
-    return new Response(JSON.stringify({
-      success: true, data: itens, total: itens.length, fonte: "IA",
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return buildSuccessResponse(itens, "IA");
   } catch (error) {
     console.error("extrair-itens-edital error:", error);
     return new Response(JSON.stringify({
