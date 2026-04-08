@@ -1272,8 +1272,10 @@ export default function PropostaTecnica() {
                     cargo: repCargo,
                     naturalidade: repNaturalidade,
                     nacionalidade: repNacionalidade,
+                    estadoCivil: repEstadoCivil,
+                    endereco: repEndereco,
                   }}
-                  bancData={{ banco, agencia, conta }}
+                  bancData={{ banco, agencia, conta, tipoConta, pix }}
                   itens={itens}
                   licitacaoData={{
                     orgao,
@@ -1281,11 +1283,17 @@ export default function PropostaTecnica() {
                     objeto,
                     valorEstimado,
                     prazoValidade,
+                    prazoPagamento,
+                    prazoEntrega,
                     localEntrega,
                     liquidacaoNfe,
+                    garantia,
+                    condicoesEntrega,
                   }}
                   telefone={telefone}
                   email={email}
+                  inscEstadual={inscEstadual}
+                  inscMunicipal={inscMunicipal}
                   pageOrientation={pageOrientation}
                 />
                 <Button variant="outline" size="sm" onClick={handleCopy}>
