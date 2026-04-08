@@ -51,7 +51,17 @@ interface CatalogoItem {
   created_at: string;
 }
 
-export default function CatalogoPrecificados() {
+interface CatalogoPrecificadosProps {
+  licitacaoId?: string | null;
+  licitacaoNumero?: string;
+  licitacaoOrgao?: string;
+}
+
+export default function CatalogoPrecificados({
+  licitacaoId = null,
+  licitacaoNumero = '',
+  licitacaoOrgao = '',
+}: CatalogoPrecificadosProps) {
   const { user } = useAuth();
   const { addItem } = usePropostaCart();
   const [items, setItems] = useState<CatalogoItem[]>([]);
@@ -99,9 +109,15 @@ export default function CatalogoPrecificados() {
 
   useEffect(() => { loadItems(); }, [user]);
 
+  useEffect(() => {
+    setFilterLicitacao(licitacaoNumero || 'todos');
+    setSelectedItems(new Set());
+  }, [licitacaoId, licitacaoNumero]);
+
   const filteredItems = items.filter(item => {
     if (searchTerm && !item.descricao.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     if (filterTipo !== 'todos' && item.tipo_calculo !== filterTipo) return false;
+    if (licitacaoId && item.licitacao_id === licitacaoId) return true;
     if (filterLicitacao !== 'todos' && item.licitacao_numero !== filterLicitacao) return false;
     return true;
   });
@@ -273,8 +289,9 @@ Responda APENAS em JSON:
       custo_unitario: r.preco_min || r.preco_medio,
       preco_unitario: r.preco_medio,
       preco_total: r.preco_medio * (r.quantidade || 1),
-      licitacao_numero: r.numero_licitacao || null,
-      licitacao_orgao: r.orgao || null,
+      licitacao_id: licitacaoId || null,
+      licitacao_numero: licitacaoNumero || r.numero_licitacao || null,
+      licitacao_orgao: licitacaoOrgao || r.orgao || null,
     }));
 
     const { error } = await supabase.from('catalogo_itens_precificados').insert(rows);

@@ -146,7 +146,17 @@ type ItemCusto = {
   ncm: string;
 };
 
-export default function CalculadoraUnificada() {
+interface CalculadoraUnificadaProps {
+  licitacaoId?: string | null;
+  licitacaoNumero?: string;
+  licitacaoOrgao?: string;
+}
+
+export default function CalculadoraUnificada({
+  licitacaoId = null,
+  licitacaoNumero: licitacaoNumeroProp = '',
+  licitacaoOrgao: licitacaoOrgaoProp = '',
+}: CalculadoraUnificadaProps) {
   const { empresaAtiva } = useEmpresa();
   const { addItem } = usePropostaCart();
   const { user } = useAuth();
@@ -233,9 +243,14 @@ export default function CalculadoraUnificada() {
   // ── Rascunho (Draft) ──
   const { loadRascunho, autoSave, saving, lastSaved, markLoaded } = useRascunho<any>({
     modulo: 'precificacao',
-    licitacaoId: null,
+    licitacaoId: licitacaoId || null,
     debounceMs: 3000,
   });
+
+  useEffect(() => {
+    setLicitacaoNumero(licitacaoNumeroProp || '');
+    setLicitacaoOrgao(licitacaoOrgaoProp || '');
+  }, [licitacaoId, licitacaoNumeroProp, licitacaoOrgaoProp]);
 
   const collectCalcData = useCallback(() => ({
     calcTab, receitaBruta, rbt12, atividade, margemLucro, ufCalculo,
@@ -268,7 +283,7 @@ export default function CalculadoraUnificada() {
       }
       markLoaded();
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loadRascunho, markLoaded]);
 
   // Auto-save on form changes
   useEffect(() => {
@@ -507,6 +522,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
         descricao: item.descricao, quantidade: qtd, unidade: item.unidade,
         custo_unitario: custo, preco_unitario: Math.round(precoUnit * 100) / 100,
         preco_total: Math.round(precoUnit * qtd * 100) / 100,
+        licitacao_id: licitacaoId || null,
         margem_lucro: margem, tributos_total: resultado?.totalTributos || 0,
         frete_percentual: freteVal, bdi_percentual: bdiVal, regime_tributario: regime,
         licitacao_numero: licitacaoNumero || null, licitacao_orgao: licitacaoOrgao || null,
@@ -1091,6 +1107,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
       {/* ── TAB: SERVIÇOS COM MÃO DE OBRA ── */}
       {calcTab === 'servico_mdo' && (
         <ServicoMDOCalculadora
+          licitacaoId={licitacaoId}
           regimeLabel={regimeLabel}
           regime={regime}
           ufCalculo={ufCalculo}

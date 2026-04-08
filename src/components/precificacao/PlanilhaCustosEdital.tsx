@@ -43,9 +43,16 @@ const parseCurrencyInput = (v: string): number | null => {
 interface PlanilhaCustosEditalProps {
   onAddToProposta?: (itens: PlanilhaItem[]) => void;
   licitacaoId?: string | null;
+  licitacaoNumero?: string;
+  licitacaoOrgao?: string;
 }
 
-export default function PlanilhaCustosEdital({ onAddToProposta, licitacaoId }: PlanilhaCustosEditalProps) {
+export default function PlanilhaCustosEdital({
+  onAddToProposta,
+  licitacaoId,
+  licitacaoNumero,
+  licitacaoOrgao,
+}: PlanilhaCustosEditalProps) {
   const { user } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -376,8 +383,14 @@ export default function PlanilhaCustosEdital({ onAddToProposta, licitacaoId }: P
         preco_total: it.valorTotal ?? 0,
         tipo_calculo: 'marketplace',
         licitacao_id: licitacaoId || null,
+        licitacao_numero: licitacaoNumero || null,
+        licitacao_orgao: licitacaoOrgao || null,
       }));
-      await supabase.from('catalogo_itens_precificados').insert(rows);
+      const { error } = await supabase.from('catalogo_itens_precificados').insert(rows);
+      if (error) {
+        console.error('Erro ao vincular itens ao catálogo/processo:', error);
+        toast.error('Os itens foram enviados, mas falhou o vínculo com o processo licitatório.');
+      }
     }
 
     toast.success(`${validItens.length} itens adicionados à Proposta Comercial!`);

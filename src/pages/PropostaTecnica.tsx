@@ -230,11 +230,23 @@ export default function PropostaTecnica() {
     }
 
     // Also try to import priced items from catalog
-    const { data: catalogItems } = await supabase
+    const selectFields = 'descricao, quantidade, unidade, marca, fabricante, modelo, preco_unitario, preco_total';
+    const { data: catalogById } = await supabase
       .from('catalogo_itens_precificados')
-      .select('descricao, quantidade, unidade, marca, fabricante, modelo, preco_unitario, preco_total')
+      .select(selectFields)
       .eq('user_id', user.id)
       .eq('licitacao_id', lid);
+    let catalogItems = catalogById;
+
+    if ((!catalogItems || catalogItems.length === 0) && lic?.numero) {
+      const { data: catalogByNumero } = await supabase
+        .from('catalogo_itens_precificados')
+        .select(selectFields)
+        .eq('user_id', user.id)
+        .eq('licitacao_numero', lic.numero);
+      catalogItems = catalogByNumero;
+    }
+
     if (catalogItems && catalogItems.length > 0) {
       const mapped = catalogItems.map((ci: any, idx: number) => ({
         item: String(idx + 1),

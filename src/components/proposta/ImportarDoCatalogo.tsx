@@ -39,49 +39,67 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
   const [filterLicitacao, setFilterLicitacao] = useState(licitacaoNumero || 'todos');
   const [licitacoes, setLicitacoes] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const selectFields = 'id, descricao, quantidade, unidade, marca, fabricante, modelo, preco_unitario, preco_total, tipo_calculo, licitacao_numero, licitacao_orgao, licitacao_id';
 
   const loadItems = async () => {
     if (!user) return;
     setLoading(true);
-    let query = supabase
-      .from('catalogo_itens_precificados')
-      .select('id, descricao, quantidade, unidade, marca, fabricante, modelo, preco_unitario, preco_total, tipo_calculo, licitacao_numero, licitacao_orgao, licitacao_id')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    let data: any[] | null = null;
+    let error: any = null;
 
-    // If a specific process is linked, prioritize its items
     if (licitacaoId) {
-      query = query.eq('licitacao_id', licitacaoId);
+      const result = await supabase
+        .from('catalogo_itens_precificados')
+        .select(selectFields)
+        .eq('user_id', user.id)
+        .eq('licitacao_id', licitacaoId)
+        .order('created_at', { ascending: false });
+      data = result.data as any[] | null;
+      error = result.error;
     }
 
-    const { data, error } = await query;
+    if ((!data || data.length === 0) && licitacaoNumero) {
+      const result = await supabase
+        .from('catalogo_itens_precificados')
+        .select(selectFields)
+        .eq('user_id', user.id)
+        .eq('licitacao_numero', licitacaoNumero)
+        .order('created_at', { ascending: false });
+      if (!result.error && result.data) {
+        data = result.data as any[];
+      }
+      error = result.error;
+    }
+
+    if (!data || data.length === 0) {
+      const result = await supabase
+        .from('catalogo_itens_precificados')
+        .select(selectFields)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      data = result.data as any[] | null;
+      error = result.error;
+    }
+
     if (!error && data) {
       setItems(data as any[]);
       const lics = [...new Set(data.filter((d: any) => d.licitacao_numero).map((d: any) => d.licitacao_numero as string))];
       setLicitacoes(lics);
-
-      // If licitacaoId filter returned nothing, try all items
-      if (licitacaoId && data.length === 0) {
-        const { data: allData } = await supabase
-          .from('catalogo_itens_precificados')
-          .select('id, descricao, quantidade, unidade, marca, fabricante, modelo, preco_unitario, preco_total, tipo_calculo, licitacao_numero, licitacao_orgao, licitacao_id')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-        if (allData) {
-          setItems(allData as any[]);
-          const allLics = [...new Set(allData.filter((d: any) => d.licitacao_numero).map((d: any) => d.licitacao_numero as string))];
-          setLicitacoes(allLics);
-        }
-      }
     }
     setLoading(false);
   };
 
   useEffect(() => {
     if (expanded) loadItems();
-  }, [expanded, user]);
+  }, [expanded, user, licitacaoId, licitacaoNumero]);
+
+  useEffect(() => {
+    setFilterLicitacao(licitacaoNumero || 'todos');
+    setSelected(new Set());
+  }, [licitacaoNumero, licitacaoId]);
 
   const filteredItems = items.filter(i => {
+    if (licitacaoId && i.licitacao_id === licitacaoId) return true;
     if (filterLicitacao !== 'todos' && i.licitacao_numero !== filterLicitacao) return false;
     return true;
   });

@@ -35,6 +35,8 @@ import CotacoesUnificado from '@/components/precificacao/CotacoesUnificado';
 import InteligenciaUnificada from '@/components/precificacao/InteligenciaUnificada';
 import RevisaoItensExtraidos, { type ItemExtraido } from '@/components/precificacao/RevisaoItensExtraidos';
 import PlanilhaCustosEdital from '@/components/precificacao/PlanilhaCustosEdital';
+import ProcessoSelector from '@/components/proposta/ProcessoSelector';
+import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 
 type FontePreco = {
   fonte: string;
@@ -93,6 +95,34 @@ export default function Precificacao() {
   const { addItem, hasPending, pendingItems } = usePropostaCart();
   const abortRef = useRef(false);
   const { user } = useAuth();
+  const { processoId } = useProcessoAtivo();
+  const [processoMeta, setProcessoMeta] = useState({ numero: '', orgao: '' });
+
+  useEffect(() => {
+    let ativo = true;
+
+    if (!processoId || !user) {
+      setProcessoMeta({ numero: '', orgao: '' });
+      return;
+    }
+
+    supabase
+      .from('licitacoes')
+      .select('numero, orgao')
+      .eq('id', processoId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!ativo) return;
+        setProcessoMeta({
+          numero: data?.numero || '',
+          orgao: data?.orgao || '',
+        });
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [processoId, user]);
 
 
 
@@ -442,6 +472,10 @@ export default function Precificacao() {
           ))}
         </div>
 
+        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-3">
+          <ProcessoSelector />
+        </div>
+
         {/* ML-style Category Breadcrumb */}
         {categoryTree.subs.length > 0 && selectedCategory !== 'todos' && (
           <div className="flex items-center gap-1.5 text-sm">
@@ -613,7 +647,11 @@ export default function Precificacao() {
           <p className="text-xs text-muted-foreground">
             Envie o Edital, Termo de Referência ou Anexo e a IA extrairá automaticamente todos os itens em uma planilha editável. Use "Cotar Todos" para preencher valores automaticamente.
           </p>
-          <PlanilhaCustosEdital />
+          <PlanilhaCustosEdital
+            licitacaoId={processoId}
+            licitacaoNumero={processoMeta.numero}
+            licitacaoOrgao={processoMeta.orgao}
+          />
         </div>
 
         {/* Saved Searches History */}
@@ -924,7 +962,9 @@ export default function Precificacao() {
                   } : null}
                   isLoading={isSearchingAI}
                   rawMarkdown={!aiParsedData && !isSearchingAI ? aiResult : undefined}
-                  
+                  licitacaoId={processoId}
+                  licitacaoNumero={processoMeta.numero}
+                  licitacaoOrgao={processoMeta.orgao}
                 />
               </div>
             </div>
@@ -1039,13 +1079,21 @@ export default function Precificacao() {
 
           <TabsContent value="calculadora">
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <CalculadoraUnificada />
+              <CalculadoraUnificada
+                licitacaoId={processoId}
+                licitacaoNumero={processoMeta.numero}
+                licitacaoOrgao={processoMeta.orgao}
+              />
             </div>
           </TabsContent>
 
           <TabsContent value="catalogo">
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <CatalogoPrecificados />
+              <CatalogoPrecificados
+                licitacaoId={processoId}
+                licitacaoNumero={processoMeta.numero}
+                licitacaoOrgao={processoMeta.orgao}
+              />
             </div>
           </TabsContent>
 
