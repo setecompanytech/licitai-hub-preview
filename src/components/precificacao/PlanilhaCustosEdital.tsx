@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   Upload, FileText, Loader2, X, Sparkles, Download, Trash2,
   Plus, CheckCircle, Edit3, Save, Package, FileSpreadsheet,
-  ShoppingCart, TrendingDown, TrendingUp, Minus,
+  ShoppingCart, TrendingDown, TrendingUp, Minus, ExternalLink, Link2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { extractTextFromFile } from '@/lib/pdf-text-extractor';
@@ -27,6 +27,7 @@ export interface PlanilhaItem {
   valorUnitario: number | null;
   valorTotal: number | null;
   marca: string;
+  fontes?: { fonte: string; titulo: string; url: string; preco: number }[];
 }
 
 const formatCurrency = (v: number | null) =>
@@ -70,6 +71,8 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
           body: {
             descricao: it.descricao.slice(0, 200),
             codigoCatmat: it.catmat || undefined,
+            unidade: it.unidade,
+            quantidade: it.quantidade,
             modo: 'auto',
           },
         });
@@ -96,11 +99,23 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
         const marca = closest?.ean?.replace('Marca: ', '') || closest?.vendedor || '';
         const valorTotal = Math.round(bestPrice * it.quantidade * 100) / 100;
 
+        // Store top 3 sources with URLs
+        const topFontes = results
+          .filter((r: any) => r.preco_unitario > 0 && r.url)
+          .slice(0, 3)
+          .map((r: any) => ({
+            fonte: r.fonte || 'marketplace',
+            titulo: (r.titulo || '').slice(0, 120),
+            url: r.url || '',
+            preco: r.preco_unitario,
+          }));
+
         setItens(prev => prev.map((item, i) => i === idx ? {
           ...item,
           valorUnitario: Math.round(bestPrice * 100) / 100,
           valorTotal,
           marca: item.marca || marca,
+          fontes: topFontes.length > 0 ? topFontes : undefined,
         } : item));
 
         // Calc diff vs reference
@@ -282,9 +297,43 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
       totalRow,
     ];
 
+    // Build sources sheet
+    const fontesHeader = ['Item', 'Fonte', 'Produto', 'Preço', 'Link'];
+    const fontesRows = itens
+      .filter(it => it.fontes && it.fontes.length > 0)
+      .flatMap(it => (it.fontes || []).map(f => [
+        it.item,
+        f.fonte === 'mercadolivre' ? 'Mercado Livre' :
+        f.fonte === 'pncp_ata' ? 'PNCP (Ata)' :
+        f.fonte === 'pncp_contratacao' ? 'PNCP' :
+        f.fonte === 'kabum' ? 'KaBuM!' :
+        f.fonte,
+        f.titulo,
+        f.preco,
+        f.url || '',
+      ]));
+
+    const sheets: any[] = [
+      { name: 'Planilha de Preços', data, colWidths: [8, 60, 12, 18, 8, 18, 18, 22, 18, 18] },
+    ];
+
+    if (fontesRows.length > 0) {
+      sheets.push({
+        name: 'Fontes de Referência',
+        data: [
+          ['FONTES DE REFERÊNCIA — LINKS DAS COTAÇÕES'],
+          [`Data: ${new Date().toLocaleDateString('pt-BR')}`],
+          [],
+          fontesHeader,
+          ...fontesRows,
+        ],
+        colWidths: [8, 20, 60, 18, 60],
+      });
+    }
+
     await writeExcelFile(
       `Planilha_Precos_${new Date().toISOString().slice(0, 10)}.xlsx`,
-      [{ name: 'Planilha de Preços', data, colWidths: [8, 60, 12, 18, 8, 18, 18, 22, 18, 18] }]
+      sheets
     );
     toast.success('Planilha de preços exportada!');
   };
@@ -588,7 +637,63 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
                 </tr>
               </tfoot>
             </table>
-          </div>
+           </div>
+
+          {/* Sources / References Table */}
+          {itens.some(it => it.fontes && it.fontes.length > 0) && (
+            <div className="border border-border/40 rounded-lg overflow-hidden">
+              <div className="bg-muted/40 px-3 py-2 border-b border-border/40 flex items-center gap-2">
+                <Link2 className="w-4 h-4 text-accent" />
+                <span className="text-xs font-semibold text-foreground">Fontes de Referência — Links das Cotações</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-muted/20 border-b border-border/30">
+                      <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground w-12">Item</th>
+                      <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground">Fonte</th>
+                      <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground min-w-[200px]">Produto</th>
+                      <th className="text-right px-3 py-1.5 font-semibold text-muted-foreground w-24">Preço</th>
+                      <th className="text-center px-3 py-1.5 font-semibold text-muted-foreground w-16">Link</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/20">
+                    {itens.filter(it => it.fontes && it.fontes.length > 0).flatMap(it =>
+                      (it.fontes || []).map((f, fi) => (
+                        <tr key={`${it.item}-${fi}`} className="hover:bg-muted/10">
+                          <td className="px-3 py-1.5 text-center font-medium text-muted-foreground">{fi === 0 ? it.item : ''}</td>
+                          <td className="px-3 py-1.5">
+                            <Badge variant="outline" className="text-[9px] py-0">
+                              {f.fonte === 'mercadolivre' ? 'Mercado Livre' :
+                               f.fonte === 'pncp_ata' ? 'PNCP (Ata)' :
+                               f.fonte === 'pncp_contratacao' ? 'PNCP' :
+                               f.fonte === 'kabum' ? 'KaBuM!' :
+                               f.fonte === 'leroy_merlin' ? 'Leroy Merlin' :
+                               f.fonte === 'ia_estimativa' ? 'Estimativa IA' :
+                               f.fonte}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-1.5 text-muted-foreground truncate max-w-[300px]" title={f.titulo}>
+                            {f.titulo}
+                          </td>
+                          <td className="px-3 py-1.5 text-right font-medium">{formatCurrency(f.preco)}</td>
+                          <td className="px-3 py-1.5 text-center">
+                            {f.url ? (
+                              <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 inline-flex">
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground/40">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Instructions */}
           <div className="bg-muted/20 border border-border/30 rounded-lg p-3 text-[11px] text-muted-foreground space-y-1">
@@ -596,6 +701,7 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
             <p>• Use <strong className="text-primary">"Cotar Todos"</strong> para o sistema buscar preços automaticamente no Google Shopping, Mercado Livre e demais plataformas.</p>
             <p>• A cotação preenche <strong>Marca</strong>, <strong>Valor Unitário</strong> e <strong>Valor Total</strong> automaticamente, exibindo a <strong>% de diferença</strong> vs referência.</p>
             <p>• Os valores de referência do edital (quando disponíveis) são exibidos em <strong className="text-accent">laranja</strong>.</p>
+            <p>• A tabela <strong>"Fontes de Referência"</strong> exibe os links de onde cada preço e marca foram extraídos.</p>
             <p>• Use <strong>"Exportar Excel"</strong> para baixar a planilha e <strong>"Enviar à Proposta"</strong> para transferir os itens.</p>
           </div>
         </>
