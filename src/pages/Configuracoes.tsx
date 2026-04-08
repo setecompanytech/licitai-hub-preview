@@ -525,8 +525,15 @@ export default function Configuracoes() {
               </div>
             </section>
 
-            {/* Timbrado */}
+            {/* Timbrado e Marca d'Água — Sistema global */}
             <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <ImageIcon className="w-5 h-5 text-accent" />
+                <h2 className="text-sm font-semibold">Timbrado e Marca d'Água</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                O timbrado cadastrado aqui será aplicado automaticamente a <strong>todos os documentos gerados</strong> pelo sistema: propostas comerciais, planilhas de composição de custos, declarações, pedidos de recursos, pareceres e demais peças.
+              </p>
               <TimbradoUploader empresaId={empresaAtiva?.id} timbradoUrl={timbradoUrl} setTimbradoUrl={setTimbradoUrl} />
             </section>
 
