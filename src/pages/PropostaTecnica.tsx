@@ -203,6 +203,7 @@ export default function PropostaTecnica() {
         if (data.fontSize) setFontSize(data.fontSize);
         if (data.lineSpacing) setLineSpacing(data.lineSpacing);
         if (data.marginStyle) setMarginStyle(data.marginStyle);
+        if (data.pageOrientation) setPageOrientation(data.pageOrientation);
         if (data.currentStep) setCurrentStep(data.currentStep);
         if (typeof data.usarMarcaDagua === 'boolean') setUsarMarcaDagua(data.usarMarcaDagua);
         toast.info('Rascunho restaurado automaticamente.');
