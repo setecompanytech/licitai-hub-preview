@@ -71,6 +71,8 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
           body: {
             descricao: it.descricao.slice(0, 200),
             codigoCatmat: it.catmat || undefined,
+            unidade: it.unidade,
+            quantidade: it.quantidade,
             modo: 'auto',
           },
         });
