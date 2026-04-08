@@ -593,10 +593,10 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
           {/* Instructions */}
           <div className="bg-muted/20 border border-border/30 rounded-lg p-3 text-[11px] text-muted-foreground space-y-1">
             <p className="font-semibold text-foreground text-xs mb-1">📋 Instruções</p>
-            <p>• Preencha o <strong className="text-primary">Valor Unitário</strong> para cada item — o Valor Total é calculado automaticamente.</p>
+            <p>• Use <strong className="text-primary">"Cotar Todos"</strong> para o sistema buscar preços automaticamente no Google Shopping, Mercado Livre e demais plataformas.</p>
+            <p>• A cotação preenche <strong>Marca</strong>, <strong>Valor Unitário</strong> e <strong>Valor Total</strong> automaticamente, exibindo a <strong>% de diferença</strong> vs referência.</p>
             <p>• Os valores de referência do edital (quando disponíveis) são exibidos em <strong className="text-accent">laranja</strong>.</p>
-            <p>• Clique na descrição para editá-la. Use <strong>"Exportar Excel"</strong> para baixar a planilha de preços.</p>
-            <p>• Use <strong>"Enviar à Proposta"</strong> para transferir os itens precificados diretamente à Proposta Comercial.</p>
+            <p>• Use <strong>"Exportar Excel"</strong> para baixar a planilha e <strong>"Enviar à Proposta"</strong> para transferir os itens.</p>
           </div>
         </>
       )}
