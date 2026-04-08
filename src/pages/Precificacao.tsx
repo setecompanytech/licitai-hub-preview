@@ -13,7 +13,7 @@ import {
   ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText, Loader2, Bot,
   Filter, Save, History, Trash2, Eye, CalendarIcon,
   MapPin, Globe, ChevronRight, Tag, X, Truck, CheckSquare, Square, Store, Award,
-  Building2, Upload, ShieldCheck, FileSearch, Clipboard, Sparkles, Calculator
+  Building2, Upload, ShieldCheck, FileSearch, Clipboard, Sparkles, Calculator, FileSpreadsheet
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
