@@ -1299,6 +1299,14 @@ Responda APENAS em JSON, sem markdown:
               <InteligenciaUnificada />
             </div>
           </TabsContent>
+
+          <TabsContent value="extracao-itens">
+            <RevisaoItensExtraidos
+              onAprovado={(itensAprovados) => {
+                toast.success(`${itensAprovados.length} itens prontos para precificação!`);
+              }}
+            />
+          </TabsContent>
         </Tabs>
       </div>
     </AppLayout>
