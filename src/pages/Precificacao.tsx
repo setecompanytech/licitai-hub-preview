@@ -717,109 +717,51 @@ Responda APENAS em JSON, sem markdown:
           </div>
         )}
 
-        {/* Search Mode Toggle */}
-        <div className="flex items-center gap-2 mb-2">
+        {/* Simple Search */}
+        <div className="flex gap-2 w-full max-w-2xl">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Ex: Notebook Dell i7, Monitor 24'', Toner HP..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAISearch()}
+              className="pl-9"
+            />
+          </div>
           <Button
-            variant={searchMode === 'simple' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSearchMode('simple')}
-            className={searchMode === 'simple' ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}
+            onClick={handleAISearch}
+            disabled={isSearchingAI}
+            className="bg-accent hover:bg-accent/90 text-accent-foreground min-w-[120px]"
           >
-            <Search className="w-3.5 h-3.5 mr-1" /> Busca Simples
+            {isSearchingAI ? (
+              <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Pesquisando...</>
+            ) : (
+              <><Search className="w-4 h-4 mr-1" /> BUSCAR</>
+            )}
           </Button>
           <Button
-            variant={searchMode === 'spec' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSearchMode('spec')}
-            className={searchMode === 'spec' ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}
+            variant="outline"
+            size="default"
+            onClick={() => setShowHistory(!showHistory)}
+            className="min-w-[120px]"
           >
-            <FileSearch className="w-3.5 h-3.5 mr-1" /> Busca por Especificação
-          </Button>
-          <Button
-            variant={searchMode === 'edital' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSearchMode('edital')}
-            className={searchMode === 'edital' ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}
-          >
-            <Sparkles className="w-3.5 h-3.5 mr-1" /> Cotação por Edital (IA)
+            <History className="w-4 h-4 mr-1" /> Histórico
           </Button>
         </div>
 
-        {searchMode === 'simple' ? (
-          /* Simple Search */
-          <div className="flex gap-2 w-full max-w-2xl">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Ex: Notebook Dell i7, Monitor 24'', Toner HP..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAISearch()}
-                className="pl-9"
-              />
-            </div>
-            <Button
-              onClick={handleAISearch}
-              disabled={isSearchingAI}
-              className="bg-accent hover:bg-accent/90 text-accent-foreground min-w-[120px]"
-            >
-              {isSearchingAI ? (
-                <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Pesquisando...</>
-              ) : (
-                <><Search className="w-4 h-4 mr-1" /> BUSCAR</>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              size="default"
-              onClick={() => setShowHistory(!showHistory)}
-              className="min-w-[120px]"
-            >
-              <History className="w-4 h-4 mr-1" /> Histórico
-            </Button>
+        {/* Planilha de Custos — Extração por IA */}
+        <div className="bg-card border border-border/50 rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Sparkles className="w-4 h-4 text-accent" />
+            <h3 className="text-sm font-semibold">Planilha de Custos — Extração por IA</h3>
+            <Badge variant="outline" className="text-[10px] ml-auto">Upload + Extração + Cotação</Badge>
           </div>
-        ) : (
-          /* Spec-based Search — Planilha de Custos por Extração IA */
-          <div className="bg-card border border-border/50 rounded-xl p-4 space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Sparkles className="w-4 h-4 text-accent" />
-              <h3 className="text-sm font-semibold">Planilha de Custos — Extração por IA</h3>
-              <Badge variant="outline" className="text-[10px] ml-auto">Upload + Extração</Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Envie o Edital, Termo de Referência ou Anexo e a IA extrairá automaticamente todos os itens em uma planilha editável. Os valores unitário e total serão cotados e preenchidos pelo sistema.
-            </p>
-            <PlanilhaCustosEdital />
-          </div>
-        )}
-
-        {searchMode === 'edital' && (
-          <div className="bg-card border border-border/50 rounded-xl p-5 space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-5 h-5 text-accent" />
-              <h3 className="font-semibold text-sm">Cotação Automática por Edital / Termo de Referência</h3>
-              <Badge variant="outline" className="text-[10px] ml-auto">IA + Scraping Real</Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mb-3">
-              Envie o edital ou TR completo. A IA extrairá todos os itens e cotará cada um automaticamente nos +30 marketplaces integrados.
-            </p>
-            <CotacaoEditalAutoIA />
-
-            {/* Planilha de Custos integrada */}
-            <div className="mt-4 pt-4 border-t border-border/30">
-              <div className="flex items-center gap-2 mb-2">
-                <FileSpreadsheet className="w-4 h-4 text-accent" />
-                <h4 className="text-xs font-semibold text-foreground">Planilha de Custos — Extração Estruturada</h4>
-                <Badge variant="outline" className="text-[9px] ml-auto">Upload + Planilha</Badge>
-              </div>
-              <p className="text-[11px] text-muted-foreground mb-3">
-                Extraia os itens do edital em formato de planilha editável com exportação Excel.
-              </p>
-              <PlanilhaCustosEdital />
-            </div>
-          </div>
-        )}
-
+          <p className="text-xs text-muted-foreground">
+            Envie o Edital, Termo de Referência ou Anexo e a IA extrairá automaticamente todos os itens em uma planilha editável. Use "Cotar Todos" para preencher valores automaticamente.
+          </p>
+          <PlanilhaCustosEdital />
+        </div>
 
         {/* Saved Searches History */}
         {showHistory && (
