@@ -135,7 +135,7 @@ export default function PropostaTecnica() {
   // ── Rascunho (Draft) ──
   const { loadRascunho, autoSave, saving, lastSaved, markLoaded, deleteRascunho, rascunhoId } = useRascunho<any>({
     modulo: 'proposta',
-    licitacaoId: null,
+    licitacaoId: processoId || null,
     debounceMs: 3000,
   });
 
