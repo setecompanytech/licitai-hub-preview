@@ -925,6 +925,7 @@ export default function PropostaTecnica() {
                   toast.success(`${catalogItems.length} item(ns) importado(s) do catálogo!`);
                 }}
                 licitacaoNumero={numeroLicitacao}
+                licitacaoId={processoId}
               />
 
               <PlanilhaPrecos itens={itens} setItens={setItens} />
