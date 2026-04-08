@@ -512,6 +512,11 @@ export default function PropostaTecnica() {
           )}
         </div>
 
+        {/* Process Selector */}
+        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-3">
+          <ProcessoSelector />
+        </div>
+
         {/* Split-screen layout */}
         <div className={`flex gap-4 ${showPreview && !isMobile ? '' : ''}`}>
           {/* Left: Form */}
