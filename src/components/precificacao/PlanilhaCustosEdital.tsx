@@ -27,6 +27,7 @@ export interface PlanilhaItem {
   valorUnitario: number | null;
   valorTotal: number | null;
   marca: string;
+  fontes?: { fonte: string; titulo: string; url: string; preco: number }[];
 }
 
 const formatCurrency = (v: number | null) =>

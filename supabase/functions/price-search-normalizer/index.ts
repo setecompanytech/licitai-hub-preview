@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { descricao, codigoCatmat, especificacoes } = await req.json();
+    const { descricao, codigoCatmat, especificacoes, unidade, quantidade } = await req.json();
 
     if (!descricao) {
       return new Response(JSON.stringify({ error: 'descricao obrigatória' }),
