@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { normalizeUfs } from "@/constants/ufsBrasil";
 import {
   ChevronDown, ChevronUp, Download, FileText,
   Search, X, AlertTriangle, ExternalLink,
@@ -404,6 +406,7 @@ const ModalItensDownload = ({
 
 // ── COMPONENTE PRINCIPAL DA PÁGINA ──────────────────────────
 export default function EditaisLicitacoes() {
+  const { user } = useAuth();
   const [filtros, setFiltros] = useState<Filtros>({
     termo: "", uf: "", municipioNome: "", municipioIbge: "",
     esfera: "Todas", modalidade: "Todas", uasg: "",
@@ -416,11 +419,46 @@ export default function EditaisLicitacoes() {
   const [filtrosAbertos, setFiltrosAbertos] = useState(true);
   const [modalEdital, setModalEdital] = useState<Edital | null>(null);
   const [municipios, setMunicipios] = useState<{ id: number; nome: string }[]>([]);
+  const [ufsPreferidas, setUfsPreferidas] = useState<string[]>([]);
+  const [preferenciasCarregadas, setPreferenciasCarregadas] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const totalPaginas = Math.ceil(total / ITENS_POR_PAGINA);
   const inicioPagina = (filtros.pagina - 1) * ITENS_POR_PAGINA + 1;
   const fimPagina = Math.min(filtros.pagina * ITENS_POR_PAGINA, total);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setUfsPreferidas([]);
+      setPreferenciasCarregadas(true);
+      return;
+    }
+
+    let ativo = true;
+
+    const carregarPreferencias = async () => {
+      const [configResp, alertasResp] = await Promise.all([
+        supabase.from('configuracoes').select('ufs_interesse').eq('user_id', user.id).maybeSingle(),
+        supabase.from('preferencias_alertas' as any).select('ufs').eq('user_id', user.id).maybeSingle(),
+      ]);
+
+      if (!ativo) return;
+
+      const ufs = normalizeUfs([
+        ...(configResp.data?.ufs_interesse || []),
+        ...(((alertasResp.data as { ufs?: string[] } | null)?.ufs) || []),
+      ]);
+
+      setUfsPreferidas(ufs);
+      setPreferenciasCarregadas(true);
+    };
+
+    carregarPreferencias();
+
+    return () => {
+      ativo = false;
+    };
+  }, [user?.id]);
 
   // Carregar municípios ao mudar UF
   useEffect(() => {
@@ -432,28 +470,70 @@ export default function EditaisLicitacoes() {
   }, [filtros.uf]);
 
   // Busca com debounce no termo
-  const buscar = useCallback(async (f: Filtros) => {
+  const buscar = useCallback(async (f: Filtros, ufsPreferenciais: string[]) => {
     setLoading(true);
     setErro(null);
     try {
-      const { data, error } = await supabase.rpc(
-        "busca_editais_instantanea",
-        {
-          p_q:              f.termo.trim() || null,
-          p_uf:             f.uf || null,
-          p_municipio_ibge: f.municipioIbge || null,
-          p_esfera:         MAP_ESFERA[f.esfera] || null,
-          p_modalidade_id:  MAP_MODALIDADE[f.modalidade] || null,
-          p_data_inicio:    f.dataInicio || null,
-          p_data_fim:       f.dataFim || null,
-          p_pagina:         f.pagina,
-          p_tamanho:        ITENS_POR_PAGINA,
+      const ufsAtivas = f.uf ? [f.uf] : ufsPreferenciais;
+      const paramsBase = {
+        p_q: f.termo.trim() || null,
+        p_municipio_ibge: f.municipioIbge || null,
+        p_esfera: MAP_ESFERA[f.esfera] || null,
+        p_modalidade_id: MAP_MODALIDADE[f.modalidade] || null,
+        p_data_inicio: f.dataInicio || null,
+        p_data_fim: f.dataFim || null,
+      };
+
+      if (!f.uf && ufsAtivas.length > 1) {
+        const tamanhoPorUf = Math.max(ITENS_POR_PAGINA, f.pagina * ITENS_POR_PAGINA);
+        const respostas = await Promise.all(
+          ufsAtivas.map((uf) =>
+            supabase.rpc("busca_editais_instantanea", {
+              ...paramsBase,
+              p_uf: uf,
+              p_pagina: 1,
+              p_tamanho: tamanhoPorUf,
+            })
+          )
+        );
+
+        const falha = respostas.find((resposta) => resposta.error);
+        if (falha?.error) throw falha.error;
+
+        const rowsUnicos = new Map<string, any>();
+        let totalAgrupado = 0;
+
+        for (const resposta of respostas) {
+          const rows = (resposta.data ?? []) as any[];
+          totalAgrupado += Number(rows[0]?.total_count ?? 0);
+          rows.forEach((row) => {
+            rowsUnicos.set(row.id || row.numero_controle_pncp, row);
+          });
         }
-      );
-      if (error) throw error;
-      const rows = (data ?? []) as any[];
-      setEditais(rows as Edital[]);
-      setTotal(Number(rows[0]?.total_count ?? 0));
+
+        const rowsOrdenados = Array.from(rowsUnicos.values()).sort((a, b) => {
+          if (f.termo.trim()) {
+            return Number(b.rank_busca ?? 0) - Number(a.rank_busca ?? 0);
+          }
+          return new Date(b.data_publicacao_pncp || 0).getTime() - new Date(a.data_publicacao_pncp || 0).getTime();
+        });
+
+        const inicio = (f.pagina - 1) * ITENS_POR_PAGINA;
+        const paginados = rowsOrdenados.slice(inicio, inicio + ITENS_POR_PAGINA);
+        setEditais(paginados as Edital[]);
+        setTotal(totalAgrupado);
+      } else {
+        const { data, error } = await supabase.rpc("busca_editais_instantanea", {
+          ...paramsBase,
+          p_uf: ufsAtivas[0] || null,
+          p_pagina: f.pagina,
+          p_tamanho: ITENS_POR_PAGINA,
+        });
+        if (error) throw error;
+        const rows = (data ?? []) as any[];
+        setEditais(rows as Edital[]);
+        setTotal(Number(rows[0]?.total_count ?? 0));
+      }
     } catch (e: any) {
       setErro(e.message ?? "Erro na busca");
       setEditais([]);
@@ -464,13 +544,14 @@ export default function EditaisLicitacoes() {
   }, []);
 
   useEffect(() => {
+    if (!preferenciasCarregadas) return;
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(
-      () => buscar(filtros),
+      () => buscar(filtros, ufsPreferidas),
       filtros.termo ? 400 : 0
     );
     return () => clearTimeout(debounceRef.current);
-  }, [filtros, buscar]);
+  }, [filtros, buscar, preferenciasCarregadas, ufsPreferidas]);
 
   const atualizar = (novos: Partial<Filtros>) =>
     setFiltros(prev => ({ ...prev, ...novos, pagina: 1 }));
@@ -526,6 +607,13 @@ export default function EditaisLicitacoes() {
         {filtrosAbertos && (
           <div className="p-4">
             {/* Linha 1: Termo + UASG */}
+            {!filtros.uf && ufsPreferidas.length > 0 && (
+              <div className="mb-3 rounded-md border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-accent">
+                Prioridade automática ativa para as UFs: <strong>{ufsPreferidas.join(', ')}</strong>.
+                Selecione uma UF abaixo para sobrescrever esse filtro.
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
                 <label className="text-xs font-semibold text-foreground mb-1 block">Objeto / Termo de Pesquisa</label>
@@ -630,7 +718,7 @@ export default function EditaisLicitacoes() {
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => buscar(filtros)}
+                  onClick={() => buscar(filtros, ufsPreferidas)}
                   className="flex-1 py-2 bg-[hsl(var(--sidebar-background))] text-white border-none rounded text-[13px] font-bold cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <Search size={13} />

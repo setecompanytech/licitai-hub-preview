@@ -29,6 +29,7 @@ import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 import AureliaEditalPanel from '@/components/aurelia/AureliaEditalPanel';
 import { MUNICIPIO_IBGE } from '@/constants/pncpMappings';
 import { MODALIDADE_PNCP, ESFERA_PNCP } from '@/constants/pncpMappings';
+import { getUfPreferencial } from '@/constants/ufsBrasil';
 
 type DetalhePNCP = {
   success: boolean;
@@ -316,16 +317,16 @@ export default function MuralLicitacoes() {
     const loadConfig = async () => {
       const { data } = await supabase
         .from('configuracoes')
-        .select('uf_sede, municipio_sede, priorizar_regiao_sede, segmentos_prioridade')
+        .select('ufs_interesse, uf_sede, municipio_sede, priorizar_regiao_sede, segmentos_prioridade')
         .eq('user_id', user.id)
         .maybeSingle();
       if (data) {
         const priorizar = (data as any).priorizar_regiao_sede ?? false;
         const segs: string[] = (data as any).segmentos_prioridade || [];
         setSegmentosPrioritarios(segs);
-        if (priorizar) {
-          const ufSede = data.uf_sede;
-          if (ufSede && ufFiltro === 'all') setUfFiltro(ufSede);
+        const ufPreferencial = getUfPreferencial((data as any).ufs_interesse, data.uf_sede, priorizar);
+        if (ufPreferencial && ufFiltro === 'all') {
+          setUfFiltro(ufPreferencial);
         }
       }
       setConfigCarregada(true);

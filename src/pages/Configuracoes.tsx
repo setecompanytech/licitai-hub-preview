@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Bell, Globe, Shield, Newspaper, Search, Loader2, ExternalLink, CheckCircle2, AlertTriangle, ImageIcon, User, Save, CreditCard, Settings } from 'lucide-react';
+import { Building2, Bell, Globe, Shield, Newspaper, Search, Loader2, ExternalLink, CheckCircle2, AlertTriangle, ImageIcon, User, Save, CreditCard, Settings, MapPin } from 'lucide-react';
 import CnaesSecundarios from '@/components/configuracoes/CnaesSecundarios';
 import SegurancaConta from '@/components/configuracoes/SegurancaConta';
 import PlanoAssinatura from '@/components/configuracoes/PlanoAssinatura';
@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import ExportarDados from '@/components/export/ExportarDados';
 import BackupAgendado from '@/components/configuracoes/BackupAgendado';
+import { UFS_BRASIL, normalizeUfs } from '@/constants/ufsBrasil';
 
 
 export default function Configuracoes() {
@@ -72,6 +73,7 @@ export default function Configuracoes() {
     dou_federal: true, ioepa_estadual: true, tcmpa_municipios: true,
     doe_sp: true, ioerj: true, dodf_e: true,
   });
+  const [ufsInteresse, setUfsInteresse] = useState<string[]>([]);
 
   // Loading states
   const [loadingCnpj, setLoadingCnpj] = useState(false);
@@ -83,12 +85,30 @@ export default function Configuracoes() {
   const { user } = useAuth();
   useEffect(() => {
     if (!user) return;
-    supabase.from('configuracoes').select('notificacoes_config, portais_monitorados, diarios_monitorados')
-      .eq('user_id', user.id).maybeSingle().then(({ data }) => {
-        if (data?.notificacoes_config) setNotifConfig(data.notificacoes_config as any);
-        if (data?.portais_monitorados) setPortaisConfig(data.portais_monitorados as any);
-        if (data?.diarios_monitorados) setDiariosConfig(data.diarios_monitorados as any);
-      });
+    Promise.all([
+      supabase
+        .from('configuracoes')
+        .select('notificacoes_config, portais_monitorados, diarios_monitorados, ufs_interesse')
+        .eq('user_id', user.id)
+        .maybeSingle(),
+      supabase
+        .from('preferencias_alertas' as any)
+        .select('ufs')
+        .eq('user_id', user.id)
+        .maybeSingle(),
+    ]).then(([configResp, alertasResp]) => {
+      const configData = configResp.data;
+      const alertasData = alertasResp.data as { ufs?: string[] } | null;
+
+      if (configData?.notificacoes_config) setNotifConfig(configData.notificacoes_config as any);
+      if (configData?.portais_monitorados) setPortaisConfig(configData.portais_monitorados as any);
+      if (configData?.diarios_monitorados) setDiariosConfig(configData.diarios_monitorados as any);
+
+      setUfsInteresse(normalizeUfs([
+        ...(configData?.ufs_interesse || []),
+        ...(alertasData?.ufs || []),
+      ]));
+    });
   }, [user]);
 
   useEffect(() => {
@@ -118,6 +138,14 @@ export default function Configuracoes() {
       setRepNacionalidade((empresaAtiva as any).rep_nacionalidade || 'Brasileira');
     }
   }, [empresaAtiva]);
+
+  const toggleUfInteresse = (sigla: string) => {
+    setUfsInteresse((prev) =>
+      prev.includes(sigla)
+        ? prev.filter((ufSelecionada) => ufSelecionada !== sigla)
+        : [...prev, sigla]
+    );
+  };
 
   const handleSalvar = async () => {
     if (!empresaAtiva) {
@@ -161,6 +189,8 @@ export default function Configuracoes() {
           notificacoes_config: notifConfig as any,
           portais_monitorados: portaisConfig as any,
           diarios_monitorados: diariosConfig as any,
+          ufs_interesse: ufsInteresse,
+          uf_sede: uf || null,
         };
         const { data: existing } = await supabase
           .from('configuracoes')
@@ -171,6 +201,41 @@ export default function Configuracoes() {
           await supabase.from('configuracoes').update(prefPayload as any).eq('user_id', user.id);
         } else {
           await supabase.from('configuracoes').insert(prefPayload as any);
+        }
+
+        const { data: alertasExisting } = await supabase
+          .from('preferencias_alertas' as any)
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (alertasExisting) {
+          await supabase
+            .from('preferencias_alertas' as any)
+            .update({
+              ufs: ufsInteresse,
+              email_notificacao: user.email || email || null,
+            })
+            .eq('user_id', user.id);
+        } else {
+          await supabase
+            .from('preferencias_alertas' as any)
+            .insert({
+              user_id: user.id,
+              ufs: ufsInteresse,
+              segmentos: [],
+              receber_editais: true,
+              receber_alteracoes: true,
+              receber_suspensoes: true,
+              receber_cancelamentos: true,
+              receber_homologacoes: true,
+              canal_push: true,
+              canal_email: false,
+              canal_whatsapp: false,
+              email_notificacao: user.email || email || null,
+              frequencia: 'imediato',
+              ativo: true,
+            });
         }
       }
 
@@ -546,6 +611,52 @@ export default function Configuracoes() {
                   </div>
                 ))}
               </div>
+            </section>
+
+            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <MapPin className="w-5 h-5 text-accent" />
+                <h2 className="text-sm font-semibold">UFs prioritárias do Monitoramento</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                Escolha as UFs que devem ser priorizadas no Monitoramento de Editais e na Central de Avisos.
+                Sem seleção, o sistema continua considerando todos os estados.
+              </p>
+
+              <div className="flex flex-wrap gap-2 mb-4">
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => setUfsInteresse([...UFS_BRASIL])}>
+                  Selecionar todas
+                </Button>
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => setUfsInteresse([])}>
+                  Limpar
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {UFS_BRASIL.map((sigla) => {
+                  const ativa = ufsInteresse.includes(sigla);
+                  return (
+                    <button
+                      key={sigla}
+                      type="button"
+                      onClick={() => toggleUfInteresse(sigla)}
+                      className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+                        ativa
+                          ? 'bg-accent text-accent-foreground border-accent'
+                          : 'bg-muted/30 text-muted-foreground border-border/50 hover:bg-muted/50'
+                      }`}
+                    >
+                      {sigla}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <p className="text-[11px] text-muted-foreground mt-4">
+                {ufsInteresse.length > 0
+                  ? `Prioridade ativa para: ${ufsInteresse.join(', ')}`
+                  : 'Nenhuma UF específica selecionada.'}
+              </p>
             </section>
 
             {/* CNAEs Secundários */}
