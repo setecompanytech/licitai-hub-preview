@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import {
-  Search, MapPin, Building2, CalendarDays, RefreshCw, Globe, Loader2,
+  Search, MapPin, Building2, CalendarDays, RefreshCw, Globe, Loader2, Upload,
   ExternalLink, DollarSign, FileText, ChevronLeft, ChevronRight, Eye,
   X, AlertTriangle, CheckCircle2, Clock, Gavel, Star, StarOff, Download,
   FileDown, Link2, Package, Scale, ShieldCheck, Info,
@@ -27,6 +27,7 @@ import MarcarInteresseDialog from '@/components/compromissos/MarcarInteresseDial
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 import AureliaEditalPanel from '@/components/aurelia/AureliaEditalPanel';
+import CadastroManualEdital from '@/components/monitoramento/CadastroManualEdital';
 import { MUNICIPIO_IBGE } from '@/constants/pncpMappings';
 import { MODALIDADE_PNCP, ESFERA_PNCP } from '@/constants/pncpMappings';
 import { getUfPreferencial } from '@/constants/ufsBrasil';
@@ -227,6 +228,7 @@ export default function MuralLicitacoes() {
   const [buscaDiretaAberta, setBuscaDiretaAberta] = useState(false);
   const [buscaDiretaTerm, setBuscaDiretaTerm] = useState('');
   const [loadingBuscaDireta, setLoadingBuscaDireta] = useState(false);
+  const [cadastroManualAberto, setCadastroManualAberto] = useState(false);
 
   // Filtros avançados (estilo PNCP)
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
@@ -1481,6 +1483,15 @@ export default function MuralLicitacoes() {
               <Link2 className="w-3.5 h-3.5" />
               Busca Direta
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCadastroManualAberto(true)}
+              className="gap-1.5 border-accent/30 text-accent hover:bg-accent/10 text-xs"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              Cadastrar Edital
+            </Button>
             <div className="flex items-center gap-2 bg-card border border-border/50 rounded-lg px-2.5 py-1.5">
               <Sparkles className="w-3.5 h-3.5 text-accent flex-shrink-0" />
               <label htmlFor="toggle-externos" className="text-[11px] sm:text-xs font-medium cursor-pointer select-none whitespace-nowrap">
@@ -2257,6 +2268,12 @@ export default function MuralLicitacoes() {
           onSuccess={() => setEditalInteresse(null)}
         />
       )}
+
+      <CadastroManualEdital
+        open={cadastroManualAberto}
+        onOpenChange={setCadastroManualAberto}
+        onSuccess={carregarMural}
+      />
     </div>
   );
 }
