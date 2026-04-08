@@ -47,9 +47,84 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
   const [isExtracting, setIsExtracting] = useState(false);
   const [itens, setItens] = useState<PlanilhaItem[]>([]);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [isCotando, setIsCotando] = useState(false);
+  const [cotacaoProgress, setCotacaoProgress] = useState(0);
+  const [cotacaoMsgs, setCotacaoMsgs] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const { extrairItensDoTexto } = useEditalExtraction();
   const { addItem, pendingItems } = usePropostaCart();
+
+  const handleCotarTodos = async () => {
+    if (itens.length === 0 || isCotando) return;
+    setIsCotando(true);
+    setCotacaoProgress(0);
+    setCotacaoMsgs([]);
+    let cotados = 0;
+
+    for (let idx = 0; idx < itens.length; idx++) {
+      const it = itens[idx];
+      setCotacaoProgress(Math.round(((idx) / itens.length) * 100));
+
+      try {
+        const { data, error } = await supabase.functions.invoke('price-search', {
+          body: {
+            descricao: it.descricao.slice(0, 200),
+            codigoCatmat: it.catmat || undefined,
+            modo: 'auto',
+          },
+        });
+
+        if (error || !data?.estatisticas) {
+          setCotacaoMsgs(prev => [...prev, `❌ Item ${it.item}: sem resultados`]);
+          continue;
+        }
+
+        const stats = data.estatisticas;
+        const bestPrice = stats.preco_sugerido > 0 ? stats.preco_sugerido : stats.mediana;
+
+        if (bestPrice <= 0) {
+          setCotacaoMsgs(prev => [...prev, `❌ Item ${it.item}: preço não encontrado`]);
+          continue;
+        }
+
+        // Find best result for marca
+        const results = data.resultados || [];
+        const closest = results
+          .filter((r: any) => r.preco_unitario > 0)
+          .sort((a: any, b: any) => Math.abs(a.preco_unitario - bestPrice) - Math.abs(b.preco_unitario - bestPrice))[0];
+
+        const marca = closest?.vendedor || closest?.ean?.replace('Marca: ', '') || '';
+        const valorTotal = Math.round(bestPrice * it.quantidade * 100) / 100;
+
+        setItens(prev => prev.map((item, i) => i === idx ? {
+          ...item,
+          valorUnitario: Math.round(bestPrice * 100) / 100,
+          valorTotal,
+          marca: item.marca || marca,
+        } : item));
+
+        // Calc diff vs reference
+        let diffMsg = '';
+        if (it.valorUnitarioRef && it.valorUnitarioRef > 0) {
+          const diff = ((bestPrice - it.valorUnitarioRef) / it.valorUnitarioRef) * 100;
+          const sinal = diff > 0 ? '+' : '';
+          diffMsg = ` | ${sinal}${diff.toFixed(1)}% vs referência`;
+        }
+
+        setCotacaoMsgs(prev => [...prev,
+          `✅ Item ${it.item}: ${formatCurrency(bestPrice)} (${stats.total_registros} fontes)${diffMsg}`
+        ]);
+        cotados++;
+      } catch (e) {
+        console.error(`Cotação item ${it.item}:`, e);
+        setCotacaoMsgs(prev => [...prev, `❌ Item ${it.item}: erro na busca`]);
+      }
+    }
+
+    setCotacaoProgress(100);
+    setIsCotando(false);
+    toast.success(`Cotação finalizada: ${cotados}/${itens.length} itens cotados.`);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
