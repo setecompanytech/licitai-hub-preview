@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   Upload, FileText, Loader2, X, Sparkles, Download, Trash2,
   Plus, CheckCircle, Edit3, Save, Package, FileSpreadsheet,
+  ShoppingCart, TrendingDown, TrendingUp, Minus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { extractTextFromFile } from '@/lib/pdf-text-extractor';
@@ -13,6 +14,7 @@ import { useEditalExtraction } from '@/hooks/useEditalExtraction';
 import { writeExcelFile } from '@/lib/excel-utils';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface PlanilhaItem {
   item: number;
@@ -45,9 +47,84 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
   const [isExtracting, setIsExtracting] = useState(false);
   const [itens, setItens] = useState<PlanilhaItem[]>([]);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [isCotando, setIsCotando] = useState(false);
+  const [cotacaoProgress, setCotacaoProgress] = useState(0);
+  const [cotacaoMsgs, setCotacaoMsgs] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const { extrairItensDoTexto } = useEditalExtraction();
   const { addItem, pendingItems } = usePropostaCart();
+
+  const handleCotarTodos = async () => {
+    if (itens.length === 0 || isCotando) return;
+    setIsCotando(true);
+    setCotacaoProgress(0);
+    setCotacaoMsgs([]);
+    let cotados = 0;
+
+    for (let idx = 0; idx < itens.length; idx++) {
+      const it = itens[idx];
+      setCotacaoProgress(Math.round(((idx) / itens.length) * 100));
+
+      try {
+        const { data, error } = await supabase.functions.invoke('price-search', {
+          body: {
+            descricao: it.descricao.slice(0, 200),
+            codigoCatmat: it.catmat || undefined,
+            modo: 'auto',
+          },
+        });
+
+        if (error || !data?.estatisticas) {
+          setCotacaoMsgs(prev => [...prev, `❌ Item ${it.item}: sem resultados`]);
+          continue;
+        }
+
+        const stats = data.estatisticas;
+        const bestPrice = stats.preco_sugerido > 0 ? stats.preco_sugerido : stats.mediana;
+
+        if (bestPrice <= 0) {
+          setCotacaoMsgs(prev => [...prev, `❌ Item ${it.item}: preço não encontrado`]);
+          continue;
+        }
+
+        // Find best result for marca
+        const results = data.resultados || [];
+        const closest = results
+          .filter((r: any) => r.preco_unitario > 0)
+          .sort((a: any, b: any) => Math.abs(a.preco_unitario - bestPrice) - Math.abs(b.preco_unitario - bestPrice))[0];
+
+        const marca = closest?.vendedor || closest?.ean?.replace('Marca: ', '') || '';
+        const valorTotal = Math.round(bestPrice * it.quantidade * 100) / 100;
+
+        setItens(prev => prev.map((item, i) => i === idx ? {
+          ...item,
+          valorUnitario: Math.round(bestPrice * 100) / 100,
+          valorTotal,
+          marca: item.marca || marca,
+        } : item));
+
+        // Calc diff vs reference
+        let diffMsg = '';
+        if (it.valorUnitarioRef && it.valorUnitarioRef > 0) {
+          const diff = ((bestPrice - it.valorUnitarioRef) / it.valorUnitarioRef) * 100;
+          const sinal = diff > 0 ? '+' : '';
+          diffMsg = ` | ${sinal}${diff.toFixed(1)}% vs referência`;
+        }
+
+        setCotacaoMsgs(prev => [...prev,
+          `✅ Item ${it.item}: ${formatCurrency(bestPrice)} (${stats.total_registros} fontes)${diffMsg}`
+        ]);
+        cotados++;
+      } catch (e) {
+        console.error(`Cotação item ${it.item}:`, e);
+        setCotacaoMsgs(prev => [...prev, `❌ Item ${it.item}: erro na busca`]);
+      }
+    }
+
+    setCotacaoProgress(100);
+    setIsCotando(false);
+    toast.success(`Cotação finalizada: ${cotados}/${itens.length} itens cotados.`);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -317,6 +394,19 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
               )}
             </div>
             <div className="flex gap-2 flex-wrap">
+              <Button
+                size="sm"
+                variant="default"
+                onClick={handleCotarTodos}
+                disabled={isCotando}
+                className="bg-primary hover:bg-primary/90"
+              >
+                {isCotando ? (
+                  <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Cotando...</>
+                ) : (
+                  <><ShoppingCart className="w-3.5 h-3.5 mr-1" /> Cotar Todos</>
+                )}
+              </Button>
               <Button variant="outline" size="sm" onClick={addEmptyItem}>
                 <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Item
               </Button>
@@ -332,6 +422,31 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
               </Button>
             </div>
           </div>
+
+          {/* Cotação progress */}
+          {isCotando && (
+            <div className="space-y-2">
+              <Progress value={cotacaoProgress} className="h-2" />
+              <p className="text-xs text-muted-foreground text-center">
+                Cotando itens... {cotacaoProgress}%
+              </p>
+            </div>
+          )}
+
+          {/* Cotação messages */}
+          {cotacaoMsgs.length > 0 && (
+            <div className="bg-muted/20 border border-border/30 rounded-lg p-3 max-h-40 overflow-y-auto space-y-0.5">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-semibold text-foreground">Resultado da Cotação</span>
+                <Button variant="ghost" size="sm" className="h-5 px-2 text-[10px]" onClick={() => setCotacaoMsgs([])}>
+                  Limpar
+                </Button>
+              </div>
+              {cotacaoMsgs.map((msg, i) => (
+                <p key={i} className="text-[11px] text-muted-foreground">{msg}</p>
+              ))}
+            </div>
+          )}
 
           {/* Table */}
           <div className="border border-border/40 rounded-lg overflow-x-auto">
@@ -422,8 +537,21 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
                       />
                     </td>
                     <td className="px-3 py-2 text-right text-xs font-semibold">
-                      {it.valorTotal != null ? (
-                        <span className="text-primary">{formatCurrency(it.valorTotal)}</span>
+                      {it.valorTotal != null && it.valorTotal > 0 ? (
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="text-primary">{formatCurrency(it.valorTotal)}</span>
+                          {it.valorUnitarioRef != null && it.valorUnitarioRef > 0 && it.valorUnitario != null && it.valorUnitario > 0 && (() => {
+                            const diff = ((it.valorUnitario - it.valorUnitarioRef) / it.valorUnitarioRef) * 100;
+                            const isLower = diff < -1;
+                            const isHigher = diff > 1;
+                            return (
+                              <span className={`text-[10px] flex items-center gap-0.5 ${isLower ? 'text-green-600' : isHigher ? 'text-red-500' : 'text-muted-foreground'}`}>
+                                {isLower ? <TrendingDown className="w-3 h-3" /> : isHigher ? <TrendingUp className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+                                {diff > 0 ? '+' : ''}{diff.toFixed(1)}%
+                              </span>
+                            );
+                          })()}
+                        </div>
                       ) : '—'}
                     </td>
                     <td className="px-3 py-2 text-center">
@@ -465,10 +593,10 @@ export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustos
           {/* Instructions */}
           <div className="bg-muted/20 border border-border/30 rounded-lg p-3 text-[11px] text-muted-foreground space-y-1">
             <p className="font-semibold text-foreground text-xs mb-1">📋 Instruções</p>
-            <p>• Preencha o <strong className="text-primary">Valor Unitário</strong> para cada item — o Valor Total é calculado automaticamente.</p>
+            <p>• Use <strong className="text-primary">"Cotar Todos"</strong> para o sistema buscar preços automaticamente no Google Shopping, Mercado Livre e demais plataformas.</p>
+            <p>• A cotação preenche <strong>Marca</strong>, <strong>Valor Unitário</strong> e <strong>Valor Total</strong> automaticamente, exibindo a <strong>% de diferença</strong> vs referência.</p>
             <p>• Os valores de referência do edital (quando disponíveis) são exibidos em <strong className="text-accent">laranja</strong>.</p>
-            <p>• Clique na descrição para editá-la. Use <strong>"Exportar Excel"</strong> para baixar a planilha de preços.</p>
-            <p>• Use <strong>"Enviar à Proposta"</strong> para transferir os itens precificados diretamente à Proposta Comercial.</p>
+            <p>• Use <strong>"Exportar Excel"</strong> para baixar a planilha e <strong>"Enviar à Proposta"</strong> para transferir os itens.</p>
           </div>
         </>
       )}
