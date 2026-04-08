@@ -59,6 +59,70 @@ function normalizeItem(item: ItemEdital, index: number) {
   };
 }
 
+// ── VALIDADOR DE ITENS ──────────────────────────────────────
+function validarItens(itens: any[]): any[] {
+  return itens.map((item) => {
+    const erros: string[] = [];
+    const warnings: string[] = [];
+    let score = 1.0;
+
+    // Campo obrigatório: descrição
+    if (!item.descricao || String(item.descricao).length < 5) {
+      erros.push("Descrição ausente ou muito curta");
+      score -= 0.4;
+    }
+
+    // Campo obrigatório: quantidade
+    const qtd = item.quantidade;
+    if (qtd == null) {
+      erros.push("Quantidade ausente");
+      score -= 0.3;
+    } else if (typeof qtd !== "number" || qtd <= 0) {
+      erros.push(`Quantidade inválida: ${qtd}`);
+      score -= 0.3;
+    }
+
+    // Campo obrigatório: unidade
+    if (!item.unidade) {
+      warnings.push("Unidade de medida ausente");
+      score -= 0.1;
+    }
+
+    // Validação matemática: qtd × vlr_unit ≈ vlr_total
+    const vlrUnit = item.valor_unitario;
+    const vlrTotal = item.valor_total;
+    if (vlrUnit && vlrTotal && qtd) {
+      try {
+        const calculado = Number(qtd) * Number(vlrUnit);
+        const total = Number(vlrTotal);
+        if (total > 0) {
+          const desvio = Math.abs(calculado - total) / total;
+          if (desvio > 0.05) {
+            warnings.push(
+              `Math: ${qtd} × R$${Number(vlrUnit).toFixed(2)} = R$${calculado.toFixed(2)} ≠ R$${Number(vlrTotal).toFixed(2)} (desvio ${(desvio * 100).toFixed(1)}%)`
+            );
+            score -= 0.2;
+          }
+        }
+      } catch {}
+    }
+
+    // Verificar número do item
+    if (item.item == null) {
+      warnings.push("Número do item ausente");
+      score -= 0.05;
+    }
+
+    return {
+      ...item,
+      confidence_score: Math.max(0, Math.round(score * 100) / 100),
+      erros,
+      warnings,
+      requer_revisao: erros.length > 0 || score < 0.7,
+    };
+  });
+}
+
 function parsePNCPNumeroControle(nc: string): { cnpj: string; seq: number; ano: number } | null {
   if (!nc) return null;
   const match = nc.replace(/\s/g, "").match(/^(\d{14})-(\d+)-\d+\/(\d{4})$/);
