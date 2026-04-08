@@ -198,7 +198,7 @@ export default function PropostaTecnica() {
         if (data.lineSpacing) setLineSpacing(data.lineSpacing);
         if (data.marginStyle) setMarginStyle(data.marginStyle);
         if (data.currentStep) setCurrentStep(data.currentStep);
-        if (data.timbradoUrl) setTimbradoUrl(data.timbradoUrl);
+        // timbradoUrl agora vem de empresaAtiva (Configurações Gerais)
         if (typeof data.usarMarcaDagua === 'boolean') setUsarMarcaDagua(data.usarMarcaDagua);
         toast.info('Rascunho restaurado automaticamente.');
       }
