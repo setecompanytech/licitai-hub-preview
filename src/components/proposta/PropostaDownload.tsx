@@ -147,7 +147,8 @@ function parseMarkdownTable(lines: string[]): { headers: string[]; rows: string[
 
 export default function PropostaDownload({
   proposal, numeroLicitacao, timbradoUrl,
-  empresaData, repData, bancData, itens, licitacaoData, telefone, email
+  empresaData, repData, bancData, itens, licitacaoData, telefone, email,
+  pageOrientation = 'portrait'
 }: PropostaDownloadProps) {
 
   const handlePDF = async (orientation: 'portrait' | 'landscape' = 'portrait') => {
