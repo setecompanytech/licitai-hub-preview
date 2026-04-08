@@ -59,6 +59,91 @@ function normalizeItem(item: ItemEdital, index: number) {
   };
 }
 
+// ── VALIDADOR DE ITENS ──────────────────────────────────────
+function validarItens(itens: any[]): any[] {
+  return itens.map((item) => {
+    const erros: string[] = [];
+    const warnings: string[] = [];
+    let score = 1.0;
+
+    // Campo obrigatório: descrição
+    if (!item.descricao || String(item.descricao).length < 5) {
+      erros.push("Descrição ausente ou muito curta");
+      score -= 0.4;
+    }
+
+    // Campo obrigatório: quantidade
+    const qtd = item.quantidade;
+    if (qtd == null) {
+      erros.push("Quantidade ausente");
+      score -= 0.3;
+    } else if (typeof qtd !== "number" || qtd <= 0) {
+      erros.push(`Quantidade inválida: ${qtd}`);
+      score -= 0.3;
+    }
+
+    // Campo obrigatório: unidade
+    if (!item.unidade) {
+      warnings.push("Unidade de medida ausente");
+      score -= 0.1;
+    }
+
+    // Validação matemática: qtd × vlr_unit ≈ vlr_total
+    const vlrUnit = item.valor_unitario;
+    const vlrTotal = item.valor_total;
+    if (vlrUnit && vlrTotal && qtd) {
+      try {
+        const calculado = Number(qtd) * Number(vlrUnit);
+        const total = Number(vlrTotal);
+        if (total > 0) {
+          const desvio = Math.abs(calculado - total) / total;
+          if (desvio > 0.05) {
+            warnings.push(
+              `Math: ${qtd} × R$${Number(vlrUnit).toFixed(2)} = R$${calculado.toFixed(2)} ≠ R$${Number(vlrTotal).toFixed(2)} (desvio ${(desvio * 100).toFixed(1)}%)`
+            );
+            score -= 0.2;
+          }
+        }
+      } catch {}
+    }
+
+    // Verificar número do item
+    if (item.item == null) {
+      warnings.push("Número do item ausente");
+      score -= 0.05;
+    }
+
+    return {
+      ...item,
+      confidence_score: Math.max(0, Math.round(score * 100) / 100),
+      erros,
+      warnings,
+      requer_revisao: erros.length > 0 || score < 0.7,
+    };
+  });
+}
+
+function buildSuccessResponse(itens: any[], fonte: string) {
+  const validados = validarItens(itens);
+  const total = validados.length;
+  const comErro = validados.filter((i: any) => i.erros?.length > 0).length;
+  const confiancaMedia = total > 0
+    ? validados.reduce((acc: number, i: any) => acc + (i.confidence_score || 0), 0) / total
+    : 0;
+
+  return new Response(JSON.stringify({
+    success: true,
+    data: validados,
+    total,
+    fonte,
+    meta: {
+      confianca_media: Math.round(confiancaMedia * 100) / 100,
+      itens_com_erro: comErro,
+      requer_revisao: comErro > 0 || confiancaMedia < 0.8,
+    },
+  }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
 function parsePNCPNumeroControle(nc: string): { cnpj: string; seq: number; ano: number } | null {
   if (!nc) return null;
   const match = nc.replace(/\s/g, "").match(/^(\d{14})-(\d+)-\d+\/(\d{4})$/);
@@ -170,12 +255,7 @@ Deno.serve(async (req) => {
 
         if (itens.length > 0) {
           console.log(`[extrair-itens] Claude extraiu ${itens.length} itens do PDF`);
-          return new Response(JSON.stringify({
-            success: true,
-            data: itens,
-            total: itens.length,
-            fonte: "CLAUDE_PDF",
-          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return buildSuccessResponse(itens, "CLAUDE_PDF");
         }
       } catch (e) {
         console.warn("[extrair-itens] Claude PDF falhou:", String(e));
@@ -203,12 +283,7 @@ Deno.serve(async (req) => {
 
           if (itens.length > 0) {
             console.log(`[extrair-itens] Claude extraiu ${itens.length} itens do PDF (URL)`);
-            return new Response(JSON.stringify({
-              success: true,
-              data: itens,
-              total: itens.length,
-              fonte: "CLAUDE_PDF_URL",
-            }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            return buildSuccessResponse(itens, "CLAUDE_PDF_URL");
           }
         }
       } catch (e) {
@@ -261,9 +336,7 @@ Deno.serve(async (req) => {
               situacao: item.situacaoCompraItemNome ?? null,
             })).filter((i: any) => i.descricao && i.descricao.trim().length > 0);
 
-            return new Response(JSON.stringify({
-              success: true, data: itens, total: itens.length, fonte: "PNCP_API",
-            }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            return buildSuccessResponse(itens, "PNCP_API");
           }
         }
       } catch (e) {
@@ -292,9 +365,7 @@ Deno.serve(async (req) => {
 
           if (itens.length > 0) {
             console.log(`[extrair-itens] Claude PNCP PDF extraiu ${itens.length} itens`);
-            return new Response(JSON.stringify({
-              success: true, data: itens, total: itens.length, fonte: "CLAUDE_PNCP_PDF",
-            }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            return buildSuccessResponse(itens, "CLAUDE_PNCP_PDF");
           }
         } catch (e) {
           console.warn("[extrair-itens] Claude PNCP PDF falhou:", String(e));
@@ -417,9 +488,7 @@ ${truncated}`,
 
     console.log(`[extrair-itens] Gemini retornou ${rawItens.length} itens brutos, ${itens.length} normalizados`);
 
-    return new Response(JSON.stringify({
-      success: true, data: itens, total: itens.length, fonte: "IA",
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return buildSuccessResponse(itens, "IA");
   } catch (error) {
     console.error("extrair-itens-edital error:", error);
     return new Response(JSON.stringify({

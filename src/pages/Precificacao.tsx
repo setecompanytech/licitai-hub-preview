@@ -36,6 +36,7 @@ import CatalogoPrecificados from '@/components/precificacao/CatalogoPrecificados
 import FontesManager from '@/components/precificacao/FontesManager';
 import CotacoesUnificado from '@/components/precificacao/CotacoesUnificado';
 import InteligenciaUnificada from '@/components/precificacao/InteligenciaUnificada';
+import RevisaoItensExtraidos, { type ItemExtraido } from '@/components/precificacao/RevisaoItensExtraidos';
 
 type FontePreco = {
   fonte: string;
@@ -669,6 +670,9 @@ Responda APENAS em JSON, sem markdown:
             <TabsTrigger value="inteligencia" className="gap-1.5">
               <Bot className="w-3.5 h-3.5" /> Inteligência de Preços
             </TabsTrigger>
+            <TabsTrigger value="extracao-itens" className="gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" /> Extração de Itens
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="marketplaces" className="space-y-4">
@@ -1294,6 +1298,14 @@ Responda APENAS em JSON, sem markdown:
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
               <InteligenciaUnificada />
             </div>
+          </TabsContent>
+
+          <TabsContent value="extracao-itens">
+            <RevisaoItensExtraidos
+              onAprovado={(itensAprovados) => {
+                toast.success(`${itensAprovados.length} itens prontos para precificação!`);
+              }}
+            />
           </TabsContent>
         </Tabs>
       </div>
