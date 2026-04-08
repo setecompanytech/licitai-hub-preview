@@ -1376,6 +1376,7 @@ export default function PropostaTecnica() {
                     fontSize={fontSize}
                     timbradoUrl={timbradoUrl}
                     usarMarcaDagua={usarMarcaDagua}
+                    pageOrientation={pageOrientation}
                   />
                 </div>
               </div>
