@@ -46,6 +46,7 @@ interface PlanilhaCustosEditalProps {
 }
 
 export default function PlanilhaCustosEdital({ onAddToProposta, licitacaoId }: PlanilhaCustosEditalProps) {
+  const { user } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [itens, setItens] = useState<PlanilhaItem[]>([]);
