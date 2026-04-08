@@ -38,12 +38,23 @@ ITEM A PESQUISAR:
 - Descrição: ${descricao}
 - Código CATMAT: ${codigoCatmat ?? 'não informado'}
 - Especificações: ${especificacoes ?? 'não informadas'}
+- Unidade de Fornecimento: ${unidade ?? 'não informada'}
+- Quantidade: ${quantidade ?? 'não informada'}
+
+REGRA CRÍTICA DE UNIDADE:
+Analise a descrição E a unidade de fornecimento juntas para entender EXATAMENTE o que está sendo comprado.
+Exemplos de erros a evitar:
+- Se a unidade é "RESMA" (500 folhas) e a descrição diz "papel A4", busque o preço da RESMA, não do pacote com 100 folhas.
+- Se a unidade é "PCT C/1000" e o produto é vendido em pacotes de 500, o preço deve ser multiplicado por 2.
+- Se a unidade é "CX C/50" (caixa com 50 unidades), busque o preço da caixa, não da unidade avulsa.
+- Se a unidade é "GL" (galão), não busque por litro.
+Inclua a informação de embalagem/acondicionamento nos termos de busca quando relevante.
 
 Gere termos de busca otimizados para encontrar este item em marketplaces (Mercado Livre, Google Shopping, Amazon).
 
 REGRAS IMPORTANTES:
-1. "termos_marketplace" devem ser CURTOS (2 a 4 palavras), como um consumidor pesquisaria. Ex: "papel offset 120g", "toner HP 26A", "caneta BIC azul"
-2. "termos_gerais" podem ser mais descritivos (4 a 6 palavras)
+1. "termos_marketplace" devem ser CURTOS (2 a 4 palavras), como um consumidor pesquisaria. Ex: "papel offset 120g resma", "toner HP 26A", "caneta BIC azul caixa"
+2. "termos_gerais" podem ser mais descritivos (4 a 6 palavras), incluindo a embalagem/unidade
 3. Inclua variações comerciais do produto
 4. NÃO inclua dimensões exatas, normas técnicas ou especificações longas nos termos_marketplace
 
@@ -56,6 +67,7 @@ Responda APENAS com JSON válido:
   "marca_referencia": "marca citada ou null",
   "unidade_padrao": "UN|CX|KG|L|M|PCT|RM|etc",
   "fator_conversao": 1,
+  "unidade_busca": "descrição da unidade real de busca, ex: resma 500 folhas",
   "observacoes": null
 }`;
 
