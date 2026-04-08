@@ -341,7 +341,7 @@ export default function PlanilhaCustosEdital({ onAddToProposta, licitacaoId }: P
     toast.success('Planilha de preços exportada!');
   };
 
-  const handleAddAllToProposta = () => {
+  const handleAddAllToProposta = async () => {
     const validItens = itens.filter(it => it.valorUnitario != null && it.valorUnitario > 0);
     if (validItens.length === 0) {
       toast.error('Preencha os valores unitários antes de adicionar à proposta.');
@@ -362,6 +362,24 @@ export default function PlanilhaCustosEdital({ onAddToProposta, licitacaoId }: P
         valorTotalExtenso: valorPorExtenso(it.valorTotal ?? 0),
       });
     });
+
+    // Also persist to catalog linked to the process
+    if (user) {
+      const rows = validItens.map(it => ({
+        user_id: user.id,
+        descricao: it.descricao,
+        quantidade: it.quantidade,
+        unidade: it.unidade,
+        marca: it.marca || null,
+        custo_unitario: it.valorUnitario ?? 0,
+        preco_unitario: it.valorUnitario ?? 0,
+        preco_total: it.valorTotal ?? 0,
+        tipo_calculo: 'marketplace',
+        licitacao_id: licitacaoId || null,
+      }));
+      await supabase.from('catalogo_itens_precificados').insert(rows);
+    }
+
     toast.success(`${validItens.length} itens adicionados à Proposta Comercial!`);
   };
 
