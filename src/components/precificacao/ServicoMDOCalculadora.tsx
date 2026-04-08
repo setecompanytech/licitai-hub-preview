@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,6 +37,7 @@ const parseInput = (f: string): number => {
 const parsePerc = (v: string) => { const n = parseFloat(v); return isNaN(n) || n < 0 ? 0 : n; };
 
 interface Props {
+  licitacaoId?: string | null;
   regimeLabel: string;
   regime: string;
   ufCalculo: string;
@@ -45,7 +46,7 @@ interface Props {
   licitacaoOrgao: string;
 }
 
-export default function ServicoMDOCalculadora({ regimeLabel, regime, ufCalculo, ufNome, licitacaoNumero, licitacaoOrgao }: Props) {
+export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime, ufCalculo, ufNome, licitacaoNumero, licitacaoOrgao }: Props) {
   const { empresaAtiva } = useEmpresa();
   const { user } = useAuth();
 
@@ -61,6 +62,14 @@ export default function ServicoMDOCalculadora({ regimeLabel, regime, ufCalculo, 
     nrRegistroCCT: '', vigenciaCCT: '', vigenciaMeses: 12,
   });
   const updContrato = useCallback((k: keyof ParametrosContrato, v: any) => setContrato(p => ({ ...p, [k]: v })), []);
+
+  useEffect(() => {
+    setContrato(prev => ({
+      ...prev,
+      nrContratacao: licitacaoNumero || prev.nrContratacao,
+      orgao: licitacaoOrgao || prev.orgao,
+    }));
+  }, [licitacaoNumero, licitacaoOrgao]);
 
   // ── Cargo ──
   const [cargo, setCargo] = useState<CargoInput>({
@@ -145,6 +154,7 @@ export default function ServicoMDOCalculadora({ regimeLabel, regime, ufCalculo, 
       custo_unitario: result.quadroResumo.subtotalMod1a5,
       preco_unitario: result.quadroResumo.valorMensalEmpregado,
       preco_total: result.quadroResumo.valorMensalTotal,
+      licitacao_id: licitacaoId || null,
       margem_lucro: mod6.lucroPerc, regime_tributario: regime,
       licitacao_numero: contrato.nrContratacao || null,
       licitacao_orgao: contrato.orgao || null,

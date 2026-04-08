@@ -54,6 +54,12 @@ export type PesquisaMLResult = {
   };
 };
 
+type SaveCatalogContext = {
+  licitacaoId?: string | null;
+  licitacaoNumero?: string;
+  licitacaoOrgao?: string;
+};
+
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -181,7 +187,7 @@ function useQuickAddToProposta() {
 }
 
 /** Save item to catalog with real image */
-async function saveItemToCatalog(item: FornecedorML, userId: string) {
+async function saveItemToCatalog(item: FornecedorML, userId: string, contexto?: SaveCatalogContext) {
   const allImages = (item.images?.length ? item.images : (item.image_url ? [item.image_url] : [])).filter(isValidImageUrl);
   
   const { error } = await supabase.from('catalogo_itens_precificados').insert({
@@ -191,15 +197,19 @@ async function saveItemToCatalog(item: FornecedorML, userId: string) {
     quantidade: 1,
     unidade: 'UN',
     marca: item.marca || null,
+    fabricante: item.marca || null,
     modelo: item.modelo || null,
     custo_unitario: item.preco,
     preco_unitario: item.preco,
     preco_total: item.preco,
+    licitacao_id: contexto?.licitacaoId || null,
+    licitacao_numero: contexto?.licitacaoNumero || null,
+    licitacao_orgao: contexto?.licitacaoOrgao || null,
     detalhes: {
       image_url: allImages[0] || null,
       images: allImages.slice(0, 6),
       loja: item.loja,
-      url: item.url,
+      url: getEffectiveUrl(item),
       condicao: item.condicao,
       frete: item.frete,
       avaliacao: item.avaliacao,
@@ -580,11 +590,17 @@ export function PesquisaResultML({
   isLoading,
   isLoadingImages,
   rawMarkdown,
+  licitacaoId,
+  licitacaoNumero,
+  licitacaoOrgao,
 }: {
   data: PesquisaMLResult | null;
   isLoading: boolean;
   isLoadingImages?: boolean;
   rawMarkdown?: string;
+  licitacaoId?: string | null;
+  licitacaoNumero?: string;
+  licitacaoOrgao?: string;
 }) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortMode, setSortMode] = useState<'relevante' | 'menor' | 'maior'>('relevante');
@@ -598,7 +614,7 @@ export function PesquisaResultML({
       toast.error('Faça login para salvar no catálogo');
       return;
     }
-    saveItemToCatalog(item, user.id);
+    void saveItemToCatalog(item, user.id, { licitacaoId, licitacaoNumero, licitacaoOrgao });
   };
 
   const handleSaveAllToCatalog = async () => {
@@ -619,6 +635,9 @@ export function PesquisaResultML({
           custo_unitario: item.preco,
           preco_unitario: item.preco,
           preco_total: item.preco,
+          licitacao_id: licitacaoId || null,
+          licitacao_numero: licitacaoNumero || null,
+          licitacao_orgao: licitacaoOrgao || null,
           detalhes: {
             image_url: allImages[0] || null,
             images: allImages.slice(0, 6),
