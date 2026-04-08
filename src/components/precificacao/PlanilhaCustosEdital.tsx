@@ -41,9 +41,10 @@ const parseCurrencyInput = (v: string): number | null => {
 
 interface PlanilhaCustosEditalProps {
   onAddToProposta?: (itens: PlanilhaItem[]) => void;
+  licitacaoId?: string | null;
 }
 
-export default function PlanilhaCustosEdital({ onAddToProposta }: PlanilhaCustosEditalProps) {
+export default function PlanilhaCustosEdital({ onAddToProposta, licitacaoId }: PlanilhaCustosEditalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [itens, setItens] = useState<PlanilhaItem[]>([]);
