@@ -300,6 +300,21 @@ export default function Documentos() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingUploadIdx = useRef<number | null>(null);
   const { user } = useAuth();
+  const { processoId } = useProcessoAtivo();
+  const { resolveLinkedEditalText } = useLinkedEditalSource();
+  const [editalTexto, setEditalTexto] = useState('');
+  const [loadingEdital, setLoadingEdital] = useState(false);
+
+  // Resolve edital text when processo ativo changes
+  useEffect(() => {
+    if (!processoId || !user) { setEditalTexto(''); return; }
+    let cancelled = false;
+    setLoadingEdital(true);
+    resolveLinkedEditalText(processoId).then(result => {
+      if (!cancelled) setEditalTexto(result.text || '');
+    }).catch(() => {}).finally(() => { if (!cancelled) setLoadingEdital(false); });
+    return () => { cancelled = true; };
+  }, [processoId, user, resolveLinkedEditalText]);
 
   // Validade dialog state
   const [validadeDialogOpen, setValidadeDialogOpen] = useState(false);
