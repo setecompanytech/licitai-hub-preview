@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,10 +20,13 @@ import {
 import MergeDocumentos from '@/components/documentos/MergeDocumentos';
 import AtestadosCapacidadeTecnica from '@/components/documentos/AtestadosCapacidadeTecnica';
 import AlertaVencimentoDocumentos from '@/components/documentos/AlertaVencimentoDocumentos';
+import VerificadorDocumentos from '@/components/documentos/VerificadorDocumentos';
 import ChecklistModalidade from '@/components/licitacoes/ChecklistModalidade';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
+import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 type DocStatus = 'ok' | 'pendente' | 'vencido' | 'ausente';
