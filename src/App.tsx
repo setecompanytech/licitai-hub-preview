@@ -88,6 +88,8 @@ const DpaPage = lazy(() => import("./pages/DpaPage"));
 const AgentePage = lazy(() => import("./pages/AgentePage"));
 const CentralAvisos = lazy(() => import("./pages/CentralAvisos"));
 const PreferenciasAlertas = lazy(() => import("./pages/PreferenciasAlertas"));
+const MetricasSaaS = lazy(() => import("./pages/MetricasSaaS"));
+const Investidores = lazy(() => import("./pages/Investidores"));
 
 const queryClient = new QueryClient();
 
@@ -197,6 +199,8 @@ const App = () => (
               <Route path="/agente" element={<PlanPages><AgentePage /></PlanPages>} />
               <Route path="/avisos" element={<ProtectedPages><CentralAvisos /></ProtectedPages>} />
               <Route path="/configuracoes/alertas" element={<ProtectedPages><PreferenciasAlertas /></ProtectedPages>} />
+              <Route path="/admin/metricas-saas" element={<ProtectedPages><AdminGuard><MetricasSaaS /></AdminGuard></ProtectedPages>} />
+              <Route path="/investidores" element={<Investidores />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             </Suspense>
