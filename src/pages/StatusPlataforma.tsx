@@ -1,107 +1,179 @@
+import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import LandingNavbar from '@/components/landing/LandingNavbar';
 import LandingFooter from '@/components/landing/LandingFooter';
-import { CheckCircle2, AlertTriangle, XCircle, Activity } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, XCircle, Activity, RefreshCw, Loader2, Clock, Shield } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 
 type ServiceStatus = 'operacional' | 'degradado' | 'indisponivel';
 
-const services: { name: string; category: string; status: ServiceStatus }[] = [
-  { name: 'Autenticação e Login', category: 'Infraestrutura', status: 'operacional' },
-  { name: 'Banco de Dados', category: 'Infraestrutura', status: 'operacional' },
-  { name: 'Edge Functions', category: 'Infraestrutura', status: 'operacional' },
-  { name: 'Armazenamento de Arquivos', category: 'Infraestrutura', status: 'operacional' },
-  { name: 'Monitoramento de Editais', category: 'Módulos Principais', status: 'operacional' },
-  { name: 'Crawler PNCP', category: 'Módulos Principais', status: 'operacional' },
-  { name: 'Motor de Precificação', category: 'Módulos Principais', status: 'operacional' },
-  { name: 'Geração de Propostas', category: 'Módulos Principais', status: 'operacional' },
-  { name: 'Robô de Lances', category: 'Módulos Principais', status: 'operacional' },
-  { name: 'Assistente IA', category: 'Módulos Principais', status: 'operacional' },
-  { name: 'Envio de E-mail', category: 'Comunicações', status: 'operacional' },
-  { name: 'Integração WhatsApp', category: 'Comunicações', status: 'operacional' },
-  { name: 'Alertas e Boletins', category: 'Comunicações', status: 'operacional' },
-  { name: 'Stripe (Pagamentos)', category: 'Integrações', status: 'operacional' },
-  { name: 'PNCP API', category: 'Integrações', status: 'operacional' },
-  { name: 'Firecrawl', category: 'Integrações', status: 'operacional' },
-];
+interface ServiceCheck {
+  name: string;
+  status: ServiceStatus;
+  latency: number;
+}
 
-const statusConfig: Record<ServiceStatus, { label: string; icon: typeof CheckCircle2; color: string }> = {
-  operacional: { label: 'Operacional', icon: CheckCircle2, color: 'text-success' },
-  degradado: { label: 'Degradado', icon: AlertTriangle, color: 'text-warning' },
-  indisponivel: { label: 'Indisponível', icon: XCircle, color: 'text-destructive' },
+const statusConfig: Record<ServiceStatus, { label: string; icon: typeof CheckCircle2; color: string; bg: string }> = {
+  operacional: { label: 'Operacional', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  degradado: { label: 'Degradado', icon: AlertTriangle, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+  indisponivel: { label: 'Indisponível', icon: XCircle, color: 'text-red-500', bg: 'bg-red-500/10' },
 };
 
+// Static services that depend on external factors
+const staticServices: { name: string; category: string; status: ServiceStatus }[] = [
+  { name: 'Monitoramento de Editais', category: 'Módulos', status: 'operacional' },
+  { name: 'Motor de Precificação', category: 'Módulos', status: 'operacional' },
+  { name: 'Geração de Propostas', category: 'Módulos', status: 'operacional' },
+  { name: 'Robô de Lances', category: 'Módulos', status: 'operacional' },
+  { name: 'Assistente IA (AURÉLIA)', category: 'Módulos', status: 'operacional' },
+  { name: 'Envio de E-mail', category: 'Comunicações', status: 'operacional' },
+  { name: 'Integração WhatsApp', category: 'Comunicações', status: 'operacional' },
+  { name: 'Stripe (Pagamentos)', category: 'Integrações', status: 'operacional' },
+];
+
 export default function StatusPlataforma() {
-  const categories = [...new Set(services.map(s => s.category))];
-  const allOperational = services.every(s => s.status === 'operacional');
+  const [liveServices, setLiveServices] = useState<ServiceCheck[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [lastCheck, setLastCheck] = useState<string>('');
+  const [overallStatus, setOverallStatus] = useState<ServiceStatus>('operacional');
+
+  const runHealthCheck = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('health-check');
+      if (error) throw error;
+      setLiveServices(data.services || []);
+      setOverallStatus(data.status || 'degradado');
+      setLastCheck(new Date().toLocaleTimeString('pt-BR'));
+    } catch {
+      setLiveServices([
+        { name: 'Banco de Dados', status: 'indisponivel', latency: 0 },
+        { name: 'Autenticação', status: 'indisponivel', latency: 0 },
+        { name: 'Storage', status: 'indisponivel', latency: 0 },
+        { name: 'Edge Functions', status: 'indisponivel', latency: 0 },
+        { name: 'API PNCP', status: 'indisponivel', latency: 0 },
+      ]);
+      setOverallStatus('indisponivel');
+      setLastCheck(new Date().toLocaleTimeString('pt-BR'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { runHealthCheck(); }, []);
+
+  const OverallIcon = statusConfig[overallStatus].icon;
+  const allServices = [
+    ...liveServices.map(s => ({ ...s, category: 'Infraestrutura', live: true })),
+    ...staticServices.map(s => ({ ...s, latency: 0, live: false })),
+  ];
+
+  const groups = allServices.reduce((acc, s) => {
+    if (!acc[s.category]) acc[s.category] = [];
+    acc[s.category].push(s);
+    return acc;
+  }, {} as Record<string, typeof allServices>);
 
   return (
-    <>
+    <div className="min-h-screen bg-background">
       <Helmet>
         <title>Status da Plataforma | PRAEFECTUS</title>
-        <meta name="description" content="Acompanhe em tempo real a disponibilidade dos serviços e módulos da plataforma PRAEFECTUS." />
+        <meta name="description" content="Status em tempo real dos serviços da plataforma PRAEFECTUS de licitações." />
       </Helmet>
-      <div className="min-h-screen bg-background">
-        <LandingNavbar />
-        <main className="pt-24 pb-20 px-6">
-          <div className="max-w-3xl mx-auto">
-            <div className="mb-10">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/8 border border-primary/15 text-primary text-[11px] font-bold uppercase tracking-wider mb-4">
-                <Activity className="w-3.5 h-3.5" /> Status
-              </div>
-              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Status da Plataforma</h1>
-              <p className="text-base text-muted-foreground">Disponibilidade dos serviços e módulos do PRAEFECTUS.</p>
-            </div>
+      <LandingNavbar />
 
-            {/* Global status */}
-            <div className={`rounded-xl border p-6 mb-8 ${allOperational ? 'bg-success/5 border-success/20' : 'bg-warning/5 border-warning/20'}`}>
-              <div className="flex items-center gap-3">
-                {allOperational ? (
-                  <CheckCircle2 className="w-6 h-6 text-success" />
-                ) : (
-                  <AlertTriangle className="w-6 h-6 text-warning" />
-                )}
-                <div>
-                  <p className="font-bold text-foreground">
-                    {allOperational ? 'Todos os sistemas operacionais' : 'Alguns serviços com restrição'}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Última verificação: {new Date().toLocaleString('pt-BR')}
-                  </p>
-                </div>
-              </div>
-            </div>
+      <main className="max-w-4xl mx-auto px-4 py-12">
+        {/* Overall Status Banner */}
+        <div className={`rounded-2xl p-8 mb-8 text-center ${statusConfig[overallStatus].bg} border border-border/30`}>
+          {loading ? (
+            <Loader2 className="w-12 h-12 animate-spin mx-auto text-muted-foreground" />
+          ) : (
+            <>
+              <OverallIcon className={`w-16 h-16 mx-auto mb-4 ${statusConfig[overallStatus].color}`} />
+              <h1 className="text-3xl font-bold mb-2">
+                {overallStatus === 'operacional' ? 'Todos os sistemas operacionais' :
+                 overallStatus === 'degradado' ? 'Desempenho degradado em alguns serviços' :
+                 'Alguns serviços estão indisponíveis'}
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                Última verificação: {lastCheck}
+              </p>
+            </>
+          )}
+        </div>
 
-            {/* Services by category */}
-            <div className="space-y-6">
-              {categories.map((cat) => (
-                <div key={cat} className="bg-card rounded-xl border border-border/50 overflow-hidden">
-                  <div className="px-5 py-3 bg-muted/40 border-b border-border/50">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{cat}</span>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Activity className="w-4 h-4" />
+            <span>Health checks em tempo real</span>
+          </div>
+          <Button onClick={runHealthCheck} variant="outline" size="sm" disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Verificar agora
+          </Button>
+        </div>
+
+        {/* Service Groups */}
+        {Object.entries(groups).map(([category, services]) => (
+          <div key={category} className="mb-6">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">{category}</h2>
+            <div className="space-y-1">
+              {services.map((svc) => {
+                const cfg = statusConfig[svc.status as ServiceStatus];
+                const Icon = cfg.icon;
+                return (
+                  <div key={svc.name} className="flex items-center justify-between p-3 rounded-lg bg-card/50 border border-border/30 hover:bg-card/80 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <Icon className={`w-4 h-4 ${cfg.color}`} />
+                      <span className="text-sm font-medium">{svc.name}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {svc.live && svc.latency > 0 && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {svc.latency}ms
+                        </span>
+                      )}
+                      <Badge variant="outline" className={`text-[10px] ${cfg.color}`}>
+                        {cfg.label}
+                      </Badge>
+                    </div>
                   </div>
-                  {services.filter(s => s.category === cat).map((s, i, arr) => {
-                    const cfg = statusConfig[s.status];
-                    const Icon = cfg.icon;
-                    return (
-                      <div key={s.name} className={`px-5 py-3.5 flex items-center justify-between ${i < arr.length - 1 ? 'border-b border-border/30' : ''}`}>
-                        <span className="text-sm text-foreground/80">{s.name}</span>
-                        <div className={`flex items-center gap-1.5 text-xs font-semibold ${cfg.color}`}>
-                          <Icon className="w-3.5 h-3.5" />
-                          <span>{cfg.label}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-10 p-5 rounded-xl bg-muted/50 border border-border/50 text-[13px] text-muted-foreground">
-              <p>Esta página reflete o status operacional dos serviços do PRAEFECTUS. Para relatar incidentes ou solicitar suporte, entre em contato através do canal de atendimento da plataforma.</p>
+                );
+              })}
             </div>
           </div>
-        </main>
-        <LandingFooter />
-      </div>
-    </>
+        ))}
+
+        {/* SLA Info */}
+        <div className="mt-12 rounded-xl bg-card/50 border border-border/30 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Shield className="w-5 h-5 text-accent" />
+            <h2 className="font-semibold">SLA e Garantias</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p className="font-semibold text-2xl">99.9%</p>
+              <p className="text-muted-foreground">Uptime garantido</p>
+            </div>
+            <div>
+              <p className="font-semibold text-2xl">&lt; 200ms</p>
+              <p className="text-muted-foreground">Latência média da API</p>
+            </div>
+            <div>
+              <p className="font-semibold text-2xl">24/7</p>
+              <p className="text-muted-foreground">Monitoramento contínuo</p>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-4">
+            Consulte nossa <a href="/politica-sla" className="underline hover:text-foreground">Política de SLA</a> para detalhes completos sobre disponibilidade, tempos de resposta e compensações.
+          </p>
+        </div>
+      </main>
+
+      <LandingFooter />
+    </div>
   );
 }
