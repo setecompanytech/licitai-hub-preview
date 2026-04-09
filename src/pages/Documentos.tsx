@@ -20,10 +20,13 @@ import {
 import MergeDocumentos from '@/components/documentos/MergeDocumentos';
 import AtestadosCapacidadeTecnica from '@/components/documentos/AtestadosCapacidadeTecnica';
 import AlertaVencimentoDocumentos from '@/components/documentos/AlertaVencimentoDocumentos';
+import VerificadorDocumentos from '@/components/documentos/VerificadorDocumentos';
 import ChecklistModalidade from '@/components/licitacoes/ChecklistModalidade';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
+import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 type DocStatus = 'ok' | 'pendente' | 'vencido' | 'ausente';
@@ -297,6 +300,21 @@ export default function Documentos() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingUploadIdx = useRef<number | null>(null);
   const { user } = useAuth();
+  const { processoId } = useProcessoAtivo();
+  const { resolveLinkedEditalText } = useLinkedEditalSource();
+  const [editalTexto, setEditalTexto] = useState('');
+  const [loadingEdital, setLoadingEdital] = useState(false);
+
+  // Resolve edital text when processo ativo changes
+  useEffect(() => {
+    if (!processoId || !user) { setEditalTexto(''); return; }
+    let cancelled = false;
+    setLoadingEdital(true);
+    resolveLinkedEditalText(processoId).then(result => {
+      if (!cancelled) setEditalTexto(result.text || '');
+    }).catch(() => {}).finally(() => { if (!cancelled) setLoadingEdital(false); });
+    return () => { cancelled = true; };
+  }, [processoId, user, resolveLinkedEditalText]);
 
   // Validade dialog state
   const [validadeDialogOpen, setValidadeDialogOpen] = useState(false);
@@ -620,6 +638,9 @@ export default function Documentos() {
             <TabsTrigger value="checklist" className="flex items-center gap-1">
               <ClipboardList className="w-4 h-4" /> Checklist
             </TabsTrigger>
+            <TabsTrigger value="verificador" className="flex items-center gap-1">
+              <Bot className="w-4 h-4" /> Conferência IA
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="documentos" className="space-y-4">
@@ -758,6 +779,32 @@ export default function Documentos() {
 
           <TabsContent value="checklist">
             <ChecklistModalidade />
+          </TabsContent>
+
+          <TabsContent value="verificador" className="space-y-4">
+            {!processoId ? (
+              <div className="text-center py-10 text-muted-foreground text-sm space-y-2">
+                <Bot className="w-10 h-10 mx-auto opacity-40" />
+                <p>Selecione um <strong>Processo Ativo</strong> (parâmetro <code>?lid=</code>) para usar a Conferência Documental por IA.</p>
+                <p className="text-xs">A IA lê o edital vinculado ao processo, extrai os documentos exigidos e cruza com os já anexados no sistema.</p>
+              </div>
+            ) : loadingEdital ? (
+              <div className="text-center py-10 text-muted-foreground text-sm">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                Carregando edital do processo...
+              </div>
+            ) : !editalTexto ? (
+              <div className="text-center py-10 text-muted-foreground text-sm space-y-2">
+                <FileText className="w-10 h-10 mx-auto opacity-40" />
+                <p>Nenhum edital encontrado para este processo.</p>
+                <p className="text-xs">Faça upload do edital na aba <strong>Documentos</strong> ou vincule um edital ao processo.</p>
+              </div>
+            ) : (
+              <VerificadorDocumentos
+                editalTexto={editalTexto}
+                licitacaoId={processoId}
+              />
+            )}
           </TabsContent>
         </Tabs>
 
