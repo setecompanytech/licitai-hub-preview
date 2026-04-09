@@ -638,6 +638,9 @@ export default function Documentos() {
             <TabsTrigger value="checklist" className="flex items-center gap-1">
               <ClipboardList className="w-4 h-4" /> Checklist
             </TabsTrigger>
+            <TabsTrigger value="verificador" className="flex items-center gap-1">
+              <Bot className="w-4 h-4" /> Conferência IA
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="documentos" className="space-y-4">
