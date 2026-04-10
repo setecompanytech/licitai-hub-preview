@@ -64,6 +64,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
   const [itens, setItens] = useState<ContratoItem[]>([]);
+  const [aditivos, setAditivos] = useState<AditivoRef[]>([]);
   const [nfsSync, setNfsSync] = useState<NotaFiscalSync[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
