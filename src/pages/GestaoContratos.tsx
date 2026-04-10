@@ -249,10 +249,7 @@ export default function GestaoContratos() {
           <TabsContent value="itens"><ContratoItens contratoId={c.id} /></TabsContent>
           <TabsContent value="pedidos"><ContratoPedidos contratoId={c.id} /></TabsContent>
           <TabsContent value="contratos-aditivos">
-            <div className="space-y-6">
-              <ContratoArquivos contratoId={c.id} />
-              <ContratoAditivos contratoId={c.id} />
-            </div>
+            <ContratoArquivos contratoId={c.id} />
           </TabsContent>
         </Tabs>
       </AppLayout>
