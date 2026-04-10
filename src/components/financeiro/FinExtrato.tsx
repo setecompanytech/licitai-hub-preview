@@ -109,7 +109,7 @@ export default function FinExtrato() {
       descricao: newForm.descricao, valor: parseFloat(newForm.valor.replace(',', '.')) || 0,
       tipo_lancamento: newForm.tipo_lancamento, data_lancamento: newForm.data_lancamento || new Date().toISOString().split('T')[0],
       conta_id: newForm.conta_id, categoria_id: newForm.categoria_id || null,
-      conciliado: false,
+      conciliado_em: null,
     });
     setSaving(false);
     if (error) { toast.error(error.message); return; }

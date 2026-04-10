@@ -28,7 +28,6 @@ interface CPRow {
   conta_corrente_id: string | null;
   observacoes: string | null;
   numero_documento: string | null;
-  descricao: string | null;
   origem: string | null;
 }
 
@@ -80,7 +79,7 @@ export default function FinKanbanPagamentos() {
     setLoading(true);
     const eid = empresaAtiva!.id;
     const [cpRes, pesRes, catRes, ctRes] = await Promise.all([
-      supabase.from('fin_contas_pagar').select('id, favorecido_nome, valor_documento, data_vencimento, status, parcela_numero, parcela_total, categoria_id, conta_corrente_id, observacoes, numero_documento, descricao, origem').eq('empresa_id', eid).order('data_vencimento'),
+      supabase.from('fin_contas_pagar').select('id, favorecido_nome, valor_documento, data_vencimento, status, parcela_numero, parcela_total, categoria_id, conta_corrente_id, observacoes, numero_documento, origem').eq('empresa_id', eid).order('data_vencimento'),
       supabase.from('fin_pessoas').select('id, razao_social').eq('empresa_id', eid),
       supabase.from('fin_categorias').select('id, nome').eq('empresa_id', eid).eq('tipo', 'despesa'),
       supabase.from('fin_contas').select('id, nome').eq('empresa_id', eid).eq('ativo', true),
