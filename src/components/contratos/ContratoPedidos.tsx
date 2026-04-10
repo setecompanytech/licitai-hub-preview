@@ -112,11 +112,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
   const load = async () => {
     setLoading(true);
-    const [pedidosRes, itensRes, nfsRes, preNotasRes] = await Promise.all([
+    const [pedidosRes, itensRes, nfsRes, preNotasRes, aditivosRes] = await Promise.all([
       supabase.from('contrato_pedidos').select('*').eq('contrato_id', contratoId).order('data_pedido', { ascending: false }),
-      supabase.from('contrato_itens').select('id, descricao, unidade, valor_unitario').eq('contrato_id', contratoId),
+      supabase.from('contrato_itens').select('id, descricao, unidade, valor_unitario, origem_aditivo_id').eq('contrato_id', contratoId),
       supabase.from('notas_fiscais').select('id, numero_nf, tipo, status, valor_total, data_emissao, chave_acesso, contrato_pedido_id, natureza_operacao, destinatario_razao_social').eq('contrato_id', contratoId),
       supabase.from('pre_notas_fiscais' as any).select('id, status, natureza_operacao, valor_total, created_at, motivo_rejeicao, motivo_devolucao').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
+      supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
     ]);
     setPedidos((pedidosRes.data as any[]) || []);
     setItens((itensRes.data as any[]) || []);
