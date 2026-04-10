@@ -619,19 +619,24 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         <>
         <div className="rounded-lg border overflow-x-auto">
           <Table>
-            <TableHeader>
+             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs">N.o Pedido</TableHead>
-                <TableHead className="text-xs">Descrição</TableHead>
-                <TableHead className="text-xs text-right">Qtd</TableHead>
-                <TableHead className="text-xs text-right">Vlr Unit</TableHead>
-                <TableHead className="text-xs text-right">Vlr Total</TableHead>
-                <TableHead className="text-xs text-center">Data</TableHead>
-                <TableHead className="text-xs text-center">Status</TableHead>
-                <TableHead className="text-xs">NF Comercial</TableHead>
-                <TableHead className="text-xs">NF-e Financeiro</TableHead>
-                {podeVerCustos && <TableHead className="text-xs text-right">Custo Unit</TableHead>}
-                {podeVerCustos && <TableHead className="text-xs text-right">Custo Total</TableHead>}
+                <TableHead className="text-xs whitespace-nowrap cursor-pointer select-none" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : prev === 'desc' ? null : 'asc')}>
+                  <div className="flex items-center gap-1">
+                    N.º Pedido
+                    {sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : sortOrder === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUpDown className="w-3 h-3 text-muted-foreground/50" />}
+                  </div>
+                </TableHead>
+                <TableHead className="text-xs whitespace-nowrap">Descrição</TableHead>
+                <TableHead className="text-xs text-right whitespace-nowrap">Qtd</TableHead>
+                <TableHead className="text-xs text-right whitespace-nowrap">Vlr Unit</TableHead>
+                <TableHead className="text-xs text-right whitespace-nowrap">Vlr Total</TableHead>
+                <TableHead className="text-xs text-center whitespace-nowrap">Data</TableHead>
+                <TableHead className="text-xs text-center whitespace-nowrap">Status</TableHead>
+                <TableHead className="text-xs whitespace-nowrap">NF Comercial</TableHead>
+                <TableHead className="text-xs whitespace-nowrap">NF-e Financeiro</TableHead>
+                {podeVerCustos && <TableHead className="text-xs text-right whitespace-nowrap">Custo Unit</TableHead>}
+                {podeVerCustos && <TableHead className="text-xs text-right whitespace-nowrap">Custo Total</TableHead>}
                 <TableHead className="text-xs w-20"></TableHead>
               </TableRow>
             </TableHeader>
