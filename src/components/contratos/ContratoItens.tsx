@@ -1,9 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
-  Plus, Trash2, Loader2, Package, Edit, Save, X
+  Plus, Trash2, Loader2, Package
 } from 'lucide-react';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -22,32 +21,43 @@ type ContratoItem = {
   id: string; contrato_id: string; descricao: string; unidade: string;
   quantidade_contratada: number; valor_unitario: number; valor_total: number;
   quantidade_consumida: number; saldo_quantitativo: number; saldo_financeiro: number;
-  codigo_item: string | null; observacoes: string | null;
+  codigo_item: string | null; observacoes: string | null; origem_aditivo_id: string | null;
+};
+
+type Aditivo = {
+  id: string; numero_aditivo: string; tipo: string;
 };
 
 export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const { user } = useAuth();
   const [itens, setItens] = useState<ContratoItem[]>([]);
+  const [aditivos, setAditivos] = useState<Aditivo[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     descricao: '', unidade: 'UN', quantidade_contratada: '',
-    valor_unitario: '', codigo_item: '', observacoes: '',
+    valor_unitario: '', codigo_item: '', observacoes: '', origem_aditivo_id: '',
   });
 
-  const loadItens = async () => {
+  const loadData = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('contrato_itens')
-      .select('*')
-      .eq('contrato_id', contratoId)
-      .order('created_at', { ascending: true });
-    setItens((data as any[]) || []);
+    const [itensRes, aditivosRes] = await Promise.all([
+      supabase.from('contrato_itens').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
+      supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
+    ]);
+    setItens((itensRes.data as any[]) || []);
+    setAditivos((aditivosRes.data as any[]) || []);
     setLoading(false);
   };
 
-  useEffect(() => { loadItens(); }, [contratoId]);
+  useEffect(() => { loadData(); }, [contratoId]);
+
+  const getOrigemLabel = (aditivoId: string | null) => {
+    if (!aditivoId) return 'Contrato Original';
+    const ad = aditivos.find(a => a.id === aditivoId);
+    return ad ? `Aditivo ${ad.numero_aditivo}` : 'Aditivo';
+  };
 
   const handleSave = async () => {
     if (!form.descricao) { toast.error('Informe a descrição do item'); return; }
@@ -67,19 +77,20 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       saldo_financeiro: total,
       codigo_item: form.codigo_item || null,
       observacoes: form.observacoes || null,
+      origem_aditivo_id: form.origem_aditivo_id || null,
     } as any);
     setSaving(false);
     if (error) { toast.error('Erro ao salvar item'); return; }
     toast.success('Item cadastrado!');
     setDialogOpen(false);
-    setForm({ descricao: '', unidade: 'UN', quantidade_contratada: '', valor_unitario: '', codigo_item: '', observacoes: '' });
-    loadItens();
+    setForm({ descricao: '', unidade: 'UN', quantidade_contratada: '', valor_unitario: '', codigo_item: '', observacoes: '', origem_aditivo_id: '' });
+    loadData();
   };
 
   const handleDelete = async (id: string) => {
     await supabase.from('contrato_itens').delete().eq('id', id);
     toast.success('Item excluído');
-    loadItens();
+    loadData();
   };
 
   const totalContratado = itens.reduce((s, i) => s + i.valor_total, 0);
@@ -103,6 +114,18 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
           <DialogContent>
             <DialogHeader><DialogTitle>Cadastrar Item do Contrato</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-3 mt-3">
+              <div className="col-span-2">
+                <Label>Origem *</Label>
+                <Select value={form.origem_aditivo_id} onValueChange={v => setForm(f => ({ ...f, origem_aditivo_id: v === '__contrato__' ? '' : v }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecionar origem" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__contrato__">Contrato Original</SelectItem>
+                    {aditivos.map(a => (
+                      <SelectItem key={a.id} value={a.id}>Aditivo {a.numero_aditivo} ({a.tipo})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="col-span-2">
                 <Label>Descrição *</Label>
                 <Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} />
@@ -154,15 +177,16 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs">Código</TableHead>
-                <TableHead className="text-xs">Descrição</TableHead>
-                <TableHead className="text-xs text-center">UN</TableHead>
-                <TableHead className="text-xs text-right">Qtd Contratada</TableHead>
-                <TableHead className="text-xs text-right">Vlr Unitário</TableHead>
-                <TableHead className="text-xs text-right">Vlr Total</TableHead>
-                <TableHead className="text-xs text-right">Consumido</TableHead>
-                <TableHead className="text-xs text-right">Saldo Qtd</TableHead>
-                <TableHead className="text-xs text-right">Saldo R$</TableHead>
+                <TableHead className="text-xs whitespace-nowrap">Origem</TableHead>
+                <TableHead className="text-xs whitespace-nowrap">Código</TableHead>
+                <TableHead className="text-xs whitespace-nowrap">Descrição</TableHead>
+                <TableHead className="text-xs text-center whitespace-nowrap">UN</TableHead>
+                <TableHead className="text-xs text-right whitespace-nowrap">Qtd Contratada</TableHead>
+                <TableHead className="text-xs text-right whitespace-nowrap">Vlr Unitário</TableHead>
+                <TableHead className="text-xs text-right whitespace-nowrap">Vlr Total</TableHead>
+                <TableHead className="text-xs text-right whitespace-nowrap">Consumido</TableHead>
+                <TableHead className="text-xs text-right whitespace-nowrap">Saldo Qtd</TableHead>
+                <TableHead className="text-xs text-right whitespace-nowrap">Saldo R$</TableHead>
                 <TableHead className="text-xs w-10"></TableHead>
               </TableRow>
             </TableHeader>
@@ -173,20 +197,25 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 const lowStock = pct >= 80;
                 return (
                   <TableRow key={item.id} className={lowStock ? 'bg-warning/5' : ''}>
-                    <TableCell className="text-xs font-mono">{item.codigo_item || '—'}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">
+                      <Badge variant="outline" className="text-[10px] font-normal">
+                        {getOrigemLabel(item.origem_aditivo_id)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs font-mono whitespace-nowrap">{item.codigo_item || '—'}</TableCell>
                     <TableCell className="text-xs max-w-[200px] truncate">{item.descricao}</TableCell>
-                    <TableCell className="text-xs text-center">{item.unidade}</TableCell>
-                    <TableCell className="text-xs text-right">{item.quantidade_contratada}</TableCell>
-                    <TableCell className="text-xs text-right">{fmt(item.valor_unitario)}</TableCell>
-                    <TableCell className="text-xs text-right font-medium">{fmt(item.valor_total)}</TableCell>
-                    <TableCell className="text-xs text-right">
+                    <TableCell className="text-xs text-center whitespace-nowrap">{item.unidade}</TableCell>
+                    <TableCell className="text-xs text-right whitespace-nowrap">{item.quantidade_contratada}</TableCell>
+                    <TableCell className="text-xs text-right whitespace-nowrap">{fmt(item.valor_unitario)}</TableCell>
+                    <TableCell className="text-xs text-right font-medium whitespace-nowrap">{fmt(item.valor_total)}</TableCell>
+                    <TableCell className="text-xs text-right whitespace-nowrap">
                       {item.quantidade_consumida}
                       <span className="text-muted-foreground ml-1">({pct.toFixed(0)}%)</span>
                     </TableCell>
-                    <TableCell className={`text-xs text-right font-medium ${lowStock ? 'text-warning' : 'text-success'}`}>
+                    <TableCell className={`text-xs text-right font-medium whitespace-nowrap ${lowStock ? 'text-warning' : 'text-success'}`}>
                       {item.saldo_quantitativo}
                     </TableCell>
-                    <TableCell className={`text-xs text-right font-medium ${lowStock ? 'text-warning' : 'text-success'}`}>
+                    <TableCell className={`text-xs text-right font-medium whitespace-nowrap ${lowStock ? 'text-warning' : 'text-success'}`}>
                       {fmt(item.saldo_financeiro)}
                     </TableCell>
                     <TableCell>
