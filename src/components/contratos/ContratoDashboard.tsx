@@ -107,7 +107,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           <h4 className="text-xs font-semibold text-warning flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> Alertas</h4>
           {diasRestantes !== null && diasRestantes <= 60 && <p className="text-xs text-warning/80">Contrato vence em <strong>{diasRestantes} dias</strong></p>}
           {itensAlertaSaldo.map((i: any) => (
-            <p key={i.id} className="text-xs text-warning/80"><strong>{i.descricao}</strong>: saldo baixo (restam {i.saldo_quantitativo} {i.unidade})</p>
+            <p key={i.id} className="text-xs text-warning/80"><strong>{i.descricao}</strong>: saldo baixo (restam {i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo} {i.unidade})</p>
           ))}
         </div>
       )}
