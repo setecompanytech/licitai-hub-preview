@@ -29,11 +29,13 @@ const parseBRLInput = (value: string): string => {
 import {
   FileText, Plus, Search, Calendar, DollarSign, AlertTriangle,
   CheckCircle2, Clock, TrendingUp, Building2, Loader2, Trash2,
-  ArrowLeft, Package, ShoppingCart, BarChart3
+  ArrowLeft, Package, ShoppingCart, BarChart3, FilePlus2, Paperclip
 } from 'lucide-react';
 import ContratoItens from '@/components/contratos/ContratoItens';
 import ContratoPedidos from '@/components/contratos/ContratoPedidos';
 import ContratoDashboard from '@/components/contratos/ContratoDashboard';
+import ContratoArquivos from '@/components/contratos/ContratoArquivos';
+import ContratoAditivos from '@/components/contratos/ContratoAditivos';
 import ImportarContratoPDF from '@/components/contratos/ImportarContratoPDF';
 
 const formatCurrency = (v: number) =>
