@@ -74,6 +74,7 @@ export default function GestaoContratos() {
     fiscal_nome: '', fiscal_email: '', fiscal_telefone: '', observacoes: '',
   });
   const [pendingItens, setPendingItens] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
     if (!user) return;
