@@ -263,6 +263,49 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     load();
   };
 
+  const openEditDialog = (p: Pedido) => {
+    setEditingPedido(p);
+    setEditForm({
+      numero_pedido: p.numero_pedido || '',
+      descricao: p.descricao || '',
+      contrato_item_id: p.contrato_item_id || '',
+      quantidade: String(p.quantidade || ''),
+      valor_unitario: String(p.valor_unitario || ''),
+      data_pedido: p.data_pedido || '',
+      data_entrega: p.data_entrega || '',
+      status: p.status || 'pendente',
+      nota_fiscal: p.nota_fiscal || '',
+      observacoes: p.observacoes || '',
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingPedido) return;
+    const qty = parseFloat(editForm.quantidade) || 0;
+    const unit = parseFloat(editForm.valor_unitario) || 0;
+    setSavingEdit(true);
+    const { error } = await supabase.from('contrato_pedidos').update({
+      numero_pedido: editForm.numero_pedido,
+      descricao: editForm.descricao || null,
+      contrato_item_id: editForm.contrato_item_id || null,
+      quantidade: qty,
+      valor_unitario: unit,
+      valor_total: qty * unit,
+      data_pedido: editForm.data_pedido || null,
+      data_entrega: editForm.data_entrega || null,
+      status: editForm.status,
+      nota_fiscal: editForm.nota_fiscal || null,
+      observacoes: editForm.observacoes || null,
+    } as any).eq('id', editingPedido.id);
+    setSavingEdit(false);
+    if (error) { toast.error('Erro ao atualizar: ' + error.message); return; }
+    toast.success('Pedido atualizado.');
+    setEditDialogOpen(false);
+    setEditingPedido(null);
+    load();
+  };
+
   const removeExtractedItem = (key: string) => setExtractedItens(prev => prev.filter(i => i.key !== key));
   const updateExtractedItem = (key: string, field: string, value: string) =>
     setExtractedItens(prev => prev.map(i => i.key === key ? { ...i, [field]: value } : i));
