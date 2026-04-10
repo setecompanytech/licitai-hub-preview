@@ -2,11 +2,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
+import { toast } from 'sonner';
 import {
   DollarSign, TrendingUp, TrendingDown, Package, ShoppingCart, AlertTriangle,
-  Calendar, Percent, Loader2, Receipt, Lock
+  Calendar, Percent, Loader2, Receipt, Lock, Pencil, Check, X
 } from 'lucide-react';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -14,6 +17,8 @@ const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', c
 export default function ContratoDashboard({ contratoId }: { contratoId: string }) {
   const [data, setData] = useState<{ contrato: any; itens: any[]; pedidos: any[]; custos: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editingGlobal, setEditingGlobal] = useState(false);
+  const [globalInput, setGlobalInput] = useState('');
   const { temPermissao, isFinanceiro, isAdmin } = useMembroPermissoes();
 
   const podeVerCustos = isFinanceiro || isAdmin;
@@ -90,10 +95,43 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       {/* Cards visíveis para todos */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className="p-4">
-          <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] mb-1"><DollarSign className="w-3.5 h-3.5" /> Valor Global</div>
-          <p className="text-lg font-bold">{fmt(c.valor_global)}</p>
-          <Progress value={Math.min(pctConsumo, 100)} className="h-1.5 mt-2" />
-          <p className="text-[9px] text-muted-foreground mt-1">{pctConsumo.toFixed(1)}% consumido</p>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-1.5 text-muted-foreground text-[10px]"><DollarSign className="w-3.5 h-3.5" /> Valor Global</div>
+            {podeVerCustos && !editingGlobal && (
+              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => { setEditingGlobal(true); setGlobalInput(String(c.valor_global || 0)); }}>
+                <Pencil className="w-3 h-3" />
+              </Button>
+            )}
+          </div>
+          {editingGlobal ? (
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                step="0.01"
+                value={globalInput}
+                onChange={e => setGlobalInput(e.target.value)}
+                className="h-7 text-sm"
+                autoFocus
+              />
+              <Button size="icon" className="h-7 w-7 shrink-0" onClick={async () => {
+                const newVal = parseFloat(globalInput) || 0;
+                const { error } = await supabase.from('contratos').update({ valor_global: newVal, valor_global_original: newVal } as any).eq('id', contratoId);
+                if (error) { toast.error('Erro ao atualizar'); return; }
+                toast.success('Valor Global atualizado!');
+                setEditingGlobal(false);
+                // Reload data
+                const res = await supabase.from('contratos').select('*').eq('id', contratoId).single();
+                if (res.data) setData(prev => prev ? { ...prev, contrato: res.data } : prev);
+              }}><Check className="w-3 h-3" /></Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => setEditingGlobal(false)}><X className="w-3 h-3" /></Button>
+            </div>
+          ) : (
+            <>
+              <p className="text-lg font-bold">{fmt(c.valor_global)}</p>
+              <Progress value={Math.min(pctConsumo, 100)} className="h-1.5 mt-2" />
+              <p className="text-[9px] text-muted-foreground mt-1">{pctConsumo.toFixed(1)}% consumido</p>
+            </>
+          )}
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] mb-1"><TrendingUp className="w-3.5 h-3.5" /> Saldo</div>
