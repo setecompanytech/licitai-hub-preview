@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
-  Plus, Trash2, Loader2, Package
+  Plus, Trash2, Loader2, Package, Copy
 } from 'lucide-react';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -91,6 +91,20 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
     await supabase.from('contrato_itens').delete().eq('id', id);
     toast.success('Item excluído');
     loadData();
+  };
+
+  const handleDuplicate = async (item: ContratoItem) => {
+    // Open dialog pre-filled with item data, prompting user to select aditivo as origin
+    setForm({
+      descricao: item.descricao,
+      unidade: item.unidade,
+      quantidade_contratada: String(item.quantidade_contratada),
+      valor_unitario: String(item.valor_unitario),
+      codigo_item: item.codigo_item || '',
+      observacoes: `Duplicado do item "${item.descricao}" — vinculado a aditivo`,
+      origem_aditivo_id: '',
+    });
+    setDialogOpen(true);
   };
 
   const totalContratado = itens.reduce((s, i) => s + i.valor_total, 0);
@@ -219,9 +233,14 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       {fmt(item.saldo_financeiro)}
                     </TableCell>
                     <TableCell>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(item.id)}>
-                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                      </Button>
+                      <div className="flex items-center gap-0.5">
+                        <Button size="icon" variant="ghost" className="h-7 w-7" title="Duplicar item (aditivo)" onClick={() => handleDuplicate(item)}>
+                          <Copy className="w-3.5 h-3.5 text-accent" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(item.id)}>
+                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
