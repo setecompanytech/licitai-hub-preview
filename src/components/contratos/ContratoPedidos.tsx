@@ -626,8 +626,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                         <SelectContent>
                           <SelectItem value="__todos__">Todos os Itens</SelectItem>
                           <SelectItem value="__contrato__">Contrato Original</SelectItem>
-                          {aditivos.map(a => (
-                            <SelectItem key={a.id} value={a.id}>Aditivo {a.numero_aditivo} ({a.tipo})</SelectItem>
+                          {aditivos.map((a, idx) => (
+                            <SelectItem key={a.id} value={a.id}>{`${idx + 1}º Termo Aditivo`} ({a.tipo})</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
