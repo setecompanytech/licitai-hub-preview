@@ -36,7 +36,7 @@ import ContratoPedidos from '@/components/contratos/ContratoPedidos';
 import ContratoDashboard from '@/components/contratos/ContratoDashboard';
 import ContratoArquivos from '@/components/contratos/ContratoArquivos';
 import ContratoAditivos from '@/components/contratos/ContratoAditivos';
-import ContratoComissoes from '@/components/contratos/ContratoComissoes';
+
 import ImportarContratoPDF from '@/components/contratos/ImportarContratoPDF';
 
 const formatCurrency = (v: number) =>
@@ -245,7 +245,6 @@ export default function GestaoContratos() {
             <TabsTrigger value="itens"><Package className="w-3.5 h-3.5 mr-1" /> Itens</TabsTrigger>
             <TabsTrigger value="pedidos"><ShoppingCart className="w-3.5 h-3.5 mr-1" /> Pedidos</TabsTrigger>
             <TabsTrigger value="contratos-aditivos"><FilePlus2 className="w-3.5 h-3.5 mr-1" /> Contratos e Aditivos</TabsTrigger>
-            <TabsTrigger value="comissoes"><DollarSign className="w-3.5 h-3.5 mr-1" /> Comissões</TabsTrigger>
           </TabsList>
           <TabsContent value="dashboard"><ContratoDashboard contratoId={c.id} /></TabsContent>
           <TabsContent value="itens"><ContratoItens contratoId={c.id} /></TabsContent>
@@ -256,7 +255,6 @@ export default function GestaoContratos() {
               <ContratoAditivos contratoId={c.id} />
             </div>
           </TabsContent>
-          <TabsContent value="comissoes"><ContratoComissoes contratoId={c.id} /></TabsContent>
         </Tabs>
       </AppLayout>
     );

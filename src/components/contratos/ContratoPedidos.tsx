@@ -75,10 +75,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [preNfDialogOpen, setPreNfDialogOpen] = useState(false);
   const [preNotas, setPreNotas] = useState<any[]>([]);
 
-  // NF quitada dialog
+  // NF quitada dialog (setor financeiro)
   const [nfDialog, setNfDialog] = useState<Pedido | null>(null);
   const [nfNumero, setNfNumero] = useState('');
   const [nfData, setNfData] = useState('');
+  const [nfValorPago, setNfValorPago] = useState('');
   const [solicitandoComissao, setSolicitandoComissao] = useState(false);
 
   // Edit state
@@ -329,22 +330,26 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const updateExtractedItem = (key: string, field: string, value: string) =>
     setExtractedItens(prev => prev.map(i => i.key === key ? { ...i, [field]: value } : i));
 
-  // NF Quitada + Solicitação de Comissão
+  // NF Quitada — Fluxo do Financeiro: informa data/valor do pagamento, sistema auto-calcula comissão
   const openNfDialog = (pedido: Pedido) => {
     setNfDialog(pedido);
     setNfNumero(pedido.nota_fiscal || '');
     setNfData(pedido.data_quitacao || new Date().toISOString().split('T')[0]);
+    setNfValorPago(String(pedido.valor_total));
   };
 
-  const handleMarcarNfQuitada = async (solicitarComissao: boolean) => {
+  const handleMarcarNfQuitada = async () => {
     if (!nfDialog || !nfNumero.trim()) { toast.error('Informe o número da Nota Fiscal'); return; }
+    if (!nfData) { toast.error('Informe a data do pagamento'); return; }
+    const valorPago = parseFloat(nfValorPago) || 0;
+    if (valorPago <= 0) { toast.error('Informe o valor pago'); return; }
     setSolicitandoComissao(true);
 
-    // Update pedido with NF quitada
+    // 1. Update pedido with NF quitada
     const { error: updateErr } = await supabase.from('contrato_pedidos').update({
       nota_fiscal: nfNumero,
       nf_quitada: true,
-      data_quitacao: nfData || null,
+      data_quitacao: nfData,
     } as any).eq('id', nfDialog.id);
 
     if (updateErr) {
@@ -353,31 +358,60 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       return;
     }
 
-    // If requesting commission
-    if (solicitarComissao && user && empresaAtiva) {
-      const { error: comErr } = await supabase.from('comissoes_lancamentos' as any).insert({
-        empresa_id: empresaAtiva.id,
-        user_id: user.id,
-        solicitado_por: user.id,
-        tipo: 'nota_fiscal',
-        valor_base: nfDialog.valor_total,
-        desconto_percentual: 0,
-        percentual_comissao: 0,
-        valor_comissao: 0, // Admin will define
-        nota_fiscal: nfNumero,
-        status: 'pendente',
-        contrato_pedido_id: nfDialog.id,
-        observacoes: `Solicitação de comissão referente à NF ${nfNumero} quitada em ${nfData}. Pedido: ${nfDialog.numero_pedido}, Valor: ${fmt(nfDialog.valor_total)}`,
-      } as any);
+    // 2. Buscar vendedor responsável pelo contrato
+    const { data: contrato } = await supabase
+      .from('contratos')
+      .select('vendedor_user_id, empresa_id')
+      .eq('id', contratoId)
+      .single();
 
-      if (comErr) {
-        console.error('Erro ao solicitar comissão:', comErr);
-        toast.warning('NF marcada como quitada, mas houve erro ao solicitar comissão.');
-      } else {
-        toast.success('NF quitada registrada e comissão solicitada ao administrador!');
-      }
+    const vendedorId = (contrato as any)?.vendedor_user_id;
+    const empresaId = (contrato as any)?.empresa_id || empresaAtiva?.id;
+
+    if (!vendedorId || !empresaId) {
+      toast.warning('NF quitada registrada, mas não há vendedor vinculado ao contrato para cálculo de comissão.');
+      setSolicitandoComissao(false);
+      setNfDialog(null);
+      load();
+      return;
+    }
+
+    // 3. Buscar config de comissão do vendedor
+    const { data: comConfig } = await supabase
+      .from('comissoes_config' as any)
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .eq('ativo', true)
+      .maybeSingle();
+
+    const percentual = (comConfig as any)?.percentual || 0;
+    const valorFixo = (comConfig as any)?.valor_fixo || 0;
+    const tipoComissao = (comConfig as any)?.tipo_comissao || 'percentual';
+
+    const valorComissao = tipoComissao === 'percentual'
+      ? valorPago * (percentual / 100)
+      : valorFixo;
+
+    // 4. Criar lançamento de comissão automático
+    const { error: comErr } = await supabase.from('comissoes_lancamentos' as any).insert({
+      empresa_id: empresaId,
+      user_id: vendedorId,
+      solicitado_por: user?.id,
+      tipo: 'nota_fiscal',
+      valor_base: valorPago,
+      percentual_comissao: tipoComissao === 'percentual' ? percentual : 0,
+      valor_comissao: valorComissao,
+      nota_fiscal: nfNumero,
+      status: 'pendente',
+      contrato_pedido_id: nfDialog.id,
+      observacoes: `Comissão auto-calculada pelo financeiro. NF ${nfNumero} quitada em ${nfData}. Valor pago: ${fmt(valorPago)}. Comissão (${tipoComissao === 'percentual' ? percentual + '%' : 'fixo'}): ${fmt(valorComissao)}.`,
+    } as any);
+
+    if (comErr) {
+      console.error('Erro ao criar comissão:', comErr);
+      toast.warning('NF quitada, mas houve erro ao gerar comissão automaticamente.');
     } else {
-      toast.success('Nota Fiscal marcada como quitada.');
+      toast.success(`NF quitada! Comissão de ${fmt(valorComissao)} gerada para o vendedor responsável.`);
     }
 
     setSolicitandoComissao(false);
@@ -740,12 +774,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     )}
                     <TableCell>
                       <div className="flex gap-1">
-                        {!p.nf_quitada && p.status === 'entregue' && (
+                        {!p.nf_quitada && p.status === 'entregue' && (isFinanceiro || isAdmin) && (
                           <Button
                             size="sm" variant="outline"
                             className="h-7 px-2 text-[10px] text-success border-success/30 hover:bg-success/5"
                             onClick={() => openNfDialog(p)}
-                            title="Informar NF quitada e solicitar comissão"
+                            title="Registrar pagamento da NF-e e gerar comissão"
                           >
                             <DollarSign className="w-3 h-3 mr-1" /> NF Quitada
                           </Button>
@@ -801,20 +835,20 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         </>
       )}
 
-      {/* NF Quitada + Solicitar Comissão Dialog */}
+      {/* NF Quitada — Diálogo do Financeiro */}
       <Dialog open={!!nfDialog} onOpenChange={v => { if (!v) setNfDialog(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-success" />
-              Registrar NF Quitada
+              Registrar Pagamento de NF-e
             </DialogTitle>
           </DialogHeader>
           {nfDialog && (
             <div className="space-y-4">
               <div className="p-3 rounded-lg bg-muted/50 border text-xs space-y-1">
                 <p><strong>Pedido:</strong> {nfDialog.numero_pedido}</p>
-                <p><strong>Valor:</strong> {fmt(nfDialog.valor_total)}</p>
+                <p><strong>Valor do Pedido:</strong> {fmt(nfDialog.valor_total)}</p>
                 {nfDialog.descricao && <p><strong>Descrição:</strong> {nfDialog.descricao}</p>}
               </div>
 
@@ -824,34 +858,36 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               </div>
 
               <div>
-                <Label>Data de Quitação</Label>
+                <Label>Data do Pagamento *</Label>
                 <Input type="date" value={nfData} onChange={e => setNfData(e.target.value)} />
+              </div>
+
+              <div>
+                <Label>Valor Pago (R$) *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={nfValorPago}
+                  onChange={e => setNfValorPago(e.target.value)}
+                  placeholder="0,00"
+                />
               </div>
 
               <div className="p-3 rounded-lg bg-accent/5 border border-accent/20">
                 <p className="text-xs text-muted-foreground">
-                  Ao marcar a NF como quitada, você pode solicitar sua comissão ao administrador. 
-                  O valor será calculado conforme a regra configurada para seu perfil.
+                  Ao registrar o pagamento, o sistema calculará automaticamente a comissão do vendedor 
+                  responsável pelo contrato com base na configuração de comissão vigente.
                 </p>
               </div>
 
-              <div className="flex flex-col gap-2">
-                <Button
-                  onClick={() => handleMarcarNfQuitada(true)}
-                  disabled={solicitandoComissao || !nfNumero.trim()}
-                  className="bg-success hover:bg-success/90 text-success-foreground"
-                >
-                  {solicitandoComissao ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <DollarSign className="w-4 h-4 mr-1" />}
-                  Registrar NF e Solicitar Comissão
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => handleMarcarNfQuitada(false)}
-                  disabled={solicitandoComissao || !nfNumero.trim()}
-                >
-                  Apenas Registrar NF (sem comissão)
-                </Button>
-              </div>
+              <Button
+                onClick={handleMarcarNfQuitada}
+                disabled={solicitandoComissao || !nfNumero.trim() || !nfData || !(parseFloat(nfValorPago) > 0)}
+                className="w-full bg-success hover:bg-success/90 text-success-foreground"
+              >
+                {solicitandoComissao ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <DollarSign className="w-4 h-4 mr-1" />}
+                Confirmar Pagamento e Gerar Comissão
+              </Button>
             </div>
           )}
         </DialogContent>
