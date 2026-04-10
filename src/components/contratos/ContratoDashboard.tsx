@@ -17,6 +17,8 @@ const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', c
 export default function ContratoDashboard({ contratoId }: { contratoId: string }) {
   const [data, setData] = useState<{ contrato: any; itens: any[]; pedidos: any[]; custos: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editingGlobal, setEditingGlobal] = useState(false);
+  const [globalInput, setGlobalInput] = useState('');
   const { temPermissao, isFinanceiro, isAdmin } = useMembroPermissoes();
 
   const podeVerCustos = isFinanceiro || isAdmin;
