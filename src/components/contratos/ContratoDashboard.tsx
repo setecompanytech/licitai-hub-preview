@@ -15,7 +15,7 @@ import {
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
 export default function ContratoDashboard({ contratoId }: { contratoId: string }) {
-  const [data, setData] = useState<{ contrato: any; itens: any[]; pedidos: any[]; custos: any[] } | null>(null);
+  const [data, setData] = useState<{ contrato: any; itens: any[]; pedidos: any[]; custos: any[]; aditivos: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingGlobal, setEditingGlobal] = useState(false);
   const [globalInput, setGlobalInput] = useState('');
@@ -26,17 +26,19 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [contratoRes, itensRes, pedidosRes, custosRes] = await Promise.all([
+      const [contratoRes, itensRes, pedidosRes, custosRes, aditivosRes] = await Promise.all([
         supabase.from('contratos').select('*').eq('id', contratoId).single(),
         supabase.from('contrato_itens').select('*').eq('contrato_id', contratoId),
         supabase.from('contrato_pedidos').select('*').eq('contrato_id', contratoId),
         supabase.from('contrato_custos').select('*').eq('contrato_id', contratoId),
+        supabase.from('contrato_aditivos').select('*').eq('contrato_id', contratoId),
       ]);
       setData({
         contrato: contratoRes.data,
         itens: (itensRes.data as any[]) || [],
         pedidos: (pedidosRes.data as any[]) || [],
         custos: (custosRes.data as any[]) || [],
+        aditivos: (aditivosRes.data as any[]) || [],
       });
       setLoading(false);
     };
@@ -48,6 +50,12 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const c = data.contrato;
     const pedidosAtivos = data.pedidos.filter((p: any) => p.status !== 'cancelado');
     const faturamento = pedidosAtivos.reduce((s: number, p: any) => s + (p.valor_total || 0), 0);
+    
+    // Sum addendum acrescimos/supressoes
+    const totalAditivoValorAcrescimo = data.aditivos.reduce((s: number, a: any) => s + (a.valor_acrescimo || 0), 0);
+    const totalAditivoValorSupressao = data.aditivos.reduce((s: number, a: any) => s + (a.valor_supressao || 0), 0);
+    const totalAditivoQtdAcrescimo = data.aditivos.reduce((s: number, a: any) => s + (a.quantidade_acrescimo || 0), 0);
+    const totalAditivoQtdSupressao = data.aditivos.reduce((s: number, a: any) => s + (a.quantidade_supressao || 0), 0);
     
     // Custos from contrato_custos table
     const totalCustosTabela = data.custos.reduce((s: number, cc: any) => s + (cc.valor || 0), 0);
@@ -64,19 +72,31 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     
     const lucroBruto = faturamento - custosDiretos - custoPedidos;
     const lucroLiquido = faturamento - totalCustos;
-    const pctConsumo = c.valor_global > 0 ? (c.valor_consumido / c.valor_global) * 100 : 0;
+    
+    // valor_global already includes aditivos via trigger, use it directly
+    const valorGlobalEfetivo = c.valor_global || 0;
+    const pctConsumo = valorGlobalEfetivo > 0 ? (c.valor_consumido / valorGlobalEfetivo) * 100 : 0;
+    
     const diasRestantes = c.data_fim ? Math.ceil((new Date(c.data_fim).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
-    const itensAlertaSaldo = data.itens.filter((i: any) => i.quantidade_contratada > 0 && (i.quantidade_consumida / i.quantidade_contratada) * 100 >= 80);
+    
+    // For items, add addendum quantities proportionally
+    const itensComAditivo = data.itens.map((i: any) => {
+      const qtdContratadaTotal = (i.quantidade_contratada || 0) + totalAditivoQtdAcrescimo - totalAditivoQtdSupressao;
+      const saldoQtd = qtdContratadaTotal - (i.quantidade_consumida || 0);
+      return { ...i, quantidade_contratada_total: qtdContratadaTotal, saldo_quantitativo_efetivo: saldoQtd };
+    });
+    
+    const itensAlertaSaldo = itensComAditivo.filter((i: any) => i.quantidade_contratada_total > 0 && (i.quantidade_consumida / i.quantidade_contratada_total) * 100 >= 80);
     const meses: Record<string, number> = {};
     pedidosAtivos.forEach((p: any) => { if (p.data_pedido) { const k = p.data_pedido.substring(0, 7); meses[k] = (meses[k] || 0) + (p.valor_total || 0); } });
     const pedidosPorMes = Object.entries(meses).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
-    return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, itensAlertaSaldo, pedidosPorMes };
+    return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
   }, [data]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!calc) return <Card className="p-8 text-center text-muted-foreground">Contrato não encontrado</Card>;
 
-  const { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, itensAlertaSaldo, pedidosPorMes } = calc;
+  const { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao } = calc;
   const margemBruta = faturamento > 0 ? (lucroBruto / faturamento) * 100 : 0;
   const margemLiquida = faturamento > 0 ? (lucroLiquido / faturamento) * 100 : 0;
 
@@ -87,7 +107,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           <h4 className="text-xs font-semibold text-warning flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> Alertas</h4>
           {diasRestantes !== null && diasRestantes <= 60 && <p className="text-xs text-warning/80">Contrato vence em <strong>{diasRestantes} dias</strong></p>}
           {itensAlertaSaldo.map((i: any) => (
-            <p key={i.id} className="text-xs text-warning/80"><strong>{i.descricao}</strong>: saldo baixo (restam {i.saldo_quantitativo} {i.unidade})</p>
+            <p key={i.id} className="text-xs text-warning/80"><strong>{i.descricao}</strong>: saldo baixo (restam {i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo} {i.unidade})</p>
           ))}
         </div>
       )}
@@ -127,7 +147,10 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             </div>
           ) : (
             <>
-              <p className="text-lg font-bold">{fmt(c.valor_global)}</p>
+              <p className="text-lg font-bold">{fmt(valorGlobalEfetivo)}</p>
+              {totalAditivoValorAcrescimo > 0 && (
+                <p className="text-[9px] text-muted-foreground">Original: {fmt(c.valor_global_original || 0)} + Aditivos: {fmt(totalAditivoValorAcrescimo)}</p>
+              )}
               <Progress value={Math.min(pctConsumo, 100)} className="h-1.5 mt-2" />
               <p className="text-[9px] text-muted-foreground mt-1">{pctConsumo.toFixed(1)}% consumido</p>
             </>

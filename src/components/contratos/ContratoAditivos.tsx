@@ -56,8 +56,8 @@ const emptyForm = {
   observacoes: '',
 };
 
-const showValueFields = (tipo: string) => ['valor', 'valor_quantidade', 'escopo'].includes(tipo);
-const showQtyFields = (tipo: string) => ['quantidade', 'valor_quantidade'].includes(tipo);
+const showValueFields = (tipo: string) => ['valor', 'valor_quantidade', 'escopo', 'prazo'].includes(tipo);
+const showQtyFields = (tipo: string) => ['quantidade', 'valor_quantidade', 'prazo'].includes(tipo);
 
 export default function ContratoAditivos({ contratoId }: { contratoId: string }) {
   const { user } = useAuth();
