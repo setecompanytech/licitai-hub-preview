@@ -100,8 +100,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     numero_pedido: '', descricao: '', contrato_item_id: '',
     quantidade: '', valor_unitario: '', data_pedido: new Date().toISOString().split('T')[0],
     data_entrega: '', status: 'pendente', nota_fiscal: '', observacoes: '',
-    tipo_documento: 'ordem_fornecimento',
+    tipo_documento: 'ordem_fornecimento', origem_aditivo_id: '',
   });
+  const [origemFilter, setOrigemFilter] = useState<string>('__todos__');
 
   // Multi-item support
   const [extractedItens, setExtractedItens] = useState<Array<{
