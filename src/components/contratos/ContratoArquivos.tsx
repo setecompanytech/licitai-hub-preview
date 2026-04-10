@@ -312,7 +312,34 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
 
       if (error) throw error;
 
-      toast.success('Arquivo atualizado!');
+      // Sync aditivo record if type is aditivo
+      if (isAditivoType(editTipo)) {
+        const tipoAditivo = TIPOS_ARQUIVO[editTipo]?.tipoAditivo || 'valor';
+        const payload: any = {
+          contrato_id: contratoId,
+          user_id: user.id,
+          numero_aditivo: editAditivoForm.numero_aditivo || `${aditivos.length + 1}º Aditivo`,
+          tipo: tipoAditivo,
+          valor_acrescimo: showValueFields(editTipo) ? (parseFloat(editAditivoForm.valor_acrescimo) || 0) : 0,
+          valor_supressao: showValueFields(editTipo) ? (parseFloat(editAditivoForm.valor_supressao) || 0) : 0,
+          quantidade_acrescimo: showQtyFields(editTipo) ? (parseFloat(editAditivoForm.quantidade_acrescimo) || 0) : 0,
+          quantidade_supressao: showQtyFields(editTipo) ? (parseFloat(editAditivoForm.quantidade_supressao) || 0) : 0,
+          nova_data_fim: editAditivoForm.nova_data_fim || null,
+          data_assinatura: editAditivoForm.data_assinatura || null,
+          data_aditivo: editAditivoForm.data_assinatura || null,
+          justificativa: editAditivoForm.justificativa || null,
+          observacoes: editAditivoForm.observacoes || null,
+        };
+        payload.valor_aditivo = payload.valor_acrescimo - payload.valor_supressao;
+
+        if (editLinkedAditivoId) {
+          await supabase.from('contrato_aditivos').update(payload).eq('id', editLinkedAditivoId);
+        } else {
+          await supabase.from('contrato_aditivos').insert(payload);
+        }
+      }
+
+      toast.success('Documento atualizado!');
       setEditDialog({ open: false, arquivo: null });
       loadData();
     } catch (err: any) {
