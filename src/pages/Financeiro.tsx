@@ -1,61 +1,129 @@
+import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 import {
-  BarChart3, ArrowLeftRight, Receipt, Users, FileBarChart,
-  Landmark, ArrowDownCircle, ArrowUpCircle, RefreshCw, Barcode, Settings2
+  LayoutDashboard, ArrowDownCircle, ArrowUpCircle, Landmark,
+  FolderTree, Users, RefreshCw, BarChart3, Kanban, Barcode,
+  Receipt, ChevronLeft, ChevronRight,
 } from 'lucide-react';
-import FinDashboard from '@/components/financeiro/FinDashboard';
-import FinFluxoCaixa from '@/components/financeiro/FinFluxoCaixa';
-import FinNotasFiscais from '@/components/financeiro/FinNotasFiscais';
-import FinComissoes from '@/components/financeiro/FinComissoes';
+import FinHubDashboard from '@/components/financeiro/FinHubDashboard';
+import FinKanbanPagamentos from '@/components/financeiro/FinKanbanPagamentos';
+import FinContasPagar from '@/components/financeiro/FinContasPagar';
+import FinContasReceber from '@/components/financeiro/FinContasReceber';
+import FinContasBancarias from '@/components/financeiro/FinContasBancarias';
+import FinCategorias from '@/components/financeiro/FinCategorias';
+import FinPessoas from '@/components/financeiro/FinPessoas';
+import FinExtrato from '@/components/financeiro/FinExtrato';
 import FinRelatorios from '@/components/financeiro/FinRelatorios';
-import ContasBancarias from '@/components/financeiro/ContasBancarias';
-import ContasPagar from '@/components/financeiro/ContasPagar';
-import ContasReceber from '@/components/financeiro/ContasReceber';
-import ConciliacaoBancaria from '@/components/financeiro/ConciliacaoBancaria';
-import ConciliacaoRegras from '@/components/financeiro/ConciliacaoRegras';
+import FinNotasFiscais from '@/components/financeiro/FinNotasFiscais';
 import Boletos from '@/components/financeiro/Boletos';
 
+interface FinMenuItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  group: string;
+}
+
+const menuItems: FinMenuItem[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'Visão Geral' },
+  { id: 'kanban', label: 'Kanban Pagamentos', icon: Kanban, group: 'Visão Geral' },
+  { id: 'pagar', label: 'Contas a Pagar', icon: ArrowDownCircle, group: 'Operacional' },
+  { id: 'receber', label: 'Contas a Receber', icon: ArrowUpCircle, group: 'Operacional' },
+  { id: 'contas', label: 'Contas Bancárias', icon: Landmark, group: 'Operacional' },
+  { id: 'categorias', label: 'Categorias', icon: FolderTree, group: 'Cadastros' },
+  { id: 'pessoas', label: 'Clientes / Fornecedores', icon: Users, group: 'Cadastros' },
+  { id: 'extrato', label: 'Extrato / Conciliação', icon: RefreshCw, group: 'Movimentação' },
+  { id: 'nf', label: 'Notas Fiscais', icon: Receipt, group: 'Movimentação' },
+  { id: 'boletos', label: 'Boletos', icon: Barcode, group: 'Movimentação' },
+  { id: 'relatorios', label: 'Relatórios', icon: BarChart3, group: 'Relatórios' },
+];
+
+const groups = ['Visão Geral', 'Operacional', 'Cadastros', 'Movimentação', 'Relatórios'];
+
 export default function Financeiro() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'dashboard';
+  const [collapsed, setCollapsed] = useState(false);
+
+  const setActiveTab = (tab: string) => setSearchParams({ tab });
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard': return <FinHubDashboard />;
+      case 'kanban': return <FinKanbanPagamentos />;
+      case 'pagar': return <FinContasPagar />;
+      case 'receber': return <FinContasReceber />;
+      case 'contas': return <FinContasBancarias />;
+      case 'categorias': return <FinCategorias />;
+      case 'pessoas': return <FinPessoas />;
+      case 'extrato': return <FinExtrato />;
+      case 'nf': return <FinNotasFiscais />;
+      case 'boletos': return <Boletos />;
+      case 'relatorios': return <FinRelatorios />;
+      default: return <FinHubDashboard />;
+    }
+  };
+
   return (
     <AppLayout>
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Financeiro</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Gestão financeira completa: dashboard, fluxo de caixa, NF-e, comissões e relatórios
-        </p>
-      </div>
-
-      <Tabs defaultValue="dashboard" className="space-y-4">
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="dashboard"><BarChart3 className="w-3.5 h-3.5 mr-1" /> Dashboard</TabsTrigger>
-          <TabsTrigger value="fluxo"><ArrowLeftRight className="w-3.5 h-3.5 mr-1" /> Fluxo de Caixa</TabsTrigger>
-          <TabsTrigger value="nf"><Receipt className="w-3.5 h-3.5 mr-1" /> Notas Fiscais</TabsTrigger>
-          <TabsTrigger value="comissoes"><Users className="w-3.5 h-3.5 mr-1" /> Comissões</TabsTrigger>
-          <TabsTrigger value="contas"><Landmark className="w-3.5 h-3.5 mr-1" /> Contas</TabsTrigger>
-          <TabsTrigger value="pagar"><ArrowDownCircle className="w-3.5 h-3.5 mr-1" /> A Pagar</TabsTrigger>
-          <TabsTrigger value="receber"><ArrowUpCircle className="w-3.5 h-3.5 mr-1" /> A Receber</TabsTrigger>
-          <TabsTrigger value="conciliacao"><RefreshCw className="w-3.5 h-3.5 mr-1" /> Conciliação</TabsTrigger>
-          <TabsTrigger value="boletos"><Barcode className="w-3.5 h-3.5 mr-1" /> Boletos</TabsTrigger>
-          <TabsTrigger value="relatorios"><FileBarChart className="w-3.5 h-3.5 mr-1" /> Relatórios</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="dashboard"><FinDashboard /></TabsContent>
-        <TabsContent value="fluxo"><FinFluxoCaixa /></TabsContent>
-        <TabsContent value="nf"><FinNotasFiscais /></TabsContent>
-        <TabsContent value="comissoes"><FinComissoes /></TabsContent>
-        <TabsContent value="contas"><ContasBancarias /></TabsContent>
-        <TabsContent value="pagar"><ContasPagar /></TabsContent>
-        <TabsContent value="receber"><ContasReceber /></TabsContent>
-        <TabsContent value="conciliacao">
-          <div className="space-y-4">
-            <ConciliacaoBancaria />
-            <ConciliacaoRegras />
+      <div className="flex h-[calc(100vh-4rem)] -mt-2 -mx-2 sm:-mx-4">
+        {/* Sidebar financeiro */}
+        <aside
+          className={cn(
+            'border-r bg-muted/30 flex flex-col shrink-0 transition-all duration-200 overflow-y-auto',
+            collapsed ? 'w-14' : 'w-56'
+          )}
+        >
+          <div className="flex items-center justify-between px-3 py-3 border-b">
+            {!collapsed && <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Financeiro</span>}
+            <button onClick={() => setCollapsed(!collapsed)} className="p-1 rounded hover:bg-muted">
+              {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            </button>
           </div>
-        </TabsContent>
-        <TabsContent value="boletos"><Boletos /></TabsContent>
-        <TabsContent value="relatorios"><FinRelatorios /></TabsContent>
-      </Tabs>
+
+          <nav className="flex-1 py-2 px-1.5 space-y-1">
+            {groups.map((group) => {
+              const items = menuItems.filter((i) => i.group === group);
+              return (
+                <div key={group}>
+                  {!collapsed && (
+                    <p className="px-2 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {group}
+                    </p>
+                  )}
+                  {collapsed && <div className="my-1.5 mx-2 border-t" />}
+                  {items.map((item) => {
+                    const isActive = activeTab === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveTab(item.id)}
+                        title={collapsed ? item.label : undefined}
+                        className={cn(
+                          'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm transition-colors',
+                          isActive
+                            ? 'bg-primary/10 text-primary font-medium'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        )}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        {!collapsed && <span className="truncate">{item.label}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </nav>
+        </aside>
+
+        {/* Main content */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+          {renderContent()}
+        </main>
+      </div>
     </AppLayout>
   );
 }
