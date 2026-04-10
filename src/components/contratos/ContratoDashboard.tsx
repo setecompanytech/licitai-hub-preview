@@ -2,11 +2,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
+import { toast } from 'sonner';
 import {
   DollarSign, TrendingUp, TrendingDown, Package, ShoppingCart, AlertTriangle,
-  Calendar, Percent, Loader2, Receipt, Lock
+  Calendar, Percent, Loader2, Receipt, Lock, Pencil, Check, X
 } from 'lucide-react';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
