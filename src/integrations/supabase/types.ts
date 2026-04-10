@@ -2758,44 +2758,119 @@ export type Database = {
       }
       contrato_aditivos: {
         Row: {
+          arquivo_id: string | null
           contrato_id: string
           created_at: string
           data_aditivo: string | null
+          data_assinatura: string | null
           id: string
           justificativa: string | null
+          nova_data_fim: string | null
           numero_aditivo: string
+          observacoes: string | null
           prazo_adicional_dias: number | null
           tipo: string
+          updated_at: string
           user_id: string
+          valor_acrescimo: number
           valor_aditivo: number | null
+          valor_supressao: number
+        }
+        Insert: {
+          arquivo_id?: string | null
+          contrato_id: string
+          created_at?: string
+          data_aditivo?: string | null
+          data_assinatura?: string | null
+          id?: string
+          justificativa?: string | null
+          nova_data_fim?: string | null
+          numero_aditivo: string
+          observacoes?: string | null
+          prazo_adicional_dias?: number | null
+          tipo?: string
+          updated_at?: string
+          user_id: string
+          valor_acrescimo?: number
+          valor_aditivo?: number | null
+          valor_supressao?: number
+        }
+        Update: {
+          arquivo_id?: string | null
+          contrato_id?: string
+          created_at?: string
+          data_aditivo?: string | null
+          data_assinatura?: string | null
+          id?: string
+          justificativa?: string | null
+          nova_data_fim?: string | null
+          numero_aditivo?: string
+          observacoes?: string | null
+          prazo_adicional_dias?: number | null
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+          valor_acrescimo?: number
+          valor_aditivo?: number | null
+          valor_supressao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contrato_aditivos_arquivo_id_fkey"
+            columns: ["arquivo_id"]
+            isOneToOne: false
+            referencedRelation: "contrato_arquivos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_aditivos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contrato_arquivos: {
+        Row: {
+          contrato_id: string
+          created_at: string
+          descricao: string | null
+          id: string
+          nome_arquivo: string
+          storage_path: string
+          tamanho_bytes: number | null
+          tipo: string
+          updated_at: string
+          user_id: string
         }
         Insert: {
           contrato_id: string
           created_at?: string
-          data_aditivo?: string | null
+          descricao?: string | null
           id?: string
-          justificativa?: string | null
-          numero_aditivo: string
-          prazo_adicional_dias?: number | null
+          nome_arquivo: string
+          storage_path: string
+          tamanho_bytes?: number | null
           tipo?: string
+          updated_at?: string
           user_id: string
-          valor_aditivo?: number | null
         }
         Update: {
           contrato_id?: string
           created_at?: string
-          data_aditivo?: string | null
+          descricao?: string | null
           id?: string
-          justificativa?: string | null
-          numero_aditivo?: string
-          prazo_adicional_dias?: number | null
+          nome_arquivo?: string
+          storage_path?: string
+          tamanho_bytes?: number | null
           tipo?: string
+          updated_at?: string
           user_id?: string
-          valor_aditivo?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "contrato_aditivos_contrato_id_fkey"
+            foreignKeyName: "contrato_arquivos_contrato_id_fkey"
             columns: ["contrato_id"]
             isOneToOne: false
             referencedRelation: "contratos"
