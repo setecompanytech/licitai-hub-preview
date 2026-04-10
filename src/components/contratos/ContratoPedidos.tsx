@@ -835,20 +835,20 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         </>
       )}
 
-      {/* NF Quitada + Solicitar Comissão Dialog */}
+      {/* NF Quitada — Diálogo do Financeiro */}
       <Dialog open={!!nfDialog} onOpenChange={v => { if (!v) setNfDialog(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-success" />
-              Registrar NF Quitada
+              Registrar Pagamento de NF-e
             </DialogTitle>
           </DialogHeader>
           {nfDialog && (
             <div className="space-y-4">
               <div className="p-3 rounded-lg bg-muted/50 border text-xs space-y-1">
                 <p><strong>Pedido:</strong> {nfDialog.numero_pedido}</p>
-                <p><strong>Valor:</strong> {fmt(nfDialog.valor_total)}</p>
+                <p><strong>Valor do Pedido:</strong> {fmt(nfDialog.valor_total)}</p>
                 {nfDialog.descricao && <p><strong>Descrição:</strong> {nfDialog.descricao}</p>}
               </div>
 
@@ -858,34 +858,36 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               </div>
 
               <div>
-                <Label>Data de Quitação</Label>
+                <Label>Data do Pagamento *</Label>
                 <Input type="date" value={nfData} onChange={e => setNfData(e.target.value)} />
+              </div>
+
+              <div>
+                <Label>Valor Pago (R$) *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={nfValorPago}
+                  onChange={e => setNfValorPago(e.target.value)}
+                  placeholder="0,00"
+                />
               </div>
 
               <div className="p-3 rounded-lg bg-accent/5 border border-accent/20">
                 <p className="text-xs text-muted-foreground">
-                  Ao marcar a NF como quitada, você pode solicitar sua comissão ao administrador. 
-                  O valor será calculado conforme a regra configurada para seu perfil.
+                  Ao registrar o pagamento, o sistema calculará automaticamente a comissão do vendedor 
+                  responsável pelo contrato com base na configuração de comissão vigente.
                 </p>
               </div>
 
-              <div className="flex flex-col gap-2">
-                <Button
-                  onClick={() => handleMarcarNfQuitada(true)}
-                  disabled={solicitandoComissao || !nfNumero.trim()}
-                  className="bg-success hover:bg-success/90 text-success-foreground"
-                >
-                  {solicitandoComissao ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <DollarSign className="w-4 h-4 mr-1" />}
-                  Registrar NF e Solicitar Comissão
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => handleMarcarNfQuitada(false)}
-                  disabled={solicitandoComissao || !nfNumero.trim()}
-                >
-                  Apenas Registrar NF (sem comissão)
-                </Button>
-              </div>
+              <Button
+                onClick={handleMarcarNfQuitada}
+                disabled={solicitandoComissao || !nfNumero.trim() || !nfData || !(parseFloat(nfValorPago) > 0)}
+                className="w-full bg-success hover:bg-success/90 text-success-foreground"
+              >
+                {solicitandoComissao ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <DollarSign className="w-4 h-4 mr-1" />}
+                Confirmar Pagamento e Gerar Comissão
+              </Button>
             </div>
           )}
         </DialogContent>
