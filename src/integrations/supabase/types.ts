@@ -2769,6 +2769,8 @@ export type Database = {
           numero_aditivo: string
           observacoes: string | null
           prazo_adicional_dias: number | null
+          quantidade_acrescimo: number
+          quantidade_supressao: number
           tipo: string
           updated_at: string
           user_id: string
@@ -2788,6 +2790,8 @@ export type Database = {
           numero_aditivo: string
           observacoes?: string | null
           prazo_adicional_dias?: number | null
+          quantidade_acrescimo?: number
+          quantidade_supressao?: number
           tipo?: string
           updated_at?: string
           user_id: string
@@ -2807,6 +2811,8 @@ export type Database = {
           numero_aditivo?: string
           observacoes?: string | null
           prazo_adicional_dias?: number | null
+          quantidade_acrescimo?: number
+          quantidade_supressao?: number
           tipo?: string
           updated_at?: string
           user_id?: string
@@ -3113,6 +3119,7 @@ export type Database = {
           user_id: string
           valor_consumido: number
           valor_global: number
+          valor_global_original: number
           vigencia_meses: number | null
         }
         Insert: {
@@ -3140,6 +3147,7 @@ export type Database = {
           user_id: string
           valor_consumido?: number
           valor_global?: number
+          valor_global_original?: number
           vigencia_meses?: number | null
         }
         Update: {
@@ -3167,6 +3175,7 @@ export type Database = {
           user_id?: string
           valor_consumido?: number
           valor_global?: number
+          valor_global_original?: number
           vigencia_meses?: number | null
         }
         Relationships: [
