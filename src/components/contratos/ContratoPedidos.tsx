@@ -265,9 +265,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   };
 
   const handleDelete = async (id: string) => {
-    // Remove dependent records first to avoid FK constraint errors
+    // Remove/unlink ALL dependent records to avoid FK constraint errors
+    await supabase.from('comissoes_lancamentos' as any).delete().eq('contrato_pedido_id', id);
     await supabase.from('contrato_custos').delete().eq('contrato_pedido_id', id);
     await supabase.from('notas_fiscais').update({ contrato_pedido_id: null } as any).eq('contrato_pedido_id', id);
+    await supabase.from('contas_receber' as any).update({ contrato_pedido_id: null } as any).eq('contrato_pedido_id', id);
+    await supabase.from('pre_nota_itens' as any).update({ contrato_pedido_id: null } as any).eq('contrato_pedido_id', id);
     
     const { error } = await supabase.from('contrato_pedidos').delete().eq('id', id);
     if (error) {
