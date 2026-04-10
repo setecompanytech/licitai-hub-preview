@@ -4228,6 +4228,554 @@ export type Database = {
         }
         Relationships: []
       }
+      fin_categorias: {
+        Row: {
+          ativo: boolean | null
+          cor: string | null
+          created_at: string | null
+          empresa_id: string | null
+          icone: string | null
+          id: string
+          nome: string
+          pai_id: string | null
+          tipo: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          cor?: string | null
+          created_at?: string | null
+          empresa_id?: string | null
+          icone?: string | null
+          id?: string
+          nome: string
+          pai_id?: string | null
+          tipo: string
+        }
+        Update: {
+          ativo?: boolean | null
+          cor?: string | null
+          created_at?: string | null
+          empresa_id?: string | null
+          icone?: string | null
+          id?: string
+          nome?: string
+          pai_id?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_categorias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_categorias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_categorias_pai_id_fkey"
+            columns: ["pai_id"]
+            isOneToOne: false
+            referencedRelation: "fin_categorias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_centros_custo: {
+        Row: {
+          ativo: boolean | null
+          codigo: string | null
+          created_at: string | null
+          descricao: string | null
+          empresa_id: string | null
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          codigo?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean | null
+          codigo?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_centros_custo_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_centros_custo_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_comissoes: {
+        Row: {
+          contrato_ref: string | null
+          created_at: string | null
+          data_competencia: string
+          data_pagamento: string | null
+          empresa_id: string | null
+          id: string
+          lancamento_id: string | null
+          nome_comissionado: string
+          observacoes: string | null
+          percentual: number | null
+          status: string | null
+          tipo_origem: string | null
+          usuario_id: string | null
+          valor_base: number | null
+          valor_comissao: number
+        }
+        Insert: {
+          contrato_ref?: string | null
+          created_at?: string | null
+          data_competencia: string
+          data_pagamento?: string | null
+          empresa_id?: string | null
+          id?: string
+          lancamento_id?: string | null
+          nome_comissionado: string
+          observacoes?: string | null
+          percentual?: number | null
+          status?: string | null
+          tipo_origem?: string | null
+          usuario_id?: string | null
+          valor_base?: number | null
+          valor_comissao: number
+        }
+        Update: {
+          contrato_ref?: string | null
+          created_at?: string | null
+          data_competencia?: string
+          data_pagamento?: string | null
+          empresa_id?: string | null
+          id?: string
+          lancamento_id?: string | null
+          nome_comissionado?: string
+          observacoes?: string | null
+          percentual?: number | null
+          status?: string | null
+          tipo_origem?: string | null
+          usuario_id?: string | null
+          valor_base?: number | null
+          valor_comissao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_comissoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_comissoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_comissoes_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "fin_lancamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_contas: {
+        Row: {
+          agencia: string | null
+          ativo: boolean | null
+          banco: string | null
+          cor: string | null
+          created_at: string | null
+          empresa_id: string | null
+          id: string
+          nome: string
+          numero: string | null
+          saldo_atual: number | null
+          saldo_inicial: number | null
+          tipo: string
+        }
+        Insert: {
+          agencia?: string | null
+          ativo?: boolean | null
+          banco?: string | null
+          cor?: string | null
+          created_at?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome: string
+          numero?: string | null
+          saldo_atual?: number | null
+          saldo_inicial?: number | null
+          tipo?: string
+        }
+        Update: {
+          agencia?: string | null
+          ativo?: boolean | null
+          banco?: string | null
+          cor?: string | null
+          created_at?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+          numero?: string | null
+          saldo_atual?: number | null
+          saldo_inicial?: number | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_contas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_contas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_documentos: {
+        Row: {
+          arquivo_url: string
+          created_at: string | null
+          criado_por: string | null
+          empresa_id: string | null
+          id: string
+          nome_arquivo: string
+          resultado: Json | null
+          status_proc: string | null
+          tamanho_bytes: number | null
+          tipo: string
+        }
+        Insert: {
+          arquivo_url: string
+          created_at?: string | null
+          criado_por?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome_arquivo: string
+          resultado?: Json | null
+          status_proc?: string | null
+          tamanho_bytes?: number | null
+          tipo?: string
+        }
+        Update: {
+          arquivo_url?: string
+          created_at?: string | null
+          criado_por?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome_arquivo?: string
+          resultado?: Json | null
+          status_proc?: string | null
+          tamanho_bytes?: number | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_documentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_documentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_lancamentos: {
+        Row: {
+          arquivo_url: string | null
+          categoria_id: string | null
+          centro_custo_id: string | null
+          conta_id: string | null
+          contrato_ref: string | null
+          created_at: string | null
+          created_by: string | null
+          data_competencia: string
+          data_pagamento: string | null
+          descricao: string
+          documento_ref: string | null
+          documento_tipo: string | null
+          empresa_id: string | null
+          id: string
+          observacoes: string | null
+          parcela_numero: number | null
+          parcela_pai_id: string | null
+          parcela_total: number | null
+          status: string | null
+          tipo: string
+          updated_at: string | null
+          valor: number
+        }
+        Insert: {
+          arquivo_url?: string | null
+          categoria_id?: string | null
+          centro_custo_id?: string | null
+          conta_id?: string | null
+          contrato_ref?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_competencia: string
+          data_pagamento?: string | null
+          descricao: string
+          documento_ref?: string | null
+          documento_tipo?: string | null
+          empresa_id?: string | null
+          id?: string
+          observacoes?: string | null
+          parcela_numero?: number | null
+          parcela_pai_id?: string | null
+          parcela_total?: number | null
+          status?: string | null
+          tipo?: string
+          updated_at?: string | null
+          valor: number
+        }
+        Update: {
+          arquivo_url?: string | null
+          categoria_id?: string | null
+          centro_custo_id?: string | null
+          conta_id?: string | null
+          contrato_ref?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_competencia?: string
+          data_pagamento?: string | null
+          descricao?: string
+          documento_ref?: string | null
+          documento_tipo?: string | null
+          empresa_id?: string | null
+          id?: string
+          observacoes?: string | null
+          parcela_numero?: number | null
+          parcela_pai_id?: string | null
+          parcela_total?: number | null
+          status?: string | null
+          tipo?: string
+          updated_at?: string | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_lancamentos_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "fin_categorias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_lancamentos_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "fin_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_lancamentos_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "vw_fin_saldo_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_lancamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_lancamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_lancamentos_parcela_pai_id_fkey"
+            columns: ["parcela_pai_id"]
+            isOneToOne: false
+            referencedRelation: "fin_lancamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_fin_lanc_centro_custo"
+            columns: ["centro_custo_id"]
+            isOneToOne: false
+            referencedRelation: "fin_centros_custo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_notas_fiscais: {
+        Row: {
+          chave_nfe: string | null
+          cnpj_destinatario: string | null
+          cnpj_emitente: string | null
+          created_at: string | null
+          data_emissao: string | null
+          data_entrada: string | null
+          empresa_id: string | null
+          id: string
+          manifesto: string | null
+          manifesto_em: string | null
+          nome_destinatario: string | null
+          nome_emitente: string | null
+          numero_nf: string | null
+          observacoes: string | null
+          pdf_gerado: boolean | null
+          pdf_url: string | null
+          protocolo: string | null
+          serie: string | null
+          status_sefaz: string | null
+          tipo_nf: string | null
+          uf_emitente: string | null
+          updated_at: string | null
+          valor_cofins: number | null
+          valor_icms: number | null
+          valor_ipi: number | null
+          valor_iss: number | null
+          valor_pis: number | null
+          valor_produtos: number | null
+          valor_servicos: number | null
+          valor_total: number | null
+          vinculada_lancamento_id: string | null
+          xml_baixado: boolean | null
+          xml_url: string | null
+        }
+        Insert: {
+          chave_nfe?: string | null
+          cnpj_destinatario?: string | null
+          cnpj_emitente?: string | null
+          created_at?: string | null
+          data_emissao?: string | null
+          data_entrada?: string | null
+          empresa_id?: string | null
+          id?: string
+          manifesto?: string | null
+          manifesto_em?: string | null
+          nome_destinatario?: string | null
+          nome_emitente?: string | null
+          numero_nf?: string | null
+          observacoes?: string | null
+          pdf_gerado?: boolean | null
+          pdf_url?: string | null
+          protocolo?: string | null
+          serie?: string | null
+          status_sefaz?: string | null
+          tipo_nf?: string | null
+          uf_emitente?: string | null
+          updated_at?: string | null
+          valor_cofins?: number | null
+          valor_icms?: number | null
+          valor_ipi?: number | null
+          valor_iss?: number | null
+          valor_pis?: number | null
+          valor_produtos?: number | null
+          valor_servicos?: number | null
+          valor_total?: number | null
+          vinculada_lancamento_id?: string | null
+          xml_baixado?: boolean | null
+          xml_url?: string | null
+        }
+        Update: {
+          chave_nfe?: string | null
+          cnpj_destinatario?: string | null
+          cnpj_emitente?: string | null
+          created_at?: string | null
+          data_emissao?: string | null
+          data_entrada?: string | null
+          empresa_id?: string | null
+          id?: string
+          manifesto?: string | null
+          manifesto_em?: string | null
+          nome_destinatario?: string | null
+          nome_emitente?: string | null
+          numero_nf?: string | null
+          observacoes?: string | null
+          pdf_gerado?: boolean | null
+          pdf_url?: string | null
+          protocolo?: string | null
+          serie?: string | null
+          status_sefaz?: string | null
+          tipo_nf?: string | null
+          uf_emitente?: string | null
+          updated_at?: string | null
+          valor_cofins?: number | null
+          valor_icms?: number | null
+          valor_ipi?: number | null
+          valor_iss?: number | null
+          valor_pis?: number | null
+          valor_produtos?: number | null
+          valor_servicos?: number | null
+          valor_total?: number | null
+          vinculada_lancamento_id?: string | null
+          xml_baixado?: boolean | null
+          xml_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_notas_fiscais_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_notas_fiscais_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_notas_fiscais_vinculada_lancamento_id_fkey"
+            columns: ["vinculada_lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "fin_lancamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fontes_fabricantes: {
         Row: {
           ativo: boolean
@@ -8685,6 +9233,60 @@ export type Database = {
           ultima_publicacao: string | null
         }
         Relationships: []
+      }
+      vw_fin_dre_mensal: {
+        Row: {
+          categoria: string | null
+          empresa_id: string | null
+          mes: string | null
+          qtd_lancamentos: number | null
+          tipo_categoria: string | null
+          total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_lancamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_lancamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_fin_saldo_contas: {
+        Row: {
+          banco: string | null
+          cor: string | null
+          empresa_id: string | null
+          id: string | null
+          nome: string | null
+          saldo_atual: number | null
+          saldo_inicial: number | null
+          tipo: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_contas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_contas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
