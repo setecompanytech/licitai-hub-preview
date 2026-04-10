@@ -710,6 +710,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             <DollarSign className="w-3 h-3 mr-1" /> NF Quitada
                           </Button>
                         )}
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditDialog(p)} title="Editar pedido">
+                          <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                        </Button>
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(p.id)}>
                           <Trash2 className="w-3.5 h-3.5 text-destructive" />
                         </Button>
