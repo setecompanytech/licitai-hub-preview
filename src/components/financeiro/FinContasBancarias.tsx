@@ -29,7 +29,7 @@ export default function FinContasBancarias() {
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ nome: '', tipo: 'corrente', banco: '', agencia: '', numero_conta: '', saldo_inicial: '0' });
+  const [form, setForm] = useState({ nome: '', tipo: 'corrente', banco_nome: '', agencia: '', numero_conta: '', saldo_inicial: '0' });
 
   useEffect(() => { if (empresaAtiva?.id) load(); }, [empresaAtiva?.id]);
 
@@ -45,7 +45,7 @@ export default function FinContasBancarias() {
     setSaving(true);
     const { error } = await supabase.from('fin_contas').insert({
       empresa_id: empresaAtiva!.id, user_id: user!.id,
-      nome: form.nome, tipo: form.tipo, banco: form.banco || null,
+      nome: form.nome, tipo: form.tipo, banco_nome: form.banco_nome || null,
       agencia: form.agencia || null, numero_conta: form.numero_conta || null,
       saldo_inicial: parseFloat(form.saldo_inicial.replace(',', '.')) || 0,
     });
@@ -53,7 +53,7 @@ export default function FinContasBancarias() {
     if (error) { toast.error(error.message); return; }
     toast.success('Conta criada');
     setShowNew(false);
-    setForm({ nome: '', tipo: 'corrente', banco: '', agencia: '', numero_conta: '', saldo_inicial: '0' });
+    setForm({ nome: '', tipo: 'corrente', banco_nome: '', agencia: '', numero_conta: '', saldo_inicial: '0' });
     load();
   }
 
@@ -62,7 +62,7 @@ export default function FinContasBancarias() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold flex items-center gap-2"><Landmark className="w-5 h-5 text-blue-600" /> Contas Bancárias</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2"><Landmark className="w-5 h-5 text-primary" /> Contas Bancárias</h1>
         <Button onClick={() => setShowNew(true)} size="sm"><Plus className="w-4 h-4 mr-1" /> Nova Conta</Button>
       </div>
 
@@ -75,12 +75,12 @@ export default function FinContasBancarias() {
                 <Icon className="w-5 h-5 text-primary" />
                 <div className="flex-1">
                   <CardTitle className="text-sm">{c.nome}</CardTitle>
-                  <p className="text-xs text-muted-foreground">{tipoLabels[c.tipo] || c.tipo}{c.banco ? ` · ${c.banco}` : ''}</p>
+                  <p className="text-xs text-muted-foreground">{tipoLabels[c.tipo] || c.tipo}{c.banco_nome ? ` · ${c.banco_nome}` : ''}</p>
                 </div>
-                <Badge variant={c.ativa ? 'default' : 'secondary'}>{c.ativa ? 'Ativa' : 'Inativa'}</Badge>
+                <Badge variant={c.ativo ? 'default' : 'secondary'}>{c.ativo ? 'Ativa' : 'Inativa'}</Badge>
               </CardHeader>
               <CardContent>
-                <p className="text-xl font-bold">{fmt(c.saldo_inicial)}</p>
+                <p className="text-xl font-bold">{fmt(c.saldo_inicial || 0)}</p>
                 {c.agencia && <p className="text-xs text-muted-foreground mt-1">Ag: {c.agencia} · CC: {c.numero_conta}</p>}
               </CardContent>
             </Card>
@@ -99,12 +99,10 @@ export default function FinContasBancarias() {
                 <Label>Tipo</Label>
                 <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(tipoLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                  </SelectContent>
+                  <SelectContent>{Object.entries(tipoLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Banco</Label><Input value={form.banco} onChange={(e) => setForm({ ...form, banco: e.target.value })} placeholder="001" /></div>
+              <div><Label>Banco</Label><Input value={form.banco_nome} onChange={(e) => setForm({ ...form, banco_nome: e.target.value })} placeholder="Banco do Brasil" /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Agência</Label><Input value={form.agencia} onChange={(e) => setForm({ ...form, agencia: e.target.value })} /></div>

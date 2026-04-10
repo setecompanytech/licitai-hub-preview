@@ -25,34 +25,35 @@ export default function FinPessoas() {
   const [search, setSearch] = useState('');
   const [showNew, setShowNew] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ nome: '', tipo: 'fornecedor', cnpj_cpf: '', email: '', telefone: '' });
+  const [form, setForm] = useState({ razao_social: '', tipo: 'fornecedor', cnpj_cpf: '', email: '', telefone: '', nome_fantasia: '' });
 
   useEffect(() => { if (empresaAtiva?.id) load(); }, [empresaAtiva?.id]);
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase.from('fin_pessoas').select('*').eq('empresa_id', empresaAtiva!.id).order('nome');
+    const { data } = await supabase.from('fin_pessoas').select('*').eq('empresa_id', empresaAtiva!.id).order('razao_social');
     setItems(data || []);
     setLoading(false);
   }
 
   async function handleCreate() {
-    if (!form.nome) { toast.error('Informe o nome'); return; }
+    if (!form.razao_social) { toast.error('Informe a razão social'); return; }
     setSaving(true);
     const { error } = await supabase.from('fin_pessoas').insert({
       empresa_id: empresaAtiva!.id, user_id: user!.id,
-      nome: form.nome, tipo: form.tipo,
-      cnpj_cpf: form.cnpj_cpf || null, email: form.email || null, telefone: form.telefone || null,
+      razao_social: form.razao_social, tipo: form.tipo,
+      cnpj_cpf: form.cnpj_cpf || null, email: form.email || null,
+      telefone: form.telefone || null, nome_fantasia: form.nome_fantasia || null,
     });
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success('Pessoa cadastrada');
     setShowNew(false);
-    setForm({ nome: '', tipo: 'fornecedor', cnpj_cpf: '', email: '', telefone: '' });
+    setForm({ razao_social: '', tipo: 'fornecedor', cnpj_cpf: '', email: '', telefone: '', nome_fantasia: '' });
     load();
   }
 
-  const filtered = items.filter((i) => !search || i.nome?.toLowerCase().includes(search.toLowerCase()) || i.cnpj_cpf?.includes(search));
+  const filtered = items.filter((i) => !search || i.razao_social?.toLowerCase().includes(search.toLowerCase()) || i.cnpj_cpf?.includes(search));
 
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
@@ -73,7 +74,7 @@ export default function FinPessoas() {
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
-              <th className="text-left p-3 font-medium">Nome</th>
+              <th className="text-left p-3 font-medium">Razão Social</th>
               <th className="text-left p-3 font-medium">CNPJ/CPF</th>
               <th className="text-left p-3 font-medium">E-mail</th>
               <th className="text-center p-3 font-medium">Tipo</th>
@@ -82,7 +83,7 @@ export default function FinPessoas() {
           <tbody>
             {filtered.map((i) => (
               <tr key={i.id} className="border-t hover:bg-muted/30">
-                <td className="p-3 font-medium">{i.nome}</td>
+                <td className="p-3 font-medium">{i.razao_social}</td>
                 <td className="p-3">{i.cnpj_cpf || '—'}</td>
                 <td className="p-3">{i.email || '—'}</td>
                 <td className="p-3 text-center"><Badge className={tipoBadge[i.tipo] || ''}>{i.tipo}</Badge></td>
@@ -97,7 +98,7 @@ export default function FinPessoas() {
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Nova Pessoa</DialogTitle></DialogHeader>
           <div className="grid gap-4">
-            <div><Label>Nome *</Label><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
+            <div><Label>Razão Social *</Label><Input value={form.razao_social} onChange={(e) => setForm({ ...form, razao_social: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Tipo</Label>
@@ -112,6 +113,7 @@ export default function FinPessoas() {
               </div>
               <div><Label>CNPJ/CPF</Label><Input value={form.cnpj_cpf} onChange={(e) => setForm({ ...form, cnpj_cpf: e.target.value })} /></div>
             </div>
+            <div><Label>Nome Fantasia</Label><Input value={form.nome_fantasia} onChange={(e) => setForm({ ...form, nome_fantasia: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>E-mail</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
               <div><Label>Telefone</Label><Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} /></div>

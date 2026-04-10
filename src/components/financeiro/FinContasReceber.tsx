@@ -34,7 +34,7 @@ export default function FinContasReceber() {
     setLoading(false);
   }
 
-  const filtered = items.filter((i) => !search || i.descricao?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = items.filter((i) => !search || i.cliente_nome?.toLowerCase().includes(search.toLowerCase()) || i.numero_documento?.toLowerCase().includes(search.toLowerCase()));
 
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
@@ -42,7 +42,7 @@ export default function FinContasReceber() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold flex items-center gap-2"><ArrowUpCircle className="w-5 h-5 text-emerald-600" /> Contas a Receber</h1>
+          <h1 className="text-xl font-bold flex items-center gap-2"><ArrowUpCircle className="w-5 h-5 text-primary" /> Contas a Receber</h1>
           <p className="text-sm text-muted-foreground">{filtered.length} registro(s)</p>
         </div>
         <div className="relative w-64">
@@ -54,7 +54,7 @@ export default function FinContasReceber() {
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
-              <th className="text-left p-3 font-medium">Descrição</th>
+              <th className="text-left p-3 font-medium">Cliente</th>
               <th className="text-right p-3 font-medium">Valor</th>
               <th className="text-center p-3 font-medium">Vencimento</th>
               <th className="text-center p-3 font-medium">Status</th>
@@ -63,8 +63,8 @@ export default function FinContasReceber() {
           <tbody>
             {filtered.map((item) => (
               <tr key={item.id} className="border-t hover:bg-muted/30">
-                <td className="p-3">{item.descricao}</td>
-                <td className="p-3 text-right font-medium">{fmt(item.valor_total)}</td>
+                <td className="p-3">{item.cliente_nome || item.numero_documento || '—'}</td>
+                <td className="p-3 text-right font-medium">{fmt(item.valor_documento)}</td>
                 <td className="p-3 text-center">{fmtDate(item.data_vencimento)}</td>
                 <td className="p-3 text-center"><Badge className={statusBadge[item.status] || ''}>{item.status}</Badge></td>
               </tr>
