@@ -574,13 +574,32 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   <>
                     <Separator />
                     <div>
+                      <Label className="text-xs">Origem do Pedido</Label>
+                      <Select value={origemFilter} onValueChange={v => { setOrigemFilter(v); setForm(f => ({ ...f, contrato_item_id: '', origem_aditivo_id: v === '__todos__' || v === '__contrato__' ? '' : v })); }}>
+                        <SelectTrigger><SelectValue placeholder="Filtrar por origem" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__todos__">Todos os Itens</SelectItem>
+                          <SelectItem value="__contrato__">Contrato Original</SelectItem>
+                          {aditivos.map(a => (
+                            <SelectItem key={a.id} value={a.id}>Aditivo {a.numero_aditivo} ({a.tipo})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
                       <Label className="text-xs">Item do Contrato</Label>
                       <Select value={form.contrato_item_id} onValueChange={handleItemChange}>
                         <SelectTrigger><SelectValue placeholder="Selecionar item" /></SelectTrigger>
                         <SelectContent>
-                          {itens.map(i => (
-                            <SelectItem key={i.id} value={i.id}>{i.descricao} ({i.unidade})</SelectItem>
-                          ))}
+                          {itens
+                            .filter(i => {
+                              if (origemFilter === '__todos__') return true;
+                              if (origemFilter === '__contrato__') return !i.origem_aditivo_id;
+                              return i.origem_aditivo_id === origemFilter;
+                            })
+                            .map(i => (
+                              <SelectItem key={i.id} value={i.id}>{i.descricao} ({i.unidade})</SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                     </div>
