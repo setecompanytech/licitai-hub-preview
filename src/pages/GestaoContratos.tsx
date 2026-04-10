@@ -74,6 +74,7 @@ export default function GestaoContratos() {
     fiscal_nome: '', fiscal_email: '', fiscal_telefone: '', observacoes: '',
   });
   const [pendingItens, setPendingItens] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
     if (!user) return;
@@ -238,7 +239,7 @@ export default function GestaoContratos() {
           </div>
         </div>
 
-        <Tabs defaultValue="dashboard" className="space-y-4">
+        <Tabs defaultValue="dashboard" className="space-y-4" onValueChange={(v) => setActiveTab(v)}>
           <TabsList className="flex-wrap">
             <TabsTrigger value="dashboard"><BarChart3 className="w-3.5 h-3.5 mr-1" /> Dashboard</TabsTrigger>
             <TabsTrigger value="itens"><Package className="w-3.5 h-3.5 mr-1" /> Itens</TabsTrigger>
@@ -246,7 +247,7 @@ export default function GestaoContratos() {
             <TabsTrigger value="contratos-aditivos"><FilePlus2 className="w-3.5 h-3.5 mr-1" /> Contratos e Aditivos</TabsTrigger>
           </TabsList>
           <TabsContent value="dashboard"><ContratoDashboard contratoId={c.id} /></TabsContent>
-          <TabsContent value="itens"><ContratoItens contratoId={c.id} /></TabsContent>
+          <TabsContent value="itens"><ContratoItens contratoId={c.id} key={activeTab === 'itens' ? 'itens-active' : 'itens'} /></TabsContent>
           <TabsContent value="pedidos"><ContratoPedidos contratoId={c.id} /></TabsContent>
           <TabsContent value="contratos-aditivos">
             <ContratoArquivos contratoId={c.id} />
