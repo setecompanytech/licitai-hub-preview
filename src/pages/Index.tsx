@@ -11,7 +11,7 @@ import { useAnalyticsData } from '@/hooks/useAnalyticsData';
 import { Eye, Send, Trophy, TrendingUp, DollarSign, Zap, XCircle, Clock, Gavel, FileCheck2, Database } from 'lucide-react';
 import RelatorioGerencialPDF from '@/components/relatorios/RelatorioGerencialPDF';
 import OnboardingWizard, { useOnboarding } from '@/components/onboarding/OnboardingWizard';
-import OnboardingChecklist from '@/components/onboarding/OnboardingChecklist';
+
 import ColaboradorIdentificacaoModal from '@/components/auth/ColaboradorIdentificacaoModal';
 import { useNavigate } from 'react-router-dom';
 
@@ -74,8 +74,6 @@ export default function Index() {
         </button>
       </div>
 
-      {/* Onboarding Checklist */}
-      <OnboardingChecklist />
 
       {/* Acesso Rápido — Módulos */}
       <div className="mb-4 sm:mb-6">
