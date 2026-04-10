@@ -255,6 +255,33 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
     setEditTipo(arquivo.tipo);
     setEditDescricao(arquivo.descricao || '');
     setEditFile(null);
+
+    // If file is aditivo type, find linked aditivo and populate fields
+    if (isAditivoType(arquivo.tipo)) {
+      // Try to find aditivo linked by matching tipo and creation time proximity
+      const tipoAditivo = TIPOS_ARQUIVO[arquivo.tipo]?.tipoAditivo || 'valor';
+      const linked = aditivos.find((a: any) => a.tipo === tipoAditivo);
+      if (linked) {
+        setEditLinkedAditivoId(linked.id);
+        setEditAditivoForm({
+          numero_aditivo: linked.numero_aditivo || '',
+          valor_acrescimo: linked.valor_acrescimo?.toString() || '',
+          valor_supressao: linked.valor_supressao?.toString() || '',
+          quantidade_acrescimo: linked.quantidade_acrescimo?.toString() || '',
+          quantidade_supressao: linked.quantidade_supressao?.toString() || '',
+          nova_data_fim: linked.nova_data_fim || '',
+          data_assinatura: linked.data_assinatura || linked.data_aditivo || '',
+          justificativa: linked.justificativa || '',
+          observacoes: linked.observacoes || '',
+        });
+      } else {
+        setEditLinkedAditivoId(null);
+        setEditAditivoForm({ ...emptyAditivoForm, numero_aditivo: `${aditivos.length + 1}º Aditivo` });
+      }
+    } else {
+      setEditLinkedAditivoId(null);
+      setEditAditivoForm(emptyAditivoForm);
+    }
   };
 
   const handleSaveEdit = async () => {
