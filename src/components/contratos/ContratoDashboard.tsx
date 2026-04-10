@@ -147,7 +147,10 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             </div>
           ) : (
             <>
-              <p className="text-lg font-bold">{fmt(c.valor_global)}</p>
+              <p className="text-lg font-bold">{fmt(valorGlobalEfetivo)}</p>
+              {totalAditivoValorAcrescimo > 0 && (
+                <p className="text-[9px] text-muted-foreground">Original: {fmt(c.valor_global_original || 0)} + Aditivos: {fmt(totalAditivoValorAcrescimo)}</p>
+              )}
               <Progress value={Math.min(pctConsumo, 100)} className="h-1.5 mt-2" />
               <p className="text-[9px] text-muted-foreground mt-1">{pctConsumo.toFixed(1)}% consumido</p>
             </>
