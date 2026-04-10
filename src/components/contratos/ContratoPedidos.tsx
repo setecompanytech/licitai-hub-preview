@@ -78,7 +78,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [nfData, setNfData] = useState('');
   const [solicitandoComissao, setSolicitandoComissao] = useState(false);
 
-  // Upload state
+  // Edit state
+  const [editingPedido, setEditingPedido] = useState<Pedido | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    numero_pedido: '', descricao: '', contrato_item_id: '',
+    quantidade: '', valor_unitario: '', data_pedido: '',
+    data_entrega: '', status: 'pendente', nota_fiscal: '', observacoes: '',
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
+
   const [uploading, setUploading] = useState(false);
   const [extractedData, setExtractedData] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
