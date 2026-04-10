@@ -11,14 +11,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
-  Plus, Pencil, Trash2, Loader2, FilePlus2, DollarSign, Calendar, Package
+  Plus, Pencil, Trash2, Loader2, FilePlus2, DollarSign, Calendar, Package, Layers
 } from 'lucide-react';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
 
 const TIPOS_ADITIVO: Record<string, { label: string; icon: typeof DollarSign; color: string }> = {
   valor: { label: 'Valor', icon: DollarSign, color: 'bg-success/10 text-success' },
   quantidade: { label: 'Quantidade', icon: Package, color: 'bg-accent/10 text-accent' },
+  valor_quantidade: { label: 'Valor e Qtde', icon: Layers, color: 'bg-blue-500/10 text-blue-600' },
   prazo: { label: 'Prazo', icon: Calendar, color: 'bg-warning/10 text-warning' },
   escopo: { label: 'Escopo', icon: FilePlus2, color: 'bg-primary/10 text-primary' },
 };
@@ -31,6 +33,8 @@ type Aditivo = {
   valor_acrescimo: number;
   valor_supressao: number;
   valor_aditivo: number;
+  quantidade_acrescimo: number;
+  quantidade_supressao: number;
   nova_data_fim: string | null;
   data_assinatura: string | null;
   data_aditivo: string | null;
@@ -44,11 +48,16 @@ const emptyForm = {
   tipo: 'valor',
   valor_acrescimo: '',
   valor_supressao: '',
+  quantidade_acrescimo: '',
+  quantidade_supressao: '',
   nova_data_fim: '',
   data_assinatura: '',
   justificativa: '',
   observacoes: '',
 };
+
+const showValueFields = (tipo: string) => ['valor', 'valor_quantidade', 'escopo'].includes(tipo);
+const showQtyFields = (tipo: string) => ['quantidade', 'valor_quantidade'].includes(tipo);
 
 export default function ContratoAditivos({ contratoId }: { contratoId: string }) {
   const { user } = useAuth();
@@ -85,6 +94,8 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
       tipo: a.tipo || 'valor',
       valor_acrescimo: a.valor_acrescimo ? String(a.valor_acrescimo) : '',
       valor_supressao: a.valor_supressao ? String(a.valor_supressao) : '',
+      quantidade_acrescimo: a.quantidade_acrescimo ? String(a.quantidade_acrescimo) : '',
+      quantidade_supressao: a.quantidade_supressao ? String(a.quantidade_supressao) : '',
       nova_data_fim: a.nova_data_fim || '',
       data_assinatura: a.data_assinatura || a.data_aditivo || '',
       justificativa: a.justificativa || '',
@@ -105,8 +116,10 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
         user_id: user.id,
         numero_aditivo: form.numero_aditivo,
         tipo: form.tipo,
-        valor_acrescimo: parseFloat(form.valor_acrescimo) || 0,
-        valor_supressao: parseFloat(form.valor_supressao) || 0,
+        valor_acrescimo: showValueFields(form.tipo) ? (parseFloat(form.valor_acrescimo) || 0) : 0,
+        valor_supressao: showValueFields(form.tipo) ? (parseFloat(form.valor_supressao) || 0) : 0,
+        quantidade_acrescimo: showQtyFields(form.tipo) ? (parseFloat(form.quantidade_acrescimo) || 0) : 0,
+        quantidade_supressao: showQtyFields(form.tipo) ? (parseFloat(form.quantidade_supressao) || 0) : 0,
         nova_data_fim: form.nova_data_fim || null,
         data_assinatura: form.data_assinatura || null,
         data_aditivo: form.data_assinatura || null,
@@ -114,7 +127,6 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
         observacoes: form.observacoes || null,
       };
 
-      // Compute valor_aditivo as net value for backward compat
       payload.valor_aditivo = payload.valor_acrescimo - payload.valor_supressao;
 
       if (editing) {
@@ -147,6 +159,9 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
   const totalAcrescimo = aditivos.reduce((s, a) => s + (a.valor_acrescimo || 0), 0);
   const totalSupressao = aditivos.reduce((s, a) => s + (a.valor_supressao || 0), 0);
   const saldoAditivos = totalAcrescimo - totalSupressao;
+  const totalQtyAcrescimo = aditivos.reduce((s, a) => s + (a.quantidade_acrescimo || 0), 0);
+  const totalQtySupressao = aditivos.reduce((s, a) => s + (a.quantidade_supressao || 0), 0);
+  const saldoQty = totalQtyAcrescimo - totalQtySupressao;
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
 
@@ -154,18 +169,30 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
     <div className="space-y-4">
       {/* Summary cards */}
       {aditivos.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <Card className="p-3">
-            <div className="text-[10px] text-muted-foreground mb-1">Acréscimos</div>
+            <div className="text-[10px] text-muted-foreground mb-1">Acréscimos (R$)</div>
             <p className="text-sm font-bold text-success">{fmt(totalAcrescimo)}</p>
           </Card>
           <Card className="p-3">
-            <div className="text-[10px] text-muted-foreground mb-1">Supressões</div>
+            <div className="text-[10px] text-muted-foreground mb-1">Supressões (R$)</div>
             <p className="text-sm font-bold text-destructive">{fmt(totalSupressao)}</p>
           </Card>
           <Card className="p-3">
-            <div className="text-[10px] text-muted-foreground mb-1">Saldo Aditivos</div>
+            <div className="text-[10px] text-muted-foreground mb-1">Saldo Valor</div>
             <p className={`text-sm font-bold ${saldoAditivos >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(saldoAditivos)}</p>
+          </Card>
+          <Card className="p-3">
+            <div className="text-[10px] text-muted-foreground mb-1">Acrésc. Qtde</div>
+            <p className="text-sm font-bold text-success">+{fmtQty(totalQtyAcrescimo)}</p>
+          </Card>
+          <Card className="p-3">
+            <div className="text-[10px] text-muted-foreground mb-1">Supr. Qtde</div>
+            <p className="text-sm font-bold text-destructive">-{fmtQty(totalQtySupressao)}</p>
+          </Card>
+          <Card className="p-3">
+            <div className="text-[10px] text-muted-foreground mb-1">Saldo Qtde</div>
+            <p className={`text-sm font-bold ${saldoQty >= 0 ? 'text-success' : 'text-destructive'}`}>{fmtQty(saldoQty)}</p>
           </Card>
         </div>
       )}
@@ -189,7 +216,6 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
           {aditivos.map((a) => {
             const tipoConfig = TIPOS_ADITIVO[a.tipo] || TIPOS_ADITIVO.valor;
             const Icon = tipoConfig.icon;
-            const netValue = (a.valor_acrescimo || 0) - (a.valor_supressao || 0);
             return (
               <Card key={a.id} className="p-4">
                 <div className="flex items-start gap-3">
@@ -207,6 +233,12 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                       )}
                       {(a.valor_supressao || 0) > 0 && (
                         <span className="text-destructive">-{fmt(a.valor_supressao)}</span>
+                      )}
+                      {(a.quantidade_acrescimo || 0) > 0 && (
+                        <span className="text-success">+{fmtQty(a.quantidade_acrescimo)} un</span>
+                      )}
+                      {(a.quantidade_supressao || 0) > 0 && (
+                        <span className="text-destructive">-{fmtQty(a.quantidade_supressao)} un</span>
                       )}
                       {a.nova_data_fim && (
                         <span>Nova vigência: {new Date(a.nova_data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
@@ -236,7 +268,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
 
       {/* Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? 'Editar Aditivo' : 'Novo Aditivo Contratual'}</DialogTitle>
           </DialogHeader>
@@ -256,14 +288,33 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label className="text-xs">Valor Acréscimo (R$)</Label>
-              <Input type="number" step="0.01" value={form.valor_acrescimo} onChange={(e) => setForm(f => ({ ...f, valor_acrescimo: e.target.value }))} placeholder="0,00" />
-            </div>
-            <div>
-              <Label className="text-xs">Valor Supressão (R$)</Label>
-              <Input type="number" step="0.01" value={form.valor_supressao} onChange={(e) => setForm(f => ({ ...f, valor_supressao: e.target.value }))} placeholder="0,00" />
-            </div>
+
+            {showValueFields(form.tipo) && (
+              <>
+                <div>
+                  <Label className="text-xs">Valor Acréscimo (R$)</Label>
+                  <Input type="number" step="0.01" value={form.valor_acrescimo} onChange={(e) => setForm(f => ({ ...f, valor_acrescimo: e.target.value }))} placeholder="0,00" />
+                </div>
+                <div>
+                  <Label className="text-xs">Valor Supressão (R$)</Label>
+                  <Input type="number" step="0.01" value={form.valor_supressao} onChange={(e) => setForm(f => ({ ...f, valor_supressao: e.target.value }))} placeholder="0,00" />
+                </div>
+              </>
+            )}
+
+            {showQtyFields(form.tipo) && (
+              <>
+                <div>
+                  <Label className="text-xs">Qtde Acréscimo</Label>
+                  <Input type="number" step="1" value={form.quantidade_acrescimo} onChange={(e) => setForm(f => ({ ...f, quantidade_acrescimo: e.target.value }))} placeholder="0" />
+                </div>
+                <div>
+                  <Label className="text-xs">Qtde Supressão</Label>
+                  <Input type="number" step="1" value={form.quantidade_supressao} onChange={(e) => setForm(f => ({ ...f, quantidade_supressao: e.target.value }))} placeholder="0" />
+                </div>
+              </>
+            )}
+
             <div>
               <Label className="text-xs">Nova Data Fim (se prorrogação)</Label>
               <Input type="date" value={form.nova_data_fim} onChange={(e) => setForm(f => ({ ...f, nova_data_fim: e.target.value }))} />
@@ -281,6 +332,26 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
               <Textarea value={form.observacoes} onChange={(e) => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
             </div>
           </div>
+
+          {/* Live preview */}
+          {(showValueFields(form.tipo) || showQtyFields(form.tipo)) && (
+            <Card className="p-3 mt-2 bg-muted/50">
+              <p className="text-[10px] text-muted-foreground mb-1 font-medium">Resumo do Aditivo</p>
+              <div className="flex flex-wrap gap-4 text-xs">
+                {showValueFields(form.tipo) && (
+                  <span className={`font-semibold ${(parseFloat(form.valor_acrescimo) || 0) - (parseFloat(form.valor_supressao) || 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    Saldo Valor: {fmt((parseFloat(form.valor_acrescimo) || 0) - (parseFloat(form.valor_supressao) || 0))}
+                  </span>
+                )}
+                {showQtyFields(form.tipo) && (
+                  <span className={`font-semibold ${(parseFloat(form.quantidade_acrescimo) || 0) - (parseFloat(form.quantidade_supressao) || 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    Saldo Qtde: {fmtQty((parseFloat(form.quantidade_acrescimo) || 0) - (parseFloat(form.quantidade_supressao) || 0))}
+                  </span>
+                )}
+              </div>
+            </Card>
+          )}
+
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
             <Button onClick={handleSave} disabled={saving}>
