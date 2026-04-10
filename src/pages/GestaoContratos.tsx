@@ -35,7 +35,6 @@ import ContratoItens from '@/components/contratos/ContratoItens';
 import ContratoPedidos from '@/components/contratos/ContratoPedidos';
 import ContratoDashboard from '@/components/contratos/ContratoDashboard';
 import ContratoArquivos from '@/components/contratos/ContratoArquivos';
-import ContratoAditivos from '@/components/contratos/ContratoAditivos';
 
 import ImportarContratoPDF from '@/components/contratos/ImportarContratoPDF';
 
