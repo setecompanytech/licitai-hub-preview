@@ -585,7 +585,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vincular item" /></SelectTrigger>
                                   <SelectContent>
                                     {itens.map(i => (
-                                      <SelectItem key={i.id} value={i.id} className="text-xs">{i.descricao}</SelectItem>
+                                      <SelectItem key={i.id} value={i.id} className="text-xs">
+                                        <span className="text-muted-foreground text-[10px] mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                                        {i.descricao}
+                                      </SelectItem>
+                                    ))}
                                     ))}
                                   </SelectContent>
                                 </Select>
@@ -650,7 +654,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               return i.origem_aditivo_id === origemFilter;
                             })
                             .map(i => (
-                              <SelectItem key={i.id} value={i.id}>{i.descricao} ({i.unidade})</SelectItem>
+                    <SelectItem key={i.id} value={i.id}>
+                      <span className="text-muted-foreground text-[10px] mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                      {i.descricao} ({i.unidade})
+                    </SelectItem>
                             ))}
                         </SelectContent>
                       </Select>
@@ -994,7 +1001,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {itens.map(i => (
-                      <SelectItem key={i.id} value={i.id}>{i.descricao} ({fmt(i.valor_unitario)}/{i.unidade})</SelectItem>
+                      <SelectItem key={i.id} value={i.id}>
+                        <span className="text-muted-foreground text-[10px] mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                        {i.descricao} ({fmt(i.valor_unitario)}/{i.unidade})
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
