@@ -123,6 +123,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     setItens((itensRes.data as any[]) || []);
     setNfsSync((nfsRes.data as any[]) || []);
     setPreNotas((preNotasRes.data as any[]) || []);
+    setAditivos((aditivosRes.data as any[]) || []);
     setLoading(false);
   };
 
