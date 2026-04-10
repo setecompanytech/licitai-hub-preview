@@ -4234,33 +4234,36 @@ export type Database = {
           cor: string | null
           created_at: string | null
           empresa_id: string | null
-          icone: string | null
           id: string
           nome: string
           pai_id: string | null
           tipo: string
+          updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           ativo?: boolean | null
           cor?: string | null
           created_at?: string | null
           empresa_id?: string | null
-          icone?: string | null
           id?: string
           nome: string
           pai_id?: string | null
-          tipo: string
+          tipo?: string
+          updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           ativo?: boolean | null
           cor?: string | null
           created_at?: string | null
           empresa_id?: string | null
-          icone?: string | null
           id?: string
           nome?: string
           pai_id?: string | null
           tipo?: string
+          updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -4278,7 +4281,7 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fin_categorias_pai_id_fkey"
+            foreignKeyName: "fin_categorias_pai_fk"
             columns: ["pai_id"]
             isOneToOne: false
             referencedRelation: "fin_categorias"
@@ -4411,46 +4414,90 @@ export type Database = {
         Row: {
           agencia: string | null
           ativo: boolean | null
-          banco: string | null
-          cor: string | null
+          banco_codigo: string | null
+          banco_logo_url: string | null
+          banco_nome: string | null
+          considerar_fluxo: boolean | null
+          considerar_orcamento: boolean | null
+          considerar_resumo: boolean | null
+          conta_vinculada: string | null
           created_at: string | null
+          data_saldo_ini: string | null
           empresa_id: string | null
           id: string
+          inativo_motivo: string | null
+          limite_credito: number | null
           nome: string
-          numero: string | null
-          saldo_atual: number | null
+          numero_conta: string | null
+          observacao: string | null
           saldo_inicial: number | null
           tipo: string
+          updated_at: string | null
+          user_id: string
         }
         Insert: {
           agencia?: string | null
           ativo?: boolean | null
-          banco?: string | null
-          cor?: string | null
+          banco_codigo?: string | null
+          banco_logo_url?: string | null
+          banco_nome?: string | null
+          considerar_fluxo?: boolean | null
+          considerar_orcamento?: boolean | null
+          considerar_resumo?: boolean | null
+          conta_vinculada?: string | null
           created_at?: string | null
+          data_saldo_ini?: string | null
           empresa_id?: string | null
           id?: string
+          inativo_motivo?: string | null
+          limite_credito?: number | null
           nome: string
-          numero?: string | null
-          saldo_atual?: number | null
+          numero_conta?: string | null
+          observacao?: string | null
           saldo_inicial?: number | null
           tipo?: string
+          updated_at?: string | null
+          user_id: string
         }
         Update: {
           agencia?: string | null
           ativo?: boolean | null
-          banco?: string | null
-          cor?: string | null
+          banco_codigo?: string | null
+          banco_logo_url?: string | null
+          banco_nome?: string | null
+          considerar_fluxo?: boolean | null
+          considerar_orcamento?: boolean | null
+          considerar_resumo?: boolean | null
+          conta_vinculada?: string | null
           created_at?: string | null
+          data_saldo_ini?: string | null
           empresa_id?: string | null
           id?: string
+          inativo_motivo?: string | null
+          limite_credito?: number | null
           nome?: string
-          numero?: string | null
-          saldo_atual?: number | null
+          numero_conta?: string | null
+          observacao?: string | null
           saldo_inicial?: number | null
           tipo?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fin_contas_conta_vinculada_fkey"
+            columns: ["conta_vinculada"]
+            isOneToOne: false
+            referencedRelation: "fin_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_contas_conta_vinculada_fkey"
+            columns: ["conta_vinculada"]
+            isOneToOne: false
+            referencedRelation: "vw_fin_saldo_contas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fin_contas_empresa_id_fkey"
             columns: ["empresa_id"]
@@ -4460,6 +4507,362 @@ export type Database = {
           },
           {
             foreignKeyName: "fin_contas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_contas_pagar: {
+        Row: {
+          aprovado_em: string | null
+          aprovado_por: string | null
+          arquivo_url: string | null
+          categoria_id: string | null
+          chave_nfe: string | null
+          codigo_barras: string | null
+          cofins_retido: number | null
+          conta_corrente_id: string | null
+          contrato_ref: string | null
+          created_at: string | null
+          csll_retido: number | null
+          data_emissao: string | null
+          data_pagamento: string | null
+          data_registro: string | null
+          data_vencimento: string
+          departamento: string | null
+          desconto: number | null
+          empresa_id: string | null
+          favorecido_id: string | null
+          favorecido_nome: string | null
+          id: string
+          inss_retido: number | null
+          ir_retido: number | null
+          iss_retido: number | null
+          juros: number | null
+          multa: number | null
+          nota_fiscal: string | null
+          numero_documento: string | null
+          observacoes: string | null
+          origem: string | null
+          parcela_grupo_id: string | null
+          parcela_numero: number | null
+          parcela_total: number | null
+          pis_retido: number | null
+          previsao_pagamento: string | null
+          projeto_id: string | null
+          repeticao_ate: string | null
+          repeticao_tipo: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+          valor_documento: number
+          valor_pago: number | null
+        }
+        Insert: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          arquivo_url?: string | null
+          categoria_id?: string | null
+          chave_nfe?: string | null
+          codigo_barras?: string | null
+          cofins_retido?: number | null
+          conta_corrente_id?: string | null
+          contrato_ref?: string | null
+          created_at?: string | null
+          csll_retido?: number | null
+          data_emissao?: string | null
+          data_pagamento?: string | null
+          data_registro?: string | null
+          data_vencimento?: string
+          departamento?: string | null
+          desconto?: number | null
+          empresa_id?: string | null
+          favorecido_id?: string | null
+          favorecido_nome?: string | null
+          id?: string
+          inss_retido?: number | null
+          ir_retido?: number | null
+          iss_retido?: number | null
+          juros?: number | null
+          multa?: number | null
+          nota_fiscal?: string | null
+          numero_documento?: string | null
+          observacoes?: string | null
+          origem?: string | null
+          parcela_grupo_id?: string | null
+          parcela_numero?: number | null
+          parcela_total?: number | null
+          pis_retido?: number | null
+          previsao_pagamento?: string | null
+          projeto_id?: string | null
+          repeticao_ate?: string | null
+          repeticao_tipo?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+          valor_documento?: number
+          valor_pago?: number | null
+        }
+        Update: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          arquivo_url?: string | null
+          categoria_id?: string | null
+          chave_nfe?: string | null
+          codigo_barras?: string | null
+          cofins_retido?: number | null
+          conta_corrente_id?: string | null
+          contrato_ref?: string | null
+          created_at?: string | null
+          csll_retido?: number | null
+          data_emissao?: string | null
+          data_pagamento?: string | null
+          data_registro?: string | null
+          data_vencimento?: string
+          departamento?: string | null
+          desconto?: number | null
+          empresa_id?: string | null
+          favorecido_id?: string | null
+          favorecido_nome?: string | null
+          id?: string
+          inss_retido?: number | null
+          ir_retido?: number | null
+          iss_retido?: number | null
+          juros?: number | null
+          multa?: number | null
+          nota_fiscal?: string | null
+          numero_documento?: string | null
+          observacoes?: string | null
+          origem?: string | null
+          parcela_grupo_id?: string | null
+          parcela_numero?: number | null
+          parcela_total?: number | null
+          pis_retido?: number | null
+          previsao_pagamento?: string | null
+          projeto_id?: string | null
+          repeticao_ate?: string | null
+          repeticao_tipo?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+          valor_documento?: number
+          valor_pago?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_contas_pagar_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "fin_categorias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_contas_pagar_conta_corrente_id_fkey"
+            columns: ["conta_corrente_id"]
+            isOneToOne: false
+            referencedRelation: "fin_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_contas_pagar_conta_corrente_id_fkey"
+            columns: ["conta_corrente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_fin_saldo_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_contas_pagar_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_contas_pagar_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_contas_pagar_favorecido_id_fkey"
+            columns: ["favorecido_id"]
+            isOneToOne: false
+            referencedRelation: "fin_pessoas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_contas_receber: {
+        Row: {
+          arquivo_url: string | null
+          categoria_id: string | null
+          chave_nfe: string | null
+          cliente_id: string | null
+          cliente_nome: string | null
+          cofins_retido: number | null
+          conta_corrente_id: string | null
+          contrato_ref: string | null
+          created_at: string | null
+          csll_retido: number | null
+          data_emissao: string | null
+          data_recebimento: string | null
+          data_registro: string | null
+          data_vencimento: string
+          departamento: string | null
+          desconto: number | null
+          empresa_id: string | null
+          id: string
+          ir_retido: number | null
+          iss_retido: number | null
+          juros: number | null
+          multa: number | null
+          nota_fiscal: string | null
+          numero_documento: string | null
+          observacoes: string | null
+          origem: string | null
+          parcela_grupo_id: string | null
+          parcela_numero: number | null
+          parcela_total: number | null
+          pis_retido: number | null
+          previsao_recebimento: string | null
+          projeto_id: string | null
+          repeticao_ate: string | null
+          repeticao_tipo: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+          valor_documento: number
+          valor_recebido: number | null
+          vendedor_id: string | null
+          vendedor_nome: string | null
+        }
+        Insert: {
+          arquivo_url?: string | null
+          categoria_id?: string | null
+          chave_nfe?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          cofins_retido?: number | null
+          conta_corrente_id?: string | null
+          contrato_ref?: string | null
+          created_at?: string | null
+          csll_retido?: number | null
+          data_emissao?: string | null
+          data_recebimento?: string | null
+          data_registro?: string | null
+          data_vencimento?: string
+          departamento?: string | null
+          desconto?: number | null
+          empresa_id?: string | null
+          id?: string
+          ir_retido?: number | null
+          iss_retido?: number | null
+          juros?: number | null
+          multa?: number | null
+          nota_fiscal?: string | null
+          numero_documento?: string | null
+          observacoes?: string | null
+          origem?: string | null
+          parcela_grupo_id?: string | null
+          parcela_numero?: number | null
+          parcela_total?: number | null
+          pis_retido?: number | null
+          previsao_recebimento?: string | null
+          projeto_id?: string | null
+          repeticao_ate?: string | null
+          repeticao_tipo?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+          valor_documento?: number
+          valor_recebido?: number | null
+          vendedor_id?: string | null
+          vendedor_nome?: string | null
+        }
+        Update: {
+          arquivo_url?: string | null
+          categoria_id?: string | null
+          chave_nfe?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          cofins_retido?: number | null
+          conta_corrente_id?: string | null
+          contrato_ref?: string | null
+          created_at?: string | null
+          csll_retido?: number | null
+          data_emissao?: string | null
+          data_recebimento?: string | null
+          data_registro?: string | null
+          data_vencimento?: string
+          departamento?: string | null
+          desconto?: number | null
+          empresa_id?: string | null
+          id?: string
+          ir_retido?: number | null
+          iss_retido?: number | null
+          juros?: number | null
+          multa?: number | null
+          nota_fiscal?: string | null
+          numero_documento?: string | null
+          observacoes?: string | null
+          origem?: string | null
+          parcela_grupo_id?: string | null
+          parcela_numero?: number | null
+          parcela_total?: number | null
+          pis_retido?: number | null
+          previsao_recebimento?: string | null
+          projeto_id?: string | null
+          repeticao_ate?: string | null
+          repeticao_tipo?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+          valor_documento?: number
+          valor_recebido?: number | null
+          vendedor_id?: string | null
+          vendedor_nome?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_contas_receber_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "fin_categorias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_contas_receber_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "fin_pessoas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_contas_receber_conta_corrente_id_fkey"
+            columns: ["conta_corrente_id"]
+            isOneToOne: false
+            referencedRelation: "fin_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_contas_receber_conta_corrente_id_fkey"
+            columns: ["conta_corrente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_fin_saldo_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_contas_receber_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_contas_receber_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas_safe"
@@ -4596,27 +4999,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fin_lancamentos_categoria_id_fkey"
-            columns: ["categoria_id"]
-            isOneToOne: false
-            referencedRelation: "fin_categorias"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fin_lancamentos_conta_id_fkey"
-            columns: ["conta_id"]
-            isOneToOne: false
-            referencedRelation: "fin_contas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fin_lancamentos_conta_id_fkey"
-            columns: ["conta_id"]
-            isOneToOne: false
-            referencedRelation: "vw_fin_saldo_contas"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "fin_lancamentos_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
@@ -4642,6 +5024,158 @@ export type Database = {
             columns: ["centro_custo_id"]
             isOneToOne: false
             referencedRelation: "fin_centros_custo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_movimentacoes: {
+        Row: {
+          categoria_id: string | null
+          conciliado_em: string | null
+          conciliado_por: string | null
+          conta_id: string
+          conta_pagar_id: string | null
+          conta_receber_id: string | null
+          created_at: string | null
+          data_lancamento: string
+          descricao: string
+          empresa_id: string | null
+          fitid: string | null
+          id: string
+          nosso_numero: string | null
+          nota_fiscal: string | null
+          numero_documento: string | null
+          observacoes: string | null
+          origem: string | null
+          parcela_ref: string | null
+          pedido_ref: string | null
+          pessoa_cnpj_cpf: string | null
+          pessoa_id: string | null
+          pessoa_nome: string | null
+          projeto_nome: string | null
+          saldo_apos: number | null
+          saldo_previsto_apos: number | null
+          situacao: string | null
+          tipo_documento: string | null
+          tipo_lancamento: string
+          user_id: string
+          valor: number
+          vendedor_nome: string | null
+        }
+        Insert: {
+          categoria_id?: string | null
+          conciliado_em?: string | null
+          conciliado_por?: string | null
+          conta_id: string
+          conta_pagar_id?: string | null
+          conta_receber_id?: string | null
+          created_at?: string | null
+          data_lancamento?: string
+          descricao?: string
+          empresa_id?: string | null
+          fitid?: string | null
+          id?: string
+          nosso_numero?: string | null
+          nota_fiscal?: string | null
+          numero_documento?: string | null
+          observacoes?: string | null
+          origem?: string | null
+          parcela_ref?: string | null
+          pedido_ref?: string | null
+          pessoa_cnpj_cpf?: string | null
+          pessoa_id?: string | null
+          pessoa_nome?: string | null
+          projeto_nome?: string | null
+          saldo_apos?: number | null
+          saldo_previsto_apos?: number | null
+          situacao?: string | null
+          tipo_documento?: string | null
+          tipo_lancamento?: string
+          user_id: string
+          valor?: number
+          vendedor_nome?: string | null
+        }
+        Update: {
+          categoria_id?: string | null
+          conciliado_em?: string | null
+          conciliado_por?: string | null
+          conta_id?: string
+          conta_pagar_id?: string | null
+          conta_receber_id?: string | null
+          created_at?: string | null
+          data_lancamento?: string
+          descricao?: string
+          empresa_id?: string | null
+          fitid?: string | null
+          id?: string
+          nosso_numero?: string | null
+          nota_fiscal?: string | null
+          numero_documento?: string | null
+          observacoes?: string | null
+          origem?: string | null
+          parcela_ref?: string | null
+          pedido_ref?: string | null
+          pessoa_cnpj_cpf?: string | null
+          pessoa_id?: string | null
+          pessoa_nome?: string | null
+          projeto_nome?: string | null
+          saldo_apos?: number | null
+          saldo_previsto_apos?: number | null
+          situacao?: string | null
+          tipo_documento?: string | null
+          tipo_lancamento?: string
+          user_id?: string
+          valor?: number
+          vendedor_nome?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_movimentacoes_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "fin_categorias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_movimentacoes_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "fin_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_movimentacoes_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "vw_fin_saldo_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_movimentacoes_conta_pagar_id_fkey"
+            columns: ["conta_pagar_id"]
+            isOneToOne: false
+            referencedRelation: "fin_contas_pagar"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_movimentacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_movimentacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_movimentacoes_pessoa_id_fkey"
+            columns: ["pessoa_id"]
+            isOneToOne: false
+            referencedRelation: "fin_pessoas"
             referencedColumns: ["id"]
           },
         ]
@@ -4772,6 +5306,87 @@ export type Database = {
             columns: ["vinculada_lancamento_id"]
             isOneToOne: false
             referencedRelation: "fin_lancamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_pessoas: {
+        Row: {
+          ativo: boolean | null
+          cep: string | null
+          cidade: string | null
+          cnpj_cpf: string | null
+          created_at: string | null
+          email: string | null
+          empresa_id: string | null
+          endereco: string | null
+          id: string
+          ie: string | null
+          nome_fantasia: string | null
+          observacoes: string | null
+          razao_social: string
+          score_credito: number | null
+          telefone: string | null
+          tipo: string
+          uf: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          cep?: string | null
+          cidade?: string | null
+          cnpj_cpf?: string | null
+          created_at?: string | null
+          email?: string | null
+          empresa_id?: string | null
+          endereco?: string | null
+          id?: string
+          ie?: string | null
+          nome_fantasia?: string | null
+          observacoes?: string | null
+          razao_social: string
+          score_credito?: number | null
+          telefone?: string | null
+          tipo?: string
+          uf?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean | null
+          cep?: string | null
+          cidade?: string | null
+          cnpj_cpf?: string | null
+          created_at?: string | null
+          email?: string | null
+          empresa_id?: string | null
+          endereco?: string | null
+          id?: string
+          ie?: string | null
+          nome_fantasia?: string | null
+          observacoes?: string | null
+          razao_social?: string
+          score_credito?: number | null
+          telefone?: string | null
+          tipo?: string
+          uf?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_pessoas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_pessoas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -9234,25 +9849,24 @@ export type Database = {
         }
         Relationships: []
       }
-      vw_fin_dre_mensal: {
+      vw_fin_cp_resumo: {
         Row: {
-          categoria: string | null
+          a_vencer: number | null
+          atrasadas: number | null
           empresa_id: string | null
-          mes: string | null
-          qtd_lancamentos: number | null
-          tipo_categoria: string | null
-          total: number | null
+          total_em_aberto: number | null
+          vencem_hoje: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "fin_lancamentos_empresa_id_fkey"
+            foreignKeyName: "fin_contas_pagar_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fin_lancamentos_empresa_id_fkey"
+            foreignKeyName: "fin_contas_pagar_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas_safe"
@@ -9260,13 +9874,29 @@ export type Database = {
           },
         ]
       }
+      vw_fin_previsto_realizado: {
+        Row: {
+          empresa_id: string | null
+          mes: string | null
+          previsto: number | null
+          realizado: number | null
+          tipo: string | null
+        }
+        Relationships: []
+      }
       vw_fin_saldo_contas: {
         Row: {
-          banco: string | null
-          cor: string | null
+          agencia: string | null
+          ativo: boolean | null
+          banco_codigo: string | null
+          banco_logo_url: string | null
+          banco_nome: string | null
           empresa_id: string | null
           id: string | null
+          limite_credito: number | null
           nome: string | null
+          numero_conta: string | null
+          pendentes_conciliacao: number | null
           saldo_atual: number | null
           saldo_inicial: number | null
           tipo: string | null
