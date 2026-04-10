@@ -733,7 +733,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     </TableCell>
                   </TableRow>
                 );
-              })}
+              });
+              })()}
             </TableBody>
           </Table>
         </div>
