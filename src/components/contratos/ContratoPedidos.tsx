@@ -26,6 +26,12 @@ const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', c
 
 type ContratoItem = { id: string; descricao: string; unidade: string; valor_unitario: number; origem_aditivo_id: string | null };
 type AditivoRef = { id: string; numero_aditivo: string; tipo: string };
+
+const getOrigemLabel = (item: ContratoItem, aditivos: AditivoRef[]): string => {
+  if (!item.origem_aditivo_id) return '📄 Contrato Original';
+  const ad = aditivos.find(a => a.id === item.origem_aditivo_id);
+  return ad ? `📎 ${ad.numero_aditivo}` : '📎 Aditivo';
+};
 type Pedido = {
   id: string; numero_pedido: string; descricao: string | null;
   contrato_item_id: string | null; quantidade: number; valor_unitario: number;
