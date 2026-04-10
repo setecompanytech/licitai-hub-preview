@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, ArrowDownCircle, ArrowUpCircle, Landmark,
   FolderTree, Users, RefreshCw, BarChart3, Kanban, Barcode,
-  Receipt, ChevronLeft, ChevronRight,
+  Receipt, ChevronLeft, ChevronRight, TrendingUp, Percent,
 } from 'lucide-react';
 import FinHubDashboard from '@/components/financeiro/FinHubDashboard';
 import FinKanbanPagamentos from '@/components/financeiro/FinKanbanPagamentos';
@@ -17,6 +17,8 @@ import FinPessoas from '@/components/financeiro/FinPessoas';
 import FinExtrato from '@/components/financeiro/FinExtrato';
 import FinRelatorios from '@/components/financeiro/FinRelatorios';
 import FinNotasFiscais from '@/components/financeiro/FinNotasFiscais';
+import FinFluxoCaixa from '@/components/financeiro/FinFluxoCaixa';
+import FinComissoes from '@/components/financeiro/FinComissoes';
 import Boletos from '@/components/financeiro/Boletos';
 
 interface FinMenuItem {
@@ -29,6 +31,7 @@ interface FinMenuItem {
 const menuItems: FinMenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'Visão Geral' },
   { id: 'kanban', label: 'Kanban Pagamentos', icon: Kanban, group: 'Visão Geral' },
+  { id: 'fluxo', label: 'Fluxo de Caixa', icon: TrendingUp, group: 'Visão Geral' },
   { id: 'pagar', label: 'Contas a Pagar', icon: ArrowDownCircle, group: 'Operacional' },
   { id: 'receber', label: 'Contas a Receber', icon: ArrowUpCircle, group: 'Operacional' },
   { id: 'contas', label: 'Contas Bancárias', icon: Landmark, group: 'Operacional' },
@@ -37,6 +40,7 @@ const menuItems: FinMenuItem[] = [
   { id: 'extrato', label: 'Extrato / Conciliação', icon: RefreshCw, group: 'Movimentação' },
   { id: 'nf', label: 'Notas Fiscais', icon: Receipt, group: 'Movimentação' },
   { id: 'boletos', label: 'Boletos', icon: Barcode, group: 'Movimentação' },
+  { id: 'comissoes', label: 'Comissões', icon: Percent, group: 'Movimentação' },
   { id: 'relatorios', label: 'Relatórios', icon: BarChart3, group: 'Relatórios' },
 ];
 
@@ -53,6 +57,7 @@ export default function Financeiro() {
     switch (activeTab) {
       case 'dashboard': return <FinHubDashboard />;
       case 'kanban': return <FinKanbanPagamentos />;
+      case 'fluxo': return <FinFluxoCaixa />;
       case 'pagar': return <FinContasPagar />;
       case 'receber': return <FinContasReceber />;
       case 'contas': return <FinContasBancarias />;
@@ -61,6 +66,7 @@ export default function Financeiro() {
       case 'extrato': return <FinExtrato />;
       case 'nf': return <FinNotasFiscais />;
       case 'boletos': return <Boletos />;
+      case 'comissoes': return <FinComissoes />;
       case 'relatorios': return <FinRelatorios />;
       default: return <FinHubDashboard />;
     }
@@ -69,7 +75,6 @@ export default function Financeiro() {
   return (
     <AppLayout>
       <div className="flex h-[calc(100vh-4rem)] -mt-2 -mx-2 sm:-mx-4">
-        {/* Sidebar financeiro */}
         <aside
           className={cn(
             'border-r bg-muted/30 flex flex-col shrink-0 transition-all duration-200 overflow-y-auto',
@@ -119,7 +124,6 @@ export default function Financeiro() {
           </nav>
         </aside>
 
-        {/* Main content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           {renderContent()}
         </main>
