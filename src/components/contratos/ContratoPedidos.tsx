@@ -75,10 +75,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [preNfDialogOpen, setPreNfDialogOpen] = useState(false);
   const [preNotas, setPreNotas] = useState<any[]>([]);
 
-  // NF quitada dialog
+  // NF quitada dialog (setor financeiro)
   const [nfDialog, setNfDialog] = useState<Pedido | null>(null);
   const [nfNumero, setNfNumero] = useState('');
   const [nfData, setNfData] = useState('');
+  const [nfValorPago, setNfValorPago] = useState('');
   const [solicitandoComissao, setSolicitandoComissao] = useState(false);
 
   // Edit state
