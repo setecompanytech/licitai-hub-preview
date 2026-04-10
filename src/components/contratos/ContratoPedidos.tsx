@@ -590,7 +590,6 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                         {i.descricao}
                                       </SelectItem>
                                     ))}
-                                    ))}
                                   </SelectContent>
                                 </Select>
                               </div>
