@@ -633,7 +633,6 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <TableHead className="text-xs text-right whitespace-nowrap">Vlr Total</TableHead>
                 <TableHead className="text-xs text-center whitespace-nowrap">Data</TableHead>
                 <TableHead className="text-xs text-center whitespace-nowrap">Status</TableHead>
-                <TableHead className="text-xs whitespace-nowrap">NF Comercial</TableHead>
                 <TableHead className="text-xs whitespace-nowrap">NF-e Financeiro</TableHead>
                 {podeVerCustos && <TableHead className="text-xs text-right whitespace-nowrap">Custo Unit</TableHead>}
                 {podeVerCustos && <TableHead className="text-xs text-right whitespace-nowrap">Custo Total</TableHead>}
@@ -661,15 +660,6 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     <TableCell className="text-xs text-center whitespace-nowrap">{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
                     <TableCell className="text-center whitespace-nowrap">
                       <Badge className={`text-[10px] ${cfg.color}`}>{cfg.label}</Badge>
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {p.nf_quitada ? (
-                        <Badge className="text-[10px] bg-success/15 text-success">
-                          <CheckCircle2 className="w-3 h-3 mr-1" /> {p.nota_fiscal}
-                        </Badge>
-                      ) : p.nota_fiscal ? (
-                        <span className="text-muted-foreground">{p.nota_fiscal}</span>
-                      ) : '—'}
                     </TableCell>
                     <TableCell className="text-xs">
                       {linkedNfs.length > 0 ? (
