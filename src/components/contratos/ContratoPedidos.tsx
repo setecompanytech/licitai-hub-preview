@@ -330,22 +330,26 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const updateExtractedItem = (key: string, field: string, value: string) =>
     setExtractedItens(prev => prev.map(i => i.key === key ? { ...i, [field]: value } : i));
 
-  // NF Quitada + Solicitação de Comissão
+  // NF Quitada — Fluxo do Financeiro: informa data/valor do pagamento, sistema auto-calcula comissão
   const openNfDialog = (pedido: Pedido) => {
     setNfDialog(pedido);
     setNfNumero(pedido.nota_fiscal || '');
     setNfData(pedido.data_quitacao || new Date().toISOString().split('T')[0]);
+    setNfValorPago(String(pedido.valor_total));
   };
 
-  const handleMarcarNfQuitada = async (solicitarComissao: boolean) => {
+  const handleMarcarNfQuitada = async () => {
     if (!nfDialog || !nfNumero.trim()) { toast.error('Informe o número da Nota Fiscal'); return; }
+    if (!nfData) { toast.error('Informe a data do pagamento'); return; }
+    const valorPago = parseFloat(nfValorPago) || 0;
+    if (valorPago <= 0) { toast.error('Informe o valor pago'); return; }
     setSolicitandoComissao(true);
 
-    // Update pedido with NF quitada
+    // 1. Update pedido with NF quitada
     const { error: updateErr } = await supabase.from('contrato_pedidos').update({
       nota_fiscal: nfNumero,
       nf_quitada: true,
-      data_quitacao: nfData || null,
+      data_quitacao: nfData,
     } as any).eq('id', nfDialog.id);
 
     if (updateErr) {
@@ -354,31 +358,60 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       return;
     }
 
-    // If requesting commission
-    if (solicitarComissao && user && empresaAtiva) {
-      const { error: comErr } = await supabase.from('comissoes_lancamentos' as any).insert({
-        empresa_id: empresaAtiva.id,
-        user_id: user.id,
-        solicitado_por: user.id,
-        tipo: 'nota_fiscal',
-        valor_base: nfDialog.valor_total,
-        desconto_percentual: 0,
-        percentual_comissao: 0,
-        valor_comissao: 0, // Admin will define
-        nota_fiscal: nfNumero,
-        status: 'pendente',
-        contrato_pedido_id: nfDialog.id,
-        observacoes: `Solicitação de comissão referente à NF ${nfNumero} quitada em ${nfData}. Pedido: ${nfDialog.numero_pedido}, Valor: ${fmt(nfDialog.valor_total)}`,
-      } as any);
+    // 2. Buscar vendedor responsável pelo contrato
+    const { data: contrato } = await supabase
+      .from('contratos')
+      .select('vendedor_user_id, empresa_id')
+      .eq('id', contratoId)
+      .single();
 
-      if (comErr) {
-        console.error('Erro ao solicitar comissão:', comErr);
-        toast.warning('NF marcada como quitada, mas houve erro ao solicitar comissão.');
-      } else {
-        toast.success('NF quitada registrada e comissão solicitada ao administrador!');
-      }
+    const vendedorId = (contrato as any)?.vendedor_user_id;
+    const empresaId = (contrato as any)?.empresa_id || empresaAtiva?.id;
+
+    if (!vendedorId || !empresaId) {
+      toast.warning('NF quitada registrada, mas não há vendedor vinculado ao contrato para cálculo de comissão.');
+      setSolicitandoComissao(false);
+      setNfDialog(null);
+      load();
+      return;
+    }
+
+    // 3. Buscar config de comissão do vendedor
+    const { data: comConfig } = await supabase
+      .from('comissoes_config' as any)
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .eq('ativo', true)
+      .maybeSingle();
+
+    const percentual = (comConfig as any)?.percentual || 0;
+    const valorFixo = (comConfig as any)?.valor_fixo || 0;
+    const tipoComissao = (comConfig as any)?.tipo_comissao || 'percentual';
+
+    const valorComissao = tipoComissao === 'percentual'
+      ? valorPago * (percentual / 100)
+      : valorFixo;
+
+    // 4. Criar lançamento de comissão automático
+    const { error: comErr } = await supabase.from('comissoes_lancamentos' as any).insert({
+      empresa_id: empresaId,
+      user_id: vendedorId,
+      solicitado_por: user?.id,
+      tipo: 'nota_fiscal',
+      valor_base: valorPago,
+      percentual_comissao: tipoComissao === 'percentual' ? percentual : 0,
+      valor_comissao: valorComissao,
+      nota_fiscal: nfNumero,
+      status: 'pendente',
+      contrato_pedido_id: nfDialog.id,
+      observacoes: `Comissão auto-calculada pelo financeiro. NF ${nfNumero} quitada em ${nfData}. Valor pago: ${fmt(valorPago)}. Comissão (${tipoComissao === 'percentual' ? percentual + '%' : 'fixo'}): ${fmt(valorComissao)}.`,
+    } as any);
+
+    if (comErr) {
+      console.error('Erro ao criar comissão:', comErr);
+      toast.warning('NF quitada, mas houve erro ao gerar comissão automaticamente.');
     } else {
-      toast.success('Nota Fiscal marcada como quitada.');
+      toast.success(`NF quitada! Comissão de ${fmt(valorComissao)} gerada para o vendedor responsável.`);
     }
 
     setSolicitandoComissao(false);
