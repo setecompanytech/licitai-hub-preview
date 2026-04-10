@@ -265,7 +265,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   };
 
   const handleDelete = async (id: string) => {
-    await supabase.from('contrato_pedidos').delete().eq('id', id);
+    // Remove dependent records first to avoid FK constraint errors
+    await supabase.from('contrato_custos').delete().eq('contrato_pedido_id', id);
+    await supabase.from('notas_fiscais').update({ contrato_pedido_id: null } as any).eq('contrato_pedido_id', id);
+    
+    const { error } = await supabase.from('contrato_pedidos').delete().eq('id', id);
+    if (error) {
+      console.error('Erro ao excluir pedido:', error);
+      toast.error('Erro ao excluir pedido: ' + error.message);
+      return;
+    }
     toast.success('Pedido excluído.');
     load();
   };
