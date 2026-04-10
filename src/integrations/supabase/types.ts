@@ -3119,6 +3119,7 @@ export type Database = {
           user_id: string
           valor_consumido: number
           valor_global: number
+          valor_global_original: number
           vigencia_meses: number | null
         }
         Insert: {
@@ -3146,6 +3147,7 @@ export type Database = {
           user_id: string
           valor_consumido?: number
           valor_global?: number
+          valor_global_original?: number
           vigencia_meses?: number | null
         }
         Update: {
@@ -3173,6 +3175,7 @@ export type Database = {
           user_id?: string
           valor_consumido?: number
           valor_global?: number
+          valor_global_original?: number
           vigencia_meses?: number | null
         }
         Relationships: [
