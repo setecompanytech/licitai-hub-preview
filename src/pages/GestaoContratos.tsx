@@ -108,7 +108,7 @@ export default function GestaoContratos() {
     const consumed = parseFloat(form.valor_consumido) || 0;
     const { data: inserted, error } = await supabase.from('contratos').insert({
       user_id: user!.id, numero_contrato: form.numero_contrato, objeto: form.objeto,
-      orgao_contratante: form.orgao_contratante, valor_global: val, valor_consumido: consumed,
+      orgao_contratante: form.orgao_contratante, valor_global: val, valor_global_original: val, valor_consumido: consumed,
       data_assinatura: form.data_assinatura || null, data_inicio: form.data_inicio || null,
       data_fim: form.data_fim || null, vigencia_meses: parseInt(form.vigencia_meses) || null,
       status: form.status, modalidade: form.modalidade || null, uf: form.uf || null,
