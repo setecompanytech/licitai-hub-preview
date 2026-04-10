@@ -51,6 +51,12 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const pedidosAtivos = data.pedidos.filter((p: any) => p.status !== 'cancelado');
     const faturamento = pedidosAtivos.reduce((s: number, p: any) => s + (p.valor_total || 0), 0);
     
+    // Sum addendum acrescimos/supressoes
+    const totalAditivoValorAcrescimo = data.aditivos.reduce((s: number, a: any) => s + (a.valor_acrescimo || 0), 0);
+    const totalAditivoValorSupressao = data.aditivos.reduce((s: number, a: any) => s + (a.valor_supressao || 0), 0);
+    const totalAditivoQtdAcrescimo = data.aditivos.reduce((s: number, a: any) => s + (a.quantidade_acrescimo || 0), 0);
+    const totalAditivoQtdSupressao = data.aditivos.reduce((s: number, a: any) => s + (a.quantidade_supressao || 0), 0);
+    
     // Custos from contrato_custos table
     const totalCustosTabela = data.custos.reduce((s: number, cc: any) => s + (cc.valor || 0), 0);
     const custosDiretos = data.custos.filter((cc: any) => cc.tipo === 'custo_direto').reduce((s: number, cc: any) => s + cc.valor, 0);
@@ -66,13 +72,25 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     
     const lucroBruto = faturamento - custosDiretos - custoPedidos;
     const lucroLiquido = faturamento - totalCustos;
-    const pctConsumo = c.valor_global > 0 ? (c.valor_consumido / c.valor_global) * 100 : 0;
+    
+    // valor_global already includes aditivos via trigger, use it directly
+    const valorGlobalEfetivo = c.valor_global || 0;
+    const pctConsumo = valorGlobalEfetivo > 0 ? (c.valor_consumido / valorGlobalEfetivo) * 100 : 0;
+    
     const diasRestantes = c.data_fim ? Math.ceil((new Date(c.data_fim).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
-    const itensAlertaSaldo = data.itens.filter((i: any) => i.quantidade_contratada > 0 && (i.quantidade_consumida / i.quantidade_contratada) * 100 >= 80);
+    
+    // For items, add addendum quantities proportionally
+    const itensComAditivo = data.itens.map((i: any) => {
+      const qtdContratadaTotal = (i.quantidade_contratada || 0) + totalAditivoQtdAcrescimo - totalAditivoQtdSupressao;
+      const saldoQtd = qtdContratadaTotal - (i.quantidade_consumida || 0);
+      return { ...i, quantidade_contratada_total: qtdContratadaTotal, saldo_quantitativo_efetivo: saldoQtd };
+    });
+    
+    const itensAlertaSaldo = itensComAditivo.filter((i: any) => i.quantidade_contratada_total > 0 && (i.quantidade_consumida / i.quantidade_contratada_total) * 100 >= 80);
     const meses: Record<string, number> = {};
     pedidosAtivos.forEach((p: any) => { if (p.data_pedido) { const k = p.data_pedido.substring(0, 7); meses[k] = (meses[k] || 0) + (p.valor_total || 0); } });
     const pedidosPorMes = Object.entries(meses).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
-    return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, itensAlertaSaldo, pedidosPorMes };
+    return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
   }, [data]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
