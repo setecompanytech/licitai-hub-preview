@@ -17,7 +17,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import {
   Plus, Trash2, Loader2, ShoppingCart, CheckCircle2, Clock, XCircle,
-  Upload, FileText, AlertTriangle, DollarSign, Receipt, Pencil
+  Upload, FileText, AlertTriangle, DollarSign, Receipt, Pencil, ArrowUpDown, ArrowUp, ArrowDown
 } from 'lucide-react';
 import GerarPreNotaDialog from './GerarPreNotaDialog';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
@@ -61,6 +61,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const { isFinanceiro, isAdmin } = useMembroPermissoes();
   const podeVerCustos = isFinanceiro || isAdmin;
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
   const [itens, setItens] = useState<ContratoItem[]>([]);
   const [nfsSync, setNfsSync] = useState<NotaFiscalSync[]>([]);
   const [loading, setLoading] = useState(true);
@@ -618,35 +619,47 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         <>
         <div className="rounded-lg border overflow-x-auto">
           <Table>
-            <TableHeader>
+             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs">N.o Pedido</TableHead>
-                <TableHead className="text-xs">Descrição</TableHead>
-                <TableHead className="text-xs text-right">Qtd</TableHead>
-                <TableHead className="text-xs text-right">Vlr Unit</TableHead>
-                <TableHead className="text-xs text-right">Vlr Total</TableHead>
-                <TableHead className="text-xs text-center">Data</TableHead>
-                <TableHead className="text-xs text-center">Status</TableHead>
-                <TableHead className="text-xs">NF Comercial</TableHead>
-                <TableHead className="text-xs">NF-e Financeiro</TableHead>
-                {podeVerCustos && <TableHead className="text-xs text-right">Custo Unit</TableHead>}
-                {podeVerCustos && <TableHead className="text-xs text-right">Custo Total</TableHead>}
+                <TableHead className="text-xs whitespace-nowrap cursor-pointer select-none" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : prev === 'desc' ? null : 'asc')}>
+                  <div className="flex items-center gap-1">
+                    N.º Pedido
+                    {sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : sortOrder === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUpDown className="w-3 h-3 text-muted-foreground/50" />}
+                  </div>
+                </TableHead>
+                <TableHead className="text-xs whitespace-nowrap">Descrição</TableHead>
+                <TableHead className="text-xs text-right whitespace-nowrap">Qtd</TableHead>
+                <TableHead className="text-xs text-right whitespace-nowrap">Vlr Unit</TableHead>
+                <TableHead className="text-xs text-right whitespace-nowrap">Vlr Total</TableHead>
+                <TableHead className="text-xs text-center whitespace-nowrap">Data</TableHead>
+                <TableHead className="text-xs text-center whitespace-nowrap">Status</TableHead>
+                <TableHead className="text-xs whitespace-nowrap">NF Comercial</TableHead>
+                <TableHead className="text-xs whitespace-nowrap">NF-e Financeiro</TableHead>
+                {podeVerCustos && <TableHead className="text-xs text-right whitespace-nowrap">Custo Unit</TableHead>}
+                {podeVerCustos && <TableHead className="text-xs text-right whitespace-nowrap">Custo Total</TableHead>}
                 <TableHead className="text-xs w-20"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pedidos.map(p => {
+              {(() => {
+                const sorted = sortOrder
+                  ? [...pedidos].sort((a, b) => {
+                      const cmp = a.numero_pedido.localeCompare(b.numero_pedido, 'pt-BR', { numeric: true });
+                      return sortOrder === 'asc' ? cmp : -cmp;
+                    })
+                  : pedidos;
+                return sorted.map(p => {
                 const cfg = statusCfg[p.status] || statusCfg.pendente;
                 const linkedNfs = nfsSync.filter(nf => nf.contrato_pedido_id === p.id);
                 return (
                   <TableRow key={p.id}>
-                    <TableCell className="text-xs font-mono font-medium">{p.numero_pedido}</TableCell>
+                    <TableCell className="text-xs font-mono font-medium whitespace-nowrap">{p.numero_pedido}</TableCell>
                     <TableCell className="text-xs max-w-[200px] truncate">{p.descricao || '—'}</TableCell>
-                    <TableCell className="text-xs text-right">{p.quantidade}</TableCell>
-                    <TableCell className="text-xs text-right">{fmt(p.valor_unitario)}</TableCell>
-                    <TableCell className="text-xs text-right font-medium">{fmt(p.valor_total)}</TableCell>
-                    <TableCell className="text-xs text-center">{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-xs text-right whitespace-nowrap">{p.quantidade}</TableCell>
+                    <TableCell className="text-xs text-right whitespace-nowrap">{fmt(p.valor_unitario)}</TableCell>
+                    <TableCell className="text-xs text-right font-medium whitespace-nowrap">{fmt(p.valor_total)}</TableCell>
+                    <TableCell className="text-xs text-center whitespace-nowrap">{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
+                    <TableCell className="text-center whitespace-nowrap">
                       <Badge className={`text-[10px] ${cfg.color}`}>{cfg.label}</Badge>
                     </TableCell>
                     <TableCell className="text-xs">
@@ -720,7 +733,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     </TableCell>
                   </TableRow>
                 );
-              })}
+              });
+              })()}
             </TableBody>
           </Table>
         </div>
