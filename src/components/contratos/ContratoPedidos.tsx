@@ -24,7 +24,8 @@ import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-type ContratoItem = { id: string; descricao: string; unidade: string; valor_unitario: number };
+type ContratoItem = { id: string; descricao: string; unidade: string; valor_unitario: number; origem_aditivo_id: string | null };
+type AditivoRef = { id: string; numero_aditivo: string; tipo: string };
 type Pedido = {
   id: string; numero_pedido: string; descricao: string | null;
   contrato_item_id: string | null; quantidade: number; valor_unitario: number;
