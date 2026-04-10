@@ -35,7 +35,6 @@ import ContratoItens from '@/components/contratos/ContratoItens';
 import ContratoPedidos from '@/components/contratos/ContratoPedidos';
 import ContratoDashboard from '@/components/contratos/ContratoDashboard';
 import ContratoArquivos from '@/components/contratos/ContratoArquivos';
-import ContratoAditivos from '@/components/contratos/ContratoAditivos';
 
 import ImportarContratoPDF from '@/components/contratos/ImportarContratoPDF';
 
@@ -250,10 +249,7 @@ export default function GestaoContratos() {
           <TabsContent value="itens"><ContratoItens contratoId={c.id} /></TabsContent>
           <TabsContent value="pedidos"><ContratoPedidos contratoId={c.id} /></TabsContent>
           <TabsContent value="contratos-aditivos">
-            <div className="space-y-6">
-              <ContratoArquivos contratoId={c.id} />
-              <ContratoAditivos contratoId={c.id} />
-            </div>
+            <ContratoArquivos contratoId={c.id} />
           </TabsContent>
         </Tabs>
       </AppLayout>
