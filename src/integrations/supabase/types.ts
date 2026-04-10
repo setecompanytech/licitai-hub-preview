@@ -2955,6 +2955,7 @@ export type Database = {
           descricao: string
           id: string
           observacoes: string | null
+          origem_aditivo_id: string | null
           quantidade_consumida: number
           quantidade_contratada: number
           saldo_financeiro: number
@@ -2972,6 +2973,7 @@ export type Database = {
           descricao: string
           id?: string
           observacoes?: string | null
+          origem_aditivo_id?: string | null
           quantidade_consumida?: number
           quantidade_contratada?: number
           saldo_financeiro?: number
@@ -2989,6 +2991,7 @@ export type Database = {
           descricao?: string
           id?: string
           observacoes?: string | null
+          origem_aditivo_id?: string | null
           quantidade_consumida?: number
           quantidade_contratada?: number
           saldo_financeiro?: number
@@ -3005,6 +3008,13 @@ export type Database = {
             columns: ["contrato_id"]
             isOneToOne: false
             referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_itens_origem_aditivo_id_fkey"
+            columns: ["origem_aditivo_id"]
+            isOneToOne: false
+            referencedRelation: "contrato_aditivos"
             referencedColumns: ["id"]
           },
         ]
@@ -3025,6 +3035,7 @@ export type Database = {
           nota_fiscal: string | null
           numero_pedido: string
           observacoes: string | null
+          origem_aditivo_id: string | null
           quantidade: number
           status: string
           updated_at: string
@@ -3047,6 +3058,7 @@ export type Database = {
           nota_fiscal?: string | null
           numero_pedido: string
           observacoes?: string | null
+          origem_aditivo_id?: string | null
           quantidade?: number
           status?: string
           updated_at?: string
@@ -3069,6 +3081,7 @@ export type Database = {
           nota_fiscal?: string | null
           numero_pedido?: string
           observacoes?: string | null
+          origem_aditivo_id?: string | null
           quantidade?: number
           status?: string
           updated_at?: string
@@ -3089,6 +3102,13 @@ export type Database = {
             columns: ["contrato_item_id"]
             isOneToOne: false
             referencedRelation: "contrato_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_pedidos_origem_aditivo_id_fkey"
+            columns: ["origem_aditivo_id"]
+            isOneToOne: false
+            referencedRelation: "contrato_aditivos"
             referencedColumns: ["id"]
           },
         ]

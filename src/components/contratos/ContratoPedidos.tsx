@@ -24,7 +24,8 @@ import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-type ContratoItem = { id: string; descricao: string; unidade: string; valor_unitario: number };
+type ContratoItem = { id: string; descricao: string; unidade: string; valor_unitario: number; origem_aditivo_id: string | null };
+type AditivoRef = { id: string; numero_aditivo: string; tipo: string };
 type Pedido = {
   id: string; numero_pedido: string; descricao: string | null;
   contrato_item_id: string | null; quantidade: number; valor_unitario: number;
@@ -63,6 +64,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
   const [itens, setItens] = useState<ContratoItem[]>([]);
+  const [aditivos, setAditivos] = useState<AditivoRef[]>([]);
   const [nfsSync, setNfsSync] = useState<NotaFiscalSync[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -98,8 +100,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     numero_pedido: '', descricao: '', contrato_item_id: '',
     quantidade: '', valor_unitario: '', data_pedido: new Date().toISOString().split('T')[0],
     data_entrega: '', status: 'pendente', nota_fiscal: '', observacoes: '',
-    tipo_documento: 'ordem_fornecimento',
+    tipo_documento: 'ordem_fornecimento', origem_aditivo_id: '',
   });
+  const [origemFilter, setOrigemFilter] = useState<string>('__todos__');
 
   // Multi-item support
   const [extractedItens, setExtractedItens] = useState<Array<{
@@ -109,16 +112,18 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
   const load = async () => {
     setLoading(true);
-    const [pedidosRes, itensRes, nfsRes, preNotasRes] = await Promise.all([
+    const [pedidosRes, itensRes, nfsRes, preNotasRes, aditivosRes] = await Promise.all([
       supabase.from('contrato_pedidos').select('*').eq('contrato_id', contratoId).order('data_pedido', { ascending: false }),
-      supabase.from('contrato_itens').select('id, descricao, unidade, valor_unitario').eq('contrato_id', contratoId),
+      supabase.from('contrato_itens').select('id, descricao, unidade, valor_unitario, origem_aditivo_id').eq('contrato_id', contratoId),
       supabase.from('notas_fiscais').select('id, numero_nf, tipo, status, valor_total, data_emissao, chave_acesso, contrato_pedido_id, natureza_operacao, destinatario_razao_social').eq('contrato_id', contratoId),
       supabase.from('pre_notas_fiscais' as any).select('id, status, natureza_operacao, valor_total, created_at, motivo_rejeicao, motivo_devolucao').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
+      supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
     ]);
     setPedidos((pedidosRes.data as any[]) || []);
     setItens((itensRes.data as any[]) || []);
     setNfsSync((nfsRes.data as any[]) || []);
     setPreNotas((preNotasRes.data as any[]) || []);
+    setAditivos((aditivosRes.data as any[]) || []);
     setLoading(false);
   };
 
@@ -136,7 +141,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       numero_pedido: '', descricao: '', contrato_item_id: '',
       quantidade: '', valor_unitario: '', data_pedido: new Date().toISOString().split('T')[0],
       data_entrega: '', status: 'pendente', nota_fiscal: '', observacoes: '',
-      tipo_documento: 'ordem_fornecimento',
+      tipo_documento: 'ordem_fornecimento', origem_aditivo_id: '',
     });
     setExtractedData(null);
     setExtractedItens([]);
@@ -221,6 +226,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       data_pedido: form.data_pedido || null, data_entrega: form.data_entrega || null,
       status: form.status, nota_fiscal: form.nota_fiscal || null,
       observacoes: form.observacoes || null,
+      origem_aditivo_id: form.origem_aditivo_id || null,
     } as any);
     setSaving(false);
     if (error) { console.error('Erro ao salvar pedido:', error.message, error.details, error.code); toast.error('Erro ao salvar pedido: ' + error.message); return; }
@@ -568,13 +574,32 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   <>
                     <Separator />
                     <div>
+                      <Label className="text-xs">Origem do Pedido</Label>
+                      <Select value={origemFilter} onValueChange={v => { setOrigemFilter(v); setForm(f => ({ ...f, contrato_item_id: '', origem_aditivo_id: v === '__todos__' || v === '__contrato__' ? '' : v })); }}>
+                        <SelectTrigger><SelectValue placeholder="Filtrar por origem" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__todos__">Todos os Itens</SelectItem>
+                          <SelectItem value="__contrato__">Contrato Original</SelectItem>
+                          {aditivos.map(a => (
+                            <SelectItem key={a.id} value={a.id}>Aditivo {a.numero_aditivo} ({a.tipo})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
                       <Label className="text-xs">Item do Contrato</Label>
                       <Select value={form.contrato_item_id} onValueChange={handleItemChange}>
                         <SelectTrigger><SelectValue placeholder="Selecionar item" /></SelectTrigger>
                         <SelectContent>
-                          {itens.map(i => (
-                            <SelectItem key={i.id} value={i.id}>{i.descricao} ({i.unidade})</SelectItem>
-                          ))}
+                          {itens
+                            .filter(i => {
+                              if (origemFilter === '__todos__') return true;
+                              if (origemFilter === '__contrato__') return !i.origem_aditivo_id;
+                              return i.origem_aditivo_id === origemFilter;
+                            })
+                            .map(i => (
+                              <SelectItem key={i.id} value={i.id}>{i.descricao} ({i.unidade})</SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                     </div>
