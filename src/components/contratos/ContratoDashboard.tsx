@@ -15,7 +15,7 @@ import {
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
 export default function ContratoDashboard({ contratoId }: { contratoId: string }) {
-  const [data, setData] = useState<{ contrato: any; itens: any[]; pedidos: any[]; custos: any[] } | null>(null);
+  const [data, setData] = useState<{ contrato: any; itens: any[]; pedidos: any[]; custos: any[]; aditivos: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingGlobal, setEditingGlobal] = useState(false);
   const [globalInput, setGlobalInput] = useState('');
@@ -26,17 +26,19 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [contratoRes, itensRes, pedidosRes, custosRes] = await Promise.all([
+      const [contratoRes, itensRes, pedidosRes, custosRes, aditivosRes] = await Promise.all([
         supabase.from('contratos').select('*').eq('id', contratoId).single(),
         supabase.from('contrato_itens').select('*').eq('contrato_id', contratoId),
         supabase.from('contrato_pedidos').select('*').eq('contrato_id', contratoId),
         supabase.from('contrato_custos').select('*').eq('contrato_id', contratoId),
+        supabase.from('contrato_aditivos').select('*').eq('contrato_id', contratoId),
       ]);
       setData({
         contrato: contratoRes.data,
         itens: (itensRes.data as any[]) || [],
         pedidos: (pedidosRes.data as any[]) || [],
         custos: (custosRes.data as any[]) || [],
+        aditivos: (aditivosRes.data as any[]) || [],
       });
       setLoading(false);
     };
