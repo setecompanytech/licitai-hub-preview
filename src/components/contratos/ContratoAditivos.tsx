@@ -212,12 +212,15 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
           <p className="text-xs text-muted-foreground mt-1">Registre aditivos de valor, quantidade ou prazo.</p>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-4">
           {aditivos.map((a) => {
             const tipoConfig = TIPOS_ADITIVO[a.tipo] || TIPOS_ADITIVO.valor;
             const Icon = tipoConfig.icon;
+            const saldoValor = (a.valor_acrescimo || 0) - (a.valor_supressao || 0);
+            const saldoQtyItem = (a.quantidade_acrescimo || 0) - (a.quantidade_supressao || 0);
             return (
-              <Card key={a.id} className="p-4">
+              <Card key={a.id} className="p-4 space-y-3">
+                {/* Header */}
                 <div className="flex items-start gap-3">
                   <div className={`p-2 rounded-lg ${tipoConfig.color}`}>
                     <Icon className="w-4 h-4" />
@@ -258,6 +261,34 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                     <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDelete(a.id)}>
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
+                  </div>
+                </div>
+
+                {/* Per-aditivo summary cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                  <div className="rounded-lg border p-2">
+                    <div className="text-[10px] text-muted-foreground mb-0.5">Acréscimos (R$)</div>
+                    <p className="text-xs font-bold text-success">{fmt(a.valor_acrescimo || 0)}</p>
+                  </div>
+                  <div className="rounded-lg border p-2">
+                    <div className="text-[10px] text-muted-foreground mb-0.5">Supressões (R$)</div>
+                    <p className="text-xs font-bold text-destructive">{fmt(a.valor_supressao || 0)}</p>
+                  </div>
+                  <div className="rounded-lg border p-2">
+                    <div className="text-[10px] text-muted-foreground mb-0.5">Saldo Valor</div>
+                    <p className={`text-xs font-bold ${saldoValor >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(saldoValor)}</p>
+                  </div>
+                  <div className="rounded-lg border p-2">
+                    <div className="text-[10px] text-muted-foreground mb-0.5">Acrésc. Qtde</div>
+                    <p className="text-xs font-bold text-success">+{fmtQty(a.quantidade_acrescimo || 0)}</p>
+                  </div>
+                  <div className="rounded-lg border p-2">
+                    <div className="text-[10px] text-muted-foreground mb-0.5">Supr. Qtde</div>
+                    <p className="text-xs font-bold text-destructive">-{fmtQty(a.quantidade_supressao || 0)}</p>
+                  </div>
+                  <div className="rounded-lg border p-2">
+                    <div className="text-[10px] text-muted-foreground mb-0.5">Saldo Qtde</div>
+                    <p className={`text-xs font-bold ${saldoQtyItem >= 0 ? 'text-success' : 'text-destructive'}`}>{fmtQty(saldoQtyItem)}</p>
                   </div>
                 </div>
               </Card>
