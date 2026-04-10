@@ -631,12 +631,17 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
 
       {/* Edit dialog */}
       <Dialog open={editDialog.open} onOpenChange={(v) => setEditDialog({ open: v, arquivo: v ? editDialog.arquivo : null })}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Editar Documento</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-2">
             <div>
               <Label className="text-xs">Tipo do Documento</Label>
-              <Select value={editTipo} onValueChange={setEditTipo}>
+              <Select value={editTipo} onValueChange={(v) => {
+                setEditTipo(v);
+                if (isAditivoType(v) && !editLinkedAditivoId) {
+                  setEditAditivoForm(f => ({ ...f, numero_aditivo: f.numero_aditivo || `${aditivos.length + 1}º Aditivo` }));
+                }
+              }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(TIPOS_ARQUIVO).map(([key, { label }]) => (
@@ -649,6 +654,85 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
               <Label className="text-xs">Descrição (opcional)</Label>
               <Input value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} placeholder="Ex: 1º Aditivo de Prazo" />
             </div>
+
+            {/* Aditivo fields in edit */}
+            {isAditivoType(editTipo) && (
+              <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+                <p className="text-xs font-semibold text-muted-foreground">Dados do Aditivo</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Nº/Identificação</Label>
+                    <Input value={editAditivoForm.numero_aditivo} onChange={(e) => setEditAditivoForm(f => ({ ...f, numero_aditivo: e.target.value }))} placeholder="1º Aditivo" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Data Assinatura</Label>
+                    <Input type="date" value={editAditivoForm.data_assinatura} onChange={(e) => setEditAditivoForm(f => ({ ...f, data_assinatura: e.target.value }))} />
+                  </div>
+
+                  {showValueFields(editTipo) && (
+                    <>
+                      <div>
+                        <Label className="text-xs">Valor Acréscimo (R$)</Label>
+                        <Input type="number" step="0.01" value={editAditivoForm.valor_acrescimo} onChange={(e) => setEditAditivoForm(f => ({ ...f, valor_acrescimo: e.target.value }))} placeholder="0,00" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Valor Supressão (R$)</Label>
+                        <Input type="number" step="0.01" value={editAditivoForm.valor_supressao} onChange={(e) => setEditAditivoForm(f => ({ ...f, valor_supressao: e.target.value }))} placeholder="0,00" />
+                      </div>
+                    </>
+                  )}
+
+                  {showQtyFields(editTipo) && (
+                    <>
+                      <div>
+                        <Label className="text-xs">Qtde Acréscimo</Label>
+                        <Input type="number" step="1" value={editAditivoForm.quantidade_acrescimo} onChange={(e) => setEditAditivoForm(f => ({ ...f, quantidade_acrescimo: e.target.value }))} placeholder="0" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Qtde Supressão</Label>
+                        <Input type="number" step="1" value={editAditivoForm.quantidade_supressao} onChange={(e) => setEditAditivoForm(f => ({ ...f, quantidade_supressao: e.target.value }))} placeholder="0" />
+                      </div>
+                    </>
+                  )}
+
+                  {(showDateField(editTipo) || isAditivoType(editTipo)) && (
+                    <div>
+                      <Label className="text-xs">Nova Data Fim (se prorrogação)</Label>
+                      <Input type="date" value={editAditivoForm.nova_data_fim} onChange={(e) => setEditAditivoForm(f => ({ ...f, nova_data_fim: e.target.value }))} />
+                    </div>
+                  )}
+
+                  <div className="sm:col-span-2">
+                    <Label className="text-xs">Justificativa / Fundamentação</Label>
+                    <Textarea value={editAditivoForm.justificativa} onChange={(e) => setEditAditivoForm(f => ({ ...f, justificativa: e.target.value }))} rows={2} placeholder="Fundamentação legal do aditivo" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label className="text-xs">Observações</Label>
+                    <Textarea value={editAditivoForm.observacoes} onChange={(e) => setEditAditivoForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
+                  </div>
+                </div>
+
+                {/* Preview */}
+                {(showValueFields(editTipo) || showQtyFields(editTipo)) && (
+                  <Card className="p-3 bg-muted/50">
+                    <p className="text-[10px] text-muted-foreground mb-1 font-medium">Resumo do Aditivo</p>
+                    <div className="flex flex-wrap gap-4 text-xs">
+                      {showValueFields(editTipo) && (
+                        <span className={`font-semibold ${(parseFloat(editAditivoForm.valor_acrescimo) || 0) - (parseFloat(editAditivoForm.valor_supressao) || 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                          Saldo Valor: {fmt((parseFloat(editAditivoForm.valor_acrescimo) || 0) - (parseFloat(editAditivoForm.valor_supressao) || 0))}
+                        </span>
+                      )}
+                      {showQtyFields(editTipo) && (
+                        <span className={`font-semibold ${(parseFloat(editAditivoForm.quantidade_acrescimo) || 0) - (parseFloat(editAditivoForm.quantidade_supressao) || 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                          Saldo Qtde: {fmtQty((parseFloat(editAditivoForm.quantidade_acrescimo) || 0) - (parseFloat(editAditivoForm.quantidade_supressao) || 0))}
+                        </span>
+                      )}
+                    </div>
+                  </Card>
+                )}
+              </div>
+            )}
+
             <div>
               <Label className="text-xs">Substituir arquivo</Label>
               <div className="mt-1">
