@@ -226,6 +226,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       data_pedido: form.data_pedido || null, data_entrega: form.data_entrega || null,
       status: form.status, nota_fiscal: form.nota_fiscal || null,
       observacoes: form.observacoes || null,
+      origem_aditivo_id: form.origem_aditivo_id || null,
     } as any);
     setSaving(false);
     if (error) { console.error('Erro ao salvar pedido:', error.message, error.details, error.code); toast.error('Erro ao salvar pedido: ' + error.message); return; }
