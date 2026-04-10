@@ -61,6 +61,8 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
   const [editFile, setEditFile] = useState<File | null>(null);
   const [editTipo, setEditTipo] = useState('contrato_original');
   const [editDescricao, setEditDescricao] = useState('');
+  const [editAditivoForm, setEditAditivoForm] = useState(emptyAditivoForm);
+  const [editLinkedAditivoId, setEditLinkedAditivoId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const editFileRef = useRef<HTMLInputElement>(null);
