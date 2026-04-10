@@ -4336,10 +4336,12 @@ export type Database = {
       }
       fin_comissoes: {
         Row: {
+          conta_pagar_id: string | null
           contrato_ref: string | null
           created_at: string | null
           data_competencia: string
           data_pagamento: string | null
+          edital_id: string | null
           empresa_id: string | null
           id: string
           lancamento_id: string | null
@@ -4353,10 +4355,12 @@ export type Database = {
           valor_comissao: number
         }
         Insert: {
+          conta_pagar_id?: string | null
           contrato_ref?: string | null
           created_at?: string | null
           data_competencia: string
           data_pagamento?: string | null
+          edital_id?: string | null
           empresa_id?: string | null
           id?: string
           lancamento_id?: string | null
@@ -4370,10 +4374,12 @@ export type Database = {
           valor_comissao: number
         }
         Update: {
+          conta_pagar_id?: string | null
           contrato_ref?: string | null
           created_at?: string | null
           data_competencia?: string
           data_pagamento?: string | null
+          edital_id?: string | null
           empresa_id?: string | null
           id?: string
           lancamento_id?: string | null
@@ -4410,11 +4416,135 @@ export type Database = {
           },
         ]
       }
+      fin_config_fiscal: {
+        Row: {
+          ambiente: number | null
+          bairro: string | null
+          cep: string | null
+          cert_serial: string | null
+          cert_tipo: string | null
+          cert_validade: string | null
+          cfop_padrao_servico: string | null
+          cnae_principal: string | null
+          cnpj: string
+          cod_municipio: number | null
+          cod_pais: number | null
+          cofins_cst_padrao: string | null
+          complemento: string | null
+          contador_cpf: string | null
+          contador_crc: string | null
+          contador_nome: string | null
+          created_at: string | null
+          crt: number
+          empresa_id: string | null
+          id: string
+          ie: string | null
+          im: string | null
+          logradouro: string | null
+          municipio: string | null
+          numero: string | null
+          pis_cst_padrao: string | null
+          proximo_nf: number | null
+          regime_desc: string | null
+          serie_nfe: number | null
+          tipo_emissao: number | null
+          tipo_impressao: number | null
+          uf: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ambiente?: number | null
+          bairro?: string | null
+          cep?: string | null
+          cert_serial?: string | null
+          cert_tipo?: string | null
+          cert_validade?: string | null
+          cfop_padrao_servico?: string | null
+          cnae_principal?: string | null
+          cnpj?: string
+          cod_municipio?: number | null
+          cod_pais?: number | null
+          cofins_cst_padrao?: string | null
+          complemento?: string | null
+          contador_cpf?: string | null
+          contador_crc?: string | null
+          contador_nome?: string | null
+          created_at?: string | null
+          crt?: number
+          empresa_id?: string | null
+          id?: string
+          ie?: string | null
+          im?: string | null
+          logradouro?: string | null
+          municipio?: string | null
+          numero?: string | null
+          pis_cst_padrao?: string | null
+          proximo_nf?: number | null
+          regime_desc?: string | null
+          serie_nfe?: number | null
+          tipo_emissao?: number | null
+          tipo_impressao?: number | null
+          uf?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ambiente?: number | null
+          bairro?: string | null
+          cep?: string | null
+          cert_serial?: string | null
+          cert_tipo?: string | null
+          cert_validade?: string | null
+          cfop_padrao_servico?: string | null
+          cnae_principal?: string | null
+          cnpj?: string
+          cod_municipio?: number | null
+          cod_pais?: number | null
+          cofins_cst_padrao?: string | null
+          complemento?: string | null
+          contador_cpf?: string | null
+          contador_crc?: string | null
+          contador_nome?: string | null
+          created_at?: string | null
+          crt?: number
+          empresa_id?: string | null
+          id?: string
+          ie?: string | null
+          im?: string | null
+          logradouro?: string | null
+          municipio?: string | null
+          numero?: string | null
+          pis_cst_padrao?: string | null
+          proximo_nf?: number | null
+          regime_desc?: string | null
+          serie_nfe?: number | null
+          tipo_emissao?: number | null
+          tipo_impressao?: number | null
+          uf?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_config_fiscal_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_config_fiscal_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fin_contas: {
         Row: {
           agencia: string | null
           ativo: boolean | null
           banco_codigo: string | null
+          banco_ispb: string | null
           banco_logo_url: string | null
           banco_nome: string | null
           considerar_fluxo: boolean | null
@@ -4439,6 +4569,7 @@ export type Database = {
           agencia?: string | null
           ativo?: boolean | null
           banco_codigo?: string | null
+          banco_ispb?: string | null
           banco_logo_url?: string | null
           banco_nome?: string | null
           considerar_fluxo?: boolean | null
@@ -4463,6 +4594,7 @@ export type Database = {
           agencia?: string | null
           ativo?: boolean | null
           banco_codigo?: string | null
+          banco_ispb?: string | null
           banco_logo_url?: string | null
           banco_nome?: string | null
           considerar_fluxo?: boolean | null
@@ -4499,6 +4631,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fin_contas_conta_vinculada_fkey"
+            columns: ["conta_vinculada"]
+            isOneToOne: false
+            referencedRelation: "vw_saldo_contas"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fin_contas_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
@@ -4520,6 +4659,7 @@ export type Database = {
           aprovado_por: string | null
           arquivo_url: string | null
           categoria_id: string | null
+          centro_custo: string | null
           chave_nfe: string | null
           codigo_barras: string | null
           cofins_retido: number | null
@@ -4533,9 +4673,11 @@ export type Database = {
           data_vencimento: string
           departamento: string | null
           desconto: number | null
+          edital_id: string | null
           empresa_id: string | null
           favorecido_id: string | null
           favorecido_nome: string | null
+          grupo_parcela_id: string | null
           id: string
           inss_retido: number | null
           ir_retido: number | null
@@ -4551,6 +4693,7 @@ export type Database = {
           parcela_total: number | null
           pedido_ref: string | null
           pis_retido: number | null
+          plano_conta_id: string | null
           previsao_pagamento: string | null
           projeto_id: string | null
           repeticao_ate: string | null
@@ -4566,6 +4709,7 @@ export type Database = {
           aprovado_por?: string | null
           arquivo_url?: string | null
           categoria_id?: string | null
+          centro_custo?: string | null
           chave_nfe?: string | null
           codigo_barras?: string | null
           cofins_retido?: number | null
@@ -4579,9 +4723,11 @@ export type Database = {
           data_vencimento?: string
           departamento?: string | null
           desconto?: number | null
+          edital_id?: string | null
           empresa_id?: string | null
           favorecido_id?: string | null
           favorecido_nome?: string | null
+          grupo_parcela_id?: string | null
           id?: string
           inss_retido?: number | null
           ir_retido?: number | null
@@ -4597,6 +4743,7 @@ export type Database = {
           parcela_total?: number | null
           pedido_ref?: string | null
           pis_retido?: number | null
+          plano_conta_id?: string | null
           previsao_pagamento?: string | null
           projeto_id?: string | null
           repeticao_ate?: string | null
@@ -4612,6 +4759,7 @@ export type Database = {
           aprovado_por?: string | null
           arquivo_url?: string | null
           categoria_id?: string | null
+          centro_custo?: string | null
           chave_nfe?: string | null
           codigo_barras?: string | null
           cofins_retido?: number | null
@@ -4625,9 +4773,11 @@ export type Database = {
           data_vencimento?: string
           departamento?: string | null
           desconto?: number | null
+          edital_id?: string | null
           empresa_id?: string | null
           favorecido_id?: string | null
           favorecido_nome?: string | null
+          grupo_parcela_id?: string | null
           id?: string
           inss_retido?: number | null
           ir_retido?: number | null
@@ -4643,6 +4793,7 @@ export type Database = {
           parcela_total?: number | null
           pedido_ref?: string | null
           pis_retido?: number | null
+          plano_conta_id?: string | null
           previsao_pagamento?: string | null
           projeto_id?: string | null
           repeticao_ate?: string | null
@@ -4676,6 +4827,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fin_contas_pagar_conta_corrente_id_fkey"
+            columns: ["conta_corrente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_saldo_contas"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fin_contas_pagar_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
@@ -4696,12 +4854,20 @@ export type Database = {
             referencedRelation: "fin_pessoas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fin_contas_pagar_plano_conta_id_fkey"
+            columns: ["plano_conta_id"]
+            isOneToOne: false
+            referencedRelation: "fin_plano_contas"
+            referencedColumns: ["id"]
+          },
         ]
       }
       fin_contas_receber: {
         Row: {
           arquivo_url: string | null
           categoria_id: string | null
+          centro_custo: string | null
           chave_nfe: string | null
           cliente_id: string | null
           cliente_nome: string | null
@@ -4716,8 +4882,10 @@ export type Database = {
           data_vencimento: string
           departamento: string | null
           desconto: number | null
+          edital_id: string | null
           empresa_id: string | null
           id: string
+          inss_retido: number | null
           ir_retido: number | null
           iss_retido: number | null
           juros: number | null
@@ -4730,6 +4898,7 @@ export type Database = {
           parcela_numero: number | null
           parcela_total: number | null
           pis_retido: number | null
+          plano_conta_id: string | null
           previsao_recebimento: string | null
           projeto_id: string | null
           repeticao_ate: string | null
@@ -4745,6 +4914,7 @@ export type Database = {
         Insert: {
           arquivo_url?: string | null
           categoria_id?: string | null
+          centro_custo?: string | null
           chave_nfe?: string | null
           cliente_id?: string | null
           cliente_nome?: string | null
@@ -4759,8 +4929,10 @@ export type Database = {
           data_vencimento?: string
           departamento?: string | null
           desconto?: number | null
+          edital_id?: string | null
           empresa_id?: string | null
           id?: string
+          inss_retido?: number | null
           ir_retido?: number | null
           iss_retido?: number | null
           juros?: number | null
@@ -4773,6 +4945,7 @@ export type Database = {
           parcela_numero?: number | null
           parcela_total?: number | null
           pis_retido?: number | null
+          plano_conta_id?: string | null
           previsao_recebimento?: string | null
           projeto_id?: string | null
           repeticao_ate?: string | null
@@ -4788,6 +4961,7 @@ export type Database = {
         Update: {
           arquivo_url?: string | null
           categoria_id?: string | null
+          centro_custo?: string | null
           chave_nfe?: string | null
           cliente_id?: string | null
           cliente_nome?: string | null
@@ -4802,8 +4976,10 @@ export type Database = {
           data_vencimento?: string
           departamento?: string | null
           desconto?: number | null
+          edital_id?: string | null
           empresa_id?: string | null
           id?: string
+          inss_retido?: number | null
           ir_retido?: number | null
           iss_retido?: number | null
           juros?: number | null
@@ -4816,6 +4992,7 @@ export type Database = {
           parcela_numero?: number | null
           parcela_total?: number | null
           pis_retido?: number | null
+          plano_conta_id?: string | null
           previsao_recebimento?: string | null
           projeto_id?: string | null
           repeticao_ate?: string | null
@@ -4858,6 +5035,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fin_contas_receber_conta_corrente_id_fkey"
+            columns: ["conta_corrente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_saldo_contas"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fin_contas_receber_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
@@ -4869,6 +5053,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_contas_receber_plano_conta_id_fkey"
+            columns: ["plano_conta_id"]
+            isOneToOne: false
+            referencedRelation: "fin_plano_contas"
             referencedColumns: ["id"]
           },
         ]
@@ -5061,6 +5252,7 @@ export type Database = {
           situacao: string | null
           tipo_documento: string | null
           tipo_lancamento: string
+          tipo_transacao: string | null
           user_id: string
           valor: number
           vendedor_nome: string | null
@@ -5094,6 +5286,7 @@ export type Database = {
           situacao?: string | null
           tipo_documento?: string | null
           tipo_lancamento?: string
+          tipo_transacao?: string | null
           user_id: string
           valor?: number
           vendedor_nome?: string | null
@@ -5127,6 +5320,7 @@ export type Database = {
           situacao?: string | null
           tipo_documento?: string | null
           tipo_lancamento?: string
+          tipo_transacao?: string | null
           user_id?: string
           valor?: number
           vendedor_nome?: string | null
@@ -5151,6 +5345,13 @@ export type Database = {
             columns: ["conta_id"]
             isOneToOne: false
             referencedRelation: "vw_fin_saldo_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_movimentacoes_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "vw_saldo_contas"
             referencedColumns: ["id"]
           },
           {
@@ -5183,30 +5384,248 @@ export type Database = {
           },
         ]
       }
+      fin_nfe_itens: {
+        Row: {
+          c_class_trib: string | null
+          c_ean: string | null
+          c_prod: string | null
+          c_serv_iss: string | null
+          cest: string | null
+          cfop: string
+          csosn: string | null
+          cst_cofins: string
+          cst_ibs_cbs: string | null
+          cst_icms: string | null
+          cst_ipi: string | null
+          cst_pis: string
+          id: string
+          ind_iss_ret: number | null
+          ind_tot: number | null
+          inf_ad_prod: string | null
+          n_item: number
+          ncm: string | null
+          nfe_id: string | null
+          orig: number | null
+          p_cbs: number | null
+          p_cofins: number | null
+          p_ibs_mun: number | null
+          p_ibs_uf: number | null
+          p_icms: number | null
+          p_icms_st: number | null
+          p_ipi: number | null
+          p_iss: number | null
+          p_pis: number | null
+          p_red_bc: number | null
+          q_com: number | null
+          u_com: string | null
+          v_bc_cofins: number | null
+          v_bc_ibs: number | null
+          v_bc_icms: number | null
+          v_bc_ipi: number | null
+          v_bc_iss: number | null
+          v_bc_pis: number | null
+          v_bc_st: number | null
+          v_cbs: number | null
+          v_cofins: number | null
+          v_deducao: number | null
+          v_desc: number | null
+          v_frete: number | null
+          v_ibs: number | null
+          v_icms: number | null
+          v_icms_st: number | null
+          v_ipi: number | null
+          v_iss: number | null
+          v_iss_retido: number | null
+          v_pis: number | null
+          v_prod: number | null
+          v_un_com: number | null
+          x_prod: string
+        }
+        Insert: {
+          c_class_trib?: string | null
+          c_ean?: string | null
+          c_prod?: string | null
+          c_serv_iss?: string | null
+          cest?: string | null
+          cfop?: string
+          csosn?: string | null
+          cst_cofins?: string
+          cst_ibs_cbs?: string | null
+          cst_icms?: string | null
+          cst_ipi?: string | null
+          cst_pis?: string
+          id?: string
+          ind_iss_ret?: number | null
+          ind_tot?: number | null
+          inf_ad_prod?: string | null
+          n_item: number
+          ncm?: string | null
+          nfe_id?: string | null
+          orig?: number | null
+          p_cbs?: number | null
+          p_cofins?: number | null
+          p_ibs_mun?: number | null
+          p_ibs_uf?: number | null
+          p_icms?: number | null
+          p_icms_st?: number | null
+          p_ipi?: number | null
+          p_iss?: number | null
+          p_pis?: number | null
+          p_red_bc?: number | null
+          q_com?: number | null
+          u_com?: string | null
+          v_bc_cofins?: number | null
+          v_bc_ibs?: number | null
+          v_bc_icms?: number | null
+          v_bc_ipi?: number | null
+          v_bc_iss?: number | null
+          v_bc_pis?: number | null
+          v_bc_st?: number | null
+          v_cbs?: number | null
+          v_cofins?: number | null
+          v_deducao?: number | null
+          v_desc?: number | null
+          v_frete?: number | null
+          v_ibs?: number | null
+          v_icms?: number | null
+          v_icms_st?: number | null
+          v_ipi?: number | null
+          v_iss?: number | null
+          v_iss_retido?: number | null
+          v_pis?: number | null
+          v_prod?: number | null
+          v_un_com?: number | null
+          x_prod: string
+        }
+        Update: {
+          c_class_trib?: string | null
+          c_ean?: string | null
+          c_prod?: string | null
+          c_serv_iss?: string | null
+          cest?: string | null
+          cfop?: string
+          csosn?: string | null
+          cst_cofins?: string
+          cst_ibs_cbs?: string | null
+          cst_icms?: string | null
+          cst_ipi?: string | null
+          cst_pis?: string
+          id?: string
+          ind_iss_ret?: number | null
+          ind_tot?: number | null
+          inf_ad_prod?: string | null
+          n_item?: number
+          ncm?: string | null
+          nfe_id?: string | null
+          orig?: number | null
+          p_cbs?: number | null
+          p_cofins?: number | null
+          p_ibs_mun?: number | null
+          p_ibs_uf?: number | null
+          p_icms?: number | null
+          p_icms_st?: number | null
+          p_ipi?: number | null
+          p_iss?: number | null
+          p_pis?: number | null
+          p_red_bc?: number | null
+          q_com?: number | null
+          u_com?: string | null
+          v_bc_cofins?: number | null
+          v_bc_ibs?: number | null
+          v_bc_icms?: number | null
+          v_bc_ipi?: number | null
+          v_bc_iss?: number | null
+          v_bc_pis?: number | null
+          v_bc_st?: number | null
+          v_cbs?: number | null
+          v_cofins?: number | null
+          v_deducao?: number | null
+          v_desc?: number | null
+          v_frete?: number | null
+          v_ibs?: number | null
+          v_icms?: number | null
+          v_icms_st?: number | null
+          v_ipi?: number | null
+          v_iss?: number | null
+          v_iss_retido?: number | null
+          v_pis?: number | null
+          v_prod?: number | null
+          v_un_com?: number | null
+          x_prod?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_nfe_itens_nfe_id_fkey"
+            columns: ["nfe_id"]
+            isOneToOne: false
+            referencedRelation: "fin_notas_fiscais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fin_notas_fiscais: {
         Row: {
+          carta_correcao: string | null
+          cfop_principal: string | null
           chave_nfe: string | null
           cnpj_destinatario: string | null
           cnpj_emitente: string | null
+          codigo_status: number | null
+          cofins_retido: number | null
+          cpf_dest: string | null
           created_at: string | null
+          created_by: string | null
+          crt_emitente: number | null
+          csll_retido: number | null
+          danfe_url: string | null
+          data_autorizacao: string | null
+          data_cancelamento: string | null
           data_emissao: string | null
           data_entrada: string | null
+          data_saida_entrada: string | null
+          email_dest: string | null
           empresa_id: string | null
+          finalidade: number | null
           id: string
+          ie_dest: string | null
+          ie_emitente: string | null
+          importada: boolean | null
+          ind_ie_dest: number | null
+          inf_adic_fisco: string | null
+          inf_compl: string | null
+          inss_retido: number | null
+          ir_retido: number | null
+          iss_retido: number | null
           manifesto: string | null
           manifesto_em: string | null
+          modelo: number | null
+          motivo_cancel: string | null
+          motivo_status: string | null
+          nat_op: string | null
           nome_destinatario: string | null
           nome_emitente: string | null
           numero_nf: string | null
           observacoes: string | null
           pdf_gerado: boolean | null
           pdf_url: string | null
+          pis_retido: number | null
           protocolo: string | null
+          protocolo_cancel: string | null
+          protocolo_cce: string | null
           serie: string | null
           status_sefaz: string | null
           tipo_nf: string | null
+          uf_dest: string | null
           uf_emitente: string | null
           updated_at: string | null
+          v_bc: number | null
+          v_cbs: number | null
+          v_desc: number | null
+          v_frete: number | null
+          v_ibs: number | null
+          v_is: number | null
+          v_seg: number | null
+          v_trib_aprox: number | null
           valor_cofins: number | null
           valor_icms: number | null
           valor_ipi: number | null
@@ -5216,32 +5635,74 @@ export type Database = {
           valor_servicos: number | null
           valor_total: number | null
           vinculada_lancamento_id: string | null
+          vinculo_contrato_ref: string | null
+          xml_autorizacao: string | null
           xml_baixado: boolean | null
+          xml_cancelamento: string | null
           xml_url: string | null
         }
         Insert: {
+          carta_correcao?: string | null
+          cfop_principal?: string | null
           chave_nfe?: string | null
           cnpj_destinatario?: string | null
           cnpj_emitente?: string | null
+          codigo_status?: number | null
+          cofins_retido?: number | null
+          cpf_dest?: string | null
           created_at?: string | null
+          created_by?: string | null
+          crt_emitente?: number | null
+          csll_retido?: number | null
+          danfe_url?: string | null
+          data_autorizacao?: string | null
+          data_cancelamento?: string | null
           data_emissao?: string | null
           data_entrada?: string | null
+          data_saida_entrada?: string | null
+          email_dest?: string | null
           empresa_id?: string | null
+          finalidade?: number | null
           id?: string
+          ie_dest?: string | null
+          ie_emitente?: string | null
+          importada?: boolean | null
+          ind_ie_dest?: number | null
+          inf_adic_fisco?: string | null
+          inf_compl?: string | null
+          inss_retido?: number | null
+          ir_retido?: number | null
+          iss_retido?: number | null
           manifesto?: string | null
           manifesto_em?: string | null
+          modelo?: number | null
+          motivo_cancel?: string | null
+          motivo_status?: string | null
+          nat_op?: string | null
           nome_destinatario?: string | null
           nome_emitente?: string | null
           numero_nf?: string | null
           observacoes?: string | null
           pdf_gerado?: boolean | null
           pdf_url?: string | null
+          pis_retido?: number | null
           protocolo?: string | null
+          protocolo_cancel?: string | null
+          protocolo_cce?: string | null
           serie?: string | null
           status_sefaz?: string | null
           tipo_nf?: string | null
+          uf_dest?: string | null
           uf_emitente?: string | null
           updated_at?: string | null
+          v_bc?: number | null
+          v_cbs?: number | null
+          v_desc?: number | null
+          v_frete?: number | null
+          v_ibs?: number | null
+          v_is?: number | null
+          v_seg?: number | null
+          v_trib_aprox?: number | null
           valor_cofins?: number | null
           valor_icms?: number | null
           valor_ipi?: number | null
@@ -5251,32 +5712,74 @@ export type Database = {
           valor_servicos?: number | null
           valor_total?: number | null
           vinculada_lancamento_id?: string | null
+          vinculo_contrato_ref?: string | null
+          xml_autorizacao?: string | null
           xml_baixado?: boolean | null
+          xml_cancelamento?: string | null
           xml_url?: string | null
         }
         Update: {
+          carta_correcao?: string | null
+          cfop_principal?: string | null
           chave_nfe?: string | null
           cnpj_destinatario?: string | null
           cnpj_emitente?: string | null
+          codigo_status?: number | null
+          cofins_retido?: number | null
+          cpf_dest?: string | null
           created_at?: string | null
+          created_by?: string | null
+          crt_emitente?: number | null
+          csll_retido?: number | null
+          danfe_url?: string | null
+          data_autorizacao?: string | null
+          data_cancelamento?: string | null
           data_emissao?: string | null
           data_entrada?: string | null
+          data_saida_entrada?: string | null
+          email_dest?: string | null
           empresa_id?: string | null
+          finalidade?: number | null
           id?: string
+          ie_dest?: string | null
+          ie_emitente?: string | null
+          importada?: boolean | null
+          ind_ie_dest?: number | null
+          inf_adic_fisco?: string | null
+          inf_compl?: string | null
+          inss_retido?: number | null
+          ir_retido?: number | null
+          iss_retido?: number | null
           manifesto?: string | null
           manifesto_em?: string | null
+          modelo?: number | null
+          motivo_cancel?: string | null
+          motivo_status?: string | null
+          nat_op?: string | null
           nome_destinatario?: string | null
           nome_emitente?: string | null
           numero_nf?: string | null
           observacoes?: string | null
           pdf_gerado?: boolean | null
           pdf_url?: string | null
+          pis_retido?: number | null
           protocolo?: string | null
+          protocolo_cancel?: string | null
+          protocolo_cce?: string | null
           serie?: string | null
           status_sefaz?: string | null
           tipo_nf?: string | null
+          uf_dest?: string | null
           uf_emitente?: string | null
           updated_at?: string | null
+          v_bc?: number | null
+          v_cbs?: number | null
+          v_desc?: number | null
+          v_frete?: number | null
+          v_ibs?: number | null
+          v_is?: number | null
+          v_seg?: number | null
+          v_trib_aprox?: number | null
           valor_cofins?: number | null
           valor_icms?: number | null
           valor_ipi?: number | null
@@ -5286,7 +5789,10 @@ export type Database = {
           valor_servicos?: number | null
           valor_total?: number | null
           vinculada_lancamento_id?: string | null
+          vinculo_contrato_ref?: string | null
+          xml_autorizacao?: string | null
           xml_baixado?: boolean | null
+          xml_cancelamento?: string | null
           xml_url?: string | null
         }
         Relationships: [
@@ -5316,17 +5822,28 @@ export type Database = {
       fin_pessoas: {
         Row: {
           ativo: boolean | null
+          bairro: string | null
           cep: string | null
           cidade: string | null
           cnpj_cpf: string | null
+          cod_municipio: number | null
+          complemento: string | null
           created_at: string | null
           email: string | null
           empresa_id: string | null
           endereco: string | null
           id: string
           ie: string | null
+          im: string | null
+          ind_ie_dest: number | null
+          limite_credito: number | null
+          logradouro: string | null
+          municipio: string | null
           nome_fantasia: string | null
+          numero: string | null
           observacoes: string | null
+          pessoa_tipo: string | null
+          prazo_padrao_dias: number | null
           razao_social: string
           score_credito: number | null
           telefone: string | null
@@ -5337,17 +5854,28 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean | null
+          bairro?: string | null
           cep?: string | null
           cidade?: string | null
           cnpj_cpf?: string | null
+          cod_municipio?: number | null
+          complemento?: string | null
           created_at?: string | null
           email?: string | null
           empresa_id?: string | null
           endereco?: string | null
           id?: string
           ie?: string | null
+          im?: string | null
+          ind_ie_dest?: number | null
+          limite_credito?: number | null
+          logradouro?: string | null
+          municipio?: string | null
           nome_fantasia?: string | null
+          numero?: string | null
           observacoes?: string | null
+          pessoa_tipo?: string | null
+          prazo_padrao_dias?: number | null
           razao_social: string
           score_credito?: number | null
           telefone?: string | null
@@ -5358,17 +5886,28 @@ export type Database = {
         }
         Update: {
           ativo?: boolean | null
+          bairro?: string | null
           cep?: string | null
           cidade?: string | null
           cnpj_cpf?: string | null
+          cod_municipio?: number | null
+          complemento?: string | null
           created_at?: string | null
           email?: string | null
           empresa_id?: string | null
           endereco?: string | null
           id?: string
           ie?: string | null
+          im?: string | null
+          ind_ie_dest?: number | null
+          limite_credito?: number | null
+          logradouro?: string | null
+          municipio?: string | null
           nome_fantasia?: string | null
+          numero?: string | null
           observacoes?: string | null
+          pessoa_tipo?: string | null
+          prazo_padrao_dias?: number | null
           razao_social?: string
           score_credito?: number | null
           telefone?: string | null
@@ -5390,6 +5929,73 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_plano_contas: {
+        Row: {
+          aceita_lancamentos: boolean | null
+          ativo: boolean | null
+          codigo: string
+          cor: string | null
+          created_at: string | null
+          empresa_id: string | null
+          id: string
+          natureza: string
+          nivel: number | null
+          nome: string
+          pai_id: string | null
+          tipo: string
+        }
+        Insert: {
+          aceita_lancamentos?: boolean | null
+          ativo?: boolean | null
+          codigo: string
+          cor?: string | null
+          created_at?: string | null
+          empresa_id?: string | null
+          id?: string
+          natureza: string
+          nivel?: number | null
+          nome: string
+          pai_id?: string | null
+          tipo: string
+        }
+        Update: {
+          aceita_lancamentos?: boolean | null
+          ativo?: boolean | null
+          codigo?: string
+          cor?: string | null
+          created_at?: string | null
+          empresa_id?: string | null
+          id?: string
+          natureza?: string
+          nivel?: number | null
+          nome?: string
+          pai_id?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_plano_contas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_plano_contas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_plano_contas_pai_id_fkey"
+            columns: ["pai_id"]
+            isOneToOne: false
+            referencedRelation: "fin_plano_contas"
             referencedColumns: ["id"]
           },
         ]
@@ -9843,6 +10449,17 @@ export type Database = {
           },
         ]
       }
+      vw_dre_mensal: {
+        Row: {
+          codigo: string | null
+          conta: string | null
+          empresa_id: string | null
+          mes: string | null
+          tipo: string | null
+          total: number | null
+        }
+        Relationships: []
+      }
       vw_editais_por_fonte: {
         Row: {
           fonte: string | null
@@ -9901,6 +10518,104 @@ export type Database = {
           numero_conta: string | null
           pendentes_conciliacao: number | null
           saldo_atual: number | null
+          saldo_inicial: number | null
+          tipo: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_contas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_contas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_fluxo_projetado: {
+        Row: {
+          data: string | null
+          descricao: string | null
+          empresa_id: string | null
+          tipo: string | null
+          valor: number | null
+        }
+        Relationships: []
+      }
+      vw_nfe_pendentes_manifesto: {
+        Row: {
+          alerta_manifesto: string | null
+          chave_acesso: string | null
+          cnpj_emitente: string | null
+          data_emissao: string | null
+          dias_sem_manifesto: number | null
+          empresa_id: string | null
+          nome_emitente: string | null
+          numero_nf: string | null
+          status_sefaz: string | null
+          v_nf: number | null
+        }
+        Insert: {
+          alerta_manifesto?: never
+          chave_acesso?: string | null
+          cnpj_emitente?: string | null
+          data_emissao?: string | null
+          dias_sem_manifesto?: never
+          empresa_id?: string | null
+          nome_emitente?: string | null
+          numero_nf?: string | null
+          status_sefaz?: string | null
+          v_nf?: number | null
+        }
+        Update: {
+          alerta_manifesto?: never
+          chave_acesso?: string | null
+          cnpj_emitente?: string | null
+          data_emissao?: string | null
+          dias_sem_manifesto?: never
+          empresa_id?: string | null
+          nome_emitente?: string | null
+          numero_nf?: string | null
+          status_sefaz?: string | null
+          v_nf?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_notas_fiscais_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_notas_fiscais_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_saldo_contas: {
+        Row: {
+          agencia: string | null
+          ativo: boolean | null
+          banco_codigo: string | null
+          banco_nome: string | null
+          empresa_id: string | null
+          id: string | null
+          limite_credito: number | null
+          nome: string | null
+          numero_conta: string | null
+          pendentes_conc: number | null
+          saldo_atual: number | null
+          saldo_disponivel: number | null
           saldo_inicial: number | null
           tipo: string | null
         }
