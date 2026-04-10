@@ -26,6 +26,12 @@ const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', c
 
 type ContratoItem = { id: string; descricao: string; unidade: string; valor_unitario: number; origem_aditivo_id: string | null };
 type AditivoRef = { id: string; numero_aditivo: string; tipo: string };
+
+const getOrigemLabel = (item: ContratoItem, aditivos: AditivoRef[]): string => {
+  if (!item.origem_aditivo_id) return '📄 Contrato Original';
+  const ad = aditivos.find(a => a.id === item.origem_aditivo_id);
+  return ad ? `📎 ${ad.numero_aditivo}` : '📎 Aditivo';
+};
 type Pedido = {
   id: string; numero_pedido: string; descricao: string | null;
   contrato_item_id: string | null; quantidade: number; valor_unitario: number;
@@ -579,7 +585,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vincular item" /></SelectTrigger>
                                   <SelectContent>
                                     {itens.map(i => (
-                                      <SelectItem key={i.id} value={i.id} className="text-xs">{i.descricao}</SelectItem>
+                                      <SelectItem key={i.id} value={i.id} className="text-xs">
+                                        <span className="text-muted-foreground text-[10px] mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                                        {i.descricao}
+                                      </SelectItem>
                                     ))}
                                   </SelectContent>
                                 </Select>
@@ -644,7 +653,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               return i.origem_aditivo_id === origemFilter;
                             })
                             .map(i => (
-                              <SelectItem key={i.id} value={i.id}>{i.descricao} ({i.unidade})</SelectItem>
+                    <SelectItem key={i.id} value={i.id}>
+                      <span className="text-muted-foreground text-[10px] mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                      {i.descricao} ({i.unidade})
+                    </SelectItem>
                             ))}
                         </SelectContent>
                       </Select>
@@ -988,7 +1000,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {itens.map(i => (
-                      <SelectItem key={i.id} value={i.id}>{i.descricao} ({fmt(i.valor_unitario)}/{i.unidade})</SelectItem>
+                      <SelectItem key={i.id} value={i.id}>
+                        <span className="text-muted-foreground text-[10px] mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                        {i.descricao} ({fmt(i.valor_unitario)}/{i.unidade})
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
