@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -8,7 +7,7 @@ import { Loader2, RefreshCw, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 const fmt = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
-const fmtDate = (d: string) => { if (!d) return '—'; const dt = new Date(d); return dt.toLocaleDateString('pt-BR'); };
+const fmtDate = (d: string) => { if (!d) return '—'; return new Date(d).toLocaleDateString('pt-BR'); };
 
 export default function FinExtrato() {
   const { empresaAtiva } = useEmpresa();
@@ -23,7 +22,7 @@ export default function FinExtrato() {
     setLoading(true);
     const eid = empresaAtiva!.id;
     const [mRes, cRes] = await Promise.all([
-      supabase.from('fin_movimentacoes').select('*').eq('empresa_id', eid).order('data_mov', { ascending: false }).limit(200),
+      supabase.from('fin_movimentacoes').select('*').eq('empresa_id', eid).order('data_lancamento', { ascending: false }).limit(200),
       supabase.from('fin_contas').select('id, nome').eq('empresa_id', eid),
     ]);
     setMovs(mRes.data || []);
@@ -60,19 +59,24 @@ export default function FinExtrato() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((m) => (
-              <tr key={m.id} className="border-t hover:bg-muted/30">
-                <td className="p-3">{fmtDate(m.data_mov)}</td>
-                <td className="p-3">{m.descricao}</td>
-                <td className="p-3 text-center">
-                  {m.tipo === 'credito' ? <ArrowUpRight className="w-4 h-4 text-emerald-600 inline" /> : <ArrowDownRight className="w-4 h-4 text-red-500 inline" />}
-                </td>
-                <td className={`p-3 text-right font-medium ${m.tipo === 'credito' ? 'text-emerald-600' : 'text-red-500'}`}>{m.tipo === 'credito' ? '+' : '-'}{fmt(m.valor)}</td>
-                <td className="p-3 text-center">
-                  <Badge variant={m.conciliado ? 'default' : 'outline'}>{m.conciliado ? 'Sim' : 'Não'}</Badge>
-                </td>
-              </tr>
-            ))}
+            {filtered.map((m) => {
+              const isCredito = m.tipo_lancamento === 'credito';
+              return (
+                <tr key={m.id} className="border-t hover:bg-muted/30">
+                  <td className="p-3">{fmtDate(m.data_lancamento)}</td>
+                  <td className="p-3">{m.descricao}</td>
+                  <td className="p-3 text-center">
+                    {isCredito ? <ArrowUpRight className="w-4 h-4 text-emerald-600 inline" /> : <ArrowDownRight className="w-4 h-4 text-destructive inline" />}
+                  </td>
+                  <td className={`p-3 text-right font-medium ${isCredito ? 'text-emerald-600' : 'text-destructive'}`}>
+                    {isCredito ? '+' : '-'}{fmt(m.valor)}
+                  </td>
+                  <td className="p-3 text-center">
+                    <Badge variant={m.conciliado_em ? 'default' : 'outline'}>{m.conciliado_em ? 'Sim' : 'Não'}</Badge>
+                  </td>
+                </tr>
+              );
+            })}
             {filtered.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Nenhuma movimentação</td></tr>}
           </tbody>
         </table>
