@@ -4549,6 +4549,7 @@ export type Database = {
           parcela_grupo_id: string | null
           parcela_numero: number | null
           parcela_total: number | null
+          pedido_ref: string | null
           pis_retido: number | null
           previsao_pagamento: string | null
           projeto_id: string | null
@@ -4594,6 +4595,7 @@ export type Database = {
           parcela_grupo_id?: string | null
           parcela_numero?: number | null
           parcela_total?: number | null
+          pedido_ref?: string | null
           pis_retido?: number | null
           previsao_pagamento?: string | null
           projeto_id?: string | null
@@ -4639,6 +4641,7 @@ export type Database = {
           parcela_grupo_id?: string | null
           parcela_numero?: number | null
           parcela_total?: number | null
+          pedido_ref?: string | null
           pis_retido?: number | null
           previsao_pagamento?: string | null
           projeto_id?: string | null

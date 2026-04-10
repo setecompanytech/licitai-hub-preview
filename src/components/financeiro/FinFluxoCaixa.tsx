@@ -4,215 +4,219 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { Loader2, TrendingUp, TrendingDown, Calendar, Download, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  Plus, Loader2, TrendingUp, TrendingDown, CheckCircle2, Clock, XCircle
-} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const fmt = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-type Lancamento = {
-  id: string; tipo: string; descricao: string; valor: number;
-  data_competencia: string; data_pagamento: string | null;
-  status: string; contrato_ref: string | null; observacoes: string | null;
-  categoria_nome?: string; conta_nome?: string;
+type FluxoSemana = {
+  label: string;
+  inicio: string;
+  fim: string;
+  entradas: number;
+  saidas: number;
+  saldo: number;
+  saldoAcum: number;
 };
 
 export default function FinFluxoCaixa() {
-  const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
   const [loading, setLoading] = useState(true);
-  const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
-  const [contas, setContas] = useState<any[]>([]);
-  const [categorias, setCategorias] = useState<any[]>([]);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [filtro, setFiltro] = useState({
-    tipo: 'all', status: 'all',
-    de: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    ate: new Date().toISOString().split('T')[0],
-  });
-  const [form, setForm] = useState({
-    tipo: 'entrada', descricao: '', valor: '', data_competencia: new Date().toISOString().split('T')[0],
-    data_pagamento: '', status: 'pendente', conta_id: '', categoria_id: '', contrato_ref: '', observacoes: '',
-  });
+  const [semanas, setSemanas] = useState<FluxoSemana[]>([]);
+  const [saldoInicial, setSaldoInicial] = useState(0);
+  const [periodo, setPeriodo] = useState('30');
 
   useEffect(() => {
-    if (!empresaAtiva?.id) return;
-    loadAll();
-  }, [empresaAtiva?.id]);
+    if (empresaAtiva?.id) load();
+  }, [empresaAtiva?.id, periodo]);
 
-  async function loadAll() {
+  async function load() {
     setLoading(true);
     const eid = empresaAtiva!.id;
-    const [lancRes, contRes, catRes] = await Promise.all([
-      loadLancamentos(eid),
-      supabase.from('fin_contas').select('id, nome').eq('empresa_id', eid).eq('ativo', true),
-      supabase.from('fin_categorias').select('id, nome, tipo').or(`empresa_id.eq.${eid},empresa_id.is.null`).eq('ativo', true),
+    const hoje = new Date();
+    const fim = new Date(hoje);
+    fim.setDate(fim.getDate() + parseInt(periodo));
+
+    const hojeStr = hoje.toISOString().split('T')[0];
+    const fimStr = fim.toISOString().split('T')[0];
+
+    const [contasRes, cpRes, crRes] = await Promise.all([
+      supabase.from('fin_contas').select('saldo_inicial').eq('empresa_id', eid).eq('ativo', true),
+      supabase.from('fin_contas_pagar')
+        .select('valor_documento, data_vencimento, status')
+        .eq('empresa_id', eid)
+        .in('status', ['aberto', 'parcial'])
+        .gte('data_vencimento', hojeStr)
+        .lte('data_vencimento', fimStr),
+      supabase.from('fin_contas_receber')
+        .select('valor_documento, data_vencimento, status')
+        .eq('empresa_id', eid)
+        .in('status', ['aberto', 'parcial'])
+        .gte('data_vencimento', hojeStr)
+        .lte('data_vencimento', fimStr),
     ]);
-    setContas(contRes.data ?? []);
-    setCategorias(catRes.data ?? []);
+
+    const saldoBase = (contasRes.data || []).reduce((s, c) => s + (c.saldo_inicial || 0), 0);
+    setSaldoInicial(saldoBase);
+
+    // Agrupar por semana
+    const cpList = cpRes.data || [];
+    const crList = crRes.data || [];
+    const weeks: FluxoSemana[] = [];
+    let cursor = new Date(hoje);
+    let acum = saldoBase;
+
+    while (cursor < fim) {
+      const weekStart = new Date(cursor);
+      const weekEnd = new Date(cursor);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      if (weekEnd > fim) weekEnd.setTime(fim.getTime());
+
+      const ws = weekStart.toISOString().split('T')[0];
+      const we = weekEnd.toISOString().split('T')[0];
+
+      const entradas = crList
+        .filter(r => r.data_vencimento >= ws && r.data_vencimento <= we)
+        .reduce((s, r) => s + (r.valor_documento || 0), 0);
+
+      const saidas = cpList
+        .filter(r => r.data_vencimento >= ws && r.data_vencimento <= we)
+        .reduce((s, r) => s + (r.valor_documento || 0), 0);
+
+      const saldo = entradas - saidas;
+      acum += saldo;
+
+      weeks.push({
+        label: `${weekStart.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} – ${weekEnd.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`,
+        inicio: ws,
+        fim: we,
+        entradas,
+        saidas,
+        saldo,
+        saldoAcum: acum,
+      });
+
+      cursor.setDate(cursor.getDate() + 7);
+    }
+
+    setSemanas(weeks);
     setLoading(false);
   }
 
-  async function loadLancamentos(eid?: string) {
-    const id = eid || empresaAtiva?.id;
-    if (!id) return;
-    let q = supabase.from('fin_lancamentos')
-      .select('*')
-      .eq('empresa_id', id)
-      .gte('data_competencia', filtro.de)
-      .lte('data_competencia', filtro.ate)
-      .order('data_competencia', { ascending: false })
-      .limit(200);
-
-    if (filtro.tipo !== 'all') q = q.eq('tipo', filtro.tipo);
-    if (filtro.status !== 'all') q = q.eq('status', filtro.status);
-
-    const { data } = await q;
-    setLancamentos(data ?? []);
-  }
-
-  async function handleSave() {
-    if (!form.descricao || !form.valor) { toast.error('Preencha descrição e valor'); return; }
-    setSaving(true);
-    const { error } = await supabase.from('fin_lancamentos').insert({
-      empresa_id: empresaAtiva!.id,
-      tipo: form.tipo,
-      descricao: form.descricao,
-      valor: parseFloat(form.valor) || 0,
-      data_competencia: form.data_competencia,
-      data_pagamento: form.data_pagamento || null,
-      status: form.status,
-      conta_id: form.conta_id || null,
-      categoria_id: form.categoria_id || null,
-      contrato_ref: form.contrato_ref || null,
-      observacoes: form.observacoes || null,
-      created_by: user?.id,
+  function exportCsv() {
+    const lines = ['Período;Entradas;Saídas;Saldo Período;Saldo Acumulado'];
+    semanas.forEach(s => {
+      lines.push(`${s.label};${s.entradas.toFixed(2)};${s.saidas.toFixed(2)};${s.saldo.toFixed(2)};${s.saldoAcum.toFixed(2)}`);
     });
-    setSaving(false);
-    if (error) { toast.error('Erro ao salvar: ' + error.message); return; }
-    toast.success('Lançamento registrado.');
-    setDialogOpen(false);
-    setForm({ tipo: 'entrada', descricao: '', valor: '', data_competencia: new Date().toISOString().split('T')[0], data_pagamento: '', status: 'pendente', conta_id: '', categoria_id: '', contrato_ref: '', observacoes: '' });
-    loadLancamentos();
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fluxo-caixa-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    toast.success('CSV exportado');
   }
 
-  async function marcarPago(id: string) {
-    await supabase.from('fin_lancamentos').update({
-      status: 'pago',
-      data_pagamento: new Date().toISOString().split('T')[0],
-    }).eq('id', id);
-    toast.success('Marcado como pago.');
-    loadLancamentos();
-  }
-
-  const totalEntradas = lancamentos.filter(l => l.tipo === 'entrada' && l.status !== 'cancelado').reduce((s, l) => s + Number(l.valor), 0);
-  const totalSaidas = lancamentos.filter(l => l.tipo === 'saida' && l.status !== 'cancelado').reduce((s, l) => s + Number(l.valor), 0);
-  const saldo = totalEntradas - totalSaidas;
+  const totalEntradas = semanas.reduce((s, w) => s + w.entradas, 0);
+  const totalSaidas = semanas.reduce((s, w) => s + w.saidas, 0);
+  const saldoFinal = semanas.length > 0 ? semanas[semanas.length - 1].saldoAcum : saldoInicial;
+  const maxBar = Math.max(...semanas.map(w => Math.max(w.entradas, w.saidas)), 1);
 
   if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
 
   return (
     <div className="space-y-4">
-      {/* Totais */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className="p-4">
-          <div className="flex items-center gap-2 text-success text-[10px] font-semibold uppercase tracking-wide mb-1"><TrendingUp className="w-3 h-3" /> Entradas</div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Saldo Atual</div>
+          <p className={cn('text-xl font-bold font-mono', saldoInicial >= 0 ? 'text-success' : 'text-destructive')}>{fmt(saldoInicial)}</p>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-success mb-1"><TrendingUp className="w-3 h-3" /> Entradas Previstas</div>
           <p className="text-xl font-bold font-mono text-success">{fmt(totalEntradas)}</p>
         </Card>
         <Card className="p-4">
-          <div className="flex items-center gap-2 text-destructive text-[10px] font-semibold uppercase tracking-wide mb-1"><TrendingDown className="w-3 h-3" /> Saídas</div>
+          <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-destructive mb-1"><TrendingDown className="w-3 h-3" /> Saídas Previstas</div>
           <p className="text-xl font-bold font-mono text-destructive">{fmt(totalSaidas)}</p>
         </Card>
         <Card className="p-4">
-          <div className={`text-[10px] font-semibold uppercase tracking-wide mb-1 ${saldo >= 0 ? 'text-success' : 'text-destructive'}`}>Saldo</div>
-          <p className={`text-xl font-bold font-mono ${saldo >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(saldo)}</p>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Saldo Projetado</div>
+          <p className={cn('text-xl font-bold font-mono', saldoFinal >= 0 ? 'text-success' : 'text-destructive')}>{fmt(saldoFinal)}</p>
         </Card>
       </div>
 
-      {/* Filtros + Botão */}
-      <div className="flex flex-wrap gap-2 items-end">
-        <div><Label className="text-xs">De</Label><Input type="date" value={filtro.de} onChange={e => setFiltro(f => ({ ...f, de: e.target.value }))} className="w-36 text-xs" /></div>
-        <div><Label className="text-xs">Até</Label><Input type="date" value={filtro.ate} onChange={e => setFiltro(f => ({ ...f, ate: e.target.value }))} className="w-36 text-xs" /></div>
-        <Select value={filtro.tipo} onValueChange={v => setFiltro(f => ({ ...f, tipo: v }))}><SelectTrigger className="w-32 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="entrada">Entradas</SelectItem><SelectItem value="saida">Saídas</SelectItem></SelectContent></Select>
-        <Select value={filtro.status} onValueChange={v => setFiltro(f => ({ ...f, status: v }))}><SelectTrigger className="w-32 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="pendente">Pendente</SelectItem><SelectItem value="pago">Pago</SelectItem><SelectItem value="conciliado">Conciliado</SelectItem></SelectContent></Select>
-        <Button size="sm" variant="outline" onClick={() => loadLancamentos()}>Filtrar</Button>
+      {/* Filtros */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-muted-foreground" />
+          <Select value={periodo} onValueChange={setPeriodo}>
+            <SelectTrigger className="w-40 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">Próximos 7 dias</SelectItem>
+              <SelectItem value="15">Próximos 15 dias</SelectItem>
+              <SelectItem value="30">Próximos 30 dias</SelectItem>
+              <SelectItem value="60">Próximos 60 dias</SelectItem>
+              <SelectItem value="90">Próximos 90 dias</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex-1" />
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild><Button size="sm"><Plus className="w-3.5 h-3.5 mr-1" /> Novo Lançamento</Button></DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>Novo Lançamento</DialogTitle></DialogHeader>
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <div><Label>Tipo</Label><Select value={form.tipo} onValueChange={v => setForm(f => ({ ...f, tipo: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="entrada">Entrada</SelectItem><SelectItem value="saida">Saída</SelectItem><SelectItem value="transferencia">Transferência</SelectItem></SelectContent></Select></div>
-              <div><Label>Status</Label><Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="pendente">Pendente</SelectItem><SelectItem value="pago">Pago</SelectItem></SelectContent></Select></div>
-              <div className="col-span-2"><Label>Descrição *</Label><Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} /></div>
-              <div><Label>Valor (R$) *</Label><Input type="number" step="0.01" value={form.valor} onChange={e => setForm(f => ({ ...f, valor: e.target.value }))} /></div>
-              <div><Label>Data Competência</Label><Input type="date" value={form.data_competencia} onChange={e => setForm(f => ({ ...f, data_competencia: e.target.value }))} /></div>
-              <div><Label>Data Pagamento</Label><Input type="date" value={form.data_pagamento} onChange={e => setForm(f => ({ ...f, data_pagamento: e.target.value }))} /></div>
-              <div><Label>Conta</Label><Select value={form.conta_id} onValueChange={v => setForm(f => ({ ...f, conta_id: v }))}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{contas.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent></Select></div>
-              <div><Label>Categoria</Label><Select value={form.categoria_id} onValueChange={v => setForm(f => ({ ...f, categoria_id: v }))}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{categorias.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent></Select></div>
-              <div><Label>Ref. Contrato</Label><Input value={form.contrato_ref} onChange={e => setForm(f => ({ ...f, contrato_ref: e.target.value }))} /></div>
-              <div className="col-span-2"><Label>Observações</Label><Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} /></div>
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={handleSave} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}Salvar</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button size="sm" variant="outline" onClick={exportCsv}>
+          <Download className="w-3.5 h-3.5 mr-1" /> Exportar CSV
+        </Button>
       </div>
 
-      {/* Tabela */}
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-xs">Data</TableHead>
-              <TableHead className="text-xs">Descrição</TableHead>
-              <TableHead className="text-xs">Tipo</TableHead>
-              <TableHead className="text-xs text-right">Valor</TableHead>
-              <TableHead className="text-xs text-center">Status</TableHead>
-              <TableHead className="text-xs text-center">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {lancamentos.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum lançamento encontrado</TableCell></TableRow>
-            ) : lancamentos.map(l => (
-              <TableRow key={l.id}>
-                <TableCell className="text-xs font-mono">{new Date(l.data_competencia + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
-                <TableCell className="text-xs">
-                  <div className="font-medium">{l.descricao}</div>
-                  {l.contrato_ref && <div className="text-[10px] text-muted-foreground">Contrato: {l.contrato_ref}</div>}
-                </TableCell>
-                <TableCell><Badge variant="outline" className={`text-[10px] ${l.tipo === 'entrada' ? 'border-success/30 text-success' : l.tipo === 'saida' ? 'border-destructive/30 text-destructive' : ''}`}>{l.tipo}</Badge></TableCell>
-                <TableCell className={`text-xs text-right font-mono font-bold ${l.tipo === 'entrada' ? 'text-success' : 'text-destructive'}`}>{l.tipo === 'entrada' ? '+' : '-'}{fmt(Number(l.valor))}</TableCell>
-                <TableCell className="text-center">
-                  <Badge variant="outline" className={`text-[10px] ${l.status === 'pago' || l.status === 'conciliado' ? 'border-success/30 text-success' : l.status === 'pendente' ? 'border-warning/30 text-warning' : 'border-muted text-muted-foreground'}`}>
-                    {l.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-center">
-                  {l.status === 'pendente' && (
-                    <Button size="sm" variant="ghost" className="text-xs text-success" onClick={() => marcarPago(l.id)}>
-                      <CheckCircle2 className="w-3 h-3 mr-1" /> Pagar
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
+      {/* Gráfico simplificado de barras */}
+      {semanas.length > 0 && (
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart3 className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Projeção Semanal</span>
+          </div>
+          <div className="space-y-3">
+            {semanas.map((s, i) => (
+              <div key={i} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground font-mono">{s.label}</span>
+                  <span className={cn('font-bold font-mono', s.saldoAcum >= 0 ? 'text-success' : 'text-destructive')}>
+                    {fmt(s.saldoAcum)}
+                  </span>
+                </div>
+                <div className="flex gap-1 h-5">
+                  <div
+                    className="bg-success/20 border border-success/30 rounded-sm flex items-center justify-end pr-1"
+                    style={{ width: `${Math.max((s.entradas / maxBar) * 50, 2)}%` }}
+                  >
+                    {s.entradas > 0 && <span className="text-[9px] text-success font-mono">{fmt(s.entradas)}</span>}
+                  </div>
+                  <div
+                    className="bg-destructive/20 border border-destructive/30 rounded-sm flex items-center justify-end pr-1"
+                    style={{ width: `${Math.max((s.saidas / maxBar) * 50, 2)}%` }}
+                  >
+                    {s.saidas > 0 && <span className="text-[9px] text-destructive font-mono">{fmt(s.saidas)}</span>}
+                  </div>
+                </div>
+              </div>
             ))}
-          </TableBody>
-        </Table>
-      </Card>
+          </div>
+          <div className="flex gap-4 mt-4 text-[10px] text-muted-foreground">
+            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-success/20 border border-success/30" /> Entradas</div>
+            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-destructive/20 border border-destructive/30" /> Saídas</div>
+          </div>
+        </Card>
+      )}
+
+      {semanas.length === 0 && (
+        <Card className="p-8 text-center text-muted-foreground text-sm">
+          Nenhuma projeção no período selecionado. Cadastre contas a pagar/receber para visualizar o fluxo.
+        </Card>
+      )}
     </div>
   );
 }
