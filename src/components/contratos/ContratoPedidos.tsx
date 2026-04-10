@@ -17,7 +17,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import {
   Plus, Trash2, Loader2, ShoppingCart, CheckCircle2, Clock, XCircle,
-  Upload, FileText, AlertTriangle, DollarSign, Receipt
+  Upload, FileText, AlertTriangle, DollarSign, Receipt, Pencil
 } from 'lucide-react';
 import GerarPreNotaDialog from './GerarPreNotaDialog';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
