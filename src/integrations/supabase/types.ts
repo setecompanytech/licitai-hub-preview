@@ -3140,6 +3140,7 @@ export type Database = {
           valor_consumido: number
           valor_global: number
           valor_global_original: number
+          vendedor_user_id: string | null
           vigencia_meses: number | null
         }
         Insert: {
@@ -3168,6 +3169,7 @@ export type Database = {
           valor_consumido?: number
           valor_global?: number
           valor_global_original?: number
+          vendedor_user_id?: string | null
           vigencia_meses?: number | null
         }
         Update: {
@@ -3196,6 +3198,7 @@ export type Database = {
           valor_consumido?: number
           valor_global?: number
           valor_global_original?: number
+          vendedor_user_id?: string | null
           vigencia_meses?: number | null
         }
         Relationships: [
