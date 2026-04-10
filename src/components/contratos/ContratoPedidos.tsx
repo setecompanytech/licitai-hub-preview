@@ -17,7 +17,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import {
   Plus, Trash2, Loader2, ShoppingCart, CheckCircle2, Clock, XCircle,
-  Upload, FileText, AlertTriangle, DollarSign, Receipt
+  Upload, FileText, AlertTriangle, DollarSign, Receipt, Pencil
 } from 'lucide-react';
 import GerarPreNotaDialog from './GerarPreNotaDialog';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
@@ -78,7 +78,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [nfData, setNfData] = useState('');
   const [solicitandoComissao, setSolicitandoComissao] = useState(false);
 
-  // Upload state
+  // Edit state
+  const [editingPedido, setEditingPedido] = useState<Pedido | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    numero_pedido: '', descricao: '', contrato_item_id: '',
+    quantidade: '', valor_unitario: '', data_pedido: '',
+    data_entrega: '', status: 'pendente', nota_fiscal: '', observacoes: '',
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
+
   const [uploading, setUploading] = useState(false);
   const [extractedData, setExtractedData] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -251,6 +260,49 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const handleDelete = async (id: string) => {
     await supabase.from('contrato_pedidos').delete().eq('id', id);
     toast.success('Pedido excluído.');
+    load();
+  };
+
+  const openEditDialog = (p: Pedido) => {
+    setEditingPedido(p);
+    setEditForm({
+      numero_pedido: p.numero_pedido || '',
+      descricao: p.descricao || '',
+      contrato_item_id: p.contrato_item_id || '',
+      quantidade: String(p.quantidade || ''),
+      valor_unitario: String(p.valor_unitario || ''),
+      data_pedido: p.data_pedido || '',
+      data_entrega: p.data_entrega || '',
+      status: p.status || 'pendente',
+      nota_fiscal: p.nota_fiscal || '',
+      observacoes: p.observacoes || '',
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingPedido) return;
+    const qty = parseFloat(editForm.quantidade) || 0;
+    const unit = parseFloat(editForm.valor_unitario) || 0;
+    setSavingEdit(true);
+    const { error } = await supabase.from('contrato_pedidos').update({
+      numero_pedido: editForm.numero_pedido,
+      descricao: editForm.descricao || null,
+      contrato_item_id: editForm.contrato_item_id || null,
+      quantidade: qty,
+      valor_unitario: unit,
+      valor_total: qty * unit,
+      data_pedido: editForm.data_pedido || null,
+      data_entrega: editForm.data_entrega || null,
+      status: editForm.status,
+      nota_fiscal: editForm.nota_fiscal || null,
+      observacoes: editForm.observacoes || null,
+    } as any).eq('id', editingPedido.id);
+    setSavingEdit(false);
+    if (error) { toast.error('Erro ao atualizar: ' + error.message); return; }
+    toast.success('Pedido atualizado.');
+    setEditDialogOpen(false);
+    setEditingPedido(null);
     load();
   };
 
@@ -658,6 +710,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             <DollarSign className="w-3 h-3 mr-1" /> NF Quitada
                           </Button>
                         )}
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditDialog(p)} title="Editar pedido">
+                          <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                        </Button>
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(p.id)}>
                           <Trash2 className="w-3.5 h-3.5 text-destructive" />
                         </Button>
@@ -815,6 +870,90 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         itens={itens}
         onCreated={load}
       />
+
+      {/* Edit Pedido Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={(v) => { setEditDialogOpen(v); if (!v) setEditingPedido(null); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-primary" /> Editar Pedido
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">N.o Documento</Label>
+                <Input value={editForm.numero_pedido} onChange={e => setEditForm(f => ({ ...f, numero_pedido: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="text-xs">Status</Label>
+                <Select value={editForm.status} onValueChange={v => setEditForm(f => ({ ...f, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(statusCfg).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Descrição</Label>
+              <Input value={editForm.descricao} onChange={e => setEditForm(f => ({ ...f, descricao: e.target.value }))} />
+            </div>
+            {itens.length > 0 && (
+              <div>
+                <Label className="text-xs">Item do Contrato</Label>
+                <Select value={editForm.contrato_item_id} onValueChange={v => {
+                  const item = itens.find(i => i.id === v);
+                  setEditForm(f => ({ ...f, contrato_item_id: v, valor_unitario: item ? String(item.valor_unitario) : f.valor_unitario }));
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {itens.map(i => (
+                      <SelectItem key={i.id} value={i.id}>{i.descricao} ({fmt(i.valor_unitario)}/{i.unidade})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Quantidade</Label>
+                <Input type="number" value={editForm.quantidade} onChange={e => setEditForm(f => ({ ...f, quantidade: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="text-xs">Valor Unitário</Label>
+                <Input type="number" step="0.01" value={editForm.valor_unitario} onChange={e => setEditForm(f => ({ ...f, valor_unitario: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Data do Pedido</Label>
+                <Input type="date" value={editForm.data_pedido} onChange={e => setEditForm(f => ({ ...f, data_pedido: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="text-xs">Data de Entrega</Label>
+                <Input type="date" value={editForm.data_entrega} onChange={e => setEditForm(f => ({ ...f, data_entrega: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Nota Fiscal</Label>
+              <Input value={editForm.nota_fiscal} onChange={e => setEditForm(f => ({ ...f, nota_fiscal: e.target.value }))} />
+            </div>
+            <div>
+              <Label className="text-xs">Observações</Label>
+              <Textarea value={editForm.observacoes} onChange={e => setEditForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+              <Button onClick={handleSaveEdit} disabled={savingEdit}>
+                {savingEdit ? <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Salvando...</> : 'Salvar Alterações'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
