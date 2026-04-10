@@ -199,9 +199,9 @@ export default function FinExtrato() {
             {filtered.slice(0, 100).map((m: any) => {
               const conta = contas.find((c: any) => c.id === m.conta_id);
               return (
-                <TableRow key={m.id} className={m.conciliado ? 'bg-emerald-50/50 dark:bg-emerald-950/10' : ''}>
+                <TableRow key={m.id} className={m.conciliado_em ? 'bg-emerald-50/50 dark:bg-emerald-950/10' : ''}>
                   <TableCell>
-                    <Checkbox checked={m.conciliado} onCheckedChange={() => toggleConciliado(m.id, m.conciliado)} />
+                    <Checkbox checked={!!m.conciliado_em} onCheckedChange={() => toggleConciliado(m.id, m.conciliado_em)} />
                   </TableCell>
                   <TableCell className="text-sm">{fmtDate(m.data_lancamento)}</TableCell>
                   <TableCell className="text-sm font-medium">{m.descricao}</TableCell>
