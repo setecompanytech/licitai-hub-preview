@@ -774,12 +774,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     )}
                     <TableCell>
                       <div className="flex gap-1">
-                        {!p.nf_quitada && p.status === 'entregue' && (
+                        {!p.nf_quitada && p.status === 'entregue' && (isFinanceiro || isAdmin) && (
                           <Button
                             size="sm" variant="outline"
                             className="h-7 px-2 text-[10px] text-success border-success/30 hover:bg-success/5"
                             onClick={() => openNfDialog(p)}
-                            title="Informar NF quitada e solicitar comissão"
+                            title="Registrar pagamento da NF-e e gerar comissão"
                           >
                             <DollarSign className="w-3 h-3 mr-1" /> NF Quitada
                           </Button>
