@@ -107,6 +107,12 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
+    title: 'Financeiro',
+    items: [
+      { icon: DollarSign, label: 'Financeiro', path: '/financeiro' },
+    ],
+  },
+  {
     title: 'Ferramentas',
     items: [
       { icon: Sparkles, label: 'AURÉLIA', path: '/aurelia' },
