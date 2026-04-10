@@ -641,18 +641,25 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pedidos.map(p => {
+              {(() => {
+                const sorted = sortOrder
+                  ? [...pedidos].sort((a, b) => {
+                      const cmp = a.numero_pedido.localeCompare(b.numero_pedido, 'pt-BR', { numeric: true });
+                      return sortOrder === 'asc' ? cmp : -cmp;
+                    })
+                  : pedidos;
+                return sorted.map(p => {
                 const cfg = statusCfg[p.status] || statusCfg.pendente;
                 const linkedNfs = nfsSync.filter(nf => nf.contrato_pedido_id === p.id);
                 return (
                   <TableRow key={p.id}>
-                    <TableCell className="text-xs font-mono font-medium">{p.numero_pedido}</TableCell>
+                    <TableCell className="text-xs font-mono font-medium whitespace-nowrap">{p.numero_pedido}</TableCell>
                     <TableCell className="text-xs max-w-[200px] truncate">{p.descricao || '—'}</TableCell>
-                    <TableCell className="text-xs text-right">{p.quantidade}</TableCell>
-                    <TableCell className="text-xs text-right">{fmt(p.valor_unitario)}</TableCell>
-                    <TableCell className="text-xs text-right font-medium">{fmt(p.valor_total)}</TableCell>
-                    <TableCell className="text-xs text-center">{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-xs text-right whitespace-nowrap">{p.quantidade}</TableCell>
+                    <TableCell className="text-xs text-right whitespace-nowrap">{fmt(p.valor_unitario)}</TableCell>
+                    <TableCell className="text-xs text-right font-medium whitespace-nowrap">{fmt(p.valor_total)}</TableCell>
+                    <TableCell className="text-xs text-center whitespace-nowrap">{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
+                    <TableCell className="text-center whitespace-nowrap">
                       <Badge className={`text-[10px] ${cfg.color}`}>{cfg.label}</Badge>
                     </TableCell>
                     <TableCell className="text-xs">
