@@ -119,8 +119,8 @@ export default function FinExtrato() {
     load();
   }
 
-  async function toggleConciliado(id: string, current: boolean) {
-    await supabase.from('fin_movimentacoes').update({ conciliado: !current }).eq('id', id);
+  async function toggleConciliado(id: string, currentDate: string | null) {
+    await supabase.from('fin_movimentacoes').update({ conciliado_em: currentDate ? null : new Date().toISOString() }).eq('id', id);
     load();
   }
 
