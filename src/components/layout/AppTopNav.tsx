@@ -77,6 +77,12 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
+    title: 'Financeiro',
+    items: [
+      { icon: DollarSign, label: 'Financeiro', path: '/financeiro' },
+    ],
+  },
+  {
     title: 'Comunicação',
     items: [
       { icon: MessageSquare, label: 'WhatsApp CRM', path: '/whatsapp-crm' },
@@ -119,6 +125,7 @@ const topNavLinks = [
   { label: 'Gestão', groups: ['Gestão de Processos'] },
   { label: 'Inteligência', groups: ['Inteligência & Preços'] },
   { label: 'Jurídico', groups: ['Jurídico & Contábil'] },
+  { label: 'Financeiro', groups: ['Financeiro'] },
   { label: 'Comunicação', groups: ['Comunicação'] },
   { label: 'Ferramentas', groups: ['Ferramentas', 'Configuração'] },
 ];
