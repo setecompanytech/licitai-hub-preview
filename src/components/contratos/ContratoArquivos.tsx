@@ -27,8 +27,8 @@ const TIPOS_ARQUIVO: Record<string, { label: string; color: string; isAditivo?: 
   outro: { label: 'Outro Documento', color: 'bg-muted text-muted-foreground' },
 };
 
-const showValueFields = (tipo: string) => ['aditivo_valor', 'aditivo_valor_quantidade', 'aditivo_escopo'].includes(tipo);
-const showQtyFields = (tipo: string) => ['aditivo_quantidade', 'aditivo_valor_quantidade'].includes(tipo);
+const showValueFields = (tipo: string) => ['aditivo_valor', 'aditivo_valor_quantidade', 'aditivo_escopo', 'aditivo_prazo'].includes(tipo);
+const showQtyFields = (tipo: string) => ['aditivo_quantidade', 'aditivo_valor_quantidade', 'aditivo_prazo'].includes(tipo);
 const showDateField = (tipo: string) => ['aditivo_prazo'].includes(tipo);
 const isAditivoType = (tipo: string) => TIPOS_ARQUIVO[tipo]?.isAditivo === true;
 
