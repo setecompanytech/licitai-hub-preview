@@ -2769,6 +2769,8 @@ export type Database = {
           numero_aditivo: string
           observacoes: string | null
           prazo_adicional_dias: number | null
+          quantidade_acrescimo: number
+          quantidade_supressao: number
           tipo: string
           updated_at: string
           user_id: string
@@ -2788,6 +2790,8 @@ export type Database = {
           numero_aditivo: string
           observacoes?: string | null
           prazo_adicional_dias?: number | null
+          quantidade_acrescimo?: number
+          quantidade_supressao?: number
           tipo?: string
           updated_at?: string
           user_id: string
@@ -2807,6 +2811,8 @@ export type Database = {
           numero_aditivo?: string
           observacoes?: string | null
           prazo_adicional_dias?: number | null
+          quantidade_acrescimo?: number
+          quantidade_supressao?: number
           tipo?: string
           updated_at?: string
           user_id?: string
