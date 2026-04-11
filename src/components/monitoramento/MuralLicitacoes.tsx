@@ -207,11 +207,12 @@ function buildPncpUrl(lic: LicitacaoMural): string | null {
 export default function MuralLicitacoes() {
   const { user } = useAuth();
   const { iniciarProcesso } = useLicitacaoIntegration();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pagina, setPagina] = useState(1);
   const ultimaBuscaRef = useRef(0);
   const [ultimaSync, setUltimaSync] = useState<Date | null>(null);
+  const [buscaRealizada, setBuscaRealizada] = useState(false);
   const [totalCacheGlobal, setTotalCacheGlobal] = useState(0);
 
   // Filtros principais
