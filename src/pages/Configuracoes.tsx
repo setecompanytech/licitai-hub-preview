@@ -707,6 +707,11 @@ export default function Configuracoes() {
             {isAdmin && <AnaliseCNPJAdicional />}
           </TabsContent>
 
+          {/* ── Tab: Regime Tributário ── */}
+          <TabsContent value="regime" className="space-y-6">
+            <ApuracaoRegimeTributario />
+          </TabsContent>
+
           {/* ── Tab: Segurança ── */}
           <TabsContent value="seguranca" className="space-y-6">
             <SegurancaConta />
