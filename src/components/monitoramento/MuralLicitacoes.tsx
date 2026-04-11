@@ -1978,8 +1978,41 @@ export default function MuralLicitacoes() {
         </div>
       )}
 
+      {/* Empty state — before first search */}
+      {!loading && !buscaRealizada && (
+        <Card className="p-8 sm:p-12 text-center border-dashed border-2 border-border/50">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center">
+              <Search className="w-8 h-8 text-accent" />
+            </div>
+            <div className="space-y-2 max-w-md">
+              <h3 className="text-lg font-semibold">Pesquisar Editais e Licitações</h3>
+              <p className="text-sm text-muted-foreground">
+                Utilize os filtros acima para buscar editais. Selecione a <strong>UF</strong>, <strong>modalidade</strong>, 
+                digite um <strong>termo de busca</strong> e clique em <strong>"Buscar"</strong> para iniciar.
+              </p>
+            </div>
+            <Button onClick={() => handleSearch()} className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2 mt-2">
+              <Search className="w-4 h-4" />
+              Buscar Agora
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* No results after search */}
+      {!loading && buscaRealizada && licitacoesFiltradas.length === 0 && (
+        <Card className="p-8 text-center">
+          <div className="flex flex-col items-center gap-3">
+            <FileText className="w-10 h-10 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">Nenhuma licitação encontrada para os filtros selecionados.</p>
+            <p className="text-xs text-muted-foreground/60">Tente ajustar os filtros ou ampliar os critérios de busca.</p>
+          </div>
+        </Card>
+      )}
+
       {/* Cards grid (TCMPA-style) */}
-      {!loading && licitacoesFiltradas.length > 0 && (
+      {!loading && buscaRealizada && licitacoesFiltradas.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {licitacoesFiltradas.map((lic, idx) => {
             const isFav = favoritos.has(`${lic.numero}|${lic.orgao}`);
