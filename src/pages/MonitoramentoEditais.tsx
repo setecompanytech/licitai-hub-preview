@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import AppLayout from "@/components/layout/AppLayout";
@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   RefreshCw,
   Globe,
+  Loader2,
   Building2,
   CalendarDays,
   PauseCircle,
@@ -31,13 +32,14 @@ import {
   Gavel,
 } from "lucide-react";
 // LicitacoesTab removed — integrated into MuralLicitacoes via "Incluir portais externos" toggle
-import DiariosOficiaisTab from "@/components/monitoramento/DiariosOficiaisTab";
-import ConfiguracaoPesquisaTab from "@/components/monitoramento/ConfiguracaoPesquisaTab";
-import DispensaEletronicaTab from "@/components/monitoramento/DispensaEletronicaTab";
-import MuralLicitacoes from "@/components/monitoramento/MuralLicitacoes";
-import GuiaComprasGov from "@/components/monitoramento/GuiaComprasGov";
-import EditaisLicitacoes from "@/pages/monitoramento/EditaisLicitacoes";
 import { TODOS_PORTAIS } from "@/data/portais-compras";
+
+const DiariosOficiaisTab = lazy(() => import("@/components/monitoramento/DiariosOficiaisTab"));
+const ConfiguracaoPesquisaTab = lazy(() => import("@/components/monitoramento/ConfiguracaoPesquisaTab"));
+const DispensaEletronicaTab = lazy(() => import("@/components/monitoramento/DispensaEletronicaTab"));
+const MuralLicitacoes = lazy(() => import("@/components/monitoramento/MuralLicitacoes"));
+const GuiaComprasGov = lazy(() => import("@/components/monitoramento/GuiaComprasGov"));
+const EditaisLicitacoes = lazy(() => import("@/pages/monitoramento/EditaisLicitacoes"));
 
 
 
@@ -72,10 +74,18 @@ const documentoCount: Record<TipoDocumento, number> = {
   edital: 0, aviso: 0, cancelamento: 0, suspenso: 0, adiado: 0, aditivado: 0, adjudicado: 0, homologado: 0,
 };
 
+const TabLoadingState = () => (
+  <div className="flex items-center gap-2 rounded-xl border border-border/50 bg-card p-6 text-sm text-muted-foreground">
+    <Loader2 className="h-4 w-4 animate-spin" />
+    Carregando módulo...
+  </div>
+);
+
 export default function MonitoramentoEditais() {
   const [pesquisando, setPesquisando] = useState(false);
   const [progresso, setProgresso] = useState(0);
   const [tipoFiltro, setTipoFiltro] = useState<TipoDocumento | "todos">("todos");
+  const [abaAtiva, setAbaAtiva] = useState("editais-licitacoes");
   const navigate = useNavigate();
   const { empresaAtiva } = useEmpresa();
 
@@ -176,7 +186,7 @@ export default function MonitoramentoEditais() {
           })}
         </div>
 
-        <Tabs defaultValue="mural" className="space-y-4">
+        <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="space-y-4">
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="mural">
               <Gavel className="w-4 h-4 mr-1" />
@@ -202,17 +212,23 @@ export default function MonitoramentoEditais() {
           </TabsList>
 
           <TabsContent value="mural">
-            <MuralLicitacoes />
+            <Suspense fallback={<TabLoadingState />}>
+              <MuralLicitacoes />
+            </Suspense>
           </TabsContent>
 
 
 
           <TabsContent value="dispensa">
-            <DispensaEletronicaTab />
+            <Suspense fallback={<TabLoadingState />}>
+              <DispensaEletronicaTab />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="diarios">
-            <DiariosOficiaisTab />
+            <Suspense fallback={<TabLoadingState />}>
+              <DiariosOficiaisTab />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="portais" className="space-y-4">
@@ -268,11 +284,15 @@ export default function MonitoramentoEditais() {
           </TabsContent>
 
           <TabsContent value="config" className="space-y-4">
-            <GuiaComprasGov />
-            <ConfiguracaoPesquisaTab />
+            <Suspense fallback={<TabLoadingState />}>
+              <GuiaComprasGov />
+              <ConfiguracaoPesquisaTab />
+            </Suspense>
           </TabsContent>
           <TabsContent value="editais-licitacoes">
-            <EditaisLicitacoes />
+            <Suspense fallback={<TabLoadingState />}>
+              <EditaisLicitacoes />
+            </Suspense>
           </TabsContent>
         </Tabs>
       </div>
