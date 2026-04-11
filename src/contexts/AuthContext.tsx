@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { stripePlans } from '@/data/stripe-config';
 import type { PlanSlug } from '@/data/plan-features';
+import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 
 type SubscriptionState = {
   subscribed: boolean;
@@ -112,6 +113,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(() => checkSubscription(), 60_000);
     return () => clearInterval(interval);
   }, [user, checkSubscription]);
+
+  // Auto-logout after 10 min of inactivity
+  useIdleTimeout();
 
   const getRedirectOrigin = (): string => {
     const origin = window.location.origin;
