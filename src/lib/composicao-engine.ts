@@ -199,7 +199,7 @@ interface TributoConfig {
 }
 
 function getTributosRegime(params: ComposicaoParametros): TributoConfig[] {
-  const { regime, uf, icmsInterno, issRate, atividade, rbt12, anexoId } = params;
+  const { regime, uf, icmsInterno, issRate, atividade, rbt12, anexoId, margemLucroPerc } = params;
 
   if (regime === 'simples_nacional') {
     const anexo = getAnexoById(anexoId || 'anexo_i') || ANEXOS_SIMPLES[0];
