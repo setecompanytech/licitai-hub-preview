@@ -4228,6 +4228,54 @@ export type Database = {
         }
         Relationships: []
       }
+      faturamento_mensal: {
+        Row: {
+          ano_mes: string
+          created_at: string
+          empresa_id: string
+          id: string
+          observacoes: string | null
+          updated_at: string
+          user_id: string
+          valor_faturamento: number
+        }
+        Insert: {
+          ano_mes: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          observacoes?: string | null
+          updated_at?: string
+          user_id: string
+          valor_faturamento?: number
+        }
+        Update: {
+          ano_mes?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          observacoes?: string | null
+          updated_at?: string
+          user_id?: string
+          valor_faturamento?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faturamento_mensal_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faturamento_mensal_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fin_categorias: {
         Row: {
           ativo: boolean | null
