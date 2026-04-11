@@ -8206,6 +8206,45 @@ export type Database = {
         }
         Relationships: []
       }
+      processos_exclusao_log: {
+        Row: {
+          acao: string
+          created_at: string
+          empresa_id: string | null
+          id: string
+          motivo: string
+          processo_interesse_id: string | null
+          processo_numero: string | null
+          processo_objeto: string | null
+          processo_orgao: string | null
+          user_id: string
+        }
+        Insert: {
+          acao: string
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          motivo: string
+          processo_interesse_id?: string | null
+          processo_numero?: string | null
+          processo_objeto?: string | null
+          processo_orgao?: string | null
+          user_id: string
+        }
+        Update: {
+          acao?: string
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          motivo?: string
+          processo_interesse_id?: string | null
+          processo_numero?: string | null
+          processo_objeto?: string | null
+          processo_orgao?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       processos_interesse: {
         Row: {
           alerta_1dia: boolean | null
