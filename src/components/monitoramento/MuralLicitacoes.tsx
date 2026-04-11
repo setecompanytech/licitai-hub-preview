@@ -1923,13 +1923,8 @@ export default function MuralLicitacoes() {
       {/* Stats */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1.5">
-          {loading && licitacoesRaw.length === 0 ? 'Carregando licitações...' :
-           sincronizando ? (
-             <>
-               <RefreshCw className="w-3 h-3 animate-spin text-accent" />
-               {`${totalResultados} licitações • Sincronizando com PNCP...`}
-             </>
-           ) :
+          {loading ? 'Buscando licitações...' :
+            !buscaRealizada ? 'Preencha os filtros e clique em "Buscar" para iniciar a pesquisa.' :
             loadingExternos ? `${totalResultados} licitações filtradas • Buscando portais externos...` :
             `${totalResultados} licitações encontradas${totalFontesFiltradas > 0 ? ` (${totaisFiltradosPorFonte.pncp} PNCP${totaisFiltradosPorFonte.comprasGov > 0 ? ` + ${totaisFiltradosPorFonte.comprasGov} Compras.gov` : ''}${totaisFiltradosPorFonte.externos > 0 ? ` + ${totaisFiltradosPorFonte.externos} externos` : ''})` : ''}`}
         </p>
