@@ -213,6 +213,7 @@ export default function MuralLicitacoes() {
   const ultimaBuscaRef = useRef(0);
   const [ultimaSync, setUltimaSync] = useState<Date | null>(null);
   const [buscaRealizada, setBuscaRealizada] = useState(false);
+  const [buscaTrigger, setBuscaTrigger] = useState(0);
   const [totalCacheGlobal, setTotalCacheGlobal] = useState(0);
 
   // Filtros principais
