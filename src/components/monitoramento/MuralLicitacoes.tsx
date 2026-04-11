@@ -503,86 +503,16 @@ export default function MuralLicitacoes() {
     }
   }, [ufFiltro, modalidadeFiltro, esferaFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro, municipiosUfSelecionada, ordenacao, pagina]);
 
-  // ── FASE 2: Sincronização em tempo real com PNCP (background) ──
-  const sincronizarPNCP = useCallback(async (requestId?: number, cacheItems: LicitacaoMural[] = []) => {
-    setSincronizando(true);
-    try {
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/busca-licitacoes`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            query: searchSubmitted || undefined,
-            uf: ufFiltro !== 'all' ? ufFiltro : undefined,
-            modalidade: modalidadeFiltro !== 'all' ? modalidadeFiltro : undefined,
-            modalidadeId: modalidadeFiltro !== 'all' ? MODALIDADES.find(m => m.value === modalidadeFiltro)?.cod : undefined,
-            esfera: esferaFiltro !== 'all' ? esferaFiltro : undefined,
-            dataInicio: dataInicio ? dataInicio.toISOString().split('T')[0] : undefined,
-            dataFim: dataFim ? dataFim.toISOString().split('T')[0] : undefined,
-            cnpjOrgao: uasgSubmitted || undefined,
-            municipio: municipioFiltro.trim() || undefined,
-            codigoMunicipio: municipioFiltro.trim() ? (MUNICIPIO_IBGE[municipioFiltro.trim()] || undefined) : undefined,
-            pagina,
-            mural: true,
-            persistCache: true,
-          }),
-        }
-      );
-
-      if (!response.ok) throw new Error(`Erro ${response.status}`);
-      const data = await response.json();
-      const items: LicitacaoMural[] = (data.items || []).map(mapToMural);
-
-      if (requestId !== undefined && requestId !== ultimaBuscaRef.current) {
-        return;
-      }
-
-      // Merge only with cache from the same search context to avoid stale/general results.
-      const liveKeys = new Set(items.map(i => `${i.cnpjOrgao}-${i.anoCompra}-${i.sequencialCompra}`).filter(k => k !== 'null-null-null'));
-      const cacheOnlyItems = cacheItems.filter(p => {
-        const key = `${p.cnpjOrgao}-${p.anoCompra}-${p.sequencialCompra}`;
-        return key === 'null-null-null' || !liveKeys.has(key);
-      });
-
-      setLicitacoesRaw([...items, ...cacheOnlyItems]);
-    } catch (err) {
-      console.error('PNCP sync error:', err);
-      // Only show error if we have zero data at all
-      if ((requestId === undefined || requestId === ultimaBuscaRef.current) && cacheItems.length === 0) {
-        setError('Não foi possível conectar ao PNCP. Tente novamente em instantes.');
-      }
-      // If we have cached data, silently ignore sync failure
-    } finally {
-      if (requestId === undefined || requestId === ultimaBuscaRef.current) {
-        setSincronizando(false);
-      }
-    }
-  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro, esferaFiltro]);
-
-  // ── Carregamento principal: cache primeiro, depois PNCP em background ──
+  // ── Carregamento principal: apenas consulta cache local (sob demanda) ──
   const carregarMural = useCallback(async () => {
     const requestId = ultimaBuscaRef.current + 1;
     ultimaBuscaRef.current = requestId;
 
     setLoading(true);
     setError(null);
+    setBuscaRealizada(true);
     try {
-      const cacheItems = await carregarCache(requestId);
-
-      if (requestId !== ultimaBuscaRef.current) {
-        return;
-      }
-
-      // Se temos cache, libera a UI imediatamente
-      if (cacheItems.length > 0) {
-        setLoading(false);
-      }
-      // Sincroniza com PNCP em background
-      await sincronizarPNCP(requestId, cacheItems);
+      await carregarCache(requestId);
     } catch (err) {
       console.error(err);
       setError('Erro ao carregar licitações. Tente novamente.');
@@ -591,7 +521,7 @@ export default function MuralLicitacoes() {
         setLoading(false);
       }
     }
-  }, [carregarCache, sincronizarPNCP]);
+  }, [carregarCache]);
 
   // Busca em portais externos via Firecrawl (busca-editais-ia)
   const carregarExternos = useCallback(async () => {
