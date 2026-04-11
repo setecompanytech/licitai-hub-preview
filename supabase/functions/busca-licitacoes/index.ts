@@ -47,7 +47,7 @@ function mapPncpItem(item: any, uf: string | null) {
     orgao: item.orgaoEntidade?.razaoSocial || "-",
     objeto: item.objetoCompra || "-",
     modalidade: item.modalidadeNome || "Pregão - Eletrônico",
-    status: item.situacaoCompraNome || "Publicado",
+    status: corrigirStatusPncp(item.situacaoCompraNome, item.dataAberturaProposta),
     valor_estimado: item.valorTotalEstimado || item.valorTotalHomologado || null,
     uf: item.unidadeOrgao?.ufSigla || uf || null,
     municipio: item.unidadeOrgao?.municipioNome || null,
