@@ -37,7 +37,7 @@ import { TODOS_PORTAIS } from "@/data/portais-compras";
 const DiariosOficiaisTab = lazy(() => import("@/components/monitoramento/DiariosOficiaisTab"));
 const ConfiguracaoPesquisaTab = lazy(() => import("@/components/monitoramento/ConfiguracaoPesquisaTab"));
 const DispensaEletronicaTab = lazy(() => import("@/components/monitoramento/DispensaEletronicaTab"));
-const MuralLicitacoes = lazy(() => import("@/components/monitoramento/MuralLicitacoes"));
+
 const GuiaComprasGov = lazy(() => import("@/components/monitoramento/GuiaComprasGov"));
 const EditaisLicitacoes = lazy(() => import("@/pages/monitoramento/EditaisLicitacoes"));
 
@@ -188,10 +188,6 @@ export default function MonitoramentoEditais() {
 
         <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="space-y-4">
           <TabsList className="flex-wrap h-auto gap-1">
-            <TabsTrigger value="mural">
-              <Gavel className="w-4 h-4 mr-1" />
-              Mural (Tempo Real)
-            </TabsTrigger>
             <TabsTrigger value="dispensa">
               <Zap className="w-4 h-4 mr-1" />
               Dispensa Eletrônica
@@ -211,11 +207,6 @@ export default function MonitoramentoEditais() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="mural">
-            <Suspense fallback={<TabLoadingState />}>
-              <MuralLicitacoes />
-            </Suspense>
-          </TabsContent>
 
 
 
