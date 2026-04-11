@@ -114,6 +114,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [user, checkSubscription]);
 
+  // Auto-logout after 10 min of inactivity
+  useIdleTimeout();
+
   const getRedirectOrigin = (): string => {
     const origin = window.location.origin;
     if (origin.includes('lovableproject.com') || origin.includes('lovable.app') || origin.includes('localhost')) {
