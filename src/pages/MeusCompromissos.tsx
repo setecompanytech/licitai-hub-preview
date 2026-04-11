@@ -141,16 +141,48 @@ export default function MeusCompromissos() {
     carregarProcessos();
   };
 
-  const handleRejeitar = async (id: string) => {
-    await supabase.from('processos_interesse').update({ status: 'rejeitado' }).eq('id', id);
-    toast.info('Processo rejeitado.');
-    carregarProcessos();
-  };
+  // State for rejection/removal dialog
+  const [acaoDialog, setAcaoDialog] = useState<{ tipo: 'rejeitar' | 'remover'; processo: ProcessoInteresse } | null>(null);
+  const [motivoTexto, setMotivoTexto] = useState('');
+  const [executandoAcao, setExecutandoAcao] = useState(false);
 
-  const handleRemover = async (id: string) => {
-    await supabase.from('processos_interesse').delete().eq('id', id);
-    toast.success('Processo removido da lista.');
-    carregarProcessos();
+  const handleConfirmarAcao = async () => {
+    if (!acaoDialog || !user) return;
+    if (!motivoTexto.trim()) {
+      toast.error('Informe o motivo da ação.');
+      return;
+    }
+    setExecutandoAcao(true);
+    const { tipo, processo } = acaoDialog;
+    try {
+      // Log the action with reason
+      await supabase.from('processos_exclusao_log' as any).insert({
+        user_id: user.id,
+        processo_interesse_id: processo.id,
+        processo_numero: processo.numero,
+        processo_orgao: processo.orgao,
+        processo_objeto: processo.objeto,
+        empresa_id: processo.empresa_id,
+        acao: tipo,
+        motivo: motivoTexto.trim(),
+      });
+
+      if (tipo === 'rejeitar') {
+        await supabase.from('processos_interesse').update({ status: 'rejeitado' }).eq('id', processo.id);
+        toast.info('Processo rejeitado.');
+      } else {
+        await supabase.from('processos_interesse').delete().eq('id', processo.id);
+        toast.success('Processo removido da lista.');
+      }
+      carregarProcessos();
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao executar ação.');
+    } finally {
+      setExecutandoAcao(false);
+      setAcaoDialog(null);
+      setMotivoTexto('');
+    }
   };
 
   const [expandedAnalise, setExpandedAnalise] = useState<Record<string, boolean>>({});
