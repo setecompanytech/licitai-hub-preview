@@ -115,9 +115,9 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
   // ── Módulo 6 ──
   const [mod6, setMod6] = useState<ParametrosModulo6>({
     custosIndiretosPerc: 5, lucroPerc: 10,
-    pisPerc: regime === 'lucro_real' ? 1.65 : 0.65,
-    cofinsPerc: regime === 'lucro_real' ? 7.60 : 3.00,
-    issPerc: 5,
+    pisPerc: regime === 'simples_nacional' ? 0 : regime === 'lucro_real' ? 1.65 : 0.65,
+    cofinsPerc: regime === 'simples_nacional' ? 0 : regime === 'lucro_real' ? 7.60 : 3.00,
+    issPerc: regime === 'simples_nacional' ? 0 : 5,
   });
   const updMod6 = useCallback((k: keyof ParametrosModulo6, v: number) => setMod6(p => ({ ...p, [k]: v })), []);
 
@@ -461,6 +461,9 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
             </div>
             <div className="border-t border-border/30 pt-3">
               <p className="text-[10px] font-medium mb-2">Tributos — {regimeLabel} (calculados "por dentro")</p>
+              {regime === 'simples_nacional' && (
+                <p className="text-[10px] text-amber-600 mb-2">⚠️ No Simples Nacional, PIS, COFINS e ISS já estão incluídos no DAS. Preencha apenas se houver incidência separada.</p>
+              )}
               <div className="grid grid-cols-3 gap-3">
                 <PercInput label="PIS" value={mod6.pisPerc} onChange={v => updMod6('pisPerc', v)} />
                 <PercInput label="COFINS" value={mod6.cofinsPerc} onChange={v => updMod6('cofinsPerc', v)} />

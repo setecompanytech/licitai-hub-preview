@@ -322,18 +322,28 @@ export default function CalculadoraUnificada({
     if (regime === 'lucro_presumido') {
       const baseIRPJ = atividade === 'servicos' ? 32 : 8;
       const baseCSLL = atividade === 'servicos' ? 32 : 12;
+      const irpjEfetivo = Math.round(15 * baseIRPJ) / 100; // ex: 1.2% comércio, 4.8% serviços
+      const csllEfetivo = Math.round(9 * baseCSLL) / 100;   // ex: 1.08% comércio, 2.88% serviços
       return [
-        { nome: 'IRPJ', aliquota: 15, percentPartilha: 0, info: `15% sobre base presumida de ${baseIRPJ}%` },
-        { nome: 'CSLL', aliquota: 9, percentPartilha: 0, info: `9% sobre base presumida de ${baseCSLL}%` },
+        { nome: 'IRPJ', aliquota: irpjEfetivo, percentPartilha: 0, info: `15% × base presumida ${baseIRPJ}% = ${irpjEfetivo}% efetivo s/ receita` },
+        { nome: 'CSLL', aliquota: csllEfetivo, percentPartilha: 0, info: `9% × base presumida ${baseCSLL}% = ${csllEfetivo}% efetivo s/ receita` },
         { nome: 'COFINS', aliquota: 3, percentPartilha: 0, info: 'Cumulativo: 3%' },
         { nome: 'PIS/PASEP', aliquota: 0.65, percentPartilha: 0, info: 'Cumulativo: 0,65%' },
         ...(atividade === 'servicos' ? [{ nome: 'ISS', aliquota: ufInfo?.iss_max || 5, percentPartilha: 0, info: 'ISS municipal' }] : []),
         ...(atividade !== 'servicos' ? [{ nome: 'ICMS', aliquota: icmsUF, percentPartilha: 0, info: `ICMS ${ufCalculo}: ${icmsUF}%` }] : []),
       ];
     }
+    // Lucro Real: IRPJ/CSLL incidem sobre lucro, não receita. Estimativa efetiva com base na margem informada.
+    const margemPctLR = parseFloat(margemLucro) || 15;
+    const irpjEfetivoLR = Math.round(15 * margemPctLR) / 100;    // ex: 15% × 15% margem = 2.25%
+    const csllEfetivoLR = Math.round(9 * margemPctLR) / 100;     // ex: 9% × 15% margem = 1.35%
+    // Adicional de 10% sobre lucro acima de R$20k/mês (estimativa)
+    const receitaEstimada = parseCurrencyInput(receitaBruta) || 100000;
+    const lucroEstimado = receitaEstimada * (margemPctLR / 100);
+    const adicionalIRPJ = lucroEstimado > 20000 ? Math.round(10 * ((lucroEstimado - 20000) / receitaEstimada) * 100) / 100 : 0;
     return [
-      { nome: 'IRPJ', aliquota: 15, percentPartilha: 0, info: '15% sobre lucro real' },
-      { nome: 'CSLL', aliquota: 9, percentPartilha: 0, info: '9% sobre lucro real' },
+      { nome: 'IRPJ', aliquota: irpjEfetivoLR + adicionalIRPJ, percentPartilha: 0, info: `15% × margem ${margemPctLR}% = ${irpjEfetivoLR}% efetivo${adicionalIRPJ > 0 ? ` + ${adicionalIRPJ}% adicional (lucro > R$20mil)` : ''}` },
+      { nome: 'CSLL', aliquota: csllEfetivoLR, percentPartilha: 0, info: `9% × margem ${margemPctLR}% = ${csllEfetivoLR}% efetivo s/ receita` },
       { nome: 'COFINS', aliquota: 7.6, percentPartilha: 0, info: 'Não-cumulativo: 7,6%' },
       { nome: 'PIS/PASEP', aliquota: 1.65, percentPartilha: 0, info: 'Não-cumulativo: 1,65%' },
       ...(atividade === 'servicos' ? [{ nome: 'ISS', aliquota: ufInfo?.iss_max || 5, percentPartilha: 0, info: 'ISS municipal' }] : []),
