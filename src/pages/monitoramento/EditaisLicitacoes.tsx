@@ -12,11 +12,12 @@ const MAP_ESFERA: Record<string, string> = {
   "Todas": "", "Federal": "F", "Estadual": "E",
   "Municipal": "M", "Distrital": "D",
 };
+// Modalidades conforme Lei 14.133/2021 (Art. 28)
 const MAP_MODALIDADE: Record<string, number> = {
-  "Todas": 0, "Pregão Eletrônico": 6, "Pregão Presencial": 7,
-  "Dispensa de Licitação": 8, "Concorrência Eletrônica": 4,
-  "Concorrência Presencial": 5, "Inexigibilidade": 9,
-  "Credenciamento": 12, "Leilão Eletrônico": 1,
+  "Todas": 0, "Pregão Eletrônico": 6, "Concorrência": 4,
+  "Concurso": 3, "Leilão": 1, "Diálogo Competitivo": 2,
+  "Dispensa de Licitação": 8, "Inexigibilidade": 9,
+  "Credenciamento": 12,
 };
 const UFS_BRASIL = [
   "AC","AL","AM","AP","BA","CE","DF","ES","GO",
