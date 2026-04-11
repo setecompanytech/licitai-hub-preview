@@ -451,6 +451,46 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
             })}
           </div>
         )}
+
+        {/* Dialog de motivo para Rejeitar/Remover */}
+        <Dialog open={!!acaoDialog} onOpenChange={(open) => { if (!open) { setAcaoDialog(null); setMotivoTexto(''); } }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {acaoDialog?.tipo === 'rejeitar' ? 'Rejeitar Processo' : 'Remover Processo'}
+              </DialogTitle>
+              <DialogDescription>
+                Processo <strong>{acaoDialog?.processo.numero}</strong> — {acaoDialog?.processo.orgao}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Motivo *</Label>
+                <Textarea
+                  value={motivoTexto}
+                  onChange={e => setMotivoTexto(e.target.value)}
+                  placeholder="Descreva o motivo da rejeição/remoção..."
+                  className="min-h-[100px]"
+                  maxLength={500}
+                />
+                <p className="text-xs text-muted-foreground text-right">{motivoTexto.length}/500</p>
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => { setAcaoDialog(null); setMotivoTexto(''); }}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleConfirmarAcao}
+                disabled={executandoAcao || !motivoTexto.trim()}
+                className={acaoDialog?.tipo === 'rejeitar' ? 'bg-destructive hover:bg-destructive/90' : ''}
+              >
+                {executandoAcao ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                {acaoDialog?.tipo === 'rejeitar' ? 'Confirmar Rejeição' : 'Confirmar Remoção'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
