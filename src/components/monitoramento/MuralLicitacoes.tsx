@@ -207,11 +207,13 @@ function buildPncpUrl(lic: LicitacaoMural): string | null {
 export default function MuralLicitacoes() {
   const { user } = useAuth();
   const { iniciarProcesso } = useLicitacaoIntegration();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pagina, setPagina] = useState(1);
   const ultimaBuscaRef = useRef(0);
   const [ultimaSync, setUltimaSync] = useState<Date | null>(null);
+  const [buscaRealizada, setBuscaRealizada] = useState(false);
+  const [buscaTrigger, setBuscaTrigger] = useState(0);
   const [totalCacheGlobal, setTotalCacheGlobal] = useState(0);
 
   // Filtros principais
@@ -406,7 +408,6 @@ export default function MuralLicitacoes() {
 
   // Dados brutos da API (sem filtros client-side)
   const [licitacoesRaw, setLicitacoesRaw] = useState<LicitacaoMural[]>([]);
-  const [sincronizando, setSincronizando] = useState(false);
 
   // Helper to map edge function / cache items to LicitacaoMural
   const mapToMural = (item: any): LicitacaoMural => ({
@@ -502,86 +503,16 @@ export default function MuralLicitacoes() {
     }
   }, [ufFiltro, modalidadeFiltro, esferaFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro, municipiosUfSelecionada, ordenacao, pagina]);
 
-  // ── FASE 2: Sincronização em tempo real com PNCP (background) ──
-  const sincronizarPNCP = useCallback(async (requestId?: number, cacheItems: LicitacaoMural[] = []) => {
-    setSincronizando(true);
-    try {
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/busca-licitacoes`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            query: searchSubmitted || undefined,
-            uf: ufFiltro !== 'all' ? ufFiltro : undefined,
-            modalidade: modalidadeFiltro !== 'all' ? modalidadeFiltro : undefined,
-            modalidadeId: modalidadeFiltro !== 'all' ? MODALIDADES.find(m => m.value === modalidadeFiltro)?.cod : undefined,
-            esfera: esferaFiltro !== 'all' ? esferaFiltro : undefined,
-            dataInicio: dataInicio ? dataInicio.toISOString().split('T')[0] : undefined,
-            dataFim: dataFim ? dataFim.toISOString().split('T')[0] : undefined,
-            cnpjOrgao: uasgSubmitted || undefined,
-            municipio: municipioFiltro.trim() || undefined,
-            codigoMunicipio: municipioFiltro.trim() ? (MUNICIPIO_IBGE[municipioFiltro.trim()] || undefined) : undefined,
-            pagina,
-            mural: true,
-            persistCache: true,
-          }),
-        }
-      );
-
-      if (!response.ok) throw new Error(`Erro ${response.status}`);
-      const data = await response.json();
-      const items: LicitacaoMural[] = (data.items || []).map(mapToMural);
-
-      if (requestId !== undefined && requestId !== ultimaBuscaRef.current) {
-        return;
-      }
-
-      // Merge only with cache from the same search context to avoid stale/general results.
-      const liveKeys = new Set(items.map(i => `${i.cnpjOrgao}-${i.anoCompra}-${i.sequencialCompra}`).filter(k => k !== 'null-null-null'));
-      const cacheOnlyItems = cacheItems.filter(p => {
-        const key = `${p.cnpjOrgao}-${p.anoCompra}-${p.sequencialCompra}`;
-        return key === 'null-null-null' || !liveKeys.has(key);
-      });
-
-      setLicitacoesRaw([...items, ...cacheOnlyItems]);
-    } catch (err) {
-      console.error('PNCP sync error:', err);
-      // Only show error if we have zero data at all
-      if ((requestId === undefined || requestId === ultimaBuscaRef.current) && cacheItems.length === 0) {
-        setError('Não foi possível conectar ao PNCP. Tente novamente em instantes.');
-      }
-      // If we have cached data, silently ignore sync failure
-    } finally {
-      if (requestId === undefined || requestId === ultimaBuscaRef.current) {
-        setSincronizando(false);
-      }
-    }
-  }, [pagina, ufFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, uasgSubmitted, municipioFiltro, esferaFiltro]);
-
-  // ── Carregamento principal: cache primeiro, depois PNCP em background ──
+  // ── Carregamento principal: apenas consulta cache local (sob demanda) ──
   const carregarMural = useCallback(async () => {
     const requestId = ultimaBuscaRef.current + 1;
     ultimaBuscaRef.current = requestId;
 
     setLoading(true);
     setError(null);
+    setBuscaRealizada(true);
     try {
-      const cacheItems = await carregarCache(requestId);
-
-      if (requestId !== ultimaBuscaRef.current) {
-        return;
-      }
-
-      // Se temos cache, libera a UI imediatamente
-      if (cacheItems.length > 0) {
-        setLoading(false);
-      }
-      // Sincroniza com PNCP em background
-      await sincronizarPNCP(requestId, cacheItems);
+      await carregarCache(requestId);
     } catch (err) {
       console.error(err);
       setError('Erro ao carregar licitações. Tente novamente.');
@@ -590,7 +521,7 @@ export default function MuralLicitacoes() {
         setLoading(false);
       }
     }
-  }, [carregarCache, sincronizarPNCP]);
+  }, [carregarCache]);
 
   // Busca em portais externos via Firecrawl (busca-editais-ia)
   const carregarExternos = useCallback(async () => {
@@ -832,10 +763,6 @@ export default function MuralLicitacoes() {
   const DirecaoOrdenacaoAtualIcon = ordenacao.direcao === 'asc' ? ArrowUp : ArrowDown;
   const rotuloOrdenacaoAtual = getOrdenacaoLabel(ordenacao);
 
-  useEffect(() => {
-    if (user) carregarMural();
-  }, [carregarMural, user]);
-
   // ── Status da sincronização (total e última atualização) ──
   useEffect(() => {
     supabase
@@ -853,30 +780,26 @@ export default function MuralLicitacoes() {
       });
   }, []);
 
-  // Realtime: atualizar contagem quando novos editais chegam
-  useEffect(() => {
-    const canal = supabase
-      .channel('mural-sync-status')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pncp_editais_cache' }, () => {
-        setUltimaSync(new Date());
-        setTotalCacheGlobal(prev => prev + 1);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(canal); };
-  }, []);
-
   // Trigger external search when toggle is on and search changes
   useEffect(() => {
     if (user && incluirExternos) carregarExternos();
     else setLicitacoesExternas([]);
   }, [carregarExternos, user, incluirExternos]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = (e?: React.FormEvent) => {
+    e?.preventDefault();
     setPagina(1);
     setSearchSubmitted(searchTerm);
     setUasgSubmitted(uasgTerm);
+    setBuscaTrigger(prev => prev + 1);
   };
+
+  // Trigger search when buscaTrigger changes (after state has been set)
+  useEffect(() => {
+    if (buscaTrigger > 0 && user) {
+      carregarMural();
+    }
+  }, [buscaTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Busca direta por URL ou número PNCP ──
   const handleBuscaDireta = async () => {
@@ -2006,13 +1929,8 @@ export default function MuralLicitacoes() {
       {/* Stats */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1.5">
-          {loading && licitacoesRaw.length === 0 ? 'Carregando licitações...' :
-           sincronizando ? (
-             <>
-               <RefreshCw className="w-3 h-3 animate-spin text-accent" />
-               {`${totalResultados} licitações • Sincronizando com PNCP...`}
-             </>
-           ) :
+          {loading ? 'Buscando licitações...' :
+            !buscaRealizada ? 'Preencha os filtros e clique em "Buscar" para iniciar a pesquisa.' :
             loadingExternos ? `${totalResultados} licitações filtradas • Buscando portais externos...` :
             `${totalResultados} licitações encontradas${totalFontesFiltradas > 0 ? ` (${totaisFiltradosPorFonte.pncp} PNCP${totaisFiltradosPorFonte.comprasGov > 0 ? ` + ${totaisFiltradosPorFonte.comprasGov} Compras.gov` : ''}${totaisFiltradosPorFonte.externos > 0 ? ` + ${totaisFiltradosPorFonte.externos} externos` : ''})` : ''}`}
         </p>
@@ -2067,8 +1985,41 @@ export default function MuralLicitacoes() {
         </div>
       )}
 
+      {/* Empty state — before first search */}
+      {!loading && !buscaRealizada && (
+        <Card className="p-8 sm:p-12 text-center border-dashed border-2 border-border/50">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center">
+              <Search className="w-8 h-8 text-accent" />
+            </div>
+            <div className="space-y-2 max-w-md">
+              <h3 className="text-lg font-semibold">Pesquisar Editais e Licitações</h3>
+              <p className="text-sm text-muted-foreground">
+                Utilize os filtros acima para buscar editais. Selecione a <strong>UF</strong>, <strong>modalidade</strong>, 
+                digite um <strong>termo de busca</strong> e clique em <strong>"Buscar"</strong> para iniciar.
+              </p>
+            </div>
+            <Button onClick={() => handleSearch()} className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2 mt-2">
+              <Search className="w-4 h-4" />
+              Buscar Agora
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* No results after search */}
+      {!loading && buscaRealizada && licitacoesFiltradas.length === 0 && (
+        <Card className="p-8 text-center">
+          <div className="flex flex-col items-center gap-3">
+            <FileText className="w-10 h-10 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">Nenhuma licitação encontrada para os filtros selecionados.</p>
+            <p className="text-xs text-muted-foreground/60">Tente ajustar os filtros ou ampliar os critérios de busca.</p>
+          </div>
+        </Card>
+      )}
+
       {/* Cards grid (TCMPA-style) */}
-      {!loading && licitacoesFiltradas.length > 0 && (
+      {!loading && buscaRealizada && licitacoesFiltradas.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {licitacoesFiltradas.map((lic, idx) => {
             const isFav = favoritos.has(`${lic.numero}|${lic.orgao}`);
