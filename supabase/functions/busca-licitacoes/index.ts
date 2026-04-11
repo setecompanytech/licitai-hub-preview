@@ -18,6 +18,7 @@ function corrigirStatusPncp(situacao: string | null, dataAbertura: string | null
   return status;
 }
 
+const MODALIDADES_PNCP: Record<string, number> = {
   "leilão": 1, "diálogo competitivo": 2, "concurso": 3,
   "concorrência": 4, "concorrência - eletrônica": 5,
   "pregão": 6, "pregão eletrônico": 6, "pregão - eletrônico": 6,
