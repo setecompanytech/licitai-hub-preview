@@ -833,10 +833,6 @@ export default function MuralLicitacoes() {
   const DirecaoOrdenacaoAtualIcon = ordenacao.direcao === 'asc' ? ArrowUp : ArrowDown;
   const rotuloOrdenacaoAtual = getOrdenacaoLabel(ordenacao);
 
-  useEffect(() => {
-    if (user) carregarMural();
-  }, [carregarMural, user]);
-
   // ── Status da sincronização (total e última atualização) ──
   useEffect(() => {
     supabase
@@ -852,18 +848,6 @@ export default function MuralLicitacoes() {
       .then(({ data }) => {
         if (data?.updated_at) setUltimaSync(new Date(data.updated_at));
       });
-  }, []);
-
-  // Realtime: atualizar contagem quando novos editais chegam
-  useEffect(() => {
-    const canal = supabase
-      .channel('mural-sync-status')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pncp_editais_cache' }, () => {
-        setUltimaSync(new Date());
-        setTotalCacheGlobal(prev => prev + 1);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(canal); };
   }, []);
 
   // Trigger external search when toggle is on and search changes
