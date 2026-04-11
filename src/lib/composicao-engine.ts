@@ -235,7 +235,12 @@ function getTributosRegime(params: ComposicaoParametros): TributoConfig[] {
     return tributos;
   }
 
-  // Lucro Real
+  // Lucro Real: IRPJ/CSLL incidem sobre lucro, não receita.
+  // Calculamos alíquota efetiva sobre receita usando a margem informada pelo usuário.
+  const margemLR = margemLucroPerc > 0 ? margemLucroPerc : 15;
+  const irpjEfetivo = r2(15 * margemLR / 100);   // ex: 15% × 15% = 2.25%
+  const csllEfetivo = r2(9 * margemLR / 100);     // ex: 9% × 15% = 1.35%
+
   const tributos: TributoConfig[] = [
     { nome: 'COFINS', aliquota: 7.6, info: 'Não-cumulativo: 7,6%' },
     { nome: 'PIS/PASEP', aliquota: 1.65, info: 'Não-cumulativo: 1,65%' },
@@ -245,9 +250,8 @@ function getTributosRegime(params: ComposicaoParametros): TributoConfig[] {
   } else {
     tributos.push({ nome: 'ICMS', aliquota: icmsInterno, info: `ICMS ${uf}: ${icmsInterno}%` });
   }
-  // IRPJ and CSLL on Lucro Real are on profit, not revenue — simplified as effective rates
-  tributos.push({ nome: 'IRPJ', aliquota: 2.28, info: 'Estimativa s/ receita (~15% sobre margem ~15,2%)' });
-  tributos.push({ nome: 'CSLL', aliquota: 1.08, info: 'Estimativa s/ receita (~9% sobre margem ~12%)' });
+  tributos.push({ nome: 'IRPJ', aliquota: irpjEfetivo, info: `15% × margem ${margemLR}% = ${irpjEfetivo}% efetivo s/ receita` });
+  tributos.push({ nome: 'CSLL', aliquota: csllEfetivo, info: `9% × margem ${margemLR}% = ${csllEfetivo}% efetivo s/ receita` });
   return tributos;
 }
 
