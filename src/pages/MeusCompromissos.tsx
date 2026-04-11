@@ -408,10 +408,10 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                           <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aprovar
                         </Button>
                       )}
-                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleRejeitar(p.id)}>
+                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setAcaoDialog({ tipo: 'rejeitar', processo: p })}>
                         <XCircle className="w-3.5 h-3.5 mr-1" /> Rejeitar
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleRemover(p.id)}>
+                      <Button size="sm" variant="ghost" onClick={() => setAcaoDialog({ tipo: 'remover', processo: p })}>
                         <Trash2 className="w-3.5 h-3.5 mr-1" /> Remover
                       </Button>
                       {p.url && (
