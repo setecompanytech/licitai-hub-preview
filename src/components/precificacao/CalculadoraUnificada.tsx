@@ -285,6 +285,31 @@ export default function CalculadoraUnificada({
     });
   }, [loadRascunho, markLoaded]);
 
+  // Auto-fill RBT12 from faturamento_mensal (Configurações → Regime Tributário)
+  const [rbt12Auto, setRbt12Auto] = useState<number | null>(null);
+  useEffect(() => {
+    if (!empresaAtiva?.id) return;
+    supabase
+      .from('faturamento_mensal' as any)
+      .select('valor_faturamento')
+      .eq('empresa_id', empresaAtiva.id)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          const total = (data as any[]).reduce((s: number, r: any) => s + (Number(r.valor_faturamento) || 0), 0);
+          if (total > 0) {
+            setRbt12Auto(total);
+            // Only auto-fill if user hasn't manually set a value
+            setRbt12(prev => {
+              if (!prev || parseCurrencyInput(prev) === 0) {
+                return total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              }
+              return prev;
+            });
+          }
+        }
+      });
+  }, [empresaAtiva?.id]);
+
   // Auto-save on form changes
   useEffect(() => {
     const data = collectCalcData();
@@ -766,6 +791,12 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
             <div>
               <Label className="text-xs">RBT12 (Faturamento 12m)</Label>
               <Input value={rbt12} onChange={e => setRbt12(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-1" />
+              {rbt12Auto && rbt12Auto > 0 && (
+                <p className="text-[10px] text-accent mt-1 flex items-center gap-1">
+                  <Lightbulb className="w-3 h-3" />
+                  Preenchido automaticamente via Configurações ({rbt12Auto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+                </p>
+              )}
             </div>
           ) : (
             <div>

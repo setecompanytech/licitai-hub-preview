@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Bell, Globe, Shield, Newspaper, Search, Loader2, ExternalLink, CheckCircle2, AlertTriangle, ImageIcon, User, Save, CreditCard, Settings, MapPin } from 'lucide-react';
+import { Building2, Bell, Globe, Shield, Newspaper, Search, Loader2, ExternalLink, CheckCircle2, AlertTriangle, ImageIcon, User, Save, CreditCard, Settings, MapPin, BarChart3 } from 'lucide-react';
 import CnaesSecundarios from '@/components/configuracoes/CnaesSecundarios';
 import SegurancaConta from '@/components/configuracoes/SegurancaConta';
 import PlanoAssinatura from '@/components/configuracoes/PlanoAssinatura';
@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import ExportarDados from '@/components/export/ExportarDados';
 import BackupAgendado from '@/components/configuracoes/BackupAgendado';
+import ApuracaoRegimeTributario from '@/components/configuracoes/ApuracaoRegimeTributario';
 import { UFS_BRASIL, normalizeUfs } from '@/constants/ufsBrasil';
 
 
@@ -346,6 +347,10 @@ export default function Configuracoes() {
             <TabsTrigger value="plano" className="gap-2">
               <CreditCard className="w-4 h-4" />
               Plano & Assinatura
+            </TabsTrigger>
+            <TabsTrigger value="regime" className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Regime Tributário
             </TabsTrigger>
             <TabsTrigger value="seguranca" className="gap-2">
               <Shield className="w-4 h-4" />
@@ -700,6 +705,11 @@ export default function Configuracoes() {
             <PlanoVerificacao />
             {isAdmin && <AnalyseCustosPlanos />}
             {isAdmin && <AnaliseCNPJAdicional />}
+          </TabsContent>
+
+          {/* ── Tab: Regime Tributário ── */}
+          <TabsContent value="regime" className="space-y-6">
+            <ApuracaoRegimeTributario />
           </TabsContent>
 
           {/* ── Tab: Segurança ── */}
