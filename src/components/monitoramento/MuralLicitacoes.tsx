@@ -407,7 +407,6 @@ export default function MuralLicitacoes() {
 
   // Dados brutos da API (sem filtros client-side)
   const [licitacoesRaw, setLicitacoesRaw] = useState<LicitacaoMural[]>([]);
-  const [sincronizando, setSincronizando] = useState(false);
 
   // Helper to map edge function / cache items to LicitacaoMural
   const mapToMural = (item: any): LicitacaoMural => ({
