@@ -791,9 +791,15 @@ export default function MuralLicitacoes() {
     setPagina(1);
     setSearchSubmitted(searchTerm);
     setUasgSubmitted(uasgTerm);
-    // Trigger search explicitly
-    setTimeout(() => carregarMural(), 0);
+    setBuscaTrigger(prev => prev + 1);
   };
+
+  // Trigger search when buscaTrigger changes (after state has been set)
+  useEffect(() => {
+    if (buscaTrigger > 0 && user) {
+      carregarMural();
+    }
+  }, [buscaTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Busca direta por URL ou número PNCP ──
   const handleBuscaDireta = async () => {
