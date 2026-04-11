@@ -17,15 +17,16 @@ const UFS = [
   'PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'
 ];
 
+// Modalidades conforme Lei 14.133/2021 (Art. 28)
 const MODALIDADES_OPCOES = [
   { value: '6', label: 'Pregão Eletrônico' },
-  { value: '7', label: 'Pregão Presencial' },
-  { value: '4', label: 'Concorrência Eletrônica' },
-  { value: '5', label: 'Concorrência Presencial' },
+  { value: '4', label: 'Concorrência' },
+  { value: '3', label: 'Concurso' },
+  { value: '1', label: 'Leilão' },
+  { value: '2', label: 'Diálogo Competitivo' },
   { value: '8', label: 'Dispensa de Licitação' },
   { value: '9', label: 'Inexigibilidade' },
   { value: '12', label: 'Credenciamento' },
-  { value: '1', label: 'Leilão Eletrônico' },
 ];
 
 interface CadastroManualEditalProps {

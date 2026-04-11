@@ -2,21 +2,17 @@
  * Mapeamentos PNCP — traduzem labels da UI para códigos da API
  */
 
+// Modalidades conforme Lei 14.133/2021 (Art. 28)
 export const MODALIDADE_PNCP: Record<string, number> = {
   "Todos": 0,
-  "Leilão Eletrônico": 1,
-  "Diálogo Competitivo": 2,
-  "Concurso": 3,
-  "Concorrência Eletrônica": 4,
-  "Concorrência Presencial": 5,
   "Pregão Eletrônico": 6,
-  "Pregão Presencial": 7,
+  "Concorrência": 4,
+  "Concurso": 3,
+  "Leilão": 1,
+  "Diálogo Competitivo": 2,
   "Dispensa de Licitação": 8,
   "Inexigibilidade": 9,
-  "Manifestação de Interesse": 10,
-  "Pré-qualificação": 11,
   "Credenciamento": 12,
-  "Leilão Presencial": 13,
 };
 
 export const ESFERA_PNCP: Record<string, string> = {

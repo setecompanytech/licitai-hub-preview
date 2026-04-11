@@ -113,20 +113,16 @@ const UFS_BRASIL = [
   'PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'
 ];
 
+// Modalidades conforme Lei 14.133/2021 (Art. 28)
 const MODALIDADES = [
   { value: 'pregão eletrônico', label: 'Pregão Eletrônico', cod: 6 },
-  { value: 'pregão presencial', label: 'Pregão Presencial', cod: 7 },
-  { value: 'concorrência eletrônica', label: 'Concorrência Eletrônica', cod: 4 },
-  { value: 'concorrência presencial', label: 'Concorrência Presencial', cod: 5 },
+  { value: 'concorrência', label: 'Concorrência', cod: 4 },
+  { value: 'concurso', label: 'Concurso', cod: 3 },
+  { value: 'leilão', label: 'Leilão', cod: 1 },
+  { value: 'diálogo competitivo', label: 'Diálogo Competitivo', cod: 2 },
   { value: 'dispensa de licitação', label: 'Dispensa de Licitação', cod: 8 },
   { value: 'inexigibilidade', label: 'Inexigibilidade', cod: 9 },
   { value: 'credenciamento', label: 'Credenciamento', cod: 12 },
-  { value: 'leilão eletrônico', label: 'Leilão Eletrônico', cod: 1 },
-  { value: 'leilão presencial', label: 'Leilão Presencial', cod: 13 },
-  { value: 'diálogo competitivo', label: 'Diálogo Competitivo', cod: 2 },
-  { value: 'concurso', label: 'Concurso', cod: 3 },
-  { value: 'manifestação de interesse', label: 'Manifestação de Interesse', cod: 10 },
-  { value: 'pré-qualificação', label: 'Pré-qualificação', cod: 11 },
 ];
 
 const TIPOS_INSTRUMENTO = [

@@ -27,11 +27,11 @@ const UFS_BRASIL = [
   'PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'
 ];
 
+// Modalidades conforme Lei 14.133/2021 (Art. 28)
 const MODALIDADES = [
-  'Pregão Eletrônico', 'Concorrência', 'Concorrência Eletrônica',
-  'Dispensa de Licitação', 'Inexigibilidade', 'Credenciamento',
-  'Leilão', 'Diálogo Competitivo', 'Concurso', 'Manifestação de Interesse',
-  'Pré-qualificação', 'Leilão Eletrônico', 'Concurso Eletrônico',
+  'Pregão Eletrônico', 'Concorrência', 'Concurso',
+  'Leilão', 'Diálogo Competitivo', 'Dispensa de Licitação',
+  'Inexigibilidade', 'Credenciamento',
 ];
 
 const CORES_PERFIL = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];

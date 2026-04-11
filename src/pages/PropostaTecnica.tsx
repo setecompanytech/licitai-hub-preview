@@ -912,13 +912,13 @@ export default function PropostaTecnica() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Pregão Eletrônico">Pregão Eletrônico</SelectItem>
-                      <SelectItem value="Pregão Presencial">Pregão Presencial</SelectItem>
                       <SelectItem value="Concorrência">Concorrência</SelectItem>
-                      <SelectItem value="Tomada de Preços">Tomada de Preços</SelectItem>
-                      <SelectItem value="Convite">Convite</SelectItem>
+                      <SelectItem value="Concurso">Concurso</SelectItem>
+                      <SelectItem value="Leilão">Leilão</SelectItem>
+                      <SelectItem value="Diálogo Competitivo">Diálogo Competitivo</SelectItem>
                       <SelectItem value="Dispensa de Licitação">Dispensa de Licitação</SelectItem>
                       <SelectItem value="Inexigibilidade">Inexigibilidade</SelectItem>
-                      <SelectItem value="RDC">RDC</SelectItem>
+                      <SelectItem value="Credenciamento">Credenciamento</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
