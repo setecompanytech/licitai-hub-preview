@@ -791,6 +791,12 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
             <div>
               <Label className="text-xs">RBT12 (Faturamento 12m)</Label>
               <Input value={rbt12} onChange={e => setRbt12(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-1" />
+              {rbt12Auto && rbt12Auto > 0 && (
+                <p className="text-[10px] text-accent mt-1 flex items-center gap-1">
+                  <Lightbulb className="w-3 h-3" />
+                  Preenchido automaticamente via Configurações ({rbt12Auto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+                </p>
+              )}
             </div>
           ) : (
             <div>
