@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { stripePlans } from '@/data/stripe-config';
 import type { PlanSlug } from '@/data/plan-features';
+import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 
 type SubscriptionState = {
   subscribed: boolean;
