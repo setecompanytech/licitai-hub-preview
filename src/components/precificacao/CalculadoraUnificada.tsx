@@ -285,6 +285,31 @@ export default function CalculadoraUnificada({
     });
   }, [loadRascunho, markLoaded]);
 
+  // Auto-fill RBT12 from faturamento_mensal (Configurações → Regime Tributário)
+  const [rbt12Auto, setRbt12Auto] = useState<number | null>(null);
+  useEffect(() => {
+    if (!empresaAtiva?.id) return;
+    supabase
+      .from('faturamento_mensal' as any)
+      .select('valor_faturamento')
+      .eq('empresa_id', empresaAtiva.id)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          const total = (data as any[]).reduce((s: number, r: any) => s + (Number(r.valor_faturamento) || 0), 0);
+          if (total > 0) {
+            setRbt12Auto(total);
+            // Only auto-fill if user hasn't manually set a value
+            setRbt12(prev => {
+              if (!prev || parseCurrencyInput(prev) === 0) {
+                return total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              }
+              return prev;
+            });
+          }
+        }
+      });
+  }, [empresaAtiva?.id]);
+
   // Auto-save on form changes
   useEffect(() => {
     const data = collectCalcData();
