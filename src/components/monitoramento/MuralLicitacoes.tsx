@@ -786,11 +786,13 @@ export default function MuralLicitacoes() {
     else setLicitacoesExternas([]);
   }, [carregarExternos, user, incluirExternos]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = (e?: React.FormEvent) => {
+    e?.preventDefault();
     setPagina(1);
     setSearchSubmitted(searchTerm);
     setUasgSubmitted(uasgTerm);
+    // Trigger search explicitly
+    setTimeout(() => carregarMural(), 0);
   };
 
   // ── Busca direta por URL ou número PNCP ──
