@@ -7,6 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from '@/components/ui/dialog';
 import {
   CalendarDays, Clock, Building2, Bell, Mail, MessageSquare, Zap,
   CheckCircle2, XCircle, Trash2, ExternalLink, Bot, AlertTriangle,
@@ -136,16 +141,48 @@ export default function MeusCompromissos() {
     carregarProcessos();
   };
 
-  const handleRejeitar = async (id: string) => {
-    await supabase.from('processos_interesse').update({ status: 'rejeitado' }).eq('id', id);
-    toast.info('Processo rejeitado.');
-    carregarProcessos();
-  };
+  // State for rejection/removal dialog
+  const [acaoDialog, setAcaoDialog] = useState<{ tipo: 'rejeitar' | 'remover'; processo: ProcessoInteresse } | null>(null);
+  const [motivoTexto, setMotivoTexto] = useState('');
+  const [executandoAcao, setExecutandoAcao] = useState(false);
 
-  const handleRemover = async (id: string) => {
-    await supabase.from('processos_interesse').delete().eq('id', id);
-    toast.success('Processo removido da lista.');
-    carregarProcessos();
+  const handleConfirmarAcao = async () => {
+    if (!acaoDialog || !user) return;
+    if (!motivoTexto.trim()) {
+      toast.error('Informe o motivo da ação.');
+      return;
+    }
+    setExecutandoAcao(true);
+    const { tipo, processo } = acaoDialog;
+    try {
+      // Log the action with reason
+      await supabase.from('processos_exclusao_log' as any).insert({
+        user_id: user.id,
+        processo_interesse_id: processo.id,
+        processo_numero: processo.numero,
+        processo_orgao: processo.orgao,
+        processo_objeto: processo.objeto,
+        empresa_id: processo.empresa_id,
+        acao: tipo,
+        motivo: motivoTexto.trim(),
+      });
+
+      if (tipo === 'rejeitar') {
+        await supabase.from('processos_interesse').update({ status: 'rejeitado' }).eq('id', processo.id);
+        toast.info('Processo rejeitado.');
+      } else {
+        await supabase.from('processos_interesse').delete().eq('id', processo.id);
+        toast.success('Processo removido da lista.');
+      }
+      carregarProcessos();
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao executar ação.');
+    } finally {
+      setExecutandoAcao(false);
+      setAcaoDialog(null);
+      setMotivoTexto('');
+    }
   };
 
   const [expandedAnalise, setExpandedAnalise] = useState<Record<string, boolean>>({});
@@ -371,10 +408,10 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                           <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aprovar
                         </Button>
                       )}
-                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleRejeitar(p.id)}>
+                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setAcaoDialog({ tipo: 'rejeitar', processo: p })}>
                         <XCircle className="w-3.5 h-3.5 mr-1" /> Rejeitar
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleRemover(p.id)}>
+                      <Button size="sm" variant="ghost" onClick={() => setAcaoDialog({ tipo: 'remover', processo: p })}>
                         <Trash2 className="w-3.5 h-3.5 mr-1" /> Remover
                       </Button>
                       {p.url && (
@@ -414,6 +451,46 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
             })}
           </div>
         )}
+
+        {/* Dialog de motivo para Rejeitar/Remover */}
+        <Dialog open={!!acaoDialog} onOpenChange={(open) => { if (!open) { setAcaoDialog(null); setMotivoTexto(''); } }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {acaoDialog?.tipo === 'rejeitar' ? 'Rejeitar Processo' : 'Remover Processo'}
+              </DialogTitle>
+              <DialogDescription>
+                Processo <strong>{acaoDialog?.processo.numero}</strong> — {acaoDialog?.processo.orgao}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Motivo *</Label>
+                <Textarea
+                  value={motivoTexto}
+                  onChange={e => setMotivoTexto(e.target.value)}
+                  placeholder="Descreva o motivo da rejeição/remoção..."
+                  className="min-h-[100px]"
+                  maxLength={500}
+                />
+                <p className="text-xs text-muted-foreground text-right">{motivoTexto.length}/500</p>
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => { setAcaoDialog(null); setMotivoTexto(''); }}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleConfirmarAcao}
+                disabled={executandoAcao || !motivoTexto.trim()}
+                className={acaoDialog?.tipo === 'rejeitar' ? 'bg-destructive hover:bg-destructive/90' : ''}
+              >
+                {executandoAcao ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                {acaoDialog?.tipo === 'rejeitar' ? 'Confirmar Rejeição' : 'Confirmar Remoção'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
