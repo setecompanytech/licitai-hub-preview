@@ -186,9 +186,29 @@ const ESFERAS = [
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
+/**
+ * Corrige o status do PNCP: quando a situação diz "Encerrada" mas a data de
+ * abertura da sessão ainda é futura, o correto é "Aguardando Abertura".
+ * "Encerrada" no PNCP significa que o prazo de recebimento de propostas fechou,
+ * não que o pregão já ocorreu.
+ */
+const corrigirStatus = (situacao: string | null | undefined, dataAbertura: string | null | undefined): string => {
+  const status = situacao || 'Publicado';
+  if (!dataAbertura) return status;
+  const s = status.toLowerCase();
+  if (s.includes('encerrad') || s.includes('fechad')) {
+    const abertura = new Date(dataAbertura);
+    const agora = new Date();
+    if (abertura > agora) {
+      return 'Aguardando Abertura';
+    }
+  }
+  return status;
+};
+
 const statusColor = (status: string) => {
   const s = status.toLowerCase();
-  if (s.includes('divulgad') || s.includes('publicad') || s.includes('aberta')) return 'bg-info/10 text-info border-info/20';
+  if (s.includes('divulgad') || s.includes('publicad') || s.includes('aberta') || s.includes('aguardando')) return 'bg-info/10 text-info border-info/20';
   if (s.includes('homologad')) return 'bg-success/10 text-success border-success/20';
   if (s.includes('encerrad') || s.includes('fechad')) return 'bg-muted text-muted-foreground border-border';
   if (s.includes('revogad') || s.includes('cancel') || s.includes('anulad')) return 'bg-destructive/10 text-destructive border-destructive/20';
@@ -416,7 +436,7 @@ export default function MuralLicitacoes() {
     orgao: item.orgao || '-',
     objeto: item.objeto || '-',
     modalidade: item.modalidade || item.modalidade_nome || 'Não informada',
-    status: item.status || item.situacao || 'Publicado',
+    status: corrigirStatus(item.status || item.situacao, item.data_abertura || item.data_abertura_proposta),
     valor_estimado: item.valor_estimado ?? item.valor_total_estimado ?? null,
     uf: item.uf || null,
     municipio: item.municipio || null,
@@ -847,7 +867,7 @@ export default function MuralLicitacoes() {
         orgao: data.orgao || '-',
         objeto: data.objeto || '-',
         modalidade: data.modalidade || 'Não informada',
-        status: data.situacao || 'Publicado',
+        status: corrigirStatus(data.situacao, data.data_abertura_proposta),
         valor_estimado: data.valor_total_estimado,
         uf: data.uf || null,
         municipio: data.municipio || null,

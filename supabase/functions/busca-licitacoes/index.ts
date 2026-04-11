@@ -7,6 +7,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+/** Corrige status PNCP: "Encerrada" com data de abertura futura = "Aguardando Abertura" */
+function corrigirStatusPncp(situacao: string | null, dataAbertura: string | null): string {
+  const status = situacao || "Publicado";
+  if (!dataAbertura) return status;
+  const s = status.toLowerCase();
+  if (s.includes("encerrad") || s.includes("fechad")) {
+    if (new Date(dataAbertura) > new Date()) return "Aguardando Abertura";
+  }
+  return status;
+}
+
 const MODALIDADES_PNCP: Record<string, number> = {
   "leilão": 1, "diálogo competitivo": 2, "concurso": 3,
   "concorrência": 4, "concorrência - eletrônica": 5,
@@ -47,7 +58,7 @@ function mapPncpItem(item: any, uf: string | null) {
     orgao: item.orgaoEntidade?.razaoSocial || "-",
     objeto: item.objetoCompra || "-",
     modalidade: item.modalidadeNome || "Pregão - Eletrônico",
-    status: item.situacaoCompraNome || "Publicado",
+    status: corrigirStatusPncp(item.situacaoCompraNome, item.dataAberturaProposta),
     valor_estimado: item.valorTotalEstimado || item.valorTotalHomologado || null,
     uf: item.unidadeOrgao?.ufSigla || uf || null,
     municipio: item.unidadeOrgao?.municipioNome || null,
@@ -445,7 +456,7 @@ serve(async (req) => {
             orgao: ci.orgao || "-",
             objeto: ci.objeto || "-",
             modalidade: ci.modalidade_nome || "Não informada",
-            status: ci.situacao || "Publicado",
+            status: corrigirStatusPncp(ci.situacao, ci.data_abertura_proposta),
             valor_estimado: ci.valor_total_estimado,
             uf: ci.uf || null,
             municipio: ci.municipio || null,
