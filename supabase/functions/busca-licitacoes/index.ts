@@ -455,7 +455,7 @@ serve(async (req) => {
             orgao: ci.orgao || "-",
             objeto: ci.objeto || "-",
             modalidade: ci.modalidade_nome || "Não informada",
-            status: ci.situacao || "Publicado",
+            status: corrigirStatusPncp(ci.situacao, ci.data_abertura_proposta),
             valor_estimado: ci.valor_total_estimado,
             uf: ci.uf || null,
             municipio: ci.municipio || null,
