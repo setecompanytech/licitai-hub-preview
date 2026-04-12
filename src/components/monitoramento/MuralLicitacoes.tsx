@@ -2156,22 +2156,28 @@ export default function MuralLicitacoes() {
                   </div>
                 )}
 
-                {/* Datas e Situação */}
-                <div className="mt-2 space-y-0.5 text-[10px] text-muted-foreground border-t border-border/20 pt-2">
-                  <div className="flex items-center gap-1">
-                    <CalendarDays className="w-3 h-3 flex-shrink-0 text-info" />
-                    <span className="font-medium text-foreground/70">Divulgação:</span>
-                    <span>{formatDateBrasilia(lic.data_publicacao)}</span>
+                {/* Datas e Situação — Terminologia oficial PNCP / Lei 14.133/2021 */}
+                <div className="mt-2 space-y-1 text-[10px] text-muted-foreground border-t border-border/20 pt-2">
+                  <div className="flex items-start gap-1">
+                    <CalendarDays className="w-3 h-3 flex-shrink-0 text-info mt-0.5" />
+                    <div>
+                      <span className="font-medium text-foreground/70">Divulgação no PNCP:</span>{' '}
+                      <span>{formatDateBrasilia(lic.data_publicacao)}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 flex-shrink-0 text-success" />
-                    <span className="font-medium text-foreground/70">Início propostas:</span>
-                    <span>{formatDateBrasilia(lic.data_abertura)}</span>
+                  <div className="flex items-start gap-1">
+                    <Clock className="w-3 h-3 flex-shrink-0 text-success mt-0.5" />
+                    <div>
+                      <span className="font-medium text-foreground/70">Início de recebimento de propostas:</span>{' '}
+                      <span>{lic.data_abertura ? formatDateBrasilia(lic.data_abertura) + ' (horário de Brasília)' : 'N/I'}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 flex-shrink-0 text-destructive" />
-                    <span className="font-medium text-foreground/70">Fim propostas:</span>
-                    <span>{formatDateBrasilia(lic.data_encerramento)}</span>
+                  <div className="flex items-start gap-1">
+                    <Clock className="w-3 h-3 flex-shrink-0 text-destructive mt-0.5" />
+                    <div>
+                      <span className="font-medium text-foreground/70">Fim de recebimento de propostas:</span>{' '}
+                      <span>{lic.data_encerramento ? formatDateBrasilia(lic.data_encerramento) + ' (horário de Brasília)' : 'Consultar edital'}</span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1">
                     <Info className="w-3 h-3 flex-shrink-0" />
