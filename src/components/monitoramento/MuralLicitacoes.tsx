@@ -182,6 +182,29 @@ const ESFERAS = [
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
+/** Format date string to DD/MM/YYYY, HH:mm in Brasília timezone */
+const formatDateBrasilia = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return 'N/I';
+  try {
+    let normalized = dateStr;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const d = new Date(dateStr + 'T12:00:00-03:00');
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
+    }
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dateStr) && !dateStr.includes('+') && !dateStr.includes('Z') && !/\-\d{2}:\d{2}$/.test(dateStr)) {
+      normalized = dateStr + '-03:00';
+    }
+    const date = new Date(normalized);
+    if (isNaN(date.getTime())) return dateStr;
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+      timeZone: 'America/Sao_Paulo',
+    });
+  } catch { return dateStr; }
+};
+
 /**
  * Corrige o status do PNCP: quando a situação diz "Encerrada" mas a data de
  * abertura da sessão ainda é futura, o correto é "Aguardando Abertura".
@@ -2133,25 +2156,36 @@ export default function MuralLicitacoes() {
                   </div>
                 )}
 
-                {/* Bottom row */}
-                <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/30">
+                {/* Datas e Situação */}
+                <div className="mt-2 space-y-0.5 text-[10px] text-muted-foreground border-t border-border/20 pt-2">
+                  <div className="flex items-center gap-1">
+                    <CalendarDays className="w-3 h-3 flex-shrink-0 text-info" />
+                    <span className="font-medium text-foreground/70">Divulgação:</span>
+                    <span>{formatDateBrasilia(lic.data_publicacao)}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-3 h-3 flex-shrink-0 text-success" />
+                    <span className="font-medium text-foreground/70">Início propostas:</span>
+                    <span>{formatDateBrasilia(lic.data_abertura)}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-3 h-3 flex-shrink-0 text-destructive" />
+                    <span className="font-medium text-foreground/70">Fim propostas:</span>
+                    <span>{formatDateBrasilia(lic.data_encerramento)}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Info className="w-3 h-3 flex-shrink-0" />
+                    <span className="font-medium text-foreground/70">Situação:</span>
+                    <Badge className={`${statusColor(lic.status)} text-[9px] px-1.5 py-0`}>{lic.status}</Badge>
+                  </div>
+                </div>
+
+                {/* Valor */}
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">
                   <div className="flex items-center gap-1.5 text-xs">
                     <DollarSign className="w-3 h-3 text-success" />
                     <span className="font-semibold text-success">
                       {lic.valor_estimado ? formatCurrency(lic.valor_estimado) : 'N/I'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                    <Clock className="w-3 h-3" />
-                    <span title="Fim de recebimento de propostas">
-                    {(() => {
-                      const ds = lic.data_encerramento || lic.data_abertura;
-                      if (!ds) return 'N/I';
-                      let norm = ds;
-                      if (/^\d{4}-\d{2}-\d{2}$/.test(ds)) norm = ds + 'T12:00:00-03:00';
-                      else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(ds) && !ds.includes('+') && !ds.includes('Z') && !/\-\d{2}:\d{2}$/.test(ds)) norm = ds + '-03:00';
-                      return new Date(norm).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
-                    })()}
                     </span>
                   </div>
                 </div>
