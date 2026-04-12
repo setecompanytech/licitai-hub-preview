@@ -38,6 +38,27 @@ async function computeHash(text: string): Promise<string> {
   return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
+/**
+ * Datas do ComprasNet/PNCP vêm em horário de Brasília sem timezone.
+ * Adiciona -03:00 para evitar que Postgres interprete como UTC.
+ */
+function fixBrasiliaTimezone(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null
+  const s = String(dateStr).trim()
+  if (/Z$/i.test(s) || /[+-]\d{2}:\d{2}$/.test(s)) return s
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s + 'T00:00:00-03:00'
+  // If it's a raw date string from ComprasNet, try to parse and fix
+  try {
+    const d = new Date(s)
+    if (isNaN(d.getTime())) return null
+    // If the original string has no TZ info, treat as Brasília
+    if (!s.includes('Z') && !s.includes('+') && !/\-\d{2}:\d{2}$/.test(s)) {
+      return s.includes('T') ? s + '-03:00' : s + 'T00:00:00-03:00'
+    }
+    return d.toISOString()
+  } catch { return null }
+}
+
 function mapComprasnetRow(r: any, lei: string) {
   const fonteId = r.id_compra ? String(r.id_compra) : null
   return {

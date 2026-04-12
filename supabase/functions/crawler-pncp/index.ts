@@ -87,6 +87,22 @@ async function computeHash(text: string): Promise<string> {
   return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
+/**
+ * PNCP API retorna datas em horário de Brasília SEM timezone (ex: "2026-04-10T09:00:00").
+ * Se armazenadas direto num campo timestamptz, Postgres interpreta como UTC, causando
+ * deslocamento de 3 horas. Esta função adiciona o offset -03:00 quando ausente.
+ */
+function fixBrasiliaTimezone(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null
+  const s = dateStr.trim()
+  // Already has timezone info (Z, +XX:XX, -XX:XX) — leave as-is
+  if (/Z$/i.test(s) || /[+-]\d{2}:\d{2}$/.test(s)) return s
+  // Date-only (YYYY-MM-DD) — treat as Brasília midnight
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s + 'T00:00:00-03:00'
+  // DateTime without TZ — append Brasília offset
+  return s + '-03:00'
+}
+
 function mapRow(item: any, uf: string, mod: number) {
   const cnpj = item.orgaoEntidade?.cnpj || ''
   const ano = item.anoCompra || ''
@@ -112,9 +128,9 @@ function mapRow(item: any, uf: string, mod: number) {
     municipio: item.unidadeOrgao?.municipioNome || null,
     municipio_ibge: item.unidadeOrgao?.codigoIbge || null,
     esfera_id: item.orgaoEntidade?.esferaId || null,
-    data_publicacao_pncp: item.dataPublicacaoPncp || null,
-    data_abertura_proposta: item.dataAberturaProposta || null,
-    data_encerramento_proposta: item.dataEncerramentoProposta || null,
+    data_publicacao_pncp: fixBrasiliaTimezone(item.dataPublicacaoPncp),
+    data_abertura_proposta: fixBrasiliaTimezone(item.dataAberturaProposta),
+    data_encerramento_proposta: fixBrasiliaTimezone(item.dataEncerramentoProposta),
     link_sistema_origem: item.linkSistemaOrigem || null,
     url_pncp: cnpj && ano && seq ? `https://pncp.gov.br/app/editais/${cnpj}/${ano}/${seq}` : null,
     tipo_instrumento: item.tipoInstrumentoConvocatorioNome || null,
