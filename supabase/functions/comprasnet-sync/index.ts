@@ -82,9 +82,9 @@ function mapComprasnetRow(r: any, lei: string) {
     valor_total_estimado: r.valor_estimado_total ? parseFloat(r.valor_estimado_total) : null,
     valor_total_homologado: r.valor_homologado_total ? parseFloat(r.valor_homologado_total) : null,
 
-    data_publicacao_pncp: r.data_publicacao ? new Date(r.data_publicacao).toISOString() : null,
-    data_abertura_proposta: r.data_abertura_proposta ? new Date(r.data_abertura_proposta).toISOString() : null,
-    data_encerramento_proposta: r.data_entrega_proposta ? new Date(r.data_entrega_proposta).toISOString() : null,
+    data_publicacao_pncp: fixBrasiliaTimezone(r.data_publicacao),
+    data_abertura_proposta: fixBrasiliaTimezone(r.data_abertura_proposta),
+    data_encerramento_proposta: fixBrasiliaTimezone(r.data_entrega_proposta),
 
     situacao: r.situacao_aviso ?? '',
     orgao: r.nome_orgao ?? r.nome_uasg ?? '',
