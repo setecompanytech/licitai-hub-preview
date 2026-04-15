@@ -107,11 +107,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => authSub.unsubscribe();
   }, [checkSubscription]);
 
-  // Auto-refresh every 60 seconds
+  // Refresh por visibilidade de aba — só atualiza ao focar e se dado > 5 min
   useEffect(() => {
     if (!user) return;
-    const interval = setInterval(() => checkSubscription(), 60_000);
-    return () => clearInterval(interval);
+    let lastCheck = Date.now();
+    const STALE_MS = 5 * 60 * 1000;
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastCheck > STALE_MS) {
+        lastCheck = Date.now();
+        checkSubscription();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [user, checkSubscription]);
 
   // Auto-logout after 10 min of inactivity
@@ -143,6 +151,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    localStorage.removeItem('praefectus_last_activity');
+    localStorage.removeItem('praefectus_cookie_consent');
+    setUser(null);
+    setSession(null);
+    setSubscription({ subscribed: false, planSlug: null, subscriptionEnd: null, loading: false });
     await supabase.auth.signOut();
   };
 

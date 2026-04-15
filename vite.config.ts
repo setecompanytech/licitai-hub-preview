@@ -26,9 +26,9 @@ export default defineConfig(({ mode }) => ({
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: false,
+        drop_console: true,
         drop_debugger: true,
-        pure_funcs: ['console.debug', 'console.trace'],
+        pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.trace', 'console.warn'],
       },
       mangle: {
         safari10: true,
@@ -45,8 +45,13 @@ export default defineConfig(({ mode }) => ({
         manualChunks: {
           "vendor-react": ["react", "react-dom", "react-router-dom"],
           "vendor-supabase": ["@supabase/supabase-js"],
-          "vendor-ui": ["lucide-react"],
+          "vendor-ui": ["lucide-react", "@radix-ui/react-dialog", "@radix-ui/react-dropdown-menu", "@radix-ui/react-select", "@radix-ui/react-tabs"],
           "vendor-charts": ["recharts"],
+          "vendor-motion": ["framer-motion"],
+          "vendor-docs": ["jspdf", "jspdf-autotable", "exceljs", "file-saver"],
+          "vendor-pdf": ["pdfjs-dist"],
+          "vendor-forms": ["react-hook-form", "@hookform/resolvers", "zod"],
+          "vendor-utils": ["date-fns", "clsx", "tailwind-merge", "class-variance-authority"],
         },
         entryFileNames: 'assets/[hash].js',
         chunkFileNames: 'assets/[hash].js',

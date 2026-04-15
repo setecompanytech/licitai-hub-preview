@@ -91,7 +91,22 @@ const PreferenciasAlertas = lazy(() => import("./pages/PreferenciasAlertas"));
 const MetricasSaaS = lazy(() => import("./pages/MetricasSaaS"));
 const Investidores = lazy(() => import("./pages/Investidores"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      staleTime: 2 * 60 * 1000,
+      gcTime: 5 * 60 * 1000,
+      retry: (failureCount, error: any) => {
+        if (error?.status >= 400 && error?.status < 500) return false;
+        return failureCount < 2;
+      },
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+});
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-screen bg-background">
@@ -113,7 +128,7 @@ const PlanPages = ({ children }: { children: React.ReactNode }) => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -147,10 +162,10 @@ const App = () => (
               <Route path="/configuracoes" element={<ProtectedPages><Configuracoes /></ProtectedPages>} />
               <Route path="/empresas" element={<ProtectedPages><Empresas /></ProtectedPages>} />
               <Route path="/suporte" element={<ProtectedPages><Suporte /></ProtectedPages>} />
-              <Route path="/admin/templates" element={<ProtectedPages><AdminTemplates /></ProtectedPages>} />
-              <Route path="/admin/financeiro" element={<ProtectedPages><AdminFinanceiro /></ProtectedPages>} />
-              <Route path="/admin/fontes-fabricantes" element={<ProtectedPages><AdminFontesFabricantes /></ProtectedPages>} />
-              <Route path="/admin/marketing" element={<ProtectedPages><AdminMarketing /></ProtectedPages>} />
+              <Route path="/admin/templates" element={<ProtectedPages><AdminGuard><AdminTemplates /></AdminGuard></ProtectedPages>} />
+              <Route path="/admin/financeiro" element={<ProtectedPages><AdminGuard><AdminFinanceiro /></AdminGuard></ProtectedPages>} />
+              <Route path="/admin/fontes-fabricantes" element={<ProtectedPages><AdminGuard><AdminFontesFabricantes /></AdminGuard></ProtectedPages>} />
+              <Route path="/admin/marketing" element={<ProtectedPages><AdminGuard><AdminMarketing /></AdminGuard></ProtectedPages>} />
               <Route path="/admin/auditoria" element={<ProtectedPages><AdminGuard><AuditoriaAdmin /></AdminGuard></ProtectedPages>} />
               <Route path="/admin/distribuicao" element={<ProtectedPages><AdminGuard><PainelDistribuicao /></AdminGuard></ProtectedPages>} />
               <Route path="/monitoramento-chat" element={<ProtectedPages><MonitoramentoChat /></ProtectedPages>} />
