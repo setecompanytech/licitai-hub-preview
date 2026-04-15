@@ -6431,6 +6431,42 @@ export type Database = {
         }
         Relationships: []
       }
+      lgpd_access_log: {
+        Row: {
+          acao: string
+          created_at: string
+          detalhes: Json | null
+          finalidade: string | null
+          id: string
+          ip_address: string | null
+          recurso: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          acao: string
+          created_at?: string
+          detalhes?: Json | null
+          finalidade?: string | null
+          id?: string
+          ip_address?: string | null
+          recurso: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          acao?: string
+          created_at?: string
+          detalhes?: Json | null
+          finalidade?: string | null
+          id?: string
+          ip_address?: string | null
+          recurso?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       licitacao_itens: {
         Row: {
           created_at: string
