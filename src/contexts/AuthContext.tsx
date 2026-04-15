@@ -128,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const getRedirectOrigin = (): string => {
     const origin = window.location.origin;
     if (origin.includes('lovableproject.com') || origin.includes('lovable.app') || origin.includes('localhost')) {
-      return 'https://app.praefectus.com.br';
+      return 'https://praefectus.com.br';
     }
     return origin;
   };

@@ -3,7 +3,7 @@
  * Used for auth redirects, CORS, security guards, etc.
  */
 
-export const APP_DOMAIN = 'app.praefectus.com.br';
+export const APP_DOMAIN = 'praefectus.com.br';
 export const APP_URL = `https://${APP_DOMAIN}`;
 
 export const ALLOWED_HOSTS = [
