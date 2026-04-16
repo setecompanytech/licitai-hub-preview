@@ -94,6 +94,62 @@ export function useLicitacaoIntegration() {
     }
   }, [user, navigate]);
 
+  /**
+   * Auto-create or reuse a compromisso (processos_interesse) linked to a licitação.
+   * Sets default multichannel alerts (system + email) and links to the licitacao_id.
+   * Returns the compromisso id (existing or new).
+   */
+  const criarCompromisso = useCallback(async (
+    edital: EditalData,
+    licitacaoId: string,
+    empresaId?: string | null,
+  ): Promise<string | null> => {
+    if (!user) return null;
+    try {
+      // Reuse existing compromisso if same licitacao+user
+      const { data: existing } = await supabase
+        .from('processos_interesse')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('licitacao_id', licitacaoId)
+        .maybeSingle();
+      if (existing?.id) return existing.id;
+
+      const { data, error } = await supabase
+        .from('processos_interesse')
+        .insert({
+          user_id: user.id,
+          empresa_id: empresaId || null,
+          licitacao_id: licitacaoId,
+          numero: edital.numero,
+          orgao: edital.orgao,
+          objeto: edital.objeto,
+          modalidade: edital.modalidade || 'Pregão',
+          valor_estimado: edital.valor_estimado,
+          uf: edital.uf,
+          municipio: edital.municipio,
+          data_abertura: edital.data_encerramento,
+          data_encerramento: edital.data_encerramento,
+          portal: edital.portal,
+          url: edital.url,
+          status: 'interessado',
+          alerta_sistema: true,
+          alerta_email: true,
+          alerta_whatsapp: false,
+          alerta_7dias: true,
+          alerta_3dias: true,
+          alerta_1dia: true,
+        })
+        .select('id')
+        .single();
+      if (error) throw error;
+      return data?.id || null;
+    } catch (err) {
+      console.error('[criarCompromisso]', err);
+      return null;
+    }
+  }, [user]);
+
   /** Update licitação status and create notification */
   const atualizarStatus = useCallback(async (
     licitacaoId: string,
