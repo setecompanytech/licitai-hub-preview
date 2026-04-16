@@ -247,9 +247,9 @@ export default function MonitoramentoEditais() {
             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
               <Filter className="w-4 h-4 text-accent" />
               Filtros de pesquisa
-              {(filtros.termo || filtros.uf || filtros.modalidade || filtros.esfera) && (
+              {(filtros.termo || filtros.uf !== 'all' || filtros.modalidade !== 'all' || filtros.esfera !== 'all') && (
                 <span className="px-2 py-0.5 rounded-full bg-accent/20 text-accent text-xs font-medium">
-                  {[filtros.termo, filtros.uf, filtros.modalidade, filtros.esfera].filter(Boolean).length} ativo(s)
+                  {[filtros.termo, filtros.uf !== 'all' ? filtros.uf : '', filtros.modalidade !== 'all' ? filtros.modalidade : '', filtros.esfera !== 'all' ? filtros.esfera : ''].filter(Boolean).length} ativo(s)
                 </span>
               )}
             </div>
@@ -291,9 +291,9 @@ export default function MonitoramentoEditais() {
                 <div>
                   <label className="block text-xs text-muted-foreground mb-1.5">UF</label>
                   <Select value={filtros.uf} onValueChange={v => setFiltro('uf', v)}>
-                    <SelectTrigger><SelectValue placeholder="Todos os estados" /></SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent className="max-h-60">
-                      <SelectItem value="">Todos os estados</SelectItem>
+                      <SelectItem value="all">Todos os estados</SelectItem>
                       {UFS.map(uf => (
                         <SelectItem key={uf} value={uf}>{uf}</SelectItem>
                       ))}
@@ -303,9 +303,9 @@ export default function MonitoramentoEditais() {
                 <div>
                   <label className="block text-xs text-muted-foreground mb-1.5">Modalidade</label>
                   <Select value={filtros.modalidade} onValueChange={v => setFiltro('modalidade', v)}>
-                    <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas as modalidades</SelectItem>
+                      <SelectItem value="all">Todas as modalidades</SelectItem>
                       {MODALIDADES.map(m => (
                         <SelectItem key={m.id} value={String(m.id)}>{m.label}</SelectItem>
                       ))}
@@ -315,9 +315,9 @@ export default function MonitoramentoEditais() {
                 <div>
                   <label className="block text-xs text-muted-foreground mb-1.5">Esfera</label>
                   <Select value={filtros.esfera} onValueChange={v => setFiltro('esfera', v)}>
-                    <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas as esferas</SelectItem>
+                      <SelectItem value="all">Todas as esferas</SelectItem>
                       <SelectItem value="F">Federal</SelectItem>
                       <SelectItem value="E">Estadual</SelectItem>
                       <SelectItem value="M">Municipal</SelectItem>
