@@ -152,6 +152,7 @@ export default function MonitoramentoEditais() {
     setBuscaRealizada(true);
     setCarregando(true);
     setErro(null);
+    setResultado(null);
 
     try {
       // Convert 'all' sentinel values to empty strings for the API
@@ -179,6 +180,7 @@ export default function MonitoramentoEditais() {
       if (e instanceof Error && e.name === 'AbortError') return;
       const msg = e instanceof Error ? e.message : 'Erro ao consultar o PNCP';
       setErro(msg);
+      setResultado(null);
       toast.error('Erro na consulta', { description: msg });
     } finally {
       setCarregando(false);

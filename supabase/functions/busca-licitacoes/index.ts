@@ -1,16 +1,14 @@
 /**
  * busca-licitacoes — Edge Function PNCP
  *
- * v3 — Correções:
- * 1. Campo de valor: `valorTotalEstimado`
- * 2. Endpoint /proposta para editais com propostas abertas
- * 3. Status derivado de situacaoCompraId + comparação de datas
- * 4. Filtro de situação: 'abertas' | 'todas' | 'encerradas'
- * 5. Paginação correta — total ajustado após filtragem
- * 6. Modalidade opcional — omitida quando "todas"
- * 7. Range de datas padrão: 30 dias
+ * v4 — Correções:
+ * 1. Sem retry sequencial forçando modalidade 6
+ * 2. Busca em "todas as modalidades" via cache sincronizado
+ * 3. Fallback para cache em timeout/erro do PNCP
+ * 4. Resposta estável para evitar erro + resultado controverso
  */
 
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/security-headers.ts';
 
 const PNCP_BASE = 'https://pncp.gov.br/api/consulta/v1';
@@ -42,6 +40,22 @@ const SITUACOES: Record<number, { label: string; cor: string }> = {
   8: { label: 'Fracassada', cor: 'vermelho' },
 };
 
+const CACHE_MIN_SAMPLE = 200;
+const CACHE_MAX_SAMPLE = 1000;
+const CACHE_PAGE_MULTIPLIER = 10;
+
+type BuscaParams = {
+  termo: string;
+  uf: string;
+  pagina: number;
+  tamanhoPagina: number;
+  dataInicial: string;
+  dataFinal: string;
+  modalidade: string;
+  situacao: string;
+  esfera: string;
+};
+
 function calcularStatus(item: Record<string, unknown>): string {
   const situacaoId = Number(item.situacaoCompraId);
   const agora = new Date();
@@ -56,6 +70,33 @@ function calcularStatus(item: Record<string, unknown>): string {
   if (situacaoId === 4) return 'suspenso';
   if (situacaoId === 5) return 'encerrado';
   if (situacaoId === 6) return 'homologado';
+
+  if (encerramento && encerramento < agora) return 'encerrado';
+  if (abertura && abertura > agora) return 'aguardando';
+  return 'aberto';
+}
+
+function calcularStatusCache(item: Record<string, unknown>): string {
+  const situacao = String(item.situacao || '').toLowerCase();
+  const agora = new Date();
+  const encerramento = item.data_encerramento_proposta
+    ? new Date(item.data_encerramento_proposta as string)
+    : null;
+  const abertura = item.data_abertura_proposta
+    ? new Date(item.data_abertura_proposta as string)
+    : null;
+
+  if (situacao.includes('susp')) return 'suspenso';
+  if (situacao.includes('homolog')) return 'homologado';
+  if (
+    situacao.includes('encerr') ||
+    situacao.includes('revog') ||
+    situacao.includes('anulad') ||
+    situacao.includes('desert') ||
+    situacao.includes('fracass')
+  ) {
+    return 'encerrado';
+  }
 
   if (encerramento && encerramento < agora) return 'encerrado';
   if (abertura && abertura > agora) return 'aguardando';
@@ -98,19 +139,147 @@ function mapearItem(item: Record<string, unknown>) {
   };
 }
 
-function formatDate(d: Date): string {
+function mapearItemCache(item: Record<string, unknown>) {
+  const status = calcularStatusCache(item);
+  const linkPncp = item.url_pncp || (
+    item.cnpj_orgao && item.ano_compra && item.sequencial_compra
+      ? `https://pncp.gov.br/app/editais/${item.cnpj_orgao}/${item.ano_compra}/${item.sequencial_compra}`
+      : ''
+  );
+
+  return {
+    id: String(item.id || `${item.ano_compra}-${item.sequencial_compra}-${item.cnpj_orgao || 'cache'}`),
+    numeroCompra: item.numero_compra || `${item.sequencial_compra}/${item.ano_compra}`,
+    processo: item.numero_controle_pncp || '',
+    objeto: item.objeto || 'Objeto não informado',
+    orgao: item.orgao || 'Órgão não informado',
+    cnpj: item.cnpj_orgao || '',
+    municipio: (item.municipio as string) || '',
+    uf: (item.uf as string) || '',
+    esfera: item.esfera_id || '',
+    modalidadeId: Number(item.modalidade_id) || 0,
+    modalidade: item.modalidade_nome || MODALIDADES[Number(item.modalidade_id)] || 'Modalidade não informada',
+    valorEstimado: Number(item.valor_total_estimado) || null,
+    valorHomologado: null,
+    dataPublicacao: item.data_publicacao_pncp || null,
+    dataAbertura: item.data_abertura_proposta || null,
+    dataEncerramento: item.data_encerramento_proposta || null,
+    situacaoId: 0,
+    situacaoNome: item.situacao || 'Publicada',
+    situacaoCor: status === 'homologado'
+      ? 'verde'
+      : status === 'suspenso'
+        ? 'amarelo'
+        : status === 'encerrado'
+          ? 'cinza'
+          : 'azul',
+    status,
+    srp: Boolean(item.srp),
+    modoDisputa: '',
+    tipoEdital: item.tipo_instrumento || 'Edital',
+    link: item.link_sistema_origem || item.link_comprasnet || '',
+    linkPncp,
+    informacaoComplementar: '',
+  };
+}
+
+function aplicarFiltroSituacao<T extends { status: string }>(items: T[], situacao: string): T[] {
+  if (situacao === 'abertas') {
+    return items.filter((item) => item.status === 'aberto' || item.status === 'aguardando');
+  }
+
+  if (situacao === 'encerradas') {
+    return items.filter((item) => item.status === 'encerrado');
+  }
+
+  return items;
+}
+
+function formatPncpDate(d: Date): string {
   return d.toISOString().slice(0, 10).replace(/-/g, '');
+}
+
+function formatIsoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function createServiceClient() {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('Configuração do cache indisponível');
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}
+
+async function buscarNoCache(params: BuscaParams, cors: HeadersInit, aviso: string) {
+  const supabase = createServiceClient();
+  const sampleSize = Math.min(
+    CACHE_MAX_SAMPLE,
+    Math.max(CACHE_MIN_SAMPLE, params.pagina * params.tamanhoPagina * CACHE_PAGE_MULTIPLIER),
+  );
+
+  const { data, error } = await supabase.rpc('busca_editais_instantanea', {
+    p_q: params.termo || null,
+    p_uf: params.uf || null,
+    p_municipio_ibge: null,
+    p_esfera: params.esfera || null,
+    p_modalidade_id: params.modalidade && params.modalidade !== 'all' && params.modalidade !== '0'
+      ? Number(params.modalidade)
+      : null,
+    p_segmento: null,
+    p_data_inicio: params.dataInicial || null,
+    p_data_fim: params.dataFinal || null,
+    p_ordenacao: params.situacao === 'abertas' ? 'data_abertura' : 'data_publicacao',
+    p_direcao: 'desc',
+    p_pagina: 1,
+    p_tamanho: sampleSize,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const mapped = aplicarFiltroSituacao(
+    ((data || []) as Record<string, unknown>[]).map(mapearItemCache),
+    params.situacao,
+  );
+
+  const inicio = (params.pagina - 1) * params.tamanhoPagina;
+  const paginados = mapped.slice(inicio, inicio + params.tamanhoPagina);
+  const total = mapped.length;
+  const avisoFinal = sampleSize === CACHE_MAX_SAMPLE && (data?.length || 0) >= CACHE_MAX_SAMPLE
+    ? `${aviso} A paginação pode ser parcial em pesquisas muito amplas.`
+    : aviso;
+
+  return new Response(JSON.stringify({
+    data: paginados,
+    total,
+    paginas: Math.max(1, Math.ceil(total / params.tamanhoPagina)),
+    pagina: params.pagina,
+    aviso: avisoFinal,
+  }), {
+    headers: { ...cors, 'Content-Type': 'application/json' },
+  });
 }
 
 Deno.serve(async (req) => {
   const cors = getCorsHeaders(req);
+  let parsedBody: Record<string, unknown> = {};
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: cors });
   }
 
   try {
-    const body = await req.json();
+    parsedBody = await req.json();
     const {
       termo = '',
       uf = '',
@@ -121,32 +290,54 @@ Deno.serve(async (req) => {
       modalidade,
       situacao = 'abertas',
       esfera,
-    } = body;
+    } = parsedBody;
 
     const hoje = new Date();
-    const pageSize = Math.max(10, Math.min(tamanhoPagina, 50));
+    const pageSize = Math.max(10, Math.min(Number(tamanhoPagina) || 20, 50));
+    const paginaAtual = Math.max(1, Number(pagina) || 1);
 
     // Default: 30 dias atrás
     const inicio30 = new Date(hoje);
     inicio30.setDate(inicio30.getDate() - 30);
 
+    const dataInicialFiltro = dataInicial || formatIsoDate(inicio30);
+    const dataFinalFiltro = dataFinal || formatIsoDate(hoje);
+    const modalidadeFiltro = modalidade ? String(modalidade) : '';
+    const esferaFiltro = esfera && esfera !== 'all' ? String(esfera) : '';
+
+    const buscaParams: BuscaParams = {
+      termo,
+      uf,
+      pagina: paginaAtual,
+      tamanhoPagina: pageSize,
+      dataInicial: dataInicialFiltro,
+      dataFinal: dataFinalFiltro,
+      modalidade: modalidadeFiltro,
+      situacao,
+      esfera: esferaFiltro,
+    };
+
+    if (!modalidadeFiltro || modalidadeFiltro === 'all' || modalidadeFiltro === '0') {
+      return await buscarNoCache(
+        buscaParams,
+        cors,
+        'Pesquisa em todas as modalidades atendida pelo cache sincronizado do PNCP para garantir estabilidade.',
+      );
+    }
+
     const params = new URLSearchParams({
-      pagina: String(pagina),
+      pagina: String(paginaAtual),
       tamanhoPagina: String(pageSize),
     });
 
     if (termo) params.set('q', termo);
     if (uf) params.set('uf', uf.toUpperCase());
-    if (esfera) params.set('codigoEsfera', esfera);
-
-    // Modalidade: só envia se especificada (não forçar Pregão)
-    if (modalidade && modalidade !== 'all') {
-      params.set('codigoModalidadeContratacao', String(modalidade));
-    }
+    if (esferaFiltro) params.set('codigoEsfera', esferaFiltro);
+    params.set('codigoModalidadeContratacao', modalidadeFiltro);
 
     // Dates
-    params.set('dataInicial', dataInicial ? dataInicial.replace(/-/g, '') : formatDate(inicio30));
-    params.set('dataFinal', dataFinal ? dataFinal.replace(/-/g, '') : formatDate(hoje));
+    params.set('dataInicial', dataInicialFiltro.replace(/-/g, ''));
+    params.set('dataFinal', dataFinalFiltro.replace(/-/g, ''));
 
     const endpoint = `${PNCP_BASE}/contratacoes/publicacao`;
     const url = `${endpoint}?${params.toString()}`;
@@ -157,54 +348,21 @@ Deno.serve(async (req) => {
         'Accept': 'application/json',
         'User-Agent': 'Praefectus/1.0 (licitacoes@praefectus.com.br)',
       },
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(45_000),
     });
 
     if (!resp.ok) {
       const errText = await resp.text();
       console.error(`PNCP error ${resp.status}: ${errText.slice(0, 500)}`);
 
-      // Se o erro é por falta de modalidade, tenta com Pregão como fallback
-      if (resp.status === 400 && !params.has('codigoModalidadeContratacao')) {
-        console.log('Retrying with modalidade=6 (Pregão Eletrônico) as fallback');
-        params.set('codigoModalidadeContratacao', '6');
-        const retryUrl = `${endpoint}?${params.toString()}`;
-        const retryResp = await fetch(retryUrl, {
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'Praefectus/1.0 (licitacoes@praefectus.com.br)',
-          },
-          signal: AbortSignal.timeout(30_000),
-        });
-
-        if (retryResp.ok) {
-          const retryJson = await retryResp.json();
-          const retryItems: Record<string, unknown>[] = retryJson.data || [];
-          let resultado = retryItems;
-          if (situacao === 'abertas') {
-            resultado = retryItems.filter(i => {
-              const s = calcularStatus(i);
-              return s === 'aberto' || s === 'aguardando';
-            });
-          } else if (situacao === 'encerradas') {
-            resultado = retryItems.filter(i => calcularStatus(i) === 'encerrado');
-          }
-
-          const filteredCount = resultado.length;
-          const totalOriginal = retryJson.totalRegistros || retryItems.length;
-
-          return new Response(JSON.stringify({
-            data: resultado.map(mapearItem),
-            total: situacao === 'todas' ? totalOriginal : filteredCount,
-            paginas: situacao === 'todas'
-              ? (retryJson.totalPaginas || Math.ceil(totalOriginal / pageSize))
-              : Math.max(1, Math.ceil(filteredCount / pageSize)),
-            pagina,
-            aviso: 'Pesquisa limitada ao Pregão Eletrônico. Para outras modalidades, selecione uma específica.',
-          }), {
-            headers: { ...cors, 'Content-Type': 'application/json' },
-          });
-        }
+      try {
+        return await buscarNoCache(
+          buscaParams,
+          cors,
+          `Consulta ao PNCP indisponível (HTTP ${resp.status}); exibindo resultados do cache sincronizado.`,
+        );
+      } catch (cacheError) {
+        console.error('cache fallback error:', cacheError);
       }
 
       return new Response(JSON.stringify({
@@ -219,35 +377,51 @@ Deno.serve(async (req) => {
     const json = await resp.json();
     const items: Record<string, unknown>[] = json.data || [];
 
-    // Filter by status
-    let resultado = items;
-    if (situacao === 'abertas') {
-      resultado = items.filter(i => {
-        const s = calcularStatus(i);
-        return s === 'aberto' || s === 'aguardando';
-      });
-    } else if (situacao === 'encerradas') {
-      resultado = items.filter(i => calcularStatus(i) === 'encerrado');
-    }
+    const mapeados = items.map(mapearItem);
+    const resultado = aplicarFiltroSituacao(mapeados, situacao);
 
     const filteredCount = resultado.length;
     const totalOriginal = json.totalRegistros || items.length;
 
     return new Response(JSON.stringify({
-      data: resultado.map(mapearItem),
+      data: resultado,
       total: situacao === 'todas' ? totalOriginal : filteredCount,
       paginas: situacao === 'todas'
         ? (json.totalPaginas || Math.ceil(totalOriginal / pageSize))
         : Math.max(1, Math.ceil(filteredCount / pageSize)),
-      pagina,
+      pagina: paginaAtual,
     }), {
       headers: { ...cors, 'Content-Type': 'application/json' },
     });
 
   } catch (err) {
     console.error('busca-licitacoes error:', err);
+
+    const msg = err instanceof Error ? err.message : 'Erro interno';
+    if (msg.toLowerCase().includes('timeout') || msg.toLowerCase().includes('timed out')) {
+      try {
+        const hoje = new Date();
+        const inicio30 = new Date(hoje);
+        inicio30.setDate(inicio30.getDate() - 30);
+
+        return await buscarNoCache({
+          termo: String(parsedBody.termo || ''),
+          uf: String(parsedBody.uf || ''),
+          pagina: Math.max(1, Number(parsedBody.pagina) || 1),
+          tamanhoPagina: Math.max(10, Math.min(Number(parsedBody.tamanhoPagina) || 20, 50)),
+          dataInicial: String(parsedBody.dataInicial || formatIsoDate(inicio30)),
+          dataFinal: String(parsedBody.dataFinal || formatIsoDate(hoje)),
+          modalidade: parsedBody.modalidade ? String(parsedBody.modalidade) : '',
+          situacao: String(parsedBody.situacao || 'abertas'),
+          esfera: String(parsedBody.esfera || ''),
+        }, cors, 'O PNCP demorou para responder; exibindo resultados do cache sincronizado.');
+      } catch (cacheError) {
+        console.error('cache fallback error:', cacheError);
+      }
+    }
+
     return new Response(JSON.stringify({
-      error: err instanceof Error ? err.message : 'Erro interno',
+      error: msg,
       data: [], total: 0, paginas: 0,
     }), {
       status: 200,
