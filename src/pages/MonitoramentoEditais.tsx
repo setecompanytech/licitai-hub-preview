@@ -150,21 +150,35 @@ export default function MonitoramentoEditais() {
   // Map "numero||orgao" -> licitacao_id (processos já criados pelo usuário)
   const { user } = useAuth();
   const [emGestao, setEmGestao] = useState<Map<string, string>>(new Map());
+  // Map "numero||orgao" -> processos_interesse.id (compromissos do usuário)
+  const [emCompromissos, setEmCompromissos] = useState<Map<string, string>>(new Map());
   const [modalEdital, setModalEdital] = useState<EditalSeed | null>(null);
   const [modalExistingId, setModalExistingId] = useState<string | null>(null);
 
   const carregarEmGestao = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from('licitacoes')
-      .select('id, numero, orgao')
-      .eq('user_id', user.id)
-      .limit(2000);
-    const map = new Map<string, string>();
-    (data || []).forEach(l => {
-      if (l.numero && l.orgao) map.set(`${l.numero}||${l.orgao}`, l.id);
+    const [{ data: lics }, { data: comps }] = await Promise.all([
+      supabase
+        .from('licitacoes')
+        .select('id, numero, orgao')
+        .eq('user_id', user.id)
+        .limit(2000),
+      supabase
+        .from('processos_interesse')
+        .select('id, numero, orgao')
+        .eq('user_id', user.id)
+        .limit(2000),
+    ]);
+    const mapL = new Map<string, string>();
+    (lics || []).forEach(l => {
+      if (l.numero && l.orgao) mapL.set(`${l.numero}||${l.orgao}`, l.id);
     });
-    setEmGestao(map);
+    setEmGestao(mapL);
+    const mapC = new Map<string, string>();
+    (comps || []).forEach(c => {
+      if (c.numero && c.orgao) mapC.set(`${c.numero}||${c.orgao}`, c.id);
+    });
+    setEmCompromissos(mapC);
   }, [user]);
 
   useEffect(() => { carregarEmGestao(); }, [carregarEmGestao]);
@@ -179,6 +193,12 @@ export default function MonitoramentoEditais() {
     if (!modalEdital) return;
     const key = `${modalEdital.numero}||${modalEdital.orgao}`;
     setEmGestao(prev => new Map(prev).set(key, licitacaoId));
+  }, [modalEdital]);
+
+  const handleCompromissoCriado = useCallback((compromissoId: string) => {
+    if (!modalEdital) return;
+    const key = `${modalEdital.numero}||${modalEdital.orgao}`;
+    setEmCompromissos(prev => new Map(prev).set(key, compromissoId));
   }, [modalEdital]);
 
   const abortRef = useRef<AbortController | null>(null);
