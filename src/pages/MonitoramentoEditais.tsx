@@ -146,6 +146,40 @@ export default function MonitoramentoEditais() {
     } catch { return new Set(); }
   });
 
+  // Map "numero||orgao" -> licitacao_id (processos já criados pelo usuário)
+  const { user } = useAuth();
+  const [emGestao, setEmGestao] = useState<Map<string, string>>(new Map());
+  const [modalEdital, setModalEdital] = useState<EditalSeed | null>(null);
+  const [modalExistingId, setModalExistingId] = useState<string | null>(null);
+
+  const carregarEmGestao = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('licitacoes')
+      .select('id, numero, orgao')
+      .eq('user_id', user.id)
+      .limit(2000);
+    const map = new Map<string, string>();
+    (data || []).forEach(l => {
+      if (l.numero && l.orgao) map.set(`${l.numero}||${l.orgao}`, l.id);
+    });
+    setEmGestao(map);
+  }, [user]);
+
+  useEffect(() => { carregarEmGestao(); }, [carregarEmGestao]);
+
+  const abrirModalEdital = useCallback((seed: EditalSeed) => {
+    const key = `${seed.numero}||${seed.orgao}`;
+    setModalExistingId(emGestao.get(key) || null);
+    setModalEdital(seed);
+  }, [emGestao]);
+
+  const handleProcessoCriado = useCallback((licitacaoId: string) => {
+    if (!modalEdital) return;
+    const key = `${modalEdital.numero}||${modalEdital.orgao}`;
+    setEmGestao(prev => new Map(prev).set(key, licitacaoId));
+  }, [modalEdital]);
+
   const abortRef = useRef<AbortController | null>(null);
 
   const buscar = useCallback(async (pag = 1) => {
