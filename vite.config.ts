@@ -42,17 +42,6 @@ export default defineConfig(({ mode }) => ({
     },
     rollupOptions: {
       output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom", "react-router-dom"],
-          "vendor-supabase": ["@supabase/supabase-js"],
-          "vendor-ui": ["lucide-react", "@radix-ui/react-dialog", "@radix-ui/react-dropdown-menu", "@radix-ui/react-select", "@radix-ui/react-tabs"],
-          "vendor-charts": ["recharts"],
-          "vendor-motion": ["framer-motion"],
-          "vendor-docs": ["jspdf", "jspdf-autotable", "exceljs", "file-saver"],
-          "vendor-pdf": ["pdfjs-dist"],
-          "vendor-forms": ["react-hook-form", "@hookform/resolvers", "zod"],
-          "vendor-utils": ["date-fns", "clsx", "tailwind-merge", "class-variance-authority"],
-        },
         entryFileNames: 'assets/[hash].js',
         chunkFileNames: 'assets/[hash].js',
         assetFileNames: 'assets/[hash].[ext]',
