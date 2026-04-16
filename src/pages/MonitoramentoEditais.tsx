@@ -471,14 +471,30 @@ export default function MonitoramentoEditais() {
                 <p className="text-sm">Nenhum edital encontrado para os filtros selecionados.</p>
               </div>
             ) : (
-              resultado.data.map((edital) => (
-                <EditalCard
-                  key={edital.id}
-                  edital={edital}
-                  favoritado={favoritos.has(edital.id)}
-                  onFavoritar={() => toggleFavorito(edital.id)}
-                />
-              ))
+              resultado.data.map((edital) => {
+                const key = `${edital.numeroCompra}||${edital.orgao}`;
+                return (
+                  <EditalCard
+                    key={edital.id}
+                    edital={edital}
+                    favoritado={favoritos.has(edital.id)}
+                    onFavoritar={() => toggleFavorito(edital.id)}
+                    licitacaoId={emGestao.get(key) || null}
+                    onIniciarProcesso={() => abrirModalEdital({
+                      numero: edital.numeroCompra,
+                      orgao: edital.orgao,
+                      objeto: edital.objeto,
+                      modalidade: edital.modalidade,
+                      valor_estimado: edital.valorEstimado,
+                      uf: edital.uf,
+                      municipio: edital.municipio,
+                      data_encerramento: edital.dataEncerramento,
+                      portal: 'PNCP',
+                      url: edital.linkPncp,
+                    })}
+                  />
+                );
+              })
             )}
 
             {resultado.paginas > 1 && (
