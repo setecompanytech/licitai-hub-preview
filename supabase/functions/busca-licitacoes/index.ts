@@ -123,9 +123,10 @@ Deno.serve(async (req) => {
     const inicio30Fmt = inicio30.toISOString().slice(0, 10).replace(/-/g, '');
 
     let endpoint: string;
+    const pageSize = Math.max(10, Math.min(tamanhoPagina, 50));
     const params = new URLSearchParams({
       pagina: String(pagina),
-      tamanhoPagina: String(Math.min(tamanhoPagina, 50)),
+      tamanhoPagina: String(pageSize),
     });
 
     if (termo) params.set('q', termo);
@@ -133,15 +134,10 @@ Deno.serve(async (req) => {
     if (esfera) params.set('codigoEsfera', esfera);
     if (modalidade) params.set('codigoModalidadeContratacao', String(modalidade));
 
-    if (situacao === 'abertas') {
-      endpoint = `${PNCP_BASE}/contratacoes/proposta`;
-      params.set('dataInicial', dataInicial ? dataInicial.replace(/-/g, '') : inicio30Fmt);
-      params.set('dataFinal', dataFinal ? dataFinal.replace(/-/g, '') : hojeFmt);
-    } else {
-      endpoint = `${PNCP_BASE}/contratacoes/publicacao`;
-      params.set('dataInicial', dataInicial ? dataInicial.replace(/-/g, '') : inicio30Fmt);
-      params.set('dataFinal', dataFinal ? dataFinal.replace(/-/g, '') : hojeFmt);
-    }
+    // PNCP uses /publicacao for all queries; filter by status client-side
+    endpoint = `${PNCP_BASE}/contratacoes/publicacao`;
+    params.set('dataInicial', dataInicial ? dataInicial.replace(/-/g, '') : inicio30Fmt);
+    params.set('dataFinal', dataFinal ? dataFinal.replace(/-/g, '') : hojeFmt);
 
     const url = `${endpoint}?${params.toString()}`;
     console.log(`PNCP request: ${url}`);
