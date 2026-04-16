@@ -1,12 +1,15 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
 import {
   Search, Filter, ChevronDown, ChevronUp, ExternalLink,
   MapPin, Building2, Calendar, Clock, CheckCircle2, XCircle,
   PauseCircle, ChevronLeft, ChevronRight,
-  Bookmark, BookmarkCheck, Info, Loader2, RefreshCw, AlertCircle, FileText
+  Bookmark, BookmarkCheck, Info, Loader2, RefreshCw, AlertCircle, FileText,
+  Rocket, ArrowRight, CheckCircle
 } from 'lucide-react';
+import EditalActionsModal, { type EditalSeed } from '@/components/monitoramento/EditalActionsModal';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
