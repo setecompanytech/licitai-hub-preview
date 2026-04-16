@@ -33,7 +33,7 @@ interface Props {
 const DESTINOS = [
   { id: 'gestao',         label: 'Gestão de Licitações', desc: 'Acompanhar no Kanban',           icon: LayoutDashboard, route: '/licitacoes' },
   { id: 'precificacao',   label: 'Precificação',         desc: 'Extrair itens e calcular preços', icon: Calculator,      route: '/precificacao' },
-  { id: 'proposta',       label: 'Proposta Comercial',   desc: 'Gerar proposta MultiMix',         icon: FileText,        route: '/proposta-comercial' },
+  { id: 'proposta',       label: 'Proposta Comercial',   desc: 'Gerar proposta comercial',         icon: FileText,        route: '/proposta-comercial' },
   { id: 'aurelia',        label: 'Aurélia (Análise IA)', desc: 'Análise jurídica e estratégica',  icon: MessageSquare,   route: '/aurelia' },
   { id: 'continuar',      label: 'Continuar pesquisando',desc: 'Permanecer no Monitoramento',     icon: Search,          route: null },
 ] as const;
