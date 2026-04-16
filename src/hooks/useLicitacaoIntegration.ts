@@ -262,6 +262,7 @@ export function useLicitacaoIntegration() {
 
   return {
     iniciarProcesso,
+    criarCompromisso,
     atualizarStatus,
     registrarResultadoDisputa,
     criarNotificacao,
