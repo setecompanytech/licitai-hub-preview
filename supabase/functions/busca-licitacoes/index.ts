@@ -272,13 +272,14 @@ async function buscarNoCache(params: BuscaParams, cors: HeadersInit, aviso: stri
 
 Deno.serve(async (req) => {
   const cors = getCorsHeaders(req);
+  let parsedBody: Record<string, unknown> = {};
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: cors });
   }
 
   try {
-    const body = await req.json();
+    parsedBody = await req.json();
     const {
       termo = '',
       uf = '',
@@ -289,7 +290,7 @@ Deno.serve(async (req) => {
       modalidade,
       situacao = 'abertas',
       esfera,
-    } = body;
+    } = parsedBody;
 
     const hoje = new Date();
     const pageSize = Math.max(10, Math.min(Number(tamanhoPagina) || 20, 50));
@@ -383,7 +384,6 @@ Deno.serve(async (req) => {
     const totalOriginal = json.totalRegistros || items.length;
 
     return new Response(JSON.stringify({
-      data: resultado.map(mapearItem),
       data: resultado,
       total: situacao === 'todas' ? totalOriginal : filteredCount,
       paginas: situacao === 'todas'
@@ -404,17 +404,16 @@ Deno.serve(async (req) => {
         const inicio30 = new Date(hoje);
         inicio30.setDate(inicio30.getDate() - 30);
 
-        const body = await req.clone().json().catch(() => ({}));
         return await buscarNoCache({
-          termo: body.termo || '',
-          uf: body.uf || '',
-          pagina: Math.max(1, Number(body.pagina) || 1),
-          tamanhoPagina: Math.max(10, Math.min(Number(body.tamanhoPagina) || 20, 50)),
-          dataInicial: body.dataInicial || formatIsoDate(inicio30),
-          dataFinal: body.dataFinal || formatIsoDate(hoje),
-          modalidade: body.modalidade ? String(body.modalidade) : '',
-          situacao: body.situacao || 'abertas',
-          esfera: body.esfera || '',
+          termo: String(parsedBody.termo || ''),
+          uf: String(parsedBody.uf || ''),
+          pagina: Math.max(1, Number(parsedBody.pagina) || 1),
+          tamanhoPagina: Math.max(10, Math.min(Number(parsedBody.tamanhoPagina) || 20, 50)),
+          dataInicial: String(parsedBody.dataInicial || formatIsoDate(inicio30)),
+          dataFinal: String(parsedBody.dataFinal || formatIsoDate(hoje)),
+          modalidade: parsedBody.modalidade ? String(parsedBody.modalidade) : '',
+          situacao: String(parsedBody.situacao || 'abertas'),
+          esfera: String(parsedBody.esfera || ''),
         }, cors, 'O PNCP demorou para responder; exibindo resultados do cache sincronizado.');
       } catch (cacheError) {
         console.error('cache fallback error:', cacheError);
