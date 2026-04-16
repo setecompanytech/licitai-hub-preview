@@ -635,6 +635,16 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
                       Em gestão
                     </span>
                   )}
+                  {emCompromisso && (
+                    <a
+                      href="/meus-compromissos"
+                      className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-info/15 text-info border border-info/30 hover:bg-info/25 transition-colors"
+                      title="Abrir em Meus Compromissos"
+                    >
+                      <ListChecks className="w-3 h-3" />
+                      Em compromissos
+                    </a>
+                  )}
                 </div>
 
                 <p className="text-sm font-medium text-foreground leading-snug line-clamp-2">
