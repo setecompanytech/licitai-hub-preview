@@ -250,7 +250,8 @@ export default function KanbanPage() {
                 </div>
               </div>
             );
-          </div>
+          })}
+        </div>
         )}
         </TabsContent>
 
