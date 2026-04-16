@@ -214,7 +214,9 @@ const CardEdital = ({
               </td>
               <td className="py-0.5 pl-6 text-foreground font-bold">Situação:</td>
               <td className="py-0.5 text-foreground">
-                {edital.situacao || "Divulgada no PNCP"}
+                {encerrado
+                  ? "Encerrado"
+                  : edital.situacao || "Divulgada no PNCP"}
               </td>
             </tr>
             <tr>
