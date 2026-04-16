@@ -165,21 +165,18 @@ Deno.serve(async (req) => {
     const json = await resp.json();
     const items: Record<string, unknown>[] = json.data || [];
 
-    // Additional text filtering (PNCP /proposta may not support full-text)
-    const filtrados = termo
-      ? items.filter(i =>
-          String(i.objetoCompra || '').toLowerCase().includes(termo.toLowerCase())
-        )
-      : items;
-
-    const resultado = situacao === 'encerradas'
-      ? filtrados.filter(i => calcularStatus(i) === 'encerrado')
-      : filtrados;
+    // Filter by status
+    let resultado = items;
+    if (situacao === 'abertas') {
+      resultado = items.filter(i => calcularStatus(i) === 'aberto' || calcularStatus(i) === 'aguardando');
+    } else if (situacao === 'encerradas') {
+      resultado = items.filter(i => calcularStatus(i) === 'encerrado');
+    }
 
     return new Response(JSON.stringify({
       data: resultado.map(mapearItem),
       total: json.totalRegistros || resultado.length,
-      paginas: json.totalPaginas || Math.ceil((json.totalRegistros || resultado.length) / tamanhoPagina),
+      paginas: json.totalPaginas || Math.ceil((json.totalRegistros || resultado.length) / pageSize),
       pagina,
     }), {
       headers: { ...cors, 'Content-Type': 'application/json' },
