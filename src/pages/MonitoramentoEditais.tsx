@@ -541,6 +541,14 @@ export default function MonitoramentoEditais() {
           </div>
         )}
       </div>
+
+      <EditalActionsModal
+        open={!!modalEdital}
+        onOpenChange={(v) => { if (!v) { setModalEdital(null); setModalExistingId(null); } }}
+        edital={modalEdital}
+        existingId={modalExistingId}
+        onCreated={handleProcessoCriado}
+      />
     </AppLayout>
   );
 }
