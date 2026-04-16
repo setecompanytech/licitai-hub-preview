@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, ArrowRight, LayoutDashboard, Calculator, FileText, MessageSquare, Search } from 'lucide-react';
+import { Loader2, ArrowRight, LayoutDashboard, Calculator, FileText, MessageSquare, Search, ListChecks } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
@@ -28,21 +28,24 @@ interface Props {
   /** Existing licitacao id when the edital is already in the user's gestão */
   existingId?: string | null;
   onCreated?: (licitacaoId: string) => void;
+  /** Called after a compromisso is auto-created/reused */
+  onCompromissoCreated?: (compromissoId: string) => void;
 }
 
 const DESTINOS = [
-  { id: 'gestao',         label: 'Gestão de Licitações', desc: 'Acompanhar no Kanban',           icon: LayoutDashboard, route: '/licitacoes' },
-  { id: 'precificacao',   label: 'Precificação',         desc: 'Extrair itens e calcular preços', icon: Calculator,      route: '/precificacao' },
-  { id: 'proposta',       label: 'Proposta Comercial',   desc: 'Gerar proposta comercial',         icon: FileText,        route: '/proposta-comercial' },
-  { id: 'aurelia',        label: 'Aurélia (Análise IA)', desc: 'Análise jurídica e estratégica',  icon: MessageSquare,   route: '/aurelia' },
-  { id: 'continuar',      label: 'Continuar pesquisando',desc: 'Permanecer no Monitoramento',     icon: Search,          route: null },
+  { id: 'gestao',         label: 'Gestão de Licitações',   desc: 'Acompanhar no Kanban',                   icon: LayoutDashboard, route: '/kanban' },
+  { id: 'compromissos',   label: 'Meus Compromissos',      desc: 'Gerir prazos, alertas e análise IA',     icon: ListChecks,      route: '/meus-compromissos' },
+  { id: 'precificacao',   label: 'Precificação',           desc: 'Extrair itens e calcular preços',        icon: Calculator,      route: '/precificacao' },
+  { id: 'proposta',       label: 'Proposta Comercial',     desc: 'Gerar proposta comercial',               icon: FileText,        route: '/proposta-comercial' },
+  { id: 'aurelia',        label: 'Aurélia (Análise IA)',   desc: 'Análise jurídica e estratégica',         icon: MessageSquare,   route: '/aurelia' },
+  { id: 'continuar',      label: 'Continuar pesquisando',  desc: 'Permanecer no Monitoramento',            icon: Search,          route: null },
 ] as const;
 
 type DestinoId = typeof DESTINOS[number]['id'];
 
-export default function EditalActionsModal({ open, onOpenChange, edital, existingId, onCreated }: Props) {
+export default function EditalActionsModal({ open, onOpenChange, edital, existingId, onCreated, onCompromissoCreated }: Props) {
   const navigate = useNavigate();
-  const { iniciarProcesso } = useLicitacaoIntegration();
+  const { iniciarProcesso, criarCompromisso } = useLicitacaoIntegration();
   const [working, setWorking] = useState<DestinoId | null>(null);
 
   const handleAcao = async (destino: typeof DESTINOS[number]) => {
@@ -63,10 +66,18 @@ export default function EditalActionsModal({ open, onOpenChange, edital, existin
         toast.info('Processo já existente reaproveitado.');
       }
 
+      // Auto-create/reuse compromisso linked to the licitação
+      // ensures Monitoramento ↔ Compromissos ↔ Gestão stay in sync.
+      const compromissoId = await criarCompromisso(edital, licitacaoId);
+      if (compromissoId) onCompromissoCreated?.(compromissoId);
+
       onOpenChange(false);
 
       if (destino.route) {
-        const url = `${destino.route}?lid=${licitacaoId}`;
+        // Compromissos route does not use ?lid; others do.
+        const url = destino.id === 'compromissos'
+          ? destino.route
+          : `${destino.route}?lid=${licitacaoId}`;
         navigate(url);
       }
     } finally {
