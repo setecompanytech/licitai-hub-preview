@@ -596,6 +596,12 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, onIniciarPro
                       {ESFERA_LABELS[edital.esfera] || edital.esfera}
                     </span>
                   )}
+                  {emGestao && (
+                    <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-success/15 text-success border border-success/30">
+                      <CheckCircle className="w-3 h-3" />
+                      Em gestão
+                    </span>
+                  )}
                 </div>
 
                 <p className="text-sm font-medium text-foreground leading-snug line-clamp-2">
