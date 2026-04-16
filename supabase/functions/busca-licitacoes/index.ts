@@ -118,9 +118,9 @@ Deno.serve(async (req) => {
 
     const hoje = new Date();
     const hojeFmt = hoje.toISOString().slice(0, 10).replace(/-/g, '');
-    const inicio30 = new Date(hoje);
-    inicio30.setDate(inicio30.getDate() - 30);
-    const inicio30Fmt = inicio30.toISOString().slice(0, 10).replace(/-/g, '');
+    const inicio7 = new Date(hoje);
+    inicio7.setDate(inicio7.getDate() - 7);
+    const inicio7Fmt = inicio7.toISOString().slice(0, 10).replace(/-/g, '');
 
     let endpoint: string;
     const pageSize = Math.max(10, Math.min(tamanhoPagina, 50));
