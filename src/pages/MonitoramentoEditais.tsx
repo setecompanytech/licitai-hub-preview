@@ -1,12 +1,15 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
 import {
   Search, Filter, ChevronDown, ChevronUp, ExternalLink,
   MapPin, Building2, Calendar, Clock, CheckCircle2, XCircle,
   PauseCircle, ChevronLeft, ChevronRight,
-  Bookmark, BookmarkCheck, Info, Loader2, RefreshCw, AlertCircle, FileText
+  Bookmark, BookmarkCheck, Info, Loader2, RefreshCw, AlertCircle, FileText,
+  Rocket, ArrowRight, CheckCircle
 } from 'lucide-react';
+import EditalActionsModal, { type EditalSeed } from '@/components/monitoramento/EditalActionsModal';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -142,6 +145,40 @@ export default function MonitoramentoEditais() {
       return new Set(JSON.parse(localStorage.getItem('praefectus_fav_editais') || '[]'));
     } catch { return new Set(); }
   });
+
+  // Map "numero||orgao" -> licitacao_id (processos já criados pelo usuário)
+  const { user } = useAuth();
+  const [emGestao, setEmGestao] = useState<Map<string, string>>(new Map());
+  const [modalEdital, setModalEdital] = useState<EditalSeed | null>(null);
+  const [modalExistingId, setModalExistingId] = useState<string | null>(null);
+
+  const carregarEmGestao = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('licitacoes')
+      .select('id, numero, orgao')
+      .eq('user_id', user.id)
+      .limit(2000);
+    const map = new Map<string, string>();
+    (data || []).forEach(l => {
+      if (l.numero && l.orgao) map.set(`${l.numero}||${l.orgao}`, l.id);
+    });
+    setEmGestao(map);
+  }, [user]);
+
+  useEffect(() => { carregarEmGestao(); }, [carregarEmGestao]);
+
+  const abrirModalEdital = useCallback((seed: EditalSeed) => {
+    const key = `${seed.numero}||${seed.orgao}`;
+    setModalExistingId(emGestao.get(key) || null);
+    setModalEdital(seed);
+  }, [emGestao]);
+
+  const handleProcessoCriado = useCallback((licitacaoId: string) => {
+    if (!modalEdital) return;
+    const key = `${modalEdital.numero}||${modalEdital.orgao}`;
+    setEmGestao(prev => new Map(prev).set(key, licitacaoId));
+  }, [modalEdital]);
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -434,14 +471,30 @@ export default function MonitoramentoEditais() {
                 <p className="text-sm">Nenhum edital encontrado para os filtros selecionados.</p>
               </div>
             ) : (
-              resultado.data.map((edital) => (
-                <EditalCard
-                  key={edital.id}
-                  edital={edital}
-                  favoritado={favoritos.has(edital.id)}
-                  onFavoritar={() => toggleFavorito(edital.id)}
-                />
-              ))
+              resultado.data.map((edital) => {
+                const key = `${edital.numeroCompra}||${edital.orgao}`;
+                return (
+                  <EditalCard
+                    key={edital.id}
+                    edital={edital}
+                    favoritado={favoritos.has(edital.id)}
+                    onFavoritar={() => toggleFavorito(edital.id)}
+                    licitacaoId={emGestao.get(key) || null}
+                    onIniciarProcesso={() => abrirModalEdital({
+                      numero: edital.numeroCompra,
+                      orgao: edital.orgao,
+                      objeto: edital.objeto,
+                      modalidade: edital.modalidade,
+                      valor_estimado: edital.valorEstimado,
+                      uf: edital.uf,
+                      municipio: edital.municipio,
+                      data_encerramento: edital.dataEncerramento,
+                      portal: 'PNCP',
+                      url: edital.linkPncp,
+                    })}
+                  />
+                );
+              })
             )}
 
             {resultado.paginas > 1 && (
@@ -488,6 +541,14 @@ export default function MonitoramentoEditais() {
           </div>
         )}
       </div>
+
+      <EditalActionsModal
+        open={!!modalEdital}
+        onOpenChange={(v) => { if (!v) { setModalEdital(null); setModalExistingId(null); } }}
+        edital={modalEdital}
+        existingId={modalExistingId}
+        onCreated={handleProcessoCriado}
+      />
     </AppLayout>
   );
 }
@@ -498,9 +559,12 @@ interface EditalCardProps {
   edital: Edital;
   favoritado: boolean;
   onFavoritar: () => void;
+  licitacaoId: string | null;
+  onIniciarProcesso: () => void;
 }
 
-function EditalCard({ edital, favoritado, onFavoritar }: EditalCardProps) {
+function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, onIniciarProcesso }: EditalCardProps) {
+  const emGestao = !!licitacaoId;
   const [expandido, setExpandido] = useState(false);
   const statusCfg = STATUS_CONFIG[edital.status] || STATUS_CONFIG.encerrado;
   const { Icon: StatusIcon } = statusCfg;
@@ -538,6 +602,12 @@ function EditalCard({ edital, favoritado, onFavoritar }: EditalCardProps) {
                   {edital.esfera && (
                     <span className="text-xs text-muted-foreground">
                       {ESFERA_LABELS[edital.esfera] || edital.esfera}
+                    </span>
+                  )}
+                  {emGestao && (
+                    <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-success/15 text-success border border-success/30">
+                      <CheckCircle className="w-3 h-3" />
+                      Em gestão
                     </span>
                   )}
                 </div>
@@ -644,11 +714,22 @@ function EditalCard({ edital, favoritado, onFavoritar }: EditalCardProps) {
               href={edital.linkPncp}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-accent/10 text-accent hover:bg-accent/20 border border-accent/20 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              Ver no PNCP
+              PNCP
             </a>
+            <button
+              onClick={onIniciarProcesso}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                emGestao
+                  ? 'bg-success/10 text-success border-success/30 hover:bg-success/20'
+                  : 'bg-accent text-accent-foreground border-accent hover:bg-accent/90'
+              }`}
+            >
+              {emGestao ? <ArrowRight className="w-3.5 h-3.5" /> : <Rocket className="w-3.5 h-3.5" />}
+              {emGestao ? 'Abrir processo' : 'Iniciar processo'}
+            </button>
           </div>
         </div>
       </div>
