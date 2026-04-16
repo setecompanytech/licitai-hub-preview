@@ -6,7 +6,7 @@ import {
   MapPin, Building2, Calendar, Clock, CheckCircle2, XCircle,
   PauseCircle, ChevronLeft, ChevronRight,
   Bookmark, BookmarkCheck, Info, Loader2, RefreshCw, AlertCircle, FileText,
-  Rocket, ArrowRight, CheckCircle
+  Rocket, ArrowRight, CheckCircle, ListChecks
 } from 'lucide-react';
 import EditalActionsModal, { type EditalSeed } from '@/components/monitoramento/EditalActionsModal';
 import { useAuth } from '@/contexts/AuthContext';
