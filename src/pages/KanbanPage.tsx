@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { MapPin, Calendar, GripVertical, Plus, Pencil } from 'lucide-react';
+import { MapPin, Calendar, GripVertical, Plus, Pencil, LayoutDashboard, ListChecks } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import EditLicitacaoDialog from '@/components/kanban/EditLicitacaoDialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import CompromissosResumo from '@/components/gestao/CompromissosResumo';
 
 type LicitacaoKanban = {
   id: string;
@@ -146,15 +148,26 @@ export default function KanbanPage() {
 
   return (
     <AppLayout>
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Kanban — Gestão de Licitações</h1>
+      <div className="mb-4">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Licitações</h1>
         <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-          Arraste e solte para atualizar o status • {items.length} processos • {formatCurrency(totalValor)} em valor estimado
+          Kanban e Compromissos sincronizados com o Monitoramento de Editais • {items.length} processos • {formatCurrency(totalValor)} estimados
         </p>
       </div>
 
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Carregando...</p>
+      <Tabs defaultValue="kanban" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="kanban" className="gap-1.5">
+            <LayoutDashboard className="w-3.5 h-3.5" /> Kanban
+          </TabsTrigger>
+          <TabsTrigger value="compromissos" className="gap-1.5">
+            <ListChecks className="w-3.5 h-3.5" /> Compromissos
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="kanban">
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Carregando...</p>
       ) : items.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Plus className="w-12 h-12 text-muted-foreground/30 mb-4" />
@@ -239,7 +252,14 @@ export default function KanbanPage() {
             );
           })}
         </div>
-      )}
+        )}
+        </TabsContent>
+
+        <TabsContent value="compromissos">
+          <CompromissosResumo />
+        </TabsContent>
+      </Tabs>
+
       <EditLicitacaoDialog
         licitacao={editItem}
         open={editOpen}

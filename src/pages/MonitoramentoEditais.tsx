@@ -6,7 +6,7 @@ import {
   MapPin, Building2, Calendar, Clock, CheckCircle2, XCircle,
   PauseCircle, ChevronLeft, ChevronRight,
   Bookmark, BookmarkCheck, Info, Loader2, RefreshCw, AlertCircle, FileText,
-  Rocket, ArrowRight, CheckCircle
+  Rocket, ArrowRight, CheckCircle, ListChecks
 } from 'lucide-react';
 import EditalActionsModal, { type EditalSeed } from '@/components/monitoramento/EditalActionsModal';
 import { useAuth } from '@/contexts/AuthContext';
@@ -150,21 +150,35 @@ export default function MonitoramentoEditais() {
   // Map "numero||orgao" -> licitacao_id (processos já criados pelo usuário)
   const { user } = useAuth();
   const [emGestao, setEmGestao] = useState<Map<string, string>>(new Map());
+  // Map "numero||orgao" -> processos_interesse.id (compromissos do usuário)
+  const [emCompromissos, setEmCompromissos] = useState<Map<string, string>>(new Map());
   const [modalEdital, setModalEdital] = useState<EditalSeed | null>(null);
   const [modalExistingId, setModalExistingId] = useState<string | null>(null);
 
   const carregarEmGestao = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from('licitacoes')
-      .select('id, numero, orgao')
-      .eq('user_id', user.id)
-      .limit(2000);
-    const map = new Map<string, string>();
-    (data || []).forEach(l => {
-      if (l.numero && l.orgao) map.set(`${l.numero}||${l.orgao}`, l.id);
+    const [{ data: lics }, { data: comps }] = await Promise.all([
+      supabase
+        .from('licitacoes')
+        .select('id, numero, orgao')
+        .eq('user_id', user.id)
+        .limit(2000),
+      supabase
+        .from('processos_interesse')
+        .select('id, numero, orgao')
+        .eq('user_id', user.id)
+        .limit(2000),
+    ]);
+    const mapL = new Map<string, string>();
+    (lics || []).forEach(l => {
+      if (l.numero && l.orgao) mapL.set(`${l.numero}||${l.orgao}`, l.id);
     });
-    setEmGestao(map);
+    setEmGestao(mapL);
+    const mapC = new Map<string, string>();
+    (comps || []).forEach(c => {
+      if (c.numero && c.orgao) mapC.set(`${c.numero}||${c.orgao}`, c.id);
+    });
+    setEmCompromissos(mapC);
   }, [user]);
 
   useEffect(() => { carregarEmGestao(); }, [carregarEmGestao]);
@@ -179,6 +193,12 @@ export default function MonitoramentoEditais() {
     if (!modalEdital) return;
     const key = `${modalEdital.numero}||${modalEdital.orgao}`;
     setEmGestao(prev => new Map(prev).set(key, licitacaoId));
+  }, [modalEdital]);
+
+  const handleCompromissoCriado = useCallback((compromissoId: string) => {
+    if (!modalEdital) return;
+    const key = `${modalEdital.numero}||${modalEdital.orgao}`;
+    setEmCompromissos(prev => new Map(prev).set(key, compromissoId));
   }, [modalEdital]);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -481,6 +501,7 @@ export default function MonitoramentoEditais() {
                     favoritado={favoritos.has(edital.id)}
                     onFavoritar={() => toggleFavorito(edital.id)}
                     licitacaoId={emGestao.get(key) || null}
+                    compromissoId={emCompromissos.get(key) || null}
                     onIniciarProcesso={() => abrirModalEdital({
                       numero: edital.numeroCompra,
                       orgao: edital.orgao,
@@ -549,6 +570,7 @@ export default function MonitoramentoEditais() {
         edital={modalEdital}
         existingId={modalExistingId}
         onCreated={handleProcessoCriado}
+        onCompromissoCreated={handleCompromissoCriado}
       />
     </AppLayout>
   );
@@ -561,11 +583,13 @@ interface EditalCardProps {
   favoritado: boolean;
   onFavoritar: () => void;
   licitacaoId: string | null;
+  compromissoId: string | null;
   onIniciarProcesso: () => void;
 }
 
-function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, onIniciarProcesso }: EditalCardProps) {
+function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoId, onIniciarProcesso }: EditalCardProps) {
   const emGestao = !!licitacaoId;
+  const emCompromisso = !!compromissoId;
   const [expandido, setExpandido] = useState(false);
   const statusCfg = STATUS_CONFIG[edital.status] || STATUS_CONFIG.encerrado;
   const { Icon: StatusIcon } = statusCfg;
@@ -610,6 +634,16 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, onIniciarPro
                       <CheckCircle className="w-3 h-3" />
                       Em gestão
                     </span>
+                  )}
+                  {emCompromisso && (
+                    <a
+                      href="/meus-compromissos"
+                      className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-info/15 text-info border border-info/30 hover:bg-info/25 transition-colors"
+                      title="Abrir em Meus Compromissos"
+                    >
+                      <ListChecks className="w-3 h-3" />
+                      Em compromissos
+                    </a>
                   )}
                 </div>
 
