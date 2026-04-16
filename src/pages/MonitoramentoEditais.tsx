@@ -411,7 +411,7 @@ export default function MonitoramentoEditais() {
         )}
 
         {/* Resultados */}
-        {resultado && (
+        {buscaRealizada && resultado && !carregando && (
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm px-1">
               <span className="text-muted-foreground">
