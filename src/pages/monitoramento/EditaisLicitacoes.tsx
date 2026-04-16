@@ -75,16 +75,25 @@ const CardEdital = ({
     ? new Date(edital.data_abertura_proposta)
     : null;
 
-  const agora = new Date();
-  const horasAteAbertura = dataAbertura
-    ? (dataAbertura.getTime() - agora.getTime()) / 3600000
+  const dataEncerramento = edital.data_encerramento_proposta
+    ? new Date(edital.data_encerramento_proposta)
     : null;
 
-  const urgente = horasAteAbertura !== null
-    && horasAteAbertura > 0
-    && horasAteAbertura <= 24;
+  const agora = new Date();
 
-  const encerrado = horasAteAbertura !== null && horasAteAbertura <= 0;
+  // Urgente: faltam menos de 24h para o ENCERRAMENTO das propostas
+  const horasAteEncerramento = dataEncerramento
+    ? (dataEncerramento.getTime() - agora.getTime()) / 3600000
+    : null;
+
+  const urgente = horasAteEncerramento !== null
+    && horasAteEncerramento > 0
+    && horasAteEncerramento <= 24;
+
+  // Encerrado: prazo de recebimento de propostas já passou
+  const encerrado = dataEncerramento !== null
+    ? horasAteEncerramento! <= 0
+    : (dataAbertura !== null && (dataAbertura.getTime() - agora.getTime()) / 3600000 <= 0 && edital.situacao?.toLowerCase() !== 'publicado');
 
   const fmtData = (iso: string) =>
     iso ? new Date(iso).toLocaleString("pt-BR", {
