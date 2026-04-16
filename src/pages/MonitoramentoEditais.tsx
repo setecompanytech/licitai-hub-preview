@@ -121,10 +121,10 @@ function calcularDiasRestantes(iso: string | null): number | null {
 export default function MonitoramentoEditais() {
   const [filtros, setFiltros] = useState({
     termo: '',
-    uf: '',
-    modalidade: '',
+    uf: 'all',
+    modalidade: 'all',
     situacao: 'abertas',
-    esfera: '',
+    esfera: 'all',
     dataInicial: '',
     dataFinal: '',
   });
@@ -151,12 +151,20 @@ export default function MonitoramentoEditais() {
     setErro(null);
 
     try {
+      // Convert 'all' sentinel values to empty strings for the API
+      const apiBody = {
+        termo: filtros.termo,
+        uf: filtros.uf === 'all' ? '' : filtros.uf,
+        modalidade: filtros.modalidade === 'all' ? '' : filtros.modalidade,
+        situacao: filtros.situacao,
+        esfera: filtros.esfera === 'all' ? '' : filtros.esfera,
+        dataInicial: filtros.dataInicial,
+        dataFinal: filtros.dataFinal,
+        pagina: pag,
+        tamanhoPagina: 20,
+      };
       const { data, error } = await supabase.functions.invoke('busca-licitacoes', {
-        body: {
-          ...filtros,
-          pagina: pag,
-          tamanhoPagina: 20,
-        },
+        body: apiBody,
       });
 
       if (error) throw new Error(error.message);
@@ -190,7 +198,7 @@ export default function MonitoramentoEditais() {
   };
 
   const limparFiltros = () => {
-    setFiltros({ termo: '', uf: '', modalidade: '', situacao: 'abertas', esfera: '', dataInicial: '', dataFinal: '' });
+    setFiltros({ termo: '', uf: 'all', modalidade: 'all', situacao: 'abertas', esfera: 'all', dataInicial: '', dataFinal: '' });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
