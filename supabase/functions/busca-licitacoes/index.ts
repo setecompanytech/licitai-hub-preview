@@ -132,7 +132,8 @@ Deno.serve(async (req) => {
     if (termo) params.set('q', termo);
     if (uf) params.set('uf', uf.toUpperCase());
     if (esfera) params.set('codigoEsfera', esfera);
-    if (modalidade) params.set('codigoModalidadeContratacao', String(modalidade));
+    // codigoModalidadeContratacao is REQUIRED by PNCP API
+    params.set('codigoModalidadeContratacao', String(modalidade || 6));
 
     // PNCP uses /publicacao for all queries; filter by status client-side
     endpoint = `${PNCP_BASE}/contratacoes/publicacao`;
