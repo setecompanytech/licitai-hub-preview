@@ -1,12 +1,14 @@
 /**
  * busca-licitacoes — Edge Function PNCP
  *
- * CORREÇÕES:
- * 1. Campo de valor: `valorTotalEstimado` (não `valorEstimado`)
+ * v3 — Correções:
+ * 1. Campo de valor: `valorTotalEstimado`
  * 2. Endpoint /proposta para editais com propostas abertas
  * 3. Status derivado de situacaoCompraId + comparação de datas
  * 4. Filtro de situação: 'abertas' | 'todas' | 'encerradas'
- * 5. Paginação correta com totalRegistros
+ * 5. Paginação correta — total ajustado após filtragem
+ * 6. Modalidade opcional — omitida quando "todas"
+ * 7. Range de datas padrão: 30 dias
  */
 
 import { getCorsHeaders } from '../_shared/security-headers.ts';
@@ -52,6 +54,7 @@ function calcularStatus(item: Record<string, unknown>): string {
 
   if ([2, 3, 7, 8].includes(situacaoId)) return 'encerrado';
   if (situacaoId === 4) return 'suspenso';
+  if (situacaoId === 5) return 'encerrado';
   if (situacaoId === 6) return 'homologado';
 
   if (encerramento && encerramento < agora) return 'encerrado';
@@ -95,6 +98,10 @@ function mapearItem(item: Record<string, unknown>) {
   };
 }
 
+function formatDate(d: Date): string {
+  return d.toISOString().slice(0, 10).replace(/-/g, '');
+}
+
 Deno.serve(async (req) => {
   const cors = getCorsHeaders(req);
 
@@ -117,13 +124,12 @@ Deno.serve(async (req) => {
     } = body;
 
     const hoje = new Date();
-    const hojeFmt = hoje.toISOString().slice(0, 10).replace(/-/g, '');
-    const inicio7 = new Date(hoje);
-    inicio7.setDate(inicio7.getDate() - 7);
-    const inicio7Fmt = inicio7.toISOString().slice(0, 10).replace(/-/g, '');
-
-    let endpoint: string;
     const pageSize = Math.max(10, Math.min(tamanhoPagina, 50));
+
+    // Default: 30 dias atrás
+    const inicio30 = new Date(hoje);
+    inicio30.setDate(inicio30.getDate() - 30);
+
     const params = new URLSearchParams({
       pagina: String(pagina),
       tamanhoPagina: String(pageSize),
@@ -132,14 +138,17 @@ Deno.serve(async (req) => {
     if (termo) params.set('q', termo);
     if (uf) params.set('uf', uf.toUpperCase());
     if (esfera) params.set('codigoEsfera', esfera);
-    // codigoModalidadeContratacao is REQUIRED by PNCP API
-    params.set('codigoModalidadeContratacao', String(modalidade || 6));
 
-    // PNCP uses /publicacao for all queries; filter by status client-side
-    endpoint = `${PNCP_BASE}/contratacoes/publicacao`;
-    params.set('dataInicial', dataInicial ? dataInicial.replace(/-/g, '') : inicio7Fmt);
-    params.set('dataFinal', dataFinal ? dataFinal.replace(/-/g, '') : hojeFmt);
+    // Modalidade: só envia se especificada (não forçar Pregão)
+    if (modalidade && modalidade !== 'all') {
+      params.set('codigoModalidadeContratacao', String(modalidade));
+    }
 
+    // Dates
+    params.set('dataInicial', dataInicial ? dataInicial.replace(/-/g, '') : formatDate(inicio30));
+    params.set('dataFinal', dataFinal ? dataFinal.replace(/-/g, '') : formatDate(hoje));
+
+    const endpoint = `${PNCP_BASE}/contratacoes/publicacao`;
     const url = `${endpoint}?${params.toString()}`;
     console.log(`PNCP request: ${url}`);
 
@@ -153,9 +162,53 @@ Deno.serve(async (req) => {
 
     if (!resp.ok) {
       const errText = await resp.text();
-      console.error(`PNCP error ${resp.status}: ${errText.slice(0, 300)}`);
+      console.error(`PNCP error ${resp.status}: ${errText.slice(0, 500)}`);
+
+      // Se o erro é por falta de modalidade, tenta com Pregão como fallback
+      if (resp.status === 400 && !params.has('codigoModalidadeContratacao')) {
+        console.log('Retrying with modalidade=6 (Pregão Eletrônico) as fallback');
+        params.set('codigoModalidadeContratacao', '6');
+        const retryUrl = `${endpoint}?${params.toString()}`;
+        const retryResp = await fetch(retryUrl, {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'Praefectus/1.0 (licitacoes@praefectus.com.br)',
+          },
+          signal: AbortSignal.timeout(30_000),
+        });
+
+        if (retryResp.ok) {
+          const retryJson = await retryResp.json();
+          const retryItems: Record<string, unknown>[] = retryJson.data || [];
+          let resultado = retryItems;
+          if (situacao === 'abertas') {
+            resultado = retryItems.filter(i => {
+              const s = calcularStatus(i);
+              return s === 'aberto' || s === 'aguardando';
+            });
+          } else if (situacao === 'encerradas') {
+            resultado = retryItems.filter(i => calcularStatus(i) === 'encerrado');
+          }
+
+          const filteredCount = resultado.length;
+          const totalOriginal = retryJson.totalRegistros || retryItems.length;
+
+          return new Response(JSON.stringify({
+            data: resultado.map(mapearItem),
+            total: situacao === 'todas' ? totalOriginal : filteredCount,
+            paginas: situacao === 'todas'
+              ? (retryJson.totalPaginas || Math.ceil(totalOriginal / pageSize))
+              : Math.max(1, Math.ceil(filteredCount / pageSize)),
+            pagina,
+            aviso: 'Pesquisa limitada ao Pregão Eletrônico. Para outras modalidades, selecione uma específica.',
+          }), {
+            headers: { ...cors, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
       return new Response(JSON.stringify({
-        error: `Erro na consulta PNCP: ${resp.status}`,
+        error: `Erro na consulta PNCP (HTTP ${resp.status}). Tente novamente.`,
         data: [], total: 0, paginas: 0,
       }), {
         status: 200,
@@ -169,15 +222,23 @@ Deno.serve(async (req) => {
     // Filter by status
     let resultado = items;
     if (situacao === 'abertas') {
-      resultado = items.filter(i => calcularStatus(i) === 'aberto' || calcularStatus(i) === 'aguardando');
+      resultado = items.filter(i => {
+        const s = calcularStatus(i);
+        return s === 'aberto' || s === 'aguardando';
+      });
     } else if (situacao === 'encerradas') {
       resultado = items.filter(i => calcularStatus(i) === 'encerrado');
     }
 
+    const filteredCount = resultado.length;
+    const totalOriginal = json.totalRegistros || items.length;
+
     return new Response(JSON.stringify({
       data: resultado.map(mapearItem),
-      total: json.totalRegistros || resultado.length,
-      paginas: json.totalPaginas || Math.ceil((json.totalRegistros || resultado.length) / pageSize),
+      total: situacao === 'todas' ? totalOriginal : filteredCount,
+      paginas: situacao === 'todas'
+        ? (json.totalPaginas || Math.ceil(totalOriginal / pageSize))
+        : Math.max(1, Math.ceil(filteredCount / pageSize)),
       pagina,
     }), {
       headers: { ...cors, 'Content-Type': 'application/json' },
@@ -189,7 +250,7 @@ Deno.serve(async (req) => {
       error: err instanceof Error ? err.message : 'Erro interno',
       data: [], total: 0, paginas: 0,
     }), {
-      status: 500,
+      status: 200,
       headers: { ...cors, 'Content-Type': 'application/json' },
     });
   }
