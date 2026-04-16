@@ -570,6 +570,7 @@ export default function MonitoramentoEditais() {
         edital={modalEdital}
         existingId={modalExistingId}
         onCreated={handleProcessoCriado}
+        onCompromissoCreated={handleCompromissoCriado}
       />
     </AppLayout>
   );
@@ -582,11 +583,13 @@ interface EditalCardProps {
   favoritado: boolean;
   onFavoritar: () => void;
   licitacaoId: string | null;
+  compromissoId: string | null;
   onIniciarProcesso: () => void;
 }
 
-function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, onIniciarProcesso }: EditalCardProps) {
+function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoId, onIniciarProcesso }: EditalCardProps) {
   const emGestao = !!licitacaoId;
+  const emCompromisso = !!compromissoId;
   const [expandido, setExpandido] = useState(false);
   const statusCfg = STATUS_CONFIG[edital.status] || STATUS_CONFIG.encerrado;
   const { Icon: StatusIcon } = statusCfg;
