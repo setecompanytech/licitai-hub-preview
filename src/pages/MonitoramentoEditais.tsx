@@ -706,11 +706,22 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, onIniciarPro
               href={edital.linkPncp}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-accent/10 text-accent hover:bg-accent/20 border border-accent/20 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              Ver no PNCP
+              PNCP
             </a>
+            <button
+              onClick={onIniciarProcesso}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                emGestao
+                  ? 'bg-success/10 text-success border-success/30 hover:bg-success/20'
+                  : 'bg-accent text-accent-foreground border-accent hover:bg-accent/90'
+              }`}
+            >
+              {emGestao ? <ArrowRight className="w-3.5 h-3.5" /> : <Rocket className="w-3.5 h-3.5" />}
+              {emGestao ? 'Abrir processo' : 'Iniciar processo'}
+            </button>
           </div>
         </div>
       </div>
