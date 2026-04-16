@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
 
     // PNCP uses /publicacao for all queries; filter by status client-side
     endpoint = `${PNCP_BASE}/contratacoes/publicacao`;
-    params.set('dataInicial', dataInicial ? dataInicial.replace(/-/g, '') : inicio30Fmt);
+    params.set('dataInicial', dataInicial ? dataInicial.replace(/-/g, '') : inicio7Fmt);
     params.set('dataFinal', dataFinal ? dataFinal.replace(/-/g, '') : hojeFmt);
 
     const url = `${endpoint}?${params.toString()}`;
