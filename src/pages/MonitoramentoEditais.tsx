@@ -135,6 +135,7 @@ export default function MonitoramentoEditais() {
   const [pagina, setPagina] = useState(1);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [buscaRealizada, setBuscaRealizada] = useState(false);
 
   const [favoritos, setFavoritos] = useState<Set<string>>(() => {
     try {
