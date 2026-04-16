@@ -377,6 +377,14 @@ export default function MonitoramentoEditais() {
           </div>
         )}
 
+        {/* Aviso */}
+        {resultado?.aviso && (
+          <div className="flex items-start gap-3 rounded-xl border border-warning/20 bg-warning/5 px-4 py-3.5 text-sm text-warning">
+            <Info className="w-4 h-4 mt-0.5 shrink-0" />
+            <p>{resultado.aviso}</p>
+          </div>
+        )}
+
         {/* Loading */}
         {carregando && !resultado && (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
