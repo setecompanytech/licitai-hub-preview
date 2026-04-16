@@ -135,6 +135,7 @@ Deno.serve(async (req) => {
 
     if (situacao === 'abertas') {
       endpoint = `${PNCP_BASE}/contratacoes/proposta`;
+      params.set('dataInicial', dataInicial ? dataInicial.replace(/-/g, '') : inicio30Fmt);
       params.set('dataFinal', dataFinal ? dataFinal.replace(/-/g, '') : hojeFmt);
     } else {
       endpoint = `${PNCP_BASE}/contratacoes/publicacao`;
