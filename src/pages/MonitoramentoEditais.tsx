@@ -501,6 +501,7 @@ export default function MonitoramentoEditais() {
                     favoritado={favoritos.has(edital.id)}
                     onFavoritar={() => toggleFavorito(edital.id)}
                     licitacaoId={emGestao.get(key) || null}
+                    compromissoId={emCompromissos.get(key) || null}
                     onIniciarProcesso={() => abrirModalEdital({
                       numero: edital.numeroCompra,
                       orgao: edital.orgao,
