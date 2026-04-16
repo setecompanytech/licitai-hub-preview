@@ -551,9 +551,12 @@ interface EditalCardProps {
   edital: Edital;
   favoritado: boolean;
   onFavoritar: () => void;
+  licitacaoId: string | null;
+  onIniciarProcesso: () => void;
 }
 
-function EditalCard({ edital, favoritado, onFavoritar }: EditalCardProps) {
+function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, onIniciarProcesso }: EditalCardProps) {
+  const emGestao = !!licitacaoId;
   const [expandido, setExpandido] = useState(false);
   const statusCfg = STATUS_CONFIG[edital.status] || STATUS_CONFIG.encerrado;
   const { Icon: StatusIcon } = statusCfg;
