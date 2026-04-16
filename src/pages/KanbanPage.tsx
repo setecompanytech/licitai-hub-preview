@@ -250,9 +250,15 @@ export default function KanbanPage() {
                 </div>
               </div>
             );
-          })}
-        </div>
-      )}
+          </div>
+        )}
+        </TabsContent>
+
+        <TabsContent value="compromissos">
+          <CompromissosResumo />
+        </TabsContent>
+      </Tabs>
+
       <EditLicitacaoDialog
         licitacao={editItem}
         open={editOpen}
