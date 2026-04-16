@@ -53,6 +53,7 @@ interface ResultadoBusca {
   total: number;
   paginas: number;
   pagina: number;
+  aviso?: string;
 }
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
