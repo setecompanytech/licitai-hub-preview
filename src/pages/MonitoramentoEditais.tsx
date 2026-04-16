@@ -67,16 +67,17 @@ const UFS = [
   'SE','SP','TO',
 ];
 
+// Modalidades conforme Lei 14.133/2021 (Art. 28 + procedimentos auxiliares Art. 78)
+// Forma eletrônica é a regra (Art. 17, §2º). Presencial só em caráter excepcional justificado.
 const MODALIDADES = [
-  { id: 6, label: 'Pregão Eletrônico' },
-  { id: 7, label: 'Pregão Presencial' },
-  { id: 4, label: 'Concorrência Eletrônica' },
-  { id: 5, label: 'Concorrência Presencial' },
+  { id: 6, label: 'Pregão' },
+  { id: 4, label: 'Concorrência' },
+  { id: 3, label: 'Concurso' },
+  { id: 1, label: 'Leilão' },
+  { id: 2, label: 'Diálogo Competitivo' },
   { id: 8, label: 'Dispensa de Licitação' },
   { id: 9, label: 'Inexigibilidade' },
   { id: 12, label: 'Credenciamento' },
-  { id: 1, label: 'Leilão Eletrônico' },
-  { id: 3, label: 'Concurso' },
 ];
 
 const STATUS_CONFIG = {
