@@ -217,7 +217,7 @@ const filtrosVazios: FiltrosLei14133 = {
 // ─── Componente principal ────────────────────────────────────────────────────
 
 export default function MonitoramentoEditais() {
-  const [filtros, setFiltros] = useState<FiltrosSiasg>(filtrosVazios);
+  const [filtros, setFiltros] = useState<FiltrosLei14133>(filtrosVazios);
   const [tempUasg, setTempUasg] = useState('');
   const [tempMunicipio, setTempMunicipio] = useState('');
 
