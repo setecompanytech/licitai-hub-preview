@@ -528,7 +528,7 @@ export default function MonitoramentoEditais() {
     if (filtros.modalidades.length > 0) n++;
     if (filtros.tiposConc.length > 0) n++;
     if (filtros.tiposPregao.length > 0) n++;
-    if (filtros.tiposRdc.length > 0) n++;
+    if (filtros.tiposLeilao.length > 0) n++;
     if (filtros.ufs.length > 0) n++;
     if (filtros.municipios.length > 0) n++;
     if (filtros.uasgs.length > 0) n++;
