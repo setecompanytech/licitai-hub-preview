@@ -639,62 +639,91 @@ export default function MonitoramentoEditais() {
               </div>
             </div>
 
-            {/* Linha 3: Modalidades + sub-tipos (4 colunas como SIASG) */}
+            {/* Linha 3: Modalidades — Lei 14.133/2021 (Art. 28) */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-              <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">Modalidades</Label>
-              <div className="md:col-span-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3">
-                {/* Coluna 1: Modalidades base */}
-                <div className="space-y-1.5">
-                  {MODALIDADES_SIASG.map(m => (
-                    <CheckboxRow
-                      key={m.id}
-                      checked={filtros.modalidades.includes(m.id)}
-                      onChange={() => setMod(m.id)}
-                      label={m.label}
-                    />
-                  ))}
+              <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">
+                Modalidades
+                <span className="block text-[10px] text-muted-foreground/70 font-normal mt-0.5">
+                  Lei 14.133/2021
+                </span>
+              </Label>
+              <div className="md:col-span-10 space-y-4">
+                {/* Bloco 1: Modalidades de Licitação (Art. 28) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3">
+                  {/* Coluna 1: Modalidades base */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-foreground mb-1">Modalidades de Licitação</p>
+                    {MODALIDADES_LEI14133.map(m => (
+                      <CheckboxRow
+                        key={m.id}
+                        checked={filtros.modalidades.includes(m.id)}
+                        onChange={() => setMod(m.id)}
+                        label={m.label}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Coluna 2: Tipos de Concorrência */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-foreground mb-1">Tipos de Concorrência</p>
+                    {TIPOS_CONCORRENCIA.map(t => (
+                      <CheckboxRow
+                        key={t.id}
+                        checked={filtros.tiposConc.includes(t.id)}
+                        onChange={() => toggleArr('tiposConc', t.id)}
+                        label={t.label}
+                        disabled={!filtros.modalidades.includes('concorrencia') && !filtros.modalidades.includes('todas')}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Coluna 3: Tipos de Pregão */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-foreground mb-1">Tipos de Pregão</p>
+                    {TIPOS_PREGAO.map(t => (
+                      <CheckboxRow
+                        key={t.id}
+                        checked={filtros.tiposPregao.includes(t.id)}
+                        onChange={() => toggleArr('tiposPregao', t.id)}
+                        label={t.label}
+                        disabled={!filtros.modalidades.includes('pregao') && !filtros.modalidades.includes('todas')}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Coluna 4: Tipos de Leilão */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-foreground mb-1">Tipos de Leilão</p>
+                    {TIPOS_LEILAO.map(t => (
+                      <CheckboxRow
+                        key={t.id}
+                        checked={filtros.tiposLeilao.includes(t.id)}
+                        onChange={() => toggleArr('tiposLeilao', t.id)}
+                        label={t.label}
+                        disabled={!filtros.modalidades.includes('leilao') && !filtros.modalidades.includes('todas')}
+                      />
+                    ))}
+                  </div>
                 </div>
 
-                {/* Coluna 2: Tipos de Concorrência */}
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-foreground mb-1">Tipos de Concorrência</p>
-                  {TIPOS_CONCORRENCIA.map(t => (
-                    <CheckboxRow
-                      key={t.id}
-                      checked={filtros.tiposConc.includes(t.id)}
-                      onChange={() => toggleArr('tiposConc', t.id)}
-                      label={t.label}
-                      disabled={!filtros.modalidades.includes('concorrencia') && !filtros.modalidades.includes('todas')}
-                    />
-                  ))}
-                </div>
-
-                {/* Coluna 3: Tipos de Pregão */}
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-foreground mb-1">Tipos de Pregão</p>
-                  {TIPOS_PREGAO.map(t => (
-                    <CheckboxRow
-                      key={t.id}
-                      checked={filtros.tiposPregao.includes(t.id)}
-                      onChange={() => toggleArr('tiposPregao', t.id)}
-                      label={t.label}
-                      disabled={!filtros.modalidades.includes('pregao') && !filtros.modalidades.includes('todas')}
-                    />
-                  ))}
-                </div>
-
-                {/* Coluna 4: Tipos de RDC */}
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-foreground mb-1">Tipos de RDC</p>
-                  {TIPOS_RDC.map(t => (
-                    <CheckboxRow
-                      key={t.id}
-                      checked={filtros.tiposRdc.includes(t.id)}
-                      onChange={() => toggleArr('tiposRdc', t.id)}
-                      label={t.label}
-                      disabled={!filtros.modalidades.includes('rdc') && !filtros.modalidades.includes('todas')}
-                    />
-                  ))}
+                {/* Bloco 2: Contratações Diretas (Arts. 74–79) */}
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                  <p className="text-xs font-semibold text-foreground mb-2">
+                    Contratações Diretas
+                    <span className="text-[10px] text-muted-foreground font-normal ml-1.5">
+                      (Arts. 74–79 — Lei 14.133/2021)
+                    </span>
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-2">
+                    {CONTRATACOES_DIRETAS.map(m => (
+                      <CheckboxRow
+                        key={m.id}
+                        checked={filtros.modalidades.includes(m.id)}
+                        onChange={() => setMod(m.id)}
+                        label={m.label}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
