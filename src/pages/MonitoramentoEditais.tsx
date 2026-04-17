@@ -611,18 +611,16 @@ export default function MonitoramentoEditais() {
 
               <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">Período de Publicação</Label>
               <div className="md:col-span-4 flex items-center gap-2">
-                <Input
-                  placeholder="dd/mm/aaaa"
+                <DateField
                   value={filtros.dataIni}
-                  onChange={e => setFiltros(p => ({ ...p, dataIni: formatDateInput(e.target.value) }))}
-                  className="h-9 max-w-[140px]"
+                  onChange={(v) => setFiltros(p => ({ ...p, dataIni: v }))}
+                  placeholder="dd/mm/aaaa"
                 />
                 <span className="text-xs text-muted-foreground">até</span>
-                <Input
-                  placeholder="dd/mm/aaaa"
+                <DateField
                   value={filtros.dataFim}
-                  onChange={e => setFiltros(p => ({ ...p, dataFim: formatDateInput(e.target.value) }))}
-                  className="h-9 max-w-[140px]"
+                  onChange={(v) => setFiltros(p => ({ ...p, dataFim: v }))}
+                  placeholder="dd/mm/aaaa"
                 />
               </div>
             </div>
