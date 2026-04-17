@@ -72,13 +72,13 @@ export default function ReextrairEditalButton({ licitacaoId, label, size = 'sm',
 
         {status?.status === 'success' && (
           <Badge variant="outline" className="gap-1 text-xs">
-            <CheckCircle2 className="w-3 h-3 text-green-600" />
+            <CheckCircle2 className="w-3 h-3 text-success" />
             {status.total_itens} itens · {status.fonte}
           </Badge>
         )}
         {status?.status === 'failed' && (
           <Badge variant="outline" className="gap-1 text-xs">
-            <AlertCircle className="w-3 h-3 text-amber-600" />
+            <AlertCircle className="w-3 h-3 text-warning" />
             Falha — use upload manual
           </Badge>
         )}
