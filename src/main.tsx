@@ -3,6 +3,10 @@ import { HelmetProvider } from "react-helmet-async";
 import App from "./App.tsx";
 import "./index.css";
 import { initSecurityGuard } from "./lib/security-guard";
+import { clearChunkReloadState, installChunkErrorRecovery } from "./lib/chunk-recovery";
+
+installChunkErrorRecovery();
+clearChunkReloadState();
 
 const clearLegacyBrowserState = async () => {
   if (typeof window === "undefined") return;
@@ -27,8 +31,10 @@ initSecurityGuard();
 
 if (typeof window !== "undefined") {
   window.addEventListener("load", () => {
+    clearChunkReloadState();
     void clearLegacyBrowserState();
     window.setTimeout(() => {
+      clearChunkReloadState();
       void clearLegacyBrowserState();
     }, 1500);
   });
