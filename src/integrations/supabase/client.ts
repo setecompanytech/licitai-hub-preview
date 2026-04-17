@@ -20,42 +20,4 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     persistSession: true,
     autoRefreshToken: true,
   },
-  global: {
-    fetch: async (url, options = {}) => {
-      const MAX_RETRIES = 2;
-      const BASE_DELAY_MS = 1000;
-      // Endpoints de auth precisam de timeout maior — bcrypt+bot detection podem levar 20-30s
-      // em redes lentas (3G, ISPs regionais, firewalls corporativos com inspeção SSL).
-      const urlStr = typeof url === 'string' ? url : (url as URL).toString();
-      const isAuthEndpoint = urlStr.includes('/auth/v1/');
-      const TIMEOUT_MS = isAuthEndpoint ? 45000 : 20000;
-
-      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-          const response = await fetch(url as RequestInfo, {
-            ...options,
-            signal: controller.signal,
-          });
-
-          clearTimeout(timeoutId);
-          return response;
-        } catch (error: unknown) {
-          const isLastAttempt = attempt === MAX_RETRIES;
-          const isAbort = error instanceof Error && error.name === 'AbortError';
-
-          // NÃO faz retry em endpoints de auth — POST /token não é idempotente
-          // e retentar pode acionar rate-limit do GoTrue.
-          if (isAbort || isLastAttempt || isAuthEndpoint) throw error;
-
-          const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
-      }
-
-      throw new Error('Falha na requisição após múltiplas tentativas.');
-    },
-  },
 });
