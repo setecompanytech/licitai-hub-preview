@@ -492,15 +492,15 @@ export default function MonitoramentoEditais() {
   };
 
   // Helpers de toggle multi-select
-  const toggleArr = <K extends keyof FiltrosSiasg>(campo: K, valor: any) => {
+  const toggleArr = <K extends keyof FiltrosLei14133>(campo: K, valor: any) => {
     setFiltros(prev => {
       const arr = prev[campo] as any[];
       const next = arr.includes(valor) ? arr.filter(v => v !== valor) : [...arr, valor];
-      return { ...prev, [campo]: next } as FiltrosSiasg;
+      return { ...prev, [campo]: next } as FiltrosLei14133;
     });
   };
 
-  const setMod = (m: ModalidadeSiasg) => {
+  const setMod = (m: ModalidadeLei14133) => {
     if (m === 'todas') {
       setFiltros(prev => ({ ...prev, modalidades: prev.modalidades.includes('todas') ? [] : ['todas'] }));
     } else {
