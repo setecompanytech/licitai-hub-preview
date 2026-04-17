@@ -149,7 +149,7 @@ export function ProcessoAtivoProvider({ children }: { children: ReactNode }) {
               Deseja realmente trocar de processo? As alterações não salvas serão perdidas.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-col sm:flex-row">
             <AlertDialogCancel onClick={() => setPendingSwitch(null)}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
               if (pendingSwitch) applySwitch(pendingSwitch.id);
