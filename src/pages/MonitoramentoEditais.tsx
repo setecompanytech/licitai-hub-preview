@@ -288,14 +288,18 @@ export default function MonitoramentoEditais() {
 
   const abortRef = useRef<AbortController | null>(null);
 
-  // Resolve modalidade_id efetiva a partir das escolhas SIASG
+  // Resolve modalidade_id efetiva conforme Lei 14.133/2021
   const modalidadesEfetivas = useMemo<number[]>(() => {
     const ids = new Set<number>();
     if (filtros.modalidades.includes('todas')) return [];
-    if (filtros.modalidades.includes('convite')) ids.add(11);
-    if (filtros.modalidades.includes('tomada')) ids.add(10);
     if (filtros.modalidades.includes('concurso')) ids.add(3);
-    // Concorrência: sub-tipos definem se eletrônica (4) ou presencial (5)
+    if (filtros.modalidades.includes('dialogo')) ids.add(2);
+    if (filtros.modalidades.includes('dispensa')) ids.add(8);
+    if (filtros.modalidades.includes('inexigibilidade')) ids.add(9);
+    if (filtros.modalidades.includes('credenciamento')) ids.add(12);
+    if (filtros.modalidades.includes('pre_qualificacao')) ids.add(11);
+    if (filtros.modalidades.includes('manifestacao')) ids.add(10);
+    // Concorrência: eletrônica (4) ou presencial (5)
     if (filtros.modalidades.includes('concorrencia')) {
       if (filtros.tiposConc.length === 0 || filtros.tiposConc.includes('todos_conc')) {
         ids.add(4); ids.add(5);
@@ -306,7 +310,7 @@ export default function MonitoramentoEditais() {
         });
       }
     }
-    // Pregão: sub-tipos definem eletrônico (6) ou presencial (7)
+    // Pregão: eletrônico (6) ou presencial (7)
     if (filtros.modalidades.includes('pregao')) {
       if (filtros.tiposPregao.length === 0 || filtros.tiposPregao.includes('todos_pregao')) {
         ids.add(6); ids.add(7);
@@ -317,9 +321,19 @@ export default function MonitoramentoEditais() {
         });
       }
     }
-    // RDC não tem modalidade_id no PNCP novo (Lei 14.133 revogou) — vai por filtro de objeto
+    // Leilão: eletrônico (1) ou presencial (13)
+    if (filtros.modalidades.includes('leilao')) {
+      if (filtros.tiposLeilao.length === 0 || filtros.tiposLeilao.includes('todos_leilao')) {
+        ids.add(1); ids.add(13);
+      } else {
+        filtros.tiposLeilao.forEach(t => {
+          const cfg = TIPOS_LEILAO.find(x => x.id === t);
+          if (cfg?.modalidadeId) ids.add(cfg.modalidadeId);
+        });
+      }
+    }
     return Array.from(ids);
-  }, [filtros.modalidades, filtros.tiposConc, filtros.tiposPregao]);
+  }, [filtros.modalidades, filtros.tiposConc, filtros.tiposPregao, filtros.tiposLeilao]);
 
   const buscar = useCallback(async (pag = 1) => {
     if (abortRef.current) abortRef.current.abort();
