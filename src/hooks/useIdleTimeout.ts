@@ -5,7 +5,12 @@ const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const LAST_ACTIVITY_KEY = 'praefectus_last_activity';
 const THROTTLE_MS = 30_000; // update storage at most every 30s
 
-export function useIdleTimeout() {
+/**
+ * Auto-logout por inatividade. SOMENTE atua quando há usuário autenticado.
+ * Sem essa guarda, o hook lia 'last_activity' antigo do localStorage e
+ * derrubava sessões recém-criadas de login.
+ */
+export function useIdleTimeout(enabled: boolean = true) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastWriteRef = useRef(0);
 
@@ -16,19 +21,23 @@ export function useIdleTimeout() {
 
   const resetTimer = useCallback(() => {
     const now = Date.now();
-
-    // Throttle localStorage writes
     if (now - lastWriteRef.current > THROTTLE_MS) {
       localStorage.setItem(LAST_ACTIVITY_KEY, String(now));
       lastWriteRef.current = now;
     }
-
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(logout, IDLE_TIMEOUT_MS);
   }, [logout]);
 
   useEffect(() => {
-    // On mount, check if user was away too long (closed tab scenario)
+    if (!enabled) {
+      // Limpa qualquer marcação prévia para não afetar logins futuros
+      localStorage.removeItem(LAST_ACTIVITY_KEY);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      return;
+    }
+
+    // Só checa "ausência prolongada" se HAVIA atividade registrada para este user logado
     const lastActivity = localStorage.getItem(LAST_ACTIVITY_KEY);
     if (lastActivity) {
       const elapsed = Date.now() - Number(lastActivity);
@@ -38,14 +47,12 @@ export function useIdleTimeout() {
       }
     }
 
-    // Set initial activity
     localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
     lastWriteRef.current = Date.now();
 
     const events: (keyof WindowEventMap)[] = [
       'mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click',
     ];
-
     events.forEach((e) => window.addEventListener(e, resetTimer, { passive: true }));
     resetTimer();
 
@@ -53,5 +60,5 @@ export function useIdleTimeout() {
       events.forEach((e) => window.removeEventListener(e, resetTimer));
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [resetTimer, logout]);
+  }, [enabled, resetTimer, logout]);
 }
