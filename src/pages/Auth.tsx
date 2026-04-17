@@ -76,6 +76,44 @@ export default function Auth() {
     }
   }, [user, navigate, redirectAfterAuth, step]);
 
+  // Teste de conectividade com o backend ao montar a tela
+  useEffect(() => {
+    let cancelled = false;
+    const checkConnectivity = async () => {
+      const url = import.meta.env.VITE_SUPABASE_URL;
+      const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      if (!url || !key) {
+        if (!cancelled) setNetworkError(true);
+        return;
+      }
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const response = await fetch(`${url}/auth/v1/health`, {
+          method: 'GET',
+          headers: { apikey: key },
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (!cancelled && !response.ok && response.status !== 401 && response.status !== 400) {
+          setNetworkError(true);
+          toast.error(`Servidor retornou status ${response.status}. O sistema pode estar em manutenção.`);
+        }
+      } catch (err: unknown) {
+        if (cancelled) return;
+        const name = err instanceof Error ? err.name : 'unknown';
+        setNetworkError(true);
+        if (name === 'AbortError') {
+          toast.error('Servidor não respondeu no tempo esperado. Verifique sua conexão.');
+        } else {
+          toast.error('Não foi possível alcançar o servidor de autenticação. Tente limpar o cache.');
+        }
+      }
+    };
+    checkConnectivity();
+    return () => { cancelled = true; };
+  }, []);
+
   // MFA verification screen
   if (step === 'mfa') {
     return (
@@ -591,28 +629,26 @@ export default function Auth() {
                 <button onClick={() => setStep('forgot')} className="text-sm text-accent hover:underline">
                   Esqueceu a senha?
                 </button>
-                {networkError && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        if ('serviceWorker' in navigator) {
-                          const registrations = await navigator.serviceWorker.getRegistrations();
-                          await Promise.all(registrations.map((r) => r.unregister()));
-                        }
-                        if ('caches' in window) {
-                          const keys = await caches.keys();
-                          await Promise.all(keys.map((k) => caches.delete(k)));
-                        }
-                      } finally {
-                        window.location.reload();
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      if ('serviceWorker' in navigator) {
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        await Promise.all(registrations.map((r) => r.unregister()));
                       }
-                    }}
-                    className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
-                  >
-                    Limpar cache e recarregar
-                  </button>
-                )}
+                      if ('caches' in window) {
+                        const keys = await caches.keys();
+                        await Promise.all(keys.map((k) => caches.delete(k)));
+                      }
+                    } finally {
+                      window.location.href = window.location.href.split('?')[0] + '?v=' + Date.now();
+                    }
+                  }}
+                  className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors mt-1"
+                >
+                  Limpar cache e recarregar
+                </button>
               </div>
             </>
           )}
