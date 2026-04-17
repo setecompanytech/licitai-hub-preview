@@ -76,38 +76,37 @@ export default function Auth() {
     }
   }, [user, navigate, redirectAfterAuth, step]);
 
-  // Teste de conectividade com o backend ao montar a tela
+  // Teste silencioso de conectividade — apenas loga no console, NÃO bloqueia a UI.
+  // Removido o toast automático: redes lentas (3G, ISPs regionais, firewalls corporativos)
+  // disparavam falso positivo mesmo com servidor online. O erro real só aparece se
+  // o usuário tentar logar de fato e a requisição falhar.
   useEffect(() => {
     let cancelled = false;
     const checkConnectivity = async () => {
       const url = import.meta.env.VITE_SUPABASE_URL;
       const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       if (!url || !key) {
+        console.error('[PRAEFECTUS] Variáveis de ambiente ausentes no bundle');
         if (!cancelled) setNetworkError(true);
         return;
       }
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
         const response = await fetch(`${url}/auth/v1/health`, {
           method: 'GET',
           headers: { apikey: key },
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
-        if (!cancelled && !response.ok && response.status !== 401 && response.status !== 400) {
-          setNetworkError(true);
-          toast.error(`Servidor retornou status ${response.status}. O sistema pode estar em manutenção.`);
-        }
+        console.log(`[PRAEFECTUS] Health check: HTTP ${response.status} (${response.ok ? 'OK' : 'falha'})`);
       } catch (err: unknown) {
         if (cancelled) return;
         const name = err instanceof Error ? err.name : 'unknown';
-        setNetworkError(true);
-        if (name === 'AbortError') {
-          toast.error('Servidor não respondeu no tempo esperado. Verifique sua conexão.');
-        } else {
-          toast.error('Não foi possível alcançar o servidor de autenticação. Tente limpar o cache.');
-        }
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[PRAEFECTUS] Health check falhou silenciosamente: ${name} - ${msg}`);
+        // NÃO seta networkError nem mostra toast — o usuário pode tentar logar normalmente.
+        // Se o login falhar de verdade, o erro do supabase.auth.signIn será exibido.
       }
     };
     checkConnectivity();
