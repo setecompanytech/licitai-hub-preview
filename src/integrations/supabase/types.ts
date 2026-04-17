@@ -8281,6 +8281,59 @@ export type Database = {
         }
         Relationships: []
       }
+      processos_ingest_status: {
+        Row: {
+          arquivos_baixados: Json | null
+          erro: string | null
+          etapa: string | null
+          finalizado_em: string | null
+          fonte: string | null
+          id: string
+          iniciado_em: string | null
+          licitacao_id: string
+          mensagem: string | null
+          status: string
+          total_itens: number | null
+          user_id: string
+        }
+        Insert: {
+          arquivos_baixados?: Json | null
+          erro?: string | null
+          etapa?: string | null
+          finalizado_em?: string | null
+          fonte?: string | null
+          id?: string
+          iniciado_em?: string | null
+          licitacao_id: string
+          mensagem?: string | null
+          status?: string
+          total_itens?: number | null
+          user_id: string
+        }
+        Update: {
+          arquivos_baixados?: Json | null
+          erro?: string | null
+          etapa?: string | null
+          finalizado_em?: string | null
+          fonte?: string | null
+          id?: string
+          iniciado_em?: string | null
+          licitacao_id?: string
+          mensagem?: string | null
+          status?: string
+          total_itens?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "processos_ingest_status_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: true
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       processos_interesse: {
         Row: {
           alerta_1dia: boolean | null
