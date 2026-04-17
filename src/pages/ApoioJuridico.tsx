@@ -36,7 +36,7 @@ export default function ApoioJuridico() {
               Apoio Jurídico Especializado
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              Modelos, templates, geração assistida por IA e reequilíbrio contratual – Lei 14.133/2021
+              Modelos, templates, geração assistida por IA e reequilíbrio contratual – Lei 14.133/2021. Documentos vinculam-se automaticamente ao processo ativo (barra superior).
             </p>
           </div>
           <div className="flex items-center gap-2 self-start sm:self-auto">

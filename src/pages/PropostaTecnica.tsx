@@ -32,7 +32,7 @@ import PropostaLivePreview from '@/components/proposta/PropostaLivePreview';
 import DadosEmpresaUploader, { type ExtractedEmpresaData } from '@/components/proposta/DadosEmpresaUploader';
 import BancoSelector from '@/components/proposta/BancoSelector';
 import ImportarDoCatalogo from '@/components/proposta/ImportarDoCatalogo';
-import ProcessoSelector from '@/components/proposta/ProcessoSelector';
+
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useRascunho } from '@/hooks/useRascunho';
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
@@ -583,11 +583,6 @@ export default function PropostaTecnica() {
               {showPreview ? 'Ocultar Preview' : 'Mostrar Preview'}
             </Button>
           )}
-        </div>
-
-        {/* Process Selector */}
-        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-3">
-          <ProcessoSelector />
         </div>
 
         {/* Split-screen layout */}
