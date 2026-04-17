@@ -644,6 +644,15 @@ export default function Precificacao() {
           <p className="text-xs text-muted-foreground">
             Envie o Edital, Termo de Referência ou Anexo e a IA extrairá automaticamente todos os itens em uma planilha editável. Use "Cotar Todos" para preencher valores automaticamente.
           </p>
+          {processoId && (
+            <div className="rounded-lg border border-dashed border-accent/30 bg-accent/5 p-3 flex items-center justify-between gap-2 flex-wrap">
+              <div className="text-xs">
+                <p className="font-medium">Sem download/upload manual</p>
+                <p className="text-muted-foreground">Lemos o edital direto da fonte (PNCP/portal) e importamos os itens automaticamente.</p>
+              </div>
+              <ReextrairEditalButton licitacaoId={processoId} />
+            </div>
+          )}
           <PlanilhaCustosEdital
             licitacaoId={processoId}
             licitacaoNumero={processoMeta.numero}

@@ -638,6 +638,15 @@ export default function PropostaTecnica() {
                 Envie o edital (PDF, DOC, DOCX ou TXT) para que a IA extraia automaticamente: órgão gerenciador, número do processo,
                 objeto, planilha de itens com quantidades e preços, prazos de validade, pagamento, entrega e local de entrega.
               </p>
+              {processoId && (
+                <div className="rounded-lg border border-dashed border-accent/30 bg-accent/5 p-3 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="text-xs">
+                    <p className="font-medium">Sem download/upload manual</p>
+                    <p className="text-muted-foreground">Lemos o edital direto da fonte (PNCP/portal) e importamos os itens automaticamente.</p>
+                  </div>
+                  <ReextrairEditalButton licitacaoId={processoId} onCompleted={() => loadProcessoData(processoId)} />
+                </div>
+              )}
               <EditalUploader onExtracted={handleEditalExtracted} isExtracting={isExtracting} setIsExtracting={setIsExtracting} licitacaoId={processoId || undefined} />
 
               {/* Quick summary of extracted data */}
