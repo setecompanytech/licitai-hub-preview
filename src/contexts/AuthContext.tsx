@@ -77,6 +77,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let initialLoad = true;
 
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Token refresh falhou — limpar storage corrompido para evitar loops
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        try {
+          Object.keys(localStorage)
+            .filter((k) => k.startsWith('sb-') || k.includes('supabase.auth'))
+            .forEach((k) => localStorage.removeItem(k));
+        } catch {}
+      }
       // Skip redundant updates from cross-tab TOKEN_REFRESHED events
       // Comparing user IDs avoids new object references triggering re-renders & route unmounts
       setSession(prev => prev?.user?.id === session?.user?.id && prev?.access_token === session?.access_token ? prev : session);
