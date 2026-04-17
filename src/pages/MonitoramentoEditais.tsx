@@ -731,7 +731,10 @@ export default function MonitoramentoEditais() {
                     {CONTRATACOES_DIRETAS.map(m => (
                       <CheckboxRow
                         key={m.id}
-                        checked={filtros.modalidades.includes(m.id)}
+                        checked={
+                          filtros.modalidades.includes(m.id) ||
+                          filtros.modalidades.includes('todas')
+                        }
                         onChange={() => setMod(m.id)}
                         label={m.label}
                       />
