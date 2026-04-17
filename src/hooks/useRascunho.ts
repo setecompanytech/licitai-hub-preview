@@ -29,7 +29,9 @@ export function useRascunho<T extends Record<string, any>>({
   const [rascunhoId, setRascunhoId] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dataRef = useRef<T | null>(null);
+  const tituloRef = useRef<string | undefined>(undefined);
   const initialLoadDone = useRef(false);
+  const [pending, setPending] = useState(false);
 
   // Load draft on mount or when licitacaoId changes
   const loadRascunho = useCallback(async (): Promise<T | null> => {
