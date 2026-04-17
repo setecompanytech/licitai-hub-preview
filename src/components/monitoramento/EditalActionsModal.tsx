@@ -47,6 +47,7 @@ type DestinoId = typeof DESTINOS[number]['id'];
 export default function EditalActionsModal({ open, onOpenChange, edital, existingId, onCreated, onCompromissoCreated }: Props) {
   const navigate = useNavigate();
   const { iniciarProcesso, criarCompromisso } = useLicitacaoIntegration();
+  const { trigger: triggerIngest } = useEditalAutoIngest(null);
   const [working, setWorking] = useState<DestinoId | null>(null);
 
   const handleAcao = async (destino: typeof DESTINOS[number]) => {
