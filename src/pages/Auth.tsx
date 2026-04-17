@@ -66,6 +66,7 @@ export default function Auth() {
   const [faturamentoAnual, setFaturamentoAnual] = useState('');
   const [aceitaTermos, setAceitaTermos] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [networkError, setNetworkError] = useState(false);
   const { user, signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
 
@@ -111,7 +112,16 @@ export default function Auth() {
     setLoading(false);
     if (error) {
       const msg = (error.message || '').toLowerCase();
-      if (msg.includes('email not confirmed')) {
+      const isNetwork =
+        msg.includes('failed to fetch') ||
+        msg.includes('networkerror') ||
+        msg.includes('fetch') ||
+        (error as any).name === 'AuthRetryableFetchError';
+
+      if (isNetwork) {
+        setNetworkError(true);
+        toast.error('Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente. Se persistir, limpe o cache do navegador.');
+      } else if (msg.includes('email not confirmed')) {
         toast.error('E-mail ainda não confirmado. Verifique sua caixa de entrada (e spam) e clique no link de confirmação.');
       } else if (msg.includes('invalid login credentials')) {
         toast.error('E-mail ou senha incorretos. Se esqueceu a senha, use "Esqueci minha senha".');
@@ -124,6 +134,7 @@ export default function Auth() {
       }
       return;
     }
+    setNetworkError(false);
     // Check if user has MFA enabled
     try {
       const { data: factors } = await supabase.auth.mfa.listFactors();
@@ -565,10 +576,32 @@ export default function Auth() {
                 </Button>
               </form>
 
-              <div className="mt-4 text-center">
+              <div className="mt-4 text-center flex flex-col items-center gap-2">
                 <button onClick={() => setStep('forgot')} className="text-sm text-accent hover:underline">
                   Esqueceu a senha?
                 </button>
+                {networkError && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        if ('serviceWorker' in navigator) {
+                          const registrations = await navigator.serviceWorker.getRegistrations();
+                          await Promise.all(registrations.map((r) => r.unregister()));
+                        }
+                        if ('caches' in window) {
+                          const keys = await caches.keys();
+                          await Promise.all(keys.map((k) => caches.delete(k)));
+                        }
+                      } finally {
+                        window.location.reload();
+                      }
+                    }}
+                    className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+                  >
+                    Limpar cache e recarregar
+                  </button>
+                )}
               </div>
             </>
           )}
