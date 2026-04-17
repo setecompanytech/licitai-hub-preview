@@ -151,12 +151,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // 1. Encerrar sessão no servidor PRIMEIRO (evita estado inconsistente)
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Erro ao encerrar sessão:', err);
+    }
+    // 2. Limpar estado local DEPOIS
     localStorage.removeItem('praefectus_last_activity');
     localStorage.removeItem('praefectus_cookie_consent');
     setUser(null);
     setSession(null);
     setSubscription({ subscribed: false, planSlug: null, subscriptionEnd: null, loading: false });
-    await supabase.auth.signOut();
   };
 
   const resetPassword = async (email: string) => {
