@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
 import {
   Search, ExternalLink,
-  MapPin, Building2, Calendar, Clock, CheckCircle2, XCircle,
+  MapPin, Building2, Calendar as CalendarIcon, Clock, CheckCircle2, XCircle,
   PauseCircle, ChevronLeft, ChevronRight,
   Bookmark, BookmarkCheck, Info, Loader2, RefreshCw, AlertCircle, FileText,
   Rocket, ArrowRight, CheckCircle, ListChecks, ChevronDown, ChevronUp, X, Eraser
@@ -14,6 +14,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import MunicipiosByUFSelect from '@/components/monitoramento/MunicipiosByUFSelect';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -402,7 +405,10 @@ export default function MonitoramentoEditais() {
 
       // Filtros locais adicionais (campos sem cobertura na RPC)
       const ufsSet = new Set(filtros.ufs);
-      const muniSet = new Set(filtros.municipios.map(m => m.toLowerCase()));
+      // Municípios chegam no formato "Nome/UF" — extraímos só o nome para comparar
+      const muniSet = new Set(
+        filtros.municipios.map(m => m.split('/')[0].trim().toLowerCase())
+      );
       const uasgSet = new Set(filtros.uasgs.map(u => String(u).trim()));
 
       const filtrados = rows.filter(r => {
@@ -608,18 +614,16 @@ export default function MonitoramentoEditais() {
 
               <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">Período de Publicação</Label>
               <div className="md:col-span-4 flex items-center gap-2">
-                <Input
-                  placeholder="dd/mm/aaaa"
+                <DateField
                   value={filtros.dataIni}
-                  onChange={e => setFiltros(p => ({ ...p, dataIni: formatDateInput(e.target.value) }))}
-                  className="h-9 max-w-[140px]"
+                  onChange={(v) => setFiltros(p => ({ ...p, dataIni: v }))}
+                  placeholder="dd/mm/aaaa"
                 />
                 <span className="text-xs text-muted-foreground">até</span>
-                <Input
-                  placeholder="dd/mm/aaaa"
+                <DateField
                   value={filtros.dataFim}
-                  onChange={e => setFiltros(p => ({ ...p, dataFim: formatDateInput(e.target.value) }))}
-                  className="h-9 max-w-[140px]"
+                  onChange={(v) => setFiltros(p => ({ ...p, dataFim: v }))}
+                  placeholder="dd/mm/aaaa"
                 />
               </div>
             </div>
@@ -656,7 +660,10 @@ export default function MonitoramentoEditais() {
                     {MODALIDADES_LEI14133.map(m => (
                       <CheckboxRow
                         key={m.id}
-                        checked={filtros.modalidades.includes(m.id)}
+                        checked={
+                          filtros.modalidades.includes(m.id) ||
+                          (m.id !== 'todas' && filtros.modalidades.includes('todas'))
+                        }
                         onChange={() => setMod(m.id)}
                         label={m.label}
                       />
@@ -669,7 +676,10 @@ export default function MonitoramentoEditais() {
                     {TIPOS_CONCORRENCIA.map(t => (
                       <CheckboxRow
                         key={t.id}
-                        checked={filtros.tiposConc.includes(t.id)}
+                        checked={
+                          filtros.tiposConc.includes(t.id) ||
+                          filtros.modalidades.includes('todas')
+                        }
                         onChange={() => toggleArr('tiposConc', t.id)}
                         label={t.label}
                         disabled={!filtros.modalidades.includes('concorrencia') && !filtros.modalidades.includes('todas')}
@@ -683,7 +693,10 @@ export default function MonitoramentoEditais() {
                     {TIPOS_PREGAO.map(t => (
                       <CheckboxRow
                         key={t.id}
-                        checked={filtros.tiposPregao.includes(t.id)}
+                        checked={
+                          filtros.tiposPregao.includes(t.id) ||
+                          filtros.modalidades.includes('todas')
+                        }
                         onChange={() => toggleArr('tiposPregao', t.id)}
                         label={t.label}
                         disabled={!filtros.modalidades.includes('pregao') && !filtros.modalidades.includes('todas')}
@@ -697,7 +710,10 @@ export default function MonitoramentoEditais() {
                     {TIPOS_LEILAO.map(t => (
                       <CheckboxRow
                         key={t.id}
-                        checked={filtros.tiposLeilao.includes(t.id)}
+                        checked={
+                          filtros.tiposLeilao.includes(t.id) ||
+                          filtros.modalidades.includes('todas')
+                        }
                         onChange={() => toggleArr('tiposLeilao', t.id)}
                         label={t.label}
                         disabled={!filtros.modalidades.includes('leilao') && !filtros.modalidades.includes('todas')}
@@ -718,7 +734,10 @@ export default function MonitoramentoEditais() {
                     {CONTRATACOES_DIRETAS.map(m => (
                       <CheckboxRow
                         key={m.id}
-                        checked={filtros.modalidades.includes(m.id)}
+                        checked={
+                          filtros.modalidades.includes(m.id) ||
+                          filtros.modalidades.includes('todas')
+                        }
                         onChange={() => setMod(m.id)}
                         label={m.label}
                       />
@@ -738,22 +757,20 @@ export default function MonitoramentoEditais() {
               placeholder="Selecione um ou mais estados"
             />
 
-            {/* Linha 5: Municípios (free input) */}
-            <ChipFreeInput
+            {/* Linha 5: Municípios (filtrados por UF via API IBGE) */}
+            <MunicipiosByUFSelect
               label="Municípios"
-              valores={filtros.municipios}
-              tempValue={tempMunicipio}
-              onTempChange={setTempMunicipio}
-              onAdd={(v) => {
-                if (!v.trim()) return;
-                if (!filtros.municipios.includes(v.trim())) {
-                  setFiltros(p => ({ ...p, municipios: [...p.municipios, v.trim()] }));
-                }
-                setTempMunicipio('');
-              }}
-              onRemove={(idx) => setFiltros(p => ({ ...p, municipios: p.municipios.filter((_, i) => i !== idx) }))}
-              placeholder="Digite o município e pressione Enter"
-              hint="(Selecione UF antes para resultados precisos)"
+              ufs={filtros.ufs}
+              selecionados={filtros.municipios}
+              onToggle={(v) =>
+                setFiltros(p => ({
+                  ...p,
+                  municipios: p.municipios.includes(v)
+                    ? p.municipios.filter(x => x !== v)
+                    : [...p.municipios, v],
+                }))
+              }
+              onClear={() => setFiltros(p => ({ ...p, municipios: [] }))}
             />
 
             {/* Linha 6: UASG (até 5) */}
@@ -1201,7 +1218,7 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
             <div className="flex items-center flex-wrap gap-4 mt-2">
               {edital.dataAbertura && (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Calendar className="w-3 h-3" />
+                  <CalendarIcon className="w-3 h-3" />
                   Abertura: <span className="text-foreground/70">{formatData(edital.dataAbertura)}</span>
                 </span>
               )}
@@ -1320,6 +1337,80 @@ function DetalheItem({
       <p className={`text-sm ${mono ? 'font-mono' : ''} ${destaque ? 'text-success font-semibold' : 'text-foreground/80'}`}>
         {valor}
       </p>
+    </div>
+  );
+}
+
+// ─── Campo de Data com Calendário (Popover) ─────────────────────────────────
+
+function formatDateInputBR(v: string) {
+  const n = v.replace(/\D/g, '').slice(0, 8);
+  if (n.length <= 2) return n;
+  if (n.length <= 4) return `${n.slice(0, 2)}/${n.slice(2)}`;
+  return `${n.slice(0, 2)}/${n.slice(2, 4)}/${n.slice(4)}`;
+}
+
+function dmyToDate(dmy: string): Date | undefined {
+  const m = dmy.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return undefined;
+  const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  return isNaN(d.getTime()) ? undefined : d;
+}
+
+function dateToDmy(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yy = d.getFullYear();
+  return `${dd}/${mm}/${yy}`;
+}
+
+function DateField({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = dmyToDate(value);
+  return (
+    <div className="flex items-center gap-1">
+      <Input
+        placeholder={placeholder}
+        value={value}
+        onChange={e => onChange(formatDateInputBR(e.target.value))}
+        className="h-9 max-w-[140px]"
+      />
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 shrink-0"
+            aria-label="Abrir calendário"
+          >
+            <CalendarIcon className="w-4 h-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={selected}
+            onSelect={(d) => {
+              if (d) {
+                onChange(dateToDmy(d));
+                setOpen(false);
+              }
+            }}
+            locale={ptBR}
+            initialFocus
+            className="pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
