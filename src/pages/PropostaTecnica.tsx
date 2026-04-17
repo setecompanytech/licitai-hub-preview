@@ -23,6 +23,7 @@ import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { toast } from 'sonner';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import EditalUploader, { type ExtractedEditalData, type EditalItem } from '@/components/proposta/EditalUploader';
+import ReextrairEditalButton from '@/components/shared/ReextrairEditalButton';
 import PlanilhaPrecos from '@/components/proposta/PlanilhaPrecos';
 import { Link } from 'react-router-dom';
 import EnvioProposta from '@/components/proposta/EnvioProposta';

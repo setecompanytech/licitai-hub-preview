@@ -35,6 +35,7 @@ import CotacoesUnificado from '@/components/precificacao/CotacoesUnificado';
 import InteligenciaUnificada from '@/components/precificacao/InteligenciaUnificada';
 import RevisaoItensExtraidos, { type ItemExtraido } from '@/components/precificacao/RevisaoItensExtraidos';
 import PlanilhaCustosEdital from '@/components/precificacao/PlanilhaCustosEdital';
+import ReextrairEditalButton from '@/components/shared/ReextrairEditalButton';
 
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 
