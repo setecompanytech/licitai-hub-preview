@@ -50,19 +50,28 @@ try {
   console.warn("Failed to print build banner", err);
 }
 
+/**
+ * Limpa Service Workers e Cache Storage legados — APENAS UMA VEZ por dispositivo.
+ * Antes rodava a cada boot, concorrendo com fetch de auth em redes lentas (3G/4G)
+ * e causando falsos "Failed to fetch" / "Conexão instável" no login.
+ */
+const LEGACY_CLEANUP_FLAG = "praefectus_legacy_cleanup_v2";
 const clearLegacyBrowserState = async () => {
   if (typeof window === "undefined") return;
+  try {
+    if (localStorage.getItem(LEGACY_CLEANUP_FLAG) === "done") return;
+  } catch { /* storage indisponível, segue */ }
 
   try {
     if ("serviceWorker" in navigator) {
       const registrations = await navigator.serviceWorker.getRegistrations();
       await Promise.all(registrations.map((registration) => registration.unregister()));
     }
-
     if ("caches" in window) {
       const cacheKeys = await caches.keys();
       await Promise.all(cacheKeys.map((key) => caches.delete(key)));
     }
+    try { localStorage.setItem(LEGACY_CLEANUP_FLAG, "done"); } catch { /* ignore */ }
   } catch (error) {
     console.warn("Failed to clear legacy browser state", error);
   }
@@ -74,11 +83,6 @@ initSecurityGuard();
 if (typeof window !== "undefined") {
   window.addEventListener("load", () => {
     clearChunkReloadState();
-    void clearLegacyBrowserState();
-    window.setTimeout(() => {
-      clearChunkReloadState();
-      void clearLegacyBrowserState();
-    }, 1500);
   });
 }
 
