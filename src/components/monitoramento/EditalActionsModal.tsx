@@ -6,6 +6,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
+import { useEditalAutoIngest } from '@/hooks/useEditalAutoIngest';
 import { toast } from 'sonner';
 
 export interface EditalSeed {
@@ -46,6 +47,7 @@ type DestinoId = typeof DESTINOS[number]['id'];
 export default function EditalActionsModal({ open, onOpenChange, edital, existingId, onCreated, onCompromissoCreated }: Props) {
   const navigate = useNavigate();
   const { iniciarProcesso, criarCompromisso } = useLicitacaoIntegration();
+  const { trigger: triggerIngest } = useEditalAutoIngest(null);
   const [working, setWorking] = useState<DestinoId | null>(null);
 
   const handleAcao = async (destino: typeof DESTINOS[number]) => {
@@ -70,6 +72,10 @@ export default function EditalActionsModal({ open, onOpenChange, edital, existin
       // ensures Monitoramento ↔ Compromissos ↔ Gestão stay in sync.
       const compromissoId = await criarCompromisso(edital, licitacaoId);
       if (compromissoId) onCompromissoCreated?.(compromissoId);
+
+      // Dispara leitura automática do edital em background (silencioso).
+      // Itens aparecem em Precificação/Proposta via Realtime conforme processados.
+      void triggerIngest(licitacaoId, { silent: true });
 
       onOpenChange(false);
 
