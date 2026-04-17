@@ -338,7 +338,7 @@ export default function MonitoramentoEditais() {
       for (const uf of ufsList) {
         for (const mod of modList) {
           calls.push(
-            supabase.rpc('busca_editais_instantanea' as any, {
+            Promise.resolve(supabase.rpc('busca_editais_instantanea' as any, {
               p_q: termo,
               p_uf: uf,
               p_municipio_ibge: null,
