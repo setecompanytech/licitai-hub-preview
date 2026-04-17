@@ -110,7 +110,18 @@ export default function Auth() {
     const { error } = await signIn(email, password);
     setLoading(false);
     if (error) {
-      toast.error('E-mail ou senha incorretos');
+      const msg = (error.message || '').toLowerCase();
+      if (msg.includes('email not confirmed')) {
+        toast.error('E-mail ainda não confirmado. Verifique sua caixa de entrada (e spam) e clique no link de confirmação.');
+      } else if (msg.includes('invalid login credentials')) {
+        toast.error('E-mail ou senha incorretos. Se esqueceu a senha, use "Esqueci minha senha".');
+      } else if (msg.includes('rate') || msg.includes('too many')) {
+        toast.error('Muitas tentativas. Aguarde alguns minutos e tente novamente.');
+      } else if (msg.includes('user not found')) {
+        toast.error('Não encontramos uma conta com este e-mail. Verifique ou crie sua conta.');
+      } else {
+        toast.error(error.message || 'Não foi possível entrar. Tente novamente.');
+      }
       return;
     }
     // Check if user has MFA enabled
