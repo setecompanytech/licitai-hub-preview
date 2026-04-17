@@ -65,44 +65,57 @@ const UFS = [
   'SE','SP','TO',
 ];
 
-// Modalidade SIASG → modalidade_id PNCP (Lei 14.133/2021)
-type ModalidadeSiasg = 'convite' | 'tomada' | 'concorrencia' | 'concurso' | 'pregao' | 'rdc' | 'todas';
-const MODALIDADES_SIASG: { id: ModalidadeSiasg; label: string }[] = [
-  { id: 'convite', label: 'Convite' },
-  { id: 'tomada', label: 'Tomada de Preço' },
+// Modalidades conforme Lei 14.133/2021 (Art. 28) — modalidade_id PNCP
+type ModalidadeLei14133 =
+  | 'pregao'
+  | 'concorrencia'
+  | 'concurso'
+  | 'leilao'
+  | 'dialogo'
+  | 'dispensa'
+  | 'inexigibilidade'
+  | 'credenciamento'
+  | 'pre_qualificacao'
+  | 'manifestacao'
+  | 'todas';
+
+const MODALIDADES_LEI14133: { id: ModalidadeLei14133; label: string }[] = [
+  { id: 'pregao', label: 'Pregão' },
   { id: 'concorrencia', label: 'Concorrência' },
   { id: 'concurso', label: 'Concurso' },
-  { id: 'pregao', label: 'Pregão' },
-  { id: 'rdc', label: 'RDC' },
+  { id: 'leilao', label: 'Leilão' },
+  { id: 'dialogo', label: 'Diálogo Competitivo' },
   { id: 'todas', label: 'Todas' },
 ];
 
-// Sub-tipos de Concorrência (SIASG)
+// Contratações Diretas (Lei 14.133/2021, Arts. 74–79)
+const CONTRATACOES_DIRETAS: { id: ModalidadeLei14133; label: string }[] = [
+  { id: 'dispensa', label: 'Dispensa de Licitação' },
+  { id: 'inexigibilidade', label: 'Inexigibilidade' },
+  { id: 'credenciamento', label: 'Credenciamento' },
+  { id: 'pre_qualificacao', label: 'Pré-qualificação' },
+  { id: 'manifestacao', label: 'Manifestação de Interesse' },
+];
+
+// Sub-tipos de Concorrência (Lei 14.133)
 const TIPOS_CONCORRENCIA = [
-  { id: 'conc', label: 'Concorrência', modalidadeId: 5 },
-  { id: 'conc_srp', label: 'Concorrência SRP', modalidadeId: 5, srp: true },
-  { id: 'conc_int', label: 'Concorrência Internacional', modalidadeId: 5 },
-  { id: 'conc_int_srp', label: 'Concorrência Internacional SRP', modalidadeId: 5, srp: true },
   { id: 'conc_eletr', label: 'Concorrência Eletrônica', modalidadeId: 4 },
+  { id: 'conc_pres', label: 'Concorrência Presencial', modalidadeId: 5 },
   { id: 'todos_conc', label: 'Todos' },
 ];
 
-// Sub-tipos de Pregão (SIASG)
+// Sub-tipos de Pregão (Lei 14.133)
 const TIPOS_PREGAO = [
-  { id: 'pregao_eletr_srp', label: 'Pregão Eletrônico SRP', modalidadeId: 6, srp: true },
   { id: 'pregao_eletr', label: 'Pregão Eletrônico', modalidadeId: 6 },
-  { id: 'pregao_pres_srp', label: 'Pregão Presencial SRP', modalidadeId: 7, srp: true },
   { id: 'pregao_pres', label: 'Pregão Presencial', modalidadeId: 7 },
   { id: 'todos_pregao', label: 'Todos' },
 ];
 
-// Sub-tipos de RDC
-const TIPOS_RDC = [
-  { id: 'rdc_eletr_srp', label: 'RDC Eletrônico SRP' },
-  { id: 'rdc_eletr', label: 'RDC Eletrônico' },
-  { id: 'rdc_pres_srp', label: 'RDC Presencial SRP' },
-  { id: 'rdc_pres', label: 'RDC Presencial' },
-  { id: 'todos_rdc', label: 'Todos' },
+// Sub-tipos de Leilão (Lei 14.133)
+const TIPOS_LEILAO = [
+  { id: 'leilao_eletr', label: 'Leilão Eletrônico', modalidadeId: 1 },
+  { id: 'leilao_pres', label: 'Leilão Presencial', modalidadeId: 13 },
+  { id: 'todos_leilao', label: 'Todos' },
 ];
 
 const STATUS_CONFIG = {
@@ -171,22 +184,22 @@ function statusFromSituacao(situacao: string | null | undefined, dataAbertura: s
   return 'aberto';
 }
 
-interface FiltrosSiasg {
+interface FiltrosLei14133 {
   numero: string;
   ano: string;
   dataIni: string;     // dd/mm/aaaa
   dataFim: string;     // dd/mm/aaaa
   objeto: string;
-  modalidades: ModalidadeSiasg[];
+  modalidades: ModalidadeLei14133[];
   tiposConc: string[];
   tiposPregao: string[];
-  tiposRdc: string[];
+  tiposLeilao: string[];
   ufs: string[];
   municipios: string[];
   uasgs: string[];
 }
 
-const filtrosVazios: FiltrosSiasg = {
+const filtrosVazios: FiltrosLei14133 = {
   numero: '',
   ano: String(new Date().getFullYear()),
   dataIni: '',
@@ -195,7 +208,7 @@ const filtrosVazios: FiltrosSiasg = {
   modalidades: [],
   tiposConc: [],
   tiposPregao: [],
-  tiposRdc: [],
+  tiposLeilao: [],
   ufs: [],
   municipios: [],
   uasgs: [],
@@ -204,7 +217,7 @@ const filtrosVazios: FiltrosSiasg = {
 // ─── Componente principal ────────────────────────────────────────────────────
 
 export default function MonitoramentoEditais() {
-  const [filtros, setFiltros] = useState<FiltrosSiasg>(filtrosVazios);
+  const [filtros, setFiltros] = useState<FiltrosLei14133>(filtrosVazios);
   const [tempUasg, setTempUasg] = useState('');
   const [tempMunicipio, setTempMunicipio] = useState('');
 
@@ -275,14 +288,18 @@ export default function MonitoramentoEditais() {
 
   const abortRef = useRef<AbortController | null>(null);
 
-  // Resolve modalidade_id efetiva a partir das escolhas SIASG
+  // Resolve modalidade_id efetiva conforme Lei 14.133/2021
   const modalidadesEfetivas = useMemo<number[]>(() => {
     const ids = new Set<number>();
     if (filtros.modalidades.includes('todas')) return [];
-    if (filtros.modalidades.includes('convite')) ids.add(11);
-    if (filtros.modalidades.includes('tomada')) ids.add(10);
     if (filtros.modalidades.includes('concurso')) ids.add(3);
-    // Concorrência: sub-tipos definem se eletrônica (4) ou presencial (5)
+    if (filtros.modalidades.includes('dialogo')) ids.add(2);
+    if (filtros.modalidades.includes('dispensa')) ids.add(8);
+    if (filtros.modalidades.includes('inexigibilidade')) ids.add(9);
+    if (filtros.modalidades.includes('credenciamento')) ids.add(12);
+    if (filtros.modalidades.includes('pre_qualificacao')) ids.add(11);
+    if (filtros.modalidades.includes('manifestacao')) ids.add(10);
+    // Concorrência: eletrônica (4) ou presencial (5)
     if (filtros.modalidades.includes('concorrencia')) {
       if (filtros.tiposConc.length === 0 || filtros.tiposConc.includes('todos_conc')) {
         ids.add(4); ids.add(5);
@@ -293,7 +310,7 @@ export default function MonitoramentoEditais() {
         });
       }
     }
-    // Pregão: sub-tipos definem eletrônico (6) ou presencial (7)
+    // Pregão: eletrônico (6) ou presencial (7)
     if (filtros.modalidades.includes('pregao')) {
       if (filtros.tiposPregao.length === 0 || filtros.tiposPregao.includes('todos_pregao')) {
         ids.add(6); ids.add(7);
@@ -304,9 +321,19 @@ export default function MonitoramentoEditais() {
         });
       }
     }
-    // RDC não tem modalidade_id no PNCP novo (Lei 14.133 revogou) — vai por filtro de objeto
+    // Leilão: eletrônico (1) ou presencial (13)
+    if (filtros.modalidades.includes('leilao')) {
+      if (filtros.tiposLeilao.length === 0 || filtros.tiposLeilao.includes('todos_leilao')) {
+        ids.add(1); ids.add(13);
+      } else {
+        filtros.tiposLeilao.forEach(t => {
+          const cfg = TIPOS_LEILAO.find(x => x.id === t);
+          if (cfg?.modalidadeId) ids.add(cfg.modalidadeId);
+        });
+      }
+    }
     return Array.from(ids);
-  }, [filtros.modalidades, filtros.tiposConc, filtros.tiposPregao]);
+  }, [filtros.modalidades, filtros.tiposConc, filtros.tiposPregao, filtros.tiposLeilao]);
 
   const buscar = useCallback(async (pag = 1) => {
     if (abortRef.current) abortRef.current.abort();
@@ -322,7 +349,7 @@ export default function MonitoramentoEditais() {
       const termoPartes: string[] = [];
       if (filtros.objeto.trim()) termoPartes.push(filtros.objeto.trim());
       if (filtros.numero.trim()) termoPartes.push(filtros.numero.trim());
-      if (filtros.modalidades.includes('rdc')) termoPartes.push('RDC');
+      
       const termo = termoPartes.join(' ').trim() || null;
 
       const dataIni = filtros.dataIni ? dmyToIso(filtros.dataIni) : null;
@@ -433,9 +460,6 @@ export default function MonitoramentoEditais() {
         total,
         paginas,
         pagina: pag,
-        aviso: filtros.modalidades.includes('rdc')
-          ? 'RDC foi revogado pela Lei 14.133/2021 — exibindo resultados que mencionam o termo no objeto.'
-          : undefined,
       });
       setPagina(pag);
     } catch (e: unknown) {
@@ -468,15 +492,15 @@ export default function MonitoramentoEditais() {
   };
 
   // Helpers de toggle multi-select
-  const toggleArr = <K extends keyof FiltrosSiasg>(campo: K, valor: any) => {
+  const toggleArr = <K extends keyof FiltrosLei14133>(campo: K, valor: any) => {
     setFiltros(prev => {
       const arr = prev[campo] as any[];
       const next = arr.includes(valor) ? arr.filter(v => v !== valor) : [...arr, valor];
-      return { ...prev, [campo]: next } as FiltrosSiasg;
+      return { ...prev, [campo]: next } as FiltrosLei14133;
     });
   };
 
-  const setMod = (m: ModalidadeSiasg) => {
+  const setMod = (m: ModalidadeLei14133) => {
     if (m === 'todas') {
       setFiltros(prev => ({ ...prev, modalidades: prev.modalidades.includes('todas') ? [] : ['todas'] }));
     } else {
@@ -504,7 +528,7 @@ export default function MonitoramentoEditais() {
     if (filtros.modalidades.length > 0) n++;
     if (filtros.tiposConc.length > 0) n++;
     if (filtros.tiposPregao.length > 0) n++;
-    if (filtros.tiposRdc.length > 0) n++;
+    if (filtros.tiposLeilao.length > 0) n++;
     if (filtros.ufs.length > 0) n++;
     if (filtros.municipios.length > 0) n++;
     if (filtros.uasgs.length > 0) n++;
@@ -615,62 +639,91 @@ export default function MonitoramentoEditais() {
               </div>
             </div>
 
-            {/* Linha 3: Modalidades + sub-tipos (4 colunas como SIASG) */}
+            {/* Linha 3: Modalidades — Lei 14.133/2021 (Art. 28) */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-              <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">Modalidades</Label>
-              <div className="md:col-span-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3">
-                {/* Coluna 1: Modalidades base */}
-                <div className="space-y-1.5">
-                  {MODALIDADES_SIASG.map(m => (
-                    <CheckboxRow
-                      key={m.id}
-                      checked={filtros.modalidades.includes(m.id)}
-                      onChange={() => setMod(m.id)}
-                      label={m.label}
-                    />
-                  ))}
+              <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">
+                Modalidades
+                <span className="block text-[10px] text-muted-foreground/70 font-normal mt-0.5">
+                  Lei 14.133/2021
+                </span>
+              </Label>
+              <div className="md:col-span-10 space-y-4">
+                {/* Bloco 1: Modalidades de Licitação (Art. 28) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3">
+                  {/* Coluna 1: Modalidades base */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-foreground mb-1">Modalidades de Licitação</p>
+                    {MODALIDADES_LEI14133.map(m => (
+                      <CheckboxRow
+                        key={m.id}
+                        checked={filtros.modalidades.includes(m.id)}
+                        onChange={() => setMod(m.id)}
+                        label={m.label}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Coluna 2: Tipos de Concorrência */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-foreground mb-1">Tipos de Concorrência</p>
+                    {TIPOS_CONCORRENCIA.map(t => (
+                      <CheckboxRow
+                        key={t.id}
+                        checked={filtros.tiposConc.includes(t.id)}
+                        onChange={() => toggleArr('tiposConc', t.id)}
+                        label={t.label}
+                        disabled={!filtros.modalidades.includes('concorrencia') && !filtros.modalidades.includes('todas')}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Coluna 3: Tipos de Pregão */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-foreground mb-1">Tipos de Pregão</p>
+                    {TIPOS_PREGAO.map(t => (
+                      <CheckboxRow
+                        key={t.id}
+                        checked={filtros.tiposPregao.includes(t.id)}
+                        onChange={() => toggleArr('tiposPregao', t.id)}
+                        label={t.label}
+                        disabled={!filtros.modalidades.includes('pregao') && !filtros.modalidades.includes('todas')}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Coluna 4: Tipos de Leilão */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-foreground mb-1">Tipos de Leilão</p>
+                    {TIPOS_LEILAO.map(t => (
+                      <CheckboxRow
+                        key={t.id}
+                        checked={filtros.tiposLeilao.includes(t.id)}
+                        onChange={() => toggleArr('tiposLeilao', t.id)}
+                        label={t.label}
+                        disabled={!filtros.modalidades.includes('leilao') && !filtros.modalidades.includes('todas')}
+                      />
+                    ))}
+                  </div>
                 </div>
 
-                {/* Coluna 2: Tipos de Concorrência */}
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-foreground mb-1">Tipos de Concorrência</p>
-                  {TIPOS_CONCORRENCIA.map(t => (
-                    <CheckboxRow
-                      key={t.id}
-                      checked={filtros.tiposConc.includes(t.id)}
-                      onChange={() => toggleArr('tiposConc', t.id)}
-                      label={t.label}
-                      disabled={!filtros.modalidades.includes('concorrencia') && !filtros.modalidades.includes('todas')}
-                    />
-                  ))}
-                </div>
-
-                {/* Coluna 3: Tipos de Pregão */}
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-foreground mb-1">Tipos de Pregão</p>
-                  {TIPOS_PREGAO.map(t => (
-                    <CheckboxRow
-                      key={t.id}
-                      checked={filtros.tiposPregao.includes(t.id)}
-                      onChange={() => toggleArr('tiposPregao', t.id)}
-                      label={t.label}
-                      disabled={!filtros.modalidades.includes('pregao') && !filtros.modalidades.includes('todas')}
-                    />
-                  ))}
-                </div>
-
-                {/* Coluna 4: Tipos de RDC */}
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-foreground mb-1">Tipos de RDC</p>
-                  {TIPOS_RDC.map(t => (
-                    <CheckboxRow
-                      key={t.id}
-                      checked={filtros.tiposRdc.includes(t.id)}
-                      onChange={() => toggleArr('tiposRdc', t.id)}
-                      label={t.label}
-                      disabled={!filtros.modalidades.includes('rdc') && !filtros.modalidades.includes('todas')}
-                    />
-                  ))}
+                {/* Bloco 2: Contratações Diretas (Arts. 74–79) */}
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                  <p className="text-xs font-semibold text-foreground mb-2">
+                    Contratações Diretas
+                    <span className="text-[10px] text-muted-foreground font-normal ml-1.5">
+                      (Arts. 74–79 — Lei 14.133/2021)
+                    </span>
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-2">
+                    {CONTRATACOES_DIRETAS.map(m => (
+                      <CheckboxRow
+                        key={m.id}
+                        checked={filtros.modalidades.includes(m.id)}
+                        onChange={() => setMod(m.id)}
+                        label={m.label}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
