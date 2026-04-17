@@ -4,9 +4,19 @@ import App from "./App.tsx";
 import "./index.css";
 import { initSecurityGuard } from "./lib/security-guard";
 import { clearChunkReloadState, installChunkErrorRecovery } from "./lib/chunk-recovery";
+import {
+  validateAndCleanAuthStorage,
+  installAuthFetchInterceptor,
+} from "./lib/auth-bootstrap";
 
 installChunkErrorRecovery();
 clearChunkReloadState();
+
+// CRÍTICO: deve rodar ANTES de qualquer import que use o client Supabase.
+// Remove sessões corrompidas/expiradas do localStorage para evitar
+// "Failed to fetch" / "refresh_token_not_found" no boot do SDK.
+validateAndCleanAuthStorage();
+installAuthFetchInterceptor(import.meta.env.VITE_SUPABASE_URL ?? "");
 
 // Build version banner — usado para confirmar qual bundle o usuário está executando
 try {
