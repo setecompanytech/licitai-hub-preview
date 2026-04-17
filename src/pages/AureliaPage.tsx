@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
-import { Send, Loader2, FileText, ClipboardCheck, DollarSign, Target, Scale, Zap } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Send, Loader2, FileText, ClipboardCheck, DollarSign, Target, Scale, Zap, FolderOpen } from 'lucide-react';
 import { streamAIChat, ChatMessage } from '@/lib/ai-stream';
 import { sanitizeAureliaOutput } from '@/prompts/aurelia-system-prompt';
+import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 import { cn } from '@/lib/utils';
 
 const quickActions = [
@@ -20,6 +22,7 @@ export default function AureliaPage() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const { processo } = useProcessoAtivo();
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -29,7 +32,13 @@ export default function AureliaPage() {
     const msg = text || input;
     if (!msg.trim() || isLoading) return;
 
-    const userMsg: ChatMessage = { role: 'user', content: msg };
+    // Inject active process context into the very first user message
+    const contextoProcesso = processo
+      ? `\n\n[Contexto do processo ativo: ${processo.numero || 'S/N'} — ${processo.orgao || ''} — ${processo.objeto || ''}${processo.valor_estimado ? ` — Valor estimado R$ ${processo.valor_estimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : ''}]`
+      : '';
+    const conteudoComContexto = messages.length === 0 && contextoProcesso ? msg + contextoProcesso : msg;
+
+    const userMsg: ChatMessage = { role: 'user', content: conteudoComContexto };
     const updated = [...messages, userMsg];
     setMessages(updated);
     setInput('');
@@ -70,7 +79,15 @@ export default function AureliaPage() {
             </div>
             <h1 className="text-2xl font-bold text-foreground mb-1">AURÉLIA</h1>
             <p className="text-sm text-muted-foreground mb-2">Sua consultora sênior em licitações públicas</p>
-            <p className="text-xs text-muted-foreground/60 mb-10">Powered by PRAEFECTUS Intelligence</p>
+            <p className="text-xs text-muted-foreground/60 mb-4">Powered by PRAEFECTUS Intelligence</p>
+
+            {processo && (
+              <div className="mb-6 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/30 text-xs flex items-center gap-2">
+                <FolderOpen className="w-3 h-3 text-accent" />
+                <span className="text-accent font-medium">Analisando: {processo.numero || 'S/N'}</span>
+                <span className="text-muted-foreground truncate max-w-[200px]">— {processo.orgao}</span>
+              </div>
+            )}
 
             {/* Quick Actions */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full max-w-xl mb-8">
