@@ -196,12 +196,14 @@ export function useRascunho<T extends Record<string, any>>({
     loadRascunho,
     saveRascunho,
     autoSave,
+    flush,
     deleteRascunho,
     listRascunhos,
     markLoaded,
     saving,
     lastSaved,
     loaded,
+    pending,
     rascunhoId,
   };
 }
