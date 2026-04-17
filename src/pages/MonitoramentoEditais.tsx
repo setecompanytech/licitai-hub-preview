@@ -65,44 +65,57 @@ const UFS = [
   'SE','SP','TO',
 ];
 
-// Modalidade SIASG → modalidade_id PNCP (Lei 14.133/2021)
-type ModalidadeSiasg = 'convite' | 'tomada' | 'concorrencia' | 'concurso' | 'pregao' | 'rdc' | 'todas';
-const MODALIDADES_SIASG: { id: ModalidadeSiasg; label: string }[] = [
-  { id: 'convite', label: 'Convite' },
-  { id: 'tomada', label: 'Tomada de Preço' },
+// Modalidades conforme Lei 14.133/2021 (Art. 28) — modalidade_id PNCP
+type ModalidadeLei14133 =
+  | 'pregao'
+  | 'concorrencia'
+  | 'concurso'
+  | 'leilao'
+  | 'dialogo'
+  | 'dispensa'
+  | 'inexigibilidade'
+  | 'credenciamento'
+  | 'pre_qualificacao'
+  | 'manifestacao'
+  | 'todas';
+
+const MODALIDADES_LEI14133: { id: ModalidadeLei14133; label: string }[] = [
+  { id: 'pregao', label: 'Pregão' },
   { id: 'concorrencia', label: 'Concorrência' },
   { id: 'concurso', label: 'Concurso' },
-  { id: 'pregao', label: 'Pregão' },
-  { id: 'rdc', label: 'RDC' },
+  { id: 'leilao', label: 'Leilão' },
+  { id: 'dialogo', label: 'Diálogo Competitivo' },
   { id: 'todas', label: 'Todas' },
 ];
 
-// Sub-tipos de Concorrência (SIASG)
+// Contratações Diretas (Lei 14.133/2021, Arts. 74–79)
+const CONTRATACOES_DIRETAS: { id: ModalidadeLei14133; label: string }[] = [
+  { id: 'dispensa', label: 'Dispensa de Licitação' },
+  { id: 'inexigibilidade', label: 'Inexigibilidade' },
+  { id: 'credenciamento', label: 'Credenciamento' },
+  { id: 'pre_qualificacao', label: 'Pré-qualificação' },
+  { id: 'manifestacao', label: 'Manifestação de Interesse' },
+];
+
+// Sub-tipos de Concorrência (Lei 14.133)
 const TIPOS_CONCORRENCIA = [
-  { id: 'conc', label: 'Concorrência', modalidadeId: 5 },
-  { id: 'conc_srp', label: 'Concorrência SRP', modalidadeId: 5, srp: true },
-  { id: 'conc_int', label: 'Concorrência Internacional', modalidadeId: 5 },
-  { id: 'conc_int_srp', label: 'Concorrência Internacional SRP', modalidadeId: 5, srp: true },
   { id: 'conc_eletr', label: 'Concorrência Eletrônica', modalidadeId: 4 },
+  { id: 'conc_pres', label: 'Concorrência Presencial', modalidadeId: 5 },
   { id: 'todos_conc', label: 'Todos' },
 ];
 
-// Sub-tipos de Pregão (SIASG)
+// Sub-tipos de Pregão (Lei 14.133)
 const TIPOS_PREGAO = [
-  { id: 'pregao_eletr_srp', label: 'Pregão Eletrônico SRP', modalidadeId: 6, srp: true },
   { id: 'pregao_eletr', label: 'Pregão Eletrônico', modalidadeId: 6 },
-  { id: 'pregao_pres_srp', label: 'Pregão Presencial SRP', modalidadeId: 7, srp: true },
   { id: 'pregao_pres', label: 'Pregão Presencial', modalidadeId: 7 },
   { id: 'todos_pregao', label: 'Todos' },
 ];
 
-// Sub-tipos de RDC
-const TIPOS_RDC = [
-  { id: 'rdc_eletr_srp', label: 'RDC Eletrônico SRP' },
-  { id: 'rdc_eletr', label: 'RDC Eletrônico' },
-  { id: 'rdc_pres_srp', label: 'RDC Presencial SRP' },
-  { id: 'rdc_pres', label: 'RDC Presencial' },
-  { id: 'todos_rdc', label: 'Todos' },
+// Sub-tipos de Leilão (Lei 14.133)
+const TIPOS_LEILAO = [
+  { id: 'leilao_eletr', label: 'Leilão Eletrônico', modalidadeId: 1 },
+  { id: 'leilao_pres', label: 'Leilão Presencial', modalidadeId: 13 },
+  { id: 'todos_leilao', label: 'Todos' },
 ];
 
 const STATUS_CONFIG = {
