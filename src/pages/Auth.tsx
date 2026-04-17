@@ -146,16 +146,32 @@ export default function Auth() {
     e.preventDefault();
     setLoading(true);
 
-    // Sempre limpar tokens antigos antes de tentar logar.
-    // Refresh tokens corrompidos/expirados no localStorage causam "Failed to fetch"
-    // ANTES mesmo da requisição de login chegar no servidor.
+    // Limpeza preventiva de tokens residuais
     try {
-      Object.keys(localStorage)
-        .filter((k) => k.startsWith('sb-') || k.includes('supabase.auth'))
-        .forEach((k) => localStorage.removeItem(k));
+      const { purgeSupabaseAuthStorage } = await import('@/lib/auth-bootstrap');
+      purgeSupabaseAuthStorage();
     } catch {}
 
-    const { error } = await signIn(email, password);
+    // Retry automático com backoff para erros transitórios de rede.
+    // Resolve "Failed to fetch" causado por instabilidade momentânea
+    // (Cloudflare cold-start, ISP regional, 4G oscilante) sem que o usuário
+    // precise saber o que fazer.
+    const attemptLogin = async (attempt: number): Promise<{ error: any }> => {
+      const result = await signIn(email, password);
+      if (!result.error) return result;
+      const msg = (result.error.message || '').toLowerCase();
+      const isTransient =
+        msg.includes('failed to fetch') ||
+        msg.includes('networkerror') ||
+        (result.error as any).name === 'AuthRetryableFetchError';
+      if (isTransient && attempt < 2) {
+        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+        return attemptLogin(attempt + 1);
+      }
+      return result;
+    };
+
+    const { error } = await attemptLogin(0);
     setLoading(false);
     if (error) {
       const msg = (error.message || '').toLowerCase();
@@ -167,7 +183,7 @@ export default function Auth() {
 
       if (isNetwork) {
         setNetworkError(true);
-        toast.error('Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente. Se persistir, limpe o cache do navegador.');
+        toast.error('Conexão instável. Aguarde alguns segundos e tente novamente.');
       } else if (msg.includes('email not confirmed')) {
         toast.error('E-mail ainda não confirmado. Verifique sua caixa de entrada (e spam) e clique no link de confirmação.');
       } else if (msg.includes('invalid login credentials')) {
