@@ -1340,3 +1340,77 @@ function DetalheItem({
     </div>
   );
 }
+
+// ─── Campo de Data com Calendário (Popover) ─────────────────────────────────
+
+function formatDateInputBR(v: string) {
+  const n = v.replace(/\D/g, '').slice(0, 8);
+  if (n.length <= 2) return n;
+  if (n.length <= 4) return `${n.slice(0, 2)}/${n.slice(2)}`;
+  return `${n.slice(0, 2)}/${n.slice(2, 4)}/${n.slice(4)}`;
+}
+
+function dmyToDate(dmy: string): Date | undefined {
+  const m = dmy.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return undefined;
+  const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  return isNaN(d.getTime()) ? undefined : d;
+}
+
+function dateToDmy(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yy = d.getFullYear();
+  return `${dd}/${mm}/${yy}`;
+}
+
+function DateField({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = dmyToDate(value);
+  return (
+    <div className="flex items-center gap-1">
+      <Input
+        placeholder={placeholder}
+        value={value}
+        onChange={e => onChange(formatDateInputBR(e.target.value))}
+        className="h-9 max-w-[140px]"
+      />
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 shrink-0"
+            aria-label="Abrir calendário"
+          >
+            <CalendarIcon className="w-4 h-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={selected}
+            onSelect={(d) => {
+              if (d) {
+                onChange(dateToDmy(d));
+                setOpen(false);
+              }
+            }}
+            locale={ptBR}
+            initialFocus
+            className="pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
