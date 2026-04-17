@@ -77,6 +77,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let initialLoad = true;
 
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Token refresh falhou — limpar storage corrompido para evitar loops
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        try {
+          Object.keys(localStorage)
+            .filter((k) => k.startsWith('sb-') || k.includes('supabase.auth'))
+            .forEach((k) => localStorage.removeItem(k));
+        } catch {}
+      }
       // Skip redundant updates from cross-tab TOKEN_REFRESHED events
       // Comparing user IDs avoids new object references triggering re-renders & route unmounts
       setSession(prev => prev?.user?.id === session?.user?.id && prev?.access_token === session?.access_token ? prev : session);
@@ -95,7 +103,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      // Sessão corrompida ou expirada sem refresh válido — limpar storage
+      if (error) {
+        console.warn('[Auth] getSession error, limpando storage:', error.message);
+        try {
+          Object.keys(localStorage)
+            .filter((k) => k.startsWith('sb-') || k.includes('supabase.auth'))
+            .forEach((k) => localStorage.removeItem(k));
+        } catch {}
+      }
       setSession(session);
       setUser(session?.user ?? null);
       if (initialLoad) {
