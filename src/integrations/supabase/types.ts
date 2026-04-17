@@ -10933,6 +10933,10 @@ export type Database = {
           read_ct: number
         }[]
       }
+      user_has_active_subscription: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "viewer"
