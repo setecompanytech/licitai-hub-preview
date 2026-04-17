@@ -122,8 +122,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [user, checkSubscription]);
 
-  // Auto-logout after 10 min of inactivity
-  useIdleTimeout();
+  // Auto-logout após 10 min de inatividade — SOMENTE quando há usuário logado.
+  // Sem essa guarda, o hook derrubava sessões recém-criadas usando 'last_activity' antigo do localStorage.
+  useIdleTimeout(!!user);
 
   const getRedirectOrigin = (): string => {
     const origin = window.location.origin;
