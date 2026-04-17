@@ -1204,7 +1204,7 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
             <div className="flex items-center flex-wrap gap-4 mt-2">
               {edital.dataAbertura && (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Calendar className="w-3 h-3" />
+                  <CalendarIcon className="w-3 h-3" />
                   Abertura: <span className="text-foreground/70">{formatData(edital.dataAbertura)}</span>
                 </span>
               )}
