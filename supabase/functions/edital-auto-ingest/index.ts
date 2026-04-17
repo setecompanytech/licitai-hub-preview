@@ -1,0 +1,350 @@
+// Orquestrador de leitura automática de editais.
+// Pipeline: resolve fonte → descobre anexos → tenta planilha (.xlsx) → cai pra PDF/IA → persiste itens.
+// Notifica progresso em tempo real via tabela `processos_ingest_status`.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import * as XLSX from "https://esm.sh/xlsx@0.18.5";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+const FETCH_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  Accept: "application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/zip,application/octet-stream,text/html,*/*",
+};
+
+interface IngestRequest {
+  licitacao_id: string;
+  /** Se existir, pula confirmação de sobrescrita do client */
+  replace?: boolean;
+}
+
+interface AnexoLink {
+  nome: string;
+  url: string;
+  tipo: "xlsx" | "pdf" | "doc" | "zip" | "outro";
+}
+
+function classifyExt(url: string, name = ""): AnexoLink["tipo"] {
+  const s = (name + " " + url).toLowerCase();
+  if (/\.xlsx|\.xls\b|planilha/.test(s)) return "xlsx";
+  if (/\.pdf\b/.test(s)) return "pdf";
+  if (/\.docx?\b/.test(s)) return "doc";
+  if (/\.zip\b/.test(s)) return "zip";
+  return "outro";
+}
+
+function parsePNCPNumeroControle(nc: string | null | undefined) {
+  if (!nc) return null;
+  const m = nc.replace(/\s/g, "").match(/^(\d{14})-(\d+)-(\d+)\/(\d{4})$/);
+  if (!m) return null;
+  return { cnpj: m[1], seq: m[3], ano: m[4] };
+}
+
+async function listPNCPArquivos(cnpj: string, ano: string, seq: string): Promise<AnexoLink[]> {
+  const url = `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${ano}/${seq}/arquivos`;
+  try {
+    const r = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(10000) });
+    if (!r.ok) return [];
+    const data = await r.json();
+    const arr: any[] = data?.data ?? (Array.isArray(data) ? data : []);
+    return arr.map((a, idx) => {
+      const seqArq = a.sequencialDocumento ?? a.sequencialArquivo ?? idx + 1;
+      const itemUrl = a.url ?? a.uri ?? `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${ano}/${seq}/arquivos/${seqArq}`;
+      const nome = a.titulo ?? a.nomeArquivo ?? `arquivo-${idx + 1}`;
+      return { nome, url: itemUrl, tipo: classifyExt(itemUrl, nome) };
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function firecrawlScrape(targetUrl: string): Promise<AnexoLink[]> {
+  const key = Deno.env.get("FIRECRAWL_API_KEY");
+  if (!key) return [];
+  try {
+    const r = await fetch("https://api.firecrawl.dev/v2/scrape", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ url: targetUrl, formats: ["links"], onlyMainContent: false }),
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!r.ok) return [];
+    const data = await r.json();
+    const links: string[] = data?.data?.links ?? data?.links ?? [];
+    const filtered = links
+      .filter((u) => /\.(xlsx?|pdf|docx?|zip)(\?|$)/i.test(u))
+      .map((u) => ({ nome: u.split("/").pop() ?? u, url: u, tipo: classifyExt(u) as AnexoLink["tipo"] }));
+    // dedupe
+    const seen = new Set<string>();
+    return filtered.filter((l) => (seen.has(l.url) ? false : seen.add(l.url)));
+  } catch {
+    return [];
+  }
+}
+
+async function downloadBinary(url: string): Promise<{ buf: ArrayBuffer; ct: string } | null> {
+  try {
+    const r = await fetch(url, { headers: FETCH_HEADERS, signal: AbortSignal.timeout(30000), redirect: "follow" });
+    if (!r.ok) return null;
+    const ct = r.headers.get("content-type") ?? "application/octet-stream";
+    const buf = await r.arrayBuffer();
+    return { buf, ct };
+  } catch {
+    return null;
+  }
+}
+
+function num(v: any): number | null {
+  if (v == null || v === "") return null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  const s = String(v).replace(/R\$/gi, "").replace(/\s+/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(/,/g, ".").replace(/[^\d.\-]/g, "");
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+function pickHeader(row: any[], patterns: RegExp[]): number {
+  for (let i = 0; i < row.length; i++) {
+    const v = String(row[i] ?? "").toLowerCase().trim();
+    if (patterns.some((p) => p.test(v))) return i;
+  }
+  return -1;
+}
+
+/** Extrai itens de uma planilha .xlsx com heurística de cabeçalhos brasileiros. */
+function parseXlsxItens(buf: ArrayBuffer): any[] {
+  try {
+    const wb = XLSX.read(new Uint8Array(buf), { type: "array" });
+    const itens: any[] = [];
+    for (const sheetName of wb.SheetNames) {
+      const ws = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: null }) as any[][];
+      if (!rows.length) continue;
+
+      // localizar linha de cabeçalho dentro das primeiras 15 linhas
+      let headerIdx = -1;
+      let cols = { item: -1, desc: -1, qtd: -1, un: -1, vu: -1, vt: -1, lote: -1 };
+      for (let i = 0; i < Math.min(15, rows.length); i++) {
+        const r = rows[i] || [];
+        const c = {
+          item: pickHeader(r, [/^item$/, /^n[ºo°]?$/, /n[uú]mero/]),
+          desc: pickHeader(r, [/descri/, /especifica/, /objeto/]),
+          qtd: pickHeader(r, [/qtd/, /quant/]),
+          un: pickHeader(r, [/^un$/, /unidade/, /^um$/]),
+          vu: pickHeader(r, [/valor.?un/, /pre[çc]o.?un/, /vlr.?un/]),
+          vt: pickHeader(r, [/valor.?total/, /total\b/, /vlr.?total/]),
+          lote: pickHeader(r, [/^lote$/, /grupo/]),
+        };
+        if (c.desc !== -1 && (c.qtd !== -1 || c.vu !== -1)) {
+          headerIdx = i;
+          cols = c;
+          break;
+        }
+      }
+      if (headerIdx === -1) continue;
+
+      for (let i = headerIdx + 1; i < rows.length; i++) {
+        const r = rows[i] || [];
+        const desc = String(r[cols.desc] ?? "").trim();
+        if (desc.length < 5) continue;
+        const qtd = num(r[cols.qtd]) ?? 1;
+        const vu = num(r[cols.vu]) ?? 0;
+        const vt = num(r[cols.vt]) ?? qtd * vu;
+        itens.push({
+          item: r[cols.item] != null ? String(r[cols.item]) : String(itens.length + 1),
+          descricao: desc,
+          quantidade: qtd,
+          unidade: String(r[cols.un] ?? "UN").trim() || "UN",
+          valor_unitario: vu,
+          valor_total: vt,
+          lote: cols.lote !== -1 && r[cols.lote] != null ? String(r[cols.lote]) : "Único",
+          marca: null,
+          fabricante: null,
+          modelo: null,
+        });
+      }
+      if (itens.length > 0) break; // primeira aba útil resolve
+    }
+    return itens;
+  } catch (e) {
+    console.warn("[auto-ingest] xlsx parse err:", String(e));
+    return [];
+  }
+}
+
+async function callExtrairItensIA(supabaseUrl: string, anonKey: string, payload: Record<string, any>) {
+  const r = await fetch(`${supabaseUrl}/functions/v1/extrair-itens-edital`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) return null;
+  return await r.json();
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+  const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+  // Auth do usuário
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { global: { headers: { Authorization: authHeader } } });
+  const { data: userData } = await userClient.auth.getUser();
+  const user = userData?.user;
+  if (!user) {
+    return new Response(JSON.stringify({ error: "unauthenticated" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+  let body: IngestRequest;
+  try { body = await req.json(); } catch { return new Response(JSON.stringify({ error: "invalid json" }), { status: 400, headers: corsHeaders }); }
+  if (!body.licitacao_id) return new Response(JSON.stringify({ error: "licitacao_id required" }), { status: 400, headers: corsHeaders });
+
+  // Carrega licitação (e numero_controle_pncp via cache se houver)
+  const { data: lic } = await admin
+    .from("licitacoes")
+    .select("id, user_id, numero, orgao, objeto, url_edital, valor_estimado")
+    .eq("id", body.licitacao_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!lic) return new Response(JSON.stringify({ error: "licitacao not found" }), { status: 404, headers: corsHeaders });
+
+  // upsert status running
+  const updateStatus = async (patch: Record<string, any>) => {
+    await admin.from("processos_ingest_status").upsert({
+      user_id: user.id,
+      licitacao_id: lic.id,
+      ...patch,
+    }, { onConflict: "licitacao_id" });
+  };
+
+  await updateStatus({ status: "running", etapa: "resolve", iniciado_em: new Date().toISOString(), erro: null, mensagem: null });
+
+  // Resolver fonte: tentar PNCP via numero/url
+  let anexos: AnexoLink[] = [];
+  let fonte = "generic";
+  let pncp: ReturnType<typeof parsePNCPNumeroControle> = null;
+  const nc = lic.numero || "";
+  pncp = parsePNCPNumeroControle(nc);
+
+  if (!pncp && lic.url_edital) {
+    const m = lic.url_edital.match(/(\d{14})-\d+-(\d+)\/(\d{4})/);
+    if (m) pncp = { cnpj: m[1], seq: m[2], ano: m[3] };
+  }
+
+  if (pncp) {
+    fonte = "pncp";
+    await updateStatus({ fonte, etapa: "download" });
+    anexos = await listPNCPArquivos(pncp.cnpj, pncp.ano, pncp.seq);
+  }
+
+  if (anexos.length === 0 && lic.url_edital) {
+    fonte = "generic";
+    await updateStatus({ fonte, etapa: "download" });
+    anexos = await firecrawlScrape(lic.url_edital);
+  }
+
+  await updateStatus({ etapa: "classify", arquivos_baixados: anexos as any });
+
+  // Estratégia: priorizar XLSX
+  const xlsxFirst = anexos.find((a) => a.tipo === "xlsx");
+  let itens: any[] = [];
+  let fonteUsada = "";
+
+  if (xlsxFirst) {
+    await updateStatus({ etapa: "parse", mensagem: `Lendo planilha: ${xlsxFirst.nome}` });
+    const dl = await downloadBinary(xlsxFirst.url);
+    if (dl) {
+      itens = parseXlsxItens(dl.buf);
+      if (itens.length > 0) fonteUsada = "XLSX";
+    }
+  }
+
+  // Fallback PDF/IA via extrair-itens-edital
+  if (itens.length === 0) {
+    await updateStatus({ etapa: "parse", mensagem: "Lendo edital com IA…" });
+    const pdfFirst = anexos.find((a) => a.tipo === "pdf");
+    const payload: Record<string, any> = {};
+    if (pncp) {
+      payload.numero_controle = `${pncp.cnpj}-1-${pncp.seq}/${pncp.ano}`;
+      payload.orgao_cnpj = pncp.cnpj;
+      payload.ano_compra = pncp.ano;
+      payload.sequencial = pncp.seq;
+    }
+    if (pdfFirst) payload.pdf_url = pdfFirst.url;
+
+    if (Object.keys(payload).length > 0) {
+      const result = await callExtrairItensIA(SUPABASE_URL, SUPABASE_ANON_KEY, payload);
+      if (result?.success && Array.isArray(result.data) && result.data.length > 0) {
+        itens = result.data;
+        fonteUsada = result.fonte || "IA";
+      }
+    }
+  }
+
+  if (itens.length === 0) {
+    await updateStatus({
+      status: "failed",
+      etapa: "done",
+      finalizado_em: new Date().toISOString(),
+      mensagem: "Nenhum item encontrado automaticamente.",
+      erro: "no_items_resolved",
+    });
+    return new Response(JSON.stringify({ success: false, reason: "no_items", anexos }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  // Persistir
+  await updateStatus({ etapa: "persist" });
+
+  if (body.replace) {
+    await admin.from("licitacao_itens").delete().eq("licitacao_id", lic.id).eq("user_id", user.id);
+  }
+
+  const rows = itens.map((it: any, idx: number) => ({
+    licitacao_id: lic.id,
+    user_id: user.id,
+    numero: Number(it.item) || idx + 1,
+    descricao: String(it.descricao ?? "").slice(0, 4000),
+    quantidade: Number(it.quantidade) || 1,
+    unidade: String(it.unidade ?? "UN").slice(0, 20),
+    valor_unitario: Number(it.valor_unitario) || 0,
+    valor_total: Number(it.valor_total) || 0,
+    lote: it.lote ? String(it.lote).slice(0, 80) : "Único",
+    marca: it.marca ?? null,
+    fabricante: it.fabricante ?? null,
+    modelo: it.modelo ?? null,
+    origem: `auto:${fonteUsada || fonte}`,
+  }));
+
+  const { error: insErr } = await admin.from("licitacao_itens").insert(rows);
+  if (insErr) {
+    await updateStatus({ status: "failed", etapa: "done", finalizado_em: new Date().toISOString(), erro: insErr.message });
+    return new Response(JSON.stringify({ success: false, error: insErr.message }), { status: 500, headers: corsHeaders });
+  }
+
+  // Atualiza valor estimado da licitação se vier vazio
+  const valorTotal = rows.reduce((s, r) => s + (r.valor_total || 0), 0);
+  if (!lic.valor_estimado && valorTotal > 0) {
+    await admin.from("licitacoes").update({ valor_estimado: valorTotal }).eq("id", lic.id);
+  }
+
+  await updateStatus({
+    status: "success",
+    etapa: "done",
+    total_itens: rows.length,
+    fonte: fonteUsada || fonte,
+    mensagem: `${rows.length} itens importados (${fonteUsada || fonte}).`,
+    finalizado_em: new Date().toISOString(),
+  });
+
+  return new Response(JSON.stringify({ success: true, total: rows.length, fonte: fonteUsada || fonte }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+});
