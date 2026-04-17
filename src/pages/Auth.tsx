@@ -108,6 +108,17 @@ export default function Auth() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    // Se houve erro de network anterior, limpa tokens antigos do localStorage
+    // (refresh tokens expirados/corrompidos causam "Failed to fetch" persistente)
+    if (networkError) {
+      try {
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith('sb-') || k.includes('supabase.auth'))
+          .forEach((k) => localStorage.removeItem(k));
+      } catch {}
+    }
+
     const { error } = await signIn(email, password);
     setLoading(false);
     if (error) {
