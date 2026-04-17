@@ -184,22 +184,22 @@ function statusFromSituacao(situacao: string | null | undefined, dataAbertura: s
   return 'aberto';
 }
 
-interface FiltrosSiasg {
+interface FiltrosLei14133 {
   numero: string;
   ano: string;
   dataIni: string;     // dd/mm/aaaa
   dataFim: string;     // dd/mm/aaaa
   objeto: string;
-  modalidades: ModalidadeSiasg[];
+  modalidades: ModalidadeLei14133[];
   tiposConc: string[];
   tiposPregao: string[];
-  tiposRdc: string[];
+  tiposLeilao: string[];
   ufs: string[];
   municipios: string[];
   uasgs: string[];
 }
 
-const filtrosVazios: FiltrosSiasg = {
+const filtrosVazios: FiltrosLei14133 = {
   numero: '',
   ano: String(new Date().getFullYear()),
   dataIni: '',
@@ -208,7 +208,7 @@ const filtrosVazios: FiltrosSiasg = {
   modalidades: [],
   tiposConc: [],
   tiposPregao: [],
-  tiposRdc: [],
+  tiposLeilao: [],
   ufs: [],
   municipios: [],
   uasgs: [],
