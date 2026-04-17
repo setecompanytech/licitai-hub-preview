@@ -754,22 +754,20 @@ export default function MonitoramentoEditais() {
               placeholder="Selecione um ou mais estados"
             />
 
-            {/* Linha 5: Municípios (free input) */}
-            <ChipFreeInput
+            {/* Linha 5: Municípios (filtrados por UF via API IBGE) */}
+            <MunicipiosByUFSelect
               label="Municípios"
-              valores={filtros.municipios}
-              tempValue={tempMunicipio}
-              onTempChange={setTempMunicipio}
-              onAdd={(v) => {
-                if (!v.trim()) return;
-                if (!filtros.municipios.includes(v.trim())) {
-                  setFiltros(p => ({ ...p, municipios: [...p.municipios, v.trim()] }));
-                }
-                setTempMunicipio('');
-              }}
-              onRemove={(idx) => setFiltros(p => ({ ...p, municipios: p.municipios.filter((_, i) => i !== idx) }))}
-              placeholder="Digite o município e pressione Enter"
-              hint="(Selecione UF antes para resultados precisos)"
+              ufs={filtros.ufs}
+              selecionados={filtros.municipios}
+              onToggle={(v) =>
+                setFiltros(p => ({
+                  ...p,
+                  municipios: p.municipios.includes(v)
+                    ? p.municipios.filter(x => x !== v)
+                    : [...p.municipios, v],
+                }))
+              }
+              onClear={() => setFiltros(p => ({ ...p, municipios: [] }))}
             />
 
             {/* Linha 6: UASG (até 5) */}
