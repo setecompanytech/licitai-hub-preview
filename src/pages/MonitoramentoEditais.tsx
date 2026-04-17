@@ -460,9 +460,6 @@ export default function MonitoramentoEditais() {
         total,
         paginas,
         pagina: pag,
-        aviso: filtros.modalidades.includes('rdc')
-          ? 'RDC foi revogado pela Lei 14.133/2021 — exibindo resultados que mencionam o termo no objeto.'
-          : undefined,
       });
       setPagina(pag);
     } catch (e: unknown) {
