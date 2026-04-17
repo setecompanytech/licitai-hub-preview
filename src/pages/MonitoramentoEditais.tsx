@@ -2,20 +2,18 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
 import {
-  Search, Filter, ChevronDown, ChevronUp, ExternalLink,
+  Search, ExternalLink,
   MapPin, Building2, Calendar, Clock, CheckCircle2, XCircle,
   PauseCircle, ChevronLeft, ChevronRight,
   Bookmark, BookmarkCheck, Info, Loader2, RefreshCw, AlertCircle, FileText,
-  Rocket, ArrowRight, CheckCircle, ListChecks
+  Rocket, ArrowRight, CheckCircle, ListChecks, ChevronDown, ChevronUp, X, Eraser
 } from 'lucide-react';
 import EditalActionsModal, { type EditalSeed } from '@/components/monitoramento/EditalActionsModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Select, SelectContent, SelectItem,
-  SelectTrigger, SelectValue,
-} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -59,7 +57,7 @@ interface ResultadoBusca {
   aviso?: string;
 }
 
-// ─── Constantes ──────────────────────────────────────────────────────────────
+// ─── Constantes do SIASG ─────────────────────────────────────────────────────
 
 const UFS = [
   'AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS',
@@ -67,17 +65,44 @@ const UFS = [
   'SE','SP','TO',
 ];
 
-// Modalidades conforme Lei 14.133/2021 (Art. 28 + procedimentos auxiliares Art. 78)
-// Forma eletrônica é a regra (Art. 17, §2º). Presencial só em caráter excepcional justificado.
-const MODALIDADES = [
-  { id: 6, label: 'Pregão' },
-  { id: 4, label: 'Concorrência' },
-  { id: 3, label: 'Concurso' },
-  { id: 1, label: 'Leilão' },
-  { id: 2, label: 'Diálogo Competitivo' },
-  { id: 8, label: 'Dispensa de Licitação' },
-  { id: 9, label: 'Inexigibilidade' },
-  { id: 12, label: 'Credenciamento' },
+// Modalidade SIASG → modalidade_id PNCP (Lei 14.133/2021)
+type ModalidadeSiasg = 'convite' | 'tomada' | 'concorrencia' | 'concurso' | 'pregao' | 'rdc' | 'todas';
+const MODALIDADES_SIASG: { id: ModalidadeSiasg; label: string }[] = [
+  { id: 'convite', label: 'Convite' },
+  { id: 'tomada', label: 'Tomada de Preço' },
+  { id: 'concorrencia', label: 'Concorrência' },
+  { id: 'concurso', label: 'Concurso' },
+  { id: 'pregao', label: 'Pregão' },
+  { id: 'rdc', label: 'RDC' },
+  { id: 'todas', label: 'Todas' },
+];
+
+// Sub-tipos de Concorrência (SIASG)
+const TIPOS_CONCORRENCIA = [
+  { id: 'conc', label: 'Concorrência', modalidadeId: 5 },
+  { id: 'conc_srp', label: 'Concorrência SRP', modalidadeId: 5, srp: true },
+  { id: 'conc_int', label: 'Concorrência Internacional', modalidadeId: 5 },
+  { id: 'conc_int_srp', label: 'Concorrência Internacional SRP', modalidadeId: 5, srp: true },
+  { id: 'conc_eletr', label: 'Concorrência Eletrônica', modalidadeId: 4 },
+  { id: 'todos_conc', label: 'Todos' },
+];
+
+// Sub-tipos de Pregão (SIASG)
+const TIPOS_PREGAO = [
+  { id: 'pregao_eletr_srp', label: 'Pregão Eletrônico SRP', modalidadeId: 6, srp: true },
+  { id: 'pregao_eletr', label: 'Pregão Eletrônico', modalidadeId: 6 },
+  { id: 'pregao_pres_srp', label: 'Pregão Presencial SRP', modalidadeId: 7, srp: true },
+  { id: 'pregao_pres', label: 'Pregão Presencial', modalidadeId: 7 },
+  { id: 'todos_pregao', label: 'Todos' },
+];
+
+// Sub-tipos de RDC
+const TIPOS_RDC = [
+  { id: 'rdc_eletr_srp', label: 'RDC Eletrônico SRP' },
+  { id: 'rdc_eletr', label: 'RDC Eletrônico' },
+  { id: 'rdc_pres_srp', label: 'RDC Presencial SRP' },
+  { id: 'rdc_pres', label: 'RDC Presencial' },
+  { id: 'todos_rdc', label: 'Todos' },
 ];
 
 const STATUS_CONFIG = {
@@ -121,19 +146,67 @@ function calcularDiasRestantes(iso: string | null): number | null {
   }
 }
 
+// Converte 'dd/mm/aaaa' → 'aaaa-mm-dd' aceito pelo backend
+function dmyToIso(dmy: string): string {
+  const m = dmy.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return '';
+  return `${m[3]}-${m[2]}-${m[1]}`;
+}
+
+// Mapeia situação textual do PNCP → status da UI
+function statusFromSituacao(situacao: string | null | undefined, dataAbertura: string | null): Edital['status'] {
+  const s = (situacao || '').toLowerCase();
+  if (s.includes('homolog')) return 'homologado';
+  if (s.includes('suspens')) return 'suspenso';
+  if (s.includes('encerrad') || s.includes('fechad') || s.includes('cancel') || s.includes('revogad') || s.includes('anulad')) {
+    if (dataAbertura) {
+      try {
+        if (parseISO(dataAbertura).getTime() > Date.now()) return 'aguardando';
+      } catch { /* noop */ }
+    }
+    return 'encerrado';
+  }
+  if (s.includes('divulgad') || s.includes('publicad') || s.includes('aberta') || s.includes('em andamento')) return 'aberto';
+  if (s.includes('aguard')) return 'aguardando';
+  return 'aberto';
+}
+
+interface FiltrosSiasg {
+  numero: string;
+  ano: string;
+  dataIni: string;     // dd/mm/aaaa
+  dataFim: string;     // dd/mm/aaaa
+  objeto: string;
+  modalidades: ModalidadeSiasg[];
+  tiposConc: string[];
+  tiposPregao: string[];
+  tiposRdc: string[];
+  ufs: string[];
+  municipios: string[];
+  uasgs: string[];
+}
+
+const filtrosVazios: FiltrosSiasg = {
+  numero: '',
+  ano: String(new Date().getFullYear()),
+  dataIni: '',
+  dataFim: '',
+  objeto: '',
+  modalidades: [],
+  tiposConc: [],
+  tiposPregao: [],
+  tiposRdc: [],
+  ufs: [],
+  municipios: [],
+  uasgs: [],
+};
+
 // ─── Componente principal ────────────────────────────────────────────────────
 
 export default function MonitoramentoEditais() {
-  const [filtros, setFiltros] = useState({
-    termo: '',
-    uf: 'all',
-    modalidade: 'all',
-    situacao: 'abertas',
-    esfera: 'all',
-    dataInicial: '',
-    dataFinal: '',
-  });
-  const [filtrosAbertos, setFiltrosAbertos] = useState(true);
+  const [filtros, setFiltros] = useState<FiltrosSiasg>(filtrosVazios);
+  const [tempUasg, setTempUasg] = useState('');
+  const [tempMunicipio, setTempMunicipio] = useState('');
 
   const [resultado, setResultado] = useState<ResultadoBusca | null>(null);
   const [pagina, setPagina] = useState(1);
@@ -150,7 +223,6 @@ export default function MonitoramentoEditais() {
   // Map "numero||orgao" -> licitacao_id (processos já criados pelo usuário)
   const { user } = useAuth();
   const [emGestao, setEmGestao] = useState<Map<string, string>>(new Map());
-  // Map "numero||orgao" -> processos_interesse.id (compromissos do usuário)
   const [emCompromissos, setEmCompromissos] = useState<Map<string, string>>(new Map());
   const [modalEdital, setModalEdital] = useState<EditalSeed | null>(null);
   const [modalExistingId, setModalExistingId] = useState<string | null>(null);
@@ -203,6 +275,39 @@ export default function MonitoramentoEditais() {
 
   const abortRef = useRef<AbortController | null>(null);
 
+  // Resolve modalidade_id efetiva a partir das escolhas SIASG
+  const modalidadesEfetivas = useMemo<number[]>(() => {
+    const ids = new Set<number>();
+    if (filtros.modalidades.includes('todas')) return [];
+    if (filtros.modalidades.includes('convite')) ids.add(11);
+    if (filtros.modalidades.includes('tomada')) ids.add(10);
+    if (filtros.modalidades.includes('concurso')) ids.add(3);
+    // Concorrência: sub-tipos definem se eletrônica (4) ou presencial (5)
+    if (filtros.modalidades.includes('concorrencia')) {
+      if (filtros.tiposConc.length === 0 || filtros.tiposConc.includes('todos_conc')) {
+        ids.add(4); ids.add(5);
+      } else {
+        filtros.tiposConc.forEach(t => {
+          const cfg = TIPOS_CONCORRENCIA.find(x => x.id === t);
+          if (cfg?.modalidadeId) ids.add(cfg.modalidadeId);
+        });
+      }
+    }
+    // Pregão: sub-tipos definem eletrônico (6) ou presencial (7)
+    if (filtros.modalidades.includes('pregao')) {
+      if (filtros.tiposPregao.length === 0 || filtros.tiposPregao.includes('todos_pregao')) {
+        ids.add(6); ids.add(7);
+      } else {
+        filtros.tiposPregao.forEach(t => {
+          const cfg = TIPOS_PREGAO.find(x => x.id === t);
+          if (cfg?.modalidadeId) ids.add(cfg.modalidadeId);
+        });
+      }
+    }
+    // RDC não tem modalidade_id no PNCP novo (Lei 14.133 revogou) — vai por filtro de objeto
+    return Array.from(ids);
+  }, [filtros.modalidades, filtros.tiposConc, filtros.tiposPregao]);
+
   const buscar = useCallback(async (pag = 1) => {
     if (abortRef.current) abortRef.current.abort();
     abortRef.current = new AbortController();
@@ -213,39 +318,136 @@ export default function MonitoramentoEditais() {
     setResultado(null);
 
     try {
-      // Convert 'all' sentinel values to empty strings for the API
-      const apiBody = {
-        termo: filtros.termo,
-        uf: filtros.uf === 'all' ? '' : filtros.uf,
-        modalidade: filtros.modalidade === 'all' ? '' : filtros.modalidade,
-        situacao: filtros.situacao,
-        esfera: filtros.esfera === 'all' ? '' : filtros.esfera,
-        dataInicial: filtros.dataInicial,
-        dataFinal: filtros.dataFinal,
-        pagina: pag,
-        tamanhoPagina: 20,
-      };
-      const { data, error } = await supabase.functions.invoke('busca-licitacoes', {
-        body: apiBody,
+      // Monta termo de busca: combina objeto + nº licitação + uasgs como tokens
+      const termoPartes: string[] = [];
+      if (filtros.objeto.trim()) termoPartes.push(filtros.objeto.trim());
+      if (filtros.numero.trim()) termoPartes.push(filtros.numero.trim());
+      if (filtros.modalidades.includes('rdc')) termoPartes.push('RDC');
+      const termo = termoPartes.join(' ').trim() || null;
+
+      const dataIni = filtros.dataIni ? dmyToIso(filtros.dataIni) : null;
+      const dataFim = filtros.dataFim ? dmyToIso(filtros.dataFim) : null;
+
+      const tamanho = 20;
+
+      // Quando há múltiplas UFs ou modalidades, paralelizamos a RPC e mesclamos
+      const ufsList = filtros.ufs.length > 0 ? filtros.ufs : [null];
+      const modList = modalidadesEfetivas.length > 0 ? modalidadesEfetivas : [null];
+
+      const calls: Promise<{ data: any[] | null; error: any }>[] = [];
+      for (const uf of ufsList) {
+        for (const mod of modList) {
+          calls.push(
+            Promise.resolve(supabase.rpc('busca_editais_instantanea' as any, {
+              p_q: termo,
+              p_uf: uf,
+              p_municipio_ibge: null,
+              p_esfera: null,
+              p_modalidade_id: mod,
+              p_segmento: null,
+              p_data_inicio: dataIni,
+              p_data_fim: dataFim,
+              p_ordenacao: 'data_publicacao',
+              p_direcao: 'desc',
+              p_pagina: pag,
+              p_tamanho: tamanho,
+            })
+          );
+        }
+      }
+
+      const respostas = await Promise.all(calls);
+      const erros = respostas.filter(r => r.error).map(r => r.error?.message);
+      if (erros.length === respostas.length) {
+        throw new Error(erros[0] || 'Falha ao consultar o cache PNCP');
+      }
+
+      // Mescla, deduplica por id e aplica filtros client-side (uasg, município nome, ano)
+      const rowsRaw: any[] = respostas.flatMap(r => r.data || []);
+      const seen = new Set<string>();
+      let totalEstimado = 0;
+      const rows = rowsRaw.filter(r => {
+        if (!r?.id || seen.has(r.id)) return false;
+        seen.add(r.id);
+        totalEstimado = Math.max(totalEstimado, Number(r.total_count) || 0);
+        return true;
       });
 
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
+      // Filtros locais adicionais (campos sem cobertura na RPC)
+      const ufsSet = new Set(filtros.ufs);
+      const muniSet = new Set(filtros.municipios.map(m => m.toLowerCase()));
+      const uasgSet = new Set(filtros.uasgs.map(u => String(u).trim()));
 
-      setResultado(data as ResultadoBusca);
+      const filtrados = rows.filter(r => {
+        if (ufsSet.size > 0 && !ufsSet.has(r.uf)) return false;
+        if (muniSet.size > 0 && !muniSet.has(String(r.municipio || '').toLowerCase())) return false;
+        if (uasgSet.size > 0) {
+          const uasgRow = String(r.unidade_orgao || r.cnpj_orgao || '').trim();
+          // Tenta casar pelo trecho numérico do unidade_orgao ou número compra
+          const matches = Array.from(uasgSet).some(u => uasgRow.includes(u) || String(r.numero_compra || '').includes(u));
+          if (!matches) return false;
+        }
+        if (filtros.ano && filtros.numero) {
+          const numAno = `${filtros.numero}/${filtros.ano}`;
+          if (!String(r.numero_compra || '').includes(numAno) && !String(r.numero_compra || '').includes(filtros.numero)) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      const editais: Edital[] = filtrados.map(r => ({
+        id: r.id,
+        numeroCompra: r.numero_compra ?? '',
+        processo: r.numero_compra ?? '',
+        objeto: r.objeto ?? '',
+        orgao: r.orgao ?? '',
+        cnpj: r.cnpj_orgao ?? '',
+        municipio: r.municipio ?? '',
+        uf: r.uf ?? '',
+        esfera: r.esfera_id ?? '',
+        modalidadeId: r.modalidade_id ?? 0,
+        modalidade: r.modalidade_nome ?? '',
+        valorEstimado: r.valor_total_estimado != null ? Number(r.valor_total_estimado) : null,
+        valorHomologado: null,
+        dataPublicacao: r.data_publicacao_pncp ?? null,
+        dataAbertura: r.data_abertura_proposta ?? null,
+        dataEncerramento: r.data_encerramento_proposta ?? null,
+        situacaoId: 0,
+        situacaoNome: r.situacao ?? '',
+        situacaoCor: '',
+        status: statusFromSituacao(r.situacao, r.data_abertura_proposta),
+        srp: !!r.srp,
+        modoDisputa: '',
+        tipoEdital: r.tipo_instrumento ?? '',
+        link: r.link_sistema_origem ?? r.link_comprasnet ?? '',
+        linkPncp: r.url_pncp ?? '',
+        informacaoComplementar: '',
+      }));
+
+      const total = filtrados.length === rows.length ? totalEstimado : filtrados.length;
+      const paginas = Math.max(1, Math.ceil(total / tamanho));
+
+      setResultado({
+        data: editais,
+        total,
+        paginas,
+        pagina: pag,
+        aviso: filtros.modalidades.includes('rdc')
+          ? 'RDC foi revogado pela Lei 14.133/2021 — exibindo resultados que mencionam o termo no objeto.'
+          : undefined,
+      });
       setPagina(pag);
     } catch (e: unknown) {
       if (e instanceof Error && e.name === 'AbortError') return;
-      const msg = e instanceof Error ? e.message : 'Erro ao consultar o PNCP';
+      const msg = e instanceof Error ? e.message : 'Erro ao consultar o cache PNCP';
       setErro(msg);
       setResultado(null);
       toast.error('Erro na consulta', { description: msg });
     } finally {
       setCarregando(false);
     }
-  }, [filtros]);
-
-  // Não busca automaticamente — aguarda o usuário filtrar e clicar em Pesquisar
+  }, [filtros, modalidadesEfetivas]);
 
   const toggleFavorito = (id: string) => {
     setFavoritos(prev => {
@@ -256,17 +458,58 @@ export default function MonitoramentoEditais() {
     });
   };
 
-  const setFiltro = (campo: string, valor: string) => {
-    setFiltros(prev => ({ ...prev, [campo]: valor }));
-  };
-
   const limparFiltros = () => {
-    setFiltros({ termo: '', uf: 'all', modalidade: 'all', situacao: 'abertas', esfera: 'all', dataInicial: '', dataFinal: '' });
+    setFiltros(filtrosVazios);
+    setTempUasg('');
+    setTempMunicipio('');
+    setResultado(null);
+    setBuscaRealizada(false);
+    setErro(null);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') buscar(1);
+  // Helpers de toggle multi-select
+  const toggleArr = <K extends keyof FiltrosSiasg>(campo: K, valor: any) => {
+    setFiltros(prev => {
+      const arr = prev[campo] as any[];
+      const next = arr.includes(valor) ? arr.filter(v => v !== valor) : [...arr, valor];
+      return { ...prev, [campo]: next } as FiltrosSiasg;
+    });
   };
+
+  const setMod = (m: ModalidadeSiasg) => {
+    if (m === 'todas') {
+      setFiltros(prev => ({ ...prev, modalidades: prev.modalidades.includes('todas') ? [] : ['todas'] }));
+    } else {
+      setFiltros(prev => {
+        const semTodas = prev.modalidades.filter(x => x !== 'todas');
+        const next = semTodas.includes(m) ? semTodas.filter(x => x !== m) : [...semTodas, m];
+        return { ...prev, modalidades: next };
+      });
+    }
+  };
+
+  // Formatadores de input dd/mm/aaaa
+  const formatDateInput = (v: string) => {
+    const n = v.replace(/\D/g, '').slice(0, 8);
+    if (n.length <= 2) return n;
+    if (n.length <= 4) return `${n.slice(0, 2)}/${n.slice(2)}`;
+    return `${n.slice(0, 2)}/${n.slice(2, 4)}/${n.slice(4)}`;
+  };
+
+  const filtrosAtivosCount = useMemo(() => {
+    let n = 0;
+    if (filtros.numero) n++;
+    if (filtros.dataIni || filtros.dataFim) n++;
+    if (filtros.objeto) n++;
+    if (filtros.modalidades.length > 0) n++;
+    if (filtros.tiposConc.length > 0) n++;
+    if (filtros.tiposPregao.length > 0) n++;
+    if (filtros.tiposRdc.length > 0) n++;
+    if (filtros.ufs.length > 0) n++;
+    if (filtros.municipios.length > 0) n++;
+    if (filtros.uasgs.length > 0) n++;
+    return n;
+  }, [filtros]);
 
   return (
     <AppLayout>
@@ -275,10 +518,10 @@ export default function MonitoramentoEditais() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold text-foreground tracking-tight">
-              Monitoramento de Editais
+              Licitações do Governo Federal
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Fonte oficial: Portal Nacional de Contratações Públicas — PNCP
+              Pesquisa avançada estilo SIASG/Compras.gov.br · Cache PNCP local
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -293,7 +536,7 @@ export default function MonitoramentoEditais() {
               variant="outline"
               size="sm"
               onClick={() => buscar(pagina)}
-              disabled={carregando}
+              disabled={carregando || !buscaRealizada}
             >
               <RefreshCw className={`w-4 h-4 mr-1.5 ${carregando ? 'animate-spin' : ''}`} />
               Atualizar
@@ -301,131 +544,219 @@ export default function MonitoramentoEditais() {
           </div>
         </div>
 
-        {/* Filtros */}
+        {/* Painel de filtros estilo SIASG */}
         <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <button
-            onClick={() => setFiltrosAbertos(!filtrosAbertos)}
-            className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/50 transition-colors"
-          >
-            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <Filter className="w-4 h-4 text-accent" />
-              Filtros de pesquisa
-              {(filtros.termo || filtros.uf !== 'all' || filtros.modalidade !== 'all' || filtros.esfera !== 'all') && (
+          <div className="px-5 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <Search className="w-4 h-4 text-accent" />
+              <span className="font-semibold text-foreground">Pesquisa de licitações</span>
+              {filtrosAtivosCount > 0 && (
                 <span className="px-2 py-0.5 rounded-full bg-accent/20 text-accent text-xs font-medium">
-                  {[filtros.termo, filtros.uf !== 'all' ? filtros.uf : '', filtros.modalidade !== 'all' ? filtros.modalidade : '', filtros.esfera !== 'all' ? filtros.esfera : ''].filter(Boolean).length} ativo(s)
+                  {filtrosAtivosCount} filtro(s)
                 </span>
               )}
             </div>
-            {filtrosAbertos
-              ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
-              : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-          </button>
+            <p className="text-[11px] text-muted-foreground">
+              Caso não seja informado o número da licitação, será obrigatório informar o Período de Publicação e Modalidade.
+            </p>
+          </div>
 
-          {filtrosAbertos && (
-            <div className="px-5 pb-5 pt-1 border-t border-border space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="md:col-span-2">
-                  <label className="block text-xs text-muted-foreground mb-1.5">Objeto / Termo de pesquisa</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                    <Input
-                      placeholder="Ex: material de escritório, equipamentos médicos..."
-                      value={filtros.termo}
-                      onChange={e => setFiltro('termo', e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      className="pl-9"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1.5">Situação das propostas</label>
-                  <Select value={filtros.situacao} onValueChange={v => setFiltro('situacao', v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="abertas">Propostas abertas</SelectItem>
-                      <SelectItem value="todas">Todas as publicações</SelectItem>
-                      <SelectItem value="encerradas">Encerradas</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+          <div className="p-5 space-y-5">
+            {/* Linha 1: Número / Período */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+              <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">Número da Licitação</Label>
+              <div className="md:col-span-4 flex items-center gap-2">
+                <Input
+                  placeholder="Ex: 102005"
+                  value={filtros.numero}
+                  onChange={e => setFiltros(p => ({ ...p, numero: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
+                  className="h-9 max-w-[160px]"
+                />
+                <span className="text-xs text-muted-foreground">/</span>
+                <Input
+                  placeholder="aaaa"
+                  value={filtros.ano}
+                  onChange={e => setFiltros(p => ({ ...p, ano: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                  className="h-9 max-w-[90px]"
+                />
+                <span className="text-[11px] text-muted-foreground">(número e ano)</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1.5">UF</label>
-                  <Select value={filtros.uf} onValueChange={v => setFiltro('uf', v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      <SelectItem value="all">Todos os estados</SelectItem>
-                      {UFS.map(uf => (
-                        <SelectItem key={uf} value={uf}>{uf}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1.5">Modalidade</label>
-                  <Select value={filtros.modalidade} onValueChange={v => setFiltro('modalidade', v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas as modalidades</SelectItem>
-                      {MODALIDADES.map(m => (
-                        <SelectItem key={m.id} value={String(m.id)}>{m.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1.5">Esfera</label>
-                  <Select value={filtros.esfera} onValueChange={v => setFiltro('esfera', v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas as esferas</SelectItem>
-                      <SelectItem value="F">Federal</SelectItem>
-                      <SelectItem value="E">Estadual</SelectItem>
-                      <SelectItem value="M">Municipal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {filtros.situacao !== 'abertas' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1.5">Data início de publicação</label>
-                    <Input
-                      type="date"
-                      value={filtros.dataInicial}
-                      onChange={e => setFiltro('dataInicial', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1.5">Data fim de publicação</label>
-                    <Input
-                      type="date"
-                      value={filtros.dataFinal}
-                      onChange={e => setFiltro('dataFinal', e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center gap-2 pt-1">
-                <Button
-                  onClick={() => buscar(1)}
-                  disabled={carregando}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold px-6"
-                >
-                  {carregando
-                    ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Consultando PNCP...</>
-                    : <><Search className="w-4 h-4 mr-2" />Pesquisar</>}
-                </Button>
-                <Button variant="ghost" onClick={limparFiltros}>
-                  Limpar filtros
-                </Button>
+              <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">Período de Publicação</Label>
+              <div className="md:col-span-4 flex items-center gap-2">
+                <Input
+                  placeholder="dd/mm/aaaa"
+                  value={filtros.dataIni}
+                  onChange={e => setFiltros(p => ({ ...p, dataIni: formatDateInput(e.target.value) }))}
+                  className="h-9 max-w-[140px]"
+                />
+                <span className="text-xs text-muted-foreground">até</span>
+                <Input
+                  placeholder="dd/mm/aaaa"
+                  value={filtros.dataFim}
+                  onChange={e => setFiltros(p => ({ ...p, dataFim: formatDateInput(e.target.value) }))}
+                  className="h-9 max-w-[140px]"
+                />
               </div>
             </div>
-          )}
+
+            {/* Linha 2: Objeto */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+              <Label className="md:col-span-2 text-xs text-muted-foreground">Objeto</Label>
+              <div className="md:col-span-10 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="Ex: material de escritório, equipamentos médicos…"
+                  value={filtros.objeto}
+                  onChange={e => setFiltros(p => ({ ...p, objeto: e.target.value }))}
+                  onKeyDown={e => { if (e.key === 'Enter') buscar(1); }}
+                  className="pl-9 h-9"
+                />
+              </div>
+            </div>
+
+            {/* Linha 3: Modalidades + sub-tipos (4 colunas como SIASG) */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+              <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">Modalidades</Label>
+              <div className="md:col-span-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3">
+                {/* Coluna 1: Modalidades base */}
+                <div className="space-y-1.5">
+                  {MODALIDADES_SIASG.map(m => (
+                    <CheckboxRow
+                      key={m.id}
+                      checked={filtros.modalidades.includes(m.id)}
+                      onChange={() => setMod(m.id)}
+                      label={m.label}
+                    />
+                  ))}
+                </div>
+
+                {/* Coluna 2: Tipos de Concorrência */}
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-foreground mb-1">Tipos de Concorrência</p>
+                  {TIPOS_CONCORRENCIA.map(t => (
+                    <CheckboxRow
+                      key={t.id}
+                      checked={filtros.tiposConc.includes(t.id)}
+                      onChange={() => toggleArr('tiposConc', t.id)}
+                      label={t.label}
+                      disabled={!filtros.modalidades.includes('concorrencia') && !filtros.modalidades.includes('todas')}
+                    />
+                  ))}
+                </div>
+
+                {/* Coluna 3: Tipos de Pregão */}
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-foreground mb-1">Tipos de Pregão</p>
+                  {TIPOS_PREGAO.map(t => (
+                    <CheckboxRow
+                      key={t.id}
+                      checked={filtros.tiposPregao.includes(t.id)}
+                      onChange={() => toggleArr('tiposPregao', t.id)}
+                      label={t.label}
+                      disabled={!filtros.modalidades.includes('pregao') && !filtros.modalidades.includes('todas')}
+                    />
+                  ))}
+                </div>
+
+                {/* Coluna 4: Tipos de RDC */}
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-foreground mb-1">Tipos de RDC</p>
+                  {TIPOS_RDC.map(t => (
+                    <CheckboxRow
+                      key={t.id}
+                      checked={filtros.tiposRdc.includes(t.id)}
+                      onChange={() => toggleArr('tiposRdc', t.id)}
+                      label={t.label}
+                      disabled={!filtros.modalidades.includes('rdc') && !filtros.modalidades.includes('todas')}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Linha 4: Unidades da Federação (multi) */}
+            <ChipMultiSelect
+              label="Unidades da Federação"
+              options={UFS}
+              valores={filtros.ufs}
+              onToggle={uf => toggleArr('ufs', uf)}
+              onClear={() => setFiltros(p => ({ ...p, ufs: [] }))}
+              placeholder="Selecione um ou mais estados"
+            />
+
+            {/* Linha 5: Municípios (free input) */}
+            <ChipFreeInput
+              label="Municípios"
+              valores={filtros.municipios}
+              tempValue={tempMunicipio}
+              onTempChange={setTempMunicipio}
+              onAdd={(v) => {
+                if (!v.trim()) return;
+                if (!filtros.municipios.includes(v.trim())) {
+                  setFiltros(p => ({ ...p, municipios: [...p.municipios, v.trim()] }));
+                }
+                setTempMunicipio('');
+              }}
+              onRemove={(idx) => setFiltros(p => ({ ...p, municipios: p.municipios.filter((_, i) => i !== idx) }))}
+              placeholder="Digite o município e pressione Enter"
+              hint="(Selecione UF antes para resultados precisos)"
+            />
+
+            {/* Linha 6: UASG (até 5) */}
+            <ChipFreeInput
+              label="Cód. UASG (Unid. de Compra)"
+              valores={filtros.uasgs}
+              tempValue={tempUasg}
+              onTempChange={setTempUasg}
+              onAdd={(v) => {
+                const code = v.replace(/\D/g, '').trim();
+                if (!code) return;
+                if (filtros.uasgs.length >= 5) {
+                  toast.warning('Máximo de 5 UASGs');
+                  return;
+                }
+                if (!filtros.uasgs.includes(code)) {
+                  setFiltros(p => ({ ...p, uasgs: [...p.uasgs, code] }));
+                }
+                setTempUasg('');
+              }}
+              onRemove={(idx) => setFiltros(p => ({ ...p, uasgs: p.uasgs.filter((_, i) => i !== idx) }))}
+              placeholder="Ex: 153031"
+              hint="(máximo 5 UASGs)"
+              numericOnly
+            />
+
+            {/* Aviso Materiais/Serviços */}
+            <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+              <p className="flex items-center gap-2">
+                <Info className="w-3.5 h-3.5 text-accent" />
+                <strong className="text-foreground">Materiais (CATMAT) e Serviços (CATSER):</strong>
+                serão integrados via{' '}
+                <a href="/preferencias-alertas" className="text-accent hover:underline font-medium">
+                  Preferências de Alertas
+                </a>
+                {' '}— em desenvolvimento.
+              </p>
+            </div>
+
+            {/* Botões OK / Limpar (estilo SIASG) */}
+            <div className="flex items-center gap-2 pt-2 border-t border-border">
+              <Button
+                onClick={() => buscar(1)}
+                disabled={carregando}
+                className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold px-8"
+              >
+                {carregando
+                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Pesquisando…</>
+                  : <>OK</>}
+              </Button>
+              <Button variant="outline" onClick={limparFiltros} className="gap-1.5">
+                <Eraser className="w-4 h-4" />
+                Limpar
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Erro */}
@@ -433,7 +764,7 @@ export default function MonitoramentoEditais() {
           <div className="flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3.5 text-sm text-destructive">
             <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
             <div>
-              <p className="font-medium">Erro na consulta ao PNCP</p>
+              <p className="font-medium">Erro na consulta</p>
               <p className="text-destructive/70 mt-0.5">{erro}</p>
             </div>
           </div>
@@ -451,20 +782,20 @@ export default function MonitoramentoEditais() {
         {carregando && (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-accent" />
-            <p className="text-muted-foreground text-sm">Consultando Portal Nacional de Contratações Públicas…</p>
+            <p className="text-muted-foreground text-sm">Consultando base de editais…</p>
           </div>
         )}
 
-        {/* Estado inicial — antes de qualquer busca */}
+        {/* Estado inicial */}
         {!buscaRealizada && !carregando && (
           <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
             <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center">
-              <Filter className="w-8 h-8 text-accent" />
+              <Search className="w-8 h-8 text-accent" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Selecione os filtros desejados</h2>
+              <h2 className="text-lg font-semibold text-foreground">Preencha os critérios de seleção e clique em OK</h2>
               <p className="text-sm text-muted-foreground mt-1 max-w-md">
-                Preencha os campos acima (modalidade, UF, termo, etc.) e clique em <strong>Pesquisar</strong> para consultar os editais no PNCP.
+                Caso não informe o número da licitação, é obrigatório selecionar o <strong>Período de Publicação</strong> e a <strong>Modalidade</strong>.
               </p>
             </div>
           </div>
@@ -477,9 +808,6 @@ export default function MonitoramentoEditais() {
               <span className="text-muted-foreground">
                 Exibindo <span className="text-foreground font-medium">{resultado.data.length}</span> de{' '}
                 <span className="text-foreground font-medium">{resultado.total.toLocaleString('pt-BR')}</span> editais
-                {filtros.situacao === 'abertas' && (
-                  <span className="ml-2 text-success">• propostas abertas</span>
-                )}
               </span>
               <span className="text-muted-foreground">
                 Página {pagina} de {resultado.paginas}
@@ -576,7 +904,135 @@ export default function MonitoramentoEditais() {
   );
 }
 
-// ─── Card do Edital ──────────────────────────────────────────────────────────
+// ─── Sub-componentes do formulário SIASG ─────────────────────────────────────
+
+function CheckboxRow({
+  checked, onChange, label, disabled,
+}: { checked: boolean; onChange: () => void; label: string; disabled?: boolean }) {
+  return (
+    <label className={`flex items-center gap-2 text-xs ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:text-foreground'} text-muted-foreground transition-colors`}>
+      <Checkbox checked={checked} onCheckedChange={() => !disabled && onChange()} disabled={disabled} className="h-3.5 w-3.5" />
+      <span>{label}</span>
+    </label>
+  );
+}
+
+function ChipMultiSelect({
+  label, options, valores, onToggle, onClear, placeholder,
+}: {
+  label: string;
+  options: string[];
+  valores: string[];
+  onToggle: (v: string) => void;
+  onClear: () => void;
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+      <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">{label}</Label>
+      <div className="md:col-span-10 space-y-2">
+        <div className="rounded-md border border-border bg-background min-h-[40px] px-2 py-1.5 flex flex-wrap gap-1.5 items-center">
+          {valores.length === 0 ? (
+            <span className="text-xs text-muted-foreground px-1.5">{placeholder}</span>
+          ) : (
+            valores.map(v => (
+              <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent/15 text-accent text-xs font-medium">
+                {v}
+                <button onClick={() => onToggle(v)} className="hover:text-accent-foreground">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))
+          )}
+          <div className="ml-auto flex items-center gap-1">
+            {valores.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={onClear} className="h-6 text-[11px] px-2 text-muted-foreground hover:text-destructive">
+                Excluir
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => setOpen(o => !o)} className="h-6 text-[11px] px-2">
+              {open ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
+              Selecionar
+            </Button>
+          </div>
+        </div>
+        {open && (
+          <div className="rounded-md border border-border bg-card p-3 grid grid-cols-6 sm:grid-cols-9 lg:grid-cols-14 gap-1.5">
+            {options.map(opt => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => onToggle(opt)}
+                className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${
+                  valores.includes(opt)
+                    ? 'bg-accent text-accent-foreground border-accent'
+                    : 'bg-muted/30 text-muted-foreground border-border/50 hover:bg-muted/50'
+                }`}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ChipFreeInput({
+  label, valores, tempValue, onTempChange, onAdd, onRemove, placeholder, hint, numericOnly,
+}: {
+  label: string;
+  valores: string[];
+  tempValue: string;
+  onTempChange: (v: string) => void;
+  onAdd: (v: string) => void;
+  onRemove: (idx: number) => void;
+  placeholder: string;
+  hint?: string;
+  numericOnly?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+      <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">{label}</Label>
+      <div className="md:col-span-10 space-y-2">
+        {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+        <div className="flex items-center gap-2">
+          <Input
+            value={tempValue}
+            onChange={e => onTempChange(numericOnly ? e.target.value.replace(/\D/g, '') : e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                onAdd(tempValue);
+              }
+            }}
+            placeholder={placeholder}
+            className="h-9 max-w-md"
+          />
+          <Button variant="outline" size="sm" onClick={() => onAdd(tempValue)} className="h-9">
+            Selecionar
+          </Button>
+        </div>
+        {valores.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {valores.map((v, i) => (
+              <span key={`${v}-${i}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent/15 text-accent text-xs font-medium">
+                {v}
+                <button onClick={() => onRemove(i)} className="hover:text-accent-foreground">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Card do Edital (preservado do código original) ──────────────────────────
 
 interface EditalCardProps {
   edital: Edital;
@@ -745,15 +1201,17 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
                 Sistema origem
               </a>
             )}
-            <a
-              href={edital.linkPncp}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              PNCP
-            </a>
+            {edital.linkPncp && (
+              <a
+                href={edital.linkPncp}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                PNCP
+              </a>
+            )}
             <button
               onClick={onIniciarProcesso}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
@@ -773,13 +1231,9 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
         <div className="px-4 pb-4 pt-0 border-t border-border mt-0">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
             <DetalheItem label="Número do processo" valor={edital.processo || '—'} />
-            <DetalheItem label="Situação PNCP" valor={edital.situacaoNome} />
-            <DetalheItem label="Modo de disputa" valor={edital.modoDisputa || '—'} />
-            <DetalheItem label="Tipo de instrumento" valor={edital.tipoEdital} />
+            <DetalheItem label="Situação PNCP" valor={edital.situacaoNome || '—'} />
+            <DetalheItem label="Tipo de instrumento" valor={edital.tipoEdital || '—'} />
             <DetalheItem label="CNPJ do órgão" valor={edital.cnpj || '—'} mono />
-            {edital.valorHomologado && (
-              <DetalheItem label="Valor homologado" valor={formatMoeda(edital.valorHomologado)} destaque />
-            )}
             {edital.dataPublicacao && (
               <DetalheItem label="Data de publicação" valor={formatData(edital.dataPublicacao)} />
             )}
