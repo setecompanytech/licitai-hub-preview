@@ -13,6 +13,7 @@ import GlobalSearch from '@/components/search/GlobalSearch';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import MaintenanceBanner from '@/components/layout/MaintenanceBanner';
 import ExportarDados from '@/components/export/ExportarDados';
+import GlobalProcessoBar from '@/components/layout/GlobalProcessoBar';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 
@@ -182,6 +183,9 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
           </div>
         </div>
       </header>
+
+      {/* Barra global de Processo Ativo — sincroniza Monitoramento/Gestão/IA/Jurídico/Financeiro */}
+      <GlobalProcessoBar />
 
       {/* Main content */}
       <main className="max-w-[1440px] mx-auto px-3 py-3 sm:p-6">

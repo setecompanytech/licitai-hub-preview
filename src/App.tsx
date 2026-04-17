@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { EmpresaProvider } from "@/contexts/EmpresaContext";
 import { PropostaCartProvider } from "@/contexts/PropostaCartContext";
+import { ProcessoAtivoProvider } from "@/contexts/ProcessoAtivoContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import PlanGuard from "@/components/auth/PlanGuard";
 import AdminGuard from "@/components/auth/AdminGuard";
@@ -136,6 +137,7 @@ const App = () => (
         <AuthProvider>
           <EmpresaProvider>
           <PropostaCartProvider>
+            <ProcessoAtivoProvider>
             <MaintenanceGuard>
             <Suspense fallback={<PageLoader />}>
             <Routes>
@@ -221,6 +223,7 @@ const App = () => (
             </Suspense>
             <CookieConsentBanner />
             </MaintenanceGuard>
+            </ProcessoAtivoProvider>
           </PropostaCartProvider>
           </EmpresaProvider>
         </AuthProvider>

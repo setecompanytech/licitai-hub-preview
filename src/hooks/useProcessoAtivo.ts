@@ -1,7 +1,7 @@
-import { useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProcessoAtivoContext } from '@/contexts/ProcessoAtivoContext';
 
 export interface ProcessoResumo {
   id: string;
@@ -14,19 +14,13 @@ export interface ProcessoResumo {
   updated_at: string;
 }
 
+/**
+ * Sincronização global do "Processo Ativo".
+ * URL (?lid=) + localStorage + Realtime. Provider em ProcessoAtivoContext.
+ */
 export function useProcessoAtivo() {
   const { user } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const processoId = searchParams.get('lid') || null;
-
-  const setProcessoId = useCallback((id: string | null) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      if (id) next.set('lid', id);
-      else next.delete('lid');
-      return next;
-    }, { replace: true });
-  }, [setSearchParams]);
+  const { processoId, processo, loading, setProcessoId, refreshProcesso, registerDirty } = useProcessoAtivoContext();
 
   const fetchProcessos = useCallback(async (): Promise<ProcessoResumo[]> => {
     if (!user) return [];
@@ -40,13 +34,8 @@ export function useProcessoAtivo() {
     return (data || []) as ProcessoResumo[];
   }, [user]);
 
-  /** Create a manual process from uploaded edital data */
   const criarProcessoManual = useCallback(async (seed: {
-    numero?: string;
-    orgao?: string;
-    objeto?: string;
-    modalidade?: string;
-    valorEstimado?: number;
+    numero?: string; orgao?: string; objeto?: string; modalidade?: string; valorEstimado?: number;
   }): Promise<string | null> => {
     if (!user) return null;
     const { data, error } = await supabase
@@ -63,25 +52,34 @@ export function useProcessoAtivo() {
       .select('id')
       .single();
     if (error || !data) { console.error('Erro ao criar processo:', error); return null; }
-    setProcessoId(data.id);
+    setProcessoId(data.id, { force: true });
     return data.id;
   }, [user, setProcessoId]);
 
-  /** Ensure a process exists — create if needed, then set as active */
   const ensureProcesso = useCallback(async (seed: {
-    numero?: string;
-    orgao?: string;
-    objeto?: string;
-    modalidade?: string;
-    valorEstimado?: number;
+    numero?: string; orgao?: string; objeto?: string; modalidade?: string; valorEstimado?: number;
   }): Promise<string | null> => {
     if (processoId) return processoId;
     return criarProcessoManual(seed);
   }, [processoId, criarProcessoManual]);
 
+  /** Hook helper: registra/desregistra "dirty" automaticamente */
+  const useDirty = (isDirty: boolean, label: string, ownerId: string) => {
+    useEffect(() => {
+      if (!isDirty) return;
+      const off = registerDirty({ id: ownerId, label });
+      return off;
+    }, [isDirty, label, ownerId]);
+  };
+
   return {
     processoId,
+    processo,
+    loading,
     setProcessoId,
+    refreshProcesso,
+    registerDirty,
+    useDirty,
     fetchProcessos,
     criarProcessoManual,
     ensureProcesso,
