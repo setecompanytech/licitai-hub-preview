@@ -349,7 +349,7 @@ export default function MonitoramentoEditais() {
       const termoPartes: string[] = [];
       if (filtros.objeto.trim()) termoPartes.push(filtros.objeto.trim());
       if (filtros.numero.trim()) termoPartes.push(filtros.numero.trim());
-      if (filtros.modalidades.includes('rdc')) termoPartes.push('RDC');
+      
       const termo = termoPartes.join(' ').trim() || null;
 
       const dataIni = filtros.dataIni ? dmyToIso(filtros.dataIni) : null;
