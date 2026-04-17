@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
 import {
   Search, ExternalLink,
-  MapPin, Building2, Calendar, Clock, CheckCircle2, XCircle,
+  MapPin, Building2, Calendar as CalendarIcon, Clock, CheckCircle2, XCircle,
   PauseCircle, ChevronLeft, ChevronRight,
   Bookmark, BookmarkCheck, Info, Loader2, RefreshCw, AlertCircle, FileText,
   Rocket, ArrowRight, CheckCircle, ListChecks, ChevronDown, ChevronUp, X, Eraser
