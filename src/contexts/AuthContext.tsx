@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { stripePlans } from '@/data/stripe-config';
 import type { PlanSlug } from '@/data/plan-features';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
+import { purgeSupabaseAuthStorage } from '@/lib/auth-bootstrap';
 
 type SubscriptionState = {
   subscribed: boolean;
@@ -77,16 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let initialLoad = true;
 
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Token refresh falhou — limpar storage corrompido para evitar loops
+      // Token refresh falhou — purga storage para próxima tentativa nascer limpa
       if (event === 'TOKEN_REFRESHED' && !session) {
-        try {
-          Object.keys(localStorage)
-            .filter((k) => k.startsWith('sb-') || k.includes('supabase.auth'))
-            .forEach((k) => localStorage.removeItem(k));
-        } catch {}
+        purgeSupabaseAuthStorage();
       }
       // Skip redundant updates from cross-tab TOKEN_REFRESHED events
-      // Comparing user IDs avoids new object references triggering re-renders & route unmounts
       setSession(prev => prev?.user?.id === session?.user?.id && prev?.access_token === session?.access_token ? prev : session);
       setUser(prev => prev?.id === session?.user?.id ? prev : (session?.user ?? null));
 
@@ -96,7 +92,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (session?.access_token) {
-        // Defer to avoid Supabase client deadlock
         setTimeout(() => checkSubscription(session.access_token), 0);
       } else {
         setSubscription({ subscribed: false, planSlug: null, subscriptionEnd: null, loading: false });
@@ -104,14 +99,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     supabase.auth.getSession().then(({ data: { session }, error }) => {
-      // Sessão corrompida ou expirada sem refresh válido — limpar storage
       if (error) {
-        console.warn('[Auth] getSession error, limpando storage:', error.message);
-        try {
-          Object.keys(localStorage)
-            .filter((k) => k.startsWith('sb-') || k.includes('supabase.auth'))
-            .forEach((k) => localStorage.removeItem(k));
-        } catch {}
+        console.warn('[Auth] getSession error, purgando storage:', error.message);
+        purgeSupabaseAuthStorage();
       }
       setSession(session);
       setUser(session?.user ?? null);
