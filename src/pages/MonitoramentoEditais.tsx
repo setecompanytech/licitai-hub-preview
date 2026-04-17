@@ -657,7 +657,10 @@ export default function MonitoramentoEditais() {
                     {MODALIDADES_LEI14133.map(m => (
                       <CheckboxRow
                         key={m.id}
-                        checked={filtros.modalidades.includes(m.id)}
+                        checked={
+                          filtros.modalidades.includes(m.id) ||
+                          (m.id !== 'todas' && filtros.modalidades.includes('todas'))
+                        }
                         onChange={() => setMod(m.id)}
                         label={m.label}
                       />
@@ -670,7 +673,10 @@ export default function MonitoramentoEditais() {
                     {TIPOS_CONCORRENCIA.map(t => (
                       <CheckboxRow
                         key={t.id}
-                        checked={filtros.tiposConc.includes(t.id)}
+                        checked={
+                          filtros.tiposConc.includes(t.id) ||
+                          filtros.modalidades.includes('todas')
+                        }
                         onChange={() => toggleArr('tiposConc', t.id)}
                         label={t.label}
                         disabled={!filtros.modalidades.includes('concorrencia') && !filtros.modalidades.includes('todas')}
@@ -684,7 +690,10 @@ export default function MonitoramentoEditais() {
                     {TIPOS_PREGAO.map(t => (
                       <CheckboxRow
                         key={t.id}
-                        checked={filtros.tiposPregao.includes(t.id)}
+                        checked={
+                          filtros.tiposPregao.includes(t.id) ||
+                          filtros.modalidades.includes('todas')
+                        }
                         onChange={() => toggleArr('tiposPregao', t.id)}
                         label={t.label}
                         disabled={!filtros.modalidades.includes('pregao') && !filtros.modalidades.includes('todas')}
@@ -698,7 +707,10 @@ export default function MonitoramentoEditais() {
                     {TIPOS_LEILAO.map(t => (
                       <CheckboxRow
                         key={t.id}
-                        checked={filtros.tiposLeilao.includes(t.id)}
+                        checked={
+                          filtros.tiposLeilao.includes(t.id) ||
+                          filtros.modalidades.includes('todas')
+                        }
                         onChange={() => toggleArr('tiposLeilao', t.id)}
                         label={t.label}
                         disabled={!filtros.modalidades.includes('leilao') && !filtros.modalidades.includes('todas')}
