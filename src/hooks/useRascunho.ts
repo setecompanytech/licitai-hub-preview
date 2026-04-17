@@ -29,7 +29,9 @@ export function useRascunho<T extends Record<string, any>>({
   const [rascunhoId, setRascunhoId] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dataRef = useRef<T | null>(null);
+  const tituloRef = useRef<string | undefined>(undefined);
   const initialLoadDone = useRef(false);
+  const [pending, setPending] = useState(false);
 
   // Load draft on mount or when licitacaoId changes
   const loadRascunho = useCallback(async (): Promise<T | null> => {
@@ -109,16 +111,42 @@ export function useRascunho<T extends Record<string, any>>({
 
     setSaving(false);
     dataRef.current = dados;
+    setPending(false);
   }, [user, modulo, licitacaoId, rascunhoId]);
 
   // Debounced auto-save
   const autoSave = useCallback((dados: T, titulo?: string) => {
     if (!user || !initialLoadDone.current) return;
+    dataRef.current = dados;
+    tituloRef.current = titulo;
+    setPending(true);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       saveRascunho(dados, titulo);
     }, debounceMs);
   }, [saveRascunho, debounceMs, user]);
+
+  // Flush immediately (cancel debounce and persist now)
+  const flush = useCallback(async () => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    if (dataRef.current && initialLoadDone.current) {
+      await saveRascunho(dataRef.current, tituloRef.current);
+    }
+  }, [saveRascunho]);
+
+  // Warn on tab close while there's pending unsaved data
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!pending) return;
+      // Best-effort sync persistence (debounced changes ainda não enviadas)
+      try { void flush(); } catch {}
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [pending, flush]);
+
 
   // Delete draft
   const deleteRascunho = useCallback(async () => {
@@ -168,12 +196,14 @@ export function useRascunho<T extends Record<string, any>>({
     loadRascunho,
     saveRascunho,
     autoSave,
+    flush,
     deleteRascunho,
     listRascunhos,
     markLoaded,
     saving,
     lastSaved,
     loaded,
+    pending,
     rascunhoId,
   };
 }
