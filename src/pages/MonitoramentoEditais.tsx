@@ -405,7 +405,10 @@ export default function MonitoramentoEditais() {
 
       // Filtros locais adicionais (campos sem cobertura na RPC)
       const ufsSet = new Set(filtros.ufs);
-      const muniSet = new Set(filtros.municipios.map(m => m.toLowerCase()));
+      // Municípios chegam no formato "Nome/UF" — extraímos só o nome para comparar
+      const muniSet = new Set(
+        filtros.municipios.map(m => m.split('/')[0].trim().toLowerCase())
+      );
       const uasgSet = new Set(filtros.uasgs.map(u => String(u).trim()));
 
       const filtrados = rows.filter(r => {
