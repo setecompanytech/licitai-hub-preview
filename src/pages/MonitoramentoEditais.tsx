@@ -351,7 +351,7 @@ export default function MonitoramentoEditais() {
               p_direcao: 'desc',
               p_pagina: pag,
               p_tamanho: tamanho,
-            })
+            }) as any)
           );
         }
       }
