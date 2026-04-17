@@ -35,7 +35,7 @@ import CotacoesUnificado from '@/components/precificacao/CotacoesUnificado';
 import InteligenciaUnificada from '@/components/precificacao/InteligenciaUnificada';
 import RevisaoItensExtraidos, { type ItemExtraido } from '@/components/precificacao/RevisaoItensExtraidos';
 import PlanilhaCustosEdital from '@/components/precificacao/PlanilhaCustosEdital';
-import ProcessoSelector from '@/components/proposta/ProcessoSelector';
+
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 
 type FontePreco = {
@@ -472,9 +472,6 @@ export default function Precificacao() {
           ))}
         </div>
 
-        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-3">
-          <ProcessoSelector />
-        </div>
 
         {/* ML-style Category Breadcrumb */}
         {categoryTree.subs.length > 0 && selectedCategory !== 'todos' && (
