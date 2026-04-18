@@ -7658,52 +7658,76 @@ export type Database = {
       }
       pncp_sync_log: {
         Row: {
+          atualizados: number | null
           concluido_em: string | null
           created_at: string | null
           data_consultada: string | null
+          data_referencia: string | null
+          detalhes: Json | null
           duracao_ms: number | null
+          erro: string | null
           erros: number | null
           fonte: string | null
           id: string
           iniciado_em: string | null
           modalidade_id: number | null
+          modalidades_processadas: number | null
+          modo: string | null
           novos: number | null
+          paginas_consumidas: number | null
           segmento: number | null
           status: string | null
           total_registros: number | null
           ufs_processadas: string[] | null
+          ufs_processadas_count: number | null
         }
         Insert: {
+          atualizados?: number | null
           concluido_em?: string | null
           created_at?: string | null
           data_consultada?: string | null
+          data_referencia?: string | null
+          detalhes?: Json | null
           duracao_ms?: number | null
+          erro?: string | null
           erros?: number | null
           fonte?: string | null
           id?: string
           iniciado_em?: string | null
           modalidade_id?: number | null
+          modalidades_processadas?: number | null
+          modo?: string | null
           novos?: number | null
+          paginas_consumidas?: number | null
           segmento?: number | null
           status?: string | null
           total_registros?: number | null
           ufs_processadas?: string[] | null
+          ufs_processadas_count?: number | null
         }
         Update: {
+          atualizados?: number | null
           concluido_em?: string | null
           created_at?: string | null
           data_consultada?: string | null
+          data_referencia?: string | null
+          detalhes?: Json | null
           duracao_ms?: number | null
+          erro?: string | null
           erros?: number | null
           fonte?: string | null
           id?: string
           iniciado_em?: string | null
           modalidade_id?: number | null
+          modalidades_processadas?: number | null
+          modo?: string | null
           novos?: number | null
+          paginas_consumidas?: number | null
           segmento?: number | null
           status?: string | null
           total_registros?: number | null
           ufs_processadas?: string[] | null
+          ufs_processadas_count?: number | null
         }
         Relationships: []
       }
@@ -10925,6 +10949,7 @@ export type Database = {
         }
         Returns: number
       }
+      pncp_status_sincronizacao: { Args: never; Returns: Json }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
