@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader2, Minimize2, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { streamAIChat, ChatMessage } from '@/lib/ai-stream';
+import { streamAIChat, ChatMessage, ToolEvent } from '@/lib/ai-stream';
 import { sanitizeAureliaOutput } from '@/prompts/aurelia-system-prompt';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
@@ -14,6 +14,7 @@ export default function AureliaChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasGreeted, setHasGreeted] = useState(false);
   const [hasNotification, setHasNotification] = useState(true);
+  const [activeTool, setActiveTool] = useState<{ name: string; args?: Record<string, unknown> } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
@@ -45,13 +46,21 @@ export default function AureliaChat() {
     setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
+    setActiveTool(null);
 
     let assistantContent = '';
 
     await streamAIChat({
       messages: updatedMessages,
-      action: 'aurelia',
+      endpoint: 'aurelia-tools',
       context: `Tela ativa: ${location.pathname}`,
+      onToolEvent: (evt: ToolEvent) => {
+        if (evt.type === 'running') {
+          setActiveTool({ name: evt.name, args: evt.args });
+        } else if (evt.type === 'done') {
+          setActiveTool(null);
+        }
+      },
       onDelta: (chunk) => {
         assistantContent += chunk;
         setMessages(prev => {
@@ -62,10 +71,11 @@ export default function AureliaChat() {
           return [...prev, { role: 'assistant', content: assistantContent }];
         });
       },
-      onDone: () => setIsLoading(false),
+      onDone: () => { setIsLoading(false); setActiveTool(null); },
       onError: (err) => {
         setMessages(prev => [...prev, { role: 'assistant', content: `Não foi possível conectar com a AURÉLIA. ${err}` }]);
         setIsLoading(false);
+        setActiveTool(null);
       },
     });
   };
@@ -152,7 +162,20 @@ export default function AureliaChat() {
                   </div>
                 </div>
               ))}
-              {isLoading && messages[messages.length - 1]?.role === 'user' && (
+              {activeTool && (
+                <div className="flex justify-start">
+                  <div className="aurelia-bubble-ai rounded-lg px-3 py-2 text-xs text-[hsl(215,14%,82%)] flex items-center gap-2 border border-[hsl(43,60%,54%)]/30">
+                    <Loader2 className="w-3 h-3 animate-spin text-[hsl(43,60%,54%)]" />
+                    <span>
+                      {activeTool.name === 'buscar_edital' && '🔎 Buscando edital no cache PNCP…'}
+                      {activeTool.name === 'buscar_diario' && '📰 Consultando Diários Oficiais…'}
+                      {activeTool.name === 'consultar_historico_precos' && '💰 Consultando histórico de preços…'}
+                      {!['buscar_edital','buscar_diario','consultar_historico_precos'].includes(activeTool.name) && `Executando ${activeTool.name}…`}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {isLoading && !activeTool && messages[messages.length - 1]?.role === 'user' && (
                 <div className="flex justify-start">
                   <div className="aurelia-bubble-ai rounded-lg px-3 py-2 text-xs text-[hsl(215,12%,55%)] flex items-center gap-1.5">
                     <Loader2 className="w-3 h-3 animate-spin text-[hsl(43,60%,54%)]" />
