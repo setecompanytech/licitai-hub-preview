@@ -3435,6 +3435,120 @@ export type Database = {
         }
         Relationships: []
       }
+      diarios_oficiais_cache: {
+        Row: {
+          cnpj_orgao: string | null
+          created_at: string | null
+          data_publicacao: string
+          edicao: string | null
+          fonte: string
+          fonte_id: string
+          hash_conteudo: string | null
+          id: string
+          link_html: string | null
+          link_pdf: string | null
+          metadata: Json | null
+          modalidade: string | null
+          municipio: string | null
+          numero_processo: string | null
+          objeto: string | null
+          orgao: string | null
+          secao: string | null
+          texto_completo: string | null
+          texto_tsv: unknown
+          tipo_publicacao: string | null
+          uf: string | null
+          updated_at: string | null
+          valor_estimado: number | null
+        }
+        Insert: {
+          cnpj_orgao?: string | null
+          created_at?: string | null
+          data_publicacao: string
+          edicao?: string | null
+          fonte: string
+          fonte_id: string
+          hash_conteudo?: string | null
+          id?: string
+          link_html?: string | null
+          link_pdf?: string | null
+          metadata?: Json | null
+          modalidade?: string | null
+          municipio?: string | null
+          numero_processo?: string | null
+          objeto?: string | null
+          orgao?: string | null
+          secao?: string | null
+          texto_completo?: string | null
+          texto_tsv?: unknown
+          tipo_publicacao?: string | null
+          uf?: string | null
+          updated_at?: string | null
+          valor_estimado?: number | null
+        }
+        Update: {
+          cnpj_orgao?: string | null
+          created_at?: string | null
+          data_publicacao?: string
+          edicao?: string | null
+          fonte?: string
+          fonte_id?: string
+          hash_conteudo?: string | null
+          id?: string
+          link_html?: string | null
+          link_pdf?: string | null
+          metadata?: Json | null
+          modalidade?: string | null
+          municipio?: string | null
+          numero_processo?: string | null
+          objeto?: string | null
+          orgao?: string | null
+          secao?: string | null
+          texto_completo?: string | null
+          texto_tsv?: unknown
+          tipo_publicacao?: string | null
+          uf?: string | null
+          updated_at?: string | null
+          valor_estimado?: number | null
+        }
+        Relationships: []
+      }
+      diarios_portais_config: {
+        Row: {
+          ativo: boolean | null
+          config: Json | null
+          created_at: string | null
+          fonte: string
+          id: string
+          metodo: string
+          uf: string | null
+          ultima_sync: string | null
+          url_base: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          config?: Json | null
+          created_at?: string | null
+          fonte: string
+          id?: string
+          metodo: string
+          uf?: string | null
+          ultima_sync?: string | null
+          url_base: string
+        }
+        Update: {
+          ativo?: boolean | null
+          config?: Json | null
+          created_at?: string | null
+          fonte?: string
+          id?: string
+          metodo?: string
+          uf?: string | null
+          ultima_sync?: string | null
+          url_base?: string
+        }
+        Relationships: []
+      }
       distribuicoes_realizadas: {
         Row: {
           canal: string
@@ -10838,6 +10952,37 @@ export type Database = {
       }
     }
     Functions: {
+      busca_diarios_instantanea: {
+        Args: {
+          p_data_fim?: string
+          p_data_inicio?: string
+          p_fonte?: string
+          p_pagina?: number
+          p_q?: string
+          p_tamanho?: number
+          p_tipo?: string
+          p_uf?: string
+        }
+        Returns: {
+          data_publicacao: string
+          edicao: string
+          fonte: string
+          id: string
+          link_html: string
+          link_pdf: string
+          modalidade: string
+          municipio: string
+          numero_processo: string
+          objeto: string
+          orgao: string
+          rank_busca: number
+          secao: string
+          tipo_publicacao: string
+          total_count: number
+          uf: string
+          valor_estimado: number
+        }[]
+      }
       busca_editais_instantanea: {
         Args: {
           p_data_fim?: string
@@ -10905,6 +11050,7 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      diarios_status_sincronizacao: { Args: never; Returns: Json }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
