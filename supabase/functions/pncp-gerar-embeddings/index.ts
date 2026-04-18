@@ -115,7 +115,7 @@ serve(async (req) => {
         falhas++;
         continue;
       }
-      const vec = await gerarEmbedding(item.texto_para_embedding, LOVABLE_API_KEY);
+      const vec = await gerarEmbedding(item.texto_para_embedding, OPENAI_API_KEY);
       if (!vec) {
         falhas++;
         continue;
