@@ -53,12 +53,13 @@ serve(async (req) => {
 
   const inicio = Date.now();
   try {
-    // Auth: aceita CRON_SECRET (cron) OU usuário autenticado admin
+    // Auth: aceita CRON_SECRET (cron), usuário autenticado, ou apikey (anon/service)
     const cronSecret = req.headers.get("x-cron-secret");
     const authHeader = req.headers.get("authorization");
+    const apiKeyHeader = req.headers.get("apikey");
     const isCron = cronSecret && cronSecret === Deno.env.get("CRON_SECRET");
 
-    if (!isCron && !authHeader) {
+    if (!isCron && !authHeader && !apiKeyHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
