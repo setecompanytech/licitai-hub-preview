@@ -22,6 +22,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import MarcarInteresseDialog from '@/components/compromissos/MarcarInteresseDialog';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
@@ -245,6 +246,8 @@ function buildPncpUrl(lic: LicitacaoMural): string | null {
 
 export default function MuralLicitacoes() {
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
+  const ufSede = (empresaAtiva?.uf || '').toUpperCase().trim() || null;
   const { iniciarProcesso } = useLicitacaoIntegration();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
