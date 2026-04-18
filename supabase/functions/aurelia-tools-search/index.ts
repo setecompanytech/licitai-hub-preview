@@ -208,9 +208,65 @@ async function execConsultarPrecos(args: any, db: ReturnType<typeof createClient
   return { retornados: (data || []).length, resultados: data || [] };
 }
 
+// Busca semântica via embeddings
+async function execBuscarEditalSemantico(args: any, db: ReturnType<typeof createClient>) {
+  const consulta = String(args.consulta || "").trim();
+  if (!consulta) return { erro: "Consulta vazia", retornados: 0, resultados: [] };
+
+  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!apiKey) return { erro: "LOVABLE_API_KEY ausente", retornados: 0, resultados: [] };
+
+  // 1) Gerar embedding da consulta
+  const embedResp = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "google/text-embedding-004", input: consulta.slice(0, 2000) }),
+  });
+  if (!embedResp.ok) {
+    const t = await embedResp.text();
+    return { erro: `Falha ao gerar embedding (${embedResp.status}): ${t.slice(0, 200)}`, retornados: 0, resultados: [] };
+  }
+  const embedData = await embedResp.json();
+  const vec = embedData?.data?.[0]?.embedding;
+  if (!Array.isArray(vec)) return { erro: "Embedding inválido", retornados: 0, resultados: [] };
+
+  // 2) Consultar via RPC semântica
+  const limite = Math.min(Number(args.limite) || 10, 25);
+  const { data, error } = await (db as any).rpc("busca_editais_semantica", {
+    p_embedding: JSON.stringify(vec),
+    p_limite: limite,
+    p_similaridade_min: Number(args.similaridade_min) || 0.4,
+    p_uf: args.uf || null,
+    p_apenas_abertos: args.apenas_abertos !== false,
+    p_modalidade_id: args.modalidade_id ? Number(args.modalidade_id) : null,
+  });
+  if (error) return { erro: error.message, retornados: 0, resultados: [] };
+
+  const rows = data || [];
+  return {
+    retornados: rows.length,
+    consulta_semantica: consulta,
+    resultados: rows.map((r: any) => ({
+      id: r.id,
+      numero: r.numero_controle_pncp,
+      orgao: r.orgao,
+      uf: r.uf,
+      municipio: r.municipio,
+      modalidade: r.modalidade_nome,
+      objeto: r.objeto?.slice(0, 400),
+      valor_estimado: r.valor_total_estimado,
+      data_publicacao: r.data_publicacao_pncp,
+      data_encerramento: r.data_encerramento_proposta,
+      link: r.link_sistema_origem || r.url_pncp,
+      similaridade: Math.round((r.similaridade || 0) * 100) / 100,
+    })),
+  };
+}
+
 async function executarTool(name: string, args: any, db: ReturnType<typeof createClient>) {
   try {
     if (name === "buscar_edital") return await execBuscarEdital(args, db);
+    if (name === "buscar_edital_semantico") return await execBuscarEditalSemantico(args, db);
     if (name === "buscar_diario") return await execBuscarDiario(args, db);
     if (name === "consultar_historico_precos") return await execConsultarPrecos(args, db);
     return { erro: `Ferramenta desconhecida: ${name}` };
