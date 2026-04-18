@@ -162,7 +162,20 @@ export default function AureliaChat() {
                   </div>
                 </div>
               ))}
-              {isLoading && messages[messages.length - 1]?.role === 'user' && (
+              {activeTool && (
+                <div className="flex justify-start">
+                  <div className="aurelia-bubble-ai rounded-lg px-3 py-2 text-xs text-[hsl(215,14%,82%)] flex items-center gap-2 border border-[hsl(43,60%,54%)]/30">
+                    <Loader2 className="w-3 h-3 animate-spin text-[hsl(43,60%,54%)]" />
+                    <span>
+                      {activeTool.name === 'buscar_edital' && '🔎 Buscando edital no cache PNCP…'}
+                      {activeTool.name === 'buscar_diario' && '📰 Consultando Diários Oficiais…'}
+                      {activeTool.name === 'consultar_historico_precos' && '💰 Consultando histórico de preços…'}
+                      {!['buscar_edital','buscar_diario','consultar_historico_precos'].includes(activeTool.name) && `Executando ${activeTool.name}…`}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {isLoading && !activeTool && messages[messages.length - 1]?.role === 'user' && (
                 <div className="flex justify-start">
                   <div className="aurelia-bubble-ai rounded-lg px-3 py-2 text-xs text-[hsl(215,12%,55%)] flex items-center gap-1.5">
                     <Loader2 className="w-3 h-3 animate-spin text-[hsl(43,60%,54%)]" />
