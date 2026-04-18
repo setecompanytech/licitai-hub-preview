@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Send, Loader2, MapPin, ShoppingBag, X, ChevronDown } from 'lucide-react';
+import { Send, Loader2, MapPin, ShoppingBag, X, ChevronDown, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -166,8 +166,66 @@ export default function BoletimConfig() {
     }
   };
 
+  const enviarBoletimIA = async () => {
+    if (!user) return;
+    setSending('ia');
+    try {
+      // Garante preferências salvas
+      const { data: existing } = await supabase
+        .from('boletim_preferencias').select('id').eq('user_id', user.id).maybeSingle();
+      if (!existing) {
+        await supabase.from('boletim_preferencias')
+          .insert({ user_id: user.id, email: user.email!, ...config } as any);
+      }
+      const { data, error } = await supabase.functions.invoke('boletim-ia-diario', {
+        body: { test_mode: true, user_id: user.id },
+      });
+      if (error) throw error;
+      const r = data?.result;
+      toast.success(
+        `🎯 Boletim IA enviado! ${r?.total || 0} editais analisados, ${r?.destaques || 0} destaques.`,
+        { duration: 6000 }
+      );
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao gerar boletim IA');
+    } finally {
+      setSending(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {/* Boletim IA — destaque Fase 2 */}
+      <Card className="p-5 bg-gradient-to-br from-accent/5 to-accent/10 border-accent/30">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
+            <Sparkles className="w-5 h-5 text-accent" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              Boletim Inteligente AURÉLIA
+              <Badge variant="secondary" className="text-[9px] uppercase">Novo</Badge>
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Resumo personalizado gerado por IA das oportunidades das últimas 24h, com score de
+              alinhamento, justificativa e insights estratégicos. Enviado diariamente às 06h.
+            </p>
+            <Button
+              size="sm"
+              className="mt-3 bg-accent hover:bg-accent/90 text-accent-foreground"
+              disabled={sending !== null}
+              onClick={enviarBoletimIA}
+            >
+              {sending === 'ia' ? (
+                <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> Analisando…</>
+              ) : (
+                <><Sparkles className="w-3.5 h-3.5 mr-1.5" /> Testar agora</>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Card>
+
       {/* Horários de envio */}
       <Card className="p-5 space-y-4">
         <h3 className="text-sm font-semibold">Horários de Envio</h3>
