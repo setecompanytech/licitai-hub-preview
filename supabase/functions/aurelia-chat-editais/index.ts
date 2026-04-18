@@ -43,6 +43,57 @@ function fmtData(d: any): string {
   }
 }
 
+// Mapa de UFs e capitais/municípios mais citados → para inferir filtro geográfico do contexto
+const UF_NOMES: Record<string, string> = {
+  AC: "acre", AL: "alagoas", AP: "amapá|amapa", AM: "amazonas",
+  BA: "bahia", CE: "ceará|ceara", DF: "distrito federal|brasília|brasilia",
+  ES: "espírito santo|espirito santo", GO: "goiás|goias",
+  MA: "maranhão|maranhao", MT: "mato grosso", MS: "mato grosso do sul",
+  MG: "minas gerais", PA: "pará|para|belém|belem",
+  PB: "paraíba|paraiba", PR: "paraná|parana", PE: "pernambuco",
+  PI: "piauí|piaui", RJ: "rio de janeiro", RN: "rio grande do norte",
+  RS: "rio grande do sul", RO: "rondônia|rondonia", RR: "roraima",
+  SC: "santa catarina", SP: "são paulo|sao paulo", SE: "sergipe", TO: "tocantins",
+};
+
+function inferirUF(textoCompleto: string): string | null {
+  const t = textoCompleto.toLowerCase();
+  // Padrão "/UF" ou " UF " explícito (ex: Belém/PA, em PA, do PA)
+  const explicit = t.match(/(?:\/|\s|^)([a-z]{2})(?:\s|\/|$|\.|,|;)/g);
+  if (explicit) {
+    for (const m of explicit) {
+      const code = m.replace(/[^a-z]/g, "").toUpperCase();
+      if (UF_NOMES[code]) return code;
+    }
+  }
+  // Por nome (estado/cidade)
+  for (const [uf, regex] of Object.entries(UF_NOMES)) {
+    if (new RegExp(`\\b(${regex})\\b`, "i").test(t)) return uf;
+  }
+  return null;
+}
+
+async function fallbackTextual(
+  db: any,
+  query: string,
+  uf: string | null,
+  modalidadeId: number | null,
+  limite: number
+): Promise<any[]> {
+  const { data, error } = await db.rpc("busca_editais_instantanea", {
+    p_q: query,
+    p_uf: uf,
+    p_modalidade_id: modalidadeId,
+    p_pagina: 1,
+    p_tamanho: limite,
+  });
+  if (error) {
+    console.error("fallback textual erro:", error.message);
+    return [];
+  }
+  return (data || []).map((r: any) => ({ ...r, similaridade: r.rank_busca || 0 }));
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
