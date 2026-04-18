@@ -759,6 +759,15 @@ export default function MuralLicitacoes() {
     items.sort((a, b) => {
       const va = a[campoKey];
       const vb = b[campoKey];
+
+      // 🏠 Prioridade 1: editais da UF sede sempre primeiro (estilo Comprasnet com sede destacada)
+      if (ufSede) {
+        const aSede = (a.uf || '').toUpperCase() === ufSede;
+        const bSede = (b.uf || '').toUpperCase() === ufSede;
+        if (aSede && !bSede) return -1;
+        if (!aSede && bSede) return 1;
+      }
+
       // Nulls always last
       if (va == null && vb == null) return 0;
       if (va == null) return 1;
@@ -778,7 +787,7 @@ export default function MuralLicitacoes() {
     });
 
     return items;
-  }, [licitacoesRaw, licitacoesExternas, ufFiltro, municipioFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, esferaFiltro, tipoInstrumentoFiltro, portalFiltro, unidadeFiltro, orgaoFiltro, segmentoFiltro, ordenacao, uasgSubmitted]);
+  }, [licitacoesRaw, licitacoesExternas, ufFiltro, municipioFiltro, modalidadeFiltro, searchSubmitted, dataInicio, dataFim, esferaFiltro, tipoInstrumentoFiltro, portalFiltro, unidadeFiltro, orgaoFiltro, segmentoFiltro, ordenacao, uasgSubmitted, ufSede]);
 
   const totalResultados = licitacoesFiltradas.length;
 
@@ -2156,6 +2165,11 @@ export default function MuralLicitacoes() {
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                     <MapPin className="w-3 h-3 flex-shrink-0" />
                     <span>{lic.municipio ? `${lic.municipio}/${lic.uf}` : lic.uf}</span>
+                    {ufSede && lic.uf && lic.uf.toUpperCase() === ufSede && (
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 ml-1 bg-accent/10 text-accent border-accent/30 font-semibold">
+                        Sua UF
+                      </Badge>
+                    )}
                   </div>
                 )}
 
