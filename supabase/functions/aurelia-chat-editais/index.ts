@@ -255,6 +255,8 @@ ${contexto || "(nenhum edital encontrado para esta pergunta — responda apenas 
         ...corsHeaders,
         "Content-Type": "text/event-stream",
         "X-Editais-Count": String(editaisCitados.length),
+        "X-Rag-Fonte": fonteRag,
+        "X-Rag-Uf": ufInferida || "",
         "X-Editais-Citados": encodeURIComponent(JSON.stringify(
           editaisCitados.map((e, i) => ({
             n: i + 1,
