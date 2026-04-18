@@ -3,8 +3,17 @@ import { createLogger } from "@/services/logger";
 
 const logger = createLogger("AIStream");
 const AI_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
+const AURELIA_TOOLS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aurelia-tools-search`;
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
+
+export type ToolEvent = {
+  type: "running" | "done";
+  name: string;
+  id?: string;
+  args?: Record<string, unknown>;
+  resumo?: { total?: number; retornados?: number; erro?: string };
+};
 
 export async function streamAIChat({
   messages,
@@ -13,6 +22,8 @@ export async function streamAIChat({
   onDelta,
   onDone,
   onError,
+  onToolEvent,
+  endpoint,
 }: {
   messages: ChatMessage[];
   action?: string;
@@ -20,6 +31,9 @@ export async function streamAIChat({
   onDelta: (text: string) => void;
   onDone: () => void;
   onError?: (error: string) => void;
+  onToolEvent?: (evt: ToolEvent) => void;
+  /** Quando "aurelia-tools" usa a edge function com tool calling sobre o cache */
+  endpoint?: "ai-chat" | "aurelia-tools";
 }) {
   try {
     // Use user's JWT token if available, fallback to anon key for public actions
@@ -31,13 +45,18 @@ export async function streamAIChat({
       }
     } catch (error) { logger.warn("Falha ao obter sessão, usando anon key", error); }
 
-    const resp = await fetch(AI_CHAT_URL, {
+    const url = endpoint === "aurelia-tools" ? AURELIA_TOOLS_URL : AI_CHAT_URL;
+    const body = endpoint === "aurelia-tools"
+      ? JSON.stringify({ messages, context })
+      : JSON.stringify({ messages, action, context });
+
+    const resp = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${authToken}`,
       },
-      body: JSON.stringify({ messages, action, context }),
+      body,
     });
 
     if (!resp.ok) {
