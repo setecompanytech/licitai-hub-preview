@@ -7648,6 +7648,9 @@ export type Database = {
           data_encerramento_proposta: string | null
           data_publicacao_pncp: string | null
           data_ultima_retificacao: string | null
+          embedding: string | null
+          embedding_gerado_em: string | null
+          embedding_modelo: string | null
           esfera_id: string | null
           fonte: string | null
           fonte_id: string | null
@@ -7691,6 +7694,9 @@ export type Database = {
           data_encerramento_proposta?: string | null
           data_publicacao_pncp?: string | null
           data_ultima_retificacao?: string | null
+          embedding?: string | null
+          embedding_gerado_em?: string | null
+          embedding_modelo?: string | null
           esfera_id?: string | null
           fonte?: string | null
           fonte_id?: string | null
@@ -7734,6 +7740,9 @@ export type Database = {
           data_encerramento_proposta?: string | null
           data_publicacao_pncp?: string | null
           data_ultima_retificacao?: string | null
+          embedding?: string | null
+          embedding_gerado_em?: string | null
+          embedding_modelo?: string | null
           esfera_id?: string | null
           fonte?: string | null
           fonte_id?: string | null
@@ -11031,6 +11040,32 @@ export type Database = {
           valor_total_estimado: number
         }[]
       }
+      busca_editais_semantica: {
+        Args: {
+          p_apenas_abertos?: boolean
+          p_embedding: string
+          p_limite?: number
+          p_modalidade_id?: number
+          p_similaridade_min?: number
+          p_uf?: string
+        }
+        Returns: {
+          data_encerramento_proposta: string
+          data_publicacao_pncp: string
+          id: string
+          link_sistema_origem: string
+          modalidade_nome: string
+          municipio: string
+          numero_controle_pncp: string
+          objeto: string
+          orgao: string
+          pncp_id: string
+          similaridade: number
+          uf: string
+          url_pncp: string
+          valor_total_estimado: number
+        }[]
+      }
       calcular_metricas_agente: {
         Args: { p_empresa_id: string }
         Returns: Json
@@ -11095,6 +11130,14 @@ export type Database = {
         }
         Returns: number
       }
+      pncp_editais_pendentes_embedding: {
+        Args: { p_limite?: number }
+        Returns: {
+          id: string
+          texto_para_embedding: string
+        }[]
+      }
+      pncp_status_embeddings: { Args: never; Returns: Json }
       pncp_status_sincronizacao: { Args: never; Returns: Json }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
