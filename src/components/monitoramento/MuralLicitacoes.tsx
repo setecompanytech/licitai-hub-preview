@@ -29,6 +29,7 @@ import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 import AureliaEditalPanel from '@/components/aurelia/AureliaEditalPanel';
 import CadastroManualEdital from '@/components/monitoramento/CadastroManualEdital';
+import BuscaSemanticaAurelia from '@/components/monitoramento/BuscaSemanticaAurelia';
 import { MUNICIPIO_IBGE } from '@/constants/pncpMappings';
 import { MODALIDADE_PNCP, ESFERA_PNCP } from '@/constants/pncpMappings';
 import { getUfPreferencial } from '@/constants/ufsBrasil';
@@ -1420,6 +1421,9 @@ export default function MuralLicitacoes() {
   }
   return (
     <div className="space-y-4">
+      {/* Fase 4 — Busca Semântica AURÉLIA */}
+      <BuscaSemanticaAurelia />
+
       {/* Header */}
       <div className="bg-accent/5 rounded-xl border border-accent/20 p-4 sm:p-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
