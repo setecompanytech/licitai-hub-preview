@@ -30,6 +30,7 @@ import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 import AureliaEditalPanel from '@/components/aurelia/AureliaEditalPanel';
 import CadastroManualEdital from '@/components/monitoramento/CadastroManualEdital';
 import BuscaSemanticaAurelia from '@/components/monitoramento/BuscaSemanticaAurelia';
+import ChatAureliaEditais from '@/components/monitoramento/ChatAureliaEditais';
 import { MUNICIPIO_IBGE } from '@/constants/pncpMappings';
 import { MODALIDADE_PNCP, ESFERA_PNCP } from '@/constants/pncpMappings';
 import { getUfPreferencial } from '@/constants/ufsBrasil';
@@ -1421,6 +1422,9 @@ export default function MuralLicitacoes() {
   }
   return (
     <div className="space-y-4">
+      {/* Fase 5 — Chat AURÉLIA com RAG sobre editais */}
+      <ChatAureliaEditais />
+
       {/* Fase 4 — Busca Semântica AURÉLIA */}
       <BuscaSemanticaAurelia />
 
