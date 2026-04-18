@@ -38,6 +38,7 @@ const Precificacao = lazyPage(() => import("./pages/Precificacao"));
 const AureliaPage = lazyPage(() => import("./pages/AureliaPage"));
 const Analytics = lazyPage(() => import("./pages/Analytics"));
 const MonitoramentoEditais = lazyPage(() => import("./pages/MonitoramentoEditais"));
+const DiariosOficiais = lazyPage(() => import("./pages/DiariosOficiais"));
 const Configuracoes = lazyPage(() => import("./pages/Configuracoes"));
 const Empresas = lazyPage(() => import("./pages/Empresas"));
 const AdminTemplates = lazyPage(() => import("./pages/AdminTemplates"));
@@ -164,6 +165,7 @@ const App = () => (
               <Route path="/aurelia" element={<PlanPages><AureliaPage /></PlanPages>} />
               <Route path="/analytics" element={<PlanPages><Analytics /></PlanPages>} />
               <Route path="/monitoramento-editais" element={<ProtectedPages><MonitoramentoEditais /></ProtectedPages>} />
+              <Route path="/diarios-oficiais" element={<ProtectedPages><DiariosOficiais /></ProtectedPages>} />
               <Route path="/configuracoes" element={<ProtectedPages><Configuracoes /></ProtectedPages>} />
               <Route path="/empresas" element={<ProtectedPages><Empresas /></ProtectedPages>} />
               <Route path="/suporte" element={<ProtectedPages><Suporte /></ProtectedPages>} />
