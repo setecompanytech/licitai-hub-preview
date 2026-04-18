@@ -46,13 +46,21 @@ export default function AureliaChat() {
     setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
+    setActiveTool(null);
 
     let assistantContent = '';
 
     await streamAIChat({
       messages: updatedMessages,
-      action: 'aurelia',
+      endpoint: 'aurelia-tools',
       context: `Tela ativa: ${location.pathname}`,
+      onToolEvent: (evt: ToolEvent) => {
+        if (evt.type === 'running') {
+          setActiveTool({ name: evt.name, args: evt.args });
+        } else if (evt.type === 'done') {
+          setActiveTool(null);
+        }
+      },
       onDelta: (chunk) => {
         assistantContent += chunk;
         setMessages(prev => {
@@ -63,10 +71,11 @@ export default function AureliaChat() {
           return [...prev, { role: 'assistant', content: assistantContent }];
         });
       },
-      onDone: () => setIsLoading(false),
+      onDone: () => { setIsLoading(false); setActiveTool(null); },
       onError: (err) => {
         setMessages(prev => [...prev, { role: 'assistant', content: `Não foi possível conectar com a AURÉLIA. ${err}` }]);
         setIsLoading(false);
+        setActiveTool(null);
       },
     });
   };
