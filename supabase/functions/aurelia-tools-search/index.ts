@@ -213,14 +213,14 @@ async function execBuscarEditalSemantico(args: any, db: ReturnType<typeof create
   const consulta = String(args.consulta || "").trim();
   if (!consulta) return { erro: "Consulta vazia", retornados: 0, resultados: [] };
 
-  const apiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!apiKey) return { erro: "LOVABLE_API_KEY ausente", retornados: 0, resultados: [] };
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!apiKey) return { erro: "OPENAI_API_KEY ausente", retornados: 0, resultados: [] };
 
-  // 1) Gerar embedding da consulta
-  const embedResp = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+  // 1) Gerar embedding da consulta (OpenAI text-embedding-3-small, 1536 dims)
+  const embedResp = await fetch("https://api.openai.com/v1/embeddings", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "google/text-embedding-004", input: consulta.slice(0, 2000) }),
+    body: JSON.stringify({ model: "text-embedding-3-small", input: consulta.slice(0, 8000) }),
   });
   if (!embedResp.ok) {
     const t = await embedResp.text();

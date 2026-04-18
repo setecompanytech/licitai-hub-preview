@@ -12,11 +12,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const EMBED_URL = "https://ai.gateway.lovable.dev/v1/embeddings";
-const EMBED_MODEL = "google/text-embedding-004";
-const EMBED_DIMS = 768;
-const LOTE_PADRAO = 50;
-const LOTE_MAX = 200;
+const EMBED_URL = "https://api.openai.com/v1/embeddings";
+const EMBED_MODEL = "text-embedding-3-small";
+const EMBED_DIMS = 1536;
+const LOTE_PADRAO = 100;
+const LOTE_MAX = 500;
 
 async function gerarEmbedding(texto: string, apiKey: string): Promise<number[] | null> {
   const resp = await fetch(EMBED_URL, {
@@ -27,7 +27,7 @@ async function gerarEmbedding(texto: string, apiKey: string): Promise<number[] |
     },
     body: JSON.stringify({
       model: EMBED_MODEL,
-      input: texto.slice(0, 2000),
+      input: texto.slice(0, 8000),
     }),
   });
 
@@ -63,8 +63,8 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY ausente");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY ausente");
 
     const db = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -115,7 +115,7 @@ serve(async (req) => {
         falhas++;
         continue;
       }
-      const vec = await gerarEmbedding(item.texto_para_embedding, LOVABLE_API_KEY);
+      const vec = await gerarEmbedding(item.texto_para_embedding, OPENAI_API_KEY);
       if (!vec) {
         falhas++;
         continue;
