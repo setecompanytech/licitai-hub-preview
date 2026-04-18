@@ -95,6 +95,8 @@ export async function streamAIChat({
 
         try {
           const parsed = JSON.parse(jsonStr);
+          if (parsed.tool_event) { onToolEvent?.(parsed.tool_event as ToolEvent); continue; }
+          if (parsed.error) { onError?.(parsed.error); continue; }
           const content = parsed.choices?.[0]?.delta?.content;
           if (content) onDelta(content);
         } catch {
@@ -112,6 +114,8 @@ export async function streamAIChat({
         if (jsonStr === "[DONE]") continue;
         try {
           const parsed = JSON.parse(jsonStr);
+          if (parsed.tool_event) { onToolEvent?.(parsed.tool_event as ToolEvent); continue; }
+          if (parsed.error) { onError?.(parsed.error); continue; }
           const content = parsed.choices?.[0]?.delta?.content;
           if (content) onDelta(content);
         } catch { /* ignore */ }
