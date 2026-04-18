@@ -75,3 +75,7 @@ project_id = "sbnlovigyifvrkgsoalj"
 
   [functions.pncp-gerar-embeddings]
     verify_jwt = false
+  [functions.pncp-embeddings-lovable]
+    verify_jwt = false
+  [functions.busca-semantica-editais]
+    verify_jwt = false
