@@ -1,6 +1,7 @@
-// Fase 2 — Boletim Diário com IA (AURÉLIA)
-// Escaneia o cache PNCP, filtra por preferências do usuário, gera resumo via Lovable AI
-// e envia por e-mail usando o template `boletim-ia-resumo`.
+// Boletim Diário (modo Comprasnet) — sem curadoria por "relevância".
+// Lista TODOS os editais publicados nas últimas 24h que batem com as preferências
+// (UF da sede + UFs de interesse + segmentos), priorizando a UF sede no topo.
+// IA é usada apenas para escrever um resumo executivo curto (contagens), não para escolher.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
@@ -15,7 +16,6 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const CRON_SECRET = Deno.env.get("CRON_SECRET");
 
-// Mesmo dicionário de palavras-chave por segmento usado em envio-boletim
 const SEGMENTO_KEYWORDS: Record<string, string[]> = {
   generos_alimenticios: ['aliment', 'merenda', 'cesta básica', 'cesta basica', 'perecív', 'pereciv', 'hortifruti', 'gênero', 'genero', 'refeição', 'refeicao', 'rancho'],
   informatica: ['informática', 'informatica', 'computador', 'notebook', 'servidor', 'software', 'rede', 'impressora', 'toner', 'cartucho', 'monitor', 'tecnologia da informação', 'switch', 'firewall'],
@@ -50,127 +50,119 @@ interface Edital {
 }
 
 async function buscarEditais(supabase: any, ufs: string[], segmentos: string[]): Promise<Edital[]> {
-  // Últimas 24h, prioriza editais com prazo de proposta ainda aberto
   const ontem = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   let q = supabase
     .from('pncp_editais_cache')
     .select('id,pncp_id,numero_compra,orgao,uf,municipio,objeto,valor_total_estimado,data_abertura_proposta,data_publicacao_pncp,url_pncp,link_sistema_origem')
     .gte('data_publicacao_pncp', ontem)
     .order('data_publicacao_pncp', { ascending: false })
-    .limit(300);
+    .limit(500);
   if (ufs?.length) q = q.in('uf', ufs);
   const { data } = await q;
   const lista: Edital[] = data || [];
   return lista.filter(e => matchSegmentos(`${e.objeto || ''} ${e.orgao || ''}`, segmentos));
 }
 
-async function gerarResumoIA(editais: Edital[], userCtx: { segmentos: string[]; ufs: string[] }) {
+/** IA usada apenas para resumo executivo curto (NÃO escolhe quais editais entram). */
+async function gerarResumoExecutivo(
+  editais: Edital[],
+  ufSede: string | null,
+): Promise<string> {
   if (editais.length === 0) {
-    return {
-      resumo_executivo: 'Nenhum edital relevante foi publicado nas últimas 24h dentro do seu perfil.',
-      destaques: [], insights: [],
-    };
+    return 'Nenhum edital novo nas últimas 24h dentro do seu perfil de monitoramento.';
   }
 
-  const editaisCompactos = editais.slice(0, 30).map((e, i) => ({
-    idx: i, num: e.numero_compra, orgao: e.orgao, uf: e.uf,
-    objeto: (e.objeto || '').slice(0, 350),
-    valor: e.valor_total_estimado, abertura: e.data_abertura_proposta,
-  }));
-
-  const systemPrompt = `Você é AURÉLIA, consultora sênior em licitações públicas. Receberá um lote de editais publicados nas últimas 24h e o perfil do usuário (segmentos e UFs de interesse). Sua missão:
-1. Selecionar até 5 editais com MAIOR ALINHAMENTO ao perfil (score 0-100).
-2. Para cada selecionado: justificar em 1 frase curta por que é relevante.
-3. Escrever um resumo executivo (máx 3 frases) sobre o lote.
-4. Listar 2-3 insights estratégicos (tendências, prazos críticos, oportunidades de mercado).
-Seja objetiva, técnica e direta. NÃO invente dados — só use o que está nos editais fornecidos.`;
-
-  const userMsg = `PERFIL: segmentos=[${userCtx.segmentos.join(', ') || 'todos'}], UFs=[${userCtx.ufs.join(', ') || 'todas'}]
-EDITAIS (${editais.length} total, mostrando ${editaisCompactos.length}):
-${JSON.stringify(editaisCompactos, null, 2)}`;
-
-  const tool = {
-    type: "function",
-    function: {
-      name: "gerar_boletim",
-      description: "Retorna o boletim estruturado",
-      parameters: {
-        type: "object",
-        properties: {
-          resumo_executivo: { type: "string" },
-          destaques: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                idx: { type: "integer", description: "Índice do edital no lote" },
-                score: { type: "integer", minimum: 0, maximum: 100 },
-                motivo: { type: "string" },
-              },
-              required: ["idx", "score", "motivo"],
-              additionalProperties: false,
-            },
-          },
-          insights: { type: "array", items: { type: "string" } },
-        },
-        required: ["resumo_executivo", "destaques", "insights"],
-        additionalProperties: false,
-      },
-    },
-  };
-
-  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userMsg }],
-      tools: [tool],
-      tool_choice: { type: "function", function: { name: "gerar_boletim" } },
-    }),
+  const totalUfSede = ufSede ? editais.filter(e => (e.uf || '').toUpperCase() === ufSede).length : 0;
+  const totalAcima1M = editais.filter(e => (e.valor_total_estimado || 0) >= 1_000_000).length;
+  const ufsCount: Record<string, number> = {};
+  editais.forEach(e => {
+    const uf = (e.uf || 'N/I').toUpperCase();
+    ufsCount[uf] = (ufsCount[uf] || 0) + 1;
   });
+  const topUfs = Object.entries(ufsCount).sort((a, b) => b[1] - a[1]).slice(0, 3)
+    .map(([uf, n]) => `${uf} (${n})`).join(', ');
 
-  if (!resp.ok) {
-    const txt = await resp.text();
-    console.error("AI gateway error:", resp.status, txt);
-    throw new Error(`IA falhou: ${resp.status}`);
-  }
-  const json = await resp.json();
-  const args = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-  const parsed = args ? JSON.parse(args) : null;
-  if (!parsed) throw new Error("Resposta IA inválida");
-
-  const destaques = (parsed.destaques || []).slice(0, 5).map((d: any) => {
-    const e = editais[d.idx];
-    if (!e) return null;
-    return {
-      pncp_id: e.pncp_id, numero_compra: e.numero_compra, orgao: e.orgao, uf: e.uf,
-      objeto: e.objeto, valor_total_estimado: e.valor_total_estimado,
-      data_abertura: e.data_abertura_proposta,
-      url: e.url_pncp || e.link_sistema_origem,
-      score: d.score, motivo: d.motivo,
-    };
-  }).filter(Boolean);
-
-  return {
-    resumo_executivo: parsed.resumo_executivo,
-    destaques,
-    insights: parsed.insights || [],
+  const stats = {
+    total: editais.length,
+    na_uf_sede: ufSede ? `${totalUfSede} no ${ufSede}` : null,
+    acima_de_1_milhao: totalAcima1M,
+    top_ufs: topUfs,
   };
+
+  const systemPrompt = `Você é AURÉLIA, consultora em licitações. Escreva APENAS um resumo executivo de 2 frases curtas e objetivas, em português, sobre o lote de editais publicados nas últimas 24h. NÃO selecione, NÃO ranqueie, NÃO recomende. Só descreva o panorama (volume, distribuição geográfica, faixas de valor). Tom: técnico, direto, sem adjetivos vendedores.`;
+  const userMsg = `ESTATÍSTICAS:\n${JSON.stringify(stats, null, 2)}\n\nGere o resumo executivo agora.`;
+
+  try {
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userMsg }],
+      }),
+    });
+    if (!resp.ok) throw new Error(`AI ${resp.status}`);
+    const json = await resp.json();
+    const txt = json.choices?.[0]?.message?.content?.trim();
+    return txt || `${stats.total} editais publicados nas últimas 24h${stats.na_uf_sede ? `, sendo ${stats.na_uf_sede}` : ''}.`;
+  } catch (e) {
+    console.warn('Resumo IA falhou, usando fallback:', e);
+    return `${stats.total} editais publicados nas últimas 24h${stats.na_uf_sede ? `, sendo ${stats.na_uf_sede}` : ''}. ${stats.acima_de_1_milhao} acima de R$ 1 milhão. Top UFs: ${stats.top_ufs}.`;
+  }
 }
 
 async function processarUsuario(supabase: any, pref: any) {
+  // Buscar UF da sede da empresa do usuário
+  const { data: membro } = await supabase
+    .from('empresa_membros').select('empresa_id').eq('user_id', pref.user_id).limit(1).maybeSingle();
+  let ufSede: string | null = null;
+  if (membro?.empresa_id) {
+    const { data: emp } = await supabase
+      .from('empresas').select('uf').eq('id', membro.empresa_id).maybeSingle();
+    ufSede = (emp?.uf || '').toUpperCase().trim() || null;
+  }
+
   const segmentos = pref.segmentos || [];
-  const ufs = pref.ufs_interesse || [];
+  const ufsInteresse = pref.ufs_interesse || [];
+  // UFs combinadas: sede + interesse (sem duplicar). Vazio = Brasil inteiro.
+  const ufs = Array.from(new Set([...(ufSede ? [ufSede] : []), ...ufsInteresse]));
+
   const editais = await buscarEditais(supabase, ufs, segmentos);
-  const ia = await gerarResumoIA(editais, { segmentos, ufs });
+
+  // Ordenar: UF da sede primeiro, depois data de publicação desc
+  editais.sort((a, b) => {
+    if (ufSede) {
+      const aSede = (a.uf || '').toUpperCase() === ufSede;
+      const bSede = (b.uf || '').toUpperCase() === ufSede;
+      if (aSede && !bSede) return -1;
+      if (!aSede && bSede) return 1;
+    }
+    const da = new Date(a.data_publicacao_pncp || 0).getTime();
+    const db = new Date(b.data_publicacao_pncp || 0).getTime();
+    return db - da;
+  });
+
+  const resumo = await gerarResumoExecutivo(editais, ufSede);
 
   // Buscar nome do usuário
   const { data: profile } = await supabase
     .from('profiles').select('nome_completo').eq('user_id', pref.user_id).maybeSingle();
   const primeiroNome = (profile?.nome_completo || '').split(' ')[0] || undefined;
 
-  // Disparar via send-transactional-email
+  // Mapear editais para o formato do template (todos, sem ranking, sem score)
+  const editaisTemplate = editais.slice(0, 100).map(e => ({
+    pncp_id: e.pncp_id,
+    numero_compra: e.numero_compra,
+    orgao: e.orgao,
+    uf: e.uf,
+    municipio: e.municipio,
+    objeto: e.objeto,
+    valor_total_estimado: e.valor_total_estimado,
+    data_abertura: e.data_abertura_proposta,
+    url: e.url_pncp || e.link_sistema_origem,
+    is_uf_sede: ufSede ? (e.uf || '').toUpperCase() === ufSede : false,
+  }));
+
   const { error } = await supabase.functions.invoke('send-transactional-email', {
     body: {
       templateName: 'boletim-ia-resumo',
@@ -179,19 +171,20 @@ async function processarUsuario(supabase: any, pref: any) {
       templateData: {
         nome: primeiroNome,
         data_geracao: new Date().toLocaleDateString('pt-BR'),
-        total_analisados: editais.length,
-        ...ia,
+        total_editais: editais.length,
+        uf_sede: ufSede,
+        resumo_executivo: resumo,
+        editais: editaisTemplate,
       },
     },
   });
 
-  // Log
   await supabase.from('boletim_envios').insert({
     user_id: pref.user_id, email: pref.email, tipo: 'ia_diario',
     status: error ? 'erro' : 'enviado', erro: error?.message || null,
   });
 
-  return { user_id: pref.user_id, email: pref.email, total: editais.length, destaques: ia.destaques.length, error: error?.message };
+  return { user_id: pref.user_id, email: pref.email, total: editais.length, uf_sede: ufSede, error: error?.message };
 }
 
 serve(async (req) => {
@@ -201,7 +194,6 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { user_id, test_mode } = body;
 
-    // Auth: cron secret OU usuário autenticado fazendo teste para si
     const authHeader = req.headers.get('authorization') || '';
     const isCron = CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`;
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
@@ -223,7 +215,6 @@ serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Modo cron: processa todos com boletim_manha ativo
     const { data: prefs } = await supabase
       .from('boletim_preferencias').select('*').eq('boletim_manha', true);
 
@@ -232,7 +223,7 @@ serve(async (req) => {
       try {
         const r = await processarUsuario(supabase, pref);
         resultados.push(r);
-        await new Promise(r => setTimeout(r, 800)); // throttle suave
+        await new Promise(r => setTimeout(r, 800));
       } catch (e: any) {
         console.error('Erro usuário', pref.user_id, e);
         resultados.push({ user_id: pref.user_id, error: e.message });

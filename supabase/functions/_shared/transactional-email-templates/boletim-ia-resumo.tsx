@@ -7,26 +7,26 @@ import type { TemplateEntry } from './registry.ts'
 
 const SITE_NAME = 'PRAEFECTUS'
 
-interface EditalDestaque {
+interface EditalItem {
   pncp_id?: string
   numero_compra?: string
   orgao?: string
   uf?: string
+  municipio?: string
   objeto?: string
   valor_total_estimado?: number | null
   data_abertura?: string | null
   url?: string
-  score?: number
-  motivo?: string
+  is_uf_sede?: boolean
 }
 
 interface BoletimIaResumoProps {
   nome?: string
   data_geracao?: string
   resumo_executivo?: string
-  destaques?: EditalDestaque[]
-  total_analisados?: number
-  insights?: string[]
+  editais?: EditalItem[]
+  total_editais?: number
+  uf_sede?: string | null
 }
 
 const fmtBRL = (v?: number | null) =>
@@ -44,14 +44,18 @@ const BoletimIaResumo = ({
   nome,
   data_geracao,
   resumo_executivo,
-  destaques = [],
-  total_analisados = 0,
-  insights = [],
-}: BoletimIaResumoProps) => (
+  editais = [],
+  total_editais = 0,
+  uf_sede,
+}: BoletimIaResumoProps) => {
+  const editaisSede = editais.filter(e => e.is_uf_sede)
+  const editaisOutros = editais.filter(e => !e.is_uf_sede)
+
+  return (
   <Html lang="pt-BR" dir="ltr">
     <Head />
     <Preview>
-      AURÉLIA analisou {total_analisados} editais — {destaques.length} oportunidades destacadas
+      {total_editais} editais publicados nas últimas 24h{uf_sede ? ` • ${editaisSede.length} no ${uf_sede}` : ''}
     </Preview>
     <Body style={main}>
       <Container style={container}>
@@ -61,7 +65,7 @@ const BoletimIaResumo = ({
             <span style={brandPrae}>PRAE</span>
             <span style={brandFectus}>FECTUS</span>
           </Heading>
-          <Text style={tagline}>Boletim Inteligente • {data_geracao || new Date().toLocaleDateString('pt-BR')}</Text>
+          <Text style={tagline}>Boletim Diário • {data_geracao || new Date().toLocaleDateString('pt-BR')}</Text>
         </Section>
 
         {/* Greeting */}
@@ -70,67 +74,48 @@ const BoletimIaResumo = ({
             {nome ? `Bom dia, ${nome}!` : 'Bom dia!'}
           </Heading>
           <Text style={text}>
-            A <strong>AURÉLIA</strong> analisou <strong>{total_analisados}</strong> editais publicados nas últimas 24h
-            e selecionou <strong>{destaques.length}</strong> oportunidades alinhadas ao seu perfil.
+            <strong>{total_editais}</strong> {total_editais === 1 ? 'edital publicado' : 'editais publicados'} nas últimas 24h
+            {uf_sede && editaisSede.length > 0 && (
+              <> — <strong>{editaisSede.length}</strong> {editaisSede.length === 1 ? 'na sua UF' : 'na sua UF'} ({uf_sede})</>
+            )}.
           </Text>
         </Section>
 
         {/* Resumo executivo */}
         {resumo_executivo && (
           <Section style={resumoBox}>
-            <Text style={resumoLabel}>📋 RESUMO EXECUTIVO</Text>
+            <Text style={resumoLabel}>📋 PANORAMA</Text>
             <Text style={resumoText}>{resumo_executivo}</Text>
           </Section>
         )}
 
-        {/* Destaques */}
-        {destaques.length > 0 && (
+        {/* Editais da UF sede primeiro */}
+        {editaisSede.length > 0 && (
           <Section style={section}>
-            <Heading as="h3" style={h3}>🎯 Oportunidades em destaque</Heading>
-            {destaques.map((e, i) => (
-              <div key={i} style={editalCard}>
-                <div style={editalHeader}>
-                  <Text style={editalNumero}>
-                    {e.numero_compra || 'S/N'} {e.uf ? `• ${e.uf}` : ''}
-                  </Text>
-                  {typeof e.score === 'number' && (
-                    <span style={scoreBadge}>Score {e.score}%</span>
-                  )}
-                </div>
-                <Text style={editalOrgao}>{e.orgao || 'Órgão não informado'}</Text>
-                <Text style={editalObjeto}>{e.objeto?.slice(0, 200) || ''}{(e.objeto?.length || 0) > 200 ? '…' : ''}</Text>
-                <div style={editalMeta}>
-                  <span style={metaItem}>💰 {fmtBRL(e.valor_total_estimado)}</span>
-                  <span style={metaItem}>📅 Abertura: {fmtData(e.data_abertura)}</span>
-                </div>
-                {e.motivo && (
-                  <Text style={motivoText}>
-                    <strong>Por que recomendamos:</strong> {e.motivo}
-                  </Text>
-                )}
-                {e.url && (
-                  <Link href={e.url} style={editalLink}>Ver edital completo →</Link>
-                )}
-              </div>
+            <Heading as="h3" style={h3}>📍 Sua UF — {uf_sede}</Heading>
+            {editaisSede.map((e, i) => (
+              <EditalCard key={`sede-${i}`} edital={e} destaqueSede />
             ))}
           </Section>
         )}
 
-        {/* Insights */}
-        {insights.length > 0 && (
-          <Section style={insightsBox}>
-            <Text style={insightsLabel}>💡 INSIGHTS DA AURÉLIA</Text>
-            {insights.map((ins, i) => (
-              <Text key={i} style={insightItem}>• {ins}</Text>
+        {/* Demais editais */}
+        {editaisOutros.length > 0 && (
+          <Section style={section}>
+            <Heading as="h3" style={h3}>
+              {editaisSede.length > 0 ? '🇧🇷 Outras UFs' : '🇧🇷 Editais publicados'}
+            </Heading>
+            {editaisOutros.map((e, i) => (
+              <EditalCard key={`out-${i}`} edital={e} />
             ))}
           </Section>
         )}
 
-        {destaques.length === 0 && (
+        {editais.length === 0 && (
           <Section style={section}>
             <Text style={text}>
-              Nenhuma oportunidade alinhada ao seu perfil hoje. Ajuste seus segmentos e UFs nas
-              configurações para receber mais alertas.
+              Nenhum edital novo dentro do seu perfil de monitoramento hoje. Ajuste seus segmentos e UFs nas
+              configurações para ampliar o escopo.
             </Text>
           </Section>
         )}
@@ -138,35 +123,60 @@ const BoletimIaResumo = ({
         <Hr style={hr} />
         <Text style={footer}>
           {SITE_NAME} • Inteligência em licitações públicas<br />
-          Powered by AURÉLIA Intelligence
+          Os editais são listados sem curadoria — você decide o que vale a pena.
         </Text>
       </Container>
     </Body>
   </Html>
+  )
+}
+
+const EditalCard = ({ edital: e, destaqueSede }: { edital: EditalItem; destaqueSede?: boolean }) => (
+  <div style={destaqueSede ? editalCardSede : editalCard}>
+    <div style={editalHeader}>
+      <Text style={editalNumero}>
+        {e.numero_compra || 'S/N'} {e.uf ? `• ${e.municipio ? `${e.municipio}/` : ''}${e.uf}` : ''}
+      </Text>
+      {destaqueSede && (
+        <span style={sedeBadge}>Sua UF</span>
+      )}
+    </div>
+    <Text style={editalOrgao}>{e.orgao || 'Órgão não informado'}</Text>
+    <Text style={editalObjeto}>{e.objeto?.slice(0, 220) || ''}{(e.objeto?.length || 0) > 220 ? '…' : ''}</Text>
+    <div style={editalMeta}>
+      <span style={metaItem}>💰 {fmtBRL(e.valor_total_estimado)}</span>
+      <span style={metaItem}>📅 Abertura: {fmtData(e.data_abertura)}</span>
+    </div>
+    {e.url && (
+      <Link href={e.url} style={editalLink}>Ver edital completo →</Link>
+    )}
+  </div>
 )
 
 export const template = {
   component: BoletimIaResumo,
   subject: (data: Record<string, any>) =>
-    `🎯 ${data.destaques?.length || 0} oportunidades destacadas • Boletim AURÉLIA`,
-  displayName: 'Boletim IA Diário (AURÉLIA)',
+    `${data.total_editais || 0} editais nas últimas 24h${data.uf_sede ? ` • ${data.uf_sede} priorizado` : ''}`,
+  displayName: 'Boletim Diário (todos os editais)',
   previewData: {
     nome: 'João',
     data_geracao: '18/04/2026',
-    total_analisados: 47,
-    resumo_executivo: 'Foram identificadas 5 oportunidades estratégicas no setor de TI no Norte/Nordeste, com destaque para 2 pregões de grande porte e prazo confortável de habilitação.',
-    destaques: [
+    total_editais: 47,
+    uf_sede: 'PA',
+    resumo_executivo: '47 editais publicados nas últimas 24h, com forte concentração nas regiões Norte e Nordeste. 12 acima de R$ 1 milhão.',
+    editais: [
       {
-        numero_compra: 'PE 045/2025', orgao: 'Prefeitura de Belém — SEMAD', uf: 'PA',
+        numero_compra: 'PE 045/2025', orgao: 'Prefeitura de Belém — SEMAD', uf: 'PA', municipio: 'Belém',
         objeto: 'Aquisição de notebooks e equipamentos de TI para modernização administrativa',
         valor_total_estimado: 1250000, data_abertura: '2026-04-25T09:00:00',
-        url: 'https://pncp.gov.br/exemplo', score: 87,
-        motivo: 'Alinhado ao seu segmento de TI, prazo de habilitação confortável (7 dias) e valor compatível com seu histórico.',
+        url: 'https://pncp.gov.br/exemplo', is_uf_sede: true,
       },
-    ],
-    insights: [
-      'Volume 23% maior que a média semanal — bom momento para alocar equipe.',
-      '3 órgãos do PA publicaram editais simultâneos — possível padronização de exigências.',
+      {
+        numero_compra: 'PE 022/2025', orgao: 'Governo do Estado de SP', uf: 'SP', municipio: 'São Paulo',
+        objeto: 'Contratação de serviços de manutenção predial',
+        valor_total_estimado: 800000, data_abertura: '2026-04-30T10:00:00',
+        url: 'https://pncp.gov.br/exemplo2', is_uf_sede: false,
+      },
     ],
   },
 } satisfies TemplateEntry
@@ -180,23 +190,20 @@ const brandFectus = { color: '#d4a437' }
 const tagline = { color: '#94a3b8', fontSize: '12px', margin: '6px 0 0' }
 const section = { padding: '20px 28px' }
 const h2 = { fontSize: '20px', color: '#0f172a', margin: '0 0 8px' }
-const h3 = { fontSize: '15px', color: '#0f172a', margin: '0 0 12px', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }
+const h3 = { fontSize: '14px', color: '#0f172a', margin: '0 0 12px', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }
 const text = { fontSize: '14px', color: '#334155', lineHeight: '1.6', margin: '0 0 12px' }
 const resumoBox = { backgroundColor: '#f1f5f9', padding: '18px 22px', margin: '8px 28px', borderRadius: '8px', borderLeft: '4px solid #d4a437' }
 const resumoLabel = { fontSize: '11px', fontWeight: 700 as const, color: '#d4a437', margin: '0 0 8px', letterSpacing: '0.08em' }
 const resumoText = { fontSize: '13px', color: '#1e293b', lineHeight: '1.6', margin: 0 }
-const editalCard = { border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px 16px', marginBottom: '12px', backgroundColor: '#fafbfc' }
+const editalCard = { border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px 16px', marginBottom: '10px', backgroundColor: '#fafbfc' }
+const editalCardSede = { border: '1px solid #d4a437', borderLeft: '4px solid #d4a437', borderRadius: '8px', padding: '14px 16px', marginBottom: '10px', backgroundColor: '#fffbeb' }
 const editalHeader = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }
 const editalNumero = { fontSize: '12px', fontWeight: 600 as const, color: '#3b82f6', margin: 0 }
-const scoreBadge = { fontSize: '10px', fontWeight: 700 as const, color: '#fff', backgroundColor: '#16a34a', padding: '2px 8px', borderRadius: '10px' }
+const sedeBadge = { fontSize: '10px', fontWeight: 700 as const, color: '#fff', backgroundColor: '#d4a437', padding: '2px 8px', borderRadius: '10px' }
 const editalOrgao = { fontSize: '13px', fontWeight: 600 as const, color: '#0f172a', margin: '4px 0 4px' }
 const editalObjeto = { fontSize: '12px', color: '#475569', lineHeight: '1.5', margin: '0 0 8px' }
-const editalMeta = { display: 'flex', gap: '12px', marginBottom: '8px', flexWrap: 'wrap' as const }
+const editalMeta = { display: 'flex', gap: '12px', marginBottom: '6px', flexWrap: 'wrap' as const }
 const metaItem = { fontSize: '11px', color: '#64748b' }
-const motivoText = { fontSize: '12px', color: '#0f172a', backgroundColor: '#fef9e7', padding: '8px 10px', borderRadius: '6px', margin: '8px 0', lineHeight: '1.5' }
 const editalLink = { fontSize: '12px', color: '#3b82f6', fontWeight: 600 as const, textDecoration: 'none' }
-const insightsBox = { backgroundColor: '#eff6ff', padding: '16px 22px', margin: '8px 28px', borderRadius: '8px' }
-const insightsLabel = { fontSize: '11px', fontWeight: 700 as const, color: '#1d4ed8', margin: '0 0 8px', letterSpacing: '0.08em' }
-const insightItem = { fontSize: '12px', color: '#1e293b', lineHeight: '1.6', margin: '2px 0' }
 const hr = { borderColor: '#e2e8f0', margin: '24px 28px' }
 const footer = { fontSize: '11px', color: '#94a3b8', textAlign: 'center' as const, padding: '0 28px 24px', lineHeight: '1.6' }
