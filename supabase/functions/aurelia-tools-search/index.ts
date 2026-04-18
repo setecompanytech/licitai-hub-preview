@@ -18,15 +18,18 @@ const AURELIA_SYSTEM = `
 Você é AURÉLIA, consultora jurídica sênior especializada em licitações públicas (Lei 14.133/2021) da plataforma PRAEFECTUS.
 
 VOCÊ TEM ACESSO A FERRAMENTAS DE BUSCA EM DADOS REAIS:
-- buscar_edital: pesquisa o cache de editais do PNCP e portais (objeto, número, órgão, UF, modalidade).
+- buscar_edital: busca LITERAL no cache de editais do PNCP (palavras exatas, número, órgão, UF, modalidade).
+- buscar_edital_semantico: busca SEMÂNTICA por significado (encontra editais conceitualmente parecidos mesmo com palavras diferentes — ex: "merenda escolar" encontra "alimentação escolar", "gêneros alimentícios para alunos").
 - buscar_diario: pesquisa publicações em Diários Oficiais (DOU, DOE, DOM).
 - consultar_historico_precos: consulta histórico de preços coletados por item/CATMAT.
 
 REGRAS DE USO:
-1. SEMPRE que o usuário pedir para buscar/encontrar/listar editais, pregões, licitações, contratos por número, órgão, ano, UF ou objeto, CHAME buscar_edital.
-2. SEMPRE que o usuário perguntar sobre publicações em diário oficial, extratos, homologações, CHAME buscar_diario.
-3. SEMPRE que o usuário pedir referência de preço, valor de mercado ou histórico, CHAME consultar_historico_precos.
-4. NÃO invente dados. Use APENAS o que as ferramentas retornarem.
+1. Para buscas POR NÚMERO, ÓRGÃO, ANO ou termo TÉCNICO específico, use buscar_edital (busca exata).
+2. Para buscas POR TEMA, CATEGORIA ou DESCRIÇÃO CONCEITUAL (ex: "editais de tecnologia", "contratos de obras de saneamento"), use buscar_edital_semantico.
+3. Se buscar_edital retornar vazio, tente automaticamente buscar_edital_semantico antes de informar ao usuário.
+4. SEMPRE que o usuário perguntar sobre publicações em diário oficial, extratos, homologações, CHAME buscar_diario.
+5. SEMPRE que o usuário pedir referência de preço, valor de mercado ou histórico, CHAME consultar_historico_precos.
+6. NÃO invente dados. Use APENAS o que as ferramentas retornarem.
 5. Apresente resultados em formato claro: número do processo, órgão, objeto resumido, valor, data de abertura, link.
 6. Se a busca retornar vazio, informe explicitamente que não há registros no cache e sugira refinar os filtros.
 
@@ -55,6 +58,32 @@ const TOOLS = [
           data_fim: { type: "string", description: "Data final AAAA-MM-DD" },
           limite: { type: "integer", description: "Quantidade de resultados (padrão 10, máx 25)" },
         },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "buscar_edital_semantico",
+      description:
+        "Busca semântica por significado no cache de editais. Use para encontrar editais conceitualmente parecidos com o que o usuário descreveu, mesmo quando as palavras exatas não aparecem no objeto. Ideal para temas, categorias e perguntas em linguagem natural.",
+      parameters: {
+        type: "object",
+        properties: {
+          consulta: {
+            type: "string",
+            description: "Descrição em linguagem natural do que se procura (ex: 'editais de merenda escolar no Pará')",
+          },
+          uf: { type: "string", description: "Sigla da UF para filtrar (opcional)" },
+          modalidade_id: { type: "integer", description: "Código PNCP da modalidade (opcional)" },
+          apenas_abertos: { type: "boolean", description: "Apenas editais com proposta em aberto (padrão true)" },
+          similaridade_min: {
+            type: "number",
+            description: "Similaridade mínima 0.0–1.0 (padrão 0.4)",
+          },
+          limite: { type: "integer", description: "Quantidade de resultados (padrão 10, máx 25)" },
+        },
+        required: ["consulta"],
       },
     },
   },
