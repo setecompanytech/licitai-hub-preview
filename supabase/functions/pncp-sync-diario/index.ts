@@ -213,7 +213,7 @@ serve(async (req) => {
           novos,
           atualizados,
           total_registros: totalRegistros,
-          ufs_processadas: ufsProcessadas,
+          ufs_processadas_count: ufsProcessadas,
           modalidades_processadas: MODALIDADES.length,
           paginas_consumidas: paginas,
           duracao_ms: duracao,
@@ -236,7 +236,7 @@ serve(async (req) => {
         status: "erro",
         concluido_em: new Date().toISOString(),
         novos, atualizados, total_registros: totalRegistros,
-        ufs_processadas: ufsProcessadas, paginas_consumidas: paginas,
+        ufs_processadas_count: ufsProcessadas, paginas_consumidas: paginas,
         duracao_ms: Date.now() - t0,
         erro: e.message,
       }).eq("id", logId);
