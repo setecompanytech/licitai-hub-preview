@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader2, Minimize2, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { streamAIChat, ChatMessage } from '@/lib/ai-stream';
+import { streamAIChat, ChatMessage, ToolEvent } from '@/lib/ai-stream';
 import { sanitizeAureliaOutput } from '@/prompts/aurelia-system-prompt';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
@@ -14,6 +14,7 @@ export default function AureliaChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasGreeted, setHasGreeted] = useState(false);
   const [hasNotification, setHasNotification] = useState(true);
+  const [activeTool, setActiveTool] = useState<{ name: string; args?: Record<string, unknown> } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
