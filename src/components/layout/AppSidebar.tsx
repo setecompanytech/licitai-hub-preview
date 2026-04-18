@@ -67,6 +67,7 @@ const navGroups: NavGroup[] = [
     title: 'Monitoramento',
     items: [
       { icon: Download, label: 'Editais', path: '/monitoramento-editais' },
+      { icon: FileText, label: 'Diários Oficiais', path: '/diarios-oficiais' },
       { icon: Bell, label: 'Boletins Diários', path: '/boletins' },
       { icon: Target, label: 'Perfis de Alerta', path: '/perfis-alerta' },
       { icon: MessageSquare, label: 'Chat e Mural', path: '/monitoramento-chat' },
