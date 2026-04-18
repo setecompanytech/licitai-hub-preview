@@ -1,8 +1,7 @@
-// Sincronização diária do PNCP — estilo ComprasNet
-// Roda 1x de madrugada (03h05 BRT) cobrindo todas UFs × modalidades do dia anterior
-// e 1x ao meio-dia (12h05 BRT) para reforço intradiário.
-// Idempotente via ON CONFLICT em pncp_editais_cache.
-
+// Sincronização diária PNCP — arquitetura de orquestração paralela
+// Divide o trabalho em chunks de UFs e dispara invocações paralelas (fire-and-forget).
+// Modo "orquestrador": fan-out 6 invocações × ~5 UFs cada (cabe em 150s cada).
+// Modo "worker": processa um grupo de UFs.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
@@ -16,7 +15,7 @@ const UFS = [
   "PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO",
 ];
 
-// Códigos PNCP oficiais — cobrem 100% das modalidades atuais da Lei 14.133/21
+// Modalidades PNCP Lei 14.133/21
 const MODALIDADES = [
   { id: 1, nome: "Leilão Eletrônico" },
   { id: 2, nome: "Diálogo Competitivo" },
@@ -34,8 +33,9 @@ const MODALIDADES = [
 ];
 
 const PAGE_SIZE = 50;
-const MAX_PAGES_POR_BUSCA = 40; // teto de segurança: 2.000 editais por (UF, modalidade, dia)
-const TIMEOUT_FETCH_MS = 25_000;
+const MAX_PAGES_POR_BUSCA = 20; // 1.000 editais por (UF,modalidade,dia) — suficiente
+const TIMEOUT_FETCH_MS = 15_000;
+const PNCP_BASE = "https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao";
 
 function fmtDate(d: Date) {
   return d.toISOString().slice(0, 10).replace(/-/g, "");
@@ -47,11 +47,102 @@ async function fetchComTimeout(url: string, timeoutMs = TIMEOUT_FETCH_MS) {
   try {
     return await fetch(url, {
       signal: ctrl.signal,
-      headers: { Accept: "application/json", "User-Agent": "Praefectus-PNCP-Sync/1.0" },
+      headers: { Accept: "application/json", "User-Agent": "Praefectus-PNCP-Sync/2.0" },
     });
   } finally {
     clearTimeout(t);
   }
+}
+
+async function processarUf(
+  supabase: any,
+  uf: string,
+  datas: Date[],
+  errosLocal: string[],
+): Promise<{ novos: number; paginas: number; total: number }> {
+  let novos = 0, paginas = 0, total = 0;
+
+  for (const modalidade of MODALIDADES) {
+    for (const data of datas) {
+      const dataStr = fmtDate(data);
+      let pagina = 1;
+
+      while (pagina <= MAX_PAGES_POR_BUSCA) {
+        const url = `${PNCP_BASE}?dataInicial=${dataStr}&dataFinal=${dataStr}` +
+          `&codigoModalidadeContratacao=${modalidade.id}&uf=${uf}&pagina=${pagina}&tamanhoPagina=${PAGE_SIZE}`;
+
+        let res: Response;
+        try {
+          res = await fetchComTimeout(url);
+        } catch (e: any) {
+          errosLocal.push(`${uf}/m${modalidade.id}/${dataStr}/p${pagina}: ${e.message}`);
+          break;
+        }
+
+        paginas++;
+        if (res.status === 204 || res.status === 404) break;
+        if (!res.ok) {
+          errosLocal.push(`${uf}/m${modalidade.id}/${dataStr}/p${pagina}: HTTP ${res.status}`);
+          break;
+        }
+
+        const json = await res.json().catch(() => null);
+        const items: any[] = json?.data || [];
+        if (!items.length) break;
+
+        const rows = items.map((e) => {
+          const numeroControle = e.numeroControlePNCP || null;
+          const pncpId = numeroControle ||
+            `${e.orgaoEntidade?.cnpj || ""}-${e.anoCompra || ""}-${e.sequencialCompra || ""}`;
+          return {
+            pncp_id: pncpId,
+            fonte: "PNCP",
+            fonte_id: numeroControle,
+            numero_controle_pncp: numeroControle,
+            cnpj_orgao: e.orgaoEntidade?.cnpj || null,
+            ano_compra: e.anoCompra ? String(e.anoCompra) : null,
+            sequencial_compra: e.sequencialCompra ? String(e.sequencialCompra) : null,
+            numero_compra: e.numeroCompra || null,
+            orgao: e.orgaoEntidade?.razaoSocial || null,
+            unidade_orgao: e.unidadeOrgao?.nomeUnidade || null,
+            objeto: e.objetoCompra || null,
+            modalidade_id: modalidade.id,
+            modalidade_nome: e.modalidadeNome || modalidade.nome,
+            situacao: e.situacaoCompraNome || null,
+            valor_total_estimado: e.valorTotalEstimado || null,
+            valor_total_homologado: e.valorTotalHomologado || null,
+            uf: e.unidadeOrgao?.ufSigla || uf,
+            municipio: e.unidadeOrgao?.municipioNome || null,
+            municipio_ibge: e.unidadeOrgao?.codigoIbge ? String(e.unidadeOrgao.codigoIbge) : null,
+            esfera_id: e.orgaoEntidade?.esferaId || null,
+            data_publicacao_pncp: e.dataPublicacaoPncp || null,
+            data_abertura_proposta: e.dataAberturaProposta || null,
+            data_encerramento_proposta: e.dataEncerramentoProposta || null,
+            link_sistema_origem: e.linkSistemaOrigem || null,
+            url_pncp: numeroControle ? `https://pncp.gov.br/app/editais/${numeroControle}` : null,
+            tipo_instrumento: e.tipoInstrumentoConvocatorioNome || null,
+            srp: e.srp ?? null,
+            lei_base: e.amparoLegal?.descricao || null,
+          };
+        });
+
+        const { error: upErr } = await supabase
+          .from("pncp_editais_cache")
+          .upsert(rows, { onConflict: "fonte,fonte_id", ignoreDuplicates: false });
+
+        if (upErr) {
+          errosLocal.push(`upsert ${uf}/m${modalidade.id}: ${upErr.message}`);
+          break;
+        }
+
+        total += rows.length;
+        novos += rows.length;
+        if (items.length < PAGE_SIZE) break;
+        pagina++;
+      }
+    }
+  }
+  return { novos, paginas, total };
 }
 
 serve(async (req) => {
@@ -64,18 +155,13 @@ serve(async (req) => {
 
   const t0 = Date.now();
 
-  // Parâmetros (POST JSON opcional)
-  let modo = "diario_madrugada";
-  let diasParaTras = 1; // por padrão sincroniza dia anterior + hoje (cobre publicações tardias)
-  try {
-    if (req.method === "POST") {
-      const body = await req.json().catch(() => ({}));
-      if (body.modo) modo = String(body.modo);
-      if (body.dias_para_tras != null) diasParaTras = Math.max(0, Math.min(7, Number(body.dias_para_tras)));
-    }
-  } catch (_) { /* ignore */ }
+  let body: any = {};
+  try { body = req.method === "POST" ? await req.json() : {}; } catch (_) { body = {}; }
 
-  // Janela: dia anterior + hoje
+  const modo = String(body.modo || "orquestrador");
+  const diasParaTras = Math.max(0, Math.min(7, Number(body.dias_para_tras ?? 1)));
+
+  // Janela
   const hoje = new Date();
   const datas: Date[] = [];
   for (let i = diasParaTras; i >= 0; i--) {
@@ -83,166 +169,106 @@ serve(async (req) => {
     d.setUTCDate(d.getUTCDate() - i);
     datas.push(d);
   }
+  const datasStr = datas.map((d) => d.toISOString().slice(0, 10));
 
-  // Cria registro de log "em_andamento"
-  const { data: logRow } = await supabase
-    .from("pncp_sync_log")
-    .insert({
-      modo,
-      status: "em_andamento",
-      data_referencia: datas[datas.length - 1].toISOString().slice(0, 10),
-      detalhes: { datas: datas.map((d) => d.toISOString().slice(0, 10)) },
-    })
-    .select("id")
-    .single();
+  // ────────── MODO ORQUESTRADOR ──────────
+  // Divide UFs em 6 chunks e dispara invocações paralelas fire-and-forget
+  if (modo !== "worker") {
+    const CHUNKS = 6;
+    const chunks: string[][] = Array.from({ length: CHUNKS }, () => []);
+    UFS.forEach((uf, i) => chunks[i % CHUNKS].push(uf));
 
-  const logId = logRow?.id;
+    const { data: logRow } = await supabase
+      .from("pncp_sync_log")
+      .insert({
+        modo,
+        status: "em_andamento",
+        data_referencia: datasStr[datasStr.length - 1],
+        detalhes: { datas: datasStr, chunks: chunks.length, ufs_total: UFS.length },
+      })
+      .select("id")
+      .single();
 
-  let novos = 0;
-  let atualizados = 0;
-  let totalRegistros = 0;
-  let paginas = 0;
-  let ufsProcessadas = 0;
-  const errosPorUf: Record<string, string[]> = {};
+    const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/pncp-sync-diario`;
+    const authHeader = `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`;
 
-  try {
-    for (const uf of UFS) {
-      ufsProcessadas++;
-      let modalidadesOk = 0;
+    // Fire-and-forget: dispara 6 workers em paralelo
+    const triggers = chunks.map((ufs, idx) =>
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: authHeader },
+        body: JSON.stringify({
+          modo: "worker",
+          dias_para_tras: diasParaTras,
+          ufs,
+          chunk_idx: idx,
+          parent_log_id: logRow?.id,
+        }),
+      }).catch((e) => console.warn(`Falha disparo chunk ${idx}: ${e.message}`))
+    );
 
-      for (const modalidade of MODALIDADES) {
-        for (const data of datas) {
-          const dataStr = fmtDate(data);
-          let pagina = 1;
-
-          while (pagina <= MAX_PAGES_POR_BUSCA) {
-            const url =
-              `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao` +
-              `?dataInicial=${dataStr}&dataFinal=${dataStr}` +
-              `&codigoModalidadeContratacao=${modalidade.id}` +
-              `&uf=${uf}&pagina=${pagina}&tamanhoPagina=${PAGE_SIZE}`;
-
-            let res: Response;
-            try {
-              res = await fetchComTimeout(url);
-            } catch (e: any) {
-              (errosPorUf[uf] ||= []).push(`${modalidade.id}/${dataStr}/p${pagina}: ${e.message}`);
-              break;
-            }
-
-            paginas++;
-
-            if (res.status === 204 || res.status === 404) break;
-            if (!res.ok) {
-              (errosPorUf[uf] ||= []).push(`${modalidade.id}/${dataStr}/p${pagina}: HTTP ${res.status}`);
-              break;
-            }
-
-            const json = await res.json().catch(() => null);
-            const items: any[] = json?.data || [];
-            if (!items.length) break;
-
-            const rows = items.map((e) => {
-              const numeroControle = e.numeroControlePNCP || null;
-              const pncpId = numeroControle || `${e.orgaoEntidade?.cnpj || ""}-${e.anoCompra || ""}-${e.sequencialCompra || ""}`;
-              return {
-                pncp_id: pncpId,
-                fonte: "PNCP",
-                fonte_id: numeroControle,
-                numero_controle_pncp: numeroControle,
-                cnpj_orgao: e.orgaoEntidade?.cnpj || null,
-                ano_compra: e.anoCompra ? String(e.anoCompra) : null,
-                sequencial_compra: e.sequencialCompra ? String(e.sequencialCompra) : null,
-                numero_compra: e.numeroCompra || null,
-                orgao: e.orgaoEntidade?.razaoSocial || null,
-                unidade_orgao: e.unidadeOrgao?.nomeUnidade || null,
-                objeto: e.objetoCompra || null,
-                modalidade_id: modalidade.id,
-                modalidade_nome: e.modalidadeNome || modalidade.nome,
-                situacao: e.situacaoCompraNome || null,
-                valor_total_estimado: e.valorTotalEstimado || null,
-                valor_total_homologado: e.valorTotalHomologado || null,
-                uf: e.unidadeOrgao?.ufSigla || uf,
-                municipio: e.unidadeOrgao?.municipioNome || null,
-                municipio_ibge: e.unidadeOrgao?.codigoIbge ? String(e.unidadeOrgao.codigoIbge) : null,
-                esfera_id: e.orgaoEntidade?.esferaId || null,
-                data_publicacao_pncp: e.dataPublicacaoPncp || null,
-                data_abertura_proposta: e.dataAberturaProposta || null,
-                data_encerramento_proposta: e.dataEncerramentoProposta || null,
-                link_sistema_origem: e.linkSistemaOrigem || null,
-                url_pncp: numeroControle ? `https://pncp.gov.br/app/editais/${numeroControle}` : null,
-                tipo_instrumento: e.tipoInstrumentoConvocatorioNome || null,
-                srp: e.srp ?? null,
-                lei_base: e.amparoLegal?.descricao || null,
-              };
-            });
-
-            const { error: upErr, count } = await supabase
-              .from("pncp_editais_cache")
-              .upsert(rows, { onConflict: "fonte,fonte_id", count: "exact", ignoreDuplicates: false });
-
-            if (upErr) {
-              (errosPorUf[uf] ||= []).push(`upsert ${modalidade.id}/${dataStr}/p${pagina}: ${upErr.message}`);
-              break;
-            }
-
-            totalRegistros += rows.length;
-            // Heurística: nesta janela tudo que entra é "novo ou atualizado"; somamos no agregado
-            novos += rows.length;
-
-            if (items.length < PAGE_SIZE) break;
-            pagina++;
-          }
-        }
-        modalidadesOk++;
-      }
-
-      // Pequeno respiro entre UFs para não sobrecarregar a API do PNCP
-      await new Promise((r) => setTimeout(r, 150));
-    }
-
-    const status = Object.keys(errosPorUf).length > 0 ? "parcial" : "sucesso";
-    const duracao = Date.now() - t0;
-
-    if (logId) {
-      await supabase
-        .from("pncp_sync_log")
-        .update({
-          status,
-          concluido_em: new Date().toISOString(),
-          novos,
-          atualizados,
-          total_registros: totalRegistros,
-          ufs_processadas_count: ufsProcessadas,
-          modalidades_processadas: MODALIDADES.length,
-          paginas_consumidas: paginas,
-          duracao_ms: duracao,
-          detalhes: { erros_por_uf: errosPorUf, datas: datas.map((d) => d.toISOString().slice(0, 10)) },
-        })
-        .eq("id", logId);
-    }
+    // Aguarda só o disparo (não a conclusão)
+    await Promise.allSettled(triggers);
 
     return new Response(
       JSON.stringify({
-        status, modo, novos, total_registros: totalRegistros,
-        ufs_processadas: ufsProcessadas, paginas_consumidas: paginas,
-        duracao_ms: duracao, erros_por_uf: errosPorUf,
+        status: "orquestracao_disparada",
+        modo: "orquestrador",
+        chunks: chunks.length,
+        ufs_total: UFS.length,
+        log_id: logRow?.id,
+        datas: datasStr,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
-  } catch (e: any) {
-    if (logId) {
-      await supabase.from("pncp_sync_log").update({
-        status: "erro",
-        concluido_em: new Date().toISOString(),
-        novos, atualizados, total_registros: totalRegistros,
-        ufs_processadas_count: ufsProcessadas, paginas_consumidas: paginas,
-        duracao_ms: Date.now() - t0,
-        erro: e.message,
-      }).eq("id", logId);
-    }
-    return new Response(JSON.stringify({ error: e.message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  }
+
+  // ────────── MODO WORKER ──────────
+  const ufs: string[] = Array.isArray(body.ufs) ? body.ufs : [];
+  const chunkIdx = Number(body.chunk_idx ?? 0);
+  const parentLogId = body.parent_log_id || null;
+
+  if (!ufs.length) {
+    return new Response(JSON.stringify({ error: "worker sem ufs" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
+
+  let novos = 0, paginas = 0, total = 0, ufsOk = 0;
+  const erros: string[] = [];
+
+  for (const uf of ufs) {
+    try {
+      const r = await processarUf(supabase, uf, datas, erros);
+      novos += r.novos; paginas += r.paginas; total += r.total;
+      ufsOk++;
+    } catch (e: any) {
+      erros.push(`${uf}: ${e.message}`);
+    }
+  }
+
+  const duracao = Date.now() - t0;
+
+  // Log do worker
+  await supabase.from("pncp_sync_log").insert({
+    modo: `worker_chunk_${chunkIdx}`,
+    status: erros.length ? "parcial" : "sucesso",
+    data_referencia: datasStr[datasStr.length - 1],
+    novos, total_registros: total,
+    ufs_processadas_count: ufsOk,
+    modalidades_processadas: MODALIDADES.length,
+    paginas_consumidas: paginas,
+    duracao_ms: duracao,
+    concluido_em: new Date().toISOString(),
+    detalhes: { ufs, chunk_idx: chunkIdx, parent_log_id: parentLogId, erros: erros.slice(0, 30) },
+  });
+
+  return new Response(
+    JSON.stringify({
+      status: "worker_ok", chunk_idx: chunkIdx, ufs_processadas: ufsOk,
+      novos, total_registros: total, paginas_consumidas: paginas, duracao_ms: duracao,
+      erros: erros.length,
+    }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
 });
