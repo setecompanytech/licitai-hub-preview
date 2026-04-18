@@ -18,15 +18,18 @@ const AURELIA_SYSTEM = `
 Você é AURÉLIA, consultora jurídica sênior especializada em licitações públicas (Lei 14.133/2021) da plataforma PRAEFECTUS.
 
 VOCÊ TEM ACESSO A FERRAMENTAS DE BUSCA EM DADOS REAIS:
-- buscar_edital: pesquisa o cache de editais do PNCP e portais (objeto, número, órgão, UF, modalidade).
+- buscar_edital: busca LITERAL no cache de editais do PNCP (palavras exatas, número, órgão, UF, modalidade).
+- buscar_edital_semantico: busca SEMÂNTICA por significado (encontra editais conceitualmente parecidos mesmo com palavras diferentes — ex: "merenda escolar" encontra "alimentação escolar", "gêneros alimentícios para alunos").
 - buscar_diario: pesquisa publicações em Diários Oficiais (DOU, DOE, DOM).
 - consultar_historico_precos: consulta histórico de preços coletados por item/CATMAT.
 
 REGRAS DE USO:
-1. SEMPRE que o usuário pedir para buscar/encontrar/listar editais, pregões, licitações, contratos por número, órgão, ano, UF ou objeto, CHAME buscar_edital.
-2. SEMPRE que o usuário perguntar sobre publicações em diário oficial, extratos, homologações, CHAME buscar_diario.
-3. SEMPRE que o usuário pedir referência de preço, valor de mercado ou histórico, CHAME consultar_historico_precos.
-4. NÃO invente dados. Use APENAS o que as ferramentas retornarem.
+1. Para buscas POR NÚMERO, ÓRGÃO, ANO ou termo TÉCNICO específico, use buscar_edital (busca exata).
+2. Para buscas POR TEMA, CATEGORIA ou DESCRIÇÃO CONCEITUAL (ex: "editais de tecnologia", "contratos de obras de saneamento"), use buscar_edital_semantico.
+3. Se buscar_edital retornar vazio, tente automaticamente buscar_edital_semantico antes de informar ao usuário.
+4. SEMPRE que o usuário perguntar sobre publicações em diário oficial, extratos, homologações, CHAME buscar_diario.
+5. SEMPRE que o usuário pedir referência de preço, valor de mercado ou histórico, CHAME consultar_historico_precos.
+6. NÃO invente dados. Use APENAS o que as ferramentas retornarem.
 5. Apresente resultados em formato claro: número do processo, órgão, objeto resumido, valor, data de abertura, link.
 6. Se a busca retornar vazio, informe explicitamente que não há registros no cache e sugira refinar os filtros.
 
@@ -55,6 +58,32 @@ const TOOLS = [
           data_fim: { type: "string", description: "Data final AAAA-MM-DD" },
           limite: { type: "integer", description: "Quantidade de resultados (padrão 10, máx 25)" },
         },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "buscar_edital_semantico",
+      description:
+        "Busca semântica por significado no cache de editais. Use para encontrar editais conceitualmente parecidos com o que o usuário descreveu, mesmo quando as palavras exatas não aparecem no objeto. Ideal para temas, categorias e perguntas em linguagem natural.",
+      parameters: {
+        type: "object",
+        properties: {
+          consulta: {
+            type: "string",
+            description: "Descrição em linguagem natural do que se procura (ex: 'editais de merenda escolar no Pará')",
+          },
+          uf: { type: "string", description: "Sigla da UF para filtrar (opcional)" },
+          modalidade_id: { type: "integer", description: "Código PNCP da modalidade (opcional)" },
+          apenas_abertos: { type: "boolean", description: "Apenas editais com proposta em aberto (padrão true)" },
+          similaridade_min: {
+            type: "number",
+            description: "Similaridade mínima 0.0–1.0 (padrão 0.4)",
+          },
+          limite: { type: "integer", description: "Quantidade de resultados (padrão 10, máx 25)" },
+        },
+        required: ["consulta"],
       },
     },
   },
@@ -179,9 +208,65 @@ async function execConsultarPrecos(args: any, db: ReturnType<typeof createClient
   return { retornados: (data || []).length, resultados: data || [] };
 }
 
+// Busca semântica via embeddings
+async function execBuscarEditalSemantico(args: any, db: ReturnType<typeof createClient>) {
+  const consulta = String(args.consulta || "").trim();
+  if (!consulta) return { erro: "Consulta vazia", retornados: 0, resultados: [] };
+
+  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!apiKey) return { erro: "LOVABLE_API_KEY ausente", retornados: 0, resultados: [] };
+
+  // 1) Gerar embedding da consulta
+  const embedResp = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "google/text-embedding-004", input: consulta.slice(0, 2000) }),
+  });
+  if (!embedResp.ok) {
+    const t = await embedResp.text();
+    return { erro: `Falha ao gerar embedding (${embedResp.status}): ${t.slice(0, 200)}`, retornados: 0, resultados: [] };
+  }
+  const embedData = await embedResp.json();
+  const vec = embedData?.data?.[0]?.embedding;
+  if (!Array.isArray(vec)) return { erro: "Embedding inválido", retornados: 0, resultados: [] };
+
+  // 2) Consultar via RPC semântica
+  const limite = Math.min(Number(args.limite) || 10, 25);
+  const { data, error } = await (db as any).rpc("busca_editais_semantica", {
+    p_embedding: JSON.stringify(vec),
+    p_limite: limite,
+    p_similaridade_min: Number(args.similaridade_min) || 0.4,
+    p_uf: args.uf || null,
+    p_apenas_abertos: args.apenas_abertos !== false,
+    p_modalidade_id: args.modalidade_id ? Number(args.modalidade_id) : null,
+  });
+  if (error) return { erro: error.message, retornados: 0, resultados: [] };
+
+  const rows = data || [];
+  return {
+    retornados: rows.length,
+    consulta_semantica: consulta,
+    resultados: rows.map((r: any) => ({
+      id: r.id,
+      numero: r.numero_controle_pncp,
+      orgao: r.orgao,
+      uf: r.uf,
+      municipio: r.municipio,
+      modalidade: r.modalidade_nome,
+      objeto: r.objeto?.slice(0, 400),
+      valor_estimado: r.valor_total_estimado,
+      data_publicacao: r.data_publicacao_pncp,
+      data_encerramento: r.data_encerramento_proposta,
+      link: r.link_sistema_origem || r.url_pncp,
+      similaridade: Math.round((r.similaridade || 0) * 100) / 100,
+    })),
+  };
+}
+
 async function executarTool(name: string, args: any, db: ReturnType<typeof createClient>) {
   try {
     if (name === "buscar_edital") return await execBuscarEdital(args, db);
+    if (name === "buscar_edital_semantico") return await execBuscarEditalSemantico(args, db);
     if (name === "buscar_diario") return await execBuscarDiario(args, db);
     if (name === "consultar_historico_precos") return await execConsultarPrecos(args, db);
     return { erro: `Ferramenta desconhecida: ${name}` };
