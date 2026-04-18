@@ -19,10 +19,12 @@ const LOTE_PADRAO = 100;
 const LOTE_MAX = 500;
 
 async function gerarEmbedding(texto: string, apiKey: string): Promise<number[] | null> {
+  // Sanitiza chave: remove espaços, quebras de linha, caracteres não-ASCII
+  const cleanKey = apiKey.replace(/[^\x20-\x7E]/g, "").trim();
   const resp = await fetch(EMBED_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${cleanKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
