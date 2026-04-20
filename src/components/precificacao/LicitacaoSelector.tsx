@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEditalExtraction } from '@/hooks/useEditalExtraction';
 import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
+import { isItemsLikelyMismatched } from '@/lib/licitacao-item-consistency';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -59,7 +60,7 @@ export default function LicitacaoSelector({
   onItensLoaded,
 }: LicitacaoSelectorProps) {
   const { user } = useAuth();
-  const { extrairItensIA, deleteAllItens } = useEditalExtraction();
+  const { extrairItensIA, deleteAllItens, fetchItens } = useEditalExtraction();
   const { fetchLinkedLicitacao, findPncpCacheMatch, resolveLinkedEditalText } = useLinkedEditalSource();
   const [licitacoes, setLicitacoes] = useState<LicitacaoResumo[]>([]);
   const [loading, setLoading] = useState(false);
@@ -160,7 +161,7 @@ export default function LicitacaoSelector({
     setLicitacaoOrgao(lic.orgao || '');
     setLoadingItens(true);
 
-    const [docsResp, itensResp] = await Promise.all([
+    const [docsResp, rawItensResp, existingItens] = await Promise.all([
       supabase
         .from('documentos')
         .select('id, arquivo_path, nome, tipo, created_at')
@@ -174,6 +175,7 @@ export default function LicitacaoSelector({
         .eq('licitacao_id', targetLicitacaoId)
         .eq('user_id', user.id)
         .order('numero', { ascending: true }),
+      fetchItens(targetLicitacaoId),
     ]);
 
     setLoadingItens(false);
@@ -182,27 +184,29 @@ export default function LicitacaoSelector({
       console.error('Erro ao buscar documentos da licitação:', docsResp.error);
     }
 
-    if (itensResp.error) {
-      console.error('Erro ao buscar itens:', itensResp.error);
-      toast.error('Erro ao buscar itens da licitação.');
-      return;
+    if (rawItensResp.error) {
+      console.error('Erro ao buscar itens brutos:', rawItensResp.error);
     }
 
     const docs = docsResp.data || [];
     const hasLinkedDocument = docs.some((doc) => doc.arquivo_path);
-    const rawExistingItens = (itensResp.data as any[]) || [];
-    const existingItens = mapItensToAutofill(rawExistingItens);
+    const rawExistingItens = (rawItensResp.data as any[]) || [];
     const existingAreOnlyAi = rawExistingItens.length > 0 && rawExistingItens.every((item) => item.origem === 'ia');
-    const shouldPurgeStaleAiItems = existingItens.length > 0 && existingAreOnlyAi && !hasLinkedDocument;
+    const shouldPurgeStaleAiItems = rawExistingItens.length > 0 && existingAreOnlyAi && !hasLinkedDocument;
+    const shouldPurgeMismatchedItems = isItemsLikelyMismatched(lic.objeto, rawExistingItens.map((item) => item.descricao));
 
-    if (shouldPurgeStaleAiItems) {
+    if (shouldPurgeStaleAiItems || shouldPurgeMismatchedItems) {
       await deleteAllItens(targetLicitacaoId);
       setItensCount(0);
       onItensLoaded?.([]);
-      toast.warning('Itens automáticos antigos foram removidos porque não havia um edital confiável vinculado.');
+      toast.warning(
+        shouldPurgeMismatchedItems
+          ? 'Itens incompatíveis com o objeto deste processo foram removidos automaticamente.'
+          : 'Itens automáticos antigos foram removidos porque não havia um edital confiável vinculado.'
+      );
     } else if (existingItens.length > 0) {
       setItensCount(existingItens.length);
-      onItensLoaded?.(existingItens);
+      onItensLoaded?.(mapItensToAutofill(existingItens));
       toast.success(`${existingItens.length} item(ns) carregados automaticamente da licitação!`);
       return;
     }
