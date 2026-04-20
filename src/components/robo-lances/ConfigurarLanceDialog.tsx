@@ -672,7 +672,9 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                     </p>
                   </div>
                 ) : (
-                  <ScrollArea className="h-72 w-full rounded-md border border-border/40 bg-muted/10">
+                  <div
+                    className="h-72 w-full overflow-y-scroll rounded-md border border-border/40 bg-muted/10 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-muted/30"
+                  >
                     <div className="space-y-1.5 p-2 pr-3">
                       {filteredLicitacoes.map((lic) => (
                         <button
