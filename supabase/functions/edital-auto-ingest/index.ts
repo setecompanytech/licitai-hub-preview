@@ -39,9 +39,17 @@ function classifyExt(url: string, name = ""): AnexoLink["tipo"] {
 
 function parsePNCPNumeroControle(nc: string | null | undefined) {
   if (!nc) return null;
-  const m = nc.replace(/\s/g, "").match(/^(\d{14})-(\d+)-(\d+)\/(\d{4})$/);
-  if (!m) return null;
-  return { cnpj: m[1], seq: m[3], ano: m[4] };
+  const clean = nc.replace(/\s/g, "");
+  // Formato oficial: CNPJ(14)-1-SEQ/ANO
+  let m = clean.match(/(\d{14})-(\d+)-(\d+)\/(\d{4})/);
+  if (m) return { cnpj: m[1], seq: m[3], ano: m[4] };
+  // Formato URL PNCP: /editais/{cnpj}/{ano}/{seq}
+  m = clean.match(/editais\/(\d{14})\/(\d{4})\/(\d+)/i);
+  if (m) return { cnpj: m[1], seq: m[3], ano: m[2] };
+  // Formato URL PNCP API: /orgaos/{cnpj}/compras/{ano}/{seq}
+  m = clean.match(/orgaos\/(\d{14})\/compras\/(\d{4})\/(\d+)/i);
+  if (m) return { cnpj: m[1], seq: m[3], ano: m[2] };
+  return null;
 }
 
 async function listPNCPArquivos(cnpj: string, ano: string, seq: string): Promise<AnexoLink[]> {
@@ -210,7 +218,7 @@ Deno.serve(async (req) => {
   // Carrega licitação (e numero_controle_pncp via cache se houver)
   const { data: lic } = await admin
     .from("licitacoes")
-    .select("id, user_id, numero, orgao, objeto, url_edital, valor_estimado")
+    .select("id, user_id, numero, orgao, objeto, observacoes, url_edital, valor_estimado")
     .eq("id", body.licitacao_id)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -227,28 +235,45 @@ Deno.serve(async (req) => {
 
   await updateStatus({ status: "running", etapa: "resolve", iniciado_em: new Date().toISOString(), erro: null, mensagem: null });
 
-  // Resolver fonte: tentar PNCP via numero/url
+  // Resolver fonte: tentar PNCP via numero/url/cache
   let anexos: AnexoLink[] = [];
   let fonte = "generic";
   let pncp: ReturnType<typeof parsePNCPNumeroControle> = null;
-  const nc = lic.numero || "";
-  pncp = parsePNCPNumeroControle(nc);
 
-  if (!pncp && lic.url_edital) {
-    const m = lic.url_edital.match(/(\d{14})-\d+-(\d+)\/(\d{4})/);
-    if (m) pncp = { cnpj: m[1], seq: m[2], ano: m[3] };
+  // 1) Tentar parsear do número do processo
+  pncp = parsePNCPNumeroControle(lic.numero || "");
+  // 2) Tentar parsear da URL do edital
+  if (!pncp) pncp = parsePNCPNumeroControle(lic.url_edital || "");
+
+  // 3) Tentar localizar no cache PNCP por objeto + órgão
+  if (!pncp && lic.objeto && lic.orgao) {
+    const { data: cacheMatch } = await admin
+      .from("pncp_editais_cache")
+      .select("cnpj_orgao, ano_compra, sequencial_compra, numero_controle_pncp, link_sistema_origem, url_pncp, objeto")
+      .ilike("orgao", `%${lic.orgao.slice(0, 30)}%`)
+      .ilike("objeto", `%${lic.objeto.slice(0, 60)}%`)
+      .limit(1)
+      .maybeSingle();
+    if (cacheMatch?.cnpj_orgao && cacheMatch?.ano_compra && cacheMatch?.sequencial_compra) {
+      pncp = { cnpj: cacheMatch.cnpj_orgao, seq: String(cacheMatch.sequencial_compra), ano: String(cacheMatch.ano_compra) };
+      console.log("[auto-ingest] PNCP encontrado via cache:", pncp);
+    }
   }
+
+  console.log("[auto-ingest] Estado inicial:", { lic_id: lic.id, numero: lic.numero, url_edital: lic.url_edital, pncp });
 
   if (pncp) {
     fonte = "pncp";
     await updateStatus({ fonte, etapa: "download" });
     anexos = await listPNCPArquivos(pncp.cnpj, pncp.ano, pncp.seq);
+    console.log(`[auto-ingest] PNCP retornou ${anexos.length} anexos`);
   }
 
   if (anexos.length === 0 && lic.url_edital) {
     fonte = "generic";
     await updateStatus({ fonte, etapa: "download" });
     anexos = await firecrawlScrape(lic.url_edital);
+    console.log(`[auto-ingest] Firecrawl retornou ${anexos.length} anexos`);
   }
 
   await updateStatus({ etapa: "classify", arquivos_baixados: anexos as any });
@@ -264,6 +289,7 @@ Deno.serve(async (req) => {
     if (dl) {
       itens = parseXlsxItens(dl.buf);
       if (itens.length > 0) fonteUsada = "XLSX";
+      console.log(`[auto-ingest] XLSX parseado: ${itens.length} itens`);
     }
   }
 
@@ -275,13 +301,22 @@ Deno.serve(async (req) => {
     if (pncp) {
       payload.numero_controle = `${pncp.cnpj}-1-${pncp.seq}/${pncp.ano}`;
       payload.orgao_cnpj = pncp.cnpj;
-      payload.ano_compra = pncp.ano;
-      payload.sequencial = pncp.seq;
+      payload.ano_compra = Number(pncp.ano);
+      payload.sequencial = Number(pncp.seq);
     }
     if (pdfFirst) payload.pdf_url = pdfFirst.url;
 
+    // Sempre passar texto bruto do objeto/observações como último recurso
+    const textoFallback = [lic.objeto, lic.observacoes].filter(Boolean).join("\n\n");
+    if (textoFallback.length >= 50) {
+      payload.texto_edital = textoFallback;
+      payload.skip_min_length = true;
+    }
+
     if (Object.keys(payload).length > 0) {
+      console.log("[auto-ingest] Chamando extrair-itens-edital com:", Object.keys(payload));
       const result = await callExtrairItensIA(SUPABASE_URL, SUPABASE_ANON_KEY, payload);
+      console.log("[auto-ingest] Resultado IA:", { success: result?.success, count: result?.data?.length, error: result?.error });
       if (result?.success && Array.isArray(result.data) && result.data.length > 0) {
         itens = result.data;
         fonteUsada = result.fonte || "IA";
@@ -290,14 +325,17 @@ Deno.serve(async (req) => {
   }
 
   if (itens.length === 0) {
+    const motivo = anexos.length === 0
+      ? "Não foi possível localizar anexos do edital automaticamente. Tente fazer upload manual do PDF/planilha."
+      : "Anexos foram localizados mas não foi possível extrair itens estruturados. Tente upload manual.";
     await updateStatus({
       status: "failed",
       etapa: "done",
       finalizado_em: new Date().toISOString(),
-      mensagem: "Nenhum item encontrado automaticamente.",
-      erro: "no_items_resolved",
+      mensagem: motivo,
+      erro: anexos.length === 0 ? "no_attachments_found" : "no_items_extracted",
     });
-    return new Response(JSON.stringify({ success: false, reason: "no_items", anexos }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ success: false, reason: "no_items", motivo, anexos, pncp_detectado: !!pncp }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   // Persistir
