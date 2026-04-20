@@ -524,7 +524,7 @@ ${truncated}`,
 
     console.log(`[extrair-itens] Gemini retornou ${rawItens.length} itens brutos, ${itens.length} normalizados`);
 
-    return buildSuccessResponse(itens, "IA");
+    return buildSuccessResponse(itens, "IA", truncated);
   } catch (error) {
     console.error("extrair-itens-edital error:", error);
     return new Response(JSON.stringify({
