@@ -259,17 +259,26 @@ export default function HistoricoLicitacoes() {
 
         {/* Table */}
         <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] table-auto">
+          <div className="overflow-x-auto w-full">
+            <table className="min-w-[1200px] w-full table-fixed border-collapse">
+              <colgroup>
+                <col style={{ width: '360px' }} />
+                <col style={{ width: '220px' }} />
+                <col style={{ width: '130px' }} />
+                <col style={{ width: '130px' }} />
+                <col style={{ width: '140px' }} />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '100px' }} />
+              </colgroup>
               <thead>
                 <tr className="border-b border-border/50 bg-muted/30">
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap min-w-[320px]">Nº / Objeto</th>
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap min-w-[200px]">Órgão</th>
-                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap w-[140px]">Status</th>
-                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap w-[120px]">Resultado</th>
-                  <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap w-[130px]">Valor Adj.</th>
-                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap w-[110px]">Prazo</th>
-                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap w-[90px]">Ações</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap">Nº / Objeto</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap">Órgão</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap">Status</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap">Resultado</th>
+                  <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap">Valor Adj.</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap">Prazo</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap">Ações</th>
                 </tr>
               </thead>
               <tbody>
