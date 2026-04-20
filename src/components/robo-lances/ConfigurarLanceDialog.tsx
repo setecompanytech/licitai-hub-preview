@@ -717,7 +717,6 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                         </button>
                       ))}
                     </div>
-                    </div>
                   </div>
                 )}
               </div>
