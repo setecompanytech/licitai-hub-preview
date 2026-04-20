@@ -469,25 +469,11 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
         }
       }
 
-      // 4) Último recurso: extração IA a partir do objeto/observações da licitação
+      // ⚠️ Removido: extração a partir de objeto/observações.
+      // Texto curto provoca alucinação grave (ex: IA inventa "impressora" em edital de limpeza).
+      // O usuário deve enviar o PDF do edital no Passo 3 quando não houver itens centralizados.
       if (importedItems.length === 0) {
-        const { data: licDetail } = await supabase
-          .from('licitacoes')
-          .select('objeto, observacoes')
-          .eq('id', lic.id)
-          .single();
-
-        const textoBase = [licDetail?.objeto, licDetail?.observacoes].filter(Boolean).join('\n');
-
-        if (textoBase && textoBase.length >= 50) {
-          toast.info('🤖 Nenhum item cadastrado ainda. Extraindo via IA...');
-          try {
-            const saved = await extrairItensIA(lic.id, textoBase, { skipValidation: true });
-            importedItems = licitacaoItensToDispute(saved);
-          } catch (e) {
-            console.warn('Extração IA inicial falhou:', e);
-          }
-        }
+        toast.warning('⚠️ Nenhum item localizado nas fontes confiáveis. Envie o PDF do edital no Passo 3 para extração segura.');
       }
 
       applyImportedItems(importedItems);
