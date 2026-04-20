@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import EditalUploader, { type ExtractedEditalData, type EditalItem } from '@/components/proposta/EditalUploader';
 import ReextrairEditalButton from '@/components/shared/ReextrairEditalButton';
+import LimparItensExtraidosButton from '@/components/licitacoes/LimparItensExtraidosButton';
 import PlanilhaPrecos from '@/components/proposta/PlanilhaPrecos';
 import { Link } from 'react-router-dom';
 import EnvioProposta from '@/components/proposta/EnvioProposta';
@@ -645,7 +646,15 @@ export default function PropostaTecnica() {
                     <p className="font-medium">Sem download/upload manual</p>
                     <p className="text-muted-foreground">Lemos o edital direto da fonte (PNCP/portal) e importamos os itens automaticamente.</p>
                   </div>
-                  <ReextrairEditalButton licitacaoId={processoId} onCompleted={() => loadProcessoData(processoId)} />
+                  <div className="flex items-center gap-2">
+                    <LimparItensExtraidosButton
+                      licitacaoId={processoId}
+                      fontes={['licitacao_itens', 'composicoes_custo']}
+                      onCleared={() => loadProcessoData(processoId)}
+                      label="Limpar itens"
+                    />
+                    <ReextrairEditalButton licitacaoId={processoId} onCompleted={() => loadProcessoData(processoId)} />
+                  </div>
                 </div>
               )}
               <EditalUploader onExtracted={handleEditalExtracted} isExtracting={isExtracting} setIsExtracting={setIsExtracting} licitacaoId={processoId || undefined} />

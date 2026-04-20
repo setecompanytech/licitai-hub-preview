@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { MapPin, Calendar, GripVertical, Plus, Pencil, LayoutDashboard, ListChecks } from 'lucide-react';
+import { MapPin, Calendar, GripVertical, Plus, Pencil, LayoutDashboard, ListChecks, History } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import EditLicitacaoDialog from '@/components/kanban/EditLicitacaoDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CompromissosResumo from '@/components/gestao/CompromissosResumo';
+import HistoricoExtracoes from '@/components/gestao/HistoricoExtracoes';
 
 type LicitacaoKanban = {
   id: string;
@@ -128,7 +129,9 @@ export default function KanbanPage() {
     e.preventDefault();
     setDragOverCol(colId);
   };
-  const handleDrop = async (colId: string) => {
+  const handleDrop = async (e: React.DragEvent, colId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (dragItem) {
       const item = items.find(i => i.id === dragItem);
       if (item && item.status !== colId) {
@@ -163,6 +166,9 @@ export default function KanbanPage() {
           <TabsTrigger value="compromissos" className="gap-1.5">
             <ListChecks className="w-3.5 h-3.5" /> Compromissos
           </TabsTrigger>
+          <TabsTrigger value="historico" className="gap-1.5">
+            <History className="w-3.5 h-3.5" /> Histórico de Extrações
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="kanban">
@@ -188,8 +194,14 @@ export default function KanbanPage() {
                   dragOverCol === col.id && 'ring-2 ring-accent/40 bg-accent/5'
                 )}
                 onDragOver={(e) => handleDragOver(e, col.id)}
-                onDragLeave={() => setDragOverCol(null)}
-                onDrop={() => handleDrop(col.id)}
+                onDragEnter={(e) => { e.preventDefault(); setDragOverCol(col.id); }}
+                onDragLeave={(e) => {
+                  // Only clear if leaving the column entirely (not entering a child)
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    setDragOverCol(null);
+                  }
+                }}
+                onDrop={(e) => handleDrop(e, col.id)}
               >
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: col.color }} />
@@ -197,9 +209,15 @@ export default function KanbanPage() {
                   <Badge variant="outline" className="text-[10px] ml-auto px-1.5 py-0">{colItems.length}</Badge>
                 </div>
                 <p className="text-[10px] text-muted-foreground mb-3 leading-tight">{col.description}</p>
-                <div className="space-y-2 min-h-[60px]">
+                <div
+                  className="space-y-2 min-h-[120px]"
+                  onDragOver={(e) => { e.preventDefault(); setDragOverCol(col.id); }}
+                  onDrop={(e) => handleDrop(e, col.id)}
+                >
                   {colItems.length === 0 && (
-                    <p className="text-[10px] text-muted-foreground/50 text-center py-4">Solte aqui</p>
+                    <div className="border-2 border-dashed border-border/30 rounded-lg py-8 text-center">
+                      <p className="text-[10px] text-muted-foreground/60">Solte aqui</p>
+                    </div>
                   )}
                   {colItems.map((lic) => (
                     <div
@@ -257,6 +275,10 @@ export default function KanbanPage() {
 
         <TabsContent value="compromissos">
           <CompromissosResumo />
+        </TabsContent>
+
+        <TabsContent value="historico">
+          <HistoricoExtracoes />
         </TabsContent>
       </Tabs>
 

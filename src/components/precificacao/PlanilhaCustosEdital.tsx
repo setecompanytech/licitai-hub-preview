@@ -18,6 +18,7 @@ import { writeExcelFile } from '@/lib/excel-utils';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import { supabase } from '@/integrations/supabase/client';
+import LimparItensExtraidosButton from '@/components/licitacoes/LimparItensExtraidosButton';
 
 export interface PlanilhaItem {
   item: number;
@@ -536,19 +537,26 @@ export default function PlanilhaCustosEdital({
                   Use o edital já associado ao processo para extrair itens sem novo upload.
                 </p>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleExtractFromLinkedProcess}
-                disabled={isExtracting}
-                className="shrink-0"
-              >
-                {isExtracting ? (
-                  <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Carregando...</>
-                ) : (
-                  <><Link2 className="w-3.5 h-3.5 mr-1" /> Usar processo vinculado</>
-                )}
-              </Button>
+              <div className="flex items-center gap-2 shrink-0">
+                <LimparItensExtraidosButton
+                  licitacaoId={licitacaoId}
+                  fontes={['licitacao_itens', 'catalogo_itens_precificados']}
+                  onCleared={() => { setItens([]); setSourceLabel(''); }}
+                  label="Limpar"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleExtractFromLinkedProcess}
+                  disabled={isExtracting}
+                >
+                  {isExtracting ? (
+                    <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Carregando...</>
+                  ) : (
+                    <><Link2 className="w-3.5 h-3.5 mr-1" /> Usar processo vinculado</>
+                  )}
+                </Button>
+              </div>
             </div>
           )}
 
