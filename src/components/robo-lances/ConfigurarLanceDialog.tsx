@@ -110,6 +110,7 @@ type Props = {
 export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }: Props) {
   const { user } = useAuth();
   const { fetchItens, extrairItensDoTexto, extrairItensIA } = useEditalExtraction();
+  const { resolveLinkedEditalText } = useLinkedEditalSource();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<0 | 1 | 2>(editingLance ? 1 : 0);
 
