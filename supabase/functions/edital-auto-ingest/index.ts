@@ -218,7 +218,7 @@ Deno.serve(async (req) => {
   // Carrega licitação (e numero_controle_pncp via cache se houver)
   const { data: lic } = await admin
     .from("licitacoes")
-    .select("id, user_id, numero, orgao, objeto, url_edital, valor_estimado")
+    .select("id, user_id, numero, orgao, objeto, observacoes, url_edital, valor_estimado")
     .eq("id", body.licitacao_id)
     .eq("user_id", user.id)
     .maybeSingle();
