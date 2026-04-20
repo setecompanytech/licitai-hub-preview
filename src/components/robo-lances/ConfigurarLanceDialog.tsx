@@ -755,14 +755,21 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
         {step === 1 && (
           <div className="space-y-5 py-2">
             {(licitacaoIdRef || itens.length > 0) && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-success/10 border border-success/30 text-xs text-success">
-                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                <span>
-                  {licitacaoIdRef
-                    ? <>Dados importados do processo <strong>{edital}</strong>. Revise e ajuste conforme necessário.</>
-                    : <><strong>{itens.length} itens</strong> extraídos do edital por IA. Revise os dados abaixo.</>
-                  }
-                </span>
+              <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-success/10 border border-success/30 text-xs text-success">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-semibold">
+                    {licitacaoIdRef
+                      ? <>Dados importados do processo <strong>{edital}</strong>{itens.length > 0 ? <> · <strong>{itens.length}</strong> {itens.length === 1 ? 'item carregado' : 'itens carregados'}</> : ''}</>
+                      : <><strong>{itens.length} itens</strong> extraídos do edital por IA</>
+                    }
+                  </p>
+                  {licitacaoIdRef && (
+                    <p className="text-[10px] text-success/80 font-normal">
+                      🔗 Fonte única: estes mesmos itens estão sincronizados com a <strong>Proposta Comercial</strong> e a <strong>Precificação</strong>.
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
