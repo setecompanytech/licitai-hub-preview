@@ -322,16 +322,43 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     }
 
     try {
+      // 1) Tenta carregar itens já centralizados (compartilhados com Proposta/Precificação)
       const centralItens = await fetchItens(lic.id);
-      const importedItems = licitacaoItensToDispute(centralItens);
+      let importedItems = licitacaoItensToDispute(centralItens);
+
+      // 2) Se não há itens centralizados, tenta extrair via IA do objeto/observações da licitação
+      //    Os itens extraídos ficam persistidos em licitacao_itens e serão reaproveitados
+      //    pela Proposta Comercial e pela Precificação automaticamente.
+      if (importedItems.length === 0) {
+        const { data: licDetail } = await supabase
+          .from('licitacoes')
+          .select('objeto, observacoes')
+          .eq('id', lic.id)
+          .single();
+
+        const textoBase = [licDetail?.objeto, licDetail?.observacoes].filter(Boolean).join('\n');
+
+        if (textoBase && textoBase.length >= 50) {
+          toast.info('🤖 Nenhum item cadastrado ainda. Extraindo via IA...');
+          try {
+            const saved = await extrairItensIA(lic.id, textoBase, { skipValidation: true });
+            importedItems = licitacaoItensToDispute(saved);
+          } catch (e) {
+            console.warn('Extração IA inicial falhou:', e);
+          }
+        }
+      }
+
       applyImportedItems(importedItems);
 
       const itemCount = importedItems.length;
-      toast.success(
-        itemCount > 0
-          ? `✅ Processo importado com ${itemCount} ${itemCount === 1 ? 'item' : 'itens'}!`
-          : '✅ Dados do processo importados! Cadastre os itens manualmente no Passo 3.'
-      );
+      if (itemCount > 0) {
+        toast.success(
+          `✅ Processo importado com ${itemCount} ${itemCount === 1 ? 'item' : 'itens'}! Os mesmos itens estarão disponíveis na Proposta e na Precificação.`
+        );
+      } else {
+        toast.info('✅ Dados do processo importados. Envie o edital (PDF/DOC) no Passo 3 para extrair os itens automaticamente via IA.');
+      }
     } catch {
       toast.error('Erro ao importar itens do processo.');
     } finally {
