@@ -388,30 +388,24 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
         const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
         textoParaAnalise = await extractTextFromFile(editalFile, 150, true);
         fonteTexto = 'upload_manual';
-      } else if (!textoParaAnalise && licitacaoIdRef) {
-        const { data: lic } = await supabase
-          .from('licitacoes')
-          .select('objeto, observacoes')
-          .eq('id', licitacaoIdRef)
-          .single();
-        textoParaAnalise = [lic?.objeto, lic?.observacoes].filter(Boolean).join('\n');
-        fonteTexto = 'objeto_curto';
       }
 
-      if (!textoParaAnalise || textoParaAnalise.length < 20) {
-        toast.info('Envie o edital (PDF/DOC) no Passo 3 ou cadastre os itens manualmente. Dica: use a Precificação/Proposta para popular os itens deste processo.');
+      // ⚠️ Anti-alucinação: NÃO usar objeto/observações curtos como base.
+      // Texto curto (<500 chars) faz a IA inventar produtos que não existem no edital.
+      if (!textoParaAnalise || textoParaAnalise.length < 500) {
+        toast.warning('⚠️ Não há texto suficiente do edital para extração segura. Envie o PDF/DOC do edital ou Termo de Referência no Passo 3 — o objeto resumido não basta e gera itens inventados.');
         setIsExtracting(false);
         return;
       }
 
       if (licitacaoIdRef) {
-        const saved = await extrairItensIA(licitacaoIdRef, textoParaAnalise, { forceReExtract: true, skipValidation: fonteTexto !== 'objeto_curto' });
+        const saved = await extrairItensIA(licitacaoIdRef, textoParaAnalise, { forceReExtract: true, skipValidation: false });
         const disputeItems = licitacaoItensToDispute(saved);
         applyImportedItems(disputeItems);
         if (disputeItems.length > 0) {
           toast.success(`${disputeItems.length} itens extraídos automaticamente via IA!`);
         } else {
-          toast.info('Nenhum item encontrado. Cadastre manualmente ou envie o edital.');
+          toast.info('Nenhum item identificado com segurança. Cadastre manualmente ou envie o edital completo.');
         }
       } else {
         await extractFromText(textoParaAnalise);
