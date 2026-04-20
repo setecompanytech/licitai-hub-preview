@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useEditalExtraction, type LicitacaoItem } from '@/hooks/useEditalExtraction';
 import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
+import LimparItensExtraidosButton from '@/components/licitacoes/LimparItensExtraidosButton';
 
 const portaisDisponiveis = [
   { id: 'pncp', nome: 'PNCP' },
@@ -970,14 +971,24 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
         {step === 2 && (
           <div className="space-y-5 py-2">
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Layers className="w-4 h-4 text-accent" /> Tipo de Disputa
-                {(licitacaoIdRef || editalFile) && (
-                  <Badge variant="outline" className="text-[9px] bg-info/10 text-info border-info/30 ml-1">
-                    Detectado automaticamente
-                  </Badge>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-accent" /> Tipo de Disputa
+                  {(licitacaoIdRef || editalFile) && (
+                    <Badge variant="outline" className="text-[9px] bg-info/10 text-info border-info/30 ml-1">
+                      Detectado automaticamente
+                    </Badge>
+                  )}
+                </h4>
+                {licitacaoIdRef && (
+                  <LimparItensExtraidosButton
+                    licitacaoId={licitacaoIdRef}
+                    fontes={['licitacao_itens']}
+                    onCleared={() => { setItens([]); setAutoExtractTriggered(false); toast.info('Histórico limpo. Reextraia ou adicione manualmente.'); }}
+                    label="Limpar itens errados"
+                  />
                 )}
-              </h4>
+              </div>
               <div className="flex gap-3">
                 <button
                   onClick={() => setTipoDisputa('item')}
