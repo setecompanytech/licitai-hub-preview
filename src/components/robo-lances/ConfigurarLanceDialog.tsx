@@ -433,9 +433,16 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
       const centralItens = await fetchItens(lic.id);
       let importedItems = licitacaoItensToDispute(centralItens);
 
-      // 2) Se não há itens centralizados, tenta extrair via IA do objeto/observações da licitação
-      //    Os itens extraídos ficam persistidos em licitacao_itens e serão reaproveitados
-      //    pela Proposta Comercial e pela Precificação automaticamente.
+      // 2) Fallback: importa de Precificação (catálogo) e Proposta Comercial (composições)
+      if (importedItems.length === 0) {
+        const alternativos = await fetchItensDeFontesAlternativas(lic.id);
+        if (alternativos.length > 0) {
+          importedItems = alternativos;
+          toast.info(`📦 ${alternativos.length} itens importados da Precificação/Proposta Comercial.`);
+        }
+      }
+
+      // 3) Último recurso: extração IA a partir do objeto/observações da licitação
       if (importedItems.length === 0) {
         const { data: licDetail } = await supabase
           .from('licitacoes')
