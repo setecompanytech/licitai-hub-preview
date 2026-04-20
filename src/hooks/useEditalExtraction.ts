@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { isItemsLikelyMismatched } from '@/lib/licitacao-item-consistency';
 
 export interface LicitacaoItem {
   id: string;
@@ -95,17 +96,55 @@ export function useEditalExtraction() {
 
   const fetchItens = useCallback(async (licitacaoId: string): Promise<LicitacaoItem[]> => {
     if (!user) return [];
-    const { data, error } = await supabase
-      .from('licitacao_itens')
-      .select('*')
-      .eq('licitacao_id', licitacaoId)
-      .eq('user_id', user.id)
-      .order('numero', { ascending: true });
+    const [{ data, error }, { data: licitacaoMeta, error: licitacaoError }] = await Promise.all([
+      supabase
+        .from('licitacao_itens')
+        .select('*')
+        .eq('licitacao_id', licitacaoId)
+        .eq('user_id', user.id)
+        .order('numero', { ascending: true }),
+      supabase
+        .from('licitacoes')
+        .select('objeto')
+        .eq('id', licitacaoId)
+        .eq('user_id', user.id)
+        .maybeSingle(),
+    ]);
+
     if (error) {
       console.error('Erro ao buscar itens:', error);
       return [];
     }
-    return (data as unknown as LicitacaoItem[]) || [];
+
+    if (licitacaoError) {
+      console.error('Erro ao buscar metadados da licitação:', licitacaoError);
+      return [];
+    }
+
+    const itens = (data as unknown as LicitacaoItem[]) || [];
+
+    if (isItemsLikelyMismatched(licitacaoMeta?.objeto, itens.map((item) => item.descricao))) {
+      console.warn('[useEditalExtraction] Itens incoerentes removidos automaticamente', {
+        licitacaoId,
+        totalItens: itens.length,
+      });
+
+      const { error: cleanupError } = await supabase
+        .from('licitacao_itens')
+        .delete()
+        .eq('licitacao_id', licitacaoId)
+        .eq('user_id', user.id);
+
+      if (cleanupError) {
+        console.error('Erro ao limpar itens incoerentes:', cleanupError);
+      } else {
+        toast.warning('Itens incompatíveis com este processo foram descartados. Faça uma nova extração do edital.');
+      }
+
+      return [];
+    }
+
+    return itens;
   }, [user]);
 
   const saveItensManual = useCallback(async (
