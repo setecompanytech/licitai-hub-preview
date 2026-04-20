@@ -81,6 +81,7 @@ type LicitacaoRow = {
   valor_estimado: number | null;
   portal: string | null;
   data_encerramento: string | null;
+  data_abertura: string | null;
 };
 
 // Helper: convert LicitacaoItem[] to DisputeItem[]
@@ -325,7 +326,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     try {
       const { data, error } = await supabase
         .from('licitacoes')
-        .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, portal, data_encerramento')
+        .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, portal, data_encerramento, data_abertura')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -433,11 +434,17 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     setPortal(lic.portal || '');
     setLicitacaoIdRef(lic.id);
 
-    if (lic.data_encerramento) {
+    // Horário da sessão de disputa = data_abertura (início do pregão).
+    // Fallback para data_encerramento (prazo de envio de propostas) só quando abertura não existir.
+    const fonteHorario = lic.data_abertura || lic.data_encerramento;
+    if (fonteHorario) {
       try {
-        const d = new Date(lic.data_encerramento);
-        setHorario(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+        const d = new Date(fonteHorario);
+        if (!isNaN(d.getTime())) {
+          setHorario(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+        }
       } catch {
+        // ignore
       }
     }
 
