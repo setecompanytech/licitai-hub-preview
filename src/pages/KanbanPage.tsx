@@ -276,6 +276,10 @@ export default function KanbanPage() {
         <TabsContent value="compromissos">
           <CompromissosResumo />
         </TabsContent>
+
+        <TabsContent value="historico">
+          <HistoricoExtracoes />
+        </TabsContent>
       </Tabs>
 
       <EditLicitacaoDialog
