@@ -461,7 +461,21 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
         }
       }
 
-      // 3) Último recurso: extração IA a partir do objeto/observações da licitação
+      // 3) Penúltimo recurso: edital vinculado pelo Monitoramento (PNCP cache + documentos + download)
+      if (importedItems.length === 0) {
+        try {
+          const linked = await resolveLinkedEditalText(lic.id);
+          if (linked.text && linked.text.length >= 200) {
+            toast.info(`📄 Edital localizado via ${linked.source.replace(/_/g, ' ')}. Extraindo itens via IA...`);
+            const saved = await extrairItensIA(lic.id, linked.text, { skipValidation: true, forceReExtract: true });
+            importedItems = licitacaoItensToDispute(saved);
+          }
+        } catch (e) {
+          console.warn('Falha ao buscar edital vinculado:', e);
+        }
+      }
+
+      // 4) Último recurso: extração IA a partir do objeto/observações da licitação
       if (importedItems.length === 0) {
         const { data: licDetail } = await supabase
           .from('licitacoes')
