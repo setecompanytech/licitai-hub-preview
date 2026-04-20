@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { MapPin, Calendar, GripVertical, Plus, Pencil, LayoutDashboard, ListChecks } from 'lucide-react';
+import { MapPin, Calendar, GripVertical, Plus, Pencil, LayoutDashboard, ListChecks, History } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import EditLicitacaoDialog from '@/components/kanban/EditLicitacaoDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CompromissosResumo from '@/components/gestao/CompromissosResumo';
+import HistoricoExtracoes from '@/components/gestao/HistoricoExtracoes';
 
 type LicitacaoKanban = {
   id: string;
@@ -164,6 +165,9 @@ export default function KanbanPage() {
           </TabsTrigger>
           <TabsTrigger value="compromissos" className="gap-1.5">
             <ListChecks className="w-3.5 h-3.5" /> Compromissos
+          </TabsTrigger>
+          <TabsTrigger value="historico" className="gap-1.5">
+            <History className="w-3.5 h-3.5" /> Histórico de Extrações
           </TabsTrigger>
         </TabsList>
 
