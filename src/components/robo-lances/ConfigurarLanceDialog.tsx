@@ -351,7 +351,16 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
         if (centralItens.length > 0) {
           const importedItems = licitacaoItensToDispute(centralItens);
           applyImportedItems(importedItems);
-          toast.success(`${importedItems.length} itens carregados automaticamente!`);
+          toast.success(`${importedItems.length} itens carregados da fonte central!`);
+          setIsExtracting(false);
+          return;
+        }
+
+        // 🔄 Fallback: buscar de Precificação e Proposta Comercial
+        const alternativos = await fetchItensDeFontesAlternativas(licitacaoIdRef);
+        if (alternativos.length > 0) {
+          applyImportedItems(alternativos);
+          toast.success(`✅ ${alternativos.length} itens importados da Precificação/Proposta!`);
           setIsExtracting(false);
           return;
         }
@@ -371,7 +380,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
       }
 
       if (!textoParaAnalise || textoParaAnalise.length < 20) {
-        toast.info('Envie o edital (PDF/DOC) para extrair itens automaticamente, ou cadastre manualmente.');
+        toast.info('Envie o edital (PDF/DOC) no Passo 3 ou cadastre os itens manualmente. Dica: use a Precificação/Proposta para popular os itens deste processo.');
         setIsExtracting(false);
         return;
       }
@@ -394,7 +403,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     } finally {
       setIsExtracting(false);
     }
-  }, [isExtracting, licitacaoIdRef, fetchItens, editalFile, extrairItensIA, extractFromText]);
+  }, [isExtracting, licitacaoIdRef, fetchItens, fetchItensDeFontesAlternativas, editalFile, extrairItensIA, extractFromText]);
 
   useEffect(() => {
     if (step === 2 && itens.length === 0 && !autoExtractTriggered && (licitacaoIdRef || editalFile)) {
