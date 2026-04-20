@@ -368,17 +368,34 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
         }
       }
 
+      // 🔁 Camada autoritativa: edital vinculado pelo Monitoramento (PNCP cache + documentos + download direto)
       let textoParaAnalise = '';
-      if (editalFile) {
+      let fonteTexto = '';
+      if (licitacaoIdRef) {
+        try {
+          const linked = await resolveLinkedEditalText(licitacaoIdRef);
+          if (linked.text && linked.text.length >= 200) {
+            textoParaAnalise = linked.text;
+            fonteTexto = linked.source;
+            toast.info(`📄 Edital localizado via ${linked.source.replace(/_/g, ' ')} (Monitoramento).`);
+          }
+        } catch (e) {
+          console.warn('Falha ao resolver edital vinculado:', e);
+        }
+      }
+
+      if (!textoParaAnalise && editalFile) {
         const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
         textoParaAnalise = await extractTextFromFile(editalFile, 150, true);
-      } else if (licitacaoIdRef) {
+        fonteTexto = 'upload_manual';
+      } else if (!textoParaAnalise && licitacaoIdRef) {
         const { data: lic } = await supabase
           .from('licitacoes')
           .select('objeto, observacoes')
           .eq('id', licitacaoIdRef)
           .single();
         textoParaAnalise = [lic?.objeto, lic?.observacoes].filter(Boolean).join('\n');
+        fonteTexto = 'objeto_curto';
       }
 
       if (!textoParaAnalise || textoParaAnalise.length < 20) {
@@ -388,7 +405,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
       }
 
       if (licitacaoIdRef) {
-        const saved = await extrairItensIA(licitacaoIdRef, textoParaAnalise, { forceReExtract: true, skipValidation: !!editalFile });
+        const saved = await extrairItensIA(licitacaoIdRef, textoParaAnalise, { forceReExtract: true, skipValidation: fonteTexto !== 'objeto_curto' });
         const disputeItems = licitacaoItensToDispute(saved);
         applyImportedItems(disputeItems);
         if (disputeItems.length > 0) {
