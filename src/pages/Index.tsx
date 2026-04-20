@@ -12,17 +12,15 @@ import RelatorioGerencialPDF from '@/components/relatorios/RelatorioGerencialPDF
 import OnboardingWizard, { useOnboarding } from '@/components/onboarding/OnboardingWizard';
 
 import ColaboradorIdentificacaoModal from '@/components/auth/ColaboradorIdentificacaoModal';
-import { useNavigate } from 'react-router-dom';
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(v);
 
 export default function Index() {
   const { empresaAtiva, todasSelecionadas } = useEmpresa();
-  const { kpis, chartMensal, chartValor, loading } = useDashboardData();
+  const { kpis } = useDashboardData();
   const { kpis: analyticsKpis } = useAnalyticsData();
   const { showOnboarding, dismissOnboarding } = useOnboarding();
-  const navigate = useNavigate();
 
   const empresaLabel = todasSelecionadas
     ? 'Todas as Empresas'
