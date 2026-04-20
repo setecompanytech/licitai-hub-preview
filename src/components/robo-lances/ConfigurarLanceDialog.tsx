@@ -219,6 +219,104 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     }
   }, [extrairItensDoTexto]);
 
+  // Busca itens de fontes alternativas (Precificação e Proposta) quando
+  // a tabela centralizada `licitacao_itens` está vazia. Os itens encontrados
+  // são persistidos em `licitacao_itens` para reuso em todos os módulos.
+  const fetchItensDeFontesAlternativas = useCallback(async (licId: string): Promise<DisputeItem[]> => {
+    if (!user) return [];
+    try {
+      // 1) Catálogo de Precificação
+      const { data: precificados } = await supabase
+        .from('catalogo_itens_precificados')
+        .select('descricao, quantidade, unidade, preco_unitario, marca, fabricante, modelo')
+        .eq('licitacao_id', licId)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+
+      // 2) Composições de Custo da Proposta Comercial
+      const { data: composicoes } = await supabase
+        .from('composicoes_custo')
+        .select('descricao_item, dados_json')
+        .eq('licitacao_id', licId)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+
+      const fontes: Array<{ descricao: string; quantidade: number; unidade: string; valor: number; lote: string; origem: 'precificacao' | 'proposta' }> = [];
+
+      (precificados || []).forEach((p: any) => {
+        if (p.descricao) fontes.push({
+          descricao: p.descricao,
+          quantidade: Number(p.quantidade) || 1,
+          unidade: p.unidade || 'UN',
+          valor: Number(p.preco_unitario) || 0,
+          lote: 'Único',
+          origem: 'precificacao',
+        });
+      });
+
+      (composicoes || []).forEach((c: any) => {
+        const dados = c.dados_json || {};
+        if (c.descricao_item) fontes.push({
+          descricao: c.descricao_item,
+          quantidade: Number(dados.quantidade) || 1,
+          unidade: dados.unidade || 'UN',
+          valor: Number(dados.preco_venda || dados.valor_unitario) || 0,
+          lote: dados.lote || 'Único',
+          origem: 'proposta',
+        });
+      });
+
+      if (fontes.length === 0) return [];
+
+      // Deduplica por descrição (case-insensitive)
+      const seen = new Set<string>();
+      const unique = fontes.filter(f => {
+        const k = f.descricao.toLowerCase().trim();
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+
+      // Persiste na fonte central para reuso futuro
+      try {
+        await supabase.from('licitacao_itens').insert(
+          unique.map((f, idx) => ({
+            licitacao_id: licId,
+            user_id: user.id,
+            numero: idx + 1,
+            descricao: f.descricao,
+            quantidade: f.quantidade,
+            unidade: f.unidade,
+            valor_unitario: f.valor,
+            valor_total: f.valor * f.quantidade,
+            lote: f.lote,
+            origem: 'importado',
+          }))
+        );
+      } catch (e) {
+        console.warn('Não foi possível persistir em licitacao_itens:', e);
+      }
+
+      return unique.map((f, idx) => ({
+        id: crypto.randomUUID(),
+        numero: idx + 1,
+        descricao: f.descricao,
+        quantidade: f.quantidade,
+        unidade: f.unidade,
+        valorReferencia: f.valor,
+        valorMinimo: 0,
+        lote: f.lote,
+        disputando: true,
+        situacao: 'aguardando' as const,
+        melhorLance: null,
+        seuUltimoLance: null,
+      }));
+    } catch (e) {
+      console.error('Erro ao buscar itens de fontes alternativas:', e);
+      return [];
+    }
+  }, [user]);
+
   const fetchLicitacoes = useCallback(async () => {
     if (!user) return;
     setLoadingLicitacoes(true);
