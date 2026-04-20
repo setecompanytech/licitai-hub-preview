@@ -422,7 +422,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     } finally {
       setIsExtracting(false);
     }
-  }, [isExtracting, licitacaoIdRef, fetchItens, fetchItensDeFontesAlternativas, editalFile, extrairItensIA, extractFromText]);
+  }, [isExtracting, licitacaoIdRef, fetchItens, fetchItensDeFontesAlternativas, editalFile, extrairItensIA, extractFromText, resolveLinkedEditalText]);
 
   useEffect(() => {
     if (step === 2 && itens.length === 0 && !autoExtractTriggered && (licitacaoIdRef || editalFile)) {
