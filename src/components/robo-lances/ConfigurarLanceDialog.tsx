@@ -717,7 +717,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                         </button>
                       ))}
                     </div>
-                  </ScrollArea>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
