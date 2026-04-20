@@ -1,14 +1,13 @@
 import AppLayout from '@/components/layout/AppLayout';
 import StatCard from '@/components/dashboard/StatCard';
-import LicitacoesChart from '@/components/dashboard/LicitacoesChart';
-import ValorChart from '@/components/dashboard/ValorChart';
 import PainelLicitacoes from '@/components/dashboard/PainelLicitacoes';
 import QuickAccessGrid from '@/components/dashboard/QuickAccessGrid';
+import CalendarioLicitacoes from '@/components/calendario/CalendarioLicitacoes';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useAnalyticsData } from '@/hooks/useAnalyticsData';
-import { Eye, Send, Trophy, TrendingUp, DollarSign, Zap, XCircle, Clock, Gavel, FileCheck2, Database } from 'lucide-react';
+import { Eye, Trophy, DollarSign, XCircle, Clock, Database, CalendarDays } from 'lucide-react';
 import RelatorioGerencialPDF from '@/components/relatorios/RelatorioGerencialPDF';
 import OnboardingWizard, { useOnboarding } from '@/components/onboarding/OnboardingWizard';
 
