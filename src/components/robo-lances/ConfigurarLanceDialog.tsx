@@ -20,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useEditalExtraction, type LicitacaoItem } from '@/hooks/useEditalExtraction';
+import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
 
 const portaisDisponiveis = [
   { id: 'pncp', nome: 'PNCP' },
