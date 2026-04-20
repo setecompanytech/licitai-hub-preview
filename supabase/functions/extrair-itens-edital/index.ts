@@ -123,8 +123,44 @@ function validarItens(itens: any[]): any[] {
   });
 }
 
-function buildSuccessResponse(itens: any[], fonte: string) {
-  const validados = validarItens(itens);
+// ── VALIDAÇÃO ANTI-ALUCINAÇÃO ──────────────────────────────
+// Confere se as descrições extraídas têm respaldo no texto-fonte.
+// Itens cujas palavras-chave NÃO aparecem no texto são descartados
+// (provável invenção da IA — ex: "impressora" num edital de limpeza).
+function filtrarAlucinacoes(itens: any[], textoFonte?: string): any[] {
+  if (!textoFonte || textoFonte.length < 100) return itens;
+  const fonteNorm = textoFonte
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  const STOPWORDS = new Set([
+    "de","do","da","dos","das","e","ou","com","sem","para","por","em","no","na","nos","nas",
+    "a","o","as","os","um","uma","uns","umas","ao","aos","à","às","que","se","item","lote",
+    "unidade","unidades","un","kg","peca","pecas","cor","tipo","modelo","marca","ref","cm","mm",
+  ]);
+
+  return itens.filter((item: any) => {
+    const desc = String(item.descricao || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    const tokens = desc
+      .split(/[^a-z0-9]+/)
+      .filter((t) => t.length >= 4 && !STOPWORDS.has(t));
+    if (tokens.length === 0) return true; // sem tokens significativos → mantém
+    const presentes = tokens.filter((t) => fonteNorm.includes(t));
+    const ratio = presentes.length / tokens.length;
+    if (ratio < 0.4) {
+      console.warn(`[anti-alucinação] DESCARTADO (ratio=${ratio.toFixed(2)}): "${item.descricao}"`);
+      return false;
+    }
+    return true;
+  });
+}
+
+function buildSuccessResponse(itens: any[], fonte: string, textoFonte?: string) {
+  const itensFiltrados = filtrarAlucinacoes(itens, textoFonte);
+  const validados = validarItens(itensFiltrados);
   const total = validados.length;
   const comErro = validados.filter((i: any) => i.erros?.length > 0).length;
   const confiancaMedia = total > 0
