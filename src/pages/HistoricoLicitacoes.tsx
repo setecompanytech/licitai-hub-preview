@@ -260,16 +260,16 @@ export default function HistoricoLicitacoes() {
         {/* Table */}
         <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[1100px] table-auto">
               <thead>
                 <tr className="border-b border-border/50 bg-muted/30">
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Nº / Objeto</th>
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Órgão</th>
-                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
-                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Resultado</th>
-                  <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor Adj.</th>
-                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Prazo</th>
-                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Ações</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap min-w-[320px]">Nº / Objeto</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap min-w-[200px]">Órgão</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap w-[140px]">Status</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap w-[120px]">Resultado</th>
+                  <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap w-[130px]">Valor Adj.</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap w-[110px]">Prazo</th>
+                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap w-[90px]">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -297,7 +297,7 @@ export default function HistoricoLicitacoes() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', st.className)}>{st.label}</Badge>
+                        <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5 whitespace-nowrap inline-flex', st.className)}>{st.label}</Badge>
                       </td>
                       <td className="px-4 py-3 text-center">
                         {lic.vencedor === true ? (
