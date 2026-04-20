@@ -45,22 +45,21 @@ export default function Index() {
         </div>
       </div>
 
-      {/* 1. Ferramentas — acesso rápido no topo (estilo ConLicitação) */}
+      {/* 1. Ferramentas — acesso rápido */}
       <section className="mb-4 sm:mb-6">
         <h2 className="text-base sm:text-lg font-bold tracking-tight mb-3 sm:mb-4">Nossas Ferramentas</h2>
         <QuickAccessGrid />
       </section>
 
-      {/* 2. KPIs principais — números grandes e legíveis */}
+      {/* 2. KPIs essenciais — operação do dia */}
       <section className="mb-4 sm:mb-6">
         <h2 className="text-base sm:text-lg font-bold tracking-tight mb-3 sm:mb-4">Visão Geral</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 sm:gap-4 mb-3 sm:mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
           <StatCard label="Monitoradas" value={kpis.licitacoesMonitoradas.toString()} icon={Eye} />
-          <StatCard label="Propostas" value={kpis.propostasEnviadas.toString()} icon={Send} />
-          <StatCard label="Taxa de Vitória" value={`${kpis.taxaVitoria}%`} icon={Trophy} accentColor="hsl(142, 71%, 45%)" />
-          <StatCard label="ROI Médio" value={`${kpis.roiMedio}%`} icon={TrendingUp} accentColor="hsl(38, 92%, 50%)" />
+          <StatCard label="Em Andamento" value={analyticsKpis.emAndamento.toString()} icon={Clock} accentColor="hsl(38, 92%, 50%)" />
+          <StatCard label="Ganhas" value={analyticsKpis.ganhas.toString()} icon={Trophy} accentColor="hsl(142, 71%, 45%)" />
+          <StatCard label="Perdidas" value={analyticsKpis.perdidas.toString()} icon={XCircle} accentColor="hsl(0, 72%, 51%)" />
           <StatCard label="Valor Ganho" value={formatCurrency(kpis.valorTotalGanho)} icon={DollarSign} accentColor="hsl(210, 100%, 40%)" />
-          <StatCard label="Novas Hoje" value={kpis.licitacoesHoje.toString()} icon={Zap} />
           <StatCard
             label="Editais PNCP"
             value={kpis.editaisAbertos.toLocaleString('pt-BR')}
@@ -70,31 +69,23 @@ export default function Index() {
             changeType="neutral"
           />
         </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
-          <StatCard label="Ganhas" value={analyticsKpis.ganhas.toString()} icon={Trophy} accentColor="hsl(142, 71%, 45%)" change={`Pregões: ${analyticsKpis.pregoesGanhos} · Dispensas: ${analyticsKpis.dispensasGanhas}`} changeType="positive" />
-          <StatCard label="Perdidas" value={analyticsKpis.perdidas.toString()} icon={XCircle} accentColor="hsl(0, 72%, 51%)" />
-          <StatCard label="Em Andamento" value={analyticsKpis.emAndamento.toString()} icon={Clock} accentColor="hsl(38, 92%, 50%)" change={`${formatCurrency(analyticsKpis.valorEmDisputa)} em disputa`} changeType="neutral" />
-          <button onClick={() => navigate('/analytics')} className="text-left">
-            <StatCard label="Pregões / Dispensas" value={`${analyticsKpis.pregoes} / ${analyticsKpis.dispensas}`} icon={Gavel} accentColor="hsl(280, 60%, 50%)" change="Ver analytics →" changeType="neutral" />
-          </button>
-        </div>
       </section>
 
-      {/* 3. Processos Licitatórios — operação do dia */}
+      {/* 3. Calendário dinâmico — datas de processos, certidões e backups */}
+      <section className="mb-4 sm:mb-6">
+        <h2 className="text-base sm:text-lg font-bold tracking-tight mb-3 sm:mb-4 flex items-center gap-2">
+          <CalendarDays className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
+          Agenda Operacional
+        </h2>
+        <CalendarioLicitacoes />
+      </section>
+
+      {/* 4. Processos Licitatórios — operação */}
       <section className="mb-4 sm:mb-6">
         <h2 className="text-base sm:text-lg font-bold tracking-tight mb-3 sm:mb-4">Processos Licitatórios</h2>
         <PainelLicitacoes />
       </section>
 
-      {/* 4. Gráficos — análise no final */}
-      <section className="mb-4 sm:mb-6">
-        <h2 className="text-base sm:text-lg font-bold tracking-tight mb-3 sm:mb-4">Análise de Desempenho</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-          <LicitacoesChart data={chartMensal} />
-          <ValorChart data={chartValor} />
-        </div>
-      </section>
       <OnboardingWizard open={showOnboarding} onClose={dismissOnboarding} />
       <ColaboradorIdentificacaoModal />
     </AppLayout>
