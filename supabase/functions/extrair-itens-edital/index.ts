@@ -123,8 +123,44 @@ function validarItens(itens: any[]): any[] {
   });
 }
 
-function buildSuccessResponse(itens: any[], fonte: string) {
-  const validados = validarItens(itens);
+// ── VALIDAÇÃO ANTI-ALUCINAÇÃO ──────────────────────────────
+// Confere se as descrições extraídas têm respaldo no texto-fonte.
+// Itens cujas palavras-chave NÃO aparecem no texto são descartados
+// (provável invenção da IA — ex: "impressora" num edital de limpeza).
+function filtrarAlucinacoes(itens: any[], textoFonte?: string): any[] {
+  if (!textoFonte || textoFonte.length < 100) return itens;
+  const fonteNorm = textoFonte
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  const STOPWORDS = new Set([
+    "de","do","da","dos","das","e","ou","com","sem","para","por","em","no","na","nos","nas",
+    "a","o","as","os","um","uma","uns","umas","ao","aos","à","às","que","se","item","lote",
+    "unidade","unidades","un","kg","peca","pecas","cor","tipo","modelo","marca","ref","cm","mm",
+  ]);
+
+  return itens.filter((item: any) => {
+    const desc = String(item.descricao || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    const tokens = desc
+      .split(/[^a-z0-9]+/)
+      .filter((t) => t.length >= 4 && !STOPWORDS.has(t));
+    if (tokens.length === 0) return true; // sem tokens significativos → mantém
+    const presentes = tokens.filter((t) => fonteNorm.includes(t));
+    const ratio = presentes.length / tokens.length;
+    if (ratio < 0.4) {
+      console.warn(`[anti-alucinação] DESCARTADO (ratio=${ratio.toFixed(2)}): "${item.descricao}"`);
+      return false;
+    }
+    return true;
+  });
+}
+
+function buildSuccessResponse(itens: any[], fonte: string, textoFonte?: string) {
+  const itensFiltrados = filtrarAlucinacoes(itens, textoFonte);
+  const validados = validarItens(itensFiltrados);
   const total = validados.length;
   const comErro = validados.filter((i: any) => i.erros?.length > 0).length;
   const confiancaMedia = total > 0
@@ -410,10 +446,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (!textoParaIA || typeof textoParaIA !== "string" || textoParaIA.trim().length < (skip_min_length ? 50 : 200)) {
+    if (!textoParaIA || typeof textoParaIA !== "string" || textoParaIA.trim().length < 500) {
+      // Limite mínimo elevado: textos curtos (objeto/observações) causam alucinação grave.
+      // Ex.: "Aquisição de materiais" → IA inventa impressoras. Bloqueamos na origem.
       return new Response(JSON.stringify({
-        success: false, data: [], error: "Texto do edital muito curto ou ausente",
-        fonte: "manual", mensagem: "Não foi possível obter dados estruturados. Preencha manualmente.",
+        success: false, data: [], error: "Texto insuficiente para extração confiável (mínimo 500 caracteres do edital/TR completo).",
+        fonte: "manual", mensagem: "Envie o PDF/DOC do edital ou Termo de Referência. O objeto resumido não é suficiente para extração segura.",
       }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -435,8 +473,17 @@ Deno.serve(async (req) => {
           {
             role: "system",
             content: `Você é um extrator técnico de itens de editais e termos de referência de licitações públicas brasileiras.
-Extraia SOMENTE itens que aparecem literalmente no texto. Nunca invente dados.
-Preserve rigorosamente a ordem original e a descrição fiel de cada item.
+
+🚫 REGRA ABSOLUTA ANTI-ALUCINAÇÃO:
+- NUNCA invente itens. Se o texto não tiver uma planilha/lista clara de itens, retorne {"itens": []}.
+- NUNCA infira produtos a partir do "objeto" genérico (ex.: "Aquisição de materiais" NÃO é base para extrair itens).
+- Cada descrição extraída DEVE aparecer LITERALMENTE no texto fornecido.
+- Se houver dúvida sobre um item, NÃO o inclua. Prefira retornar lista vazia.
+
+REGRAS:
+- Extraia SOMENTE itens que aparecem literalmente no texto, com descrição fiel
+- Preserve rigorosamente a ordem original
+- Se não houver lista de itens identificável, retorne {"itens": []}
 
 IMPORTANTE: Retorne APENAS um JSON válido no formato abaixo, sem markdown, sem explicações:
 {
@@ -488,7 +535,7 @@ ${truncated}`,
 
     console.log(`[extrair-itens] Gemini retornou ${rawItens.length} itens brutos, ${itens.length} normalizados`);
 
-    return buildSuccessResponse(itens, "IA");
+    return buildSuccessResponse(itens, "IA", truncated);
   } catch (error) {
     console.error("extrair-itens-edital error:", error);
     return new Response(JSON.stringify({

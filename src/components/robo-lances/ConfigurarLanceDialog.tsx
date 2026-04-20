@@ -388,30 +388,24 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
         const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
         textoParaAnalise = await extractTextFromFile(editalFile, 150, true);
         fonteTexto = 'upload_manual';
-      } else if (!textoParaAnalise && licitacaoIdRef) {
-        const { data: lic } = await supabase
-          .from('licitacoes')
-          .select('objeto, observacoes')
-          .eq('id', licitacaoIdRef)
-          .single();
-        textoParaAnalise = [lic?.objeto, lic?.observacoes].filter(Boolean).join('\n');
-        fonteTexto = 'objeto_curto';
       }
 
-      if (!textoParaAnalise || textoParaAnalise.length < 20) {
-        toast.info('Envie o edital (PDF/DOC) no Passo 3 ou cadastre os itens manualmente. Dica: use a Precificação/Proposta para popular os itens deste processo.');
+      // ⚠️ Anti-alucinação: NÃO usar objeto/observações curtos como base.
+      // Texto curto (<500 chars) faz a IA inventar produtos que não existem no edital.
+      if (!textoParaAnalise || textoParaAnalise.length < 500) {
+        toast.warning('⚠️ Não há texto suficiente do edital para extração segura. Envie o PDF/DOC do edital ou Termo de Referência no Passo 3 — o objeto resumido não basta e gera itens inventados.');
         setIsExtracting(false);
         return;
       }
 
       if (licitacaoIdRef) {
-        const saved = await extrairItensIA(licitacaoIdRef, textoParaAnalise, { forceReExtract: true, skipValidation: fonteTexto !== 'objeto_curto' });
+        const saved = await extrairItensIA(licitacaoIdRef, textoParaAnalise, { forceReExtract: true, skipValidation: false });
         const disputeItems = licitacaoItensToDispute(saved);
         applyImportedItems(disputeItems);
         if (disputeItems.length > 0) {
           toast.success(`${disputeItems.length} itens extraídos automaticamente via IA!`);
         } else {
-          toast.info('Nenhum item encontrado. Cadastre manualmente ou envie o edital.');
+          toast.info('Nenhum item identificado com segurança. Cadastre manualmente ou envie o edital completo.');
         }
       } else {
         await extractFromText(textoParaAnalise);
@@ -475,25 +469,11 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
         }
       }
 
-      // 4) Último recurso: extração IA a partir do objeto/observações da licitação
+      // ⚠️ Removido: extração a partir de objeto/observações.
+      // Texto curto provoca alucinação grave (ex: IA inventa "impressora" em edital de limpeza).
+      // O usuário deve enviar o PDF do edital no Passo 3 quando não houver itens centralizados.
       if (importedItems.length === 0) {
-        const { data: licDetail } = await supabase
-          .from('licitacoes')
-          .select('objeto, observacoes')
-          .eq('id', lic.id)
-          .single();
-
-        const textoBase = [licDetail?.objeto, licDetail?.observacoes].filter(Boolean).join('\n');
-
-        if (textoBase && textoBase.length >= 50) {
-          toast.info('🤖 Nenhum item cadastrado ainda. Extraindo via IA...');
-          try {
-            const saved = await extrairItensIA(lic.id, textoBase, { skipValidation: true });
-            importedItems = licitacaoItensToDispute(saved);
-          } catch (e) {
-            console.warn('Extração IA inicial falhou:', e);
-          }
-        }
+        toast.warning('⚠️ Nenhum item localizado nas fontes confiáveis. Envie o PDF do edital no Passo 3 para extração segura.');
       }
 
       applyImportedItems(importedItems);
