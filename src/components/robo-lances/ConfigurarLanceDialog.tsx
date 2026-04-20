@@ -672,8 +672,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                     </p>
                   </div>
                 ) : (
-                  <ScrollArea className="max-h-64">
-                    <div className="space-y-1.5">
+                  <ScrollArea className="h-72 w-full rounded-md border border-border/40 bg-muted/10">
+                    <div className="space-y-1.5 p-2 pr-3">
                       {filteredLicitacoes.map((lic) => (
                         <button
                           key={lic.id}
