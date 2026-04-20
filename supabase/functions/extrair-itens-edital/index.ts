@@ -446,10 +446,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (!textoParaIA || typeof textoParaIA !== "string" || textoParaIA.trim().length < (skip_min_length ? 50 : 200)) {
+    if (!textoParaIA || typeof textoParaIA !== "string" || textoParaIA.trim().length < 500) {
+      // Limite mínimo elevado: textos curtos (objeto/observações) causam alucinação grave.
+      // Ex.: "Aquisição de materiais" → IA inventa impressoras. Bloqueamos na origem.
       return new Response(JSON.stringify({
-        success: false, data: [], error: "Texto do edital muito curto ou ausente",
-        fonte: "manual", mensagem: "Não foi possível obter dados estruturados. Preencha manualmente.",
+        success: false, data: [], error: "Texto insuficiente para extração confiável (mínimo 500 caracteres do edital/TR completo).",
+        fonte: "manual", mensagem: "Envie o PDF/DOC do edital ou Termo de Referência. O objeto resumido não é suficiente para extração segura.",
       }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
