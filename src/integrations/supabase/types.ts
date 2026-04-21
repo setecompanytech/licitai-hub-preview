@@ -1766,6 +1766,13 @@ export type Database = {
             foreignKeyName: "boletos_contrato_id_fkey"
             columns: ["contrato_id"]
             isOneToOne: false
+            referencedRelation: "atas_srp_resumo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boletos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
             referencedRelation: "contratos"
             referencedColumns: ["id"]
           },
@@ -2098,6 +2105,13 @@ export type Database = {
           valor_comissao?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "comissoes_lancamentos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "atas_srp_resumo"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "comissoes_lancamentos_contrato_id_fkey"
             columns: ["contrato_id"]
@@ -2604,6 +2618,13 @@ export type Database = {
             foreignKeyName: "contas_pagar_contrato_id_fkey"
             columns: ["contrato_id"]
             isOneToOne: false
+            referencedRelation: "atas_srp_resumo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contas_pagar_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
             referencedRelation: "contratos"
             referencedColumns: ["id"]
           },
@@ -2723,6 +2744,13 @@ export type Database = {
             foreignKeyName: "contas_receber_contrato_id_fkey"
             columns: ["contrato_id"]
             isOneToOne: false
+            referencedRelation: "atas_srp_resumo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contas_receber_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
             referencedRelation: "contratos"
             referencedColumns: ["id"]
           },
@@ -2771,6 +2799,7 @@ export type Database = {
           prazo_adicional_dias: number | null
           quantidade_acrescimo: number
           quantidade_supressao: number
+          referencia_tipo: string
           tipo: string
           updated_at: string
           user_id: string
@@ -2792,6 +2821,7 @@ export type Database = {
           prazo_adicional_dias?: number | null
           quantidade_acrescimo?: number
           quantidade_supressao?: number
+          referencia_tipo?: string
           tipo?: string
           updated_at?: string
           user_id: string
@@ -2813,6 +2843,7 @@ export type Database = {
           prazo_adicional_dias?: number | null
           quantidade_acrescimo?: number
           quantidade_supressao?: number
+          referencia_tipo?: string
           tipo?: string
           updated_at?: string
           user_id?: string
@@ -2826,6 +2857,13 @@ export type Database = {
             columns: ["arquivo_id"]
             isOneToOne: false
             referencedRelation: "contrato_arquivos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_aditivos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "atas_srp_resumo"
             referencedColumns: ["id"]
           },
           {
@@ -2875,6 +2913,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "contrato_arquivos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "atas_srp_resumo"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "contrato_arquivos_contrato_id_fkey"
             columns: ["contrato_id"]
@@ -2935,6 +2980,13 @@ export type Database = {
             foreignKeyName: "contrato_custos_contrato_id_fkey"
             columns: ["contrato_id"]
             isOneToOne: false
+            referencedRelation: "atas_srp_resumo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_custos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
             referencedRelation: "contratos"
             referencedColumns: ["id"]
           },
@@ -2949,6 +3001,7 @@ export type Database = {
       }
       contrato_itens: {
         Row: {
+          ata_item_id: string | null
           codigo_item: string | null
           contrato_id: string
           created_at: string
@@ -2956,6 +3009,7 @@ export type Database = {
           id: string
           observacoes: string | null
           origem_aditivo_id: string | null
+          quantidade_ata_consumida: number | null
           quantidade_consumida: number
           quantidade_contratada: number
           saldo_financeiro: number
@@ -2967,6 +3021,7 @@ export type Database = {
           valor_unitario: number
         }
         Insert: {
+          ata_item_id?: string | null
           codigo_item?: string | null
           contrato_id: string
           created_at?: string
@@ -2974,6 +3029,7 @@ export type Database = {
           id?: string
           observacoes?: string | null
           origem_aditivo_id?: string | null
+          quantidade_ata_consumida?: number | null
           quantidade_consumida?: number
           quantidade_contratada?: number
           saldo_financeiro?: number
@@ -2985,6 +3041,7 @@ export type Database = {
           valor_unitario?: number
         }
         Update: {
+          ata_item_id?: string | null
           codigo_item?: string | null
           contrato_id?: string
           created_at?: string
@@ -2992,6 +3049,7 @@ export type Database = {
           id?: string
           observacoes?: string | null
           origem_aditivo_id?: string | null
+          quantidade_ata_consumida?: number | null
           quantidade_consumida?: number
           quantidade_contratada?: number
           saldo_financeiro?: number
@@ -3003,6 +3061,20 @@ export type Database = {
           valor_unitario?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "contrato_itens_ata_item_id_fkey"
+            columns: ["ata_item_id"]
+            isOneToOne: false
+            referencedRelation: "contrato_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_itens_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "atas_srp_resumo"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "contrato_itens_contrato_id_fkey"
             columns: ["contrato_id"]
@@ -3094,6 +3166,13 @@ export type Database = {
             foreignKeyName: "contrato_pedidos_contrato_id_fkey"
             columns: ["contrato_id"]
             isOneToOne: false
+            referencedRelation: "atas_srp_resumo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_pedidos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
             referencedRelation: "contratos"
             referencedColumns: ["id"]
           },
@@ -3115,6 +3194,7 @@ export type Database = {
       }
       contratos: {
         Row: {
+          ata_srp_id: string | null
           created_at: string
           custo_total_pedidos: number
           data_assinatura: string | null
@@ -3128,15 +3208,19 @@ export type Database = {
           licitacao_id: string | null
           modalidade: string | null
           municipio: string | null
+          numero_ata: string | null
           numero_contrato: string
           objeto: string
           observacoes: string | null
           orgao_contratante: string
+          permite_carona: boolean | null
           saldo_remanescente: number | null
           status: string
+          tipo_documento: string
           uf: string | null
           updated_at: string
           user_id: string
+          validade_ata_meses: number | null
           valor_consumido: number
           valor_global: number
           valor_global_original: number
@@ -3144,6 +3228,7 @@ export type Database = {
           vigencia_meses: number | null
         }
         Insert: {
+          ata_srp_id?: string | null
           created_at?: string
           custo_total_pedidos?: number
           data_assinatura?: string | null
@@ -3157,15 +3242,19 @@ export type Database = {
           licitacao_id?: string | null
           modalidade?: string | null
           municipio?: string | null
+          numero_ata?: string | null
           numero_contrato: string
           objeto: string
           observacoes?: string | null
           orgao_contratante: string
+          permite_carona?: boolean | null
           saldo_remanescente?: number | null
           status?: string
+          tipo_documento?: string
           uf?: string | null
           updated_at?: string
           user_id: string
+          validade_ata_meses?: number | null
           valor_consumido?: number
           valor_global?: number
           valor_global_original?: number
@@ -3173,6 +3262,7 @@ export type Database = {
           vigencia_meses?: number | null
         }
         Update: {
+          ata_srp_id?: string | null
           created_at?: string
           custo_total_pedidos?: number
           data_assinatura?: string | null
@@ -3186,15 +3276,19 @@ export type Database = {
           licitacao_id?: string | null
           modalidade?: string | null
           municipio?: string | null
+          numero_ata?: string | null
           numero_contrato?: string
           objeto?: string
           observacoes?: string | null
           orgao_contratante?: string
+          permite_carona?: boolean | null
           saldo_remanescente?: number | null
           status?: string
+          tipo_documento?: string
           uf?: string | null
           updated_at?: string
           user_id?: string
+          validade_ata_meses?: number | null
           valor_consumido?: number
           valor_global?: number
           valor_global_original?: number
@@ -3202,6 +3296,20 @@ export type Database = {
           vigencia_meses?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "contratos_ata_srp_id_fkey"
+            columns: ["ata_srp_id"]
+            isOneToOne: false
+            referencedRelation: "atas_srp_resumo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_ata_srp_id_fkey"
+            columns: ["ata_srp_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "contratos_empresa_id_fkey"
             columns: ["empresa_id"]
@@ -7174,6 +7282,13 @@ export type Database = {
             foreignKeyName: "notas_fiscais_contrato_id_fkey"
             columns: ["contrato_id"]
             isOneToOne: false
+            referencedRelation: "atas_srp_resumo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notas_fiscais_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
             referencedRelation: "contratos"
             referencedColumns: ["id"]
           },
@@ -8085,6 +8200,13 @@ export type Database = {
           valor_total?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "pre_notas_fiscais_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "atas_srp_resumo"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pre_notas_fiscais_contrato_id_fkey"
             columns: ["contrato_id"]
@@ -10718,6 +10840,81 @@ export type Database = {
       }
     }
     Views: {
+      atas_srp_resumo: {
+        Row: {
+          data_fim: string | null
+          data_inicio: string | null
+          empresa_id: string | null
+          id: string | null
+          numero_ata: string | null
+          numero_contrato: string | null
+          objeto: string | null
+          orgao_contratante: string | null
+          permite_carona: boolean | null
+          qtd_contratos_derivados: number | null
+          qtd_itens: number | null
+          status: string | null
+          user_id: string | null
+          validade_ata_meses: number | null
+          valor_consumido_total: number | null
+          valor_global: number | null
+          valor_global_original: number | null
+        }
+        Insert: {
+          data_fim?: string | null
+          data_inicio?: string | null
+          empresa_id?: string | null
+          id?: string | null
+          numero_ata?: string | null
+          numero_contrato?: string | null
+          objeto?: string | null
+          orgao_contratante?: string | null
+          permite_carona?: boolean | null
+          qtd_contratos_derivados?: never
+          qtd_itens?: never
+          status?: string | null
+          user_id?: string | null
+          validade_ata_meses?: number | null
+          valor_consumido_total?: never
+          valor_global?: number | null
+          valor_global_original?: number | null
+        }
+        Update: {
+          data_fim?: string | null
+          data_inicio?: string | null
+          empresa_id?: string | null
+          id?: string | null
+          numero_ata?: string | null
+          numero_contrato?: string | null
+          objeto?: string | null
+          orgao_contratante?: string | null
+          permite_carona?: boolean | null
+          qtd_contratos_derivados?: never
+          qtd_itens?: never
+          status?: string | null
+          user_id?: string | null
+          validade_ata_meses?: number | null
+          valor_consumido_total?: never
+          valor_global?: number | null
+          valor_global_original?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credenciais_portais_safe: {
         Row: {
           certificado_nome: string | null
