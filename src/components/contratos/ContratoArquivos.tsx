@@ -604,6 +604,15 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
         )}
       </Card>
 
+      {/* Hidden input for file replacement */}
+      <input
+        ref={replaceFileRef}
+        type="file"
+        accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+        className="hidden"
+        onChange={onReplaceFileSelected}
+      />
+
       {/* File list */}
       {arquivos.length === 0 ? (
         <Card className="p-8 text-center">
