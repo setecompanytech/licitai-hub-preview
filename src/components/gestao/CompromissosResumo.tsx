@@ -5,7 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ListChecks, Brain, Bell, Mail, MessageSquare, Building2, ArrowRight, Loader2, Clock } from 'lucide-react';
+import { ListChecks, Brain, Bell, Mail, MessageSquare, Building2, ArrowRight, Loader2, Clock, FolderOpen } from 'lucide-react';
+import GlobalProcessoBar from '@/components/layout/GlobalProcessoBar';
 
 type Item = {
   id: string;
@@ -92,6 +93,11 @@ export default function CompromissosResumo() {
 
   return (
     <div className="space-y-3">
+      {/* Processo Ativo — seletor e atalho para a Pasta do Processo */}
+      <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+        <GlobalProcessoBar />
+      </div>
+
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
           {items.length} compromissos ativos — exibindo prazos críticos primeiro
@@ -152,9 +158,9 @@ export default function CompromissosResumo() {
                   </span>
                 </div>
               </div>
-              <Button asChild size="sm" variant="outline">
-                <Link to={p.licitacao_id ? `/kanban?lid=${p.licitacao_id}` : '/meus-compromissos'}>
-                  Abrir <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              <Button asChild size="sm" variant="outline" disabled={!p.licitacao_id}>
+                <Link to={p.licitacao_id ? `/processo/${p.licitacao_id}` : '#'}>
+                  <FolderOpen className="w-3.5 h-3.5 mr-1" /> Abrir Pasta
                 </Link>
               </Button>
             </div>
