@@ -52,7 +52,7 @@ export default function MarcarInteresseDialog({ open, onOpenChange, edital, onSu
 
     setSalvando(true);
     try {
-      const { error } = await supabase.from('processos_interesse').insert({
+      const { data: interesseRow, error } = await supabase.from('processos_interesse').insert({
         user_id: user.id,
         empresa_id: empresaId,
         numero: edital.numero,
@@ -71,11 +71,21 @@ export default function MarcarInteresseDialog({ open, onOpenChange, edital, onSu
         alerta_sistema: alertaSistema,
         auto_cadastro: autoCadastro,
         notas,
-      });
+      }).select('licitacao_id').maybeSingle();
 
       if (error) throw error;
 
-      toast.success('Processo adicionado à sua lista de compromissos.');
+      // 🔄 Gatilho: prepara automaticamente a Pasta do Processo (download PDF + extração itens)
+      const lid = interesseRow?.licitacao_id;
+      if (lid) {
+        supabase.functions
+          .invoke('processo-auto-prepare', { body: { licitacao_id: lid } })
+          .then(({ error: prepErr }) => {
+            if (prepErr) console.warn('[auto-prepare] background:', prepErr);
+          });
+      }
+
+      toast.success('Processo adicionado. Estamos preparando a pasta automaticamente…');
       onOpenChange(false);
       onSuccess?.();
     } catch (err) {

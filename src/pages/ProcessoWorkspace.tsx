@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import AnexosManager from '@/components/workspace/AnexosManager';
 import DocumentosManager from '@/components/workspace/DocumentosManager';
+import EditalOriginalCard from '@/components/workspace/EditalOriginalCard';
 import { useProcessoWorkspace } from '@/hooks/useProcessoWorkspace';
 import { exportarPastaZip } from '@/components/workspace/exportarPasta';
 
@@ -109,6 +110,7 @@ export default function ProcessoWorkspace() {
 
           {/* Visão Geral */}
           <TabsContent value="visao" className="space-y-4">
+            <EditalOriginalCard licitacaoId={lic.id} />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {ATALHOS.map(a => (
                 <Link key={a.label} to={`${a.path}?lid=${lic.id}`}>
