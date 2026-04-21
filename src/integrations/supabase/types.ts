@@ -2887,6 +2887,7 @@ export type Database = {
           tipo: string
           updated_at: string
           user_id: string
+          versao_atual: number
         }
         Insert: {
           contrato_id: string
@@ -2899,6 +2900,7 @@ export type Database = {
           tipo?: string
           updated_at?: string
           user_id: string
+          versao_atual?: number
         }
         Update: {
           contrato_id?: string
@@ -2911,6 +2913,7 @@ export type Database = {
           tipo?: string
           updated_at?: string
           user_id?: string
+          versao_atual?: number
         }
         Relationships: [
           {
@@ -2922,6 +2925,67 @@ export type Database = {
           },
           {
             foreignKeyName: "contrato_arquivos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contrato_arquivos_versoes: {
+        Row: {
+          arquivo_id: string
+          contrato_id: string
+          created_at: string
+          id: string
+          motivo: string | null
+          nome_arquivo: string
+          storage_path: string
+          tamanho_bytes: number | null
+          user_id: string
+          versao: number
+        }
+        Insert: {
+          arquivo_id: string
+          contrato_id: string
+          created_at?: string
+          id?: string
+          motivo?: string | null
+          nome_arquivo: string
+          storage_path: string
+          tamanho_bytes?: number | null
+          user_id: string
+          versao: number
+        }
+        Update: {
+          arquivo_id?: string
+          contrato_id?: string
+          created_at?: string
+          id?: string
+          motivo?: string | null
+          nome_arquivo?: string
+          storage_path?: string
+          tamanho_bytes?: number | null
+          user_id?: string
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contrato_arquivos_versoes_arquivo_id_fkey"
+            columns: ["arquivo_id"]
+            isOneToOne: false
+            referencedRelation: "contrato_arquivos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_arquivos_versoes_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "atas_srp_resumo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_arquivos_versoes_contrato_id_fkey"
             columns: ["contrato_id"]
             isOneToOne: false
             referencedRelation: "contratos"

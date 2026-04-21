@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
-  Plus, Trash2, Loader2, Package, Copy
+  Plus, Trash2, Loader2, Package, Copy, Download, Link2
 } from 'lucide-react';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -22,48 +22,113 @@ type ContratoItem = {
   quantidade_contratada: number; valor_unitario: number; valor_total: number;
   quantidade_consumida: number; saldo_quantitativo: number; saldo_financeiro: number;
   codigo_item: string | null; observacoes: string | null; origem_aditivo_id: string | null;
+  ata_item_id: string | null; quantidade_ata_consumida: number | null;
 };
 
-type Aditivo = {
-  id: string; numero_aditivo: string; tipo: string;
+type Aditivo = { id: string; numero_aditivo: string; tipo: string; };
+
+type ContratoMeta = {
+  tipo_documento: 'contrato' | 'ata_srp' | string;
+  ata_srp_id: string | null;
 };
 
 export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const { user } = useAuth();
+  const [meta, setMeta] = useState<ContratoMeta | null>(null);
   const [itens, setItens] = useState<ContratoItem[]>([]);
+  const [ataItens, setAtaItens] = useState<ContratoItem[]>([]);
   const [aditivos, setAditivos] = useState<Aditivo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importing, setImporting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     descricao: '', unidade: 'UN', quantidade_contratada: '',
     valor_unitario: '', codigo_item: '', observacoes: '', origem_aditivo_id: '',
+    ata_item_id: '',
   });
+
+  const isContratoComATA = meta?.tipo_documento === 'contrato' && !!meta?.ata_srp_id;
 
   const loadData = async () => {
     setLoading(true);
+    const metaRes = await supabase.from('contratos').select('tipo_documento, ata_srp_id').eq('id', contratoId).maybeSingle();
+    const m = metaRes.data as ContratoMeta | null;
+    setMeta(m);
+
     const [itensRes, aditivosRes] = await Promise.all([
       supabase.from('contrato_itens').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
       supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
     ]);
     setItens((itensRes.data as any[]) || []);
     setAditivos((aditivosRes.data as any[]) || []);
+
+    if (m?.tipo_documento === 'contrato' && m.ata_srp_id) {
+      const ataItensRes = await supabase.from('contrato_itens').select('*').eq('contrato_id', m.ata_srp_id).order('created_at', { ascending: true });
+      setAtaItens((ataItensRes.data as any[]) || []);
+    } else {
+      setAtaItens([]);
+    }
+
     setLoading(false);
   };
 
   useEffect(() => { loadData(); }, [contratoId]);
 
   const getOrigemLabel = (aditivoId: string | null) => {
-    if (!aditivoId) return 'Contrato Original';
+    if (!aditivoId) return meta?.tipo_documento === 'ata_srp' ? 'ATA SRP' : 'Contrato Original';
     const ad = aditivos.find(a => a.id === aditivoId);
     return ad ? `Aditivo ${ad.numero_aditivo}` : 'Aditivo';
   };
 
+  const ataItemLabel = (id: string | null) => {
+    if (!id) return null;
+    const it = ataItens.find(a => a.id === id);
+    if (!it) return 'Item da ATA';
+    return `${it.codigo_item || '—'} · ${it.descricao.slice(0, 40)}${it.descricao.length > 40 ? '…' : ''}`;
+  };
+
+  const onSelectAtaItem = (ataItemId: string) => {
+    const it = ataItens.find(a => a.id === ataItemId);
+    if (!it) {
+      setForm(f => ({ ...f, ata_item_id: '' }));
+      return;
+    }
+    const saldo = Math.max((it.quantidade_contratada || 0) - (it.quantidade_ata_consumida || 0), 0);
+    setForm(f => ({
+      ...f,
+      ata_item_id: ataItemId,
+      descricao: it.descricao,
+      unidade: it.unidade,
+      codigo_item: it.codigo_item || '',
+      valor_unitario: String(it.valor_unitario),
+      quantidade_contratada: f.quantidade_contratada || String(saldo || ''),
+    }));
+  };
+
   const handleSave = async () => {
+    if (isContratoComATA && !form.ata_item_id) {
+      toast.error('Selecione o item da ATA de origem');
+      return;
+    }
     if (!form.descricao) { toast.error('Informe a descrição do item'); return; }
+
     const qty = parseFloat(form.quantidade_contratada) || 0;
     const unit = parseFloat(form.valor_unitario) || 0;
     const total = qty * unit;
+
+    // valida saldo da ATA
+    if (form.ata_item_id) {
+      const ataItem = ataItens.find(a => a.id === form.ata_item_id);
+      if (ataItem) {
+        const saldoDisp = Math.max((ataItem.quantidade_contratada || 0) - (ataItem.quantidade_ata_consumida || 0), 0);
+        if (qty > saldoDisp) {
+          toast.error(`Quantidade excede saldo da ATA (disponível: ${saldoDisp})`);
+          return;
+        }
+      }
+    }
+
     setSaving(true);
     const { error } = await supabase.from('contrato_itens').insert({
       contrato_id: contratoId,
@@ -78,13 +143,53 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       codigo_item: form.codigo_item || null,
       observacoes: form.observacoes || null,
       origem_aditivo_id: form.origem_aditivo_id || null,
+      ata_item_id: form.ata_item_id || null,
     } as any);
     setSaving(false);
-    if (error) { toast.error('Erro ao salvar item'); return; }
+    if (error) { toast.error('Erro ao salvar item', { description: error.message }); return; }
     toast.success('Item cadastrado!');
     setDialogOpen(false);
-    setForm({ descricao: '', unidade: 'UN', quantidade_contratada: '', valor_unitario: '', codigo_item: '', observacoes: '', origem_aditivo_id: '' });
+    setForm({ descricao: '', unidade: 'UN', quantidade_contratada: '', valor_unitario: '', codigo_item: '', observacoes: '', origem_aditivo_id: '', ata_item_id: '' });
     loadData();
+  };
+
+  const handleImportarDaAta = async () => {
+    if (!isContratoComATA || ataItens.length === 0) return;
+    if (!confirm(`Importar ${ataItens.length} item(ns) da ATA para o contrato? Quantidades virão com o saldo disponível e podem ser ajustadas depois.`)) return;
+    setImporting(true);
+    try {
+      const jaImportados = new Set(itens.filter(i => i.ata_item_id).map(i => i.ata_item_id));
+      const novos = ataItens
+        .filter(it => !jaImportados.has(it.id))
+        .map(it => {
+          const saldo = Math.max((it.quantidade_contratada || 0) - (it.quantidade_ata_consumida || 0), 0);
+          return {
+            contrato_id: contratoId,
+            user_id: user!.id,
+            descricao: it.descricao,
+            unidade: it.unidade,
+            quantidade_contratada: saldo,
+            valor_unitario: it.valor_unitario,
+            valor_total: saldo * (it.valor_unitario || 0),
+            saldo_quantitativo: saldo,
+            saldo_financeiro: saldo * (it.valor_unitario || 0),
+            codigo_item: it.codigo_item,
+            ata_item_id: it.id,
+          };
+        });
+      if (novos.length === 0) {
+        toast.info('Todos os itens da ATA já foram importados');
+      } else {
+        const { error } = await supabase.from('contrato_itens').insert(novos as any);
+        if (error) throw error;
+        toast.success(`${novos.length} item(ns) importado(s) da ATA`);
+      }
+      loadData();
+    } catch (err: any) {
+      toast.error('Erro ao importar', { description: err.message });
+    } finally {
+      setImporting(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -94,7 +199,6 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
   };
 
   const handleDuplicate = async (item: ContratoItem) => {
-    // Open dialog pre-filled with item data, prompting user to select aditivo as origin
     setForm({
       descricao: item.descricao,
       unidade: item.unidade,
@@ -103,6 +207,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       codigo_item: item.codigo_item || '',
       observacoes: `Duplicado do item "${item.descricao}" — vinculado a aditivo`,
       origem_aditivo_id: '',
+      ata_item_id: item.ata_item_id || '',
     });
     setDialogOpen(true);
   };
@@ -115,89 +220,128 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Package className="w-4 h-4 text-accent" /> Itens do Contrato
+            <Package className="w-4 h-4 text-accent" /> Itens {meta?.tipo_documento === 'ata_srp' ? 'da ATA SRP' : 'do Contrato'}
           </h3>
           <p className="text-xs text-muted-foreground">
-            Total contratado: {fmt(totalContratado)} | Saldo: {fmt(totalSaldo)}
+            Total: {fmt(totalContratado)} | Saldo: {fmt(totalSaldo)}
           </p>
+          {isContratoComATA && (
+            <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+              <Link2 className="w-3 h-3" /> Contrato vinculado à ATA SRP — itens devem ser selecionados da ATA de origem
+            </p>
+          )}
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-3.5 h-3.5 mr-1" /> Novo Item</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Cadastrar Item do Contrato</DialogTitle></DialogHeader>
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <div className="col-span-2">
-                <Label>Origem *</Label>
-                <Select value={form.origem_aditivo_id} onValueChange={v => setForm(f => ({ ...f, origem_aditivo_id: v === '__contrato__' ? '' : v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar origem" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__contrato__">Contrato Original</SelectItem>
-                    {aditivos.map(a => (
-                      <SelectItem key={a.id} value={a.id}>Aditivo {a.numero_aditivo} ({a.tipo})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+        <div className="flex items-center gap-2">
+          {isContratoComATA && ataItens.length > 0 && (
+            <Button size="sm" variant="outline" onClick={handleImportarDaAta} disabled={importing}>
+              {importing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1" />}
+              Importar itens da ATA
+            </Button>
+          )}
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm"><Plus className="w-3.5 h-3.5 mr-1" /> Novo Item</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogHeader><DialogTitle>Cadastrar Item {meta?.tipo_documento === 'ata_srp' ? 'da ATA' : 'do Contrato'}</DialogTitle></DialogHeader>
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                {isContratoComATA && (
+                  <div className="col-span-2">
+                    <Label>Item da ATA de origem *</Label>
+                    <Select value={form.ata_item_id} onValueChange={onSelectAtaItem}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar item da ATA" /></SelectTrigger>
+                      <SelectContent>
+                        {ataItens.map(it => {
+                          const saldo = Math.max((it.quantidade_contratada || 0) - (it.quantidade_ata_consumida || 0), 0);
+                          return (
+                            <SelectItem key={it.id} value={it.id} disabled={saldo <= 0}>
+                              {it.codigo_item ? `[${it.codigo_item}] ` : ''}{it.descricao.slice(0, 60)} — saldo: {saldo} {it.unidade}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Ao selecionar, descrição/unidade/valor são preenchidos automaticamente.
+                    </p>
+                  </div>
+                )}
+                <div className="col-span-2">
+                  <Label>Origem (Aditivo)</Label>
+                  <Select value={form.origem_aditivo_id} onValueChange={v => setForm(f => ({ ...f, origem_aditivo_id: v === '__contrato__' ? '' : v }))}>
+                    <SelectTrigger><SelectValue placeholder="Selecionar origem" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__contrato__">{meta?.tipo_documento === 'ata_srp' ? 'ATA Original' : 'Contrato Original'}</SelectItem>
+                      {aditivos.map(a => (
+                        <SelectItem key={a.id} value={a.id}>Aditivo {a.numero_aditivo} ({a.tipo})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="col-span-2">
+                  <Label>Descrição *</Label>
+                  <Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} disabled={isContratoComATA && !!form.ata_item_id} />
+                </div>
+                <div>
+                  <Label>Código</Label>
+                  <Input value={form.codigo_item} onChange={e => setForm(f => ({ ...f, codigo_item: e.target.value }))} placeholder="ITEM-01" disabled={isContratoComATA && !!form.ata_item_id} />
+                </div>
+                <div>
+                  <Label>Unidade</Label>
+                  <Select value={form.unidade} onValueChange={v => setForm(f => ({ ...f, unidade: v }))} disabled={isContratoComATA && !!form.ata_item_id}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {['UN', 'CX', 'KG', 'L', 'M', 'M²', 'M³', 'PCT', 'HR', 'DIA', 'MÊS', 'SV'].map(u => (
+                        <SelectItem key={u} value={u}>{u}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Quantidade</Label>
+                  <Input type="number" value={form.quantidade_contratada} onChange={e => setForm(f => ({ ...f, quantidade_contratada: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Valor Unitário (R$)</Label>
+                  <Input type="number" step="0.01" value={form.valor_unitario} onChange={e => setForm(f => ({ ...f, valor_unitario: e.target.value }))} disabled={isContratoComATA && !!form.ata_item_id} />
+                </div>
+                <div className="col-span-2">
+                  <Label>Observações</Label>
+                  <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
+                </div>
               </div>
-              <div className="col-span-2">
-                <Label>Descrição *</Label>
-                <Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} />
+              <div className="flex justify-end gap-2 mt-3">
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+                <Button onClick={handleSave} disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />} Salvar
+                </Button>
               </div>
-              <div>
-                <Label>Código do Item</Label>
-                <Input value={form.codigo_item} onChange={e => setForm(f => ({ ...f, codigo_item: e.target.value }))} placeholder="Ex: ITEM-01" />
-              </div>
-              <div>
-                <Label>Unidade</Label>
-                <Select value={form.unidade} onValueChange={v => setForm(f => ({ ...f, unidade: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {['UN', 'CX', 'KG', 'L', 'M', 'M²', 'M³', 'PCT', 'HR', 'DIA', 'MÊS', 'SV'].map(u => (
-                      <SelectItem key={u} value={u}>{u}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Quantidade Contratada</Label>
-                <Input type="number" value={form.quantidade_contratada} onChange={e => setForm(f => ({ ...f, quantidade_contratada: e.target.value }))} />
-              </div>
-              <div>
-                <Label>Valor Unitário (R$)</Label>
-                <Input type="number" step="0.01" value={form.valor_unitario} onChange={e => setForm(f => ({ ...f, valor_unitario: e.target.value }))} />
-              </div>
-              <div className="col-span-2">
-                <Label>Observações</Label>
-                <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-3">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={handleSave} disabled={saving}>
-                {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />} Salvar
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
       ) : itens.length === 0 ? (
-        <Card className="p-8 text-center text-muted-foreground text-sm">Nenhum item cadastrado</Card>
+        <Card className="p-8 text-center text-muted-foreground text-sm">
+          {isContratoComATA && ataItens.length > 0
+            ? 'Nenhum item ainda. Use "Importar itens da ATA" para começar.'
+            : 'Nenhum item cadastrado'}
+        </Card>
       ) : (
         <div className="rounded-lg border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="text-xs whitespace-nowrap">Origem</TableHead>
+                {isContratoComATA && <TableHead className="text-xs whitespace-nowrap">Item ATA</TableHead>}
                 <TableHead className="text-xs whitespace-nowrap">Código</TableHead>
                 <TableHead className="text-xs whitespace-nowrap">Descrição</TableHead>
                 <TableHead className="text-xs text-center whitespace-nowrap">UN</TableHead>
-                <TableHead className="text-xs text-right whitespace-nowrap">Qtd Contratada</TableHead>
-                <TableHead className="text-xs text-right whitespace-nowrap">Vlr Unitário</TableHead>
-                <TableHead className="text-xs text-right whitespace-nowrap">Vlr Total</TableHead>
+                <TableHead className="text-xs text-right whitespace-nowrap">Qtd</TableHead>
+                <TableHead className="text-xs text-right whitespace-nowrap">Vlr Unit.</TableHead>
+                <TableHead className="text-xs text-right whitespace-nowrap">Total</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Consumido</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Saldo Qtd</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Saldo R$</TableHead>
@@ -216,6 +360,13 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         {getOrigemLabel(item.origem_aditivo_id)}
                       </Badge>
                     </TableCell>
+                    {isContratoComATA && (
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {item.ata_item_id ? (
+                          <Badge className="text-[10px] bg-amber-500/10 text-amber-600 font-normal">{ataItemLabel(item.ata_item_id)}</Badge>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                    )}
                     <TableCell className="text-xs font-mono whitespace-nowrap">{item.codigo_item || '—'}</TableCell>
                     <TableCell className="text-xs max-w-[200px] truncate">{item.descricao}</TableCell>
                     <TableCell className="text-xs text-center whitespace-nowrap">{item.unidade}</TableCell>
