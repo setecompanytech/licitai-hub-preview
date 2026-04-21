@@ -84,6 +84,15 @@ export function useLicitacaoIntegration() {
         });
       }
 
+      // 🔄 Gatilho: prepara automaticamente a Pasta do Processo
+      if (data?.id) {
+        supabase.functions
+          .invoke('processo-auto-prepare', { body: { licitacao_id: data.id } })
+          .then(({ error: prepErr }) => {
+            if (prepErr) console.warn('[auto-prepare] background:', prepErr);
+          });
+      }
+
       toast.success('✅ Processo adicionado à Gestão de Licitações!');
       if (navigateTo) navigate(navigateTo);
       return data?.id;
