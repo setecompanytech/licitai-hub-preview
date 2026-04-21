@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import DocumentDetectionDialog, { type DetectionResult } from './DocumentDetectionDialog';
 import { extractContractDataFromFile } from './utils/extractContractData';
+import { validateExtractedContract, buildParentUpdates } from './utils/validateExtractedContract';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
@@ -86,7 +87,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
     const [arqRes, adtRes, contratoRes] = await Promise.all([
       supabase.from('contrato_arquivos').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
       supabase.from('contrato_aditivos').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
-      supabase.from('contratos').select('id, tipo_documento, ata_srp_id, numero_contrato, orgao, empresa_id').eq('id', contratoId).maybeSingle(),
+      supabase.from('contratos').select('id, tipo_documento, ata_srp_id, numero_contrato, numero_ata, objeto, orgao_contratante, modalidade, valor_global, valor_global_original, data_assinatura, data_inicio, data_fim, vigencia_meses, validade_ata_meses, empresa_id').eq('id', contratoId).maybeSingle(),
     ]);
     setArquivos((arqRes.data as any[]) || []);
     setAditivos((adtRes.data as any[]) || []);
@@ -171,40 +172,22 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
    * overwrites manual edits done by the user.
    */
   const applyExtractedToParent = async (d: any) => {
-    if (!d || !parentContrato) return;
-    const updates: Record<string, any> = {};
+    if (!d || !parentContrato || !parentTipoDocumento) return;
 
-    // Identifiers
-    if (parentTipoDocumento === 'ata_srp') {
-      if (d.numero_ata && !parentContrato.numero_ata) updates.numero_ata = d.numero_ata;
-      if (d.numero_contrato && !parentContrato.numero_contrato) updates.numero_contrato = d.numero_contrato;
-      const validadeMeses = typeof d.validade_ata_meses === 'number'
-        ? d.validade_ata_meses
-        : (typeof d.vigencia_meses === 'number' ? d.vigencia_meses : null);
-      if (validadeMeses && !parentContrato.validade_ata_meses) updates.validade_ata_meses = validadeMeses;
-    } else {
-      if (d.numero_contrato && !parentContrato.numero_contrato) updates.numero_contrato = d.numero_contrato;
+    // 1) Validar e normalizar payload da IA (datas ISO, números finitos, strings limpas, coerência).
+    const { normalized, rejected } = validateExtractedContract(d);
+    if (rejected.length > 0) {
+      console.warn('[applyExtractedToParent] campos rejeitados pela validação:', rejected);
     }
 
-    if (d.objeto && !parentContrato.objeto) updates.objeto = d.objeto;
-    if (d.orgao_contratante && !parentContrato.orgao) updates.orgao = d.orgao_contratante;
-    if (d.modalidade && !parentContrato.modalidade) updates.modalidade = d.modalidade;
-
-    // Financial — never overwrite a manual valor_global the user already typed
-    if (typeof d.valor_global === 'number' && d.valor_global > 0
-        && !(parentContrato.valor_global_original > 0)) {
-      updates.valor_global_original = d.valor_global;
-      // valor_global is recomputed by trigger, but seed it for safety on insert path
-      if (!(parentContrato.valor_global > 0)) updates.valor_global = d.valor_global;
-    }
-
-    // Dates / vigência
-    if (d.data_assinatura && !parentContrato.data_assinatura) updates.data_assinatura = d.data_assinatura;
-    if (d.data_inicio && !parentContrato.data_inicio) updates.data_inicio = d.data_inicio;
-    if (d.data_fim && !parentContrato.data_fim) updates.data_fim = d.data_fim;
+    // 2) Construir UPDATE respeitando edições manuais e mapeando para colunas reais.
+    const updates = buildParentUpdates(normalized, parentContrato, parentTipoDocumento);
 
     if (Object.keys(updates).length === 0) {
-      toast.info('IA não encontrou novos campos para preencher (registro já preenchido).');
+      const motivo = rejected.length > 0
+        ? `IA retornou dados inválidos (${rejected.join(', ')}).`
+        : 'IA não encontrou novos campos para preencher (registro já preenchido).';
+      toast.info(motivo);
       return;
     }
 
@@ -214,7 +197,8 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
       toast.warning('Arquivo registrado, mas falha ao atualizar o Dashboard.', { description: error.message });
       return;
     }
-    toast.success(`Dashboard atualizado pela IA: ${Object.keys(updates).length} campo(s) preenchido(s).`);
+    const aviso = rejected.length > 0 ? ` (${rejected.length} campo(s) rejeitado(s) pela validação)` : '';
+    toast.success(`Dashboard atualizado pela IA: ${Object.keys(updates).length} campo(s) preenchido(s)${aviso}.`);
     loadData();
   };
 
