@@ -388,12 +388,16 @@ Deno.serve(async (req) => {
       const pncpPdfBase64 = await buscarPdfPNCP(cnpj, ano, seq);
 
       if (pncpPdfBase64) {
+        console.log(`[extrair-itens] CAMADA 2 - Chamando Claude com PDF (${(pncpPdfBase64.length / 1024).toFixed(0)} KB base64)`);
         try {
-          const resposta = await chamarClaude(
-            CLAUDE_PROMPT_ITENS,
-            { pdfBase64: pncpPdfBase64 },
-            { sistema: CLAUDE_SYSTEM_ITENS, maxTokens: 8000, cacheEphemeral: true }
-          );
+          const resposta = await Promise.race([
+            chamarClaude(
+              CLAUDE_PROMPT_ITENS,
+              { pdfBase64: pncpPdfBase64 },
+              { sistema: CLAUDE_SYSTEM_ITENS, maxTokens: 8000, cacheEphemeral: true }
+            ),
+            new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Claude timeout 90s")), 90000)),
+          ]);
 
           const dados = parsearJson(resposta);
           const rawItens: any[] = dados?.itens || [];
@@ -403,9 +407,12 @@ Deno.serve(async (req) => {
             console.log(`[extrair-itens] Claude PNCP PDF extraiu ${itens.length} itens`);
             return buildSuccessResponse(itens, "CLAUDE_PNCP_PDF");
           }
+          console.warn(`[extrair-itens] Claude retornou 0 itens válidos`);
         } catch (e) {
           console.warn("[extrair-itens] Claude PNCP PDF falhou:", String(e));
         }
+      } else {
+        console.warn("[extrair-itens] CAMADA 2 - buscarPdfPNCP retornou null, indo para CAMADA 3");
       }
     }
 
@@ -555,7 +562,7 @@ async function buscarPdfPNCP(cnpj: string, ano: number, seq: number): Promise<st
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(10000),
     });
-    if (!r.ok) return null;
+    if (!r.ok) { console.warn(`[buscarPdfPNCP] lista arquivos HTTP ${r.status}`); return null; }
     const { data: arquivos = [] } = await r.json();
 
     const prioridade = (a: any) => {
@@ -568,13 +575,21 @@ async function buscarPdfPNCP(cnpj: string, ano: number, seq: number): Promise<st
     };
 
     const melhor = [...arquivos].sort((a: any, b: any) => prioridade(a) - prioridade(b))[0];
-    if (!melhor?.url) return null;
+    if (!melhor?.url) { console.warn(`[buscarPdfPNCP] nenhum arquivo válido (${arquivos.length} total)`); return null; }
 
+    console.log(`[buscarPdfPNCP] baixando: ${melhor.titulo || melhor.url}`);
     const pdfResp = await fetch(melhor.url, { signal: AbortSignal.timeout(25000) });
-    if (!pdfResp.ok) return null;
+    if (!pdfResp.ok) { console.warn(`[buscarPdfPNCP] download HTTP ${pdfResp.status}`); return null; }
 
-    return arrayParaBase64(await pdfResp.arrayBuffer());
-  } catch {
+    const buf = await pdfResp.arrayBuffer();
+    if (buf.byteLength > 8 * 1024 * 1024) {
+      console.warn(`[buscarPdfPNCP] PDF muito grande (${(buf.byteLength / 1024 / 1024).toFixed(1)}MB), pulando`);
+      return null;
+    }
+    console.log(`[buscarPdfPNCP] PDF baixado: ${(buf.byteLength / 1024).toFixed(0)} KB`);
+    return arrayParaBase64(buf);
+  } catch (e) {
+    console.warn(`[buscarPdfPNCP] erro: ${String(e)}`);
     return null;
   }
 }

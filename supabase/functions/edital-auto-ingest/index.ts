@@ -184,13 +184,25 @@ function parseXlsxItens(buf: ArrayBuffer): any[] {
 }
 
 async function callExtrairItensIA(supabaseUrl: string, anonKey: string, payload: Record<string, any>) {
-  const r = await fetch(`${supabaseUrl}/functions/v1/extrair-itens-edital`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!r.ok) return null;
-  return await r.json();
+  try {
+    const r = await fetch(`${supabaseUrl}/functions/v1/extrair-itens-edital`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(120000),
+    });
+    const text = await r.text();
+    let parsed: any = null;
+    try { parsed = JSON.parse(text); } catch { /* ignore */ }
+    if (!r.ok) {
+      console.warn(`[auto-ingest] extrair-itens HTTP ${r.status}: ${text.slice(0, 200)}`);
+      return parsed; // pode conter pdf_url/mensagem útil
+    }
+    return parsed;
+  } catch (e) {
+    console.warn(`[auto-ingest] extrair-itens erro: ${String(e)}`);
+    return null;
+  }
 }
 
 Deno.serve(async (req) => {
