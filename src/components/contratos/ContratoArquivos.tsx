@@ -13,6 +13,8 @@ import { toast } from 'sonner';
 import {
   Upload, Download, FileText, Trash2, Pencil, Loader2, File, DollarSign, Package, Calendar, Layers, FilePlus2, RefreshCw
 } from 'lucide-react';
+import DocumentDetectionDialog, { type DetectionResult } from './DocumentDetectionDialog';
+import { extractContractDataFromFile } from './utils/extractContractData';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
