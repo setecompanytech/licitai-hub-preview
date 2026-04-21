@@ -156,7 +156,22 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
         </DialogHeader>
 
         {step === 'upload' && (
-          <div className="py-8">
+          <div className="py-4 space-y-4">
+            <div className="rounded-lg border border-border bg-muted/20 p-3">
+              <Label className="text-xs">O documento está organizado por *</Label>
+              <Select value={tipoEstrutura} onValueChange={(v: 'itens' | 'lotes') => setTipoEstrutura(v)}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="itens">Itens (individuais)</SelectItem>
+                  <SelectItem value="lotes">Lotes (grupos de itens)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                {tipoEstrutura === 'lotes'
+                  ? 'A IA tentará identificar o nº de cada lote e agrupar os itens correspondentes para gestão de pedidos por lote.'
+                  : 'Os itens serão importados individualmente, sem agrupamento por lote.'}
+              </p>
+            </div>
             <label
               htmlFor="pdf-upload"
               className="flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 cursor-pointer hover:border-primary/50 transition-colors"
