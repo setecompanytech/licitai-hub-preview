@@ -2,6 +2,8 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Upload, FileText, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
@@ -35,7 +37,7 @@ type ExtractedData = {
 };
 
 interface ImportarContratoPDFProps {
-  onExtracted: (data: ExtractedData) => void;
+  onExtracted: (data: ExtractedData, opts: { tipo_estrutura: 'itens' | 'lotes' }) => void;
 }
 
 const ACCEPTED_MIME_TYPES = [
@@ -63,6 +65,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
   const [fileName, setFileName] = useState('');
   const [extracted, setExtracted] = useState<ExtractedData | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [tipoEstrutura, setTipoEstrutura] = useState<'itens' | 'lotes'>('itens');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
@@ -71,6 +74,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
     setFileName('');
     setExtracted(null);
     setErrorMsg('');
+    setTipoEstrutura('itens');
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,6 +109,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
           texto_pdf: texto,
           nome_arquivo: file.name,
           tipo_arquivo: file.type || file.name.split('.').pop() || 'desconhecido',
+          tipo_estrutura: tipoEstrutura,
         },
       });
 
@@ -125,7 +130,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
 
   const handleConfirm = () => {
     if (extracted) {
-      onExtracted(extracted);
+      onExtracted(extracted, { tipo_estrutura: tipoEstrutura });
       setOpen(false);
       reset();
       toast.success('Dados extraídos aplicados ao formulário!');
@@ -152,7 +157,22 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
         </DialogHeader>
 
         {step === 'upload' && (
-          <div className="py-8">
+          <div className="py-4 space-y-4">
+            <div className="rounded-lg border border-border bg-muted/20 p-3">
+              <Label className="text-xs">O documento está organizado por *</Label>
+              <Select value={tipoEstrutura} onValueChange={(v: 'itens' | 'lotes') => setTipoEstrutura(v)}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="itens">Itens (individuais)</SelectItem>
+                  <SelectItem value="lotes">Lotes (grupos de itens)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                {tipoEstrutura === 'lotes'
+                  ? 'A IA tentará identificar o nº de cada lote e agrupar os itens correspondentes para gestão de pedidos por lote.'
+                  : 'Os itens serão importados individualmente, sem agrupamento por lote.'}
+              </p>
+            </div>
             <label
               htmlFor="pdf-upload"
               className="flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 cursor-pointer hover:border-primary/50 transition-colors"
@@ -224,8 +244,11 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
                 <div><span className="text-muted-foreground">Modalidade:</span> {extracted.modalidade}</div>
               )}
               <div className="flex gap-2 pt-1 flex-wrap">
+                <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">
+                  Estrutura: {tipoEstrutura === 'lotes' ? 'Lotes' : 'Itens'}
+                </Badge>
                 <Badge variant="secondary" className="text-[10px]">{filledFields} campos extraídos</Badge>
-                {totalItens > 0 && <Badge variant="secondary" className="text-[10px]">{totalItens} itens encontrados</Badge>}
+                {totalItens > 0 && <Badge variant="secondary" className="text-[10px]">{totalItens} {tipoEstrutura === 'lotes' ? 'itens em lotes' : 'itens'} encontrados</Badge>}
                 {extracted.vigencia_meses != null && <Badge variant="secondary" className="text-[10px]">{extracted.vigencia_meses} meses</Badge>}
               </div>
             </div>

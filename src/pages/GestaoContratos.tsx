@@ -74,6 +74,7 @@ export default function GestaoContratos() {
   const [selectedContrato, setSelectedContrato] = useState<Contrato | null>(null);
   const [form, setForm] = useState({
     tipo_documento: 'contrato' as 'contrato' | 'ata_srp',
+    tipo_estrutura: 'itens' as 'itens' | 'lotes',
     ata_srp_id: '' as string,
     numero_ata: '',
     validade_ata_meses: '',
@@ -112,7 +113,7 @@ export default function GestaoContratos() {
   const atasDisponiveis = contratos.filter(c => c.tipo_documento === 'ata_srp');
 
   const resetForm = () => setForm({
-    tipo_documento: 'contrato', ata_srp_id: '', numero_ata: '', validade_ata_meses: '', permite_carona: true,
+    tipo_documento: 'contrato', tipo_estrutura: 'itens', ata_srp_id: '', numero_ata: '', validade_ata_meses: '', permite_carona: true,
     numero_contrato: '', objeto: '', orgao_contratante: '', valor_global: '', valor_consumido: '0',
     data_assinatura: '', data_inicio: '', data_fim: '', vigencia_meses: '',
     status: 'vigente', modalidade: '', uf: '', municipio: '',
@@ -129,6 +130,7 @@ export default function GestaoContratos() {
     const { data: inserted, error } = await supabase.from('contratos').insert({
       user_id: user!.id,
       tipo_documento: form.tipo_documento,
+      tipo_estrutura: form.tipo_estrutura,
       ata_srp_id: form.tipo_documento === 'contrato' && form.ata_srp_id ? form.ata_srp_id : null,
       numero_ata: form.tipo_documento === 'ata_srp' ? (form.numero_ata || form.numero_contrato) : null,
       validade_ata_meses: form.tipo_documento === 'ata_srp' && form.validade_ata_meses ? parseInt(form.validade_ata_meses) : null,
@@ -157,6 +159,8 @@ export default function GestaoContratos() {
         saldo_quantitativo: item.quantidade || 0,
         saldo_financeiro: item.valor_total || (item.quantidade || 0) * (item.valor_unitario || 0),
         codigo_item: item.codigo_item || null,
+        numero_lote: form.tipo_estrutura === 'lotes' ? (item.numero_lote || item.lote || null) : null,
+        descricao_lote: form.tipo_estrutura === 'lotes' ? (item.descricao_lote || null) : null,
       }));
       const { error: itensError } = await supabase.from('contrato_itens').insert(itensToInsert as any);
       if (itensError) {
@@ -182,7 +186,8 @@ export default function GestaoContratos() {
     loadContratos();
   };
 
-  const handleImportExtracted = (data: any) => {
+  const handleImportExtracted = (data: any, opts?: { tipo_estrutura?: 'itens' | 'lotes' }) => {
+    const tipoEstrutura = opts?.tipo_estrutura || 'itens';
     const itensNormalizados = Array.isArray(data.itens)
       ? data.itens
           .map((item: any, index: number) => {
@@ -199,6 +204,8 @@ export default function GestaoContratos() {
               unidade: item.unidade || 'UN',
               valor_unitario: Number.isFinite(valorUnitario) ? valorUnitario : 0,
               valor_total: valorTotal,
+              numero_lote: tipoEstrutura === 'lotes' ? (item.numero_lote || item.lote || null) : null,
+              descricao_lote: tipoEstrutura === 'lotes' ? (item.descricao_lote || null) : null,
             };
           })
           .filter((item: any) => item.descricao.trim().length > 0)
@@ -206,6 +213,7 @@ export default function GestaoContratos() {
 
     setForm(f => ({
       ...f,
+      tipo_estrutura: tipoEstrutura,
       numero_contrato: data.numero_contrato || '',
       objeto: data.objeto || '',
       orgao_contratante: data.orgao_contratante || '',
@@ -227,7 +235,8 @@ export default function GestaoContratos() {
 
     setPendingItens(itensNormalizados);
     if (itensNormalizados.length > 0) {
-      toast.info(`${itensNormalizados.length} itens extraídos serão importados ao salvar.`);
+      const sufixo = tipoEstrutura === 'lotes' ? 'lotes' : 'itens';
+      toast.info(`${itensNormalizados.length} ${sufixo} extraídos serão importados ao salvar.`);
     }
     setDialogOpen(true);
   };
@@ -281,7 +290,7 @@ export default function GestaoContratos() {
         <Tabs defaultValue="dashboard" className="space-y-4" onValueChange={(v) => setActiveTab(v)}>
           <TabsList className="flex-wrap">
             <TabsTrigger value="dashboard"><BarChart3 className="w-3.5 h-3.5 mr-1" /> Dashboard</TabsTrigger>
-            <TabsTrigger value="itens"><Package className="w-3.5 h-3.5 mr-1" /> Itens</TabsTrigger>
+            <TabsTrigger value="itens"><Package className="w-3.5 h-3.5 mr-1" /> Itens/Lotes</TabsTrigger>
             {!isAta && <TabsTrigger value="pedidos"><ShoppingCart className="w-3.5 h-3.5 mr-1" /> Pedidos</TabsTrigger>}
             {isAta && (
               <TabsTrigger value="contratos-derivados">
@@ -335,19 +344,35 @@ export default function GestaoContratos() {
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Cadastrar {isAtaForm ? 'ATA SRP' : 'Contrato Administrativo'}</DialogTitle></DialogHeader>
 
-            <div className="mt-3 p-3 rounded-lg border border-border bg-muted/20">
-              <Label className="text-xs">Tipo de Documento *</Label>
-              <Select value={form.tipo_documento} onValueChange={(v: 'contrato' | 'ata_srp') => setForm(f => ({ ...f, tipo_documento: v, ata_srp_id: v === 'ata_srp' ? '' : f.ata_srp_id }))}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="contrato">Contrato Administrativo</SelectItem>
-                  <SelectItem value="ata_srp">ATA SRP — Sistema de Registro de Preços</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-muted-foreground mt-2">
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-lg border border-border bg-muted/20">
+              <div>
+                <Label className="text-xs">Tipo de Documento *</Label>
+                <Select value={form.tipo_documento} onValueChange={(v: 'contrato' | 'ata_srp') => setForm(f => ({ ...f, tipo_documento: v, ata_srp_id: v === 'ata_srp' ? '' : f.ata_srp_id }))}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="contrato">Contrato Administrativo</SelectItem>
+                    <SelectItem value="ata_srp">ATA SRP — Sistema de Registro de Preços</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Estrutura *</Label>
+                <Select value={form.tipo_estrutura} onValueChange={(v: 'itens' | 'lotes') => setForm(f => ({ ...f, tipo_estrutura: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="itens">Itens (individuais)</SelectItem>
+                    <SelectItem value="lotes">Lotes (grupos de itens)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-[11px] text-muted-foreground md:col-span-2">
                 {isAtaForm
                   ? 'A ATA SRP funciona como base de preços/quantidades. Contratos derivados (incluindo carona) consumirão seu saldo automaticamente.'
                   : 'Contrato administrativo. Pode opcionalmente vincular-se a uma ATA SRP cadastrada.'}
+                {' '}
+                {form.tipo_estrutura === 'lotes'
+                  ? 'Modo Lotes: itens serão agrupados por lote, permitindo controle de pedidos por lote.'
+                  : 'Modo Itens: cada item é gerenciado individualmente.'}
               </p>
             </div>
 
