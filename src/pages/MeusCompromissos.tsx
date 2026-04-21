@@ -299,6 +299,11 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
           </div>
         </div>
 
+        {/* Processo Ativo — seletor e atalho para a Pasta do Processo */}
+        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+          <GlobalProcessoBar />
+        </div>
+
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <Card className="p-4 text-center">
