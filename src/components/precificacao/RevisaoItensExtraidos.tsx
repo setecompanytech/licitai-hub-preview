@@ -59,6 +59,7 @@ export default function RevisaoItensExtraidos({
   const [salvando, setSalvando] = useState(false);
   const [meta, setMeta] = useState<MetaExtracao | null>(null);
   const [fonte, setFonte] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const processarArquivo = useCallback(async (arquivo: File) => {
@@ -265,11 +266,45 @@ export default function RevisaoItensExtraidos({
 
         {/* Upload area */}
         {itens.length === 0 && (
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={fazendoUpload}
-            className="mt-4 w-full border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center gap-3 hover:border-accent/50 hover:bg-muted/30 transition-colors disabled:opacity-50"
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => !fazendoUpload && fileRef.current?.click()}
+            onKeyDown={(e) => {
+              if ((e.key === 'Enter' || e.key === ' ') && !fazendoUpload) {
+                e.preventDefault();
+                fileRef.current?.click();
+              }
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!fazendoUpload) setIsDragging(true);
+            }}
+            onDragEnter={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!fazendoUpload) setIsDragging(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragging(false);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragging(false);
+              if (fazendoUpload) return;
+              const f = e.dataTransfer.files?.[0];
+              if (f) processarArquivo(f);
+            }}
+            aria-disabled={fazendoUpload}
+            className={`mt-4 w-full border-2 border-dashed rounded-xl p-8 flex flex-col items-center gap-3 transition-colors cursor-pointer ${
+              isDragging
+                ? 'border-accent bg-accent/10'
+                : 'border-border hover:border-accent/50 hover:bg-muted/30'
+            } ${fazendoUpload ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             {fazendoUpload ? (
               <>
@@ -282,14 +317,14 @@ export default function RevisaoItensExtraidos({
               <>
                 <Upload className="w-8 h-8 text-muted-foreground" />
                 <span className="text-foreground text-sm font-medium">
-                  Clique ou arraste o Termo de Referência
+                  {isDragging ? 'Solte o arquivo aqui' : 'Clique ou arraste o Termo de Referência'}
                 </span>
                 <span className="text-muted-foreground text-xs">
                   PDF, DOCX ou XLSX — máx. 50MB
                 </span>
               </>
             )}
-          </button>
+          </div>
         )}
         <input
           ref={fileRef}
