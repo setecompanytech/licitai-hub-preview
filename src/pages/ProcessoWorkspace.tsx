@@ -82,6 +82,10 @@ export default function ProcessoWorkspace() {
               <p className="text-xs text-muted-foreground truncate">{lic.objeto}</p>
             </div>
             {lic.status && <Badge variant="outline">{lic.status}</Badge>}
+            <Button size="sm" variant="outline" className="gap-2" onClick={handleExportarZip} disabled={exportando}>
+              {exportando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
+              {exportando ? 'Compactando...' : 'Exportar ZIP'}
+            </Button>
           </div>
           <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
             {lic.modalidade && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> {lic.modalidade}</span>}
@@ -128,7 +132,13 @@ export default function ProcessoWorkspace() {
 
           {/* Documentos editáveis */}
           <TabsContent value="documentos">
-            <DocumentosManager licitacaoId={lic.id} />
+            <DocumentosManager
+              licitacaoId={lic.id}
+              numeroProcesso={lic.numero}
+              orgao={lic.orgao}
+              objeto={lic.objeto}
+              cidade={lic.municipio}
+            />
           </TabsContent>
 
           {/* Anexos */}
