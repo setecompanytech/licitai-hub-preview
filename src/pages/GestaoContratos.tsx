@@ -130,6 +130,7 @@ export default function GestaoContratos() {
     const { data: inserted, error } = await supabase.from('contratos').insert({
       user_id: user!.id,
       tipo_documento: form.tipo_documento,
+      tipo_estrutura: form.tipo_estrutura,
       ata_srp_id: form.tipo_documento === 'contrato' && form.ata_srp_id ? form.ata_srp_id : null,
       numero_ata: form.tipo_documento === 'ata_srp' ? (form.numero_ata || form.numero_contrato) : null,
       validade_ata_meses: form.tipo_documento === 'ata_srp' && form.validade_ata_meses ? parseInt(form.validade_ata_meses) : null,
@@ -158,6 +159,8 @@ export default function GestaoContratos() {
         saldo_quantitativo: item.quantidade || 0,
         saldo_financeiro: item.valor_total || (item.quantidade || 0) * (item.valor_unitario || 0),
         codigo_item: item.codigo_item || null,
+        numero_lote: form.tipo_estrutura === 'lotes' ? (item.numero_lote || item.lote || null) : null,
+        descricao_lote: form.tipo_estrutura === 'lotes' ? (item.descricao_lote || null) : null,
       }));
       const { error: itensError } = await supabase.from('contrato_itens').insert(itensToInsert as any);
       if (itensError) {
