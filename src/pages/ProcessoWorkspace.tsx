@@ -37,8 +37,21 @@ export default function ProcessoWorkspace() {
   const navigate = useNavigate();
   const [lic, setLic] = useState<Licitacao | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const { anexos, documentos } = useProcessoWorkspace(id || null);
 
-  useEffect(() => {
+  const handleExportarZip = async () => {
+    if (!lic) return;
+    setExportando(true);
+    try {
+      await exportarPastaZip(lic.id, anexos, documentos, {
+        numeroProcesso: lic.numero,
+        orgao: lic.orgao,
+      });
+    } finally {
+      setExportando(false);
+    }
+  };
     if (!id || !user) return;
     supabase.from('licitacoes')
       .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, data_encerramento, uf, municipio')
