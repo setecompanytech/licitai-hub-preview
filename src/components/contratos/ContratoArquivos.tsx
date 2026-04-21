@@ -16,6 +16,7 @@ import {
 import DocumentDetectionDialog, { type DetectionResult } from './DocumentDetectionDialog';
 import { extractContractDataFromFile } from './utils/extractContractData';
 import { validateExtractedContract, buildParentUpdates } from './utils/validateExtractedContract';
+import ContratoIaAuditoriaPanel from './ContratoIaAuditoriaPanel';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
@@ -725,6 +726,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
   return (
     <div className="space-y-4">
       <ContratoIaAuditoriaPanel contratoId={contratoId} />
+      {/* Upload + Aditivo unified area */}
       <Card className="p-4 space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
           <div className="flex-1">
