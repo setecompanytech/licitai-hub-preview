@@ -52,6 +52,8 @@ export default function ProcessoWorkspace() {
       setExportando(false);
     }
   };
+
+  useEffect(() => {
     if (!id || !user) return;
     supabase.from('licitacoes')
       .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, data_encerramento, uf, municipio')
