@@ -17,6 +17,30 @@ import DocumentDetectionDialog, { type DetectionResult } from './DocumentDetecti
 import { extractContractDataFromFile } from './utils/extractContractData';
 import { validateExtractedContract, buildParentUpdates } from './utils/validateExtractedContract';
 import ContratoIaAuditoriaPanel from './ContratoIaAuditoriaPanel';
+import { createLogger } from '@/services/logger';
+
+const logger = createLogger('ContratoArquivos');
+
+/**
+ * Mapeia cada código de rejeição produzido por `validateExtractedContract` para
+ * uma explicação humana usada em logs e na trilha de auditoria.
+ */
+const REJECTION_REASONS: Record<string, string> = {
+  payload_vazio: 'Payload retornado pela IA estava vazio ou não era um objeto.',
+  numero_contrato: 'numero_contrato vazio, com tamanho inválido ou caractere inválido.',
+  numero_ata: 'numero_ata vazio, com tamanho inválido ou caractere inválido.',
+  objeto: 'objeto vazio ou fora do tamanho permitido (2-2000 chars).',
+  orgao_contratante: 'orgao_contratante vazio ou fora do tamanho permitido (2-300 chars).',
+  modalidade: 'modalidade vazia ou fora do tamanho permitido.',
+  valor_global: 'valor_global não numérico, ≤ 0 ou acima do teto de sanidade (R$ 1 trilhão).',
+  data_assinatura: 'data_assinatura em formato inválido (esperado ISO yyyy-mm-dd ou dd/mm/yyyy).',
+  data_inicio: 'data_inicio em formato inválido (esperado ISO yyyy-mm-dd ou dd/mm/yyyy).',
+  data_fim: 'data_fim em formato inválido (esperado ISO yyyy-mm-dd ou dd/mm/yyyy).',
+  data_fim_anterior_a_inicio: 'Coerência: data_fim é anterior a data_inicio — data_fim descartada.',
+  data_assinatura_posterior_a_inicio: 'Coerência: data_assinatura posterior a data_inicio — data_assinatura descartada.',
+  vigencia_meses: 'vigencia_meses não inteiro positivo ou acima do teto (120 meses).',
+  validade_ata_meses: 'validade_ata_meses não inteiro positivo ou acima do teto (120 meses).',
+};
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
@@ -178,8 +202,43 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
 
     // 1) Validar e normalizar payload da IA (datas ISO, números finitos, strings limpas, coerência).
     const { normalized, rejected } = validateExtractedContract(d);
+
+    // 1a) Logging estruturado de rejeições — console em dev, persistido em prod
+    // via `Logger.persist` (system_logs) e replicado na trilha de auditoria do
+    // contrato como `origem='ia_rejeicao'` para inspeção no painel da UI.
     if (rejected.length > 0) {
-      console.warn('[applyExtractedToParent] campos rejeitados pela validação:', rejected);
+      const detalhes = rejected.map((campo) => ({
+        campo,
+        motivo: REJECTION_REASONS[campo] || 'Motivo desconhecido.',
+        valor_recebido: campo in (d || {}) ? d[campo] : undefined,
+      }));
+
+      logger.warn('Validação rejeitou campos extraídos pela IA', undefined, {
+        contrato_id: contratoId,
+        parent_tipo: parentTipoDocumento,
+        arquivo_id: sourceFile?.id || null,
+        arquivo_nome: sourceFile?.nome || null,
+        rejeicoes: detalhes,
+        payload_ia: d,
+      });
+
+      const rejectionRows = detalhes.map((r) => ({
+        contrato_id: contratoId,
+        arquivo_id: sourceFile?.id || null,
+        arquivo_nome: sourceFile?.nome || null,
+        campo: r.campo,
+        valor_anterior: parentContrato?.[r.campo] != null ? String(parentContrato[r.campo]) : null,
+        valor_novo: JSON.stringify({
+          motivo: r.motivo,
+          valor_recebido: r.valor_recebido ?? null,
+        }),
+        origem: 'ia_rejeicao',
+        user_id: user.id,
+      }));
+      const { error: rejErr } = await supabase
+        .from('contrato_ia_auditoria')
+        .insert(rejectionRows as any);
+      if (rejErr) logger.warn('Falha ao gravar trilha de rejeições', rejErr);
     }
 
     // 2) Construir UPDATE respeitando edições manuais e mapeando para colunas reais.
@@ -195,7 +254,10 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
 
     const { error } = await supabase.from('contratos').update(updates).eq('id', contratoId);
     if (error) {
-      console.warn('applyExtractedToParent failed:', error);
+      logger.warn('applyExtractedToParent: UPDATE em contratos falhou', error, {
+        contrato_id: contratoId,
+        updates,
+      });
       toast.warning('Arquivo registrado, mas falha ao atualizar o Dashboard.', { description: error.message });
       return;
     }
@@ -213,7 +275,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
     }));
     if (auditRows.length > 0) {
       const { error: auditErr } = await supabase.from('contrato_ia_auditoria').insert(auditRows as any);
-      if (auditErr) console.warn('[audit] insert failed:', auditErr);
+      if (auditErr) logger.warn('Falha ao gravar trilha de extrações', auditErr);
     }
 
     const aviso = rejected.length > 0 ? ` (${rejected.length} campo(s) rejeitado(s) pela validação)` : '';
