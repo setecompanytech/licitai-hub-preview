@@ -15,7 +15,10 @@ type ItemExtraido = {
 };
 
 type DadosContrato = {
+  // Detecção automática do tipo de documento
+  tipo_documento_detectado?: "ata_srp" | "contrato" | "aditivo" | "outro" | null;
   numero_contrato?: string | null;
+  numero_ata?: string | null;
   objeto?: string | null;
   orgao_contratante?: string | null;
   valor_global?: number | string | null;
@@ -23,6 +26,7 @@ type DadosContrato = {
   data_inicio?: string | null;
   data_fim?: string | null;
   vigencia_meses?: number | string | null;
+  validade_ata_meses?: number | string | null;
   modalidade?: string | null;
   uf?: string | null;
   municipio?: string | null;
@@ -31,6 +35,19 @@ type DadosContrato = {
   fiscal_telefone?: string | null;
   observacoes?: string | null;
   itens?: ItemExtraido[] | null;
+  // Campos quando é aditivo
+  aditivo?: {
+    numero_aditivo?: string | null;
+    tipo_aditivo?: "valor" | "quantidade" | "valor_quantidade" | "prazo" | "escopo" | null;
+    valor_acrescimo?: number | string | null;
+    valor_supressao?: number | string | null;
+    quantidade_acrescimo?: number | string | null;
+    quantidade_supressao?: number | string | null;
+    nova_data_fim?: string | null;
+    contrato_referencia?: string | null;
+    ata_referencia?: string | null;
+    justificativa?: string | null;
+  } | null;
 };
 
 function cleanString(value: unknown): string | null {
@@ -116,8 +133,25 @@ function normalizeContrato(data: DadosContrato) {
     ? data.itens.map(normalizeItem).filter(Boolean)
     : [];
 
+  const aditivo = data.aditivo
+    ? {
+        numero_aditivo: cleanString(data.aditivo.numero_aditivo),
+        tipo_aditivo: (data.aditivo.tipo_aditivo as string | null) ?? null,
+        valor_acrescimo: parseNumber(data.aditivo.valor_acrescimo) ?? 0,
+        valor_supressao: parseNumber(data.aditivo.valor_supressao) ?? 0,
+        quantidade_acrescimo: parseNumber(data.aditivo.quantidade_acrescimo) ?? 0,
+        quantidade_supressao: parseNumber(data.aditivo.quantidade_supressao) ?? 0,
+        nova_data_fim: normalizeDate(data.aditivo.nova_data_fim),
+        contrato_referencia: cleanString(data.aditivo.contrato_referencia),
+        ata_referencia: cleanString(data.aditivo.ata_referencia),
+        justificativa: cleanString(data.aditivo.justificativa),
+      }
+    : null;
+
   return {
+    tipo_documento_detectado: (data.tipo_documento_detectado as string | null) ?? null,
     numero_contrato: cleanString(data.numero_contrato),
+    numero_ata: cleanString(data.numero_ata),
     objeto: cleanString(data.objeto),
     orgao_contratante: cleanString(data.orgao_contratante),
     valor_global: parseNumber(data.valor_global),
@@ -125,6 +159,7 @@ function normalizeContrato(data: DadosContrato) {
     data_inicio: dataInicio,
     data_fim: dataFim,
     vigencia_meses: parseNumber(data.vigencia_meses) ?? diffMonths(dataInicio, dataFim),
+    validade_ata_meses: parseNumber(data.validade_ata_meses),
     modalidade: cleanString(data.modalidade),
     uf: cleanString(data.uf)?.toUpperCase() ?? null,
     municipio: cleanString(data.municipio),
@@ -133,6 +168,7 @@ function normalizeContrato(data: DadosContrato) {
     fiscal_telefone: cleanString(data.fiscal_telefone),
     observacoes: cleanString(data.observacoes),
     itens,
+    aditivo,
   };
 }
 
@@ -165,11 +201,11 @@ serve(async (req) => {
           {
             role: "system",
             content:
-              "Você é um extrator técnico de contratos públicos brasileiros. Extraia SOMENTE informações que aparecem literalmente no documento. Não invente, não estime, não complete lacunas. Se um campo não estiver explícito, retorne null. Preserve a descrição real dos itens exatamente como no contrato. Extraia TODOS os itens da tabela/planilha, incluindo código, descrição, quantidade, unidade, valor unitário e valor total quando existirem.",
+              "Você é um extrator técnico de documentos públicos brasileiros (Contratos Administrativos, ATAs de Registro de Preços e Termos Aditivos). Extraia SOMENTE informações que aparecem literalmente no documento. Não invente, não estime, não complete lacunas. Se um campo não estiver explícito, retorne null. Preserve a descrição real dos itens exatamente como no documento. SEMPRE classifique o tipo de documento em tipo_documento_detectado: 'ata_srp' (ATA de Registro de Preços/SRP), 'contrato' (contrato administrativo de execução), 'aditivo' (Termo Aditivo de prazo, valor, quantidade ou escopo) ou 'outro'. Quando o documento for um aditivo, preencha o objeto 'aditivo' com os campos correspondentes (acréscimos, supressões, nova data fim, justificativa, número do contrato/ata referenciado).",
           },
           {
             role: "user",
-            content: `Arquivo: ${nome_arquivo || "documento"}\nTipo: ${tipo_arquivo || "desconhecido"}\n\nExtraia do contrato abaixo, com fidelidade documental:\n- número do contrato\n- órgão contratante\n- objeto\n- valor global\n- data de assinatura\n- data de início da vigência\n- data final da vigência\n- vigência em meses, se estiver explícita\n- modalidade\n- UF e município\n- dados do fiscal\n- observações relevantes\n- TODOS os itens com descrição literal, quantidade, unidade, valor unitário e valor total\n\nREGRAS CRÍTICAS:\n- NÃO invente campos obrigatórios\n- NÃO reescreva descrições com sinônimos\n- NÃO crie itens que não existam\n- Se houver tabela, extraia linha a linha\n- Se um valor não existir, use null\n\nTEXTO DO CONTRATO:\n${truncated}`,
+            content: `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\n\nClassifique o tipo do documento e extraia os dados pertinentes ao seu tipo:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha o objeto 'aditivo' com tipo (valor, quantidade, prazo, escopo, valor_quantidade), valor_acrescimo, valor_supressao, quantidade_acrescimo, quantidade_supressao, nova_data_fim, contrato_referencia ou ata_referencia, justificativa.\n\nREGRAS CRÍTICAS:\n- NÃO invente campos\n- NÃO reescreva descrições com sinônimos\n- Use null quando o campo não existir\n- Datas no formato DD/MM/AAAA ou YYYY-MM-DD\n\nTEXTO DO DOCUMENTO:\n${truncated}`,
           },
         ],
         tools: [
@@ -177,40 +213,59 @@ serve(async (req) => {
             type: "function",
             function: {
               name: "extrair_contrato",
-              description: "Extrai dados estruturados de um contrato público brasileiro com fidelidade documental",
+              description: "Extrai dados estruturados de contratos, ATAs SRP ou termos aditivos brasileiros, classificando primeiro o tipo do documento.",
               parameters: {
                 type: "object",
                 properties: {
-                  numero_contrato: { type: "string", description: "Número do contrato exatamente como no documento" },
-                  objeto: { type: "string", description: "Objeto do contrato exatamente como no documento" },
+                  tipo_documento_detectado: { type: "string", enum: ["ata_srp", "contrato", "aditivo", "outro"], description: "Classificação do documento" },
+                  numero_contrato: { type: "string", description: "Número do contrato (apenas para contratos)" },
+                  numero_ata: { type: "string", description: "Número da ATA SRP (apenas para ATAs)" },
+                  objeto: { type: "string", description: "Objeto exatamente como no documento" },
                   orgao_contratante: { type: "string", description: "Órgão contratante" },
-                  valor_global: { type: "number", description: "Valor global do contrato em reais" },
-                  data_assinatura: { type: "string", description: "Data de assinatura no formato DD/MM/AAAA ou YYYY-MM-DD" },
-                  data_inicio: { type: "string", description: "Data de início da vigência no formato DD/MM/AAAA ou YYYY-MM-DD" },
-                  data_fim: { type: "string", description: "Data final da vigência no formato DD/MM/AAAA ou YYYY-MM-DD" },
-                  vigencia_meses: { type: "number", description: "Quantidade de meses de vigência se explícita" },
-                  modalidade: { type: "string", description: "Modalidade da contratação" },
-                  uf: { type: "string", description: "UF do órgão contratante" },
-                  municipio: { type: "string", description: "Município do órgão contratante" },
-                  fiscal_nome: { type: "string", description: "Nome do fiscal do contrato" },
-                  fiscal_email: { type: "string", description: "Email do fiscal do contrato" },
-                  fiscal_telefone: { type: "string", description: "Telefone do fiscal do contrato" },
-                  observacoes: { type: "string", description: "Cláusulas ou observações relevantes" },
+                  valor_global: { type: "number", description: "Valor global em reais" },
+                  data_assinatura: { type: "string", description: "Data de assinatura" },
+                  data_inicio: { type: "string", description: "Início da vigência" },
+                  data_fim: { type: "string", description: "Fim da vigência" },
+                  vigencia_meses: { type: "number", description: "Vigência em meses, se explícita" },
+                  validade_ata_meses: { type: "number", description: "Validade da ATA SRP em meses (geralmente 12)" },
+                  modalidade: { type: "string" },
+                  uf: { type: "string" },
+                  municipio: { type: "string" },
+                  fiscal_nome: { type: "string" },
+                  fiscal_email: { type: "string" },
+                  fiscal_telefone: { type: "string" },
+                  observacoes: { type: "string" },
                   itens: {
                     type: "array",
-                    description: "Itens do contrato extraídos linha a linha da tabela ou planilha",
                     items: {
                       type: "object",
                       properties: {
-                        codigo_item: { type: "string", description: "Código, número ou sequência do item" },
-                        descricao: { type: "string", description: "Descrição literal do item" },
-                        quantidade: { type: "number", description: "Quantidade contratada" },
-                        unidade: { type: "string", description: "Unidade de medida" },
-                        valor_unitario: { type: "number", description: "Valor unitário em reais" },
-                        valor_total: { type: "number", description: "Valor total do item em reais" },
+                        codigo_item: { type: "string" },
+                        descricao: { type: "string" },
+                        quantidade: { type: "number" },
+                        unidade: { type: "string" },
+                        valor_unitario: { type: "number" },
+                        valor_total: { type: "number" },
                       },
                       additionalProperties: false,
                     },
+                  },
+                  aditivo: {
+                    type: "object",
+                    description: "Dados do termo aditivo, quando aplicável",
+                    properties: {
+                      numero_aditivo: { type: "string", description: "Ex: 1º Termo Aditivo" },
+                      tipo_aditivo: { type: "string", enum: ["valor", "quantidade", "valor_quantidade", "prazo", "escopo"] },
+                      valor_acrescimo: { type: "number" },
+                      valor_supressao: { type: "number" },
+                      quantidade_acrescimo: { type: "number" },
+                      quantidade_supressao: { type: "number" },
+                      nova_data_fim: { type: "string" },
+                      contrato_referencia: { type: "string", description: "Número do contrato que está sendo aditado" },
+                      ata_referencia: { type: "string", description: "Número da ATA que está sendo aditada" },
+                      justificativa: { type: "string" },
+                    },
+                    additionalProperties: false,
                   },
                 },
                 additionalProperties: false,

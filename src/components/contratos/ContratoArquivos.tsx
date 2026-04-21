@@ -13,6 +13,8 @@ import { toast } from 'sonner';
 import {
   Upload, Download, FileText, Trash2, Pencil, Loader2, File, DollarSign, Package, Calendar, Layers, FilePlus2, RefreshCw
 } from 'lucide-react';
+import DocumentDetectionDialog, { type DetectionResult } from './DocumentDetectionDialog';
+import { extractContractDataFromFile } from './utils/extractContractData';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
@@ -74,6 +76,10 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
   const [replacingId, setReplacingId] = useState<string | null>(null);
   const replaceFileRef = useRef<HTMLInputElement>(null);
   const replaceTargetRef = useRef<any>(null);
+  const [parentContrato, setParentContrato] = useState<any>(null);
+  const [detectionOpen, setDetectionOpen] = useState(false);
+  const [detection, setDetection] = useState<DetectionResult | null>(null);
+  const [detectionFileName, setDetectionFileName] = useState('');
 
   const loadData = async () => {
     setLoading(true);
