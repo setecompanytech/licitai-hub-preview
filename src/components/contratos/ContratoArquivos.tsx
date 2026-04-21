@@ -71,6 +71,9 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
   const [aditivoForm, setAditivoForm] = useState(emptyAditivoForm);
   const [showAditivoFields, setShowAditivoFields] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [replacingId, setReplacingId] = useState<string | null>(null);
+  const replaceFileRef = useRef<HTMLInputElement>(null);
+  const replaceTargetRef = useRef<any>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -229,6 +232,113 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
       URL.revokeObjectURL(url);
     } catch (err: any) {
       toast.error('Erro ao baixar arquivo', { description: err.message });
+    }
+  };
+
+  const handleReplaceFile = (arquivo: any) => {
+    replaceTargetRef.current = arquivo;
+    replaceFileRef.current?.click();
+  };
+
+  const onReplaceFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const arquivo = replaceTargetRef.current;
+    if (e.target) e.target.value = '';
+    if (!file || !arquivo || !user) return;
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Arquivo muito grande (máx. 20MB)');
+      return;
+    }
+
+    setReplacingId(arquivo.id);
+    try {
+      // 1) Save current version into history
+      await supabase.from('contrato_arquivos_versoes').insert({
+        arquivo_id: arquivo.id,
+        contrato_id: contratoId,
+        user_id: user.id,
+        nome_arquivo: arquivo.nome_arquivo,
+        storage_path: arquivo.storage_path,
+        tamanho_bytes: arquivo.tamanho_bytes,
+        tipo: arquivo.tipo,
+        descricao: arquivo.descricao || null,
+      } as any);
+
+      // 2) Upload new file to storage
+      const ext = file.name.split('.').pop() || 'pdf';
+      const newPath = `${user.id}/${contratoId}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('contratos-docs').upload(newPath, file);
+      if (upErr) throw upErr;
+
+      // 3) Update arquivo row to point to new file
+      const { error: updErr } = await supabase.from('contrato_arquivos').update({
+        storage_path: newPath,
+        nome_arquivo: file.name,
+        tamanho_bytes: file.size,
+      } as any).eq('id', arquivo.id);
+      if (updErr) throw updErr;
+
+      toast.success('Arquivo substituído. Reextraindo dados via IA…');
+
+      // 4) Trigger IA re-extraction (best-effort, async)
+      try {
+        const fileBuffer = await file.arrayBuffer();
+        const pdfjsLib: any = await import('pdfjs-dist');
+        // Use worker from public if available, fallback to inline
+        try {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+        } catch {}
+        const pdf = await pdfjsLib.getDocument({ data: fileBuffer }).promise;
+        let texto = '';
+        for (let i = 1; i <= Math.min(pdf.numPages, 50); i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          texto += content.items.map((it: any) => it.str).join(' ') + '\n';
+        }
+
+        if (texto.trim().length < 80) {
+          toast.warning('Não foi possível extrair texto do PDF. Edite valores manualmente.');
+          return;
+        }
+
+        const { data: extracted, error: extErr } = await supabase.functions.invoke('extrair-contrato-pdf', {
+          body: { texto_pdf: texto, nome_arquivo: file.name, tipo_arquivo: arquivo.tipo },
+        });
+        if (extErr) throw extErr;
+        if (!extracted?.success || !extracted?.data) {
+          toast.warning('IA não conseguiu extrair dados estruturados.');
+          return;
+        }
+
+        const d = extracted.data;
+        const updates: any = {};
+        if (d.numero_contrato) updates.numero_contrato = d.numero_contrato;
+        if (d.objeto) updates.objeto = d.objeto;
+        if (d.orgao_contratante) updates.orgao = d.orgao_contratante;
+        if (typeof d.valor_global === 'number') updates.valor_global_original = d.valor_global;
+        if (d.data_assinatura) updates.data_assinatura = d.data_assinatura;
+        if (d.data_inicio) updates.data_inicio = d.data_inicio;
+        if (d.data_fim) updates.data_fim = d.data_fim;
+        if (d.modalidade) updates.modalidade = d.modalidade;
+
+        if (Object.keys(updates).length > 0) {
+          const { error: cErr } = await supabase.from('contratos').update(updates).eq('id', contratoId);
+          if (cErr) console.warn('Falha ao atualizar contrato:', cErr);
+        }
+
+        toast.success(`Reextração concluída. ${Object.keys(updates).length} campos atualizados.`);
+      } catch (extErr: any) {
+        console.warn('Reextração falhou:', extErr);
+        toast.warning('Arquivo substituído, mas reextração IA falhou.', { description: extErr?.message });
+      }
+
+      loadData();
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Erro ao substituir arquivo', { description: err.message });
+    } finally {
+      setReplacingId(null);
+      replaceTargetRef.current = null;
     }
   };
 
@@ -493,6 +603,15 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
           </div>
         )}
       </Card>
+
+      {/* Hidden input for file replacement */}
+      <input
+        ref={replaceFileRef}
+        type="file"
+        accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+        className="hidden"
+        onChange={onReplaceFileSelected}
+      />
 
       {/* File list */}
       {arquivos.length === 0 ? (
