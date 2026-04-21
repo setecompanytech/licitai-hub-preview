@@ -150,8 +150,8 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
             return; // wait for user decision
           }
           // Matches expected type → upload AND auto-populate parent record fields
-          await doUpload(file, uploadTipo);
-          await applyExtractedToParent(detected);
+          const created = await doUpload(file, uploadTipo);
+          await applyExtractedToParent(detected, created);
           setPendingFile(null);
           return;
         }
@@ -169,10 +169,11 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
   /**
    * Updates the parent `contratos` row with structured data extracted from the
    * uploaded ATA SRP / Contract PDF. Only fills empty/zero fields so it never
-   * overwrites manual edits done by the user.
+   * overwrites manual edits done by the user. Records every field filled into
+   * the audit log table `contrato_ia_auditoria`, linking it to the source file.
    */
-  const applyExtractedToParent = async (d: any) => {
-    if (!d || !parentContrato || !parentTipoDocumento) return;
+  const applyExtractedToParent = async (d: any, sourceFile?: { id: string; nome: string } | null) => {
+    if (!d || !parentContrato || !parentTipoDocumento || !user) return;
 
     // 1) Validar e normalizar payload da IA (datas ISO, números finitos, strings limpas, coerência).
     const { normalized, rejected } = validateExtractedContract(d);
@@ -197,6 +198,23 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
       toast.warning('Arquivo registrado, mas falha ao atualizar o Dashboard.', { description: error.message });
       return;
     }
+
+    // 3) Auditoria: 1 linha por campo preenchido pela IA.
+    const auditRows = Object.entries(updates).map(([campo, novo]) => ({
+      contrato_id: contratoId,
+      arquivo_id: sourceFile?.id || null,
+      arquivo_nome: sourceFile?.nome || null,
+      campo,
+      valor_anterior: parentContrato?.[campo] != null ? String(parentContrato[campo]) : null,
+      valor_novo: novo != null ? String(novo) : null,
+      origem: 'ia_extracao',
+      user_id: user.id,
+    }));
+    if (auditRows.length > 0) {
+      const { error: auditErr } = await supabase.from('contrato_ia_auditoria').insert(auditRows as any);
+      if (auditErr) console.warn('[audit] insert failed:', auditErr);
+    }
+
     const aviso = rejected.length > 0 ? ` (${rejected.length} campo(s) rejeitado(s) pela validação)` : '';
     toast.success(`Dashboard atualizado pela IA: ${Object.keys(updates).length} campo(s) preenchido(s)${aviso}.`);
     loadData();
@@ -222,8 +240,8 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
     } catch (e) { /* silent */ }
   };
 
-  const doUpload = async (file: File, tipo: string, aditivoData?: typeof emptyAditivoForm) => {
-    if (!user) return;
+  const doUpload = async (file: File, tipo: string, aditivoData?: typeof emptyAditivoForm): Promise<{ id: string; nome: string } | null> => {
+    if (!user) return null;
     setUploading(true);
     try {
       const ext = file.name.split('.').pop() || 'pdf';
@@ -232,14 +250,14 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
       const { error: uploadError } = await supabase.storage.from('contratos-docs').upload(path, file);
       if (uploadError) throw uploadError;
 
-      const { error: dbError } = await supabase.from('contrato_arquivos').insert({
+      const { data: inserted, error: dbError } = await supabase.from('contrato_arquivos').insert({
         contrato_id: contratoId,
         user_id: user.id,
         nome_arquivo: file.name,
         storage_path: path,
         tipo,
         tamanho_bytes: file.size,
-      } as any);
+      } as any).select('id, nome_arquivo').single();
       if (dbError) throw dbError;
 
       // If aditivo type, also create the aditivo record
@@ -270,9 +288,11 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
       setPendingFile(null);
       setAditivoForm(emptyAditivoForm);
       loadData();
+      return inserted ? { id: (inserted as any).id, nome: (inserted as any).nome_arquivo } : null;
     } catch (err: any) {
       console.error(err);
       toast.error('Erro ao registrar documento', { description: err.message });
+      return null;
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
