@@ -71,6 +71,9 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
   const [aditivoForm, setAditivoForm] = useState(emptyAditivoForm);
   const [showAditivoFields, setShowAditivoFields] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [replacingId, setReplacingId] = useState<string | null>(null);
+  const replaceFileRef = useRef<HTMLInputElement>(null);
+  const replaceTargetRef = useRef<any>(null);
 
   const loadData = async () => {
     setLoading(true);
