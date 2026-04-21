@@ -24,6 +24,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
+import GlobalProcessoBar from '@/components/layout/GlobalProcessoBar';
 
 type ProcessoInteresse = {
   id: string;
