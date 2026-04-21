@@ -43,8 +43,33 @@ function diasAte(iso: string | null): number | null {
  */
 export default function CompromissosResumo() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { iniciarProcesso } = useLicitacaoIntegration();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
+  const [opening, setOpening] = useState<string | null>(null);
+
+  const abrirPasta = useCallback(async (p: Item) => {
+    if (p.licitacao_id) { navigate(`/processo/${p.licitacao_id}`); return; }
+    setOpening(p.id);
+    try {
+      const lid = await iniciarProcesso({
+        numero: p.numero,
+        orgao: p.orgao,
+        objeto: p.objeto,
+        modalidade: p.modalidade || undefined,
+        valor_estimado: p.valor_estimado,
+        uf: p.uf,
+        municipio: p.municipio,
+        data_encerramento: p.data_encerramento,
+      });
+      if (!lid) { toast.error('Não foi possível abrir a Pasta.'); return; }
+      await supabase.from('processos_interesse').update({ licitacao_id: lid }).eq('id', p.id);
+      navigate(`/processo/${lid}`);
+    } finally {
+      setOpening(null);
+    }
+  }, [iniciarProcesso, navigate]);
 
   const carregar = useCallback(async () => {
     if (!user) return;
