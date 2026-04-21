@@ -185,10 +185,11 @@ export default function CompromissosResumo() {
                   </span>
                 </div>
               </div>
-              <Button asChild size="sm" variant="outline" disabled={!p.licitacao_id}>
-                <Link to={p.licitacao_id ? `/processo/${p.licitacao_id}` : '#'}>
-                  <FolderOpen className="w-3.5 h-3.5 mr-1" /> Abrir Pasta
-                </Link>
+              <Button size="sm" variant="outline" onClick={() => abrirPasta(p)} disabled={opening === p.id}>
+                {opening === p.id
+                  ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                  : <FolderOpen className="w-3.5 h-3.5 mr-1" />}
+                Abrir Pasta
               </Button>
             </div>
           </Card>
