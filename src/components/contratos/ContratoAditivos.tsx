@@ -30,6 +30,7 @@ type Aditivo = {
   contrato_id: string;
   numero_aditivo: string;
   tipo: string;
+  referencia_tipo?: 'contrato' | 'ata_srp' | null;
   valor_acrescimo: number;
   valor_supressao: number;
   valor_aditivo: number;
@@ -43,9 +44,19 @@ type Aditivo = {
   created_at: string;
 };
 
+type DocAlvo = {
+  id: string;
+  numero_contrato: string | null;
+  numero_ata: string | null;
+  tipo_documento: 'contrato' | 'ata_srp' | string;
+  ata_srp_id: string | null;
+};
+
 const emptyForm = {
   numero_aditivo: '',
   tipo: 'valor',
+  alvo_id: '',
+  alvo_referencia_tipo: 'contrato' as 'contrato' | 'ata_srp',
   valor_acrescimo: '',
   valor_supressao: '',
   quantidade_acrescimo: '',
