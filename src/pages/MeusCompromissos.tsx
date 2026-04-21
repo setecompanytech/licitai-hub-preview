@@ -24,6 +24,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
+import GlobalProcessoBar from '@/components/layout/GlobalProcessoBar';
 
 type ProcessoInteresse = {
   id: string;
@@ -296,6 +297,11 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
               <RefreshCw className="w-4 h-4" />
             </Button>
           </div>
+        </div>
+
+        {/* Processo Ativo — seletor e atalho para a Pasta do Processo */}
+        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+          <GlobalProcessoBar />
         </div>
 
         {/* Stats */}
