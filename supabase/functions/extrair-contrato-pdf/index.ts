@@ -15,7 +15,10 @@ type ItemExtraido = {
 };
 
 type DadosContrato = {
+  // Detecção automática do tipo de documento
+  tipo_documento_detectado?: "ata_srp" | "contrato" | "aditivo" | "outro" | null;
   numero_contrato?: string | null;
+  numero_ata?: string | null;
   objeto?: string | null;
   orgao_contratante?: string | null;
   valor_global?: number | string | null;
@@ -23,6 +26,7 @@ type DadosContrato = {
   data_inicio?: string | null;
   data_fim?: string | null;
   vigencia_meses?: number | string | null;
+  validade_ata_meses?: number | string | null;
   modalidade?: string | null;
   uf?: string | null;
   municipio?: string | null;
@@ -31,6 +35,19 @@ type DadosContrato = {
   fiscal_telefone?: string | null;
   observacoes?: string | null;
   itens?: ItemExtraido[] | null;
+  // Campos quando é aditivo
+  aditivo?: {
+    numero_aditivo?: string | null;
+    tipo_aditivo?: "valor" | "quantidade" | "valor_quantidade" | "prazo" | "escopo" | null;
+    valor_acrescimo?: number | string | null;
+    valor_supressao?: number | string | null;
+    quantidade_acrescimo?: number | string | null;
+    quantidade_supressao?: number | string | null;
+    nova_data_fim?: string | null;
+    contrato_referencia?: string | null;
+    ata_referencia?: string | null;
+    justificativa?: string | null;
+  } | null;
 };
 
 function cleanString(value: unknown): string | null {
