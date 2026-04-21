@@ -76,8 +76,10 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
   const [replacingId, setReplacingId] = useState<string | null>(null);
   const replaceFileRef = useRef<HTMLInputElement>(null);
   const replaceTargetRef = useRef<any>(null);
-
-  const loadData = async () => {
+  const [parentContrato, setParentContrato] = useState<any>(null);
+  const [detectionOpen, setDetectionOpen] = useState(false);
+  const [detection, setDetection] = useState<DetectionResult | null>(null);
+  const [detectionFileName, setDetectionFileName] = useState('');
     setLoading(true);
     const [arqRes, adtRes] = await Promise.all([
       supabase.from('contrato_arquivos').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
