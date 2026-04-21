@@ -74,6 +74,7 @@ export default function GestaoContratos() {
   const [selectedContrato, setSelectedContrato] = useState<Contrato | null>(null);
   const [form, setForm] = useState({
     tipo_documento: 'contrato' as 'contrato' | 'ata_srp',
+    tipo_estrutura: 'itens' as 'itens' | 'lotes',
     ata_srp_id: '' as string,
     numero_ata: '',
     validade_ata_meses: '',
@@ -112,7 +113,7 @@ export default function GestaoContratos() {
   const atasDisponiveis = contratos.filter(c => c.tipo_documento === 'ata_srp');
 
   const resetForm = () => setForm({
-    tipo_documento: 'contrato', ata_srp_id: '', numero_ata: '', validade_ata_meses: '', permite_carona: true,
+    tipo_documento: 'contrato', tipo_estrutura: 'itens', ata_srp_id: '', numero_ata: '', validade_ata_meses: '', permite_carona: true,
     numero_contrato: '', objeto: '', orgao_contratante: '', valor_global: '', valor_consumido: '0',
     data_assinatura: '', data_inicio: '', data_fim: '', vigencia_meses: '',
     status: 'vigente', modalidade: '', uf: '', municipio: '',
