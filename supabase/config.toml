@@ -79,3 +79,5 @@ project_id = "sbnlovigyifvrkgsoalj"
     verify_jwt = false
   [functions.busca-semantica-editais]
     verify_jwt = false
+  [functions.ibge-municipios]
+    verify_jwt = false
