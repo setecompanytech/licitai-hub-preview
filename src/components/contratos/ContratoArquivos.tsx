@@ -148,16 +148,74 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
             setDetectionOpen(true);
             return; // wait for user decision
           }
+          // Matches expected type → upload AND auto-populate parent record fields
+          await doUpload(file, uploadTipo);
+          await applyExtractedToParent(detected);
+          setPendingFile(null);
+          return;
         }
       } catch (err) {
         console.warn('IA detection skipped:', err);
       }
-      // No detection / matches expected type → upload as chosen
-      doUpload(file, uploadTipo);
+      // No detection → upload as chosen
+      await doUpload(file, uploadTipo);
       setPendingFile(null);
     } else {
       doUpload(file, uploadTipo);
     }
+  };
+
+  /**
+   * Updates the parent `contratos` row with structured data extracted from the
+   * uploaded ATA SRP / Contract PDF. Only fills empty/zero fields so it never
+   * overwrites manual edits done by the user.
+   */
+  const applyExtractedToParent = async (d: any) => {
+    if (!d || !parentContrato) return;
+    const updates: Record<string, any> = {};
+
+    // Identifiers
+    if (parentTipoDocumento === 'ata_srp') {
+      if (d.numero_ata && !parentContrato.numero_ata) updates.numero_ata = d.numero_ata;
+      if (d.numero_contrato && !parentContrato.numero_contrato) updates.numero_contrato = d.numero_contrato;
+      const validadeMeses = typeof d.validade_ata_meses === 'number'
+        ? d.validade_ata_meses
+        : (typeof d.vigencia_meses === 'number' ? d.vigencia_meses : null);
+      if (validadeMeses && !parentContrato.validade_ata_meses) updates.validade_ata_meses = validadeMeses;
+    } else {
+      if (d.numero_contrato && !parentContrato.numero_contrato) updates.numero_contrato = d.numero_contrato;
+    }
+
+    if (d.objeto && !parentContrato.objeto) updates.objeto = d.objeto;
+    if (d.orgao_contratante && !parentContrato.orgao) updates.orgao = d.orgao_contratante;
+    if (d.modalidade && !parentContrato.modalidade) updates.modalidade = d.modalidade;
+
+    // Financial — never overwrite a manual valor_global the user already typed
+    if (typeof d.valor_global === 'number' && d.valor_global > 0
+        && !(parentContrato.valor_global_original > 0)) {
+      updates.valor_global_original = d.valor_global;
+      // valor_global is recomputed by trigger, but seed it for safety on insert path
+      if (!(parentContrato.valor_global > 0)) updates.valor_global = d.valor_global;
+    }
+
+    // Dates / vigência
+    if (d.data_assinatura && !parentContrato.data_assinatura) updates.data_assinatura = d.data_assinatura;
+    if (d.data_inicio && !parentContrato.data_inicio) updates.data_inicio = d.data_inicio;
+    if (d.data_fim && !parentContrato.data_fim) updates.data_fim = d.data_fim;
+
+    if (Object.keys(updates).length === 0) {
+      toast.info('IA não encontrou novos campos para preencher (registro já preenchido).');
+      return;
+    }
+
+    const { error } = await supabase.from('contratos').update(updates).eq('id', contratoId);
+    if (error) {
+      console.warn('applyExtractedToParent failed:', error);
+      toast.warning('Arquivo registrado, mas falha ao atualizar o Dashboard.', { description: error.message });
+      return;
+    }
+    toast.success(`Dashboard atualizado pela IA: ${Object.keys(updates).length} campo(s) preenchido(s).`);
+    loadData();
   };
 
   const runIaPreFillForAditivo = async (file: File) => {
