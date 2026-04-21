@@ -95,6 +95,7 @@ const CentralAvisos = lazyPage(() => import("./pages/CentralAvisos"));
 const PreferenciasAlertas = lazyPage(() => import("./pages/PreferenciasAlertas"));
 const MetricasSaaS = lazyPage(() => import("./pages/MetricasSaaS"));
 const Investidores = lazyPage(() => import("./pages/Investidores"));
+const ProcessoWorkspace = lazyPage(() => import("./pages/ProcessoWorkspace"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -223,6 +224,7 @@ const App = () => (
               <Route path="/configuracoes/alertas" element={<ProtectedPages><PreferenciasAlertas /></ProtectedPages>} />
               <Route path="/admin/metricas-saas" element={<ProtectedPages><AdminGuard><MetricasSaaS /></AdminGuard></ProtectedPages>} />
               <Route path="/investidores" element={<Investidores />} />
+              <Route path="/processo/:id" element={<ProtectedPages><ProcessoWorkspace /></ProtectedPages>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             </Suspense>
