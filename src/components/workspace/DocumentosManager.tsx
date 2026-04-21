@@ -62,14 +62,19 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
       // Pega primeira empresa do usuário
       const { data } = await supabase
         .from('empresas')
-        .select('razao_social, cnpj, endereco, representante_nome, representante_cpf, representante_cargo')
+        .select('*')
         .limit(1).maybeSingle();
       if (data) {
-        setEmpresa({ razao_social: data.razao_social, cnpj: data.cnpj, endereco: data.endereco });
+        const d = data as any;
+        setEmpresa({
+          razao_social: d.razao_social,
+          cnpj: d.cnpj,
+          endereco: [d.endereco, d.numero, d.bairro, d.cidade, d.uf].filter(Boolean).join(', '),
+        });
         setRepresentante({
-          nome: (data as any).representante_nome,
-          cpf: (data as any).representante_cpf,
-          cargo: (data as any).representante_cargo,
+          nome: d.representante_nome || d.responsavel_nome || d.contato_nome,
+          cpf: d.representante_cpf || d.responsavel_cpf,
+          cargo: d.representante_cargo || d.responsavel_cargo || 'Representante Legal',
         });
       }
     })();
