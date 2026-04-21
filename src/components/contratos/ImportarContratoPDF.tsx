@@ -109,6 +109,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
           texto_pdf: texto,
           nome_arquivo: file.name,
           tipo_arquivo: file.type || file.name.split('.').pop() || 'desconhecido',
+          tipo_estrutura: tipoEstrutura,
         },
       });
 
