@@ -186,7 +186,8 @@ export default function GestaoContratos() {
     loadContratos();
   };
 
-  const handleImportExtracted = (data: any) => {
+  const handleImportExtracted = (data: any, opts?: { tipo_estrutura?: 'itens' | 'lotes' }) => {
+    const tipoEstrutura = opts?.tipo_estrutura || 'itens';
     const itensNormalizados = Array.isArray(data.itens)
       ? data.itens
           .map((item: any, index: number) => {
@@ -203,6 +204,8 @@ export default function GestaoContratos() {
               unidade: item.unidade || 'UN',
               valor_unitario: Number.isFinite(valorUnitario) ? valorUnitario : 0,
               valor_total: valorTotal,
+              numero_lote: tipoEstrutura === 'lotes' ? (item.numero_lote || item.lote || null) : null,
+              descricao_lote: tipoEstrutura === 'lotes' ? (item.descricao_lote || null) : null,
             };
           })
           .filter((item: any) => item.descricao.trim().length > 0)
@@ -210,6 +213,7 @@ export default function GestaoContratos() {
 
     setForm(f => ({
       ...f,
+      tipo_estrutura: tipoEstrutura,
       numero_contrato: data.numero_contrato || '',
       objeto: data.objeto || '',
       orgao_contratante: data.orgao_contratante || '',
@@ -231,7 +235,8 @@ export default function GestaoContratos() {
 
     setPendingItens(itensNormalizados);
     if (itensNormalizados.length > 0) {
-      toast.info(`${itensNormalizados.length} itens extraídos serão importados ao salvar.`);
+      const sufixo = tipoEstrutura === 'lotes' ? 'lotes' : 'itens';
+      toast.info(`${itensNormalizados.length} ${sufixo} extraídos serão importados ao salvar.`);
     }
     setDialogOpen(true);
   };
