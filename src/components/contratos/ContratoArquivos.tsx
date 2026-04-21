@@ -111,7 +111,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
     }
   }, [uploadTipo, aditivos.length]);
 
-  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 20 * 1024 * 1024) {
@@ -121,13 +121,63 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
     }
 
     if (isAditivoType(uploadTipo)) {
-      // Store file and let user fill aditivo fields before confirming
+      // Manual aditivo path: keep existing behaviour, but also try IA pre-fill
       setPendingFile(file);
       if (fileRef.current) fileRef.current.value = '';
+      // best-effort IA pre-fill of aditivo fields
+      runIaPreFillForAditivo(file).catch(() => {/* noop */});
+      return;
+    }
+
+    // Non-aditivo upload: run IA detection BEFORE persisting to suggest correct registry
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      setPendingFile(file);
+      if (fileRef.current) fileRef.current.value = '';
+      toast.info('Analisando documento via IA…');
+      try {
+        const detected = await extractContractDataFromFile(file, uploadTipo);
+        if (detected && detected.tipo_documento_detectado) {
+          const detectedType = detected.tipo_documento_detectado;
+          const isAditivoDetected = detectedType === 'aditivo';
+          const mismatch = !isAditivoDetected && parentTipoDocumento &&
+            ((parentTipoDocumento === 'contrato' && detectedType === 'ata_srp') ||
+             (parentTipoDocumento === 'ata_srp' && detectedType === 'contrato'));
+          if (mismatch || isAditivoDetected) {
+            setDetection(detected as DetectionResult);
+            setDetectionFileName(file.name);
+            setDetectionOpen(true);
+            return; // wait for user decision
+          }
+        }
+      } catch (err) {
+        console.warn('IA detection skipped:', err);
+      }
+      // No detection / matches expected type → upload as chosen
+      doUpload(file, uploadTipo);
+      setPendingFile(null);
     } else {
-      // Direct upload for non-aditivo types
       doUpload(file, uploadTipo);
     }
+  };
+
+  const runIaPreFillForAditivo = async (file: File) => {
+    try {
+      const detected = await extractContractDataFromFile(file, uploadTipo);
+      if (detected?.aditivo) {
+        const a = detected.aditivo;
+        setAditivoForm(f => ({
+          ...f,
+          numero_aditivo: a.numero_aditivo || f.numero_aditivo,
+          valor_acrescimo: a.valor_acrescimo ? String(a.valor_acrescimo) : f.valor_acrescimo,
+          valor_supressao: a.valor_supressao ? String(a.valor_supressao) : f.valor_supressao,
+          quantidade_acrescimo: a.quantidade_acrescimo ? String(a.quantidade_acrescimo) : f.quantidade_acrescimo,
+          quantidade_supressao: a.quantidade_supressao ? String(a.quantidade_supressao) : f.quantidade_supressao,
+          nova_data_fim: a.nova_data_fim || f.nova_data_fim,
+          justificativa: a.justificativa || f.justificativa,
+        }));
+        toast.success('IA pré-preencheu os campos do aditivo. Revise antes de confirmar.');
+      }
+    } catch (e) { /* silent */ }
   };
 
   const doUpload = async (file: File, tipo: string, aditivoData?: typeof emptyAditivoForm) => {
