@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ListChecks, Brain, Bell, Mail, MessageSquare, Building2, ArrowRight, Loader2, Clock, FolderOpen } from 'lucide-react';
 import GlobalProcessoBar from '@/components/layout/GlobalProcessoBar';
+import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
+import { toast } from 'sonner';
 
 type Item = {
   id: string;
@@ -41,8 +43,33 @@ function diasAte(iso: string | null): number | null {
  */
 export default function CompromissosResumo() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { iniciarProcesso } = useLicitacaoIntegration();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
+  const [opening, setOpening] = useState<string | null>(null);
+
+  const abrirPasta = useCallback(async (p: Item) => {
+    if (p.licitacao_id) { navigate(`/processo/${p.licitacao_id}`); return; }
+    setOpening(p.id);
+    try {
+      const lid = await iniciarProcesso({
+        numero: p.numero,
+        orgao: p.orgao,
+        objeto: p.objeto,
+        modalidade: p.modalidade || undefined,
+        valor_estimado: p.valor_estimado,
+        uf: p.uf,
+        municipio: p.municipio,
+        data_encerramento: p.data_encerramento,
+      });
+      if (!lid) { toast.error('Não foi possível abrir a Pasta.'); return; }
+      await supabase.from('processos_interesse').update({ licitacao_id: lid }).eq('id', p.id);
+      navigate(`/processo/${lid}`);
+    } finally {
+      setOpening(null);
+    }
+  }, [iniciarProcesso, navigate]);
 
   const carregar = useCallback(async () => {
     if (!user) return;
@@ -158,10 +185,11 @@ export default function CompromissosResumo() {
                   </span>
                 </div>
               </div>
-              <Button asChild size="sm" variant="outline" disabled={!p.licitacao_id}>
-                <Link to={p.licitacao_id ? `/processo/${p.licitacao_id}` : '#'}>
-                  <FolderOpen className="w-3.5 h-3.5 mr-1" /> Abrir Pasta
-                </Link>
+              <Button size="sm" variant="outline" onClick={() => abrirPasta(p)} disabled={opening === p.id}>
+                {opening === p.id
+                  ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                  : <FolderOpen className="w-3.5 h-3.5 mr-1" />}
+                Abrir Pasta
               </Button>
             </div>
           </Card>
