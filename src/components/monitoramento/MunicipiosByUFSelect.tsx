@@ -21,18 +21,49 @@ interface Props {
 // Cache em memória durante a sessão
 const cache = new Map<string, IBGEMunicipio[]>();
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+
 async function fetchMunicipiosUF(uf: string): Promise<IBGEMunicipio[]> {
   if (cache.has(uf)) return cache.get(uf)!;
-  const resp = await fetch(
-    `https://servicosdados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`
-  );
-  if (!resp.ok) throw new Error(`Falha IBGE ${uf}`);
-  const data: any[] = await resp.json();
-  const list: IBGEMunicipio[] = data.map((m) => ({
-    id: m.id,
-    nome: m.nome,
-    uf,
-  }));
+
+  // 1) Proxy via Edge Function (resiliente: IBGE → BrasilAPI no servidor + cache)
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/functions/v1/ibge-municipios?uf=${uf}`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+    );
+    if (r.ok) {
+      const json = await r.json();
+      if (Array.isArray(json?.municipios) && json.municipios.length) {
+        cache.set(uf, json.municipios);
+        return json.municipios;
+      }
+    }
+  } catch (_) {
+    /* segue fallback */
+  }
+
+  // 2) Fallback direto IBGE
+  try {
+    const r = await fetch(
+      `https://servicosdados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`,
+    );
+    if (r.ok) {
+      const data: any[] = await r.json();
+      const list = data.map((m) => ({ id: m.id, nome: m.nome, uf }));
+      list.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+      cache.set(uf, list);
+      return list;
+    }
+  } catch (_) {}
+
+  // 3) Fallback BrasilAPI direto
+  const r2 = await fetch(`https://brasilapi.com.br/api/ibge/municipios/v1/${uf}`);
+  if (!r2.ok) throw new Error(`Não foi possível carregar municípios de ${uf}`);
+  const data2: any[] = await r2.json();
+  const list = data2.map((m) => ({ id: Number(m.codigo_ibge), nome: m.nome, uf }));
+  list.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   cache.set(uf, list);
   return list;
 }
