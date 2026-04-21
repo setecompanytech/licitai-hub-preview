@@ -83,16 +83,23 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
 
   const loadData = async () => {
     setLoading(true);
-    const [arqRes, adtRes] = await Promise.all([
+    const [arqRes, adtRes, contratoRes] = await Promise.all([
       supabase.from('contrato_arquivos').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
       supabase.from('contrato_aditivos').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
+      supabase.from('contratos').select('id, tipo_documento, ata_srp_id, numero_contrato, orgao, empresa_id').eq('id', contratoId).maybeSingle(),
     ]);
     setArquivos((arqRes.data as any[]) || []);
     setAditivos((adtRes.data as any[]) || []);
+    setParentContrato(contratoRes.data || null);
     setLoading(false);
   };
 
   useEffect(() => { loadData(); }, [contratoId]);
+
+  const parentTipoDocumento: 'ata_srp' | 'contrato' | null =
+    parentContrato?.tipo_documento === 'ata_srp' ? 'ata_srp'
+    : parentContrato?.tipo_documento === 'contrato' ? 'contrato'
+    : null;
 
   // When upload type changes, show/hide aditivo fields
   useEffect(() => {
@@ -104,7 +111,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
     }
   }, [uploadTipo, aditivos.length]);
 
-  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 20 * 1024 * 1024) {
@@ -114,13 +121,63 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
     }
 
     if (isAditivoType(uploadTipo)) {
-      // Store file and let user fill aditivo fields before confirming
+      // Manual aditivo path: keep existing behaviour, but also try IA pre-fill
       setPendingFile(file);
       if (fileRef.current) fileRef.current.value = '';
+      // best-effort IA pre-fill of aditivo fields
+      runIaPreFillForAditivo(file).catch(() => {/* noop */});
+      return;
+    }
+
+    // Non-aditivo upload: run IA detection BEFORE persisting to suggest correct registry
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      setPendingFile(file);
+      if (fileRef.current) fileRef.current.value = '';
+      toast.info('Analisando documento via IA…');
+      try {
+        const detected = await extractContractDataFromFile(file, uploadTipo);
+        if (detected && detected.tipo_documento_detectado) {
+          const detectedType = detected.tipo_documento_detectado;
+          const isAditivoDetected = detectedType === 'aditivo';
+          const mismatch = !isAditivoDetected && parentTipoDocumento &&
+            ((parentTipoDocumento === 'contrato' && detectedType === 'ata_srp') ||
+             (parentTipoDocumento === 'ata_srp' && detectedType === 'contrato'));
+          if (mismatch || isAditivoDetected) {
+            setDetection(detected as DetectionResult);
+            setDetectionFileName(file.name);
+            setDetectionOpen(true);
+            return; // wait for user decision
+          }
+        }
+      } catch (err) {
+        console.warn('IA detection skipped:', err);
+      }
+      // No detection / matches expected type → upload as chosen
+      doUpload(file, uploadTipo);
+      setPendingFile(null);
     } else {
-      // Direct upload for non-aditivo types
       doUpload(file, uploadTipo);
     }
+  };
+
+  const runIaPreFillForAditivo = async (file: File) => {
+    try {
+      const detected = await extractContractDataFromFile(file, uploadTipo);
+      if (detected?.aditivo) {
+        const a = detected.aditivo;
+        setAditivoForm(f => ({
+          ...f,
+          numero_aditivo: a.numero_aditivo || f.numero_aditivo,
+          valor_acrescimo: a.valor_acrescimo ? String(a.valor_acrescimo) : f.valor_acrescimo,
+          valor_supressao: a.valor_supressao ? String(a.valor_supressao) : f.valor_supressao,
+          quantidade_acrescimo: a.quantidade_acrescimo ? String(a.quantidade_acrescimo) : f.quantidade_acrescimo,
+          quantidade_supressao: a.quantidade_supressao ? String(a.quantidade_supressao) : f.quantidade_supressao,
+          nova_data_fim: a.nova_data_fim || f.nova_data_fim,
+          justificativa: a.justificativa || f.justificativa,
+        }));
+        toast.success('IA pré-preencheu os campos do aditivo. Revise antes de confirmar.');
+      }
+    } catch (e) { /* silent */ }
   };
 
   const doUpload = async (file: File, tipo: string, aditivoData?: typeof emptyAditivoForm) => {
@@ -480,6 +537,125 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
     valor_quantidade: Layers,
     prazo: Calendar,
     escopo: FilePlus2,
+  };
+
+  // ── Detection Dialog handlers ──────────────────────────────────────────
+  const handleDetectionIgnore = () => {
+    setDetectionOpen(false);
+    if (pendingFile) {
+      doUpload(pendingFile, uploadTipo);
+      setPendingFile(null);
+    }
+    setDetection(null);
+  };
+
+  const handleCreateLinkedRegistry = async (data: DetectionResult) => {
+    if (!user || !pendingFile || !parentContrato) return;
+    try {
+      const detectedType = data.tipo_documento_detectado;
+      const newTipoDoc: 'ata_srp' | 'contrato' = detectedType === 'ata_srp' ? 'ata_srp' : 'contrato';
+      const newRow: any = {
+        user_id: user.id,
+        empresa_id: parentContrato.empresa_id,
+        tipo_documento: newTipoDoc,
+        numero_contrato: data.numero_contrato || data.numero_ata || pendingFile.name,
+        objeto: data.objeto || null,
+        orgao: parentContrato.orgao || null,
+        valor_global_original: data.valor_global || 0,
+        valor_global: data.valor_global || 0,
+        data_inicio: data.data_inicio || null,
+        data_fim: data.data_fim || null,
+        status: 'ativo',
+      };
+      if (newTipoDoc === 'contrato' && parentTipoDocumento === 'ata_srp') {
+        newRow.ata_srp_id = parentContrato.id;
+      }
+      const { data: created, error: insErr } = await supabase
+        .from('contratos').insert(newRow).select('id').single();
+      if (insErr) throw insErr;
+
+      const ext = pendingFile.name.split('.').pop() || 'pdf';
+      const path = `${user.id}/${created.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('contratos-docs').upload(path, pendingFile);
+      if (upErr) throw upErr;
+      await supabase.from('contrato_arquivos').insert({
+        contrato_id: created.id,
+        user_id: user.id,
+        nome_arquivo: pendingFile.name,
+        storage_path: path,
+        tipo: newTipoDoc === 'ata_srp' ? 'ata_srp' : 'contrato_original',
+        tamanho_bytes: pendingFile.size,
+      } as any);
+
+      toast.success(`${newTipoDoc === 'ata_srp' ? 'ATA SRP' : 'Contrato derivado'} criado e vinculado.`);
+      setDetectionOpen(false);
+      setPendingFile(null);
+      setDetection(null);
+      loadData();
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Erro ao criar registro vinculado', { description: err.message });
+    }
+  };
+
+  const handleConfirmAditivoFromDetection = async (form: {
+    numero_aditivo: string;
+    valor_acrescimo: number;
+    valor_supressao: number;
+    quantidade_acrescimo: number;
+    quantidade_supressao: number;
+    nova_data_fim: string | null;
+    justificativa: string | null;
+    target: 'contrato' | 'ata_srp';
+  }) => {
+    if (!user || !pendingFile) return;
+    try {
+      const ext = pendingFile.name.split('.').pop() || 'pdf';
+      const path = `${user.id}/${contratoId}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('contratos-docs').upload(path, pendingFile);
+      if (upErr) throw upErr;
+
+      let tipoArq = 'aditivo_valor';
+      if ((form.valor_acrescimo + form.valor_supressao) > 0 && (form.quantidade_acrescimo + form.quantidade_supressao) > 0) tipoArq = 'aditivo_valor_quantidade';
+      else if ((form.quantidade_acrescimo + form.quantidade_supressao) > 0) tipoArq = 'aditivo_quantidade';
+      else if (form.nova_data_fim) tipoArq = 'aditivo_prazo';
+
+      await supabase.from('contrato_arquivos').insert({
+        contrato_id: contratoId,
+        user_id: user.id,
+        nome_arquivo: pendingFile.name,
+        storage_path: path,
+        tipo: tipoArq,
+        tamanho_bytes: pendingFile.size,
+      } as any);
+
+      const tipoAditivo = TIPOS_ARQUIVO[tipoArq]?.tipoAditivo || 'valor';
+      const payload: any = {
+        contrato_id: contratoId,
+        user_id: user.id,
+        numero_aditivo: form.numero_aditivo || `${aditivos.length + 1}º Aditivo`,
+        tipo: tipoAditivo,
+        valor_acrescimo: form.valor_acrescimo,
+        valor_supressao: form.valor_supressao,
+        quantidade_acrescimo: form.quantidade_acrescimo,
+        quantidade_supressao: form.quantidade_supressao,
+        nova_data_fim: form.nova_data_fim,
+        justificativa: form.justificativa,
+        referencia_tipo: form.target,
+      };
+      payload.valor_aditivo = payload.valor_acrescimo - payload.valor_supressao;
+      const { error: adtErr } = await supabase.from('contrato_aditivos').insert(payload);
+      if (adtErr) throw adtErr;
+
+      toast.success('Aditivo registrado e saldos atualizados!');
+      setDetectionOpen(false);
+      setPendingFile(null);
+      setDetection(null);
+      loadData();
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Erro ao registrar aditivo', { description: err.message });
+    }
   };
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
@@ -883,6 +1059,18 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* IA document detection dialog */}
+      <DocumentDetectionDialog
+        open={detectionOpen}
+        onOpenChange={(o) => { setDetectionOpen(o); if (!o) { setDetection(null); setPendingFile(null); } }}
+        detection={detection}
+        parentTipoDocumento={parentTipoDocumento}
+        fileName={detectionFileName}
+        onCreateLinkedRegistry={handleCreateLinkedRegistry}
+        onConfirmAditivo={handleConfirmAditivoFromDetection}
+        onIgnore={handleDetectionIgnore}
+      />
     </div>
   );
 }
