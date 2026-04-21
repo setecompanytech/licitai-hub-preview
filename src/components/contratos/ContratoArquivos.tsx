@@ -80,6 +80,8 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
   const [detectionOpen, setDetectionOpen] = useState(false);
   const [detection, setDetection] = useState<DetectionResult | null>(null);
   const [detectionFileName, setDetectionFileName] = useState('');
+
+  const loadData = async () => {
     setLoading(true);
     const [arqRes, adtRes] = await Promise.all([
       supabase.from('contrato_arquivos').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
