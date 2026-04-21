@@ -93,6 +93,10 @@ export default function GlobalProcessoBar() {
 
           {processoId && (
             <>
+              <Button variant="default" size="sm" className="h-7 px-3 text-xs gap-1" onClick={() => navigate(`/processo/${processoId}`)}>
+                <FolderOpen className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Abrir Pasta</span>
+              </Button>
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setCollapsed(v => !v)}>
                 {collapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
                 <span className="hidden sm:inline ml-1">Atalhos</span>
