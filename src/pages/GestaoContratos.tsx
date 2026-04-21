@@ -290,7 +290,7 @@ export default function GestaoContratos() {
         <Tabs defaultValue="dashboard" className="space-y-4" onValueChange={(v) => setActiveTab(v)}>
           <TabsList className="flex-wrap">
             <TabsTrigger value="dashboard"><BarChart3 className="w-3.5 h-3.5 mr-1" /> Dashboard</TabsTrigger>
-            <TabsTrigger value="itens"><Package className="w-3.5 h-3.5 mr-1" /> Itens</TabsTrigger>
+            <TabsTrigger value="itens"><Package className="w-3.5 h-3.5 mr-1" /> Itens/Lotes</TabsTrigger>
             {!isAta && <TabsTrigger value="pedidos"><ShoppingCart className="w-3.5 h-3.5 mr-1" /> Pedidos</TabsTrigger>}
             {isAta && (
               <TabsTrigger value="contratos-derivados">
