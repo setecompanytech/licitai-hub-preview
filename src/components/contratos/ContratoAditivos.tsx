@@ -73,6 +73,8 @@ const showQtyFields = (tipo: string) => ['quantidade', 'valor_quantidade', 'praz
 export default function ContratoAditivos({ contratoId }: { contratoId: string }) {
   const { user } = useAuth();
   const [aditivos, setAditivos] = useState<Aditivo[]>([]);
+  const [docAtual, setDocAtual] = useState<DocAlvo | null>(null);
+  const [alvosDisponiveis, setAlvosDisponiveis] = useState<DocAlvo[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Aditivo | null>(null);
@@ -81,20 +83,46 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
 
   const loadAditivos = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('contrato_aditivos')
-      .select('*')
-      .eq('contrato_id', contratoId)
-      .order('created_at', { ascending: true });
-    setAditivos((data as any[]) || []);
+    const [adtRes, docRes] = await Promise.all([
+      supabase.from('contrato_aditivos').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
+      supabase.from('contratos').select('id, numero_contrato, numero_ata, tipo_documento, ata_srp_id').eq('id', contratoId).maybeSingle(),
+    ]);
+    setAditivos((adtRes.data as any[]) || []);
+    const doc = docRes.data as DocAlvo | null;
+    setDocAtual(doc);
+
+    const alvos: DocAlvo[] = doc ? [doc] : [];
+    if (doc?.tipo_documento === 'ata_srp') {
+      const derivRes = await supabase.from('contratos')
+        .select('id, numero_contrato, numero_ata, tipo_documento, ata_srp_id')
+        .eq('ata_srp_id', doc.id);
+      (derivRes.data as DocAlvo[] || []).forEach(d => alvos.push(d));
+    } else if (doc?.tipo_documento === 'contrato' && doc.ata_srp_id) {
+      const ataRes = await supabase.from('contratos')
+        .select('id, numero_contrato, numero_ata, tipo_documento, ata_srp_id')
+        .eq('id', doc.ata_srp_id).maybeSingle();
+      if (ataRes.data) alvos.push(ataRes.data as DocAlvo);
+    }
+    setAlvosDisponiveis(alvos);
     setLoading(false);
   };
 
   useEffect(() => { loadAditivos(); }, [contratoId]);
 
+  const labelAlvo = (d: DocAlvo) => {
+    const isAta = d.tipo_documento === 'ata_srp';
+    const num = isAta ? (d.numero_ata || 'ATA') : (d.numero_contrato || 'Contrato');
+    return `${isAta ? '📋 ATA SRP' : '📄 Contrato'} ${num}${d.id === contratoId ? ' (atual)' : ''}`;
+  };
+
   const openNew = () => {
     setEditing(null);
-    setForm({ ...emptyForm, numero_aditivo: `${aditivos.length + 1}º Aditivo` });
+    setForm({
+      ...emptyForm,
+      numero_aditivo: `${aditivos.length + 1}º Aditivo`,
+      alvo_id: docAtual?.id || '',
+      alvo_referencia_tipo: docAtual?.tipo_documento === 'ata_srp' ? 'ata_srp' : 'contrato',
+    });
     setDialogOpen(true);
   };
 
@@ -103,6 +131,8 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
     setForm({
       numero_aditivo: a.numero_aditivo,
       tipo: a.tipo || 'valor',
+      alvo_id: a.contrato_id,
+      alvo_referencia_tipo: a.referencia_tipo === 'ata_srp' ? 'ata_srp' : 'contrato',
       valor_acrescimo: a.valor_acrescimo ? String(a.valor_acrescimo) : '',
       valor_supressao: a.valor_supressao ? String(a.valor_supressao) : '',
       quantidade_acrescimo: a.quantidade_acrescimo ? String(a.quantidade_acrescimo) : '',
@@ -115,18 +145,32 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
     setDialogOpen(true);
   };
 
+  const onAlvoChange = (id: string) => {
+    const alvo = alvosDisponiveis.find(d => d.id === id);
+    setForm(f => ({
+      ...f,
+      alvo_id: id,
+      alvo_referencia_tipo: alvo?.tipo_documento === 'ata_srp' ? 'ata_srp' : 'contrato',
+    }));
+  };
+
   const handleSave = async () => {
     if (!form.numero_aditivo || !user) {
       toast.error('Preencha o número do aditivo');
       return;
     }
+    if (!form.alvo_id) {
+      toast.error('Selecione o documento alvo do aditivo (Contrato ou ATA SRP)');
+      return;
+    }
     setSaving(true);
     try {
       const payload: any = {
-        contrato_id: contratoId,
+        contrato_id: form.alvo_id,
         user_id: user.id,
         numero_aditivo: form.numero_aditivo,
         tipo: form.tipo,
+        referencia_tipo: form.alvo_referencia_tipo,
         valor_acrescimo: showValueFields(form.tipo) ? (parseFloat(form.valor_acrescimo) || 0) : 0,
         valor_supressao: showValueFields(form.tipo) ? (parseFloat(form.valor_supressao) || 0) : 0,
         quantidade_acrescimo: showQtyFields(form.tipo) ? (parseFloat(form.quantidade_acrescimo) || 0) : 0,
