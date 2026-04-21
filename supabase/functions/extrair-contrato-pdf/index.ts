@@ -12,6 +12,8 @@ type ItemExtraido = {
   unidade?: string | null;
   valor_unitario?: number | string | null;
   valor_total?: number | string | null;
+  numero_lote?: string | null;
+  descricao_lote?: string | null;
 };
 
 type DadosContrato = {
@@ -122,6 +124,8 @@ function normalizeItem(item: ItemExtraido, index: number) {
     unidade: cleanString(item.unidade) ?? undefined,
     valor_unitario: valorUnitario ?? undefined,
     valor_total: valorTotal ?? undefined,
+    numero_lote: cleanString(item.numero_lote) ?? undefined,
+    descricao_lote: cleanString(item.descricao_lote) ?? undefined,
   };
 }
 
@@ -176,7 +180,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { texto_pdf, nome_arquivo, tipo_arquivo } = await req.json();
+    const { texto_pdf, nome_arquivo, tipo_arquivo, tipo_estrutura } = await req.json();
     if (!texto_pdf || texto_pdf.trim().length < 80) {
       return new Response(JSON.stringify({ success: false, error: "Texto do documento muito curto ou vazio" }), {
         status: 400,
@@ -205,7 +209,7 @@ serve(async (req) => {
           },
           {
             role: "user",
-            content: `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\n\nClassifique o tipo do documento e extraia os dados pertinentes ao seu tipo:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha o objeto 'aditivo' com tipo (valor, quantidade, prazo, escopo, valor_quantidade), valor_acrescimo, valor_supressao, quantidade_acrescimo, quantidade_supressao, nova_data_fim, contrato_referencia ou ata_referencia, justificativa.\n\nREGRAS CRÍTICAS:\n- NÃO invente campos\n- NÃO reescreva descrições com sinônimos\n- Use null quando o campo não existir\n- Datas no formato DD/MM/AAAA ou YYYY-MM-DD\n\nTEXTO DO DOCUMENTO:\n${truncated}`,
+            content: `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES (itens agrupados em lotes numerados)" : "ITENS individuais"}\n\nClassifique o tipo do documento e extraia os dados pertinentes ao seu tipo:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha o objeto 'aditivo' com tipo (valor, quantidade, prazo, escopo, valor_quantidade), valor_acrescimo, valor_supressao, quantidade_acrescimo, quantidade_supressao, nova_data_fim, contrato_referencia ou ata_referencia, justificativa.\n\n${tipo_estrutura === "lotes" ? "ATENÇÃO LOTES: O documento está organizado por LOTES. Para CADA item retornado, preencha OBRIGATORIAMENTE 'numero_lote' (ex: '01', '02') e, quando existir, 'descricao_lote' (ex: 'Materiais de Limpeza'). Itens do mesmo lote devem compartilhar o mesmo numero_lote.\n" : ""}REGRAS CRÍTICAS:\n- NÃO invente campos\n- NÃO reescreva descrições com sinônimos\n- Use null quando o campo não existir\n- Datas no formato DD/MM/AAAA ou YYYY-MM-DD\n\nTEXTO DO DOCUMENTO:\n${truncated}`,
           },
         ],
         tools: [
@@ -246,6 +250,8 @@ serve(async (req) => {
                         unidade: { type: "string" },
                         valor_unitario: { type: "number" },
                         valor_total: { type: "number" },
+                        numero_lote: { type: "string", description: "Número/identificador do lote ao qual o item pertence (somente quando o documento é estruturado por LOTES)." },
+                        descricao_lote: { type: "string", description: "Descrição/título do lote, quando informado." },
                       },
                       additionalProperties: false,
                     },
