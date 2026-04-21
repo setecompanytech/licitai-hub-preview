@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ListChecks, Brain, Bell, Mail, MessageSquare, Building2, ArrowRight, Loader2, Clock, FolderOpen } from 'lucide-react';
 import GlobalProcessoBar from '@/components/layout/GlobalProcessoBar';
+import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
+import { toast } from 'sonner';
 
 type Item = {
   id: string;
