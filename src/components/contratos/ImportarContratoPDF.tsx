@@ -35,7 +35,7 @@ type ExtractedData = {
 };
 
 interface ImportarContratoPDFProps {
-  onExtracted: (data: ExtractedData) => void;
+  onExtracted: (data: ExtractedData, opts: { tipo_estrutura: 'itens' | 'lotes' }) => void;
 }
 
 const ACCEPTED_MIME_TYPES = [
@@ -63,6 +63,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
   const [fileName, setFileName] = useState('');
   const [extracted, setExtracted] = useState<ExtractedData | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [tipoEstrutura, setTipoEstrutura] = useState<'itens' | 'lotes'>('itens');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
@@ -71,6 +72,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
     setFileName('');
     setExtracted(null);
     setErrorMsg('');
+    setTipoEstrutura('itens');
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,7 +127,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
 
   const handleConfirm = () => {
     if (extracted) {
-      onExtracted(extracted);
+      onExtracted(extracted, { tipo_estrutura: tipoEstrutura });
       setOpen(false);
       reset();
       toast.success('Dados extraídos aplicados ao formulário!');
