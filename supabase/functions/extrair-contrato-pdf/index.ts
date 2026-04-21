@@ -133,8 +133,25 @@ function normalizeContrato(data: DadosContrato) {
     ? data.itens.map(normalizeItem).filter(Boolean)
     : [];
 
+  const aditivo = data.aditivo
+    ? {
+        numero_aditivo: cleanString(data.aditivo.numero_aditivo),
+        tipo_aditivo: (data.aditivo.tipo_aditivo as string | null) ?? null,
+        valor_acrescimo: parseNumber(data.aditivo.valor_acrescimo) ?? 0,
+        valor_supressao: parseNumber(data.aditivo.valor_supressao) ?? 0,
+        quantidade_acrescimo: parseNumber(data.aditivo.quantidade_acrescimo) ?? 0,
+        quantidade_supressao: parseNumber(data.aditivo.quantidade_supressao) ?? 0,
+        nova_data_fim: normalizeDate(data.aditivo.nova_data_fim),
+        contrato_referencia: cleanString(data.aditivo.contrato_referencia),
+        ata_referencia: cleanString(data.aditivo.ata_referencia),
+        justificativa: cleanString(data.aditivo.justificativa),
+      }
+    : null;
+
   return {
+    tipo_documento_detectado: (data.tipo_documento_detectado as string | null) ?? null,
     numero_contrato: cleanString(data.numero_contrato),
+    numero_ata: cleanString(data.numero_ata),
     objeto: cleanString(data.objeto),
     orgao_contratante: cleanString(data.orgao_contratante),
     valor_global: parseNumber(data.valor_global),
@@ -142,6 +159,7 @@ function normalizeContrato(data: DadosContrato) {
     data_inicio: dataInicio,
     data_fim: dataFim,
     vigencia_meses: parseNumber(data.vigencia_meses) ?? diffMonths(dataInicio, dataFim),
+    validade_ata_meses: parseNumber(data.validade_ata_meses),
     modalidade: cleanString(data.modalidade),
     uf: cleanString(data.uf)?.toUpperCase() ?? null,
     municipio: cleanString(data.municipio),
@@ -150,6 +168,7 @@ function normalizeContrato(data: DadosContrato) {
     fiscal_telefone: cleanString(data.fiscal_telefone),
     observacoes: cleanString(data.observacoes),
     itens,
+    aditivo,
   };
 }
 
