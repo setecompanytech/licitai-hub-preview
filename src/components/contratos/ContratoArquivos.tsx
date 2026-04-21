@@ -1059,6 +1059,18 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* IA document detection dialog */}
+      <DocumentDetectionDialog
+        open={detectionOpen}
+        onOpenChange={(o) => { setDetectionOpen(o); if (!o) { setDetection(null); setPendingFile(null); } }}
+        detection={detection}
+        parentTipoDocumento={parentTipoDocumento}
+        fileName={detectionFileName}
+        onCreateLinkedRegistry={handleCreateLinkedRegistry}
+        onConfirmAditivo={handleConfirmAditivoFromDetection}
+        onIgnore={handleDetectionIgnore}
+      />
     </div>
   );
 }
