@@ -17,6 +17,30 @@ import DocumentDetectionDialog, { type DetectionResult } from './DocumentDetecti
 import { extractContractDataFromFile } from './utils/extractContractData';
 import { validateExtractedContract, buildParentUpdates } from './utils/validateExtractedContract';
 import ContratoIaAuditoriaPanel from './ContratoIaAuditoriaPanel';
+import { createLogger } from '@/services/logger';
+
+const logger = createLogger('ContratoArquivos');
+
+/**
+ * Mapeia cada código de rejeição produzido por `validateExtractedContract` para
+ * uma explicação humana usada em logs e na trilha de auditoria.
+ */
+const REJECTION_REASONS: Record<string, string> = {
+  payload_vazio: 'Payload retornado pela IA estava vazio ou não era um objeto.',
+  numero_contrato: 'numero_contrato vazio, com tamanho inválido ou caractere inválido.',
+  numero_ata: 'numero_ata vazio, com tamanho inválido ou caractere inválido.',
+  objeto: 'objeto vazio ou fora do tamanho permitido (2-2000 chars).',
+  orgao_contratante: 'orgao_contratante vazio ou fora do tamanho permitido (2-300 chars).',
+  modalidade: 'modalidade vazia ou fora do tamanho permitido.',
+  valor_global: 'valor_global não numérico, ≤ 0 ou acima do teto de sanidade (R$ 1 trilhão).',
+  data_assinatura: 'data_assinatura em formato inválido (esperado ISO yyyy-mm-dd ou dd/mm/yyyy).',
+  data_inicio: 'data_inicio em formato inválido (esperado ISO yyyy-mm-dd ou dd/mm/yyyy).',
+  data_fim: 'data_fim em formato inválido (esperado ISO yyyy-mm-dd ou dd/mm/yyyy).',
+  data_fim_anterior_a_inicio: 'Coerência: data_fim é anterior a data_inicio — data_fim descartada.',
+  data_assinatura_posterior_a_inicio: 'Coerência: data_assinatura posterior a data_inicio — data_assinatura descartada.',
+  vigencia_meses: 'vigencia_meses não inteiro positivo ou acima do teto (120 meses).',
+  validade_ata_meses: 'validade_ata_meses não inteiro positivo ou acima do teto (120 meses).',
+};
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
