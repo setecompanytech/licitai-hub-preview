@@ -244,8 +244,11 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
                 <div><span className="text-muted-foreground">Modalidade:</span> {extracted.modalidade}</div>
               )}
               <div className="flex gap-2 pt-1 flex-wrap">
+                <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">
+                  Estrutura: {tipoEstrutura === 'lotes' ? 'Lotes' : 'Itens'}
+                </Badge>
                 <Badge variant="secondary" className="text-[10px]">{filledFields} campos extraídos</Badge>
-                {totalItens > 0 && <Badge variant="secondary" className="text-[10px]">{totalItens} itens encontrados</Badge>}
+                {totalItens > 0 && <Badge variant="secondary" className="text-[10px]">{totalItens} {tipoEstrutura === 'lotes' ? 'itens em lotes' : 'itens'} encontrados</Badge>}
                 {extracted.vigencia_meses != null && <Badge variant="secondary" className="text-[10px]">{extracted.vigencia_meses} meses</Badge>}
               </div>
             </div>
