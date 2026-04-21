@@ -8,10 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, FolderOpen, FileText, Calculator, Sparkles, Scale, Briefcase,
-  ClipboardList, History, ExternalLink, Building2, Calendar, DollarSign, MapPin, Loader2
+  ClipboardList, History, ExternalLink, Building2, Calendar, DollarSign, MapPin, Loader2, Archive
 } from 'lucide-react';
 import AnexosManager from '@/components/workspace/AnexosManager';
 import DocumentosManager from '@/components/workspace/DocumentosManager';
+import { useProcessoWorkspace } from '@/hooks/useProcessoWorkspace';
+import { exportarPastaZip } from '@/components/workspace/exportarPasta';
 
 interface Licitacao {
   id: string; numero: string | null; orgao: string | null; objeto: string | null;
