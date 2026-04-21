@@ -344,19 +344,35 @@ export default function GestaoContratos() {
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Cadastrar {isAtaForm ? 'ATA SRP' : 'Contrato Administrativo'}</DialogTitle></DialogHeader>
 
-            <div className="mt-3 p-3 rounded-lg border border-border bg-muted/20">
-              <Label className="text-xs">Tipo de Documento *</Label>
-              <Select value={form.tipo_documento} onValueChange={(v: 'contrato' | 'ata_srp') => setForm(f => ({ ...f, tipo_documento: v, ata_srp_id: v === 'ata_srp' ? '' : f.ata_srp_id }))}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="contrato">Contrato Administrativo</SelectItem>
-                  <SelectItem value="ata_srp">ATA SRP — Sistema de Registro de Preços</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-muted-foreground mt-2">
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-lg border border-border bg-muted/20">
+              <div>
+                <Label className="text-xs">Tipo de Documento *</Label>
+                <Select value={form.tipo_documento} onValueChange={(v: 'contrato' | 'ata_srp') => setForm(f => ({ ...f, tipo_documento: v, ata_srp_id: v === 'ata_srp' ? '' : f.ata_srp_id }))}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="contrato">Contrato Administrativo</SelectItem>
+                    <SelectItem value="ata_srp">ATA SRP — Sistema de Registro de Preços</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Estrutura *</Label>
+                <Select value={form.tipo_estrutura} onValueChange={(v: 'itens' | 'lotes') => setForm(f => ({ ...f, tipo_estrutura: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="itens">Itens (individuais)</SelectItem>
+                    <SelectItem value="lotes">Lotes (grupos de itens)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-[11px] text-muted-foreground md:col-span-2">
                 {isAtaForm
                   ? 'A ATA SRP funciona como base de preços/quantidades. Contratos derivados (incluindo carona) consumirão seu saldo automaticamente.'
                   : 'Contrato administrativo. Pode opcionalmente vincular-se a uma ATA SRP cadastrada.'}
+                {' '}
+                {form.tipo_estrutura === 'lotes'
+                  ? 'Modo Lotes: itens serão agrupados por lote, permitindo controle de pedidos por lote.'
+                  : 'Modo Itens: cada item é gerenciado individualmente.'}
               </p>
             </div>
 
