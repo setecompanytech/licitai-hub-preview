@@ -18,6 +18,7 @@ const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', c
 const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
 
 const TIPOS_ARQUIVO: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string }> = {
+  ata_srp: { label: 'ATA SRP', color: 'bg-amber-500/10 text-amber-600' },
   contrato_original: { label: 'Contrato Original', color: 'bg-primary/10 text-primary' },
   aditivo_valor: { label: 'Aditivo de Valor', color: 'bg-success/10 text-success', isAditivo: true, tipoAditivo: 'valor' },
   aditivo_quantidade: { label: 'Aditivo de Quantidade', color: 'bg-accent/10 text-accent', isAditivo: true, tipoAditivo: 'quantidade' },
