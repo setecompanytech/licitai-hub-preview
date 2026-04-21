@@ -359,6 +359,20 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
             <DialogTitle>{editing ? 'Editar Aditivo' : 'Novo Aditivo Contratual'}</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+            <div className="sm:col-span-2">
+              <Label className="text-xs">Aditivo de qual documento? *</Label>
+              <Select value={form.alvo_id} onValueChange={onAlvoChange}>
+                <SelectTrigger><SelectValue placeholder="Selecionar Contrato ou ATA SRP" /></SelectTrigger>
+                <SelectContent>
+                  {alvosDisponiveis.map(d => (
+                    <SelectItem key={d.id} value={d.id}>{labelAlvo(d)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Os saldos e valores serão recalculados no documento selecionado.
+              </p>
+            </div>
             <div>
               <Label className="text-xs">Nº/Identificação *</Label>
               <Input value={form.numero_aditivo} onChange={(e) => setForm(f => ({ ...f, numero_aditivo: e.target.value }))} placeholder="1º Aditivo" />
@@ -374,6 +388,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                 </SelectContent>
               </Select>
             </div>
+
 
             {showValueFields(form.tipo) && (
               <>
