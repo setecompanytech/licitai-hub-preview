@@ -8,10 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, FolderOpen, FileText, Calculator, Sparkles, Scale, Briefcase,
-  ClipboardList, History, ExternalLink, Building2, Calendar, DollarSign, MapPin, Loader2
+  ClipboardList, History, ExternalLink, Building2, Calendar, DollarSign, MapPin, Loader2, Archive
 } from 'lucide-react';
 import AnexosManager from '@/components/workspace/AnexosManager';
 import DocumentosManager from '@/components/workspace/DocumentosManager';
+import { useProcessoWorkspace } from '@/hooks/useProcessoWorkspace';
+import { exportarPastaZip } from '@/components/workspace/exportarPasta';
 
 interface Licitacao {
   id: string; numero: string | null; orgao: string | null; objeto: string | null;
@@ -35,6 +37,21 @@ export default function ProcessoWorkspace() {
   const navigate = useNavigate();
   const [lic, setLic] = useState<Licitacao | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const { anexos, documentos } = useProcessoWorkspace(id || null);
+
+  const handleExportarZip = async () => {
+    if (!lic) return;
+    setExportando(true);
+    try {
+      await exportarPastaZip(lic.id, anexos, documentos, {
+        numeroProcesso: lic.numero,
+        orgao: lic.orgao,
+      });
+    } finally {
+      setExportando(false);
+    }
+  };
 
   useEffect(() => {
     if (!id || !user) return;
@@ -65,6 +82,10 @@ export default function ProcessoWorkspace() {
               <p className="text-xs text-muted-foreground truncate">{lic.objeto}</p>
             </div>
             {lic.status && <Badge variant="outline">{lic.status}</Badge>}
+            <Button size="sm" variant="outline" className="gap-2" onClick={handleExportarZip} disabled={exportando}>
+              {exportando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
+              {exportando ? 'Compactando...' : 'Exportar ZIP'}
+            </Button>
           </div>
           <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
             {lic.modalidade && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> {lic.modalidade}</span>}
@@ -111,7 +132,13 @@ export default function ProcessoWorkspace() {
 
           {/* Documentos editáveis */}
           <TabsContent value="documentos">
-            <DocumentosManager licitacaoId={lic.id} />
+            <DocumentosManager
+              licitacaoId={lic.id}
+              numeroProcesso={lic.numero}
+              orgao={lic.orgao}
+              objeto={lic.objeto}
+              cidade={lic.municipio}
+            />
           </TabsContent>
 
           {/* Anexos */}
