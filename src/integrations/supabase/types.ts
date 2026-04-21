@@ -3131,7 +3131,9 @@ export type Database = {
           contrato_id: string
           created_at: string
           descricao: string
+          descricao_lote: string | null
           id: string
+          numero_lote: string | null
           observacoes: string | null
           origem_aditivo_id: string | null
           quantidade_ata_consumida: number | null
@@ -3151,7 +3153,9 @@ export type Database = {
           contrato_id: string
           created_at?: string
           descricao: string
+          descricao_lote?: string | null
           id?: string
+          numero_lote?: string | null
           observacoes?: string | null
           origem_aditivo_id?: string | null
           quantidade_ata_consumida?: number | null
@@ -3171,7 +3175,9 @@ export type Database = {
           contrato_id?: string
           created_at?: string
           descricao?: string
+          descricao_lote?: string | null
           id?: string
+          numero_lote?: string | null
           observacoes?: string | null
           origem_aditivo_id?: string | null
           quantidade_ata_consumida?: number | null
@@ -3342,6 +3348,7 @@ export type Database = {
           saldo_remanescente: number | null
           status: string
           tipo_documento: string
+          tipo_estrutura: string
           uf: string | null
           updated_at: string
           user_id: string
@@ -3376,6 +3383,7 @@ export type Database = {
           saldo_remanescente?: number | null
           status?: string
           tipo_documento?: string
+          tipo_estrutura?: string
           uf?: string | null
           updated_at?: string
           user_id: string
@@ -3410,6 +3418,7 @@ export type Database = {
           saldo_remanescente?: number | null
           status?: string
           tipo_documento?: string
+          tipo_estrutura?: string
           uf?: string | null
           updated_at?: string
           user_id?: string
