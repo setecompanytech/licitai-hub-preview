@@ -8398,6 +8398,156 @@ export type Database = {
         }
         Relationships: []
       }
+      processo_anexos: {
+        Row: {
+          categoria: string
+          created_at: string
+          descricao: string | null
+          id: string
+          licitacao_id: string
+          metadata: Json | null
+          mime_type: string | null
+          nome_arquivo: string
+          origem: string
+          storage_path: string
+          tamanho_bytes: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          categoria?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          licitacao_id: string
+          metadata?: Json | null
+          mime_type?: string | null
+          nome_arquivo: string
+          origem?: string
+          storage_path: string
+          tamanho_bytes?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          licitacao_id?: string
+          metadata?: Json | null
+          mime_type?: string | null
+          nome_arquivo?: string
+          origem?: string
+          storage_path?: string
+          tamanho_bytes?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "processo_anexos_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      processo_documentos: {
+        Row: {
+          conteudo_html: string | null
+          conteudo_json: Json | null
+          created_at: string
+          id: string
+          licitacao_id: string
+          metadata: Json | null
+          pdf_path: string | null
+          status: string
+          tipo: string
+          titulo: string
+          updated_at: string
+          user_id: string
+          versao: number
+        }
+        Insert: {
+          conteudo_html?: string | null
+          conteudo_json?: Json | null
+          created_at?: string
+          id?: string
+          licitacao_id: string
+          metadata?: Json | null
+          pdf_path?: string | null
+          status?: string
+          tipo: string
+          titulo: string
+          updated_at?: string
+          user_id: string
+          versao?: number
+        }
+        Update: {
+          conteudo_html?: string | null
+          conteudo_json?: Json | null
+          created_at?: string
+          id?: string
+          licitacao_id?: string
+          metadata?: Json | null
+          pdf_path?: string | null
+          status?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "processo_documentos_licitacao_id_fkey"
+            columns: ["licitacao_id"]
+            isOneToOne: false
+            referencedRelation: "licitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      processo_documentos_versoes: {
+        Row: {
+          conteudo_html: string | null
+          conteudo_json: Json | null
+          created_at: string
+          documento_id: string
+          id: string
+          user_id: string
+          versao: number
+        }
+        Insert: {
+          conteudo_html?: string | null
+          conteudo_json?: Json | null
+          created_at?: string
+          documento_id: string
+          id?: string
+          user_id: string
+          versao: number
+        }
+        Update: {
+          conteudo_html?: string | null
+          conteudo_json?: Json | null
+          created_at?: string
+          documento_id?: string
+          id?: string
+          user_id?: string
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "processo_documentos_versoes_documento_id_fkey"
+            columns: ["documento_id"]
+            isOneToOne: false
+            referencedRelation: "processo_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       processos_exclusao_log: {
         Row: {
           acao: string
