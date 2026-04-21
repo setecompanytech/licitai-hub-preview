@@ -3063,6 +3063,67 @@ export type Database = {
           },
         ]
       }
+      contrato_ia_auditoria: {
+        Row: {
+          arquivo_id: string | null
+          arquivo_nome: string | null
+          campo: string
+          contrato_id: string
+          created_at: string
+          id: string
+          origem: string
+          user_id: string
+          valor_anterior: string | null
+          valor_novo: string | null
+        }
+        Insert: {
+          arquivo_id?: string | null
+          arquivo_nome?: string | null
+          campo: string
+          contrato_id: string
+          created_at?: string
+          id?: string
+          origem?: string
+          user_id: string
+          valor_anterior?: string | null
+          valor_novo?: string | null
+        }
+        Update: {
+          arquivo_id?: string | null
+          arquivo_nome?: string | null
+          campo?: string
+          contrato_id?: string
+          created_at?: string
+          id?: string
+          origem?: string
+          user_id?: string
+          valor_anterior?: string | null
+          valor_novo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contrato_ia_auditoria_arquivo_id_fkey"
+            columns: ["arquivo_id"]
+            isOneToOne: false
+            referencedRelation: "contrato_arquivos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_ia_auditoria_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "atas_srp_resumo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_ia_auditoria_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contrato_itens: {
         Row: {
           ata_item_id: string | null
