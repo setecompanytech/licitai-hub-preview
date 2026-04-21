@@ -539,6 +539,125 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
     escopo: FilePlus2,
   };
 
+  // ── Detection Dialog handlers ──────────────────────────────────────────
+  const handleDetectionIgnore = () => {
+    setDetectionOpen(false);
+    if (pendingFile) {
+      doUpload(pendingFile, uploadTipo);
+      setPendingFile(null);
+    }
+    setDetection(null);
+  };
+
+  const handleCreateLinkedRegistry = async (data: DetectionResult) => {
+    if (!user || !pendingFile || !parentContrato) return;
+    try {
+      const detectedType = data.tipo_documento_detectado;
+      const newTipoDoc: 'ata_srp' | 'contrato' = detectedType === 'ata_srp' ? 'ata_srp' : 'contrato';
+      const newRow: any = {
+        user_id: user.id,
+        empresa_id: parentContrato.empresa_id,
+        tipo_documento: newTipoDoc,
+        numero_contrato: data.numero_contrato || data.numero_ata || pendingFile.name,
+        objeto: data.objeto || null,
+        orgao: parentContrato.orgao || null,
+        valor_global_original: data.valor_global || 0,
+        valor_global: data.valor_global || 0,
+        data_inicio: data.data_inicio || null,
+        data_fim: data.data_fim || null,
+        status: 'ativo',
+      };
+      if (newTipoDoc === 'contrato' && parentTipoDocumento === 'ata_srp') {
+        newRow.ata_srp_id = parentContrato.id;
+      }
+      const { data: created, error: insErr } = await supabase
+        .from('contratos').insert(newRow).select('id').single();
+      if (insErr) throw insErr;
+
+      const ext = pendingFile.name.split('.').pop() || 'pdf';
+      const path = `${user.id}/${created.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('contratos-docs').upload(path, pendingFile);
+      if (upErr) throw upErr;
+      await supabase.from('contrato_arquivos').insert({
+        contrato_id: created.id,
+        user_id: user.id,
+        nome_arquivo: pendingFile.name,
+        storage_path: path,
+        tipo: newTipoDoc === 'ata_srp' ? 'ata_srp' : 'contrato_original',
+        tamanho_bytes: pendingFile.size,
+      } as any);
+
+      toast.success(`${newTipoDoc === 'ata_srp' ? 'ATA SRP' : 'Contrato derivado'} criado e vinculado.`);
+      setDetectionOpen(false);
+      setPendingFile(null);
+      setDetection(null);
+      loadData();
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Erro ao criar registro vinculado', { description: err.message });
+    }
+  };
+
+  const handleConfirmAditivoFromDetection = async (form: {
+    numero_aditivo: string;
+    valor_acrescimo: number;
+    valor_supressao: number;
+    quantidade_acrescimo: number;
+    quantidade_supressao: number;
+    nova_data_fim: string | null;
+    justificativa: string | null;
+    target: 'contrato' | 'ata_srp';
+  }) => {
+    if (!user || !pendingFile) return;
+    try {
+      const ext = pendingFile.name.split('.').pop() || 'pdf';
+      const path = `${user.id}/${contratoId}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('contratos-docs').upload(path, pendingFile);
+      if (upErr) throw upErr;
+
+      let tipoArq = 'aditivo_valor';
+      if ((form.valor_acrescimo + form.valor_supressao) > 0 && (form.quantidade_acrescimo + form.quantidade_supressao) > 0) tipoArq = 'aditivo_valor_quantidade';
+      else if ((form.quantidade_acrescimo + form.quantidade_supressao) > 0) tipoArq = 'aditivo_quantidade';
+      else if (form.nova_data_fim) tipoArq = 'aditivo_prazo';
+
+      await supabase.from('contrato_arquivos').insert({
+        contrato_id: contratoId,
+        user_id: user.id,
+        nome_arquivo: pendingFile.name,
+        storage_path: path,
+        tipo: tipoArq,
+        tamanho_bytes: pendingFile.size,
+      } as any);
+
+      const tipoAditivo = TIPOS_ARQUIVO[tipoArq]?.tipoAditivo || 'valor';
+      const payload: any = {
+        contrato_id: contratoId,
+        user_id: user.id,
+        numero_aditivo: form.numero_aditivo || `${aditivos.length + 1}º Aditivo`,
+        tipo: tipoAditivo,
+        valor_acrescimo: form.valor_acrescimo,
+        valor_supressao: form.valor_supressao,
+        quantidade_acrescimo: form.quantidade_acrescimo,
+        quantidade_supressao: form.quantidade_supressao,
+        nova_data_fim: form.nova_data_fim,
+        justificativa: form.justificativa,
+        referencia_tipo: form.target,
+      };
+      payload.valor_aditivo = payload.valor_acrescimo - payload.valor_supressao;
+      const { error: adtErr } = await supabase.from('contrato_aditivos').insert(payload);
+      if (adtErr) throw adtErr;
+
+      toast.success('Aditivo registrado e saldos atualizados!');
+      setDetectionOpen(false);
+      setPendingFile(null);
+      setDetection(null);
+      loadData();
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Erro ao registrar aditivo', { description: err.message });
+    }
+  };
+
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
 
   return (
