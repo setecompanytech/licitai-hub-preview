@@ -83,16 +83,23 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
 
   const loadData = async () => {
     setLoading(true);
-    const [arqRes, adtRes] = await Promise.all([
+    const [arqRes, adtRes, contratoRes] = await Promise.all([
       supabase.from('contrato_arquivos').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
       supabase.from('contrato_aditivos').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
+      supabase.from('contratos').select('id, tipo_documento, ata_srp_id, numero_contrato, orgao, empresa_id').eq('id', contratoId).maybeSingle(),
     ]);
     setArquivos((arqRes.data as any[]) || []);
     setAditivos((adtRes.data as any[]) || []);
+    setParentContrato(contratoRes.data || null);
     setLoading(false);
   };
 
   useEffect(() => { loadData(); }, [contratoId]);
+
+  const parentTipoDocumento: 'ata_srp' | 'contrato' | null =
+    parentContrato?.tipo_documento === 'ata_srp' ? 'ata_srp'
+    : parentContrato?.tipo_documento === 'contrato' ? 'contrato'
+    : null;
 
   // When upload type changes, show/hide aditivo fields
   useEffect(() => {
