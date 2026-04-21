@@ -160,7 +160,7 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
                 </DialogDescription>
               </DialogHeader>
               {(!empresa.razao_social || !empresa.cnpj) && (
-                <div className="text-xs p-3 bg-amber-500/10 border border-amber-500/30 rounded text-amber-700 flex items-start gap-2">
+                <div className="text-xs p-3 bg-warning/10 border border-warning/30 rounded text-warning flex items-start gap-2">
                   <Building2 className="w-4 h-4 mt-0.5 shrink-0" />
                   <div>
                     Cadastre os dados da sua empresa em <strong>Configurações → Empresa</strong> para preencher automaticamente os modelos.
