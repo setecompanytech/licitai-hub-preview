@@ -388,12 +388,16 @@ Deno.serve(async (req) => {
       const pncpPdfBase64 = await buscarPdfPNCP(cnpj, ano, seq);
 
       if (pncpPdfBase64) {
+        console.log(`[extrair-itens] CAMADA 2 - Chamando Claude com PDF (${(pncpPdfBase64.length / 1024).toFixed(0)} KB base64)`);
         try {
-          const resposta = await chamarClaude(
-            CLAUDE_PROMPT_ITENS,
-            { pdfBase64: pncpPdfBase64 },
-            { sistema: CLAUDE_SYSTEM_ITENS, maxTokens: 8000, cacheEphemeral: true }
-          );
+          const resposta = await Promise.race([
+            chamarClaude(
+              CLAUDE_PROMPT_ITENS,
+              { pdfBase64: pncpPdfBase64 },
+              { sistema: CLAUDE_SYSTEM_ITENS, maxTokens: 8000, cacheEphemeral: true }
+            ),
+            new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Claude timeout 90s")), 90000)),
+          ]);
 
           const dados = parsearJson(resposta);
           const rawItens: any[] = dados?.itens || [];
@@ -403,9 +407,12 @@ Deno.serve(async (req) => {
             console.log(`[extrair-itens] Claude PNCP PDF extraiu ${itens.length} itens`);
             return buildSuccessResponse(itens, "CLAUDE_PNCP_PDF");
           }
+          console.warn(`[extrair-itens] Claude retornou 0 itens válidos`);
         } catch (e) {
           console.warn("[extrair-itens] Claude PNCP PDF falhou:", String(e));
         }
+      } else {
+        console.warn("[extrair-itens] CAMADA 2 - buscarPdfPNCP retornou null, indo para CAMADA 3");
       }
     }
 
