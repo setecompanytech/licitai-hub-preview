@@ -19,6 +19,10 @@ type ItemExtraido = {
 type DadosContrato = {
   // Detecção automática do tipo de documento
   tipo_documento_detectado?: "ata_srp" | "contrato" | "aditivo" | "outro" | null;
+  // Detecção automática da estrutura (itens individuais ou lotes agrupados)
+  tipo_estrutura_detectado?: "itens" | "lotes" | null;
+  tipo_estrutura_confianca?: number | string | null;
+  tipo_estrutura_justificativa?: string | null;
   numero_contrato?: string | null;
   numero_ata?: string | null;
   objeto?: string | null;
