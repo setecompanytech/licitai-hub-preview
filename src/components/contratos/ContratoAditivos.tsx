@@ -395,11 +395,11 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
               <>
                 <div>
                   <Label className="text-xs">Valor Acréscimo (R$)</Label>
-                  <Input type="number" step="0.01" value={form.valor_acrescimo} onChange={(e) => setForm(f => ({ ...f, valor_acrescimo: e.target.value }))} placeholder="0,00" />
+                  <MoneyInput value={Number(form.valor_acrescimo) || 0} onValueChange={v => setForm(f => ({ ...f, valor_acrescimo: String(v) }))} placeholder="R$ 0,00" />
                 </div>
                 <div>
                   <Label className="text-xs">Valor Supressão (R$)</Label>
-                  <Input type="number" step="0.01" value={form.valor_supressao} onChange={(e) => setForm(f => ({ ...f, valor_supressao: e.target.value }))} placeholder="0,00" />
+                  <MoneyInput value={Number(form.valor_supressao) || 0} onValueChange={v => setForm(f => ({ ...f, valor_supressao: String(v) }))} placeholder="R$ 0,00" />
                 </div>
               </>
             )}
