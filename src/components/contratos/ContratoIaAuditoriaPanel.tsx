@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
-import { Sparkles, FileText, RefreshCw, Loader2, AlertTriangle, Calculator, ScrollText } from 'lucide-react';
+import { Sparkles, FileText, RefreshCw, Loader2, AlertTriangle, Calculator, ScrollText, Eye } from 'lucide-react';
+import EventoAuditoriaDetalheDialog from './EventoAuditoriaDetalheDialog';
 
 const CAMPO_LABELS: Record<string, string> = {
   numero_contrato: 'Nº do Contrato',
@@ -47,6 +48,7 @@ const formatVal = (campo: string, v: string | null) => {
 
 interface AuditoriaRow {
   id: string;
+  contrato_id: string;
   arquivo_id: string | null;
   arquivo_nome: string | null;
   campo: string;
@@ -60,6 +62,7 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
   const [rows, setRows] = useState<AuditoriaRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('todos');
+  const [eventoSelecionado, setEventoSelecionado] = useState<AuditoriaRow | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -97,7 +100,8 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
     return (
       <li
         key={r.id}
-        className={`border rounded-md p-3 ${isAlerta ? 'bg-destructive/10 border-destructive/40' : 'bg-muted/30'}`}
+        onClick={() => setEventoSelecionado(r)}
+        className={`border rounded-md p-3 cursor-pointer transition-colors hover:bg-accent/50 ${isAlerta ? 'bg-destructive/10 border-destructive/40 hover:bg-destructive/15' : 'bg-muted/30'}`}
       >
         <div className="flex items-start justify-between gap-2 mb-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -115,8 +119,9 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
               </span>
             )}
           </div>
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
             {new Date(r.created_at).toLocaleString('pt-BR')}
+            <Eye className="h-3 w-3 opacity-60" />
           </span>
         </div>
         <div className="text-xs grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
@@ -178,6 +183,12 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
           )}
         </TabsContent>
       </Tabs>
+
+      <EventoAuditoriaDetalheDialog
+        evento={eventoSelecionado}
+        open={!!eventoSelecionado}
+        onOpenChange={(o) => !o && setEventoSelecionado(null)}
+      />
     </Card>
   );
 }
