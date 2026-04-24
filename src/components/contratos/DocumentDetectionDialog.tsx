@@ -165,6 +165,25 @@ export default function DocumentDetectionDialog({
               {detection.data_inicio && detection.data_fim && (
                 <div>📅 Vigência: <strong>{detection.data_inicio}</strong> a <strong>{detection.data_fim}</strong></div>
               )}
+              {detection.tipo_estrutura_detectado && (
+                <div className="flex items-center gap-1.5 pt-1">
+                  🧩 Estrutura detectada:
+                  <Badge variant="outline" className="text-[10px]">
+                    {detection.tipo_estrutura_detectado === 'lotes' ? 'Lotes (agrupados)' : 'Itens (individuais)'}
+                  </Badge>
+                  {typeof detection.tipo_estrutura_confianca === 'number' && (
+                    <span className="text-[10px] text-muted-foreground">
+                      ({Math.round((detection.tipo_estrutura_confianca || 0) * 100)}% confiança)
+                    </span>
+                  )}
+                </div>
+              )}
+              {detection.tipo_estrutura_justificativa && (
+                <div className="text-[10px] text-muted-foreground italic">{detection.tipo_estrutura_justificativa}</div>
+              )}
+              {Array.isArray(detection.itens) && detection.itens.length > 0 && (
+                <div>📦 Itens extraídos: <strong>{detection.itens.length}</strong></div>
+              )}
             </div>
           </Card>
         )}
