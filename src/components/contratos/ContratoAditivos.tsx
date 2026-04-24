@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import {
   Plus, Pencil, Trash2, Loader2, FilePlus2, DollarSign, Calendar, Package, Layers
 } from 'lucide-react';
+import { MoneyInput } from '@/components/ui/money-input';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
