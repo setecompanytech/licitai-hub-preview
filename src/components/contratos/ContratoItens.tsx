@@ -16,6 +16,7 @@ import {
   Plus, Trash2, Loader2, Package, Copy, Download, Link2
 } from 'lucide-react';
 import { MoneyInput } from '@/components/ui/money-input';
+import EstruturaDocumentoCard from './EstruturaDocumentoCard';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -230,6 +231,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
 
   return (
     <div className="space-y-4">
+      <EstruturaDocumentoCard contratoId={contratoId} />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold flex items-center gap-2">

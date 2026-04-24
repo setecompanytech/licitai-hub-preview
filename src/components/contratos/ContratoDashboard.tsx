@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   DollarSign, TrendingUp, TrendingDown, Package, ShoppingCart, AlertTriangle,
-  Calendar, Percent, Loader2, Receipt, Lock, Pencil, Check, X, Layers, Sparkles
+  Calendar, Percent, Loader2, Receipt, Lock, Pencil, Check, X
 } from 'lucide-react';
 import RelatorioConsumoAtaDialog from './RelatorioConsumoAtaDialog';
 import ManutencaoAtaSrpDialog from './ManutencaoAtaSrpDialog';
@@ -121,55 +121,6 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             <p key={i.id} className="text-xs text-warning/80"><strong>{i.descricao}</strong>: saldo baixo (restam {i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo} {i.unidade})</p>
           ))}
         </div>
-      )}
-
-      {/* Estrutura detectada pela IA com opção de sobrescrever */}
-      {(c.tipo_estrutura_detectado_ia || c.tipo_estrutura) && (
-        <Card className="p-4 border border-accent/20 bg-accent/5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-start gap-2">
-              <Sparkles className="w-4 h-4 text-accent mt-0.5 shrink-0" />
-              <div className="space-y-0.5">
-                <p className="text-xs font-semibold flex items-center gap-2">
-                  Estrutura do documento
-                  <Badge variant="outline" className="text-[10px] font-normal">
-                    Atual: {c.tipo_estrutura === 'lotes' ? 'Lotes (agrupados)' : 'Itens (individuais)'}
-                  </Badge>
-                </p>
-                {c.tipo_estrutura_detectado_ia && (
-                  <p className="text-[11px] text-muted-foreground">
-                    IA detectou: <strong>{c.tipo_estrutura_detectado_ia === 'lotes' ? 'Lotes' : 'Itens'}</strong>
-                    {typeof c.tipo_estrutura_confianca === 'number' && (
-                      <> · {Math.round((c.tipo_estrutura_confianca || 0) * 100)}% confiança</>
-                    )}
-                    {c.tipo_estrutura_detectado_ia !== c.tipo_estrutura && (
-                      <span className="ml-2 text-warning font-medium">⚠ Diverge da estrutura atual</span>
-                    )}
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Layers className="w-3.5 h-3.5 text-muted-foreground" />
-              <Select
-                value={c.tipo_estrutura || 'itens'}
-                onValueChange={async (v: 'itens' | 'lotes') => {
-                  const { error } = await supabase.from('contratos').update({ tipo_estrutura: v } as any).eq('id', contratoId);
-                  if (error) { toast.error('Erro ao alterar estrutura'); return; }
-                  toast.success(`Estrutura alterada para ${v === 'lotes' ? 'Lotes' : 'Itens'}`);
-                  const res = await supabase.from('contratos').select('*').eq('id', contratoId).single();
-                  if (res.data) setData(prev => prev ? { ...prev, contrato: res.data } : prev);
-                }}
-              >
-                <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="itens">Itens</SelectItem>
-                  <SelectItem value="lotes">Lotes</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </Card>
       )}
 
       {/* Cards visíveis para todos */}
