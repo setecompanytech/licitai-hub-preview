@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { toast } from 'sonner';
 import {
   Plus, Trash2, Loader2, Package, Copy, Download, Link2
@@ -37,6 +38,8 @@ type ContratoMeta = {
 
 export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const { user } = useAuth();
+  const { isFinanceiro, isAdmin } = useMembroPermissoes();
+  const podeVerCustos = isFinanceiro || isAdmin;
   const [meta, setMeta] = useState<ContratoMeta | null>(null);
   const [itens, setItens] = useState<ContratoItem[]>([]);
   const [ataItens, setAtaItens] = useState<ContratoItem[]>([]);
