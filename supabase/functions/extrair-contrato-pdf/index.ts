@@ -158,6 +158,9 @@ function normalizeContrato(data: DadosContrato) {
 
   return {
     tipo_documento_detectado: (data.tipo_documento_detectado as string | null) ?? null,
+    tipo_estrutura_detectado: (data.tipo_estrutura_detectado as string | null) ?? null,
+    tipo_estrutura_confianca: parseNumber(data.tipo_estrutura_confianca),
+    tipo_estrutura_justificativa: cleanString(data.tipo_estrutura_justificativa),
     numero_contrato: cleanString(data.numero_contrato),
     numero_ata: cleanString(data.numero_ata),
     objeto: cleanString(data.objeto),
