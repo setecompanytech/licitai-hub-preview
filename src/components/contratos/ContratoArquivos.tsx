@@ -697,10 +697,10 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
         orgao_contratante: parentContrato.orgao_contratante || null,
         valor_global_original: data.valor_global || 0,
         valor_global: data.valor_global || 0,
-        data_assinatura: data.data_assinatura || null,
+        data_assinatura: (data as any).data_assinatura || null,
         data_inicio: data.data_inicio || null,
         data_fim: data.data_fim || null,
-        modalidade: data.modalidade || parentContrato.modalidade || null,
+        modalidade: (data as any).modalidade || parentContrato.modalidade || null,
         status: 'vigente',
       };
       if (isDerivado) newRow.ata_srp_id = parentContrato.id;
