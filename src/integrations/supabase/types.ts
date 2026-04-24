@@ -11699,6 +11699,16 @@ export type Database = {
           read_ct: number
         }[]
       }
+      relatorio_consumo_ata: {
+        Args: {
+          p_ata_id: string
+          p_data_fim?: string
+          p_data_inicio?: string
+          p_limite_detalhe?: number
+          p_offset_detalhe?: number
+        }
+        Returns: Json
+      }
       user_has_active_subscription: {
         Args: { _user_id: string }
         Returns: boolean
