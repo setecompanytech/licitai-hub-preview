@@ -3,6 +3,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -676,13 +677,13 @@ export default function PerfisAlerta() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs">Valor Mínimo (R$)</Label>
-                    <Input type="number" value={editando.valor_minimo ?? ''} className="mt-1"
-                      onChange={e => setEditando({ ...editando, valor_minimo: e.target.value ? Number(e.target.value) : null })} />
+                    <MoneyInput value={editando.valor_minimo ?? 0} className="mt-1"
+                      onValueChange={v => setEditando({ ...editando, valor_minimo: v || null })} />
                   </div>
                   <div>
                     <Label className="text-xs">Valor Máximo (R$)</Label>
-                    <Input type="number" value={editando.valor_maximo ?? ''} className="mt-1"
-                      onChange={e => setEditando({ ...editando, valor_maximo: e.target.value ? Number(e.target.value) : null })} />
+                    <MoneyInput value={editando.valor_maximo ?? 0} className="mt-1"
+                      onValueChange={v => setEditando({ ...editando, valor_maximo: v || null })} />
                   </div>
                 </div>
 
