@@ -613,7 +613,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               </div>
                               <div>
                                 <Label className="text-[11px]">Valor Unit. (R$)</Label>
-                                <Input type="number" step="0.01" value={ei.valor_unitario} onChange={e => updateExtractedItem(ei.key, 'valor_unitario', e.target.value)} className="h-8 text-xs" />
+                                <MoneyInput value={Number(ei.valor_unitario) || 0} onValueChange={v => updateExtractedItem(ei.key, 'valor_unitario', String(v))} className="h-8 text-xs" />
                               </div>
                             </div>
                           </Card>
@@ -686,7 +686,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       </div>
                       <div>
                         <Label className="text-xs">Valor Unitário (R$)</Label>
-                        <Input type="number" step="0.01" value={form.valor_unitario} onChange={e => setForm(f => ({ ...f, valor_unitario: e.target.value }))} />
+                        <MoneyInput value={Number(form.valor_unitario) || 0} onValueChange={v => setForm(f => ({ ...f, valor_unitario: String(v) }))} />
                       </div>
                     </div>
                     <div className="col-span-2">
@@ -1024,7 +1024,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               </div>
               <div>
                 <Label className="text-xs">Valor Unitário</Label>
-                <Input type="number" step="0.01" value={editForm.valor_unitario} onChange={e => setEditForm(f => ({ ...f, valor_unitario: e.target.value }))} />
+                <MoneyInput value={Number(editForm.valor_unitario) || 0} onValueChange={v => setEditForm(f => ({ ...f, valor_unitario: String(v) }))} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
