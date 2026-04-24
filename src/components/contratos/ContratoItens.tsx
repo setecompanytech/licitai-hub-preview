@@ -55,7 +55,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
 
   const loadData = async () => {
     setLoading(true);
-    const metaRes = await supabase.from('contratos').select('tipo_documento, ata_srp_id').eq('id', contratoId).maybeSingle();
+    const metaRes = await supabase.from('contratos').select('tipo_documento, ata_srp_id, tipo_estrutura').eq('id', contratoId).maybeSingle();
     const m = metaRes.data as ContratoMeta | null;
     setMeta(m);
 
@@ -132,6 +132,9 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       }
     }
 
+    const custoUnit = parseFloat(form.custo_unitario) || 0;
+    const custoTotal = qty * custoUnit;
+
     setSaving(true);
     const { error } = await supabase.from('contrato_itens').insert({
       contrato_id: contratoId,
@@ -141,6 +144,8 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       quantidade_contratada: qty,
       valor_unitario: unit,
       valor_total: total,
+      custo_unitario: custoUnit || null,
+      custo_total: custoTotal || null,
       saldo_quantitativo: qty,
       saldo_financeiro: total,
       codigo_item: form.codigo_item || null,
@@ -152,7 +157,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
     if (error) { toast.error('Erro ao salvar item', { description: error.message }); return; }
     toast.success('Item cadastrado!');
     setDialogOpen(false);
-    setForm({ descricao: '', unidade: 'UN', quantidade_contratada: '', valor_unitario: '', codigo_item: '', observacoes: '', origem_aditivo_id: '', ata_item_id: '' });
+    setForm({ descricao: '', unidade: 'UN', quantidade_contratada: '', valor_unitario: '', custo_unitario: '', codigo_item: '', observacoes: '', origem_aditivo_id: '', ata_item_id: '' });
     loadData();
   };
 
@@ -207,6 +212,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       unidade: item.unidade,
       quantidade_contratada: String(item.quantidade_contratada),
       valor_unitario: String(item.valor_unitario),
+      custo_unitario: item.custo_unitario != null ? String(item.custo_unitario) : '',
       codigo_item: item.codigo_item || '',
       observacoes: `Duplicado do item "${item.descricao}" — vinculado a aditivo`,
       origem_aditivo_id: '',
