@@ -21,8 +21,22 @@ import {
 } from 'lucide-react';
 import GerarPreNotaDialog from './GerarPreNotaDialog';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
+import { MoneyInput } from '@/components/ui/money-input';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+/** Editor monetário inline: salva ao perder o foco. */
+function CustoInlineEditor({ initialValue, onSave }: { initialValue: number; onSave: (v: number) => void }) {
+  const [val, setVal] = useState<number>(initialValue);
+  return (
+    <MoneyInput
+      value={val}
+      onValueChange={setVal}
+      onBlur={() => onSave(val)}
+      className="h-7 w-28 text-xs"
+    />
+  );
+}
 
 type ContratoItem = { id: string; descricao: string; unidade: string; valor_unitario: number; origem_aditivo_id: string | null };
 type AditivoRef = { id: string; numero_aditivo: string; tipo: string };
