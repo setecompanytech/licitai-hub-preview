@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -370,7 +371,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
             {cfgTipo === 'valor_fixo' ? (
               <div>
                 <Label>Valor Fixo (R$)</Label>
-                <Input type="number" value={cfgValorFixo} onChange={e => setCfgValorFixo(e.target.value)} placeholder="0.00" />
+                <MoneyInput value={Number(cfgValorFixo) || 0} onValueChange={v => setCfgValorFixo(String(v))} placeholder="R$ 0,00" />
               </div>
             ) : (
               <div>
@@ -421,7 +422,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Valor Base (R$) *</Label>
-                <Input type="number" value={lancValorBase} onChange={e => setLancValorBase(e.target.value)} placeholder="0.00" />
+                <MoneyInput value={Number(lancValorBase) || 0} onValueChange={v => setLancValorBase(String(v))} placeholder="R$ 0,00" />
               </div>
               <div>
                 <Label>Desconto Oferta (%)</Label>

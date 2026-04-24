@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { MoneyInput } from '@/components/ui/money-input';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -232,7 +233,7 @@ export default function Boletos() {
             <div className="space-y-3 mt-2">
               <div className="grid grid-cols-2 gap-3">
                 <div><Label className="text-xs">Nº Documento</Label><Input value={form.numero_documento} onChange={e => setForm(f => ({ ...f, numero_documento: e.target.value }))} /></div>
-                <div><Label className="text-xs">Valor (R$) *</Label><Input type="number" step="0.01" value={form.valor_nominal} onChange={e => setForm(f => ({ ...f, valor_nominal: e.target.value }))} /></div>
+                <div><Label className="text-xs">Valor (R$) *</Label><MoneyInput value={Number(form.valor_nominal) || 0} onValueChange={v => setForm(f => ({ ...f, valor_nominal: String(v) }))} /></div>
               </div>
               <div><Label className="text-xs">Vencimento *</Label><Input type="date" value={form.data_vencimento} onChange={e => setForm(f => ({ ...f, data_vencimento: e.target.value }))} /></div>
               <div className="border-t pt-3 mt-2"><p className="text-xs font-semibold mb-2">Dados do Sacado (Pagador)</p></div>

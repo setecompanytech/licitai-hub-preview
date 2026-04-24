@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -149,9 +150,9 @@ export default function FinComissoes() {
                 <div className="col-span-2"><Label>Nome do Comissionado *</Label><Input value={form.nome_comissionado} onChange={e => setForm(f => ({ ...f, nome_comissionado: e.target.value }))} /></div>
                 <div><Label>Tipo Origem</Label><Select value={form.tipo_origem} onValueChange={v => setForm(f => ({ ...f, tipo_origem: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="contrato_licitacao">Contrato/Licitação</SelectItem><SelectItem value="servico">Serviço</SelectItem><SelectItem value="indicacao">Indicação</SelectItem><SelectItem value="meta">Meta</SelectItem><SelectItem value="manual">Manual</SelectItem></SelectContent></Select></div>
                 <div><Label>Ref. Contrato</Label><Input value={form.contrato_ref} onChange={e => setForm(f => ({ ...f, contrato_ref: e.target.value }))} /></div>
-                <div><Label>Valor Base (R$)</Label><Input type="number" step="0.01" value={form.valor_base} onChange={e => setForm(f => ({ ...f, valor_base: e.target.value }))} /></div>
+                <div><Label>Valor Base (R$)</Label><MoneyInput value={Number(form.valor_base) || 0} onValueChange={v => setForm(f => ({ ...f, valor_base: String(v) }))} /></div>
                 <div><Label>Percentual (%)</Label><Input type="number" step="0.01" value={form.percentual} onChange={e => setForm(f => ({ ...f, percentual: e.target.value }))} /></div>
-                <div><Label>Valor Comissão (R$) *</Label><Input type="number" step="0.01" value={form.valor_comissao} onChange={e => setForm(f => ({ ...f, valor_comissao: e.target.value }))} /></div>
+                <div><Label>Valor Comissão (R$) *</Label><MoneyInput value={Number(form.valor_comissao) || 0} onValueChange={v => setForm(f => ({ ...f, valor_comissao: String(v) }))} /></div>
                 <div><Label>Data Competência</Label><Input type="date" value={form.data_competencia} onChange={e => setForm(f => ({ ...f, data_competencia: e.target.value }))} /></div>
                 <div className="col-span-2"><Label>Observações</Label><Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} /></div>
               </div>

@@ -3,6 +3,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -399,7 +400,7 @@ export default function HistoricoLicitacoes() {
             </div>
             <div className="space-y-2">
               <Label>Valor Adjudicado (R$)</Label>
-              <Input type="number" step="0.01" value={editValorAdj} onChange={e => setEditValorAdj(e.target.value)} placeholder="0.00" />
+              <MoneyInput value={Number(editValorAdj) || 0} onValueChange={v => setEditValorAdj(String(v))} placeholder="R$ 0,00" />
             </div>
             <div className="space-y-2">
               <Label>Data de Homologação</Label>

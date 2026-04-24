@@ -21,8 +21,22 @@ import {
 } from 'lucide-react';
 import GerarPreNotaDialog from './GerarPreNotaDialog';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
+import { MoneyInput } from '@/components/ui/money-input';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+/** Editor monetário inline: salva ao perder o foco. */
+function CustoInlineEditor({ initialValue, onSave }: { initialValue: number; onSave: (v: number) => void }) {
+  const [val, setVal] = useState<number>(initialValue);
+  return (
+    <MoneyInput
+      value={val}
+      onValueChange={setVal}
+      onBlur={() => onSave(val)}
+      className="h-7 w-28 text-xs"
+    />
+  );
+}
 
 type ContratoItem = { id: string; descricao: string; unidade: string; valor_unitario: number; origem_aditivo_id: string | null };
 type AditivoRef = { id: string; numero_aditivo: string; tipo: string };
@@ -599,7 +613,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               </div>
                               <div>
                                 <Label className="text-[11px]">Valor Unit. (R$)</Label>
-                                <Input type="number" step="0.01" value={ei.valor_unitario} onChange={e => updateExtractedItem(ei.key, 'valor_unitario', e.target.value)} className="h-8 text-xs" />
+                                <MoneyInput value={Number(ei.valor_unitario) || 0} onValueChange={v => updateExtractedItem(ei.key, 'valor_unitario', String(v))} className="h-8 text-xs" />
                               </div>
                             </div>
                           </Card>
@@ -672,7 +686,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       </div>
                       <div>
                         <Label className="text-xs">Valor Unitário (R$)</Label>
-                        <Input type="number" step="0.01" value={form.valor_unitario} onChange={e => setForm(f => ({ ...f, valor_unitario: e.target.value }))} />
+                        <MoneyInput value={Number(form.valor_unitario) || 0} onValueChange={v => setForm(f => ({ ...f, valor_unitario: String(v) }))} />
                       </div>
                     </div>
                     <div className="col-span-2">
@@ -764,13 +778,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     </TableCell>
                     {podeVerCustos && (
                       <TableCell className="text-xs text-right">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          className="h-7 w-20 text-xs text-right inline-block"
-                          defaultValue={(p as any).custo_unitario || 0}
-                          onBlur={async (e) => {
-                            const custo = parseFloat(e.target.value) || 0;
+                        <CustoInlineEditor
+                          initialValue={(p as any).custo_unitario || 0}
+                          onSave={async (custo) => {
                             if (custo !== ((p as any).custo_unitario || 0)) {
                               await supabase.from('contrato_pedidos').update({ custo_unitario: custo } as any).eq('id', p.id);
                               load();
@@ -876,12 +886,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
               <div>
                 <Label>Valor Pago (R$) *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={nfValorPago}
-                  onChange={e => setNfValorPago(e.target.value)}
-                  placeholder="0,00"
+                <MoneyInput
+                  value={Number(nfValorPago) || 0}
+                  onValueChange={(v) => setNfValorPago(String(v))}
+                  placeholder="R$ 0,00"
                 />
               </div>
 
@@ -1016,7 +1024,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               </div>
               <div>
                 <Label className="text-xs">Valor Unitário</Label>
-                <Input type="number" step="0.01" value={editForm.valor_unitario} onChange={e => setEditForm(f => ({ ...f, valor_unitario: e.target.value }))} />
+                <MoneyInput value={Number(editForm.valor_unitario) || 0} onValueChange={v => setEditForm(f => ({ ...f, valor_unitario: String(v) }))} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
