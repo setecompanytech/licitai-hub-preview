@@ -229,6 +229,9 @@ serve(async (req) => {
                 type: "object",
                 properties: {
                   tipo_documento_detectado: { type: "string", enum: ["ata_srp", "contrato", "aditivo", "outro"], description: "Classificação do documento" },
+                  tipo_estrutura_detectado: { type: "string", enum: ["itens", "lotes"], description: "Detecção: documento estruturado por LOTES (agrupamentos) ou ITENS individuais." },
+                  tipo_estrutura_confianca: { type: "number", description: "Confiança da detecção da estrutura, de 0.0 a 1.0." },
+                  tipo_estrutura_justificativa: { type: "string", description: "Justificativa curta da detecção (ex: 'Documento contém marcadores LOTE 01, LOTE 02')." },
                   numero_contrato: { type: "string", description: "Número do contrato (apenas para contratos)" },
                   numero_ata: { type: "string", description: "Número da ATA SRP (apenas para ATAs)" },
                   objeto: { type: "string", description: "Objeto exatamente como no documento" },
