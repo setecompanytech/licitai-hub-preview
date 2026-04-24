@@ -61,6 +61,7 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
   const [rows, setRows] = useState<AuditoriaRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('todos');
+  const [eventoSelecionado, setEventoSelecionado] = useState<AuditoriaRow | null>(null);
 
   const load = async () => {
     setLoading(true);
