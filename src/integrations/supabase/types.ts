@@ -11466,6 +11466,15 @@ export type Database = {
       }
     }
     Functions: {
+      aplicar_vinculo_ata: {
+        Args: {
+          p_ata_id?: string
+          p_ata_item_id?: string
+          p_contrato_id?: string
+          p_contrato_item_id?: string
+        }
+        Returns: Json
+      }
       busca_diarios_instantanea: {
         Args: {
           p_data_fim?: string
@@ -11699,6 +11708,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      recalcular_saldos_atas_srp: { Args: { p_ata_id?: string }; Returns: Json }
       relatorio_consumo_ata: {
         Args: {
           p_ata_id: string
@@ -11707,6 +11717,10 @@ export type Database = {
           p_limite_detalhe?: number
           p_offset_detalhe?: number
         }
+        Returns: Json
+      }
+      relatorio_orfaos_ata_srp: {
+        Args: { p_ata_id?: string; p_limite?: number }
         Returns: Json
       }
       user_has_active_subscription: {

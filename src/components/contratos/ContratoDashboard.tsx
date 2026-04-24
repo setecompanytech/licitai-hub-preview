@@ -13,6 +13,7 @@ import {
   Calendar, Percent, Loader2, Receipt, Lock, Pencil, Check, X, Layers, Sparkles
 } from 'lucide-react';
 import RelatorioConsumoAtaDialog from './RelatorioConsumoAtaDialog';
+import ManutencaoAtaSrpDialog from './ManutencaoAtaSrpDialog';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -107,7 +108,8 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
   return (
     <div className="space-y-5">
       {isAtaSrp && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <ManutencaoAtaSrpDialog ataId={contratoId} ataNumero={c.numero_ata || c.numero_contrato} />
           <RelatorioConsumoAtaDialog ataId={contratoId} ataNumero={c.numero_ata || c.numero_contrato} />
         </div>
       )}
