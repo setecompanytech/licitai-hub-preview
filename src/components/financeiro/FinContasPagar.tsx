@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -302,7 +303,7 @@ export default function FinContasPagar() {
           <div className="grid gap-4">
             <div><Label>Favorecido *</Label><Input value={form.favorecido_nome} onChange={e => setForm({ ...form, favorecido_nome: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Valor (R$) *</Label><Input value={form.valor_documento} onChange={e => setForm({ ...form, valor_documento: e.target.value })} placeholder="1500,00" /></div>
+              <div><Label>Valor (R$) *</Label><MoneyInput value={Number(form.valor_documento) || 0} onValueChange={v => setForm({ ...form, valor_documento: String(v) })} /></div>
               <div><Label>Vencimento *</Label><Input type="date" value={form.data_vencimento} onChange={e => setForm({ ...form, data_vencimento: e.target.value })} /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -343,7 +344,7 @@ export default function FinContasPagar() {
               <p className="text-sm font-medium">{payItem.favorecido_nome || payItem.numero_documento}</p>
               <p className="text-lg font-bold">{fmt(payItem.valor_documento)}</p>
               <div><Label>Data do Pagamento *</Label><Input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} /></div>
-              <div><Label>Valor Pago (R$)</Label><Input value={payValue} onChange={e => setPayValue(e.target.value)} /></div>
+              <div><Label>Valor Pago (R$)</Label><MoneyInput value={Number(payValue) || 0} onValueChange={v => setPayValue(String(v))} /></div>
               <div>
                 <Label>Conta de Saída</Label>
                 <Select value={payContaId} onValueChange={setPayContaId}>

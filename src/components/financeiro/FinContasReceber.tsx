@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -243,7 +244,7 @@ export default function FinContasReceber() {
           <div className="grid gap-4">
             <div><Label>Cliente *</Label><Input value={form.cliente_nome} onChange={e => setForm({ ...form, cliente_nome: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Valor (R$) *</Label><Input value={form.valor_documento} onChange={e => setForm({ ...form, valor_documento: e.target.value })} /></div>
+              <div><Label>Valor (R$) *</Label><MoneyInput value={Number(form.valor_documento) || 0} onValueChange={v => setForm({ ...form, valor_documento: String(v) })} /></div>
               <div><Label>Vencimento *</Label><Input type="date" value={form.data_vencimento} onChange={e => setForm({ ...form, data_vencimento: e.target.value })} /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -272,7 +273,7 @@ export default function FinContasReceber() {
               <p className="text-sm font-medium">{recItem.cliente_nome}</p>
               <p className="text-lg font-bold">{fmt(recItem.valor_documento)}</p>
               <div><Label>Data *</Label><Input type="date" value={recDate} onChange={e => setRecDate(e.target.value)} /></div>
-              <div><Label>Valor Recebido</Label><Input value={recValue} onChange={e => setRecValue(e.target.value)} /></div>
+              <div><Label>Valor Recebido</Label><MoneyInput value={Number(recValue) || 0} onValueChange={v => setRecValue(String(v))} /></div>
               <div><Label>Conta de Entrada</Label><Select value={recContaId} onValueChange={setRecContaId}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{contasBanc.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent></Select></div>
             </div>
           )}
