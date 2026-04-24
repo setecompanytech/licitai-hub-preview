@@ -12,6 +12,7 @@ import {
   DollarSign, TrendingUp, TrendingDown, Package, ShoppingCart, AlertTriangle,
   Calendar, Percent, Loader2, Receipt, Lock, Pencil, Check, X, Layers, Sparkles
 } from 'lucide-react';
+import RelatorioConsumoAtaDialog from './RelatorioConsumoAtaDialog';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -101,8 +102,15 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
   const margemBruta = faturamento > 0 ? (lucroBruto / faturamento) * 100 : 0;
   const margemLiquida = faturamento > 0 ? (lucroLiquido / faturamento) * 100 : 0;
 
+  const isAtaSrp = c.tipo_documento === 'ata_srp';
+
   return (
     <div className="space-y-5">
+      {isAtaSrp && (
+        <div className="flex justify-end">
+          <RelatorioConsumoAtaDialog ataId={contratoId} ataNumero={c.numero_ata || c.numero_contrato} />
+        </div>
+      )}
       {(itensAlertaSaldo.length > 0 || (diasRestantes !== null && diasRestantes <= 60)) && (
         <div className="bg-warning/5 border border-warning/30 rounded-xl p-4 space-y-2">
           <h4 className="text-xs font-semibold text-warning flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> Alertas</h4>
