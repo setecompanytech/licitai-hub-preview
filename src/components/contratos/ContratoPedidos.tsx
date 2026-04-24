@@ -764,13 +764,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     </TableCell>
                     {podeVerCustos && (
                       <TableCell className="text-xs text-right">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          className="h-7 w-20 text-xs text-right inline-block"
-                          defaultValue={(p as any).custo_unitario || 0}
-                          onBlur={async (e) => {
-                            const custo = parseFloat(e.target.value) || 0;
+                        <CustoInlineEditor
+                          initialValue={(p as any).custo_unitario || 0}
+                          onSave={async (custo) => {
                             if (custo !== ((p as any).custo_unitario || 0)) {
                               await supabase.from('contrato_pedidos').update({ custo_unitario: custo } as any).eq('id', p.id);
                               load();
@@ -876,12 +872,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
               <div>
                 <Label>Valor Pago (R$) *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={nfValorPago}
-                  onChange={e => setNfValorPago(e.target.value)}
-                  placeholder="0,00"
+                <MoneyInput
+                  value={Number(nfValorPago) || 0}
+                  onValueChange={(v) => setNfValorPago(String(v))}
+                  placeholder="R$ 0,00"
                 />
               </div>
 
