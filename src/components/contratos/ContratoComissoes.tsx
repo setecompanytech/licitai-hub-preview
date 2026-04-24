@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { MoneyInput } from '@/components/ui/money-input';
 import {
   DollarSign, Plus, Settings, Receipt, CheckCircle2, Clock, XCircle, Loader2, Eye, EyeOff
 } from 'lucide-react';
@@ -334,7 +335,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
               </Select>
             </div>
             {cfgTipo === 'valor_fixo' ? (
-              <div><Label>Valor Fixo (R$)</Label><Input type="number" value={cfgValorFixo} onChange={e => setCfgValorFixo(e.target.value)} /></div>
+              <div><Label>Valor Fixo (R$)</Label><MoneyInput value={Number(cfgValorFixo) || 0} onValueChange={v => setCfgValorFixo(String(v))} /></div>
             ) : (
               <div><Label>Percentual (%)</Label><Input type="number" step="0.1" value={cfgPercentual} onChange={e => setCfgPercentual(e.target.value)} /></div>
             )}
@@ -378,7 +379,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
             </div>
             <div>
               <Label>Valor Base (R$) *</Label>
-              <Input type="number" step="0.01" value={solValorBase} onChange={e => setSolValorBase(e.target.value)} placeholder="0,00" />
+              <MoneyInput value={Number(solValorBase) || 0} onValueChange={v => setSolValorBase(String(v))} placeholder="R$ 0,00" />
             </div>
             <div>
               <Label>Nº Nota Fiscal</Label>
