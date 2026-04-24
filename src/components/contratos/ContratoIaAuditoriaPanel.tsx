@@ -48,6 +48,7 @@ const formatVal = (campo: string, v: string | null) => {
 
 interface AuditoriaRow {
   id: string;
+  contrato_id: string;
   arquivo_id: string | null;
   arquivo_nome: string | null;
   campo: string;
