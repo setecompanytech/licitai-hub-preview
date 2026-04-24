@@ -10,6 +10,19 @@ import { AlertTriangle, CheckCircle2, FileText, Loader2 } from 'lucide-react';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
+export type ExtractedItem = {
+  codigo_item?: string | null;
+  descricao?: string | null;
+  unidade?: string | null;
+  quantidade?: number | null;
+  valor_unitario?: number | null;
+  valor_total?: number | null;
+  custo_unitario?: number | null;
+  custo_total?: number | null;
+  numero_lote?: string | null;
+  descricao_lote?: string | null;
+};
+
 export type DetectionResult = {
   tipo_documento_detectado?: 'ata_srp' | 'contrato' | 'aditivo' | 'outro' | null;
   numero_contrato?: string | null;
@@ -18,6 +31,11 @@ export type DetectionResult = {
   valor_global?: number | null;
   data_inicio?: string | null;
   data_fim?: string | null;
+  /** Estrutura detectada pela IA: itens individuais ou agrupados por lote */
+  tipo_estrutura_detectado?: 'itens' | 'lotes' | null;
+  tipo_estrutura_confianca?: number | null;
+  tipo_estrutura_justificativa?: string | null;
+  itens?: ExtractedItem[] | null;
   aditivo?: {
     numero_aditivo?: string | null;
     tipo_aditivo?: string | null;
