@@ -182,6 +182,12 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
           )}
         </TabsContent>
       </Tabs>
+
+      <EventoAuditoriaDetalheDialog
+        evento={eventoSelecionado}
+        open={!!eventoSelecionado}
+        onOpenChange={(o) => !o && setEventoSelecionado(null)}
+      />
     </Card>
   );
 }
