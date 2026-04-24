@@ -23,6 +23,8 @@ type ContratoItem = {
   quantidade_consumida: number; saldo_quantitativo: number; saldo_financeiro: number;
   codigo_item: string | null; observacoes: string | null; origem_aditivo_id: string | null;
   ata_item_id: string | null; quantidade_ata_consumida: number | null;
+  custo_unitario?: number | null; custo_total?: number | null;
+  numero_lote?: string | null; descricao_lote?: string | null;
 };
 
 type Aditivo = { id: string; numero_aditivo: string; tipo: string; };
@@ -30,6 +32,7 @@ type Aditivo = { id: string; numero_aditivo: string; tipo: string; };
 type ContratoMeta = {
   tipo_documento: 'contrato' | 'ata_srp' | string;
   ata_srp_id: string | null;
+  tipo_estrutura?: 'itens' | 'lotes' | string | null;
 };
 
 export default function ContratoItens({ contratoId }: { contratoId: string }) {
@@ -44,7 +47,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     descricao: '', unidade: 'UN', quantidade_contratada: '',
-    valor_unitario: '', codigo_item: '', observacoes: '', origem_aditivo_id: '',
+    valor_unitario: '', custo_unitario: '', codigo_item: '', observacoes: '', origem_aditivo_id: '',
     ata_item_id: '',
   });
 
