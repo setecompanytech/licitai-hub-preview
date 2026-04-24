@@ -118,8 +118,9 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
               </span>
             )}
           </div>
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
             {new Date(r.created_at).toLocaleString('pt-BR')}
+            <Eye className="h-3 w-3 opacity-60" />
           </span>
         </div>
         <div className="text-xs grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
