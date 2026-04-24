@@ -14,6 +14,8 @@ const fmtDate = (d?: string | null) => d ? new Date(d).toLocaleDateString('pt-BR
 
 type Props = { ataId: string; ataNumero?: string | null };
 
+const PAGE_SIZE = 500;
+
 export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -23,118 +25,83 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
   const [dataFim, setDataFim] = useState(hoje);
 
   async function carregarDados() {
-    // 1) ATA (mãe) e seus itens
-    const [ataRes, ataItensRes] = await Promise.all([
-      supabase.from('contratos').select('id, numero_contrato, numero_ata, objeto, orgao_contratante, valor_global, valor_global_original, valor_consumido, data_assinatura, data_fim').eq('id', ataId).single(),
-      supabase.from('contrato_itens').select('*').eq('contrato_id', ataId),
-    ]);
-    if (ataRes.error || !ataRes.data) throw new Error('ATA não encontrada');
+    // Agregação 100% no banco via RPC (resumo + saldos numa chamada; detalhe paginado se >PAGE_SIZE)
+    let offset = 0;
+    let detalhe: any[] = [];
+    let primeira: any = null;
 
-    // 2) Contratos derivados no período (filtra por data_assinatura)
-    const { data: derivados, error: errDeriv } = await supabase
-      .from('contratos')
-      .select('id, numero_contrato, orgao_contratante, data_assinatura, data_inicio, data_fim, valor_global, status')
-      .eq('ata_srp_id', ataId)
-      .eq('tipo_documento', 'contrato')
-      .gte('data_assinatura', dataInicio)
-      .lte('data_assinatura', dataFim);
-    if (errDeriv) throw errDeriv;
-
-    const derivIds = (derivados || []).map(d => d.id);
-
-    // 3) Itens dos contratos derivados
-    let itensDerivados: any[] = [];
-    if (derivIds.length) {
-      const { data, error } = await supabase
-        .from('contrato_itens')
-        .select('*')
-        .in('contrato_id', derivIds);
+    while (true) {
+      const { data, error } = await supabase.rpc('relatorio_consumo_ata' as any, {
+        p_ata_id: ataId,
+        p_data_inicio: dataInicio,
+        p_data_fim: dataFim,
+        p_limite_detalhe: PAGE_SIZE,
+        p_offset_detalhe: offset,
+      });
       if (error) throw error;
-      itensDerivados = data || [];
+      const payload: any = data;
+      if (!payload?.ata) throw new Error('ATA não encontrada');
+      if (!primeira) primeira = payload;
+      const pagina: any[] = payload.detalhe_itens || [];
+      detalhe = detalhe.concat(pagina);
+      const total = Number(payload.total_detalhe || 0);
+      offset += pagina.length;
+      if (pagina.length < PAGE_SIZE || offset >= total) break;
     }
 
-    // 4) Auditoria IA — busca vínculos criados/sobrescritos por IA ou manual
-    const { data: auditoria } = await supabase
-      .from('contrato_ia_auditoria')
-      .select('contrato_id, campo, origem, valor_novo')
-      .eq('contrato_id', ataId)
-      .in('origem', ['ia_match_ata', 'manual_override', 'recalculo_saldo']);
-
     return {
-      ata: ataRes.data,
-      ataItens: (ataItensRes.data as any[]) || [],
-      derivados: derivados || [],
-      itensDerivados,
-      auditoria: auditoria || [],
+      ata: primeira.ata,
+      resumoContratos: primeira.resumo_contratos || [],
+      detalheItens: detalhe,
+      saldos: primeira.saldos || [],
+      totalDetalhe: primeira.total_detalhe || detalhe.length,
     };
   }
 
-  function classificarOrigem(item: any, auditoria: any[]): 'IA' | 'Manual' | 'Override' | 'Sem vínculo' {
-    if (!item.ata_item_id) return 'Sem vínculo';
-    // Heurística: se há registro de override manual no log, marca Override; senão IA por padrão (matches são feitos por IA no fluxo automático)
-    const overrides = auditoria.some(a => a.origem === 'manual_override' && a.valor_novo?.includes?.(item.id));
-    if (overrides) return 'Override';
-    return 'IA';
-  }
-
-  function montarLinhas(dados: Awaited<ReturnType<typeof carregarDados>>) {
-    const ataItensMap = new Map(dados.ataItens.map(i => [i.id, i]));
-    const derivMap = new Map(dados.derivados.map(d => [d.id, d]));
-
-    // Linhas: uma por item de contrato derivado vinculado
-    const linhas = dados.itensDerivados.map(it => {
-      const ataItem: any = it.ata_item_id ? ataItensMap.get(it.ata_item_id) : null;
-      const contrato: any = derivMap.get(it.contrato_id);
-      const origem = classificarOrigem(it, dados.auditoria);
-      return {
-        contrato_numero: contrato?.numero_contrato || '—',
-        orgao: contrato?.orgao_contratante || '—',
-        data_assinatura: contrato?.data_assinatura || null,
-        item_descricao: it.descricao || '—',
-        ata_item_descricao: ataItem?.descricao || (it.ata_item_id ? '(item removido)' : '—'),
-        unidade: it.unidade || ataItem?.unidade || '—',
-        qtd_consumida: Number(it.quantidade_contratada || 0),
-        valor_unitario: Number(it.valor_unitario || 0),
-        valor_total: Number(it.valor_total || 0),
-        origem_vinculo: origem,
-        similaridade: '—',
-        motivo: it.ata_item_id ? 'vinculado' : 'sem_vinculo',
-      };
-    });
-
-    // Resumo agregado por contrato derivado
-    const porContrato = new Map<string, { numero: string; orgao: string; data: string | null; qtd_itens: number; valor_total: number; ia: number; override: number; manual: number; sem: number }>();
-    for (const l of linhas) {
-      const key = l.contrato_numero;
-      const cur = porContrato.get(key) || { numero: l.contrato_numero, orgao: l.orgao, data: l.data_assinatura, qtd_itens: 0, valor_total: 0, ia: 0, override: 0, manual: 0, sem: 0 };
-      cur.qtd_itens += 1;
-      cur.valor_total += l.valor_total;
-      if (l.origem_vinculo === 'IA') cur.ia += 1;
-      else if (l.origem_vinculo === 'Override') cur.override += 1;
-      else if (l.origem_vinculo === 'Manual') cur.manual += 1;
-      else cur.sem += 1;
-      porContrato.set(key, cur);
-    }
-
-    // Saldos por item da ATA
-    const saldos = dados.ataItens.map(ai => ({
-      descricao: ai.descricao,
-      unidade: ai.unidade || '—',
-      qtd_total: Number(ai.quantidade_contratada || 0),
-      qtd_consumida: Number(ai.quantidade_ata_consumida || 0),
-      saldo_qtd: Math.max(Number(ai.quantidade_contratada || 0) - Number(ai.quantidade_ata_consumida || 0), 0),
-      valor_total: Number(ai.valor_total || 0),
-      saldo_financeiro: Number(ai.saldo_financeiro || 0),
+  function mapearLinhas(dados: Awaited<ReturnType<typeof carregarDados>>) {
+    const linhas = dados.detalheItens.map((l: any) => ({
+      contrato_numero: l.contrato_numero || '—',
+      orgao: l.orgao || '—',
+      data_assinatura: l.data_assinatura,
+      item_descricao: l.item_descricao || '—',
+      ata_item_descricao: l.ata_item_descricao || '—',
+      unidade: l.unidade || '—',
+      qtd_consumida: Number(l.qtd_consumida || 0),
+      valor_unitario: Number(l.valor_unitario || 0),
+      valor_total: Number(l.valor_total || 0),
+      origem_vinculo: l.origem_vinculo || 'Sem vínculo',
+      similaridade: '—',
+      motivo: l.motivo || 'sem_vinculo',
     }));
-
-    return { linhas, porContrato: Array.from(porContrato.values()), saldos };
+    const porContrato = dados.resumoContratos.map((c: any) => ({
+      numero: c.numero || '—',
+      orgao: c.orgao || '—',
+      data: c.data_assinatura,
+      qtd_itens: Number(c.qtd_itens || 0),
+      valor_total: Number(c.valor_total || 0),
+      ia: Number(c.ia || 0),
+      override: Number(c.override || 0),
+      manual: Number(c.manual || 0),
+      sem: Number(c.sem || 0),
+    }));
+    const saldos = dados.saldos.map((s: any) => ({
+      descricao: s.descricao,
+      unidade: s.unidade || '—',
+      qtd_total: Number(s.qtd_total || 0),
+      qtd_consumida: Number(s.qtd_consumida || 0),
+      saldo_qtd: Number(s.saldo_qtd || 0),
+      valor_total: Number(s.valor_total || 0),
+      saldo_financeiro: Number(s.saldo_financeiro || 0),
+    }));
+    return { linhas, porContrato, saldos };
   }
 
   async function exportar(formato: 'pdf' | 'csv') {
     setLoading(true);
+    const t0 = performance.now();
     try {
       const dados = await carregarDados();
-      const { linhas, porContrato, saldos } = montarLinhas(dados);
+      const { linhas, porContrato, saldos } = mapearLinhas(dados);
 
       if (linhas.length === 0 && porContrato.length === 0) {
         toast.warning('Nenhum contrato derivado encontrado no período selecionado.');
@@ -147,9 +114,7 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
       const ataLabel = ataNumero || dados.ata.numero_ata || dados.ata.numero_contrato || ataId.slice(0, 8);
       const baseFile = `consumo-ata-${String(ataLabel).replace(/[^\w]/g, '_')}-${ts}`;
 
-      // ---------- CSV ----------
       if (formato === 'csv') {
-        // Resumo por contrato
         downloadCSV(
           `${baseFile}-resumo-contratos`,
           ['Contrato', 'Órgão', 'Data Assinatura', 'Itens', 'Valor Consumido', 'Vínculos IA', 'Overrides', 'Manuais', 'Sem vínculo'],
@@ -158,7 +123,6 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
             fmt(c.valor_total), String(c.ia), String(c.override), String(c.manual), String(c.sem),
           ]),
         );
-        // Detalhe por item
         downloadCSV(
           `${baseFile}-itens-detalhe`,
           ['Contrato', 'Item Contrato', 'Item ATA', 'Unidade', 'Qtd', 'Vlr Unit.', 'Vlr Total', 'Origem Vínculo', 'Similaridade', 'Motivo'],
@@ -168,7 +132,6 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
             l.origem_vinculo, l.similaridade, l.motivo,
           ]),
         );
-        // Saldos atuais da ATA
         downloadCSV(
           `${baseFile}-saldos-ata`,
           ['Item ATA', 'Unidade', 'Qtd Total', 'Qtd Consumida', 'Saldo Qtd', 'Vlr Total', 'Saldo Financeiro'],
@@ -177,13 +140,11 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
             fmtQtd(s.saldo_qtd), fmt(s.valor_total), fmt(s.saldo_financeiro),
           ]),
         );
-        toast.success('CSVs exportados (3 arquivos).');
+        toast.success(`CSVs exportados em ${(performance.now() - t0).toFixed(0)}ms.`);
         setOpen(false);
         return;
       }
 
-      // ---------- PDF ----------
-      // Resumo
       downloadPDF(
         `${baseFile}-resumo`,
         `Consumo da ATA ${ataLabel} — ${periodoLabel}`,
@@ -193,7 +154,6 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
           fmt(c.valor_total), String(c.ia), String(c.override), String(c.manual), String(c.sem),
         ]),
       );
-      // Detalhe
       if (linhas.length) {
         downloadPDF(
           `${baseFile}-detalhe`,
@@ -209,7 +169,6 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
           ]),
         );
       }
-      // Saldos
       downloadPDF(
         `${baseFile}-saldos`,
         `Saldos Atuais da ATA ${ataLabel}`,
@@ -220,7 +179,7 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
           fmt(s.valor_total), fmt(s.saldo_financeiro),
         ]),
       );
-      toast.success('PDFs gerados (resumo, detalhe e saldos).');
+      toast.success(`PDFs gerados em ${(performance.now() - t0).toFixed(0)}ms.`);
       setOpen(false);
     } catch (e: any) {
       console.error(e);
@@ -263,6 +222,7 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
               <li>Similaridade do match e motivo do vínculo</li>
               <li>Saldos atuais (quantitativo e financeiro) da ATA</li>
             </ul>
+            <p className="text-[10px] mt-1 italic">Otimizado: agregação no banco + paginação ({PAGE_SIZE}/req) + índices.</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Button onClick={() => exportar('pdf')} disabled={loading} variant="default" className="gap-1.5">
