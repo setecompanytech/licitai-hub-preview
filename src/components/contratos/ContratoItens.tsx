@@ -358,13 +358,16 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
             <TableHeader>
               <TableRow>
                 <TableHead className="text-xs whitespace-nowrap">Origem</TableHead>
+                {meta?.tipo_estrutura === 'lotes' && <TableHead className="text-xs whitespace-nowrap">Lote</TableHead>}
                 {isContratoComATA && <TableHead className="text-xs whitespace-nowrap">Item ATA</TableHead>}
                 <TableHead className="text-xs whitespace-nowrap">Código</TableHead>
                 <TableHead className="text-xs whitespace-nowrap">Descrição</TableHead>
                 <TableHead className="text-xs text-center whitespace-nowrap">UN</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Qtd</TableHead>
+                {podeVerCustos && <TableHead className="text-xs text-right whitespace-nowrap">Custo Unit.</TableHead>}
                 <TableHead className="text-xs text-right whitespace-nowrap">Vlr Unit.</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Total</TableHead>
+                {podeVerCustos && <TableHead className="text-xs text-right whitespace-nowrap">Custo Total</TableHead>}
                 <TableHead className="text-xs text-right whitespace-nowrap">Consumido</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Saldo Qtd</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Saldo R$</TableHead>
@@ -383,10 +386,17 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         {getOrigemLabel(item.origem_aditivo_id)}
                       </Badge>
                     </TableCell>
+                    {meta?.tipo_estrutura === 'lotes' && (
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {item.numero_lote
+                          ? <Badge variant="secondary" className="text-[10px] font-normal">Lote {item.numero_lote}</Badge>
+                          : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                    )}
                     {isContratoComATA && (
                       <TableCell className="text-xs whitespace-nowrap">
                         {item.ata_item_id ? (
-                          <Badge className="text-[10px] bg-amber-500/10 text-amber-600 font-normal">{ataItemLabel(item.ata_item_id)}</Badge>
+                          <Badge variant="outline" className="text-[10px] font-normal">{ataItemLabel(item.ata_item_id)}</Badge>
                         ) : <span className="text-muted-foreground">—</span>}
                       </TableCell>
                     )}
@@ -394,8 +404,18 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                     <TableCell className="text-xs max-w-[200px] truncate">{item.descricao}</TableCell>
                     <TableCell className="text-xs text-center whitespace-nowrap">{item.unidade}</TableCell>
                     <TableCell className="text-xs text-right whitespace-nowrap">{item.quantidade_contratada}</TableCell>
+                    {podeVerCustos && (
+                      <TableCell className="text-xs text-right whitespace-nowrap text-muted-foreground">
+                        {item.custo_unitario != null ? fmt(item.custo_unitario) : '—'}
+                      </TableCell>
+                    )}
                     <TableCell className="text-xs text-right whitespace-nowrap">{fmt(item.valor_unitario)}</TableCell>
                     <TableCell className="text-xs text-right font-medium whitespace-nowrap">{fmt(item.valor_total)}</TableCell>
+                    {podeVerCustos && (
+                      <TableCell className="text-xs text-right whitespace-nowrap text-muted-foreground">
+                        {item.custo_total != null ? fmt(item.custo_total) : '—'}
+                      </TableCell>
+                    )}
                     <TableCell className="text-xs text-right whitespace-nowrap">
                       {item.quantidade_consumida}
                       <span className="text-muted-foreground ml-1">({pct.toFixed(0)}%)</span>
