@@ -233,12 +233,17 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
         <div>
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <Package className="w-4 h-4 text-accent" /> Itens {meta?.tipo_documento === 'ata_srp' ? 'da ATA SRP' : 'do Contrato'}
+            {meta?.tipo_estrutura && (
+              <Badge variant="outline" className="text-[10px] font-normal">
+                Estrutura: {meta.tipo_estrutura === 'lotes' ? 'Lotes' : 'Itens'}
+              </Badge>
+            )}
           </h3>
           <p className="text-xs text-muted-foreground">
             Total: {fmt(totalContratado)} | Saldo: {fmt(totalSaldo)}
           </p>
           {isContratoComATA && (
-            <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+            <p className="text-[11px] text-warning mt-1 flex items-center gap-1">
               <Link2 className="w-3 h-3" /> Contrato vinculado à ATA SRP — itens devem ser selecionados da ATA de origem
             </p>
           )}
@@ -314,9 +319,15 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                   <Input type="number" value={form.quantidade_contratada} onChange={e => setForm(f => ({ ...f, quantidade_contratada: e.target.value }))} />
                 </div>
                 <div>
-                  <Label>Valor Unitário (R$)</Label>
+                  <Label>Valor Unitário Venda (R$)</Label>
                   <Input type="number" step="0.01" value={form.valor_unitario} onChange={e => setForm(f => ({ ...f, valor_unitario: e.target.value }))} disabled={isContratoComATA && !!form.ata_item_id} />
                 </div>
+                {podeVerCustos && (
+                  <div className="col-span-2">
+                    <Label>Custo Unitário (R$) <span className="text-[10px] text-muted-foreground">(opcional — apenas Financeiro/Admin)</span></Label>
+                    <Input type="number" step="0.01" value={form.custo_unitario} onChange={e => setForm(f => ({ ...f, custo_unitario: e.target.value }))} placeholder="0,00" />
+                  </div>
+                )}
                 <div className="col-span-2">
                   <Label>Observações</Label>
                   <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
