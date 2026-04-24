@@ -42,32 +42,39 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
 
     const derivIds = (derivados || []).map(d => d.id);
 
-    // 3) Itens dos contratos derivados (com vínculo à ATA)
+    // 3) Itens dos contratos derivados
     let itensDerivados: any[] = [];
     if (derivIds.length) {
       const { data, error } = await supabase
         .from('contrato_itens')
-        .select('*, ata_match_motivo, ata_match_similaridade, ata_match_origem')
+        .select('*')
         .in('contrato_id', derivIds);
       if (error) throw error;
       itensDerivados = data || [];
     }
+
+    // 4) Auditoria IA — busca vínculos criados/sobrescritos por IA ou manual
+    const { data: auditoria } = await supabase
+      .from('contrato_ia_auditoria')
+      .select('contrato_id, campo, origem, valor_novo')
+      .eq('contrato_id', ataId)
+      .in('origem', ['ia_match_ata', 'manual_override', 'recalculo_saldo']);
 
     return {
       ata: ataRes.data,
       ataItens: (ataItensRes.data as any[]) || [],
       derivados: derivados || [],
       itensDerivados,
+      auditoria: auditoria || [],
     };
   }
 
-  function classificarOrigem(item: any): 'IA' | 'Manual' | 'Override' | 'Sem vínculo' {
+  function classificarOrigem(item: any, auditoria: any[]): 'IA' | 'Manual' | 'Override' | 'Sem vínculo' {
     if (!item.ata_item_id) return 'Sem vínculo';
-    const origem = (item.ata_match_origem || '').toLowerCase();
-    const motivo = (item.ata_match_motivo || '').toLowerCase();
-    if (origem === 'manual_override' || motivo.includes('override')) return 'Override';
-    if (origem === 'ia' || motivo.includes('codigo_exato') || motivo.includes('descricao_similar')) return 'IA';
-    return 'Manual';
+    // Heurística: se há registro de override manual no log, marca Override; senão IA por padrão (matches são feitos por IA no fluxo automático)
+    const overrides = auditoria.some(a => a.origem === 'manual_override' && a.valor_novo?.includes?.(item.id));
+    if (overrides) return 'Override';
+    return 'IA';
   }
 
   function montarLinhas(dados: Awaited<ReturnType<typeof carregarDados>>) {
@@ -78,7 +85,7 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
     const linhas = dados.itensDerivados.map(it => {
       const ataItem: any = it.ata_item_id ? ataItensMap.get(it.ata_item_id) : null;
       const contrato: any = derivMap.get(it.contrato_id);
-      const origem = classificarOrigem(it);
+      const origem = classificarOrigem(it, dados.auditoria);
       return {
         contrato_numero: contrato?.numero_contrato || '—',
         orgao: contrato?.orgao_contratante || '—',
@@ -90,8 +97,8 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
         valor_unitario: Number(it.valor_unitario || 0),
         valor_total: Number(it.valor_total || 0),
         origem_vinculo: origem,
-        similaridade: typeof it.ata_match_similaridade === 'number' ? `${Math.round(it.ata_match_similaridade * 100)}%` : '—',
-        motivo: it.ata_match_motivo || '—',
+        similaridade: '—',
+        motivo: it.ata_item_id ? 'vinculado' : 'sem_vinculo',
       };
     });
 
