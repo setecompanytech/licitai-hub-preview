@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   DollarSign, TrendingUp, TrendingDown, Package, ShoppingCart, AlertTriangle,
-  Calendar, Percent, Loader2, Receipt, Lock, Pencil, Check, X, Layers, Sparkles
+  Calendar, Percent, Loader2, Receipt, Lock, Pencil, Check, X
 } from 'lucide-react';
 import RelatorioConsumoAtaDialog from './RelatorioConsumoAtaDialog';
 import ManutencaoAtaSrpDialog from './ManutencaoAtaSrpDialog';
