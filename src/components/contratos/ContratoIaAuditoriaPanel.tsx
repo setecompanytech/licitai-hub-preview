@@ -99,7 +99,8 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
     return (
       <li
         key={r.id}
-        className={`border rounded-md p-3 ${isAlerta ? 'bg-destructive/10 border-destructive/40' : 'bg-muted/30'}`}
+        onClick={() => setEventoSelecionado(r)}
+        className={`border rounded-md p-3 cursor-pointer transition-colors hover:bg-accent/50 ${isAlerta ? 'bg-destructive/10 border-destructive/40 hover:bg-destructive/15' : 'bg-muted/30'}`}
       >
         <div className="flex items-start justify-between gap-2 mb-1">
           <div className="flex items-center gap-2 flex-wrap">
