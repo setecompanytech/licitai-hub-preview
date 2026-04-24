@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import {
   Plus, Trash2, Loader2, Package, Copy, Download, Link2
 } from 'lucide-react';
+import { MoneyInput } from '@/components/ui/money-input';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -320,12 +321,12 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 </div>
                 <div>
                   <Label>Valor Unitário Venda (R$)</Label>
-                  <Input type="number" step="0.01" value={form.valor_unitario} onChange={e => setForm(f => ({ ...f, valor_unitario: e.target.value }))} disabled={isContratoComATA && !!form.ata_item_id} />
+                  <MoneyInput value={Number(form.valor_unitario) || 0} onValueChange={v => setForm(f => ({ ...f, valor_unitario: String(v) }))} disabled={isContratoComATA && !!form.ata_item_id} />
                 </div>
                 {podeVerCustos && (
                   <div className="col-span-2">
                     <Label>Custo Unitário (R$) <span className="text-[10px] text-muted-foreground">(opcional — apenas Financeiro/Admin)</span></Label>
-                    <Input type="number" step="0.01" value={form.custo_unitario} onChange={e => setForm(f => ({ ...f, custo_unitario: e.target.value }))} placeholder="0,00" />
+                    <MoneyInput value={Number(form.custo_unitario) || 0} onValueChange={v => setForm(f => ({ ...f, custo_unitario: String(v) }))} placeholder="R$ 0,00" />
                   </div>
                 )}
                 <div className="col-span-2">
