@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { toast } from 'sonner';
 import {
   Plus, Trash2, Loader2, Package, Copy, Download, Link2
@@ -23,6 +24,8 @@ type ContratoItem = {
   quantidade_consumida: number; saldo_quantitativo: number; saldo_financeiro: number;
   codigo_item: string | null; observacoes: string | null; origem_aditivo_id: string | null;
   ata_item_id: string | null; quantidade_ata_consumida: number | null;
+  custo_unitario?: number | null; custo_total?: number | null;
+  numero_lote?: string | null; descricao_lote?: string | null;
 };
 
 type Aditivo = { id: string; numero_aditivo: string; tipo: string; };
@@ -30,10 +33,13 @@ type Aditivo = { id: string; numero_aditivo: string; tipo: string; };
 type ContratoMeta = {
   tipo_documento: 'contrato' | 'ata_srp' | string;
   ata_srp_id: string | null;
+  tipo_estrutura?: 'itens' | 'lotes' | string | null;
 };
 
 export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const { user } = useAuth();
+  const { isFinanceiro, isAdmin } = useMembroPermissoes();
+  const podeVerCustos = isFinanceiro || isAdmin;
   const [meta, setMeta] = useState<ContratoMeta | null>(null);
   const [itens, setItens] = useState<ContratoItem[]>([]);
   const [ataItens, setAtaItens] = useState<ContratoItem[]>([]);
@@ -44,7 +50,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     descricao: '', unidade: 'UN', quantidade_contratada: '',
-    valor_unitario: '', codigo_item: '', observacoes: '', origem_aditivo_id: '',
+    valor_unitario: '', custo_unitario: '', codigo_item: '', observacoes: '', origem_aditivo_id: '',
     ata_item_id: '',
   });
 
@@ -52,7 +58,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
 
   const loadData = async () => {
     setLoading(true);
-    const metaRes = await supabase.from('contratos').select('tipo_documento, ata_srp_id').eq('id', contratoId).maybeSingle();
+    const metaRes = await supabase.from('contratos').select('tipo_documento, ata_srp_id, tipo_estrutura').eq('id', contratoId).maybeSingle();
     const m = metaRes.data as ContratoMeta | null;
     setMeta(m);
 
@@ -129,6 +135,9 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       }
     }
 
+    const custoUnit = parseFloat(form.custo_unitario) || 0;
+    const custoTotal = qty * custoUnit;
+
     setSaving(true);
     const { error } = await supabase.from('contrato_itens').insert({
       contrato_id: contratoId,
@@ -138,6 +147,8 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       quantidade_contratada: qty,
       valor_unitario: unit,
       valor_total: total,
+      custo_unitario: custoUnit || null,
+      custo_total: custoTotal || null,
       saldo_quantitativo: qty,
       saldo_financeiro: total,
       codigo_item: form.codigo_item || null,
@@ -149,7 +160,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
     if (error) { toast.error('Erro ao salvar item', { description: error.message }); return; }
     toast.success('Item cadastrado!');
     setDialogOpen(false);
-    setForm({ descricao: '', unidade: 'UN', quantidade_contratada: '', valor_unitario: '', codigo_item: '', observacoes: '', origem_aditivo_id: '', ata_item_id: '' });
+    setForm({ descricao: '', unidade: 'UN', quantidade_contratada: '', valor_unitario: '', custo_unitario: '', codigo_item: '', observacoes: '', origem_aditivo_id: '', ata_item_id: '' });
     loadData();
   };
 
@@ -204,6 +215,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       unidade: item.unidade,
       quantidade_contratada: String(item.quantidade_contratada),
       valor_unitario: String(item.valor_unitario),
+      custo_unitario: item.custo_unitario != null ? String(item.custo_unitario) : '',
       codigo_item: item.codigo_item || '',
       observacoes: `Duplicado do item "${item.descricao}" — vinculado a aditivo`,
       origem_aditivo_id: '',
@@ -221,12 +233,17 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
         <div>
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <Package className="w-4 h-4 text-accent" /> Itens {meta?.tipo_documento === 'ata_srp' ? 'da ATA SRP' : 'do Contrato'}
+            {meta?.tipo_estrutura && (
+              <Badge variant="outline" className="text-[10px] font-normal">
+                Estrutura: {meta.tipo_estrutura === 'lotes' ? 'Lotes' : 'Itens'}
+              </Badge>
+            )}
           </h3>
           <p className="text-xs text-muted-foreground">
             Total: {fmt(totalContratado)} | Saldo: {fmt(totalSaldo)}
           </p>
           {isContratoComATA && (
-            <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+            <p className="text-[11px] text-warning mt-1 flex items-center gap-1">
               <Link2 className="w-3 h-3" /> Contrato vinculado à ATA SRP — itens devem ser selecionados da ATA de origem
             </p>
           )}
@@ -302,9 +319,15 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                   <Input type="number" value={form.quantidade_contratada} onChange={e => setForm(f => ({ ...f, quantidade_contratada: e.target.value }))} />
                 </div>
                 <div>
-                  <Label>Valor Unitário (R$)</Label>
+                  <Label>Valor Unitário Venda (R$)</Label>
                   <Input type="number" step="0.01" value={form.valor_unitario} onChange={e => setForm(f => ({ ...f, valor_unitario: e.target.value }))} disabled={isContratoComATA && !!form.ata_item_id} />
                 </div>
+                {podeVerCustos && (
+                  <div className="col-span-2">
+                    <Label>Custo Unitário (R$) <span className="text-[10px] text-muted-foreground">(opcional — apenas Financeiro/Admin)</span></Label>
+                    <Input type="number" step="0.01" value={form.custo_unitario} onChange={e => setForm(f => ({ ...f, custo_unitario: e.target.value }))} placeholder="0,00" />
+                  </div>
+                )}
                 <div className="col-span-2">
                   <Label>Observações</Label>
                   <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
@@ -335,13 +358,16 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
             <TableHeader>
               <TableRow>
                 <TableHead className="text-xs whitespace-nowrap">Origem</TableHead>
+                {meta?.tipo_estrutura === 'lotes' && <TableHead className="text-xs whitespace-nowrap">Lote</TableHead>}
                 {isContratoComATA && <TableHead className="text-xs whitespace-nowrap">Item ATA</TableHead>}
                 <TableHead className="text-xs whitespace-nowrap">Código</TableHead>
                 <TableHead className="text-xs whitespace-nowrap">Descrição</TableHead>
                 <TableHead className="text-xs text-center whitespace-nowrap">UN</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Qtd</TableHead>
+                {podeVerCustos && <TableHead className="text-xs text-right whitespace-nowrap">Custo Unit.</TableHead>}
                 <TableHead className="text-xs text-right whitespace-nowrap">Vlr Unit.</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Total</TableHead>
+                {podeVerCustos && <TableHead className="text-xs text-right whitespace-nowrap">Custo Total</TableHead>}
                 <TableHead className="text-xs text-right whitespace-nowrap">Consumido</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Saldo Qtd</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Saldo R$</TableHead>
@@ -360,10 +386,17 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         {getOrigemLabel(item.origem_aditivo_id)}
                       </Badge>
                     </TableCell>
+                    {meta?.tipo_estrutura === 'lotes' && (
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {item.numero_lote
+                          ? <Badge variant="secondary" className="text-[10px] font-normal">Lote {item.numero_lote}</Badge>
+                          : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                    )}
                     {isContratoComATA && (
                       <TableCell className="text-xs whitespace-nowrap">
                         {item.ata_item_id ? (
-                          <Badge className="text-[10px] bg-amber-500/10 text-amber-600 font-normal">{ataItemLabel(item.ata_item_id)}</Badge>
+                          <Badge variant="outline" className="text-[10px] font-normal">{ataItemLabel(item.ata_item_id)}</Badge>
                         ) : <span className="text-muted-foreground">—</span>}
                       </TableCell>
                     )}
@@ -371,8 +404,18 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                     <TableCell className="text-xs max-w-[200px] truncate">{item.descricao}</TableCell>
                     <TableCell className="text-xs text-center whitespace-nowrap">{item.unidade}</TableCell>
                     <TableCell className="text-xs text-right whitespace-nowrap">{item.quantidade_contratada}</TableCell>
+                    {podeVerCustos && (
+                      <TableCell className="text-xs text-right whitespace-nowrap text-muted-foreground">
+                        {item.custo_unitario != null ? fmt(item.custo_unitario) : '—'}
+                      </TableCell>
+                    )}
                     <TableCell className="text-xs text-right whitespace-nowrap">{fmt(item.valor_unitario)}</TableCell>
                     <TableCell className="text-xs text-right font-medium whitespace-nowrap">{fmt(item.valor_total)}</TableCell>
+                    {podeVerCustos && (
+                      <TableCell className="text-xs text-right whitespace-nowrap text-muted-foreground">
+                        {item.custo_total != null ? fmt(item.custo_total) : '—'}
+                      </TableCell>
+                    )}
                     <TableCell className="text-xs text-right whitespace-nowrap">
                       {item.quantidade_consumida}
                       <span className="text-muted-foreground ml-1">({pct.toFixed(0)}%)</span>
