@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { MoneyInput } from '@/components/ui/money-input';
 import { toast } from 'sonner';
 import {
   Bot, Zap, Trophy, Clock, AlertTriangle, CheckCircle2, XCircle,

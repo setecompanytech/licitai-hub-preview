@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -938,7 +939,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-muted-foreground">Decremento Mínimo (R$)</label>
-                  <Input type="number" step="0.01" value={decrementoMin} onChange={(e) => setDecrementoMin(e.target.value)} placeholder="Ex: 50000" className="mt-1" />
+                  <MoneyInput value={Number(decrementoMin) || 0} onValueChange={(v) => setDecrementoMin(String(v))} placeholder="R$ 50.000,00" className="mt-1" />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">Decremento Percentual (%)</label>
@@ -1034,7 +1035,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                 </div>
                 <div className="col-span-2">
                   <label className="text-[10px] text-muted-foreground">Valor Unit. (R$)</label>
-                  <Input type="number" step="0.01" value={novoValorRef} onChange={(e) => setNovoValorRef(e.target.value)} placeholder="0,00" className="mt-0.5 h-8 text-xs" />
+                  <MoneyInput value={Number(novoValorRef) || 0} onValueChange={(v) => setNovoValorRef(String(v))} placeholder="R$ 0,00" className="mt-0.5 h-8 text-xs" />
                 </div>
                 {tipoDisputa === 'lote' && (
                   <div className="col-span-2">
