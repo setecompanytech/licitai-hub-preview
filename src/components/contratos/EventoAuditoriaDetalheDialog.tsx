@@ -46,7 +46,7 @@ interface AuditoriaRow {
 }
 
 interface ContextoEvento {
-  ataAtual: { numero: string | null; valor_global: number | null; valor_consumido: number | null; valor_global_original: number | null } | null;
+  ataAtual: { numero_contrato: string | null; valor_global: number | null; valor_consumido: number | null; valor_global_original: number | null } | null;
   itemAtual: { descricao: string | null; codigo_item: string | null; quantidade_contratada: number | null; quantidade_ata_consumida: number | null; valor_total: number | null; saldo_financeiro: number | null; valor_unitario: number | null } | null;
   contratosDerivados: Array<{ id: string; numero_contrato: string | null; objeto: string | null; valor_global: number | null; status: string | null; data_inicio: string | null; data_fim: string | null }>;
   aditivos: Array<{ id: string; numero_aditivo: string | null; tipo: string | null; valor_acrescimo: number | null; valor_supressao: number | null; quantidade_acrescimo: number | null; nova_data_fim: string | null; created_at: string }>;
