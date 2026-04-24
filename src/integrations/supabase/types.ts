@@ -3130,8 +3130,11 @@ export type Database = {
           codigo_item: string | null
           contrato_id: string
           created_at: string
+          custo_total: number | null
+          custo_unitario: number
           descricao: string
           descricao_lote: string | null
+          estrutura: string | null
           id: string
           numero_lote: string | null
           observacoes: string | null
@@ -3152,8 +3155,11 @@ export type Database = {
           codigo_item?: string | null
           contrato_id: string
           created_at?: string
+          custo_total?: number | null
+          custo_unitario?: number
           descricao: string
           descricao_lote?: string | null
+          estrutura?: string | null
           id?: string
           numero_lote?: string | null
           observacoes?: string | null
@@ -3174,8 +3180,11 @@ export type Database = {
           codigo_item?: string | null
           contrato_id?: string
           created_at?: string
+          custo_total?: number | null
+          custo_unitario?: number
           descricao?: string
           descricao_lote?: string | null
+          estrutura?: string | null
           id?: string
           numero_lote?: string | null
           observacoes?: string | null
@@ -3349,6 +3358,8 @@ export type Database = {
           status: string
           tipo_documento: string
           tipo_estrutura: string
+          tipo_estrutura_confianca: number | null
+          tipo_estrutura_detectado_ia: string | null
           uf: string | null
           updated_at: string
           user_id: string
@@ -3384,6 +3395,8 @@ export type Database = {
           status?: string
           tipo_documento?: string
           tipo_estrutura?: string
+          tipo_estrutura_confianca?: number | null
+          tipo_estrutura_detectado_ia?: string | null
           uf?: string | null
           updated_at?: string
           user_id: string
@@ -3419,6 +3432,8 @@ export type Database = {
           status?: string
           tipo_documento?: string
           tipo_estrutura?: string
+          tipo_estrutura_confianca?: number | null
+          tipo_estrutura_detectado_ia?: string | null
           uf?: string | null
           updated_at?: string
           user_id?: string
@@ -11624,6 +11639,19 @@ export type Database = {
       is_empresa_member: {
         Args: { _empresa_id: string; _user_id: string }
         Returns: boolean
+      }
+      match_itens_ata: {
+        Args: { p_ata_id: string; p_itens: Json }
+        Returns: {
+          ata_codigo: string
+          ata_descricao: string
+          ata_item_id: string
+          ata_saldo_qtd: number
+          ata_valor_unitario: number
+          indice: number
+          motivo: string
+          similaridade: number
+        }[]
       }
       metricas_notificacoes: {
         Args: { p_dias?: number }

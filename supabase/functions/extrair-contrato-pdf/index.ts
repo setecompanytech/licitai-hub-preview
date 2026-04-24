@@ -19,6 +19,10 @@ type ItemExtraido = {
 type DadosContrato = {
   // Detecção automática do tipo de documento
   tipo_documento_detectado?: "ata_srp" | "contrato" | "aditivo" | "outro" | null;
+  // Detecção automática da estrutura (itens individuais ou lotes agrupados)
+  tipo_estrutura_detectado?: "itens" | "lotes" | null;
+  tipo_estrutura_confianca?: number | string | null;
+  tipo_estrutura_justificativa?: string | null;
   numero_contrato?: string | null;
   numero_ata?: string | null;
   objeto?: string | null;
@@ -154,6 +158,9 @@ function normalizeContrato(data: DadosContrato) {
 
   return {
     tipo_documento_detectado: (data.tipo_documento_detectado as string | null) ?? null,
+    tipo_estrutura_detectado: (data.tipo_estrutura_detectado as string | null) ?? null,
+    tipo_estrutura_confianca: parseNumber(data.tipo_estrutura_confianca),
+    tipo_estrutura_justificativa: cleanString(data.tipo_estrutura_justificativa),
     numero_contrato: cleanString(data.numero_contrato),
     numero_ata: cleanString(data.numero_ata),
     objeto: cleanString(data.objeto),
@@ -205,11 +212,11 @@ serve(async (req) => {
           {
             role: "system",
             content:
-              "Você é um extrator técnico de documentos públicos brasileiros (Contratos Administrativos, ATAs de Registro de Preços e Termos Aditivos). Extraia SOMENTE informações que aparecem literalmente no documento. Não invente, não estime, não complete lacunas. Se um campo não estiver explícito, retorne null. Preserve a descrição real dos itens exatamente como no documento. SEMPRE classifique o tipo de documento em tipo_documento_detectado: 'ata_srp' (ATA de Registro de Preços/SRP), 'contrato' (contrato administrativo de execução), 'aditivo' (Termo Aditivo de prazo, valor, quantidade ou escopo) ou 'outro'. Quando o documento for um aditivo, preencha o objeto 'aditivo' com os campos correspondentes (acréscimos, supressões, nova data fim, justificativa, número do contrato/ata referenciado).",
+              "Você é um extrator técnico de documentos públicos brasileiros (Contratos Administrativos, ATAs de Registro de Preços e Termos Aditivos). Extraia SOMENTE informações que aparecem literalmente no documento. Não invente, não estime, não complete lacunas. Se um campo não estiver explícito, retorne null. Preserve a descrição real dos itens exatamente como no documento. SEMPRE classifique o tipo de documento em tipo_documento_detectado: 'ata_srp', 'contrato', 'aditivo' ou 'outro'. SEMPRE classifique também a estrutura em tipo_estrutura_detectado: 'lotes' (quando o documento agrupa itens sob marcadores tipo 'LOTE 01', 'LOTE 02', 'GRUPO A', 'CATEGORIA') ou 'itens' (quando os itens são listados individualmente sem agrupamento). Forneça tipo_estrutura_confianca de 0.0 a 1.0 e uma justificativa curta. Quando o documento for aditivo, preencha 'aditivo' com os campos correspondentes.",
           },
           {
             role: "user",
-            content: `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES (itens agrupados em lotes numerados)" : "ITENS individuais"}\n\nClassifique o tipo do documento e extraia os dados pertinentes ao seu tipo:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha o objeto 'aditivo' com tipo (valor, quantidade, prazo, escopo, valor_quantidade), valor_acrescimo, valor_supressao, quantidade_acrescimo, quantidade_supressao, nova_data_fim, contrato_referencia ou ata_referencia, justificativa.\n\n${tipo_estrutura === "lotes" ? "ATENÇÃO LOTES: O documento está organizado por LOTES. Para CADA item retornado, preencha OBRIGATORIAMENTE 'numero_lote' (ex: '01', '02') e, quando existir, 'descricao_lote' (ex: 'Materiais de Limpeza'). Itens do mesmo lote devem compartilhar o mesmo numero_lote.\n" : ""}REGRAS CRÍTICAS:\n- NÃO invente campos\n- NÃO reescreva descrições com sinônimos\n- Use null quando o campo não existir\n- Datas no formato DD/MM/AAAA ou YYYY-MM-DD\n\nTEXTO DO DOCUMENTO:\n${truncated}`,
+            content: `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- NÃO invente campos\n- NÃO reescreva descrições com sinônimos\n- Use null quando o campo não existir\n- Datas no formato DD/MM/AAAA ou YYYY-MM-DD\n\nTEXTO DO DOCUMENTO:\n${truncated}`,
           },
         ],
         tools: [
@@ -222,6 +229,9 @@ serve(async (req) => {
                 type: "object",
                 properties: {
                   tipo_documento_detectado: { type: "string", enum: ["ata_srp", "contrato", "aditivo", "outro"], description: "Classificação do documento" },
+                  tipo_estrutura_detectado: { type: "string", enum: ["itens", "lotes"], description: "Detecção: documento estruturado por LOTES (agrupamentos) ou ITENS individuais." },
+                  tipo_estrutura_confianca: { type: "number", description: "Confiança da detecção da estrutura, de 0.0 a 1.0." },
+                  tipo_estrutura_justificativa: { type: "string", description: "Justificativa curta da detecção (ex: 'Documento contém marcadores LOTE 01, LOTE 02')." },
                   numero_contrato: { type: "string", description: "Número do contrato (apenas para contratos)" },
                   numero_ata: { type: "string", description: "Número da ATA SRP (apenas para ATAs)" },
                   objeto: { type: "string", description: "Objeto exatamente como no documento" },

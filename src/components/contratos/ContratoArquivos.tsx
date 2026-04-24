@@ -679,22 +679,32 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
     try {
       const detectedType = data.tipo_documento_detectado;
       const newTipoDoc: 'ata_srp' | 'contrato' = detectedType === 'ata_srp' ? 'ata_srp' : 'contrato';
+      const isDerivado = newTipoDoc === 'contrato' && parentTipoDocumento === 'ata_srp';
+
+      // Estrutura: usa o que a IA detectou (fallback para 'itens')
+      const estruturaIA = (data as any).tipo_estrutura_detectado as 'itens' | 'lotes' | undefined;
+      const estruturaConfianca = (data as any).tipo_estrutura_confianca as number | undefined;
+
       const newRow: any = {
         user_id: user.id,
         empresa_id: parentContrato.empresa_id,
         tipo_documento: newTipoDoc,
+        tipo_estrutura: estruturaIA || 'itens',
+        tipo_estrutura_detectado_ia: estruturaIA || null,
+        tipo_estrutura_confianca: estruturaConfianca ?? null,
         numero_contrato: data.numero_contrato || data.numero_ata || pendingFile.name,
-        objeto: data.objeto || null,
-        orgao: parentContrato.orgao || null,
+        objeto: data.objeto || parentContrato.objeto || null,
+        orgao_contratante: parentContrato.orgao_contratante || null,
         valor_global_original: data.valor_global || 0,
         valor_global: data.valor_global || 0,
+        data_assinatura: (data as any).data_assinatura || null,
         data_inicio: data.data_inicio || null,
         data_fim: data.data_fim || null,
-        status: 'ativo',
+        modalidade: (data as any).modalidade || parentContrato.modalidade || null,
+        status: 'vigente',
       };
-      if (newTipoDoc === 'contrato' && parentTipoDocumento === 'ata_srp') {
-        newRow.ata_srp_id = parentContrato.id;
-      }
+      if (isDerivado) newRow.ata_srp_id = parentContrato.id;
+
       const { data: created, error: insErr } = await supabase
         .from('contratos').insert(newRow).select('id').single();
       if (insErr) throw insErr;
@@ -712,7 +722,83 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
         tamanho_bytes: pendingFile.size,
       } as any);
 
-      toast.success(`${newTipoDoc === 'ata_srp' ? 'ATA SRP' : 'Contrato derivado'} criado e vinculado.`);
+      // ── Itens extraídos: vincula automaticamente aos itens da ATA quando derivado ──
+      const itensExtraidos: any[] = Array.isArray((data as any).itens) ? (data as any).itens : [];
+      let vinculados = 0;
+      let semMatch = 0;
+
+      if (itensExtraidos.length > 0) {
+        let matches: any[] = [];
+        if (isDerivado) {
+          const { data: rpcData, error: rpcErr } = await supabase.rpc('match_itens_ata' as any, {
+            p_ata_id: parentContrato.id,
+            p_itens: itensExtraidos as any,
+          });
+          if (rpcErr) {
+            logger.warn('match_itens_ata falhou — itens criados sem vínculo', rpcErr);
+          } else {
+            matches = (rpcData as any[]) || [];
+          }
+        }
+
+        const itensInsert = itensExtraidos.map((it: any, idx: number) => {
+          const m = matches[idx];
+          const qtd = Number(it.quantidade) || 0;
+          const vu = Number(it.valor_unitario) || (m?.ata_valor_unitario ?? 0);
+          const vt = Number(it.valor_total) || qtd * vu;
+          if (m?.ata_item_id) vinculados++; else if (isDerivado) semMatch++;
+          return {
+            contrato_id: created.id,
+            user_id: user.id,
+            descricao: it.descricao || 'Item',
+            unidade: it.unidade || 'UN',
+            quantidade_contratada: qtd,
+            valor_unitario: vu,
+            valor_total: vt,
+            saldo_quantitativo: qtd,
+            saldo_financeiro: vt,
+            codigo_item: it.codigo_item || null,
+            numero_lote: estruturaIA === 'lotes' ? (it.numero_lote || null) : null,
+            descricao_lote: estruturaIA === 'lotes' ? (it.descricao_lote || null) : null,
+            estrutura: estruturaIA || null,
+            ata_item_id: isDerivado ? (m?.ata_item_id || null) : null,
+          };
+        });
+
+        const { error: itErr } = await supabase.from('contrato_itens').insert(itensInsert as any);
+        if (itErr) {
+          logger.warn('Falha ao inserir itens do contrato derivado', itErr);
+          toast.warning('Contrato criado, mas houve erro ao importar itens.', { description: itErr.message });
+        }
+
+        // Auditoria: registra a auto-vinculação
+        if (isDerivado) {
+          await supabase.from('contrato_ia_auditoria').insert([{
+            contrato_id: created.id,
+            arquivo_id: null,
+            arquivo_nome: pendingFile.name,
+            campo: 'auto_vinculacao_ata',
+            valor_anterior: null,
+            valor_novo: JSON.stringify({
+              ata_origem: parentContrato.id,
+              total_itens: itensInsert.length,
+              vinculados,
+              sem_match: semMatch,
+              estrutura: estruturaIA,
+            }),
+            origem: 'ia_extracao',
+            user_id: user.id,
+          }] as any);
+        }
+      }
+
+      const msgEstrutura = estruturaIA ? ` Estrutura detectada: ${estruturaIA}.` : '';
+      const msgVinc = isDerivado
+        ? ` ${vinculados}/${itensExtraidos.length} itens vinculados à ATA${semMatch > 0 ? ` (${semMatch} sem correspondência)` : ''}.`
+        : '';
+      toast.success(
+        `${newTipoDoc === 'ata_srp' ? 'ATA SRP' : 'Contrato derivado'} criado.${msgEstrutura}${msgVinc}`,
+      );
       setDetectionOpen(false);
       setPendingFile(null);
       setDetection(null);
