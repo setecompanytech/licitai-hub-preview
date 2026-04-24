@@ -676,8 +676,7 @@ function AgentConfig({ empresaId }: { empresaId: string }) {
             </div>
             <div>
               <label className="text-sm text-muted-foreground">Preço mínimo absoluto (R$)</label>
-              <input type="number" step="0.01" value={config.preco_minimo_absoluto} onChange={e => setConfig(c => ({ ...c, preco_minimo_absoluto: Number(e.target.value) }))}
-                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <MoneyInput value={Number(config.preco_minimo_absoluto) || 0} onValueChange={v => setConfig(c => ({ ...c, preco_minimo_absoluto: v }))} className="mt-1" />
             </div>
           </div>
         </CardContent>
