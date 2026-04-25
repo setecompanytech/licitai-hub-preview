@@ -255,8 +255,27 @@ export function useApuracaoTributaria() {
     await carregar();
   }, [carregar]);
 
+  /** Recalcula uma apuração existente: reimporta receita da competência, refaz o cálculo e regrava. */
+  const recalcular = useCallback(async (apuracao: Apuracao) => {
+    if (!config) return;
+    const receita = await buscarReceita(apuracao.competencia);
+    if (!receita) return;
+    const rComercio = Number(receita.comercio) || 0;
+    const rServico = Number(receita.servico) || 0;
+    const rbt = Number(receita.rbt12) || 0;
+    const r = calcular(rComercio, rServico, rbt, 0, 0);
+    await salvarApuracao(apuracao.competencia, rComercio, rServico, rbt, r);
+    // Limpa o flag de desatualizada (o upsert não cobre, fazemos UPDATE explícito)
+    await (supabase as any)
+      .from("financeiro_apuracoes")
+      .update({ apuracao_desatualizada: false, desatualizada_motivo: null, desatualizada_em: null })
+      .eq("id", apuracao.id);
+    await carregar();
+    toast.success("Apuração recalculada com a base atualizada.");
+  }, [config, buscarReceita, calcular, salvarApuracao, carregar]);
+
   return {
     config, apuracoes, loading,
-    salvarConfig, buscarReceita, calcular, salvarApuracao, marcarComoPago, carregar,
+    salvarConfig, buscarReceita, calcular, salvarApuracao, marcarComoPago, carregar, recalcular,
   };
 }
