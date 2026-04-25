@@ -11,7 +11,8 @@ import { Separator } from "@/components/ui/separator";
 import { useApuracaoTributaria, type Regime } from "@/hooks/useApuracaoTributaria";
 import { useValidacaoApuracao, type DivergenciaApuracao } from "@/hooks/useValidacaoApuracao";
 import { DialogDivergenciasApuracao } from "./DialogDivergenciasApuracao";
-import { Calculator, Settings, FileBarChart, Save, Download, RefreshCw, CheckCircle2, ShieldCheck } from "lucide-react";
+import FinImportarNotas from "./FinImportarNotas";
+import { Calculator, Settings, FileBarChart, Save, Download, RefreshCw, CheckCircle2, ShieldCheck, FileUp, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 const fmt = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n || 0);
@@ -23,7 +24,7 @@ function competenciaAtual(): string {
 }
 
 export default function FinApuracao() {
-  const { config, apuracoes, loading, salvarConfig, buscarReceita, calcular, salvarApuracao, marcarComoPago } = useApuracaoTributaria();
+  const { config, apuracoes, loading, salvarConfig, buscarReceita, calcular, salvarApuracao, marcarComoPago, carregar, recalcular } = useApuracaoTributaria();
   const [competencia, setCompetencia] = useState(competenciaAtual());
   const [receitaComercio, setReceitaComercio] = useState(0);
   const [receitaServico, setReceitaServico] = useState(0);
