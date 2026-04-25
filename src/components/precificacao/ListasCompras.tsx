@@ -198,7 +198,7 @@ export default function ListasCompras() {
                   <Input placeholder="Marca" value={newItem.marca} onChange={e => setNewItem(p => ({ ...p, marca: e.target.value }))} />
                   <Input placeholder="Unidade" value={newItem.unidade} onChange={e => setNewItem(p => ({ ...p, unidade: e.target.value }))} />
                   <Input type="number" placeholder="Quantidade" value={newItem.quantidade} onChange={e => setNewItem(p => ({ ...p, quantidade: e.target.value }))} />
-                  <Input type="number" placeholder="Preço referência (R$)" value={newItem.preco_referencia} onChange={e => setNewItem(p => ({ ...p, preco_referencia: e.target.value }))} />
+                  <MoneyInput placeholder="Preço referência (R$)" value={Number(newItem.preco_referencia) || 0} onValueChange={v => setNewItem(p => ({ ...p, preco_referencia: String(v) }))} />
                   <Input placeholder="Fonte referência" value={newItem.fonte_referencia} onChange={e => setNewItem(p => ({ ...p, fonte_referencia: e.target.value }))} className="col-span-2" />
                   <div className="col-span-2 flex gap-2">
                     <Button size="sm" onClick={addItem} disabled={!newItem.descricao.trim()}>Adicionar</Button>
