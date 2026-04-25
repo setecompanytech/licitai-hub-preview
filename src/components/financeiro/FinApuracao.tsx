@@ -108,6 +108,7 @@ export default function FinApuracao() {
   }
 
   return (
+    <>
     <Tabs defaultValue="apurar" className="space-y-4">
       <TabsList>
         <TabsTrigger value="apurar"><Calculator className="w-4 h-4 mr-1.5" />Apuração</TabsTrigger>
@@ -379,5 +380,13 @@ export default function FinApuracao() {
         </Card>
       </TabsContent>
     </Tabs>
+    <DialogDivergenciasApuracao
+      open={dialogOpen}
+      onOpenChange={setDialogOpen}
+      divergencias={divergencias}
+      validando={validando}
+      onExportar={exportarCSV}
+    />
+    </>
   );
 }
