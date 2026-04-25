@@ -63,6 +63,7 @@ export default function Financeiro() {
               <TabsTrigger value="categorias"><Tags className="w-4 h-4 mr-1.5" />Categorias</TabsTrigger>
               <TabsTrigger value="plano_contas"><BookOpen className="w-4 h-4 mr-1.5" />Plano de Contas</TabsTrigger>
               <TabsTrigger value="saldos_abertura"><Scale className="w-4 h-4 mr-1.5" />Saldos de Abertura</TabsTrigger>
+              <TabsTrigger value="orcamento"><Target className="w-4 h-4 mr-1.5" />Orçamento</TabsTrigger>
             </TabsList>
             <TabsContent value="dashboard"><FinDashboard /></TabsContent>
             <TabsContent value="lancamentos"><FinLancamentos /></TabsContent>
