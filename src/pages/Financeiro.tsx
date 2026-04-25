@@ -1,6 +1,8 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox } from "lucide-react";
+import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale } from "lucide-react";
+import FinPlanoContas from "@/components/financeiro/FinPlanoContas";
+import FinSaldosAbertura from "@/components/financeiro/FinSaldosAbertura";
 import FinDashboard from "@/components/financeiro/FinDashboard";
 import FinLancamentos from "@/components/financeiro/FinLancamentos";
 import FinContas from "@/components/financeiro/FinContas";
@@ -58,6 +60,8 @@ export default function Financeiro() {
               <TabsTrigger value="centros_custo"><FolderTree className="w-4 h-4 mr-1.5" />Centros de Custo</TabsTrigger>
               <TabsTrigger value="pessoas"><Users className="w-4 h-4 mr-1.5" />Pessoas</TabsTrigger>
               <TabsTrigger value="categorias"><Tags className="w-4 h-4 mr-1.5" />Categorias</TabsTrigger>
+              <TabsTrigger value="plano_contas"><BookOpen className="w-4 h-4 mr-1.5" />Plano de Contas</TabsTrigger>
+              <TabsTrigger value="saldos_abertura"><Scale className="w-4 h-4 mr-1.5" />Saldos de Abertura</TabsTrigger>
             </TabsList>
             <TabsContent value="dashboard"><FinDashboard /></TabsContent>
             <TabsContent value="lancamentos"><FinLancamentos /></TabsContent>
@@ -75,6 +79,8 @@ export default function Financeiro() {
             <TabsContent value="centros_custo"><FinCentrosCusto /></TabsContent>
             <TabsContent value="pessoas"><FinPessoas /></TabsContent>
             <TabsContent value="categorias"><FinCategorias /></TabsContent>
+            <TabsContent value="plano_contas"><FinPlanoContas /></TabsContent>
+            <TabsContent value="saldos_abertura"><FinSaldosAbertura /></TabsContent>
           </Tabs>
         )}
       </div>

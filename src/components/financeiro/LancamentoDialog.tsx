@@ -18,6 +18,27 @@ import type { Database } from "@/integrations/supabase/types";
 type Tipo = Database["public"]["Enums"]["financeiro_tipo_lancamento"];
 type Status = Database["public"]["Enums"]["financeiro_status_lancamento"];
 type Natureza = Database["public"]["Enums"]["financeiro_natureza"];
+type TipoDocumento = Database["public"]["Enums"]["financeiro_tipo_documento"];
+
+const TIPO_DOC_OPTIONS: { value: TipoDocumento; label: string }[] = [
+  { value: "nfe", label: "NF-e (Mercadoria)" },
+  { value: "nfse", label: "NFS-e (Serviço)" },
+  { value: "nfce", label: "NFC-e (Consumidor)" },
+  { value: "cte", label: "CT-e (Transporte)" },
+  { value: "recibo", label: "Recibo" },
+  { value: "boleto", label: "Boleto" },
+  { value: "duplicata", label: "Duplicata" },
+  { value: "fatura", label: "Fatura" },
+  { value: "contrato", label: "Contrato" },
+  { value: "pix", label: "PIX" },
+  { value: "ted", label: "TED" },
+  { value: "doc", label: "DOC" },
+  { value: "darf", label: "DARF" },
+  { value: "das", label: "DAS" },
+  { value: "gps", label: "GPS (INSS)" },
+  { value: "gnre", label: "GNRE" },
+  { value: "outro", label: "Outros" },
+];
 
 type Props = {
   open: boolean;
@@ -45,6 +66,11 @@ export default function LancamentoDialog({ open, onOpenChange, initial }: Props)
   const [categoriaId, setCategoriaId] = useState<string>("");
   const [pessoaId, setPessoaId] = useState<string>("");
   const [observacoes, setObservacoes] = useState("");
+  const [tipoDocumento, setTipoDocumento] = useState<TipoDocumento | "">("");
+  const [numeroDocumento, setNumeroDocumento] = useState("");
+  const [serieDocumento, setSerieDocumento] = useState("");
+  const [chaveAcessoNfe, setChaveAcessoNfe] = useState("");
+  const [dataEmissao, setDataEmissao] = useState<string>("");
 
   useEffect(() => {
     if (!open) return;
@@ -60,6 +86,11 @@ export default function LancamentoDialog({ open, onOpenChange, initial }: Props)
     setCategoriaId(initial?.categoria_id ?? "");
     setPessoaId(initial?.pessoa_id ?? "");
     setObservacoes(initial?.observacoes ?? "");
+    setTipoDocumento(((initial as any)?.tipo_documento as TipoDocumento) ?? "");
+    setNumeroDocumento((initial as any)?.numero_documento ?? "");
+    setSerieDocumento((initial as any)?.serie_documento ?? "");
+    setChaveAcessoNfe((initial as any)?.chave_acesso_nfe ?? "");
+    setDataEmissao((initial as any)?.data_emissao ?? "");
   }, [open, initial]);
 
   // Sincroniza natureza padrão por tipo
@@ -85,7 +116,12 @@ export default function LancamentoDialog({ open, onOpenChange, initial }: Props)
       categoria_id: categoriaId || null,
       pessoa_id: pessoaId || null,
       observacoes: observacoes.trim() || null,
-    });
+      tipo_documento: tipoDocumento || null,
+      numero_documento: numeroDocumento.trim() || null,
+      serie_documento: serieDocumento.trim() || null,
+      chave_acesso_nfe: chaveAcessoNfe.replace(/\D/g, "").trim() || null,
+      data_emissao: dataEmissao || null,
+    } as any);
     onOpenChange(false);
   };
 
@@ -187,6 +223,49 @@ export default function LancamentoDialog({ open, onOpenChange, initial }: Props)
               </SelectContent>
             </Select>
           </div>
+
+          {/* Documento fiscal (Sprint D) */}
+          <div className="col-span-2 pt-2 mt-1 border-t">
+            <p className="text-xs font-medium text-muted-foreground mb-2">DOCUMENTO FISCAL</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Tipo de documento</Label>
+            <Select value={tipoDocumento || "none"} onValueChange={(v) => setTipoDocumento(v === "none" ? "" : (v as TipoDocumento))}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— Não informado —</SelectItem>
+                {TIPO_DOC_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Data de emissão</Label>
+            <Input type="date" value={dataEmissao} onChange={(e) => setDataEmissao(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Número do documento</Label>
+            <Input value={numeroDocumento} onChange={(e) => setNumeroDocumento(e.target.value)} placeholder="Ex.: 000123" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Série</Label>
+            <Input value={serieDocumento} onChange={(e) => setSerieDocumento(e.target.value)} placeholder="Ex.: 1" />
+          </div>
+          {(tipoDocumento === "nfe" || tipoDocumento === "nfce" || tipoDocumento === "nfse" || tipoDocumento === "cte") && (
+            <div className="col-span-2 space-y-1.5">
+              <Label>Chave de acesso (44 dígitos)</Label>
+              <Input
+                value={chaveAcessoNfe}
+                onChange={(e) => setChaveAcessoNfe(e.target.value.replace(/\D/g, "").slice(0, 44))}
+                placeholder="00000000000000000000000000000000000000000000"
+                maxLength={44}
+              />
+              {chaveAcessoNfe && chaveAcessoNfe.length !== 44 && (
+                <p className="text-xs text-destructive">A chave deve ter 44 dígitos numéricos.</p>
+              )}
+            </div>
+          )}
 
           <div className="col-span-2 space-y-1.5">
             <Label>Observações</Label>

@@ -13541,6 +13541,16 @@ export type Database = {
         | "recibo"
         | "contrato"
         | "outro"
+        | "cte"
+        | "duplicata"
+        | "fatura"
+        | "pix"
+        | "ted"
+        | "doc"
+        | "darf"
+        | "das"
+        | "gps"
+        | "gnre"
       financeiro_tipo_lancamento:
         | "a_pagar"
         | "a_receber"
@@ -13718,6 +13728,16 @@ export const Constants = {
         "recibo",
         "contrato",
         "outro",
+        "cte",
+        "duplicata",
+        "fatura",
+        "pix",
+        "ted",
+        "doc",
+        "darf",
+        "das",
+        "gps",
+        "gnre",
       ],
       financeiro_tipo_lancamento: [
         "a_pagar",
