@@ -189,7 +189,7 @@ export default function FinRelatorios() {
     }
   }
 
-  async function gerarTitulos(filename: string, titulo: string, tipo: "receita" | "despesa") {
+  async function gerarTitulos(filename: string, titulo: string, tipo: "a_pagar" | "a_receber") {
     const { data, error } = await supabase
       .from("financeiro_lancamentos")
       .select("data_vencimento, data_realizado, descricao, valor, status, pessoa:financeiro_pessoas(nome), categoria:financeiro_categorias(nome)")
@@ -204,7 +204,7 @@ export default function FinRelatorios() {
     const hoje = new Date().toISOString().slice(0, 10);
     const rows = (data || []).map((l: any) => {
       const venc = l.data_vencimento as string | null;
-      const liquidado = l.status === "liquidado";
+      const liquidado = l.status === "realizado" || l.status === "conciliado";
       const situacao = liquidado
         ? "Liquidado"
         : venc && venc < hoje
@@ -223,13 +223,14 @@ export default function FinRelatorios() {
     const total = (data || []).reduce((s: number, l: any) => s + (Number(l.valor) || 0), 0);
     const totalsRow = ["TOTAL", "", "", "", `${(data || []).length} títulos`, fmtBRL(total)];
 
-    const headers = ["Vencimento", tipo === "receita" ? "Cliente" : "Fornecedor", "Descrição", "Categoria", "Situação", "Valor"];
+    const isReceber = tipo === "a_receber";
+    const headers = ["Vencimento", isReceber ? "Cliente" : "Fornecedor", "Descrição", "Categoria", "Situação", "Valor"];
 
     if (formato === "pdf") {
       downloadPDF(filename, titulo, headers, [...rows, totalsRow]);
     } else {
       await writeExcelFile(`${filename}.xlsx`, [{
-        name: tipo === "receita" ? "Receber" : "Pagar",
+        name: isReceber ? "Receber" : "Pagar",
         data: [headers, ...rows, totalsRow],
         colWidths: [12, 28, 38, 22, 14, 16],
       }]);
