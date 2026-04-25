@@ -150,7 +150,7 @@ export default function FinRelatorios() {
       .from("financeiro_lancamentos")
       .select("data_realizado, descricao, tipo, valor, categoria:financeiro_categorias(nome), pessoa:financeiro_pessoas(nome)")
       .eq("empresa_id", empresaAtiva!.id)
-      .eq("status", "liquidado")
+      .in("status", ["realizado", "conciliado"])
       .gte("data_realizado", periodo.inicio)
       .lte("data_realizado", periodo.fim)
       .order("data_realizado", { ascending: true });
