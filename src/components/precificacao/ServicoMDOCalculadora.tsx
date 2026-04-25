@@ -521,7 +521,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
               {insumos.map((ins, i) => (
                 <div key={i} className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-4"><Input value={ins.descricao} onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, descricao: e.target.value } : x))} placeholder="Descrição" /></div>
-                  <div className="col-span-3"><Input type="number" value={ins.valorMensal || ''} onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, valorMensal: parseFloat(e.target.value) || 0 } : x))} placeholder="Valor/mês" /></div>
+                  <div className="col-span-3"><MoneyInput value={Number(ins.valorMensal) || 0} onValueChange={v => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, valorMensal: v } : x))} placeholder="R$ 0,00" /></div>
                   <div className="col-span-4"><Input value={ins.detalhes} onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, detalhes: e.target.value } : x))} placeholder="Detalhes (ex: 2 jogos/ano)" /></div>
                   <div className="col-span-1">{insumos.length > 1 && <Button variant="ghost" size="sm" onClick={() => removeInsumo(i)} className="text-destructive h-8 w-8 p-0"><Trash2 className="w-3 h-3" /></Button>}</div>
                 </div>
