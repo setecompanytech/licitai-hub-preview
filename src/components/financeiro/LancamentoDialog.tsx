@@ -37,7 +37,7 @@ const TIPO_DOC_OPTIONS: { value: TipoDocumento; label: string }[] = [
   { value: "das", label: "DAS" },
   { value: "gps", label: "GPS (INSS)" },
   { value: "gnre", label: "GNRE" },
-  { value: "outros", label: "Outros" },
+  { value: "outro", label: "Outros" },
 ];
 
 type Props = {
