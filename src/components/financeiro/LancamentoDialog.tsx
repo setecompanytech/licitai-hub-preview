@@ -86,6 +86,11 @@ export default function LancamentoDialog({ open, onOpenChange, initial }: Props)
     setCategoriaId(initial?.categoria_id ?? "");
     setPessoaId(initial?.pessoa_id ?? "");
     setObservacoes(initial?.observacoes ?? "");
+    setTipoDocumento(((initial as any)?.tipo_documento as TipoDocumento) ?? "");
+    setNumeroDocumento((initial as any)?.numero_documento ?? "");
+    setSerieDocumento((initial as any)?.serie_documento ?? "");
+    setChaveAcessoNfe((initial as any)?.chave_acesso_nfe ?? "");
+    setDataEmissao((initial as any)?.data_emissao ?? "");
   }, [open, initial]);
 
   // Sincroniza natureza padrão por tipo
