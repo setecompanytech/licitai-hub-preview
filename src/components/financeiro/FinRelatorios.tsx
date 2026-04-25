@@ -256,10 +256,11 @@ export default function FinRelatorios() {
     for (const l of (data || []) as any[]) {
       const valor = Number(l.valor) || 0;
       const cat = l.categoria?.nome || "Sem categoria";
-      const natureza = (l.categoria?.natureza || l.natureza || "").toLowerCase();
-      const grupo = l.tipo === "receita"
+      const natLanc = (l.natureza || "").toLowerCase();
+      const natCat = (l.categoria?.natureza || "").toLowerCase();
+      const grupo = natLanc === "receita"
         ? "Receitas"
-        : natureza.includes("custo") || natureza.includes("despesa")
+        : natLanc === "despesa" || natCat.includes("custo") || natCat.includes("despesa")
           ? "Custos/Despesas"
           : "Outros";
       grupos[grupo][cat] = (grupos[grupo][cat] || 0) + valor;
