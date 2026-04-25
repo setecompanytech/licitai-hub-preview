@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -927,11 +928,11 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                 <>
                   <div>
                     <Label className="text-xs">Valor Acréscimo (R$)</Label>
-                    <Input type="number" step="0.01" value={aditivoForm.valor_acrescimo} onChange={(e) => setAditivoForm(f => ({ ...f, valor_acrescimo: e.target.value }))} placeholder="0,00" />
+                    <MoneyInput value={parseFloat(aditivoForm.valor_acrescimo) || 0} onValueChange={v => setAditivoForm(f => ({ ...f, valor_acrescimo: String(v) }))} placeholder="R$ 0,00" />
                   </div>
                   <div>
                     <Label className="text-xs">Valor Supressão (R$)</Label>
-                    <Input type="number" step="0.01" value={aditivoForm.valor_supressao} onChange={(e) => setAditivoForm(f => ({ ...f, valor_supressao: e.target.value }))} placeholder="0,00" />
+                    <MoneyInput value={parseFloat(aditivoForm.valor_supressao) || 0} onValueChange={v => setAditivoForm(f => ({ ...f, valor_supressao: String(v) }))} placeholder="R$ 0,00" />
                   </div>
                 </>
               )}
@@ -1190,11 +1191,11 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                     <>
                       <div>
                         <Label className="text-xs">Valor Acréscimo (R$)</Label>
-                        <Input type="number" step="0.01" value={editAditivoForm.valor_acrescimo} onChange={(e) => setEditAditivoForm(f => ({ ...f, valor_acrescimo: e.target.value }))} placeholder="0,00" />
+                        <MoneyInput value={parseFloat(editAditivoForm.valor_acrescimo) || 0} onValueChange={v => setEditAditivoForm(f => ({ ...f, valor_acrescimo: String(v) }))} placeholder="R$ 0,00" />
                       </div>
                       <div>
                         <Label className="text-xs">Valor Supressão (R$)</Label>
-                        <Input type="number" step="0.01" value={editAditivoForm.valor_supressao} onChange={(e) => setEditAditivoForm(f => ({ ...f, valor_supressao: e.target.value }))} placeholder="0,00" />
+                        <MoneyInput value={parseFloat(editAditivoForm.valor_supressao) || 0} onValueChange={v => setEditAditivoForm(f => ({ ...f, valor_supressao: String(v) }))} placeholder="R$ 0,00" />
                       </div>
                     </>
                   )}

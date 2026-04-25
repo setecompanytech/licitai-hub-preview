@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -285,7 +286,7 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
             </div>
             <div>
               <Label className="text-xs">Valor do Frete (R$)</Label>
-              <Input type="number" step="0.01" value={freteValor} onChange={e => setFreteValor(e.target.value)} />
+              <MoneyInput value={parseFloat(freteValor) || 0} onValueChange={v => setFreteValor(String(v))} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
