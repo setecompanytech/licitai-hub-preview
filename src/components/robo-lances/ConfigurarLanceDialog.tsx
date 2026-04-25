@@ -1248,15 +1248,11 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                   <div className={`bg-card rounded-lg border p-3 text-center ${inexequibilidadeInicial ? 'border-destructive' : 'border-border'}`}>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Valor Inicial (1º lance)</p>
                     <div className="flex items-center justify-center gap-1 mt-1.5">
-                      <span className="text-xs text-muted-foreground font-medium">R$</span>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={valorInicialInput}
-                        onChange={(e) => setValorInicialInput(e.target.value)}
-                        placeholder="0,00"
-                        className="h-8 w-32 text-sm text-center px-1 font-mono font-bold"
+                      <MoneyInput
+                        value={Number(valorInicialInput) || 0}
+                        onValueChange={(v) => setValorInicialInput(String(v))}
+                        placeholder="R$ 0,00"
+                        className="h-8 w-40 text-sm text-center px-1 font-mono font-bold"
                       />
                     </div>
                     <p className={`text-[10px] font-semibold mt-1.5 ${inexequibilidadeInicial ? 'text-destructive' : 'text-accent'}`}>
