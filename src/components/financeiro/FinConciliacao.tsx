@@ -34,7 +34,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Upload, Sparkles, Link2, Unlink, Loader2, FileCheck2 } from "lucide-react";
-import { formatCurrency, formatDateBR } from "@/lib/financeiro/formatters";
+import { formatBRL, formatDate } from "@/lib/financeiro/formatters";
 
 export default function FinConciliacao() {
   const fileRef = useRef<HTMLInputElement>(null);
