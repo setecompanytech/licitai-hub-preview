@@ -118,7 +118,7 @@ export default function WhatsAppPipeline() {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label className="text-xs">Valor Estimado (R$)</Label><Input type="number" value={newLead.valor_estimado} onChange={e => setNewLead(p => ({ ...p, valor_estimado: e.target.value }))} className="mt-1" /></div>
+              <div><Label className="text-xs">Valor Estimado (R$)</Label><MoneyInput value={Number(newLead.valor_estimado) || 0} onValueChange={v => setNewLead(p => ({ ...p, valor_estimado: String(v) }))} className="mt-1" /></div>
               <Button onClick={handleCreateLead} className="w-full">Criar Lead</Button>
             </div>
           </DialogContent>
