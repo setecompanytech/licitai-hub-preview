@@ -7587,6 +7587,70 @@ export type Database = {
           },
         ]
       }
+      financeiro_metas: {
+        Row: {
+          ano: number
+          conta_id: string
+          created_at: string
+          empresa_id: string
+          id: string
+          mes: number
+          metodo_projecao: string
+          observacao: string | null
+          updated_at: string
+          user_id: string
+          valor_orcado: number
+        }
+        Insert: {
+          ano: number
+          conta_id: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          mes: number
+          metodo_projecao?: string
+          observacao?: string | null
+          updated_at?: string
+          user_id: string
+          valor_orcado?: number
+        }
+        Update: {
+          ano?: number
+          conta_id?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          mes?: number
+          metodo_projecao?: string
+          observacao?: string | null
+          updated_at?: string
+          user_id?: string
+          valor_orcado?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_metas_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_plano_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_metas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_metas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financeiro_nfe_eventos: {
         Row: {
           data_evento: string
@@ -13383,6 +13447,14 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      financeiro_realizado_mensal: {
+        Args: { p_ano: number; p_empresa_id: string }
+        Returns: {
+          conta_id: string
+          mes: number
+          valor_realizado: number
+        }[]
       }
       financeiro_recalcular_saldo_conta: {
         Args: { p_conta_id: string }
