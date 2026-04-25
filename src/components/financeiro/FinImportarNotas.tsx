@@ -201,6 +201,15 @@ export default function FinImportarNotas({ onImportacaoConcluida }: Props) {
           )}
         </CardContent>
       </Card>
-    </div>
+      </TabsContent>
+
+      <TabsContent value="sefaz">
+        <FinSefazConsulta
+          empresaId={empresaAtiva?.id ?? null}
+          cnpjEmpresa={empresaAtiva?.cnpj ?? null}
+          onConcluido={() => { carregarRecentes(); onImportacaoConcluida?.(); }}
+        />
+      </TabsContent>
+    </Tabs>
   );
 }
