@@ -438,10 +438,15 @@ export default function RevisaoItensExtraidos({
 
                   <td className="px-3 py-2 text-right">
                     <input
-                      type="number"
-                      step="0.01"
-                      defaultValue={item.valor_unitario ?? ''}
-                      onBlur={e => editarItem(idx, 'valor_unitario', parseFloat(e.target.value))}
+                      type="text"
+                      inputMode="decimal"
+                      defaultValue={item.valor_unitario != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_unitario) : ''}
+                      onBlur={e => {
+                        const digits = e.target.value.replace(/\D/g, '');
+                        const v = digits ? parseInt(digits, 10) / 100 : 0;
+                        editarItem(idx, 'valor_unitario', v);
+                        e.target.value = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+                      }}
                       className="w-full text-right bg-transparent text-foreground font-mono border-b border-transparent hover:border-border focus:border-accent outline-none text-xs"
                     />
                   </td>
