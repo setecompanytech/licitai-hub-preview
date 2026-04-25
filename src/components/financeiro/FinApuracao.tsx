@@ -113,9 +113,15 @@ export default function FinApuracao() {
     <Tabs defaultValue="apurar" className="space-y-4">
       <TabsList>
         <TabsTrigger value="apurar"><Calculator className="w-4 h-4 mr-1.5" />Apuração</TabsTrigger>
+        <TabsTrigger value="importar"><FileUp className="w-4 h-4 mr-1.5" />Importar notas</TabsTrigger>
         <TabsTrigger value="historico"><FileBarChart className="w-4 h-4 mr-1.5" />Histórico</TabsTrigger>
         <TabsTrigger value="config"><Settings className="w-4 h-4 mr-1.5" />Configuração</TabsTrigger>
       </TabsList>
+
+      {/* IMPORTAR NOTAS */}
+      <TabsContent value="importar" className="space-y-4">
+        <FinImportarNotas onImportacaoConcluida={carregar} />
+      </TabsContent>
 
       {/* APURAÇÃO */}
       <TabsContent value="apurar" className="space-y-4">
