@@ -4973,6 +4973,392 @@ export type Database = {
           },
         ]
       }
+      fin_folha_competencias: {
+        Row: {
+          competencia: string
+          created_at: string
+          data_pagamento: string | null
+          id: string
+          observacoes: string | null
+          status: string
+          total_descontos: number | null
+          total_encargos: number | null
+          total_liquido: number | null
+          total_proventos: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          competencia: string
+          created_at?: string
+          data_pagamento?: string | null
+          id?: string
+          observacoes?: string | null
+          status?: string
+          total_descontos?: number | null
+          total_encargos?: number | null
+          total_liquido?: number | null
+          total_proventos?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          competencia?: string
+          created_at?: string
+          data_pagamento?: string | null
+          id?: string
+          observacoes?: string | null
+          status?: string
+          total_descontos?: number | null
+          total_encargos?: number | null
+          total_liquido?: number | null
+          total_proventos?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      fin_folha_encargos: {
+        Row: {
+          base_calculo: number | null
+          competencia_id: string
+          created_at: string
+          fgts_patronal: number | null
+          id: string
+          inss_patronal: number | null
+          observacoes: string | null
+          pis_folha: number | null
+          rat: number | null
+          terceiros: number | null
+          total_encargos: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          base_calculo?: number | null
+          competencia_id: string
+          created_at?: string
+          fgts_patronal?: number | null
+          id?: string
+          inss_patronal?: number | null
+          observacoes?: string | null
+          pis_folha?: number | null
+          rat?: number | null
+          terceiros?: number | null
+          total_encargos?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          base_calculo?: number | null
+          competencia_id?: string
+          created_at?: string
+          fgts_patronal?: number | null
+          id?: string
+          inss_patronal?: number | null
+          observacoes?: string | null
+          pis_folha?: number | null
+          rat?: number | null
+          terceiros?: number | null
+          total_encargos?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_folha_encargos_competencia_id_fkey"
+            columns: ["competencia_id"]
+            isOneToOne: false
+            referencedRelation: "fin_folha_competencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_folha_funcionarios: {
+        Row: {
+          agencia: string | null
+          ativo: boolean | null
+          banco: string | null
+          carga_horaria_mensal: number | null
+          cargo: string | null
+          conta: string | null
+          cpf: string | null
+          created_at: string
+          data_admissao: string | null
+          data_demissao: string | null
+          data_nascimento: string | null
+          departamento: string | null
+          email: string | null
+          empresa_id: string | null
+          id: string
+          nome: string
+          num_dependentes: number | null
+          observacoes: string | null
+          pix: string | null
+          plano_saude: number | null
+          rg: string | null
+          salario_base: number
+          telefone: string | null
+          tipo_vinculo: string
+          updated_at: string
+          user_id: string
+          vale_refeicao: number | null
+          vale_transporte: boolean | null
+        }
+        Insert: {
+          agencia?: string | null
+          ativo?: boolean | null
+          banco?: string | null
+          carga_horaria_mensal?: number | null
+          cargo?: string | null
+          conta?: string | null
+          cpf?: string | null
+          created_at?: string
+          data_admissao?: string | null
+          data_demissao?: string | null
+          data_nascimento?: string | null
+          departamento?: string | null
+          email?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome: string
+          num_dependentes?: number | null
+          observacoes?: string | null
+          pix?: string | null
+          plano_saude?: number | null
+          rg?: string | null
+          salario_base?: number
+          telefone?: string | null
+          tipo_vinculo?: string
+          updated_at?: string
+          user_id: string
+          vale_refeicao?: number | null
+          vale_transporte?: boolean | null
+        }
+        Update: {
+          agencia?: string | null
+          ativo?: boolean | null
+          banco?: string | null
+          carga_horaria_mensal?: number | null
+          cargo?: string | null
+          conta?: string | null
+          cpf?: string | null
+          created_at?: string
+          data_admissao?: string | null
+          data_demissao?: string | null
+          data_nascimento?: string | null
+          departamento?: string | null
+          email?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+          num_dependentes?: number | null
+          observacoes?: string | null
+          pix?: string | null
+          plano_saude?: number | null
+          rg?: string | null
+          salario_base?: number
+          telefone?: string | null
+          tipo_vinculo?: string
+          updated_at?: string
+          user_id?: string
+          vale_refeicao?: number | null
+          vale_transporte?: boolean | null
+        }
+        Relationships: []
+      }
+      fin_folha_holerite_itens: {
+        Row: {
+          codigo: string | null
+          created_at: string
+          descricao: string
+          holerite_id: string
+          id: string
+          ordem: number | null
+          referencia: string | null
+          rubrica_id: string | null
+          tipo: string
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          codigo?: string | null
+          created_at?: string
+          descricao: string
+          holerite_id: string
+          id?: string
+          ordem?: number | null
+          referencia?: string | null
+          rubrica_id?: string | null
+          tipo: string
+          user_id: string
+          valor?: number
+        }
+        Update: {
+          codigo?: string | null
+          created_at?: string
+          descricao?: string
+          holerite_id?: string
+          id?: string
+          ordem?: number | null
+          referencia?: string | null
+          rubrica_id?: string | null
+          tipo?: string
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_folha_holerite_itens_holerite_id_fkey"
+            columns: ["holerite_id"]
+            isOneToOne: false
+            referencedRelation: "fin_folha_holerites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_folha_holerite_itens_rubrica_id_fkey"
+            columns: ["rubrica_id"]
+            isOneToOne: false
+            referencedRelation: "fin_folha_rubricas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_folha_holerites: {
+        Row: {
+          base_fgts: number | null
+          base_inss: number | null
+          base_irrf: number | null
+          competencia_id: string
+          created_at: string
+          data_pagamento: string | null
+          funcionario_id: string
+          id: string
+          observacoes: string | null
+          status: string
+          total_descontos: number | null
+          total_liquido: number | null
+          total_proventos: number | null
+          updated_at: string
+          user_id: string
+          valor_fgts: number | null
+          valor_inss: number | null
+          valor_irrf: number | null
+        }
+        Insert: {
+          base_fgts?: number | null
+          base_inss?: number | null
+          base_irrf?: number | null
+          competencia_id: string
+          created_at?: string
+          data_pagamento?: string | null
+          funcionario_id: string
+          id?: string
+          observacoes?: string | null
+          status?: string
+          total_descontos?: number | null
+          total_liquido?: number | null
+          total_proventos?: number | null
+          updated_at?: string
+          user_id: string
+          valor_fgts?: number | null
+          valor_inss?: number | null
+          valor_irrf?: number | null
+        }
+        Update: {
+          base_fgts?: number | null
+          base_inss?: number | null
+          base_irrf?: number | null
+          competencia_id?: string
+          created_at?: string
+          data_pagamento?: string | null
+          funcionario_id?: string
+          id?: string
+          observacoes?: string | null
+          status?: string
+          total_descontos?: number | null
+          total_liquido?: number | null
+          total_proventos?: number | null
+          updated_at?: string
+          user_id?: string
+          valor_fgts?: number | null
+          valor_inss?: number | null
+          valor_irrf?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_folha_holerites_competencia_id_fkey"
+            columns: ["competencia_id"]
+            isOneToOne: false
+            referencedRelation: "fin_folha_competencias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_folha_holerites_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "fin_folha_funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_folha_rubricas: {
+        Row: {
+          ativo: boolean | null
+          codigo: string
+          created_at: string
+          descricao: string
+          formula: string | null
+          id: string
+          incide_fgts: boolean | null
+          incide_inss: boolean | null
+          incide_irrf: boolean | null
+          natureza: string | null
+          ordem: number | null
+          percentual: number | null
+          tipo: string
+          updated_at: string
+          user_id: string
+          valor_fixo: number | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          codigo: string
+          created_at?: string
+          descricao: string
+          formula?: string | null
+          id?: string
+          incide_fgts?: boolean | null
+          incide_inss?: boolean | null
+          incide_irrf?: boolean | null
+          natureza?: string | null
+          ordem?: number | null
+          percentual?: number | null
+          tipo: string
+          updated_at?: string
+          user_id: string
+          valor_fixo?: number | null
+        }
+        Update: {
+          ativo?: boolean | null
+          codigo?: string
+          created_at?: string
+          descricao?: string
+          formula?: string | null
+          id?: string
+          incide_fgts?: boolean | null
+          incide_inss?: boolean | null
+          incide_irrf?: boolean | null
+          natureza?: string | null
+          ordem?: number | null
+          percentual?: number | null
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+          valor_fixo?: number | null
+        }
+        Relationships: []
+      }
       fin_lancamentos: {
         Row: {
           arquivo_url: string | null

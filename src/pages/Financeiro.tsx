@@ -1,6 +1,6 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart } from "lucide-react";
+import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug } from "lucide-react";
 import FinDashboard from "@/components/financeiro/FinDashboard";
 import FinLancamentos from "@/components/financeiro/FinLancamentos";
 import FinContas from "@/components/financeiro/FinContas";
@@ -12,6 +12,9 @@ import FinContasReceber from "@/components/financeiro/FinContasReceber";
 import FinCentrosCusto from "@/components/financeiro/FinCentrosCusto";
 import FinFluxoCaixa from "@/components/financeiro/FinFluxoCaixa";
 import FinDRE from "@/components/financeiro/FinDRE";
+import FinFolha from "@/components/financeiro/FinFolha";
+import FinOCRDocumentos from "@/components/financeiro/FinOCRDocumentos";
+import FinIntegracoes from "@/components/financeiro/FinIntegracoes";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -44,6 +47,9 @@ export default function Financeiro() {
               <TabsTrigger value="conciliacao"><Banknote className="w-4 h-4 mr-1.5" />Conciliação</TabsTrigger>
               <TabsTrigger value="fluxo_caixa"><LineChart className="w-4 h-4 mr-1.5" />Fluxo de Caixa</TabsTrigger>
               <TabsTrigger value="dre"><FileBarChart className="w-4 h-4 mr-1.5" />DRE</TabsTrigger>
+              <TabsTrigger value="folha"><Briefcase className="w-4 h-4 mr-1.5" />Folha</TabsTrigger>
+              <TabsTrigger value="ocr"><ScanLine className="w-4 h-4 mr-1.5" />OCR Docs</TabsTrigger>
+              <TabsTrigger value="integracoes"><Plug className="w-4 h-4 mr-1.5" />Integrações</TabsTrigger>
               <TabsTrigger value="contas"><Wallet className="w-4 h-4 mr-1.5" />Contas</TabsTrigger>
               <TabsTrigger value="centros_custo"><FolderTree className="w-4 h-4 mr-1.5" />Centros de Custo</TabsTrigger>
               <TabsTrigger value="pessoas"><Users className="w-4 h-4 mr-1.5" />Pessoas</TabsTrigger>
@@ -56,6 +62,9 @@ export default function Financeiro() {
             <TabsContent value="conciliacao"><FinConciliacao /></TabsContent>
             <TabsContent value="fluxo_caixa"><FinFluxoCaixa /></TabsContent>
             <TabsContent value="dre"><FinDRE /></TabsContent>
+            <TabsContent value="folha"><FinFolha /></TabsContent>
+            <TabsContent value="ocr"><FinOCRDocumentos /></TabsContent>
+            <TabsContent value="integracoes"><FinIntegracoes /></TabsContent>
             <TabsContent value="contas"><FinContas /></TabsContent>
             <TabsContent value="centros_custo"><FinCentrosCusto /></TabsContent>
             <TabsContent value="pessoas"><FinPessoas /></TabsContent>
