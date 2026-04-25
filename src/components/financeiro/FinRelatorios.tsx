@@ -148,7 +148,7 @@ export default function FinRelatorios() {
   async function gerarFluxoRealizado(filename: string, titulo: string) {
     const { data, error } = await supabase
       .from("financeiro_lancamentos")
-      .select("data_realizado, descricao, tipo, valor, categoria:financeiro_categorias(nome), pessoa:financeiro_pessoas(nome)")
+      .select("data_realizado, descricao, tipo, natureza, valor, categoria:financeiro_categorias(nome), pessoa:financeiro_pessoas(nome)")
       .eq("empresa_id", empresaAtiva!.id)
       .in("status", ["realizado", "conciliado"])
       .gte("data_realizado", periodo.inicio)
@@ -156,24 +156,28 @@ export default function FinRelatorios() {
       .order("data_realizado", { ascending: true });
     if (error) throw error;
 
-    const linhas = (data || []).map((l: any) => ({
-      data: fmtDate(l.data_realizado),
-      descricao: l.descricao || "—",
-      categoria: l.categoria?.nome || "—",
-      pessoa: l.pessoa?.nome || "—",
-      tipo: l.tipo,
-      valor: Number(l.valor) || 0,
-    }));
+    const linhas = (data || []).map((l: any) => {
+      const isEntrada = l.natureza === "receita" || l.tipo === "a_receber";
+      return {
+        data: fmtDate(l.data_realizado),
+        descricao: l.descricao || "—",
+        categoria: l.categoria?.nome || "—",
+        pessoa: l.pessoa?.nome || "—",
+        sentido: isEntrada ? "Entrada" : "Saída",
+        isEntrada,
+        valor: Number(l.valor) || 0,
+      };
+    });
 
     let saldo = 0;
     const rows = linhas.map((l) => {
-      const v = l.tipo === "receita" ? l.valor : -l.valor;
+      const v = l.isEntrada ? l.valor : -l.valor;
       saldo += v;
-      return [l.data, l.descricao, l.categoria, l.pessoa, l.tipo, fmtBRL(v), fmtBRL(saldo)];
+      return [l.data, l.descricao, l.categoria, l.pessoa, l.sentido, fmtBRL(v), fmtBRL(saldo)];
     });
 
-    const totalEntradas = linhas.filter((l) => l.tipo === "receita").reduce((s, l) => s + l.valor, 0);
-    const totalSaidas = linhas.filter((l) => l.tipo === "despesa").reduce((s, l) => s + l.valor, 0);
+    const totalEntradas = linhas.filter((l) => l.isEntrada).reduce((s, l) => s + l.valor, 0);
+    const totalSaidas = linhas.filter((l) => !l.isEntrada).reduce((s, l) => s + l.valor, 0);
 
     const headers = ["Data", "Descrição", "Categoria", "Pessoa", "Tipo", "Valor (líquido)", "Saldo Acum."];
     const totalsRow = ["TOTAL", `${linhas.length} lançamentos`, "", "", "", `Entradas: ${fmtBRL(totalEntradas)} | Saídas: ${fmtBRL(totalSaidas)}`, fmtBRL(saldo)];
