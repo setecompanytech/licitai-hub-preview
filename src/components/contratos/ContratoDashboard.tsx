@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import RelatorioConsumoAtaDialog from './RelatorioConsumoAtaDialog';
 import ManutencaoAtaSrpDialog from './ManutencaoAtaSrpDialog';
+import EvolucaoMensalDashboard from './EvolucaoMensalDashboard';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
