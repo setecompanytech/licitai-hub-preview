@@ -162,12 +162,12 @@ export default function FinOrcamento() {
     if (orcado === 0) return "text-foreground";
     const pct = (realizadoV / orcado) * 100;
     if (isReceita) {
-      if (pct >= 100) return "text-emerald-600 dark:text-emerald-400 font-medium";
-      if (pct >= 80) return "text-amber-600 dark:text-amber-400";
+      if (pct >= 100) return "text-success font-medium";
+      if (pct >= 80) return "text-warning";
       return "text-destructive";
     } else {
-      if (pct <= 100) return "text-emerald-600 dark:text-emerald-400 font-medium";
-      if (pct <= 110) return "text-amber-600 dark:text-amber-400";
+      if (pct <= 100) return "text-success font-medium";
+      if (pct <= 110) return "text-warning";
       return "text-destructive";
     }
   };
@@ -412,9 +412,9 @@ export default function FinOrcamento() {
           <div className="mt-4 text-xs text-muted-foreground border-t pt-3">
             <strong>Legenda:</strong>{" "}
             {isReceita ? (
-              <>Receitas — <span className="text-emerald-600">verde ≥100%</span>, <span className="text-amber-600">amarelo 80–99%</span>, <span className="text-destructive">vermelho &lt;80%</span></>
+              <>Receitas — <span className="text-success">verde ≥100%</span>, <span className="text-warning">amarelo 80–99%</span>, <span className="text-destructive">vermelho &lt;80%</span></>
             ) : (
-              <>Despesas — <span className="text-emerald-600">verde ≤100%</span>, <span className="text-amber-600">amarelo 101–110%</span>, <span className="text-destructive">vermelho &gt;110%</span></>
+              <>Despesas — <span className="text-success">verde ≤100%</span>, <span className="text-warning">amarelo 101–110%</span>, <span className="text-destructive">vermelho &gt;110%</span></>
             )}
           </div>
         </CardContent>
