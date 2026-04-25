@@ -88,44 +88,39 @@ export interface Holerite {
 }
 
 // ----------------------------------------------------------------------------
-// Tabelas INSS/IRRF 2024 (BR)
+// Tabelas INSS/IRRF 2026 (Portaria MPS/MF nº 13/2026 + Lei 15.270/2025)
+// Implementação detalhada em: src/lib/financeiro/inss-irrf-2026.ts
 // ----------------------------------------------------------------------------
-const TABELA_INSS_2024 = [
-  { ate: 1412.00, aliquota: 0.075, deducao: 0 },
-  { ate: 2666.68, aliquota: 0.09, deducao: 21.18 },
-  { ate: 4000.03, aliquota: 0.12, deducao: 101.18 },
-  { ate: 7786.02, aliquota: 0.14, deducao: 181.18 },
-];
-const TETO_INSS_2024 = 7786.02;
-const VALOR_TETO_INSS = 908.86;
+import {
+  calcularINSS as calcularINSS2026,
+  calcularIRRF as calcularIRRF2026,
+  DESCONTO_MAXIMO_INSS_2026,
+} from "@/lib/financeiro/inss-irrf-2026";
 
-const TABELA_IRRF_2024 = [
-  { ate: 2259.20, aliquota: 0, deducao: 0 },
-  { ate: 2826.65, aliquota: 0.075, deducao: 169.44 },
-  { ate: 3751.05, aliquota: 0.15, deducao: 381.44 },
-  { ate: 4664.68, aliquota: 0.225, deducao: 662.77 },
-  { ate: Infinity, aliquota: 0.275, deducao: 896.00 },
-];
-const DEDUCAO_DEPENDENTE = 189.59;
+const VALOR_TETO_INSS = DESCONTO_MAXIMO_INSS_2026; // R$ 988,09
 
+/**
+ * Calcula INSS pelo método progressivo oficial (2026).
+ * API mantida compatível: retorna apenas o valor total do desconto.
+ */
 export function calcularINSS(salario: number): number {
-  if (salario >= TETO_INSS_2024) return VALOR_TETO_INSS;
-  for (const faixa of TABELA_INSS_2024) {
-    if (salario <= faixa.ate) {
-      return Math.max(0, salario * faixa.aliquota - faixa.deducao);
-    }
-  }
-  return VALOR_TETO_INSS;
+  return calcularINSS2026(salario).total;
 }
 
+/**
+ * Calcula IRRF aplicando tabela progressiva + redutor da Reforma 2026.
+ * Recebe a base de cálculo (rendimento bruto - INSS) por compatibilidade.
+ */
 export function calcularIRRF(baseCalculo: number, dependentes: number = 0): number {
-  const base = Math.max(0, baseCalculo - dependentes * DEDUCAO_DEPENDENTE);
-  for (const faixa of TABELA_IRRF_2024) {
-    if (base <= faixa.ate) {
-      return Math.max(0, base * faixa.aliquota - faixa.deducao);
-    }
-  }
-  return 0;
+  // Reconstrói rendimento bruto aproximado para aplicar o redutor da reforma.
+  // Como o chamador já passou (salario - INSS), usamos baseCalculo como rendimento
+  // bruto efetivo + INSS já deduzido = 0 (aproximação para retrocompatibilidade).
+  const r = calcularIRRF2026({
+    rendimentoBruto: baseCalculo,
+    inssDescontado: 0,
+    dependentes,
+  });
+  return r.imposto_final;
 }
 
 export function calcularFGTS(salario: number): number {

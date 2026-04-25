@@ -6491,6 +6491,84 @@ export type Database = {
           },
         ]
       }
+      financeiro_certificados: {
+        Row: {
+          arquivo_path: string | null
+          ativo: boolean
+          cnpj: string
+          created_at: string
+          emissor: string | null
+          empresa_id: string | null
+          id: string
+          nome: string
+          numero_serie: string | null
+          provedor: string | null
+          provedor_ref: string | null
+          senha_cifrada: string | null
+          tipo: string
+          updated_at: string
+          user_id: string
+          uso_padrao: boolean
+          validade_ate: string
+          validade_de: string
+        }
+        Insert: {
+          arquivo_path?: string | null
+          ativo?: boolean
+          cnpj: string
+          created_at?: string
+          emissor?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome: string
+          numero_serie?: string | null
+          provedor?: string | null
+          provedor_ref?: string | null
+          senha_cifrada?: string | null
+          tipo: string
+          updated_at?: string
+          user_id: string
+          uso_padrao?: boolean
+          validade_ate: string
+          validade_de: string
+        }
+        Update: {
+          arquivo_path?: string | null
+          ativo?: boolean
+          cnpj?: string
+          created_at?: string
+          emissor?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+          numero_serie?: string | null
+          provedor?: string | null
+          provedor_ref?: string | null
+          senha_cifrada?: string | null
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+          uso_padrao?: boolean
+          validade_ate?: string
+          validade_de?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_certificados_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_certificados_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financeiro_comissoes_calculadas: {
         Row: {
           base: number
@@ -6707,6 +6785,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      financeiro_consulta_nfe_log: {
+        Row: {
+          cnpj: string
+          created_at: string
+          duracao_ms: number | null
+          erro_mensagem: string | null
+          id: string
+          nfes_encontradas: number | null
+          nfes_novas: number | null
+          nsu_final: number
+          nsu_inicial: number
+          status: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          cnpj: string
+          created_at?: string
+          duracao_ms?: number | null
+          erro_mensagem?: string | null
+          id?: string
+          nfes_encontradas?: number | null
+          nfes_novas?: number | null
+          nsu_final: number
+          nsu_inicial: number
+          status?: string
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          cnpj?: string
+          created_at?: string
+          duracao_ms?: number | null
+          erro_mensagem?: string | null
+          id?: string
+          nfes_encontradas?: number | null
+          nfes_novas?: number | null
+          nsu_final?: number
+          nsu_inicial?: number
+          status?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       financeiro_contas: {
         Row: {
@@ -7385,6 +7508,279 @@ export type Database = {
             columns: ["pessoa_id"]
             isOneToOne: false
             referencedRelation: "financeiro_pessoas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_manifestacoes: {
+        Row: {
+          automatica: boolean | null
+          chave_nfe: string
+          data_manifestacao: string
+          empresa_id: string | null
+          id: string
+          motivo: string | null
+          protocolo: string | null
+          realizado_por: string | null
+          tipo: Database["public"]["Enums"]["financeiro_manifestacao_tipo"]
+          user_id: string
+        }
+        Insert: {
+          automatica?: boolean | null
+          chave_nfe: string
+          data_manifestacao?: string
+          empresa_id?: string | null
+          id?: string
+          motivo?: string | null
+          protocolo?: string | null
+          realizado_por?: string | null
+          tipo: Database["public"]["Enums"]["financeiro_manifestacao_tipo"]
+          user_id: string
+        }
+        Update: {
+          automatica?: boolean | null
+          chave_nfe?: string
+          data_manifestacao?: string
+          empresa_id?: string | null
+          id?: string
+          motivo?: string | null
+          protocolo?: string | null
+          realizado_por?: string | null
+          tipo?: Database["public"]["Enums"]["financeiro_manifestacao_tipo"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_manifestacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_manifestacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_nfe_eventos: {
+        Row: {
+          data_evento: string
+          id: string
+          motivo: string | null
+          nfe_id: string
+          protocolo: string | null
+          realizado_por: string | null
+          tipo_evento: string
+          user_id: string
+          xml_url: string | null
+        }
+        Insert: {
+          data_evento?: string
+          id?: string
+          motivo?: string | null
+          nfe_id: string
+          protocolo?: string | null
+          realizado_por?: string | null
+          tipo_evento: string
+          user_id: string
+          xml_url?: string | null
+        }
+        Update: {
+          data_evento?: string
+          id?: string
+          motivo?: string | null
+          nfe_id?: string
+          protocolo?: string | null
+          realizado_por?: string | null
+          tipo_evento?: string
+          user_id?: string
+          xml_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_nfe_eventos_nfe_id_fkey"
+            columns: ["nfe_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_nfes_emitidas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_nfes_emitidas: {
+        Row: {
+          ambiente: string
+          certificado_id: string | null
+          cfop: string | null
+          chave_acesso: string | null
+          consumidor_final: boolean | null
+          created_at: string
+          danfe_url: string | null
+          data_autorizacao: string | null
+          data_emissao: string
+          data_saida: string | null
+          destinatario_dados: Json
+          empresa_id: string | null
+          finalidade: string
+          id: string
+          informacoes_adicionais: string | null
+          itens: Json
+          modelo: string
+          motivo: string | null
+          natureza_operacao: string
+          nfse_aliquota_iss: number | null
+          nfse_codigo_servico: string | null
+          nfse_iss_retido: boolean | null
+          nfse_municipio: string | null
+          numero: number | null
+          observacoes: string | null
+          presenca: string | null
+          protocolo: string | null
+          provedor: string
+          serie: number
+          status: Database["public"]["Enums"]["financeiro_status_nfe"]
+          updated_at: string
+          user_id: string
+          uuid_provedor: string
+          valor_cofins: number | null
+          valor_desconto: number | null
+          valor_frete: number | null
+          valor_icms: number | null
+          valor_icms_st: number | null
+          valor_ipi: number | null
+          valor_iss: number | null
+          valor_outros: number | null
+          valor_pis: number | null
+          valor_produtos: number
+          valor_seguro: number | null
+          valor_servicos: number
+          valor_total: number
+          xml_cancelamento_url: string | null
+          xml_url: string | null
+        }
+        Insert: {
+          ambiente?: string
+          certificado_id?: string | null
+          cfop?: string | null
+          chave_acesso?: string | null
+          consumidor_final?: boolean | null
+          created_at?: string
+          danfe_url?: string | null
+          data_autorizacao?: string | null
+          data_emissao?: string
+          data_saida?: string | null
+          destinatario_dados: Json
+          empresa_id?: string | null
+          finalidade?: string
+          id?: string
+          informacoes_adicionais?: string | null
+          itens?: Json
+          modelo: string
+          motivo?: string | null
+          natureza_operacao: string
+          nfse_aliquota_iss?: number | null
+          nfse_codigo_servico?: string | null
+          nfse_iss_retido?: boolean | null
+          nfse_municipio?: string | null
+          numero?: number | null
+          observacoes?: string | null
+          presenca?: string | null
+          protocolo?: string | null
+          provedor?: string
+          serie?: number
+          status?: Database["public"]["Enums"]["financeiro_status_nfe"]
+          updated_at?: string
+          user_id: string
+          uuid_provedor: string
+          valor_cofins?: number | null
+          valor_desconto?: number | null
+          valor_frete?: number | null
+          valor_icms?: number | null
+          valor_icms_st?: number | null
+          valor_ipi?: number | null
+          valor_iss?: number | null
+          valor_outros?: number | null
+          valor_pis?: number | null
+          valor_produtos?: number
+          valor_seguro?: number | null
+          valor_servicos?: number
+          valor_total: number
+          xml_cancelamento_url?: string | null
+          xml_url?: string | null
+        }
+        Update: {
+          ambiente?: string
+          certificado_id?: string | null
+          cfop?: string | null
+          chave_acesso?: string | null
+          consumidor_final?: boolean | null
+          created_at?: string
+          danfe_url?: string | null
+          data_autorizacao?: string | null
+          data_emissao?: string
+          data_saida?: string | null
+          destinatario_dados?: Json
+          empresa_id?: string | null
+          finalidade?: string
+          id?: string
+          informacoes_adicionais?: string | null
+          itens?: Json
+          modelo?: string
+          motivo?: string | null
+          natureza_operacao?: string
+          nfse_aliquota_iss?: number | null
+          nfse_codigo_servico?: string | null
+          nfse_iss_retido?: boolean | null
+          nfse_municipio?: string | null
+          numero?: number | null
+          observacoes?: string | null
+          presenca?: string | null
+          protocolo?: string | null
+          provedor?: string
+          serie?: number
+          status?: Database["public"]["Enums"]["financeiro_status_nfe"]
+          updated_at?: string
+          user_id?: string
+          uuid_provedor?: string
+          valor_cofins?: number | null
+          valor_desconto?: number | null
+          valor_frete?: number | null
+          valor_icms?: number | null
+          valor_icms_st?: number | null
+          valor_ipi?: number | null
+          valor_iss?: number | null
+          valor_outros?: number | null
+          valor_pis?: number | null
+          valor_produtos?: number
+          valor_seguro?: number | null
+          valor_servicos?: number
+          valor_total?: number
+          xml_cancelamento_url?: string | null
+          xml_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_nfes_emitidas_certificado_id_fkey"
+            columns: ["certificado_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_certificados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_nfes_emitidas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_nfes_emitidas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -12915,6 +13311,11 @@ export type Database = {
     Enums: {
       app_role: "admin" | "user" | "viewer"
       empresa_papel: "admin" | "operador" | "viewer"
+      financeiro_manifestacao_tipo:
+        | "ciencia"
+        | "confirmacao"
+        | "desconhecimento"
+        | "nao_realizada"
       financeiro_natureza: "receita" | "despesa" | "movimentacao"
       financeiro_origem_movimento:
         | "manual"
@@ -12932,6 +13333,15 @@ export type Database = {
         | "conciliado"
         | "cancelado"
         | "em_atraso"
+      financeiro_status_nfe:
+        | "rascunho"
+        | "em_processamento"
+        | "autorizada"
+        | "rejeitada"
+        | "cancelada"
+        | "denegada"
+        | "inutilizada"
+        | "contingencia"
       financeiro_tipo_documento:
         | "nfe"
         | "nfse"
@@ -13074,6 +13484,12 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user", "viewer"],
       empresa_papel: ["admin", "operador", "viewer"],
+      financeiro_manifestacao_tipo: [
+        "ciencia",
+        "confirmacao",
+        "desconhecimento",
+        "nao_realizada",
+      ],
       financeiro_natureza: ["receita", "despesa", "movimentacao"],
       financeiro_origem_movimento: [
         "manual",
@@ -13092,6 +13508,16 @@ export const Constants = {
         "conciliado",
         "cancelado",
         "em_atraso",
+      ],
+      financeiro_status_nfe: [
+        "rascunho",
+        "em_processamento",
+        "autorizada",
+        "rejeitada",
+        "cancelada",
+        "denegada",
+        "inutilizada",
+        "contingencia",
       ],
       financeiro_tipo_documento: [
         "nfe",
