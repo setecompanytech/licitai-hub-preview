@@ -342,7 +342,7 @@ export default function FinRelatorios() {
   async function gerarPosicaoPessoas(filename: string, titulo: string) {
     const { data, error } = await supabase
       .from("financeiro_lancamentos")
-      .select("valor, tipo, status, pessoa:financeiro_pessoas(id, nome)")
+      .select("valor, tipo, natureza, status, pessoa:financeiro_pessoas(id, nome)")
       .eq("empresa_id", empresaAtiva!.id)
       .neq("status", "cancelado")
       .gte("data_competencia", periodo.inicio)
@@ -355,11 +355,13 @@ export default function FinRelatorios() {
       const nome = l.pessoa?.nome || "Sem pessoa";
       const v = Number(l.valor) || 0;
       const m = (mapa[id] ||= { nome, receberAberto: 0, receberLiquidado: 0, pagarAberto: 0, pagarLiquidado: 0 });
-      if (l.tipo === "receita") {
-        if (l.status === "liquidado") m.receberLiquidado += v;
+      const isReceita = l.natureza === "receita" || l.tipo === "a_receber";
+      const isLiquidado = l.status === "realizado" || l.status === "conciliado";
+      if (isReceita) {
+        if (isLiquidado) m.receberLiquidado += v;
         else m.receberAberto += v;
       } else {
-        if (l.status === "liquidado") m.pagarLiquidado += v;
+        if (isLiquidado) m.pagarLiquidado += v;
         else m.pagarAberto += v;
       }
     }
