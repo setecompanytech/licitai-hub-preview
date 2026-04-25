@@ -1,0 +1,36 @@
+name: Validate Edge Functions
+
+on:
+  push:
+    paths:
+      - 'supabase/functions/**'
+      - 'scripts/install-edge-functions-deps.sh'
+      - '.github/workflows/edge-functions.yml'
+  pull_request:
+    paths:
+      - 'supabase/functions/**'
+
+jobs:
+  install-deps:
+    name: Install & validate Deno deps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install deps for all edge functions
+        run: bash scripts/install-edge-functions-deps.sh
+
+      - name: Type-check edge functions
+        run: |
+          set -e
+          for dir in supabase/functions/*/; do
+            if [ -f "${dir}index.ts" ] && [ -f "${dir}deno.json" ]; then
+              echo "→ Checking $(basename "$dir")"
+              (cd "$dir" && deno check index.ts) || exit 1
+            fi
+          done
