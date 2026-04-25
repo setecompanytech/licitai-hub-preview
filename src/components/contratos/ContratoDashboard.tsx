@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import RelatorioConsumoAtaDialog from './RelatorioConsumoAtaDialog';
 import ManutencaoAtaSrpDialog from './ManutencaoAtaSrpDialog';
+import EvolucaoMensalDashboard from './EvolucaoMensalDashboard';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -248,24 +249,13 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         </Card>
       )}
 
-      {pedidosPorMes.length > 0 && (
-        <Card className="p-4">
-          <h4 className="text-xs font-semibold mb-3 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-accent" /> Evolução Mensal</h4>
-          <div className="flex items-end gap-2 h-32">
-            {pedidosPorMes.map(([mes, valor]) => {
-              const max = Math.max(...pedidosPorMes.map(([, v]) => v as number));
-              const h = max > 0 ? ((valor as number) / max) * 100 : 0;
-              return (
-                <div key={mes} className="flex-1 flex flex-col items-center">
-                  <span className="text-[9px] font-medium mb-1">{fmt(valor as number)}</span>
-                  <div className="w-full rounded-t bg-accent" style={{ height: `${h}%`, minHeight: '4px' }} />
-                  <span className="text-[9px] text-muted-foreground mt-1">{mes.substring(5)}/{mes.substring(2, 4)}</span>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
+      <EvolucaoMensalDashboard
+        pedidos={data!.pedidos as any[]}
+        podeVerCustos={podeVerCustos}
+        valorGlobal={valorGlobalEfetivo}
+        dataInicio={c.data_inicio}
+        dataFim={c.data_fim}
+      />
 
       <Card className="p-4">
         <h4 className="text-xs font-semibold mb-2 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-accent" /> Vigência</h4>
