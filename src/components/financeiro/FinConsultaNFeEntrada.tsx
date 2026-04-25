@@ -7,33 +7,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Inbox, AlertCircle, Loader2, CheckCircle2, XCircle, Eye } from "lucide-react";
+import { Inbox, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
 
-type Manifestacao = {
+type ManifestacaoRow = {
   id: string;
   chave_nfe: string;
-  tipo_evento: string;
-  emitente_cnpj: string | null;
-  emitente_nome: string | null;
-  valor_nfe: number | null;
-  data_emissao: string | null;
-  status: string | null;
+  tipo: string;
+  motivo: string | null;
   protocolo: string | null;
-  justificativa: string | null;
-  created_at: string;
+  data_manifestacao: string;
+  automatica: boolean | null;
 };
 
-const TIPO_EVENTO_LABEL: Record<string, string> = {
+const TIPO_LABEL: Record<string, string> = {
   ciencia: "Ciência da Operação",
   confirmacao: "Confirmação da Operação",
   desconhecimento: "Desconhecimento",
   nao_realizada: "Operação Não Realizada",
 };
 
-const TIPO_EVENTO_BADGE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+const TIPO_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   ciencia: "secondary",
   confirmacao: "default",
   desconhecimento: "destructive",
@@ -43,10 +39,10 @@ const TIPO_EVENTO_BADGE: Record<string, "default" | "secondary" | "destructive" 
 export default function FinConsultaNFeEntrada() {
   const { empresaAtiva } = useEmpresa();
   const [chaveNfe, setChaveNfe] = useState("");
-  const [tipoEvento, setTipoEvento] = useState<"ciencia" | "confirmacao" | "desconhecimento" | "nao_realizada">("ciencia");
-  const [justificativa, setJustificativa] = useState("");
+  const [tipo, setTipo] = useState<"ciencia" | "confirmacao" | "desconhecimento" | "nao_realizada">("ciencia");
+  const [motivo, setMotivo] = useState("");
   const [loading, setLoading] = useState(false);
-  const [historico, setHistorico] = useState<Manifestacao[]>([]);
+  const [historico, setHistorico] = useState<ManifestacaoRow[]>([]);
   const [loadingList, setLoadingList] = useState(false);
 
   const carregar = async () => {
@@ -55,12 +51,12 @@ export default function FinConsultaNFeEntrada() {
     try {
       const { data, error } = await supabase
         .from("financeiro_manifestacoes")
-        .select("id, chave_nfe, tipo_evento, emitente_cnpj, emitente_nome, valor_nfe, data_emissao, status, protocolo, justificativa, created_at")
+        .select("id, chave_nfe, tipo, motivo, protocolo, data_manifestacao, automatica")
         .eq("empresa_id", empresaAtiva.id)
-        .order("created_at", { ascending: false })
+        .order("data_manifestacao", { ascending: false })
         .limit(50);
       if (error) throw error;
-      setHistorico((data || []) as Manifestacao[]);
+      setHistorico((data || []) as unknown as ManifestacaoRow[]);
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -70,37 +66,31 @@ export default function FinConsultaNFeEntrada() {
 
   useEffect(() => { carregar(); }, [empresaAtiva?.id]);
 
+  const exigeMotivo = tipo === "desconhecimento" || tipo === "nao_realizada";
+
   const manifestar = async () => {
-    if (!empresaAtiva) {
-      toast.error("Selecione uma empresa ativa");
-      return;
-    }
-    if (!chaveNfe || chaveNfe.length !== 44) {
-      toast.error("Chave NF-e deve ter 44 dígitos");
-      return;
-    }
-    if ((tipoEvento === "desconhecimento" || tipoEvento === "nao_realizada") && justificativa.trim().length < 15) {
-      toast.error("Justificativa obrigatória (mínimo 15 caracteres) para desconhecimento ou operação não realizada");
-      return;
-    }
+    if (!empresaAtiva) return toast.error("Selecione uma empresa ativa");
+    if (!chaveNfe || chaveNfe.length !== 44) return toast.error("Chave NF-e deve ter 44 dígitos");
+    if (exigeMotivo && motivo.trim().length < 15) return toast.error("Motivo obrigatório (mínimo 15 caracteres) para esse tipo de evento");
+
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("manifestacao-destinatario", {
         body: {
           empresa_id: empresaAtiva.id,
           chave_nfe: chaveNfe,
-          tipo_evento: tipoEvento,
-          justificativa: justificativa || undefined,
+          tipo,
+          motivo: motivo || undefined,
         },
       });
       if (error) throw error;
       if (data?.setup_required) {
-        toast.warning(data.message || "Configure o secret FOCUS_NFE_API_TOKEN para manifestar.");
+        toast.warning(data.message || "Configure FOCUS_NFE_API_TOKEN para manifestar.");
         return;
       }
       toast.success(data?.message || "Manifestação registrada");
       setChaveNfe("");
-      setJustificativa("");
+      setMotivo("");
       await carregar();
     } catch (e: any) {
       toast.error(e.message);
@@ -115,8 +105,8 @@ export default function FinConsultaNFeEntrada() {
         <AlertCircle className="w-4 h-4" />
         <AlertTitle>Manifestação do Destinatário</AlertTitle>
         <AlertDescription>
-          Registre Ciência, Confirmação, Desconhecimento ou Operação Não Realizada para NF-e recebidas. Requer
-          {" "}<code className="bg-muted px-1 rounded">FOCUS_NFE_API_TOKEN</code> e certificado A1 vinculado ao CNPJ destinatário.
+          Registre Ciência, Confirmação, Desconhecimento ou Operação Não Realizada para NF-e recebidas.
+          Requer <code className="bg-muted px-1 rounded">FOCUS_NFE_API_TOKEN</code> e certificado A1 vinculado ao CNPJ destinatário.
         </AlertDescription>
       </Alert>
 
@@ -138,7 +128,7 @@ export default function FinConsultaNFeEntrada() {
             </div>
             <div>
               <Label>Tipo de evento</Label>
-              <Select value={tipoEvento} onValueChange={(v) => setTipoEvento(v as any)}>
+              <Select value={tipo} onValueChange={(v) => setTipo(v as any)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ciencia">Ciência da Operação</SelectItem>
@@ -149,15 +139,15 @@ export default function FinConsultaNFeEntrada() {
               </Select>
             </div>
           </div>
-          {(tipoEvento === "desconhecimento" || tipoEvento === "nao_realizada") && (
+          {exigeMotivo && (
             <div>
-              <Label>Justificativa (obrigatória — 15 a 255 caracteres)</Label>
+              <Label>Motivo (obrigatório — 15 a 255 caracteres)</Label>
               <Input
-                value={justificativa}
-                onChange={e => setJustificativa(e.target.value.slice(0, 255))}
+                value={motivo}
+                onChange={e => setMotivo(e.target.value.slice(0, 255))}
                 placeholder="Descreva o motivo do desconhecimento ou não realização da operação"
               />
-              <p className="text-xs text-muted-foreground mt-1">{justificativa.length}/255</p>
+              <p className="text-xs text-muted-foreground mt-1">{motivo.length}/255</p>
             </div>
           )}
           <Button onClick={manifestar} disabled={loading}>
@@ -184,41 +174,30 @@ export default function FinConsultaNFeEntrada() {
                     <TableHead className="whitespace-nowrap">Data</TableHead>
                     <TableHead>Chave NF-e</TableHead>
                     <TableHead className="whitespace-nowrap">Evento</TableHead>
-                    <TableHead>Emitente</TableHead>
-                    <TableHead className="whitespace-nowrap">Valor</TableHead>
-                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead>Motivo</TableHead>
                     <TableHead className="whitespace-nowrap">Protocolo</TableHead>
+                    <TableHead className="whitespace-nowrap">Origem</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {historico.map(m => (
                     <TableRow key={m.id}>
                       <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                        {new Date(m.created_at).toLocaleString("pt-BR")}
+                        {new Date(m.data_manifestacao).toLocaleString("pt-BR")}
                       </TableCell>
                       <TableCell className="font-mono text-xs">{m.chave_nfe}</TableCell>
                       <TableCell className="whitespace-nowrap">
-                        <Badge variant={TIPO_EVENTO_BADGE[m.tipo_evento] || "secondary"}>
-                          {TIPO_EVENTO_LABEL[m.tipo_evento] || m.tipo_evento}
+                        <Badge variant={TIPO_VARIANT[m.tipo] || "secondary"}>
+                          {TIPO_LABEL[m.tipo] || m.tipo}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{m.emitente_nome || "—"}</div>
-                        <div className="text-xs text-muted-foreground">{m.emitente_cnpj || ""}</div>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {m.valor_nfe ? m.valor_nfe.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "—"}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {m.status === "autorizada" || m.status === "registrada" ? (
-                          <Badge variant="default" className="gap-1"><CheckCircle2 className="w-3 h-3" />{m.status}</Badge>
-                        ) : m.status === "rejeitada" ? (
-                          <Badge variant="destructive" className="gap-1"><XCircle className="w-3 h-3" />{m.status}</Badge>
-                        ) : (
-                          <Badge variant="secondary">{m.status || "pendente"}</Badge>
-                        )}
-                      </TableCell>
+                      <TableCell className="text-sm">{m.motivo || "—"}</TableCell>
                       <TableCell className="whitespace-nowrap font-mono text-xs">{m.protocolo || "—"}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <Badge variant={m.automatica ? "outline" : "secondary"}>
+                          {m.automatica ? "automática" : "manual"}
+                        </Badge>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

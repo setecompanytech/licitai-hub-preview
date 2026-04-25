@@ -22,25 +22,24 @@ type ItemNFe = {
   valor_unitario: number;
 };
 
-type NFeEmitida = {
+type NFeRow = {
   id: string;
   numero: number | null;
   serie: number | null;
   modelo: string;
   chave_acesso: string | null;
-  destinatario_nome: string | null;
-  destinatario_documento: string | null;
+  destinatario_dados: any;
   valor_total: number | null;
   status: string;
   ambiente: string;
   protocolo: string | null;
-  url_xml: string | null;
-  url_danfe: string | null;
-  motivo_status: string | null;
-  emitida_em: string | null;
+  xml_url: string | null;
+  danfe_url: string | null;
+  motivo: string | null;
+  data_emissao: string | null;
 };
 
-const STATUS_COLORS: Record<string, string> = {
+const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   rascunho: "secondary",
   processando: "default",
   autorizada: "default",
@@ -51,7 +50,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function FinEmissorNFe() {
   const { empresaAtiva } = useEmpresa();
-  const [modelo, setModelo] = useState<"55" | "65" | "nfse">("55");
+  const [modelo, setModelo] = useState<"nfe" | "nfce" | "nfse">("nfe");
   const [destNome, setDestNome] = useState("");
   const [destDoc, setDestDoc] = useState("");
   const [destEmail, setDestEmail] = useState("");
@@ -63,7 +62,7 @@ export default function FinEmissorNFe() {
   const [serviceValor, setServiceValor] = useState(0);
   const [serviceCodigo, setServiceCodigo] = useState("");
   const [emitting, setEmitting] = useState(false);
-  const [emitidas, setEmitidas] = useState<NFeEmitida[]>([]);
+  const [emitidas, setEmitidas] = useState<NFeRow[]>([]);
   const [loadingList, setLoadingList] = useState(false);
 
   const carregar = async () => {
@@ -72,12 +71,12 @@ export default function FinEmissorNFe() {
     try {
       const { data, error } = await supabase
         .from("financeiro_nfes_emitidas")
-        .select("id, numero, serie, modelo, chave_acesso, destinatario_nome, destinatario_documento, valor_total, status, ambiente, protocolo, url_xml, url_danfe, motivo_status, emitida_em")
+        .select("id, numero, serie, modelo, chave_acesso, destinatario_dados, valor_total, status, ambiente, protocolo, xml_url, danfe_url, motivo, data_emissao")
         .eq("empresa_id", empresaAtiva.id)
-        .order("created_at", { ascending: false })
+        .order("data_emissao", { ascending: false })
         .limit(50);
       if (error) throw error;
-      setEmitidas((data || []) as NFeEmitida[]);
+      setEmitidas((data || []) as unknown as NFeRow[]);
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -90,11 +89,7 @@ export default function FinEmissorNFe() {
   const adicionarItem = () => {
     setItens([...itens, { descricao: "", ncm: "", cfop: "5102", unidade: "UN", quantidade: 1, valor_unitario: 0 }]);
   };
-
-  const removerItem = (idx: number) => {
-    setItens(itens.filter((_, i) => i !== idx));
-  };
-
+  const removerItem = (idx: number) => setItens(itens.filter((_, i) => i !== idx));
   const atualizarItem = (idx: number, campo: keyof ItemNFe, valor: any) => {
     const novos = [...itens];
     (novos[idx] as any)[campo] = valor;
@@ -106,22 +101,10 @@ export default function FinEmissorNFe() {
     : itens.reduce((acc, it) => acc + (Number(it.quantidade) || 0) * (Number(it.valor_unitario) || 0), 0);
 
   const emitir = async () => {
-    if (!empresaAtiva) {
-      toast.error("Selecione uma empresa ativa");
-      return;
-    }
-    if (!destNome || !destDoc) {
-      toast.error("Informe nome e CPF/CNPJ do destinatário");
-      return;
-    }
-    if (modelo === "nfse" && (!serviceDescricao || serviceValor <= 0)) {
-      toast.error("Informe descrição e valor do serviço");
-      return;
-    }
-    if (modelo !== "nfse" && itens.some(i => !i.descricao || i.valor_unitario <= 0)) {
-      toast.error("Preencha descrição e valor unitário em todos os itens");
-      return;
-    }
+    if (!empresaAtiva) return toast.error("Selecione uma empresa ativa");
+    if (!destNome || !destDoc) return toast.error("Informe nome e CPF/CNPJ do destinatário");
+    if (modelo === "nfse" && (!serviceDescricao || serviceValor <= 0)) return toast.error("Informe descrição e valor do serviço");
+    if (modelo !== "nfse" && itens.some(i => !i.descricao || i.valor_unitario <= 0)) return toast.error("Preencha descrição e valor unitário em todos os itens");
 
     setEmitting(true);
     try {
@@ -137,11 +120,7 @@ export default function FinEmissorNFe() {
         },
       };
       if (modelo === "nfse") {
-        payload.servico = {
-          descricao: serviceDescricao,
-          valor: serviceValor,
-          codigo_servico: serviceCodigo || undefined,
-        };
+        payload.servico = { descricao: serviceDescricao, valor: serviceValor, codigo_servico: serviceCodigo || undefined };
       } else {
         payload.itens = itens;
         payload.valor_total = totalNota;
@@ -150,7 +129,7 @@ export default function FinEmissorNFe() {
       const { data, error } = await supabase.functions.invoke(fnName, { body: payload });
       if (error) throw error;
       if (data?.setup_required) {
-        toast.warning(data.message || "Configure o secret FOCUS_NFE_API_TOKEN para emitir.");
+        toast.warning(data.message || "Configure FOCUS_NFE_API_TOKEN para emitir.");
         return;
       }
       toast.success(data?.message || "Solicitação de emissão enviada");
@@ -168,8 +147,8 @@ export default function FinEmissorNFe() {
         <AlertCircle className="w-4 h-4" />
         <AlertTitle>Configuração necessária</AlertTitle>
         <AlertDescription>
-          A emissão depende do secret <code className="bg-muted px-1 rounded">FOCUS_NFE_API_TOKEN</code> e do certificado A1 cadastrado em "Certificados Digitais" no painel Focus NFe.
-          Defina <code className="bg-muted px-1 rounded">FOCUS_NFE_AMBIENTE</code> = <code>homologacao</code> para testes ou <code>producao</code> para emissão real.
+          A emissão depende do secret <code className="bg-muted px-1 rounded">FOCUS_NFE_API_TOKEN</code> e de um certificado A1 cadastrado no painel Focus NFe.
+          Use <code className="bg-muted px-1 rounded">FOCUS_NFE_AMBIENTE</code> = <code>homologacao</code> para testes.
         </AlertDescription>
       </Alert>
 
@@ -185,8 +164,8 @@ export default function FinEmissorNFe() {
               <Select value={modelo} onValueChange={(v) => setModelo(v as any)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="55">NF-e (55) — Mercadoria</SelectItem>
-                  <SelectItem value="65">NFC-e (65) — Consumidor</SelectItem>
+                  <SelectItem value="nfe">NF-e — Mercadoria</SelectItem>
+                  <SelectItem value="nfce">NFC-e — Consumidor</SelectItem>
                   <SelectItem value="nfse">NFS-e — Serviço</SelectItem>
                 </SelectContent>
               </Select>
@@ -315,33 +294,36 @@ export default function FinEmissorNFe() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {emitidas.map(n => (
-                    <TableRow key={n.id}>
-                      <TableCell className="whitespace-nowrap">{n.modelo}</TableCell>
-                      <TableCell className="whitespace-nowrap">{n.numero ?? "—"}/{n.serie ?? "—"}</TableCell>
-                      <TableCell>
-                        <div className="text-sm">{n.destinatario_nome || "—"}</div>
-                        <div className="text-xs text-muted-foreground">{n.destinatario_documento || ""}</div>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">{(n.valor_total || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <Badge variant={(STATUS_COLORS[n.status] as any) || "secondary"}>{n.status}</Badge>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <Badge variant={n.ambiente === "producao" ? "default" : "outline"}>{n.ambiente}</Badge>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                        {n.emitida_em ? new Date(n.emitida_em).toLocaleString("pt-BR") : "—"}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <div className="flex gap-1">
-                          {n.url_xml && <a href={n.url_xml} target="_blank" rel="noopener noreferrer" className="text-xs underline inline-flex items-center gap-1">XML <ExternalLink className="w-3 h-3" /></a>}
-                          {n.url_danfe && <a href={n.url_danfe} target="_blank" rel="noopener noreferrer" className="text-xs underline inline-flex items-center gap-1 ml-2">DANFE <ExternalLink className="w-3 h-3" /></a>}
-                          {!n.url_xml && !n.url_danfe && <span className="text-xs text-muted-foreground">—</span>}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {emitidas.map(n => {
+                    const dest = (n.destinatario_dados || {}) as any;
+                    return (
+                      <TableRow key={n.id}>
+                        <TableCell className="whitespace-nowrap uppercase">{n.modelo}</TableCell>
+                        <TableCell className="whitespace-nowrap">{n.numero ?? "—"}/{n.serie ?? "—"}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">{dest.nome || "—"}</div>
+                          <div className="text-xs text-muted-foreground">{dest.documento || ""}</div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">{(n.valor_total || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <Badge variant={STATUS_VARIANT[n.status] || "secondary"}>{n.status}</Badge>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <Badge variant={n.ambiente === "producao" ? "default" : "outline"}>{n.ambiente}</Badge>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                          {n.data_emissao ? new Date(n.data_emissao).toLocaleString("pt-BR") : "—"}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <div className="flex gap-2">
+                            {n.xml_url && <a href={n.xml_url} target="_blank" rel="noopener noreferrer" className="text-xs underline inline-flex items-center gap-1">XML <ExternalLink className="w-3 h-3" /></a>}
+                            {n.danfe_url && <a href={n.danfe_url} target="_blank" rel="noopener noreferrer" className="text-xs underline inline-flex items-center gap-1">DANFE <ExternalLink className="w-3 h-3" /></a>}
+                            {!n.xml_url && !n.danfe_url && <span className="text-xs text-muted-foreground">—</span>}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
