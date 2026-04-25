@@ -285,16 +285,30 @@ export default function FinApuracao() {
                         <TableCell className="text-right font-medium">{fmt(a.valor_total)}</TableCell>
                         <TableCell className="text-right">{carga.toFixed(2)}%</TableCell>
                         <TableCell>
-                          <Badge variant={a.status === "pago" ? "default" : a.status === "apurado" ? "secondary" : "outline"}>
-                            {a.status}
-                          </Badge>
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant={a.status === "pago" ? "default" : a.status === "apurado" ? "secondary" : "outline"}>
+                              {a.status}
+                            </Badge>
+                            {a.apuracao_desatualizada && (
+                              <Badge variant="destructive" className="gap-1" title={a.desatualizada_motivo ?? "Apuração desatualizada"}>
+                                <AlertTriangle className="w-3 h-3" />desatualizada
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
-                          {a.status !== "pago" && (
-                            <Button size="sm" variant="ghost" onClick={() => marcarComoPago(a.id)}>
-                              <CheckCircle2 className="w-4 h-4 mr-1" />Marcar pago
-                            </Button>
-                          )}
+                          <div className="flex gap-1">
+                            {a.apuracao_desatualizada && a.status !== "pago" && (
+                              <Button size="sm" variant="outline" onClick={() => recalcular(a)}>
+                                <RefreshCw className="w-4 h-4 mr-1" />Recalcular
+                              </Button>
+                            )}
+                            {a.status !== "pago" && (
+                              <Button size="sm" variant="ghost" onClick={() => marcarComoPago(a.id)}>
+                                <CheckCircle2 className="w-4 h-4 mr-1" />Marcar pago
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
