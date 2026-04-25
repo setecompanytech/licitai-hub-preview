@@ -554,3 +554,172 @@ export function useDesfazerConciliacao() {
     onError: (e: Error) => toast.error(e.message),
   });
 }
+
+// ----------------------------------------------------------------------------
+// DRE — Demonstração do Resultado do Exercício (mensal)
+// ----------------------------------------------------------------------------
+export type DRELinhaRaw = {
+  empresa_id: string;
+  competencia: string;
+  grupo_dre: string | null;
+  categoria_id: string | null;
+  categoria_nome: string | null;
+  natureza: "receita" | "despesa";
+  total: number;
+};
+
+export type DREGrupo = {
+  grupo: string;
+  natureza: "receita" | "despesa";
+  total: number;
+  itens: { categoria: string; total: number }[];
+};
+
+export type DREResumo = {
+  competencia: string;
+  receitaBruta: number;
+  deducoes: number;
+  receitaLiquida: number;
+  custos: number;
+  lucroBruto: number;
+  despesasOperacionais: number;
+  resultadoOperacional: number;
+  outrosResultados: number;
+  resultadoLiquido: number;
+  margemLiquida: number;
+  grupos: DREGrupo[];
+};
+
+export function useDRE(competencia: string) {
+  const empresaId = useEmpresaId();
+  return useQuery({
+    queryKey: ["fin-dre", empresaId, competencia],
+    enabled: !!empresaId && !!competencia,
+    queryFn: async (): Promise<DREResumo> => {
+      const inicio = `${competencia}-01`;
+      const { data, error } = await supabase
+        .from("mv_financeiro_dre_mensal" as never)
+        .select("*")
+        .eq("empresa_id", empresaId!)
+        .eq("competencia", inicio);
+      if (error) throw error;
+      const linhas = (data ?? []) as unknown as DRELinhaRaw[];
+
+      const gruposMap = new Map<string, DREGrupo>();
+      linhas.forEach((l) => {
+        const key = l.grupo_dre ?? "outros";
+        if (!gruposMap.has(key)) {
+          gruposMap.set(key, { grupo: key, natureza: l.natureza, total: 0, itens: [] });
+        }
+        const g = gruposMap.get(key)!;
+        g.total += Number(l.total ?? 0);
+        g.itens.push({ categoria: l.categoria_nome ?? "Sem categoria", total: Number(l.total ?? 0) });
+      });
+      const grupos = Array.from(gruposMap.values()).sort((a, b) => b.total - a.total);
+
+      const sumGrupo = (nome: string) => grupos.find((g) => g.grupo === nome)?.total ?? 0;
+      const receitaBruta = sumGrupo("receita_bruta") || grupos.filter((g) => g.natureza === "receita").reduce((s, g) => s + g.total, 0);
+      const deducoes = sumGrupo("deducoes");
+      const receitaLiquida = receitaBruta - deducoes;
+      const custos = sumGrupo("custos");
+      const lucroBruto = receitaLiquida - custos;
+      const despesasOperacionais = sumGrupo("despesas_operacionais") || grupos.filter((g) => g.natureza === "despesa" && g.grupo !== "deducoes" && g.grupo !== "custos" && g.grupo !== "outros_resultados").reduce((s, g) => s + g.total, 0);
+      const resultadoOperacional = lucroBruto - despesasOperacionais;
+      const outrosResultados = sumGrupo("outros_resultados");
+      const resultadoLiquido = resultadoOperacional + outrosResultados;
+      const margemLiquida = receitaLiquida > 0 ? resultadoLiquido / receitaLiquida : 0;
+
+      return {
+        competencia,
+        receitaBruta,
+        deducoes,
+        receitaLiquida,
+        custos,
+        lucroBruto,
+        despesasOperacionais,
+        resultadoOperacional,
+        outrosResultados,
+        resultadoLiquido,
+        margemLiquida,
+        grupos,
+      };
+    },
+  });
+}
+
+// ----------------------------------------------------------------------------
+// Fluxo de Caixa — projeção diária (90 dias)
+// ----------------------------------------------------------------------------
+export type FluxoDia = {
+  data: string;
+  entradas_previstas: number;
+  saidas_previstas: number;
+  entradas_realizadas: number;
+  saidas_realizadas: number;
+  saldo_dia: number;
+  saldo_acumulado: number;
+};
+
+export function useFluxoCaixa(diasFrente = 90) {
+  const empresaId = useEmpresaId();
+  return useQuery({
+    queryKey: ["fin-fluxo-caixa", empresaId, diasFrente],
+    enabled: !!empresaId,
+    queryFn: async (): Promise<{ saldoInicial: number; dias: FluxoDia[] }> => {
+      const hoje = new Date();
+      const inicio = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1).toISOString().slice(0, 10);
+      const fim = new Date(hoje.getTime() + diasFrente * 86400000).toISOString().slice(0, 10);
+
+      const [contasRes, fluxoRes] = await Promise.all([
+        supabase.from("financeiro_contas").select("saldo_atual").eq("empresa_id", empresaId!).eq("ativa", true),
+        supabase
+          .from("mv_financeiro_fluxo_caixa" as never)
+          .select("*")
+          .eq("empresa_id", empresaId!)
+          .gte("data", inicio)
+          .lte("data", fim)
+          .order("data"),
+      ]);
+      if (contasRes.error) throw contasRes.error;
+      if (fluxoRes.error) throw fluxoRes.error;
+
+      const saldoInicial = (contasRes.data ?? []).reduce((s, c) => s + Number(c.saldo_atual ?? 0), 0);
+      const linhas = (fluxoRes.data ?? []) as unknown as Omit<FluxoDia, "saldo_dia" | "saldo_acumulado">[];
+
+      let acumulado = saldoInicial;
+      const dias: FluxoDia[] = linhas.map((l) => {
+        const entrada = Number(l.entradas_previstas ?? 0) + Number(l.entradas_realizadas ?? 0);
+        const saida = Number(l.saidas_previstas ?? 0) + Number(l.saidas_realizadas ?? 0);
+        const saldo_dia = entrada - saida;
+        acumulado += saldo_dia;
+        return {
+          data: l.data,
+          entradas_previstas: Number(l.entradas_previstas ?? 0),
+          saidas_previstas: Number(l.saidas_previstas ?? 0),
+          entradas_realizadas: Number(l.entradas_realizadas ?? 0),
+          saidas_realizadas: Number(l.saidas_realizadas ?? 0),
+          saldo_dia,
+          saldo_acumulado: acumulado,
+        };
+      });
+
+      return { saldoInicial, dias };
+    },
+  });
+}
+
+export function useRefreshFinanceiroViews() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("refresh_financeiro_views" as never);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-dre"] });
+      qc.invalidateQueries({ queryKey: ["fin-fluxo-caixa"] });
+      toast.success("Relatórios atualizados.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
