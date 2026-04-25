@@ -1,5 +1,20 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { WebhookError, verifyWebhookRequest } from 'npm:@lovable.dev/webhooks-js'
+
+type WebhookErrorCode =
+  | 'missing_secret'
+  | 'missing_timestamp'
+  | 'invalid_timestamp'
+  | 'stale_timestamp'
+  | 'body_too_large'
+  | 'invalid_signature'
+  | 'invalid_payload'
+  | 'invalid_json'
+
+class WebhookError extends Error {
+  constructor(public code: WebhookErrorCode, message: string) {
+    super(message)
+  }
+}
 
 // Suppression event payload sent by the Go API when Mailgun reports
 // a bounce, complaint, or unsubscribe.
