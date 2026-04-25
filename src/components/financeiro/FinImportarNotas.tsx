@@ -4,8 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Upload, FileX, FileCheck2, Loader2, RefreshCw, Info } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Upload, FileX, FileCheck2, Loader2, RefreshCw, Info, ShieldCheck } from "lucide-react";
 import { useImportacaoNotas, type ResultadoImportacao } from "@/hooks/useImportacaoNotas";
+import { useEmpresa } from "@/contexts/EmpresaContext";
+import FinSefazConsulta from "./FinSefazConsulta";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n || 0);
@@ -15,6 +18,7 @@ interface Props {
 }
 
 export default function FinImportarNotas({ onImportacaoConcluida }: Props) {
+  const { empresaAtiva } = useEmpresa();
   const { importar, importando, listarRecentes } = useImportacaoNotas();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -39,7 +43,17 @@ export default function FinImportarNotas({ onImportacaoConcluida }: Props) {
   }
 
   return (
-    <div className="space-y-4">
+    <Tabs defaultValue="upload" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="upload">
+          <Upload className="w-4 h-4 mr-2" />Upload manual de XMLs
+        </TabsTrigger>
+        <TabsTrigger value="sefaz">
+          <ShieldCheck className="w-4 h-4 mr-2" />Consulta SEFAZ por CNPJ (A1)
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="upload" className="space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -187,6 +201,15 @@ export default function FinImportarNotas({ onImportacaoConcluida }: Props) {
           )}
         </CardContent>
       </Card>
-    </div>
+      </TabsContent>
+
+      <TabsContent value="sefaz">
+        <FinSefazConsulta
+          empresaId={empresaAtiva?.id ?? null}
+          cnpjEmpresa={empresaAtiva?.cnpj ?? null}
+          onConcluido={() => { carregarRecentes(); onImportacaoConcluida?.(); }}
+        />
+      </TabsContent>
+    </Tabs>
   );
 }
