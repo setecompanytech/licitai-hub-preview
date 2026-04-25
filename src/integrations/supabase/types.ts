@@ -1653,145 +1653,6 @@ export type Database = {
         }
         Relationships: []
       }
-      boletos: {
-        Row: {
-          api_response: Json | null
-          codigo_barras: string | null
-          conta_bancaria_id: string | null
-          conta_receber_id: string | null
-          contrato_id: string | null
-          created_at: string
-          data_emissao: string | null
-          data_pagamento: string | null
-          data_vencimento: string
-          empresa_id: string | null
-          id: string
-          instrucoes: string | null
-          linha_digitavel: string | null
-          nosso_numero: string | null
-          numero_documento: string | null
-          observacoes: string | null
-          sacado_cep: string | null
-          sacado_cidade: string | null
-          sacado_cnpj_cpf: string | null
-          sacado_endereco: string | null
-          sacado_nome: string | null
-          sacado_uf: string | null
-          status: string
-          updated_at: string
-          user_id: string
-          valor_desconto: number | null
-          valor_juros: number | null
-          valor_multa: number | null
-          valor_nominal: number
-        }
-        Insert: {
-          api_response?: Json | null
-          codigo_barras?: string | null
-          conta_bancaria_id?: string | null
-          conta_receber_id?: string | null
-          contrato_id?: string | null
-          created_at?: string
-          data_emissao?: string | null
-          data_pagamento?: string | null
-          data_vencimento: string
-          empresa_id?: string | null
-          id?: string
-          instrucoes?: string | null
-          linha_digitavel?: string | null
-          nosso_numero?: string | null
-          numero_documento?: string | null
-          observacoes?: string | null
-          sacado_cep?: string | null
-          sacado_cidade?: string | null
-          sacado_cnpj_cpf?: string | null
-          sacado_endereco?: string | null
-          sacado_nome?: string | null
-          sacado_uf?: string | null
-          status?: string
-          updated_at?: string
-          user_id: string
-          valor_desconto?: number | null
-          valor_juros?: number | null
-          valor_multa?: number | null
-          valor_nominal?: number
-        }
-        Update: {
-          api_response?: Json | null
-          codigo_barras?: string | null
-          conta_bancaria_id?: string | null
-          conta_receber_id?: string | null
-          contrato_id?: string | null
-          created_at?: string
-          data_emissao?: string | null
-          data_pagamento?: string | null
-          data_vencimento?: string
-          empresa_id?: string | null
-          id?: string
-          instrucoes?: string | null
-          linha_digitavel?: string | null
-          nosso_numero?: string | null
-          numero_documento?: string | null
-          observacoes?: string | null
-          sacado_cep?: string | null
-          sacado_cidade?: string | null
-          sacado_cnpj_cpf?: string | null
-          sacado_endereco?: string | null
-          sacado_nome?: string | null
-          sacado_uf?: string | null
-          status?: string
-          updated_at?: string
-          user_id?: string
-          valor_desconto?: number | null
-          valor_juros?: number | null
-          valor_multa?: number | null
-          valor_nominal?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "boletos_conta_bancaria_id_fkey"
-            columns: ["conta_bancaria_id"]
-            isOneToOne: false
-            referencedRelation: "contas_bancarias"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "boletos_conta_receber_id_fkey"
-            columns: ["conta_receber_id"]
-            isOneToOne: false
-            referencedRelation: "contas_receber"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "boletos_contrato_id_fkey"
-            columns: ["contrato_id"]
-            isOneToOne: false
-            referencedRelation: "atas_srp_resumo"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "boletos_contrato_id_fkey"
-            columns: ["contrato_id"]
-            isOneToOne: false
-            referencedRelation: "contratos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "boletos_empresa_id_fkey"
-            columns: ["empresa_id"]
-            isOneToOne: false
-            referencedRelation: "empresas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "boletos_empresa_id_fkey"
-            columns: ["empresa_id"]
-            isOneToOne: false
-            referencedRelation: "empresas_safe"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       catalogo_itens_precificados: {
         Row: {
           bdi_percentual: number | null
@@ -1877,39 +1738,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      categorias_financeiras: {
-        Row: {
-          ativo: boolean | null
-          cor: string | null
-          created_at: string
-          icone: string | null
-          id: string
-          nome: string
-          tipo: string
-          user_id: string
-        }
-        Insert: {
-          ativo?: boolean | null
-          cor?: string | null
-          created_at?: string
-          icone?: string | null
-          id?: string
-          nome: string
-          tipo: string
-          user_id: string
-        }
-        Update: {
-          ativo?: boolean | null
-          cor?: string | null
-          created_at?: string
-          icone?: string | null
-          id?: string
-          nome?: string
-          tipo?: string
-          user_id?: string
-        }
-        Relationships: []
       }
       cert_upload_tokens: {
         Row: {
@@ -2206,69 +2034,6 @@ export type Database = {
           },
         ]
       }
-      conciliacao_regras: {
-        Row: {
-          acao: string
-          ativo: boolean | null
-          categoria_destino: string | null
-          created_at: string
-          empresa_id: string | null
-          id: string
-          nome: string
-          padrao_texto: string
-          prioridade: number | null
-          tipo_match: string
-          updated_at: string
-          user_id: string
-          vezes_aplicada: number | null
-        }
-        Insert: {
-          acao?: string
-          ativo?: boolean | null
-          categoria_destino?: string | null
-          created_at?: string
-          empresa_id?: string | null
-          id?: string
-          nome: string
-          padrao_texto: string
-          prioridade?: number | null
-          tipo_match?: string
-          updated_at?: string
-          user_id: string
-          vezes_aplicada?: number | null
-        }
-        Update: {
-          acao?: string
-          ativo?: boolean | null
-          categoria_destino?: string | null
-          created_at?: string
-          empresa_id?: string | null
-          id?: string
-          nome?: string
-          padrao_texto?: string
-          prioridade?: number | null
-          tipo_match?: string
-          updated_at?: string
-          user_id?: string
-          vezes_aplicada?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "conciliacao_regras_empresa_id_fkey"
-            columns: ["empresa_id"]
-            isOneToOne: false
-            referencedRelation: "empresas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "conciliacao_regras_empresa_id_fkey"
-            columns: ["empresa_id"]
-            isOneToOne: false
-            referencedRelation: "empresas_safe"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       concorrentes: {
         Row: {
           capital_social: number | null
@@ -2454,335 +2219,6 @@ export type Database = {
           verificado?: boolean | null
         }
         Relationships: []
-      }
-      contas_bancarias: {
-        Row: {
-          agencia: string | null
-          ativo: boolean | null
-          banco_codigo: string | null
-          banco_nome: string
-          conta: string | null
-          created_at: string
-          descricao: string | null
-          empresa_id: string
-          id: string
-          saldo_atual: number | null
-          saldo_inicial: number | null
-          tipo: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          agencia?: string | null
-          ativo?: boolean | null
-          banco_codigo?: string | null
-          banco_nome: string
-          conta?: string | null
-          created_at?: string
-          descricao?: string | null
-          empresa_id: string
-          id?: string
-          saldo_atual?: number | null
-          saldo_inicial?: number | null
-          tipo?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          agencia?: string | null
-          ativo?: boolean | null
-          banco_codigo?: string | null
-          banco_nome?: string
-          conta?: string | null
-          created_at?: string
-          descricao?: string | null
-          empresa_id?: string
-          id?: string
-          saldo_atual?: number | null
-          saldo_inicial?: number | null
-          tipo?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "contas_bancarias_empresa_id_fkey"
-            columns: ["empresa_id"]
-            isOneToOne: false
-            referencedRelation: "empresas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contas_bancarias_empresa_id_fkey"
-            columns: ["empresa_id"]
-            isOneToOne: false
-            referencedRelation: "empresas_safe"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      contas_pagar: {
-        Row: {
-          categoria: string | null
-          conta_bancaria_id: string | null
-          contrato_id: string | null
-          created_at: string
-          data_pagamento: string | null
-          data_vencimento: string
-          descricao: string
-          empresa_id: string
-          fornecedor: string | null
-          id: string
-          juros_percentual: number | null
-          multa_percentual: number | null
-          nota_fiscal: string | null
-          observacoes: string | null
-          parcela_grupo_id: string | null
-          parcela_numero: number | null
-          parcela_total: number | null
-          recorrente: boolean | null
-          status: string | null
-          updated_at: string
-          user_id: string
-          valor: number
-          valor_desconto: number | null
-          valor_juros: number | null
-          valor_multa: number | null
-          valor_pago: number | null
-        }
-        Insert: {
-          categoria?: string | null
-          conta_bancaria_id?: string | null
-          contrato_id?: string | null
-          created_at?: string
-          data_pagamento?: string | null
-          data_vencimento: string
-          descricao: string
-          empresa_id: string
-          fornecedor?: string | null
-          id?: string
-          juros_percentual?: number | null
-          multa_percentual?: number | null
-          nota_fiscal?: string | null
-          observacoes?: string | null
-          parcela_grupo_id?: string | null
-          parcela_numero?: number | null
-          parcela_total?: number | null
-          recorrente?: boolean | null
-          status?: string | null
-          updated_at?: string
-          user_id: string
-          valor?: number
-          valor_desconto?: number | null
-          valor_juros?: number | null
-          valor_multa?: number | null
-          valor_pago?: number | null
-        }
-        Update: {
-          categoria?: string | null
-          conta_bancaria_id?: string | null
-          contrato_id?: string | null
-          created_at?: string
-          data_pagamento?: string | null
-          data_vencimento?: string
-          descricao?: string
-          empresa_id?: string
-          fornecedor?: string | null
-          id?: string
-          juros_percentual?: number | null
-          multa_percentual?: number | null
-          nota_fiscal?: string | null
-          observacoes?: string | null
-          parcela_grupo_id?: string | null
-          parcela_numero?: number | null
-          parcela_total?: number | null
-          recorrente?: boolean | null
-          status?: string | null
-          updated_at?: string
-          user_id?: string
-          valor?: number
-          valor_desconto?: number | null
-          valor_juros?: number | null
-          valor_multa?: number | null
-          valor_pago?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "contas_pagar_conta_bancaria_id_fkey"
-            columns: ["conta_bancaria_id"]
-            isOneToOne: false
-            referencedRelation: "contas_bancarias"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contas_pagar_contrato_id_fkey"
-            columns: ["contrato_id"]
-            isOneToOne: false
-            referencedRelation: "atas_srp_resumo"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contas_pagar_contrato_id_fkey"
-            columns: ["contrato_id"]
-            isOneToOne: false
-            referencedRelation: "contratos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contas_pagar_empresa_id_fkey"
-            columns: ["empresa_id"]
-            isOneToOne: false
-            referencedRelation: "empresas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contas_pagar_empresa_id_fkey"
-            columns: ["empresa_id"]
-            isOneToOne: false
-            referencedRelation: "empresas_safe"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      contas_receber: {
-        Row: {
-          categoria: string | null
-          cliente: string | null
-          conta_bancaria_id: string | null
-          contrato_id: string | null
-          contrato_pedido_id: string | null
-          created_at: string
-          data_recebimento: string | null
-          data_vencimento: string
-          descricao: string
-          empresa_id: string
-          id: string
-          juros_percentual: number | null
-          multa_percentual: number | null
-          nota_fiscal_id: string | null
-          numero_nf: string | null
-          observacoes: string | null
-          parcela_grupo_id: string | null
-          parcela_numero: number | null
-          parcela_total: number | null
-          status: string | null
-          updated_at: string
-          user_id: string
-          valor: number
-          valor_desconto: number | null
-          valor_juros: number | null
-          valor_multa: number | null
-          valor_recebido: number | null
-        }
-        Insert: {
-          categoria?: string | null
-          cliente?: string | null
-          conta_bancaria_id?: string | null
-          contrato_id?: string | null
-          contrato_pedido_id?: string | null
-          created_at?: string
-          data_recebimento?: string | null
-          data_vencimento: string
-          descricao: string
-          empresa_id: string
-          id?: string
-          juros_percentual?: number | null
-          multa_percentual?: number | null
-          nota_fiscal_id?: string | null
-          numero_nf?: string | null
-          observacoes?: string | null
-          parcela_grupo_id?: string | null
-          parcela_numero?: number | null
-          parcela_total?: number | null
-          status?: string | null
-          updated_at?: string
-          user_id: string
-          valor?: number
-          valor_desconto?: number | null
-          valor_juros?: number | null
-          valor_multa?: number | null
-          valor_recebido?: number | null
-        }
-        Update: {
-          categoria?: string | null
-          cliente?: string | null
-          conta_bancaria_id?: string | null
-          contrato_id?: string | null
-          contrato_pedido_id?: string | null
-          created_at?: string
-          data_recebimento?: string | null
-          data_vencimento?: string
-          descricao?: string
-          empresa_id?: string
-          id?: string
-          juros_percentual?: number | null
-          multa_percentual?: number | null
-          nota_fiscal_id?: string | null
-          numero_nf?: string | null
-          observacoes?: string | null
-          parcela_grupo_id?: string | null
-          parcela_numero?: number | null
-          parcela_total?: number | null
-          status?: string | null
-          updated_at?: string
-          user_id?: string
-          valor?: number
-          valor_desconto?: number | null
-          valor_juros?: number | null
-          valor_multa?: number | null
-          valor_recebido?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "contas_receber_conta_bancaria_id_fkey"
-            columns: ["conta_bancaria_id"]
-            isOneToOne: false
-            referencedRelation: "contas_bancarias"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contas_receber_contrato_id_fkey"
-            columns: ["contrato_id"]
-            isOneToOne: false
-            referencedRelation: "atas_srp_resumo"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contas_receber_contrato_id_fkey"
-            columns: ["contrato_id"]
-            isOneToOne: false
-            referencedRelation: "contratos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contas_receber_contrato_pedido_id_fkey"
-            columns: ["contrato_pedido_id"]
-            isOneToOne: false
-            referencedRelation: "contrato_pedidos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contas_receber_empresa_id_fkey"
-            columns: ["empresa_id"]
-            isOneToOne: false
-            referencedRelation: "empresas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contas_receber_empresa_id_fkey"
-            columns: ["empresa_id"]
-            isOneToOne: false
-            referencedRelation: "empresas_safe"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contas_receber_nota_fiscal_id_fkey"
-            columns: ["nota_fiscal_id"]
-            isOneToOne: false
-            referencedRelation: "notas_fiscais"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       contrato_aditivos: {
         Row: {
@@ -6415,6 +5851,1234 @@ export type Database = {
             columns: ["pai_id"]
             isOneToOne: false
             referencedRelation: "fin_plano_contas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_audit_log: {
+        Row: {
+          created_at: string
+          dados_antes: Json | null
+          dados_depois: Json | null
+          empresa_id: string
+          id: number
+          ip: unknown
+          operacao: string
+          registro_id: string
+          tabela: string
+          user_agent: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          dados_antes?: Json | null
+          dados_depois?: Json | null
+          empresa_id: string
+          id?: number
+          ip?: unknown
+          operacao: string
+          registro_id: string
+          tabela: string
+          user_agent?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          dados_antes?: Json | null
+          dados_depois?: Json | null
+          empresa_id?: string
+          id?: number
+          ip?: unknown
+          operacao?: string
+          registro_id?: string
+          tabela?: string
+          user_agent?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
+      financeiro_categorias: {
+        Row: {
+          ativa: boolean
+          codigo: string
+          cor: string | null
+          created_at: string
+          empresa_id: string
+          grupo_dre: string | null
+          icone: string | null
+          id: string
+          natureza: Database["public"]["Enums"]["financeiro_natureza"]
+          nome: string
+          parent_id: string | null
+          permite_lancamento: boolean
+          updated_at: string
+        }
+        Insert: {
+          ativa?: boolean
+          codigo: string
+          cor?: string | null
+          created_at?: string
+          empresa_id: string
+          grupo_dre?: string | null
+          icone?: string | null
+          id?: string
+          natureza: Database["public"]["Enums"]["financeiro_natureza"]
+          nome: string
+          parent_id?: string | null
+          permite_lancamento?: boolean
+          updated_at?: string
+        }
+        Update: {
+          ativa?: boolean
+          codigo?: string
+          cor?: string | null
+          created_at?: string
+          empresa_id?: string
+          grupo_dre?: string | null
+          icone?: string | null
+          id?: string
+          natureza?: Database["public"]["Enums"]["financeiro_natureza"]
+          nome?: string
+          parent_id?: string | null
+          permite_lancamento?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_categorias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_categorias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_categorias_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_categorias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_categorias_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "mv_financeiro_dre_mensal"
+            referencedColumns: ["categoria_id"]
+          },
+        ]
+      }
+      financeiro_centros_custo: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          contrato_id: string | null
+          created_at: string
+          descricao: string | null
+          edital_id: string | null
+          empresa_id: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          contrato_id?: string | null
+          created_at?: string
+          descricao?: string | null
+          edital_id?: string | null
+          empresa_id: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          contrato_id?: string | null
+          created_at?: string
+          descricao?: string | null
+          edital_id?: string | null
+          empresa_id?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_centros_custo_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_centros_custo_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_comissoes_calculadas: {
+        Row: {
+          base: number
+          competencia: string
+          created_at: string
+          empresa_id: string
+          id: string
+          lancamento_origem_id: string | null
+          lancamento_pagamento_id: string | null
+          percentual: number
+          pessoa_id: string
+          regra_id: string | null
+          status: string | null
+          valor: number
+        }
+        Insert: {
+          base: number
+          competencia: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          lancamento_origem_id?: string | null
+          lancamento_pagamento_id?: string | null
+          percentual: number
+          pessoa_id: string
+          regra_id?: string | null
+          status?: string | null
+          valor: number
+        }
+        Update: {
+          base?: number
+          competencia?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          lancamento_origem_id?: string | null
+          lancamento_pagamento_id?: string | null
+          percentual?: number
+          pessoa_id?: string
+          regra_id?: string | null
+          status?: string | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_comissoes_calculadas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_comissoes_calculadas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_comissoes_calculadas_lancamento_origem_id_fkey"
+            columns: ["lancamento_origem_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_lancamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_comissoes_calculadas_lancamento_pagamento_id_fkey"
+            columns: ["lancamento_pagamento_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_lancamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_comissoes_calculadas_pessoa_id_fkey"
+            columns: ["pessoa_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_pessoas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_comissoes_calculadas_regra_id_fkey"
+            columns: ["regra_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_comissoes_regras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_comissoes_regras: {
+        Row: {
+          ativa: boolean | null
+          base_calculo: string
+          empresa_id: string
+          id: string
+          nome: string
+          percentual: number
+          pessoa_id: string
+          valor_maximo: number | null
+          valor_minimo: number | null
+          vigencia_fim: string | null
+          vigencia_inicio: string | null
+        }
+        Insert: {
+          ativa?: boolean | null
+          base_calculo: string
+          empresa_id: string
+          id?: string
+          nome: string
+          percentual: number
+          pessoa_id: string
+          valor_maximo?: number | null
+          valor_minimo?: number | null
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Update: {
+          ativa?: boolean | null
+          base_calculo?: string
+          empresa_id?: string
+          id?: string
+          nome?: string
+          percentual?: number
+          pessoa_id?: string
+          valor_maximo?: number | null
+          valor_minimo?: number | null
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_comissoes_regras_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_comissoes_regras_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_comissoes_regras_pessoa_id_fkey"
+            columns: ["pessoa_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_pessoas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_conciliacoes: {
+        Row: {
+          conciliado_por: string | null
+          created_at: string
+          empresa_id: string
+          extrato_movimento_id: string
+          id: string
+          lancamento_id: string
+          metodo: string
+          motivos: Json | null
+          score: number
+        }
+        Insert: {
+          conciliado_por?: string | null
+          created_at?: string
+          empresa_id: string
+          extrato_movimento_id: string
+          id?: string
+          lancamento_id: string
+          metodo: string
+          motivos?: Json | null
+          score: number
+        }
+        Update: {
+          conciliado_por?: string | null
+          created_at?: string
+          empresa_id?: string
+          extrato_movimento_id?: string
+          id?: string
+          lancamento_id?: string
+          metodo?: string
+          motivos?: Json | null
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_conciliacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_conciliacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_conciliacoes_extrato_movimento_id_fkey"
+            columns: ["extrato_movimento_id"]
+            isOneToOne: true
+            referencedRelation: "financeiro_extrato_movimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_conciliacoes_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_lancamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_contas: {
+        Row: {
+          agencia: string | null
+          ativa: boolean
+          banco_codigo: string | null
+          banco_nome: string | null
+          conta: string | null
+          cor: string | null
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          id: string
+          moeda: string
+          nome: string
+          ordem: number | null
+          pluggy_account_id: string | null
+          pluggy_item_id: string | null
+          pluggy_last_sync: string | null
+          saldo_atual: number
+          saldo_inicial: number
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          agencia?: string | null
+          ativa?: boolean
+          banco_codigo?: string | null
+          banco_nome?: string | null
+          conta?: string | null
+          cor?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          id?: string
+          moeda?: string
+          nome: string
+          ordem?: number | null
+          pluggy_account_id?: string | null
+          pluggy_item_id?: string | null
+          pluggy_last_sync?: string | null
+          saldo_atual?: number
+          saldo_inicial?: number
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          agencia?: string | null
+          ativa?: boolean
+          banco_codigo?: string | null
+          banco_nome?: string | null
+          conta?: string | null
+          cor?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          id?: string
+          moeda?: string
+          nome?: string
+          ordem?: number | null
+          pluggy_account_id?: string | null
+          pluggy_item_id?: string | null
+          pluggy_last_sync?: string | null
+          saldo_atual?: number
+          saldo_inicial?: number
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_contas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_contas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_documentos_fiscais: {
+        Row: {
+          arquivo_url: string | null
+          arquivo_xml: string | null
+          chave_acesso: string | null
+          created_at: string
+          data_emissao: string
+          destinatario_id: string | null
+          emissor_id: string | null
+          empresa_id: string
+          id: string
+          numero: string | null
+          ocr_data: Json | null
+          origem: Database["public"]["Enums"]["financeiro_origem_movimento"]
+          serie: string | null
+          tipo: Database["public"]["Enums"]["financeiro_tipo_documento"]
+          valor_impostos: number | null
+          valor_total: number
+        }
+        Insert: {
+          arquivo_url?: string | null
+          arquivo_xml?: string | null
+          chave_acesso?: string | null
+          created_at?: string
+          data_emissao: string
+          destinatario_id?: string | null
+          emissor_id?: string | null
+          empresa_id: string
+          id?: string
+          numero?: string | null
+          ocr_data?: Json | null
+          origem?: Database["public"]["Enums"]["financeiro_origem_movimento"]
+          serie?: string | null
+          tipo: Database["public"]["Enums"]["financeiro_tipo_documento"]
+          valor_impostos?: number | null
+          valor_total: number
+        }
+        Update: {
+          arquivo_url?: string | null
+          arquivo_xml?: string | null
+          chave_acesso?: string | null
+          created_at?: string
+          data_emissao?: string
+          destinatario_id?: string | null
+          emissor_id?: string | null
+          empresa_id?: string
+          id?: string
+          numero?: string | null
+          ocr_data?: Json | null
+          origem?: Database["public"]["Enums"]["financeiro_origem_movimento"]
+          serie?: string | null
+          tipo?: Database["public"]["Enums"]["financeiro_tipo_documento"]
+          valor_impostos?: number | null
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_documentos_fiscais_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_pessoas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_documentos_fiscais_emissor_id_fkey"
+            columns: ["emissor_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_pessoas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_documentos_fiscais_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_documentos_fiscais_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_extrato_movimentos: {
+        Row: {
+          conciliado: boolean
+          conta_id: string
+          created_at: string
+          data_movimento: string
+          descricao: string
+          descricao_extra: string | null
+          empresa_id: string
+          extrato_id: string
+          fitid: string
+          id: string
+          lancamento_id: string | null
+          saldo_apos: number | null
+          tipo: string
+          valor: number
+        }
+        Insert: {
+          conciliado?: boolean
+          conta_id: string
+          created_at?: string
+          data_movimento: string
+          descricao: string
+          descricao_extra?: string | null
+          empresa_id: string
+          extrato_id: string
+          fitid: string
+          id?: string
+          lancamento_id?: string | null
+          saldo_apos?: number | null
+          tipo: string
+          valor: number
+        }
+        Update: {
+          conciliado?: boolean
+          conta_id?: string
+          created_at?: string
+          data_movimento?: string
+          descricao?: string
+          descricao_extra?: string | null
+          empresa_id?: string
+          extrato_id?: string
+          fitid?: string
+          id?: string
+          lancamento_id?: string | null
+          saldo_apos?: number | null
+          tipo?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_extrato_movimentos_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_extrato_movimentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_extrato_movimentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_extrato_movimentos_extrato_id_fkey"
+            columns: ["extrato_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_extratos_importados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_extrato_movimentos_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_lancamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_extratos_importados: {
+        Row: {
+          arquivo_hash: string
+          arquivo_nome: string
+          arquivo_url: string | null
+          conta_id: string
+          created_at: string
+          data_fim: string | null
+          data_inicio: string | null
+          empresa_id: string
+          erro_mensagem: string | null
+          formato: string
+          id: string
+          importado_por: string | null
+          status: string
+          total_conciliados: number | null
+          total_movimentos: number | null
+        }
+        Insert: {
+          arquivo_hash: string
+          arquivo_nome: string
+          arquivo_url?: string | null
+          conta_id: string
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          empresa_id: string
+          erro_mensagem?: string | null
+          formato: string
+          id?: string
+          importado_por?: string | null
+          status?: string
+          total_conciliados?: number | null
+          total_movimentos?: number | null
+        }
+        Update: {
+          arquivo_hash?: string
+          arquivo_nome?: string
+          arquivo_url?: string | null
+          conta_id?: string
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          empresa_id?: string
+          erro_mensagem?: string | null
+          formato?: string
+          id?: string
+          importado_por?: string | null
+          status?: string
+          total_conciliados?: number | null
+          total_movimentos?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_extratos_importados_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_extratos_importados_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_extratos_importados_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_folha_itens: {
+        Row: {
+          descontos: Json | null
+          empresa_id: string
+          fgts: number | null
+          folha_id: string
+          funcionario_id: string
+          id: string
+          inss: number | null
+          irrf: number | null
+          lancamento_id: string | null
+          proventos: Json | null
+          salario_base: number
+          total_liquido: number
+        }
+        Insert: {
+          descontos?: Json | null
+          empresa_id: string
+          fgts?: number | null
+          folha_id: string
+          funcionario_id: string
+          id?: string
+          inss?: number | null
+          irrf?: number | null
+          lancamento_id?: string | null
+          proventos?: Json | null
+          salario_base: number
+          total_liquido: number
+        }
+        Update: {
+          descontos?: Json | null
+          empresa_id?: string
+          fgts?: number | null
+          folha_id?: string
+          funcionario_id?: string
+          id?: string
+          inss?: number | null
+          irrf?: number | null
+          lancamento_id?: string | null
+          proventos?: Json | null
+          salario_base?: number
+          total_liquido?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_folha_itens_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_folha_itens_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_folha_itens_folha_id_fkey"
+            columns: ["folha_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_folha_pagamento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_folha_itens_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_pessoas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_folha_itens_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_lancamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_folha_pagamento: {
+        Row: {
+          competencia: string
+          created_at: string
+          created_by: string | null
+          data_pagamento: string | null
+          empresa_id: string
+          id: string
+          status: string
+          total_descontos: number | null
+          total_fgts: number | null
+          total_inss_patronal: number | null
+          total_liquido: number | null
+          total_proventos: number | null
+        }
+        Insert: {
+          competencia: string
+          created_at?: string
+          created_by?: string | null
+          data_pagamento?: string | null
+          empresa_id: string
+          id?: string
+          status?: string
+          total_descontos?: number | null
+          total_fgts?: number | null
+          total_inss_patronal?: number | null
+          total_liquido?: number | null
+          total_proventos?: number | null
+        }
+        Update: {
+          competencia?: string
+          created_at?: string
+          created_by?: string | null
+          data_pagamento?: string | null
+          empresa_id?: string
+          id?: string
+          status?: string
+          total_descontos?: number | null
+          total_fgts?: number | null
+          total_inss_patronal?: number | null
+          total_liquido?: number | null
+          total_proventos?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_folha_pagamento_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_folha_pagamento_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_lancamentos: {
+        Row: {
+          anexos: Json | null
+          categoria_id: string | null
+          categoria_sugerida_confianca: number | null
+          categoria_sugerida_id: string | null
+          categoria_sugerida_modelo: string | null
+          centro_custo_id: string | null
+          conta_destino_id: string | null
+          conta_id: string | null
+          contrato_id: string | null
+          created_at: string
+          created_by: string | null
+          data_competencia: string
+          data_conciliado: string | null
+          data_realizado: string | null
+          data_vencimento: string | null
+          descricao: string
+          documento_fiscal_id: string | null
+          edital_id: string | null
+          empresa_id: string
+          forma_pagamento: string | null
+          id: string
+          meio_pagamento_dados: Json | null
+          natureza: Database["public"]["Enums"]["financeiro_natureza"]
+          observacoes: string | null
+          origem: Database["public"]["Enums"]["financeiro_origem_movimento"]
+          origem_ref: string | null
+          pessoa_id: string | null
+          recorrencia_id: string | null
+          recorrencia_rrule: string | null
+          status: Database["public"]["Enums"]["financeiro_status_lancamento"]
+          tags: string[] | null
+          tipo: Database["public"]["Enums"]["financeiro_tipo_lancamento"]
+          updated_at: string
+          updated_by: string | null
+          valor: number
+          valor_desconto: number | null
+          valor_imposto: number | null
+          valor_juros: number | null
+          valor_multa: number | null
+          valor_tarifa: number | null
+        }
+        Insert: {
+          anexos?: Json | null
+          categoria_id?: string | null
+          categoria_sugerida_confianca?: number | null
+          categoria_sugerida_id?: string | null
+          categoria_sugerida_modelo?: string | null
+          centro_custo_id?: string | null
+          conta_destino_id?: string | null
+          conta_id?: string | null
+          contrato_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_competencia: string
+          data_conciliado?: string | null
+          data_realizado?: string | null
+          data_vencimento?: string | null
+          descricao: string
+          documento_fiscal_id?: string | null
+          edital_id?: string | null
+          empresa_id: string
+          forma_pagamento?: string | null
+          id?: string
+          meio_pagamento_dados?: Json | null
+          natureza: Database["public"]["Enums"]["financeiro_natureza"]
+          observacoes?: string | null
+          origem?: Database["public"]["Enums"]["financeiro_origem_movimento"]
+          origem_ref?: string | null
+          pessoa_id?: string | null
+          recorrencia_id?: string | null
+          recorrencia_rrule?: string | null
+          status?: Database["public"]["Enums"]["financeiro_status_lancamento"]
+          tags?: string[] | null
+          tipo: Database["public"]["Enums"]["financeiro_tipo_lancamento"]
+          updated_at?: string
+          updated_by?: string | null
+          valor: number
+          valor_desconto?: number | null
+          valor_imposto?: number | null
+          valor_juros?: number | null
+          valor_multa?: number | null
+          valor_tarifa?: number | null
+        }
+        Update: {
+          anexos?: Json | null
+          categoria_id?: string | null
+          categoria_sugerida_confianca?: number | null
+          categoria_sugerida_id?: string | null
+          categoria_sugerida_modelo?: string | null
+          centro_custo_id?: string | null
+          conta_destino_id?: string | null
+          conta_id?: string | null
+          contrato_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_competencia?: string
+          data_conciliado?: string | null
+          data_realizado?: string | null
+          data_vencimento?: string | null
+          descricao?: string
+          documento_fiscal_id?: string | null
+          edital_id?: string | null
+          empresa_id?: string
+          forma_pagamento?: string | null
+          id?: string
+          meio_pagamento_dados?: Json | null
+          natureza?: Database["public"]["Enums"]["financeiro_natureza"]
+          observacoes?: string | null
+          origem?: Database["public"]["Enums"]["financeiro_origem_movimento"]
+          origem_ref?: string | null
+          pessoa_id?: string | null
+          recorrencia_id?: string | null
+          recorrencia_rrule?: string | null
+          status?: Database["public"]["Enums"]["financeiro_status_lancamento"]
+          tags?: string[] | null
+          tipo?: Database["public"]["Enums"]["financeiro_tipo_lancamento"]
+          updated_at?: string
+          updated_by?: string | null
+          valor?: number
+          valor_desconto?: number | null
+          valor_imposto?: number | null
+          valor_juros?: number | null
+          valor_multa?: number | null
+          valor_tarifa?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_lancamentos_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_categorias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "mv_financeiro_dre_mensal"
+            referencedColumns: ["categoria_id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_categoria_sugerida_id_fkey"
+            columns: ["categoria_sugerida_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_categorias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_categoria_sugerida_id_fkey"
+            columns: ["categoria_sugerida_id"]
+            isOneToOne: false
+            referencedRelation: "mv_financeiro_dre_mensal"
+            referencedColumns: ["categoria_id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_centro_custo_id_fkey"
+            columns: ["centro_custo_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_centros_custo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_conta_destino_id_fkey"
+            columns: ["conta_destino_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_documento_fiscal_id_fkey"
+            columns: ["documento_fiscal_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_documentos_fiscais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_pessoa_id_fkey"
+            columns: ["pessoa_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_pessoas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_pessoas: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          dados_bancarios: Json | null
+          documento: string
+          email: string | null
+          empresa_id: string
+          endereco: Json | null
+          id: string
+          nome: string
+          nome_fantasia: string | null
+          observacoes: string | null
+          pessoa_tipo: string
+          telefone: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          dados_bancarios?: Json | null
+          documento: string
+          email?: string | null
+          empresa_id: string
+          endereco?: Json | null
+          id?: string
+          nome: string
+          nome_fantasia?: string | null
+          observacoes?: string | null
+          pessoa_tipo: string
+          telefone?: string | null
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          dados_bancarios?: Json | null
+          documento?: string
+          email?: string | null
+          empresa_id?: string
+          endereco?: Json | null
+          id?: string
+          nome?: string
+          nome_fantasia?: string | null
+          observacoes?: string | null
+          pessoa_tipo?: string
+          telefone?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_pessoas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_pessoas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_regras_categorizacao: {
+        Row: {
+          ativa: boolean
+          categoria_id: string | null
+          centro_custo_id: string | null
+          condicoes: Json
+          created_at: string
+          descricao: string | null
+          empresa_id: string
+          id: string
+          nome: string
+          pessoa_id: string | null
+          prioridade: number
+          ultima_aplicacao: string | null
+          vezes_aplicada: number | null
+        }
+        Insert: {
+          ativa?: boolean
+          categoria_id?: string | null
+          centro_custo_id?: string | null
+          condicoes: Json
+          created_at?: string
+          descricao?: string | null
+          empresa_id: string
+          id?: string
+          nome: string
+          pessoa_id?: string | null
+          prioridade?: number
+          ultima_aplicacao?: string | null
+          vezes_aplicada?: number | null
+        }
+        Update: {
+          ativa?: boolean
+          categoria_id?: string | null
+          centro_custo_id?: string | null
+          condicoes?: Json
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string
+          id?: string
+          nome?: string
+          pessoa_id?: string | null
+          prioridade?: number
+          ultima_aplicacao?: string | null
+          vezes_aplicada?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_regras_categorizacao_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_categorias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_regras_categorizacao_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "mv_financeiro_dre_mensal"
+            referencedColumns: ["categoria_id"]
+          },
+          {
+            foreignKeyName: "financeiro_regras_categorizacao_centro_custo_id_fkey"
+            columns: ["centro_custo_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_centros_custo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_regras_categorizacao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_regras_categorizacao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_regras_categorizacao_pessoa_id_fkey"
+            columns: ["pessoa_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_pessoas"
             referencedColumns: ["id"]
           },
         ]
@@ -10314,15 +10978,7 @@ export type Database = {
           user_id?: string
           valor?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "transacoes_bancarias_conta_bancaria_id_fkey"
-            columns: ["conta_bancaria_id"]
-            isOneToOne: false
-            referencedRelation: "contas_bancarias"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       transparencia_empenhos: {
         Row: {
@@ -11226,6 +11882,59 @@ export type Database = {
         }
         Relationships: []
       }
+      mv_financeiro_dre_mensal: {
+        Row: {
+          categoria_id: string | null
+          categoria_nome: string | null
+          competencia: string | null
+          empresa_id: string | null
+          grupo_dre: string | null
+          natureza: Database["public"]["Enums"]["financeiro_natureza"] | null
+          total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_lancamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mv_financeiro_fluxo_caixa: {
+        Row: {
+          data: string | null
+          empresa_id: string | null
+          entradas_previstas: number | null
+          entradas_realizadas: number | null
+          saidas_previstas: number | null
+          saidas_realizadas: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_lancamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nuvem_fiscal_config_safe: {
         Row: {
           ambiente: string | null
@@ -11630,6 +12339,10 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      financeiro_recalcular_saldo_conta: {
+        Args: { p_conta_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -11709,6 +12422,7 @@ export type Database = {
         }[]
       }
       recalcular_saldos_atas_srp: { Args: { p_ata_id?: string }; Returns: Json }
+      refresh_financeiro_views: { Args: never; Returns: undefined }
       relatorio_consumo_ata: {
         Args: {
           p_ata_id: string
@@ -11723,6 +12437,10 @@ export type Database = {
         Args: { p_ata_id?: string; p_limite?: number }
         Returns: Json
       }
+      seed_plano_contas_padrao: {
+        Args: { p_empresa_id: string }
+        Returns: undefined
+      }
       user_has_active_subscription: {
         Args: { _user_id: string }
         Returns: boolean
@@ -11731,6 +12449,36 @@ export type Database = {
     Enums: {
       app_role: "admin" | "user" | "viewer"
       empresa_papel: "admin" | "operador" | "viewer"
+      financeiro_natureza: "receita" | "despesa" | "movimentacao"
+      financeiro_origem_movimento:
+        | "manual"
+        | "ofx"
+        | "pluggy"
+        | "cnab"
+        | "dda"
+        | "sefaz_nfe"
+        | "ocr"
+        | "recorrencia"
+        | "folha_pagamento"
+      financeiro_status_lancamento:
+        | "previsto"
+        | "realizado"
+        | "conciliado"
+        | "cancelado"
+        | "em_atraso"
+      financeiro_tipo_documento:
+        | "nfe"
+        | "nfse"
+        | "nfce"
+        | "boleto"
+        | "recibo"
+        | "contrato"
+        | "outro"
+      financeiro_tipo_lancamento:
+        | "a_pagar"
+        | "a_receber"
+        | "movimento_bancario"
+        | "transferencia"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -11860,6 +12608,40 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user", "viewer"],
       empresa_papel: ["admin", "operador", "viewer"],
+      financeiro_natureza: ["receita", "despesa", "movimentacao"],
+      financeiro_origem_movimento: [
+        "manual",
+        "ofx",
+        "pluggy",
+        "cnab",
+        "dda",
+        "sefaz_nfe",
+        "ocr",
+        "recorrencia",
+        "folha_pagamento",
+      ],
+      financeiro_status_lancamento: [
+        "previsto",
+        "realizado",
+        "conciliado",
+        "cancelado",
+        "em_atraso",
+      ],
+      financeiro_tipo_documento: [
+        "nfe",
+        "nfse",
+        "nfce",
+        "boleto",
+        "recibo",
+        "contrato",
+        "outro",
+      ],
+      financeiro_tipo_lancamento: [
+        "a_pagar",
+        "a_receber",
+        "movimento_bancario",
+        "transferencia",
+      ],
     },
   },
 } as const
