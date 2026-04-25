@@ -368,7 +368,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
               {mod1.baseInsalubridade === 'salario_minimo' && (
                 <div>
                   <Label className="text-xs">Salário Mínimo (R$)</Label>
-                  <Input type="number" value={mod1.salarioMinimo} onChange={e => updMod1('salarioMinimo', parseFloat(e.target.value) || 0)} className="mt-1" />
+                  <MoneyInput value={Number(mod1.salarioMinimo) || 0} onValueChange={v => updMod1('salarioMinimo', v)} className="mt-1" />
                 </div>
               )}
             </div>
