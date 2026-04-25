@@ -15,6 +15,108 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type, x-lovable-signature, x-lovable-timestamp, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
+type WebhookErrorCode =
+  | 'missing_secret'
+  | 'missing_timestamp'
+  | 'invalid_timestamp'
+  | 'stale_timestamp'
+  | 'body_too_large'
+  | 'invalid_signature'
+  | 'invalid_payload'
+  | 'invalid_json'
+
+class WebhookError extends Error {
+  constructor(public code: WebhookErrorCode, message: string) {
+    super(message)
+  }
+}
+
+async function computeSignature(signedPayload: string, secret: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(signedPayload))
+  return 'sha256=' + Array.from(new Uint8Array(signature))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  let result = 0
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  }
+  return result === 0
+}
+
+function parseTimestamp(timestamp: string): number {
+  const numeric = Number(timestamp)
+  if (Number.isFinite(numeric)) {
+    return Math.abs(numeric) < 1e12 ? numeric * 1000 : numeric
+  }
+
+  const parsed = Date.parse(timestamp)
+  if (!Number.isNaN(parsed)) return parsed
+
+  throw new WebhookError('invalid_timestamp', 'Invalid webhook timestamp')
+}
+
+async function verifyWebhookRequest<T>({
+  req,
+  secret,
+  parser,
+  signatureHeader = 'x-lovable-signature',
+  timestampHeader = 'x-lovable-timestamp',
+  toleranceMs = 5 * 60 * 1000,
+  maxBodyBytes = 1 << 20,
+}: {
+  req: Request
+  secret: string
+  parser: (body: string) => T
+  signatureHeader?: string
+  timestampHeader?: string
+  toleranceMs?: number
+  maxBodyBytes?: number
+}): Promise<{ body: string; payload: T; timestamp: string }> {
+  if (!secret) {
+    throw new WebhookError('missing_secret', 'Missing webhook secret')
+  }
+
+  const signature = req.headers.get(signatureHeader)
+  const timestamp = req.headers.get(timestampHeader)
+
+  if (!timestamp) {
+    throw new WebhookError('missing_timestamp', 'Missing webhook timestamp')
+  }
+
+  const timestampMs = parseTimestamp(timestamp)
+  if (Math.abs(Date.now() - timestampMs) > toleranceMs) {
+    throw new WebhookError('stale_timestamp', 'Webhook timestamp outside tolerance window')
+  }
+
+  const body = await req.text()
+  if (new TextEncoder().encode(body).length > maxBodyBytes) {
+    throw new WebhookError('body_too_large', 'Webhook body exceeds size limit')
+  }
+
+  const expected = await computeSignature(`${timestamp}.${body}`, secret)
+  if (!signature || !constantTimeEqual(signature, expected)) {
+    throw new WebhookError('invalid_signature', 'Invalid webhook signature')
+  }
+
+  try {
+    return { body, payload: parser(body), timestamp }
+  } catch {
+    throw new WebhookError('invalid_payload', 'Failed to parse webhook payload')
+  }
+}
+
 const EMAIL_SUBJECTS: Record<string, string> = {
   signup: 'Confirme seu e-mail — PRAEFECTUS',
   invite: 'Você foi convidado — PRAEFECTUS',
