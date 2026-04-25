@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
           titulo: `Relatório ${tipo === 'diario' ? 'Diário' : 'Semanal'} do Agente`,
           mensagem: linhas.join('\n'),
           url_acao: '/agente',
-        }).catch(() => {});
+        });
 
         relatorios.push({
           empresa_id: empresaId,
