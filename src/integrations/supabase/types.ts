@@ -4993,6 +4993,7 @@ export type Database = {
           parcela_numero: number | null
           parcela_pai_id: string | null
           parcela_total: number | null
+          projeto_id: string | null
           status: string | null
           tipo: string
           updated_at: string | null
@@ -5017,6 +5018,7 @@ export type Database = {
           parcela_numero?: number | null
           parcela_pai_id?: string | null
           parcela_total?: number | null
+          projeto_id?: string | null
           status?: string | null
           tipo?: string
           updated_at?: string | null
@@ -5041,6 +5043,7 @@ export type Database = {
           parcela_numero?: number | null
           parcela_pai_id?: string | null
           parcela_total?: number | null
+          projeto_id?: string | null
           status?: string | null
           tipo?: string
           updated_at?: string | null
@@ -5066,6 +5069,20 @@ export type Database = {
             columns: ["parcela_pai_id"]
             isOneToOne: false
             referencedRelation: "fin_lancamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_lancamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "fin_projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_fin_lanc_cc"
+            columns: ["centro_custo_id"]
+            isOneToOne: false
+            referencedRelation: "fin_centros_custo"
             referencedColumns: ["id"]
           },
           {
@@ -5851,6 +5868,69 @@ export type Database = {
             columns: ["pai_id"]
             isOneToOne: false
             referencedRelation: "fin_plano_contas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_projetos: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          data_fim: string | null
+          data_inicio: string | null
+          descricao: string | null
+          empresa_id: string
+          id: string
+          licitacao_id: string | null
+          nome: string
+          status: string
+          updated_at: string
+          valor_orcado: number | null
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          empresa_id: string
+          id?: string
+          licitacao_id?: string | null
+          nome: string
+          status?: string
+          updated_at?: string
+          valor_orcado?: number | null
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          empresa_id?: string
+          id?: string
+          licitacao_id?: string | null
+          nome?: string
+          status?: string
+          updated_at?: string
+          valor_orcado?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_projetos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_projetos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
         ]
