@@ -83,6 +83,7 @@ export default function Financeiro() {
             <TabsContent value="categorias"><FinCategorias /></TabsContent>
             <TabsContent value="plano_contas"><FinPlanoContas /></TabsContent>
             <TabsContent value="saldos_abertura"><FinSaldosAbertura /></TabsContent>
+            <TabsContent value="orcamento"><FinOrcamento /></TabsContent>
           </Tabs>
         )}
       </div>
