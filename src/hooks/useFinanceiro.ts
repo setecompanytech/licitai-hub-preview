@@ -244,7 +244,7 @@ export function useLancamentos(filtro: LancamentoFiltro = {}) {
     queryFn: async () => {
       let q = supabase
         .from("financeiro_lancamentos")
-        .select("*, conta:financeiro_contas(id,nome), categoria:financeiro_categorias(id,nome,natureza), pessoa:financeiro_pessoas(id,nome)")
+        .select("*, conta:financeiro_contas!financeiro_lancamentos_conta_id_fkey(id,nome), categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(id,nome,natureza), pessoa:financeiro_pessoas(id,nome)")
         .eq("empresa_id", empresaId!)
         .order("data_competencia", { ascending: false })
         .limit(500);
