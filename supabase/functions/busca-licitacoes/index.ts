@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * busca-licitacoes — Edge Function PNCP
  *

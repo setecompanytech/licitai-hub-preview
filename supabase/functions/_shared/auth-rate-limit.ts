@@ -1,5 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
+type AdminClient = ReturnType<typeof createClient<any, "public", any>>;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -8,7 +10,7 @@ const corsHeaders = {
 
 export type AuthResult = {
   userId: string;
-  supabase: ReturnType<typeof createClient>;
+  supabase: AdminClient;
 };
 
 /**

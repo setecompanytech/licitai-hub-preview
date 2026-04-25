@@ -219,7 +219,7 @@ RESPONDA APENAS COM O NÚMERO.`
                 : `📋 Edital avaliado (descartado): ${edital.objeto_compra?.slice(0, 60)}`,
             mensagem: motivoDecisao,
             url_acao: `/monitoramento-editais`,
-          }).catch(() => { });
+          });
         }
       }
     }

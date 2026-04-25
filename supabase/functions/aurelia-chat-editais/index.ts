@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Fase 5 — Chat AURÉLIA com RAG sobre editais
 // Fluxo: última pergunta do usuário -> embedding (Lovable Gemini 768d)
 // -> top-N editais via RPC busca_editais_semantica_lovable

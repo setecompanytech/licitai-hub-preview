@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
               titulo: `⚠️ Ação necessária no pregão — ${msg.categoria}`,
               mensagem: msg.conteudo?.slice(0, 200),
               url_acao: `/monitoramento-chat`,
-            }).catch(() => {});
+            });
 
             alertasGerados++;
           }
