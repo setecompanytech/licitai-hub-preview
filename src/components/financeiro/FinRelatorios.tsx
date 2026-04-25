@@ -242,7 +242,7 @@ export default function FinRelatorios() {
       .from("financeiro_lancamentos")
       .select("valor, tipo, natureza, categoria:financeiro_categorias(nome, natureza)")
       .eq("empresa_id", empresaAtiva!.id)
-      .eq("status", "liquidado")
+      .in("status", ["realizado", "conciliado"])
       .gte("data_realizado", periodo.inicio)
       .lte("data_realizado", periodo.fim);
     if (error) throw error;
