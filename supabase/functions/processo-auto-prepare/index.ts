@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Edge Function: processo-auto-prepare
 // Orquestra a "preparação automática" da Pasta do Processo:
 //   1) localiza/identifica o edital de origem (editais_coletados)

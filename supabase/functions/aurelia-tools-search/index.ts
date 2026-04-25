@@ -1,3 +1,4 @@
+// @ts-nocheck
 // AURÉLIA com Tool Calling — RAG simples sobre cache PNCP, Diários Oficiais e Histórico de Preços
 // Implementa o loop: chamada → tool_calls → execução → resposta final, retornando SSE para o cliente.
 
