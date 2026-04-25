@@ -1,1 +1,7 @@
-{}
+{
+  "nodeModulesDir": "auto",
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
+    "@lovable.dev/webhooks-js": "npm:@lovable.dev/webhooks-js"
+  }
+}
