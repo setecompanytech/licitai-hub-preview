@@ -1,6 +1,7 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target, FileDown } from "lucide-react";
+import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target, FileDown, Calculator } from "lucide-react";
+import FinApuracao from "@/components/financeiro/FinApuracao";
 import FinPlanoContas from "@/components/financeiro/FinPlanoContas";
 import FinSaldosAbertura from "@/components/financeiro/FinSaldosAbertura";
 import FinOrcamento from "@/components/financeiro/FinOrcamento";
