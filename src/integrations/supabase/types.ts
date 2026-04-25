@@ -6369,6 +6369,7 @@ export type Database = {
           codigo: string
           cor: string | null
           created_at: string
+          dfc_classe: string | null
           empresa_id: string
           grupo_dre: string | null
           icone: string | null
@@ -6384,6 +6385,7 @@ export type Database = {
           codigo: string
           cor?: string | null
           created_at?: string
+          dfc_classe?: string | null
           empresa_id: string
           grupo_dre?: string | null
           icone?: string | null
@@ -6399,6 +6401,7 @@ export type Database = {
           codigo?: string
           cor?: string | null
           created_at?: string
+          dfc_classe?: string | null
           empresa_id?: string
           grupo_dre?: string | null
           icone?: string | null
@@ -13447,6 +13450,16 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      financeiro_dfc_mensal: {
+        Args: { p_empresa_id: string; p_meses?: number }
+        Returns: {
+          classe: string
+          competencia: string
+          entradas: number
+          liquido: number
+          saidas: number
+        }[]
       }
       financeiro_realizado_mensal: {
         Args: { p_ano: number; p_empresa_id: string }
