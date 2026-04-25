@@ -12,6 +12,8 @@ import FinContasReceber from "@/components/financeiro/FinContasReceber";
 import FinCentrosCusto from "@/components/financeiro/FinCentrosCusto";
 import FinFluxoCaixa from "@/components/financeiro/FinFluxoCaixa";
 import FinDRE from "@/components/financeiro/FinDRE";
+import { useEmpresa } from "@/contexts/EmpresaContext";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function Financeiro() {
   const { empresaAtiva, loading } = useEmpresa();
