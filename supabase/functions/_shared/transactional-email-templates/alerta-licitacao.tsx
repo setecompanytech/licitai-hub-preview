@@ -28,7 +28,7 @@ interface AlertaLicitacaoProps {
 const AlertaLicitacaoEmail = ({ licitacoes = [], totalEncontradas, dataHora }: AlertaLicitacaoProps) => (
   <Html lang="pt-BR" dir="ltr">
     <Head />
-    <Preview>🔔 {totalEncontradas || licitacoes.length} nova(s) oportunidade(s) encontrada(s) — {SITE_NAME}</Preview>
+    <Preview>{`🔔 ${totalEncontradas || licitacoes.length} nova(s) oportunidade(s) encontrada(s) — ${SITE_NAME}`}</Preview>
     <Body style={main}>
       <Container style={container}>
         {/* Header */}
