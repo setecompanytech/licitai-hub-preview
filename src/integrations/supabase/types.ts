@@ -7313,6 +7313,7 @@ export type Database = {
           categoria_sugerida_id: string | null
           categoria_sugerida_modelo: string | null
           centro_custo_id: string | null
+          chave_acesso_nfe: string | null
           conta_destino_id: string | null
           conta_id: string | null
           contrato_id: string | null
@@ -7320,6 +7321,7 @@ export type Database = {
           created_by: string | null
           data_competencia: string
           data_conciliado: string | null
+          data_emissao: string | null
           data_realizado: string | null
           data_vencimento: string | null
           descricao: string
@@ -7330,15 +7332,20 @@ export type Database = {
           id: string
           meio_pagamento_dados: Json | null
           natureza: Database["public"]["Enums"]["financeiro_natureza"]
+          numero_documento: string | null
           observacoes: string | null
           origem: Database["public"]["Enums"]["financeiro_origem_movimento"]
           origem_ref: string | null
           pessoa_id: string | null
           recorrencia_id: string | null
           recorrencia_rrule: string | null
+          serie_documento: string | null
           status: Database["public"]["Enums"]["financeiro_status_lancamento"]
           tags: string[] | null
           tipo: Database["public"]["Enums"]["financeiro_tipo_lancamento"]
+          tipo_documento:
+            | Database["public"]["Enums"]["financeiro_tipo_documento"]
+            | null
           updated_at: string
           updated_by: string | null
           valor: number
@@ -7355,6 +7362,7 @@ export type Database = {
           categoria_sugerida_id?: string | null
           categoria_sugerida_modelo?: string | null
           centro_custo_id?: string | null
+          chave_acesso_nfe?: string | null
           conta_destino_id?: string | null
           conta_id?: string | null
           contrato_id?: string | null
@@ -7362,6 +7370,7 @@ export type Database = {
           created_by?: string | null
           data_competencia: string
           data_conciliado?: string | null
+          data_emissao?: string | null
           data_realizado?: string | null
           data_vencimento?: string | null
           descricao: string
@@ -7372,15 +7381,20 @@ export type Database = {
           id?: string
           meio_pagamento_dados?: Json | null
           natureza: Database["public"]["Enums"]["financeiro_natureza"]
+          numero_documento?: string | null
           observacoes?: string | null
           origem?: Database["public"]["Enums"]["financeiro_origem_movimento"]
           origem_ref?: string | null
           pessoa_id?: string | null
           recorrencia_id?: string | null
           recorrencia_rrule?: string | null
+          serie_documento?: string | null
           status?: Database["public"]["Enums"]["financeiro_status_lancamento"]
           tags?: string[] | null
           tipo: Database["public"]["Enums"]["financeiro_tipo_lancamento"]
+          tipo_documento?:
+            | Database["public"]["Enums"]["financeiro_tipo_documento"]
+            | null
           updated_at?: string
           updated_by?: string | null
           valor: number
@@ -7397,6 +7411,7 @@ export type Database = {
           categoria_sugerida_id?: string | null
           categoria_sugerida_modelo?: string | null
           centro_custo_id?: string | null
+          chave_acesso_nfe?: string | null
           conta_destino_id?: string | null
           conta_id?: string | null
           contrato_id?: string | null
@@ -7404,6 +7419,7 @@ export type Database = {
           created_by?: string | null
           data_competencia?: string
           data_conciliado?: string | null
+          data_emissao?: string | null
           data_realizado?: string | null
           data_vencimento?: string | null
           descricao?: string
@@ -7414,15 +7430,20 @@ export type Database = {
           id?: string
           meio_pagamento_dados?: Json | null
           natureza?: Database["public"]["Enums"]["financeiro_natureza"]
+          numero_documento?: string | null
           observacoes?: string | null
           origem?: Database["public"]["Enums"]["financeiro_origem_movimento"]
           origem_ref?: string | null
           pessoa_id?: string | null
           recorrencia_id?: string | null
           recorrencia_rrule?: string | null
+          serie_documento?: string | null
           status?: Database["public"]["Enums"]["financeiro_status_lancamento"]
           tags?: string[] | null
           tipo?: Database["public"]["Enums"]["financeiro_tipo_lancamento"]
+          tipo_documento?:
+            | Database["public"]["Enums"]["financeiro_tipo_documento"]
+            | null
           updated_at?: string
           updated_by?: string | null
           valor?: number
@@ -8029,6 +8050,80 @@ export type Database = {
             columns: ["pessoa_id"]
             isOneToOne: false
             referencedRelation: "financeiro_pessoas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_saldos_iniciais: {
+        Row: {
+          conta_bancaria_id: string | null
+          conta_id: string
+          created_at: string
+          created_by: string | null
+          data_corte: string
+          empresa_id: string
+          id: string
+          observacao: string | null
+          saldo_credor: number
+          saldo_devedor: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          conta_bancaria_id?: string | null
+          conta_id: string
+          created_at?: string
+          created_by?: string | null
+          data_corte: string
+          empresa_id: string
+          id?: string
+          observacao?: string | null
+          saldo_credor?: number
+          saldo_devedor?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          conta_bancaria_id?: string | null
+          conta_id?: string
+          created_at?: string
+          created_by?: string | null
+          data_corte?: string
+          empresa_id?: string
+          id?: string
+          observacao?: string | null
+          saldo_credor?: number
+          saldo_devedor?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_saldos_iniciais_conta_bancaria_id_fkey"
+            columns: ["conta_bancaria_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_saldos_iniciais_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_plano_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_saldos_iniciais_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_saldos_iniciais_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -13295,6 +13390,10 @@ export type Database = {
       }
       financeiro_seed_plano_contas_pme: {
         Args: { p_empresa_id: string }
+        Returns: Json
+      }
+      financeiro_validar_balancete_abertura: {
+        Args: { p_data_corte: string; p_empresa_id: string }
         Returns: Json
       }
       has_role: {
