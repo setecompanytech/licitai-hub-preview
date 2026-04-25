@@ -278,8 +278,8 @@ export default function CotacoesManager() {
                   <Input placeholder="Marca" value={newItem.marca} onChange={e => setNewItem(p => ({ ...p, marca: e.target.value }))} />
                   <Input placeholder="Unidade" value={newItem.unidade} onChange={e => setNewItem(p => ({ ...p, unidade: e.target.value }))} />
                   <Input type="number" placeholder="Qtd" value={newItem.quantidade} onChange={e => setNewItem(p => ({ ...p, quantidade: e.target.value }))} />
-                  <Input type="number" placeholder="Preço unitário *" value={newItem.preco_unitario} onChange={e => setNewItem(p => ({ ...p, preco_unitario: e.target.value }))} />
-                  <Input type="number" placeholder="Frete" value={newItem.frete} onChange={e => setNewItem(p => ({ ...p, frete: e.target.value }))} />
+                  <MoneyInput placeholder="Preço unitário *" value={Number(newItem.preco_unitario) || 0} onValueChange={v => setNewItem(p => ({ ...p, preco_unitario: String(v) }))} />
+                  <MoneyInput placeholder="Frete" value={Number(newItem.frete) || 0} onValueChange={v => setNewItem(p => ({ ...p, frete: String(v) }))} />
                   <Input placeholder="Fonte" value={newItem.fonte} onChange={e => setNewItem(p => ({ ...p, fonte: e.target.value }))} />
                   <Input placeholder="Fornecedor" value={newItem.fornecedor} onChange={e => setNewItem(p => ({ ...p, fornecedor: e.target.value }))} />
                   <Input placeholder="UF" value={newItem.uf} onChange={e => setNewItem(p => ({ ...p, uf: e.target.value }))} />
