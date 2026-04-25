@@ -42,6 +42,8 @@ export default function Financeiro() {
               <TabsTrigger value="a_pagar"><ArrowUpCircle className="w-4 h-4 mr-1.5" />Contas a Pagar</TabsTrigger>
               <TabsTrigger value="a_receber"><ArrowDownCircle className="w-4 h-4 mr-1.5" />Contas a Receber</TabsTrigger>
               <TabsTrigger value="conciliacao"><Banknote className="w-4 h-4 mr-1.5" />Conciliação</TabsTrigger>
+              <TabsTrigger value="fluxo_caixa"><LineChart className="w-4 h-4 mr-1.5" />Fluxo de Caixa</TabsTrigger>
+              <TabsTrigger value="dre"><FileBarChart className="w-4 h-4 mr-1.5" />DRE</TabsTrigger>
               <TabsTrigger value="contas"><Wallet className="w-4 h-4 mr-1.5" />Contas</TabsTrigger>
               <TabsTrigger value="centros_custo"><FolderTree className="w-4 h-4 mr-1.5" />Centros de Custo</TabsTrigger>
               <TabsTrigger value="pessoas"><Users className="w-4 h-4 mr-1.5" />Pessoas</TabsTrigger>
@@ -52,6 +54,8 @@ export default function Financeiro() {
             <TabsContent value="a_pagar"><FinContasPagar /></TabsContent>
             <TabsContent value="a_receber"><FinContasReceber /></TabsContent>
             <TabsContent value="conciliacao"><FinConciliacao /></TabsContent>
+            <TabsContent value="fluxo_caixa"><FinFluxoCaixa /></TabsContent>
+            <TabsContent value="dre"><FinDRE /></TabsContent>
             <TabsContent value="contas"><FinContas /></TabsContent>
             <TabsContent value="centros_custo"><FinCentrosCusto /></TabsContent>
             <TabsContent value="pessoas"><FinPessoas /></TabsContent>
