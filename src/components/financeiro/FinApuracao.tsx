@@ -9,7 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { useApuracaoTributaria, type Regime } from "@/hooks/useApuracaoTributaria";
-import { Calculator, Settings, FileBarChart, Save, Download, RefreshCw, CheckCircle2 } from "lucide-react";
+import { useValidacaoApuracao, type DivergenciaApuracao } from "@/hooks/useValidacaoApuracao";
+import { DialogDivergenciasApuracao } from "./DialogDivergenciasApuracao";
+import { Calculator, Settings, FileBarChart, Save, Download, RefreshCw, CheckCircle2, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
 
 const fmt = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n || 0);
 const pct = (n: number) => `${(n || 0).toFixed(4)}%`;
@@ -28,6 +31,10 @@ export default function FinApuracao() {
   const [despesas, setDespesas] = useState(0);
   const [creditos, setCreditos] = useState(0);
   const [carregandoReceita, setCarregandoReceita] = useState(false);
+  const { validar } = useValidacaoApuracao();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [divergencias, setDivergencias] = useState<DivergenciaApuracao[] | null>(null);
+  const [validando, setValidando] = useState(false);
 
   const resultado = useMemo(() => {
     if (!config) return {};
@@ -59,9 +66,11 @@ export default function FinApuracao() {
 
   function exportarCSV() {
     const linhas = [
-      ["Competência", "Regime", "Receita Total", "Total Devido", "Status", "Pago em"].join(";"),
+      ["Competência", "Regime", "Receita Comércio", "Receita Serviço", "Receita Total", "Total Devido", "Status", "Pago em"].join(";"),
       ...apuracoes.map(a => [
         a.competencia, a.regime,
+        a.receita_bruta_comercio.toFixed(2),
+        a.receita_bruta_servico.toFixed(2),
         a.receita_bruta_total.toFixed(2),
         a.valor_total.toFixed(2),
         a.status, a.pago_em ?? "",
@@ -72,6 +81,26 @@ export default function FinApuracao() {
     const a = document.createElement("a");
     a.href = url; a.download = `apuracoes_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click(); URL.revokeObjectURL(url);
+    setDialogOpen(false);
+  }
+
+  async function validarEAbrir() {
+    if (apuracoes.length === 0) {
+      toast.info("Não há apurações para exportar.");
+      return;
+    }
+    setDialogOpen(true);
+    setValidando(true);
+    setDivergencias(null);
+    try {
+      const divs = await validar(apuracoes);
+      setDivergencias(divs);
+    } catch (e: any) {
+      toast.error("Erro ao validar: " + e.message);
+      setDialogOpen(false);
+    } finally {
+      setValidando(false);
+    }
   }
 
   if (loading || !config) {
@@ -79,6 +108,7 @@ export default function FinApuracao() {
   }
 
   return (
+    <>
     <Tabs defaultValue="apurar" className="space-y-4">
       <TabsList>
         <TabsTrigger value="apurar"><Calculator className="w-4 h-4 mr-1.5" />Apuração</TabsTrigger>
@@ -218,7 +248,7 @@ export default function FinApuracao() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>Histórico de apurações</span>
-              <Button size="sm" variant="outline" onClick={exportarCSV}><Download className="w-4 h-4 mr-1.5" />Exportar CSV</Button>
+              <Button size="sm" variant="outline" onClick={validarEAbrir}><ShieldCheck className="w-4 h-4 mr-1.5" />Validar e exportar CSV</Button>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -350,5 +380,13 @@ export default function FinApuracao() {
         </Card>
       </TabsContent>
     </Tabs>
+    <DialogDivergenciasApuracao
+      open={dialogOpen}
+      onOpenChange={setDialogOpen}
+      divergencias={divergencias}
+      validando={validando}
+      onExportar={exportarCSV}
+    />
+    </>
   );
 }
