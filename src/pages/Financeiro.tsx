@@ -1,6 +1,6 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart } from "lucide-react";
+import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug } from "lucide-react";
 import FinDashboard from "@/components/financeiro/FinDashboard";
 import FinLancamentos from "@/components/financeiro/FinLancamentos";
 import FinContas from "@/components/financeiro/FinContas";
@@ -12,6 +12,9 @@ import FinContasReceber from "@/components/financeiro/FinContasReceber";
 import FinCentrosCusto from "@/components/financeiro/FinCentrosCusto";
 import FinFluxoCaixa from "@/components/financeiro/FinFluxoCaixa";
 import FinDRE from "@/components/financeiro/FinDRE";
+import FinFolha from "@/components/financeiro/FinFolha";
+import FinOCRDocumentos from "@/components/financeiro/FinOCRDocumentos";
+import FinIntegracoes from "@/components/financeiro/FinIntegracoes";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Card, CardContent } from "@/components/ui/card";
 
