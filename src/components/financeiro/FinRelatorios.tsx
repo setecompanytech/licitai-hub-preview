@@ -179,7 +179,7 @@ export default function FinRelatorios() {
     const totalEntradas = linhas.filter((l) => l.isEntrada).reduce((s, l) => s + l.valor, 0);
     const totalSaidas = linhas.filter((l) => !l.isEntrada).reduce((s, l) => s + l.valor, 0);
 
-    const headers = ["Data", "Descrição", "Categoria", "Pessoa", "Tipo", "Valor (líquido)", "Saldo Acum."];
+    const headers = ["Data", "Descrição", "Categoria", "Pessoa", "Sentido", "Valor (líquido)", "Saldo Acum."];
     const totalsRow = ["TOTAL", `${linhas.length} lançamentos`, "", "", "", `Entradas: ${fmtBRL(totalEntradas)} | Saídas: ${fmtBRL(totalSaidas)}`, fmtBRL(saldo)];
 
     if (formato === "pdf") {
