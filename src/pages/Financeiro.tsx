@@ -1,6 +1,6 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target } from "lucide-react";
+import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target, FileDown } from "lucide-react";
 import FinPlanoContas from "@/components/financeiro/FinPlanoContas";
 import FinSaldosAbertura from "@/components/financeiro/FinSaldosAbertura";
 import FinOrcamento from "@/components/financeiro/FinOrcamento";
@@ -20,6 +20,7 @@ import FinOCRDocumentos from "@/components/financeiro/FinOCRDocumentos";
 import FinIntegracoes from "@/components/financeiro/FinIntegracoes";
 import FinEmissorNFe from "@/components/financeiro/FinEmissorNFe";
 import FinConsultaNFeEntrada from "@/components/financeiro/FinConsultaNFeEntrada";
+import FinRelatorios from "@/components/financeiro/FinRelatorios";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -64,6 +65,7 @@ export default function Financeiro() {
               <TabsTrigger value="plano_contas"><BookOpen className="w-4 h-4 mr-1.5" />Plano de Contas</TabsTrigger>
               <TabsTrigger value="saldos_abertura"><Scale className="w-4 h-4 mr-1.5" />Saldos de Abertura</TabsTrigger>
               <TabsTrigger value="orcamento"><Target className="w-4 h-4 mr-1.5" />Orçamento</TabsTrigger>
+              <TabsTrigger value="relatorios"><FileDown className="w-4 h-4 mr-1.5" />Relatórios</TabsTrigger>
             </TabsList>
             <TabsContent value="dashboard"><FinDashboardTabs /></TabsContent>
             <TabsContent value="lancamentos"><FinLancamentos /></TabsContent>
@@ -84,6 +86,7 @@ export default function Financeiro() {
             <TabsContent value="plano_contas"><FinPlanoContas /></TabsContent>
             <TabsContent value="saldos_abertura"><FinSaldosAbertura /></TabsContent>
             <TabsContent value="orcamento"><FinOrcamento /></TabsContent>
+            <TabsContent value="relatorios"><FinRelatorios /></TabsContent>
           </Tabs>
         )}
       </div>
