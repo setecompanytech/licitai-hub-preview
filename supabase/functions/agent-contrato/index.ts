@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
                 titulo: `📋 Contrato ${contrato.numero_contrato} vence em ${diasRestantes} dias`,
                 mensagem: `Contrato com ${contrato.orgao} para "${contrato.objeto?.slice(0, 80)}" vence em ${contrato.data_fim}.`,
                 url_acao: '/gestao-contratos',
-              }).catch(() => {});
+              });
 
               alertasGerados++;
             }
@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
               titulo: `⚠️ Contrato ${contrato.numero_contrato} aguardando assinatura há ${diasDesdeConvocacao} dias`,
               mensagem: `Prazo de assinatura geralmente é de 5 dias úteis. Ação urgente necessária.`,
               url_acao: '/gestao-contratos',
-            }).catch(() => {});
+            });
 
             alertasGerados++;
           }
