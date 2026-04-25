@@ -81,3 +81,7 @@ project_id = "sbnlovigyifvrkgsoalj"
     verify_jwt = false
   [functions.ibge-municipios]
     verify_jwt = false
+  [functions.import-ofx]
+    verify_jwt = false
+  [functions.reconciliation-engine]
+    verify_jwt = false

@@ -396,3 +396,161 @@ export function useResumoFinanceiro() {
     },
   });
 }
+
+// ----------------------------------------------------------------------------
+// Conciliação Bancária
+// ----------------------------------------------------------------------------
+export type ExtratoImportado = Database["public"]["Tables"]["financeiro_extratos_importados"]["Row"];
+export type ExtratoMovimento = Database["public"]["Tables"]["financeiro_extrato_movimentos"]["Row"];
+
+export function useExtratosImportados() {
+  const empresaId = useEmpresaId();
+  return useQuery({
+    queryKey: ["fin-extratos", empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("financeiro_extratos_importados")
+        .select("*, conta:financeiro_contas(id,nome)")
+        .eq("empresa_id", empresaId!)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data as (ExtratoImportado & { conta: { id: string; nome: string } | null })[];
+    },
+  });
+}
+
+export function useMovimentosExtrato(filtros: { conta_id?: string; conciliado?: boolean } = {}) {
+  const empresaId = useEmpresaId();
+  return useQuery({
+    queryKey: ["fin-movimentos", empresaId, filtros],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      let q = supabase
+        .from("financeiro_extrato_movimentos")
+        .select("*, conta:financeiro_contas(id,nome), lancamento:financeiro_lancamentos(id,descricao,valor)")
+        .eq("empresa_id", empresaId!)
+        .order("data_movimento", { ascending: false })
+        .limit(500);
+      if (filtros.conta_id) q = q.eq("conta_id", filtros.conta_id);
+      if (typeof filtros.conciliado === "boolean") q = q.eq("conciliado", filtros.conciliado);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data as (ExtratoMovimento & {
+        conta: { id: string; nome: string } | null;
+        lancamento: { id: string; descricao: string; valor: number } | null;
+      })[];
+    },
+  });
+}
+
+export function useImportarOFX() {
+  const qc = useQueryClient();
+  const empresaId = useEmpresaId();
+  return useMutation({
+    mutationFn: async (input: { conta_id: string; arquivo_nome: string; conteudo_ofx: string }) => {
+      if (!empresaId) throw new Error("Selecione uma empresa ativa.");
+      const { data, error } = await supabase.functions.invoke("import-ofx", {
+        body: { empresa_id: empresaId, ...input },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["fin-extratos"] });
+      qc.invalidateQueries({ queryKey: ["fin-movimentos"] });
+      if (data?.duplicado) toast.info("Arquivo já havia sido importado anteriormente.");
+      else toast.success(`${data?.total_movimentos ?? 0} movimentos importados.`);
+    },
+    onError: (e: Error) => toast.error(`Erro ao importar OFX: ${e.message}`),
+  });
+}
+
+export function useConciliarAutomatico() {
+  const qc = useQueryClient();
+  const empresaId = useEmpresaId();
+  return useMutation({
+    mutationFn: async (input: { extrato_id?: string; conta_id?: string; auto_aplicar?: boolean; score_minimo?: number }) => {
+      if (!empresaId) throw new Error("Selecione uma empresa ativa.");
+      const { data, error } = await supabase.functions.invoke("reconciliation-engine", {
+        body: { empresa_id: empresaId, ...input },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data as {
+        ok: boolean;
+        movimentos_analisados: number;
+        sugestoes: number;
+        aplicados: number;
+        matches: Array<{ movimento_id: string; lancamento_id: string; score: number; motivos: Record<string, unknown> }>;
+      };
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["fin-movimentos"] });
+      qc.invalidateQueries({ queryKey: ["fin-lancamentos"] });
+      qc.invalidateQueries({ queryKey: ["fin-resumo"] });
+      if (data.aplicados > 0) toast.success(`${data.aplicados} conciliações aplicadas automaticamente.`);
+      else if (data.sugestoes > 0) toast.success(`${data.sugestoes} sugestões encontradas.`);
+      else toast.info("Nenhuma sugestão de conciliação encontrada.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useConciliarManual() {
+  const qc = useQueryClient();
+  const empresaId = useEmpresaId();
+  return useMutation({
+    mutationFn: async (input: { movimento_id: string; lancamento_id: string }) => {
+      if (!empresaId) throw new Error("Selecione uma empresa ativa.");
+      const { error: errCon } = await supabase.from("financeiro_conciliacoes").insert({
+        empresa_id: empresaId,
+        extrato_movimento_id: input.movimento_id,
+        lancamento_id: input.lancamento_id,
+        score: 100,
+        metodo: "manual",
+        motivos: { manual: true },
+      });
+      if (errCon) throw errCon;
+      await supabase
+        .from("financeiro_extrato_movimentos")
+        .update({ conciliado: true, lancamento_id: input.lancamento_id })
+        .eq("id", input.movimento_id);
+      await supabase
+        .from("financeiro_lancamentos")
+        .update({ status: "conciliado", data_conciliado: new Date().toISOString() })
+        .eq("id", input.lancamento_id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-movimentos"] });
+      qc.invalidateQueries({ queryKey: ["fin-lancamentos"] });
+      toast.success("Movimento conciliado.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useDesfazerConciliacao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { movimento_id: string; lancamento_id: string }) => {
+      await supabase.from("financeiro_conciliacoes").delete().eq("extrato_movimento_id", input.movimento_id);
+      await supabase
+        .from("financeiro_extrato_movimentos")
+        .update({ conciliado: false, lancamento_id: null })
+        .eq("id", input.movimento_id);
+      await supabase
+        .from("financeiro_lancamentos")
+        .update({ status: "previsto", data_conciliado: null })
+        .eq("id", input.lancamento_id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-movimentos"] });
+      qc.invalidateQueries({ queryKey: ["fin-lancamentos"] });
+      toast.success("Conciliação desfeita.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
