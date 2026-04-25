@@ -4,7 +4,7 @@ import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownC
 import FinPlanoContas from "@/components/financeiro/FinPlanoContas";
 import FinSaldosAbertura from "@/components/financeiro/FinSaldosAbertura";
 import FinOrcamento from "@/components/financeiro/FinOrcamento";
-import FinDashboard from "@/components/financeiro/FinDashboard";
+import FinDashboardTabs from "@/components/financeiro/FinDashboardTabs";
 import FinLancamentos from "@/components/financeiro/FinLancamentos";
 import FinContas from "@/components/financeiro/FinContas";
 import FinPessoas from "@/components/financeiro/FinPessoas";
@@ -65,7 +65,7 @@ export default function Financeiro() {
               <TabsTrigger value="saldos_abertura"><Scale className="w-4 h-4 mr-1.5" />Saldos de Abertura</TabsTrigger>
               <TabsTrigger value="orcamento"><Target className="w-4 h-4 mr-1.5" />Orçamento</TabsTrigger>
             </TabsList>
-            <TabsContent value="dashboard"><FinDashboard /></TabsContent>
+            <TabsContent value="dashboard"><FinDashboardTabs /></TabsContent>
             <TabsContent value="lancamentos"><FinLancamentos /></TabsContent>
             <TabsContent value="a_pagar"><FinContasPagar /></TabsContent>
             <TabsContent value="a_receber"><FinContasReceber /></TabsContent>
