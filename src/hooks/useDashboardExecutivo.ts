@@ -47,9 +47,6 @@ export type KpiExecutivo = {
   aging: { faixa: string; valor: number }[];
 };
 
-const inicioMes = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).toISOString().slice(0, 10);
-const fimMes = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().slice(0, 10);
-
 export function useDashboardExecutivo() {
   const empresaId = useEmpresaId();
   return useQuery({
