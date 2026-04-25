@@ -241,16 +241,14 @@ export default function FinConciliacao() {
                     <TableCell className="text-xs">{m.conta?.nome ?? "—"}</TableCell>
                     <TableCell
                       className={`text-right font-mono ${
-                        Number(m.valor) >= 0 ? "text-emerald-600" : "text-red-600"
+                        Number(m.valor) >= 0 ? "text-success" : "text-destructive"
                       }`}
                     >
                       {formatBRL(Number(m.valor))}
                     </TableCell>
                     <TableCell>
                       {m.conciliado ? (
-                        <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-600">
-                          conciliado
-                        </Badge>
+                        <Badge variant="default">conciliado</Badge>
                       ) : (
                         <Badge variant="secondary">pendente</Badge>
                       )}
