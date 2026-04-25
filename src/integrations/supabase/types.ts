@@ -11574,6 +11574,120 @@ export type Database = {
         }
         Relationships: []
       }
+      sefaz_consultas_log: {
+        Row: {
+          cnpj: string
+          competencia_fim: string | null
+          competencia_inicio: string | null
+          created_at: string
+          detalhes: Json | null
+          duracao_ms: number | null
+          empresa_id: string
+          erro_mensagem: string | null
+          id: string
+          municipio_codigo: string | null
+          notas_duplicadas: number | null
+          notas_encontradas: number | null
+          notas_importadas: number | null
+          status: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          cnpj: string
+          competencia_fim?: string | null
+          competencia_inicio?: string | null
+          created_at?: string
+          detalhes?: Json | null
+          duracao_ms?: number | null
+          empresa_id: string
+          erro_mensagem?: string | null
+          id?: string
+          municipio_codigo?: string | null
+          notas_duplicadas?: number | null
+          notas_encontradas?: number | null
+          notas_importadas?: number | null
+          status: string
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          cnpj?: string
+          competencia_fim?: string | null
+          competencia_inicio?: string | null
+          created_at?: string
+          detalhes?: Json | null
+          duracao_ms?: number | null
+          empresa_id?: string
+          erro_mensagem?: string | null
+          id?: string
+          municipio_codigo?: string | null
+          notas_duplicadas?: number | null
+          notas_encontradas?: number | null
+          notas_importadas?: number | null
+          status?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sefaz_consultas_log_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sefaz_consultas_log_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sefaz_homologacoes_municipais: {
+        Row: {
+          codigo_ibge: string
+          created_at: string
+          endpoint_homologacao: string | null
+          endpoint_producao: string | null
+          id: string
+          municipio: string
+          observacoes: string | null
+          padrao_nfse: string
+          status: string
+          uf: string
+          updated_at: string
+        }
+        Insert: {
+          codigo_ibge: string
+          created_at?: string
+          endpoint_homologacao?: string | null
+          endpoint_producao?: string | null
+          id?: string
+          municipio: string
+          observacoes?: string | null
+          padrao_nfse: string
+          status?: string
+          uf: string
+          updated_at?: string
+        }
+        Update: {
+          codigo_ibge?: string
+          created_at?: string
+          endpoint_homologacao?: string | null
+          endpoint_producao?: string | null
+          id?: string
+          municipio?: string
+          observacoes?: string | null
+          padrao_nfse?: string
+          status?: string
+          uf?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       segmentos_licitacao: {
         Row: {
           ativo: boolean | null
