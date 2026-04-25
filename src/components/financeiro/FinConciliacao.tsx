@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   useContas,
   useExtratosImportados,
@@ -12,6 +12,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
@@ -33,8 +35,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Upload, Sparkles, Link2, Unlink, Loader2, FileCheck2 } from "lucide-react";
+import {
+  Upload,
+  Sparkles,
+  Link2,
+  Unlink,
+  Loader2,
+  FileCheck2,
+  Search,
+  CheckCircle2,
+  TrendingUp,
+} from "lucide-react";
 import { formatBRL, formatDate } from "@/lib/financeiro/formatters";
+import { toast } from "sonner";
+
+type MatchSugestao = {
+  movimento_id: string;
+  lancamento_id: string;
+  score: number;
+  motivos: Record<string, unknown>;
+};
 
 export default function FinConciliacao() {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -42,6 +62,9 @@ export default function FinConciliacao() {
   const [filtroConciliado, setFiltroConciliado] = useState<"todos" | "pendente" | "conciliado">(
     "pendente"
   );
+  const [scoreMinimo, setScoreMinimo] = useState<number>(75);
+  const [sugestoes, setSugestoes] = useState<MatchSugestao[]>([]);
+  const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [dialogManual, setDialogManual] = useState<{
     movimento_id: string;
     valor: number;
@@ -54,17 +77,30 @@ export default function FinConciliacao() {
     conta_id: contaSelecionada || undefined,
     conciliado: filtroConciliado === "todos" ? undefined : filtroConciliado === "conciliado",
   });
+  const { data: lancamentosTodos } = useLancamentos({});
 
   const importar = useImportarOFX();
   const conciliarAuto = useConciliarAutomatico();
   const conciliarManual = useConciliarManual();
   const desfazer = useDesfazerConciliacao();
 
+  // Indexa movimentos e lançamentos para exibir detalhes nas sugestões
+  const movMap = useMemo(() => {
+    const m = new Map<string, NonNullable<typeof movimentos>[number]>();
+    (movimentos ?? []).forEach((mov) => m.set(mov.id, mov));
+    return m;
+  }, [movimentos]);
+  const lancMap = useMemo(() => {
+    const m = new Map<string, NonNullable<typeof lancamentosTodos>[number]>();
+    (lancamentosTodos ?? []).forEach((l) => m.set(l.id, l));
+    return m;
+  }, [lancamentosTodos]);
+
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!contaSelecionada) {
-      alert("Selecione uma conta antes de importar.");
+      toast.error("Selecione uma conta antes de importar.");
       e.target.value = "";
       return;
     }
@@ -73,6 +109,72 @@ export default function FinConciliacao() {
       { conta_id: contaSelecionada, arquivo_nome: file.name, conteudo_ofx: conteudo },
       { onSettled: () => (e.target.value = "") }
     );
+  }
+
+  function buscarSugestoes() {
+    conciliarAuto.mutate(
+      {
+        conta_id: contaSelecionada || undefined,
+        auto_aplicar: false,
+        score_minimo: scoreMinimo,
+      },
+      {
+        onSuccess: (data) => {
+          setSugestoes(data.matches ?? []);
+          setSelecionadas(new Set((data.matches ?? []).map((m) => m.movimento_id)));
+        },
+      }
+    );
+  }
+
+  function aplicarSelecionadas() {
+    const aAplicar = sugestoes.filter((s) => selecionadas.has(s.movimento_id));
+    if (aAplicar.length === 0) {
+      toast.info("Nenhuma sugestão selecionada.");
+      return;
+    }
+    let aplicados = 0;
+    let erros = 0;
+    Promise.all(
+      aAplicar.map(
+        (s) =>
+          new Promise<void>((resolve) => {
+            conciliarManual.mutate(
+              { movimento_id: s.movimento_id, lancamento_id: s.lancamento_id },
+              {
+                onSuccess: () => {
+                  aplicados++;
+                  resolve();
+                },
+                onError: () => {
+                  erros++;
+                  resolve();
+                },
+              }
+            );
+          })
+      )
+    ).then(() => {
+      if (aplicados > 0) toast.success(`${aplicados} conciliações aplicadas.`);
+      if (erros > 0) toast.error(`${erros} falha(s) ao conciliar.`);
+      setSugestoes((curr) => curr.filter((s) => !selecionadas.has(s.movimento_id)));
+      setSelecionadas(new Set());
+    });
+  }
+
+  function aplicarTodasAlta() {
+    const auto = sugestoes.filter((s) => s.score >= 90);
+    if (auto.length === 0) {
+      toast.info("Nenhuma sugestão com score ≥ 90 disponível.");
+      return;
+    }
+    setSelecionadas(new Set(auto.map((s) => s.movimento_id)));
+    setTimeout(() => aplicarSelecionadas(), 50);
+  }
+
+  function toggleTodas(check: boolean) {
+    if (check) setSelecionadas(new Set(sugestoes.map((s) => s.movimento_id)));
+    else setSelecionadas(new Set());
   }
 
   return (
@@ -100,7 +202,10 @@ export default function FinConciliacao() {
 
           <div className="min-w-[160px]">
             <label className="text-xs text-muted-foreground">Status</label>
-            <Select value={filtroConciliado} onValueChange={(v) => setFiltroConciliado(v as typeof filtroConciliado)}>
+            <Select
+              value={filtroConciliado}
+              onValueChange={(v) => setFiltroConciliado(v as typeof filtroConciliado)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -137,7 +242,7 @@ export default function FinConciliacao() {
               conciliarAuto.mutate({
                 conta_id: contaSelecionada || undefined,
                 auto_aplicar: true,
-                score_minimo: 75,
+                score_minimo: 90,
               })
             }
             disabled={conciliarAuto.isPending}
@@ -147,8 +252,187 @@ export default function FinConciliacao() {
             ) : (
               <Sparkles className="w-4 h-4 mr-1.5" />
             )}
-            Conciliar automaticamente
+            Auto-conciliar (score ≥ 90)
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Painel de Sugestões com Score */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            Sugestões assistidas (Score 0–100)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="flex-1 min-w-[260px]">
+              <label className="text-xs text-muted-foreground flex items-center justify-between">
+                <span>Score mínimo para análise</span>
+                <span className="font-mono font-semibold text-foreground">{scoreMinimo}</span>
+              </label>
+              <Slider
+                value={[scoreMinimo]}
+                onValueChange={([v]) => setScoreMinimo(v)}
+                min={50}
+                max={100}
+                step={5}
+                className="mt-2"
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+                <span>Permissivo (50)</span>
+                <span>Recomendado (75)</span>
+                <span>Estrito (100)</span>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              onClick={buscarSugestoes}
+              disabled={conciliarAuto.isPending}
+            >
+              {conciliarAuto.isPending ? (
+                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+              ) : (
+                <Search className="w-4 h-4 mr-1.5" />
+              )}
+              Buscar sugestões
+            </Button>
+            {sugestoes.length > 0 && (
+              <>
+                <Button onClick={aplicarSelecionadas} disabled={selecionadas.size === 0}>
+                  <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                  Aplicar selecionadas ({selecionadas.size})
+                </Button>
+                <Button variant="secondary" onClick={aplicarTodasAlta}>
+                  <Sparkles className="w-4 h-4 mr-1.5" />
+                  Aprovar todas com score ≥ 90
+                </Button>
+              </>
+            )}
+          </div>
+
+          {sugestoes.length === 0 ? (
+            <div className="text-sm text-muted-foreground text-center py-6 border border-dashed rounded-md">
+              Clique em <strong>Buscar sugestões</strong> para listar correspondências entre
+              movimentos do extrato e lançamentos previstos, sem aplicar alterações.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[40px]">
+                      <Checkbox
+                        checked={
+                          selecionadas.size === sugestoes.length && sugestoes.length > 0
+                        }
+                        onCheckedChange={(v) => toggleTodas(!!v)}
+                        aria-label="Selecionar todas"
+                      />
+                    </TableHead>
+                    <TableHead className="w-[110px]">Score</TableHead>
+                    <TableHead>Movimento (extrato)</TableHead>
+                    <TableHead>Lançamento previsto</TableHead>
+                    <TableHead>Justificativa</TableHead>
+                    <TableHead className="text-right w-[120px]">Ação</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sugestoes.map((s) => {
+                    const mov = movMap.get(s.movimento_id);
+                    const lanc = lancMap.get(s.lancamento_id);
+                    const checked = selecionadas.has(s.movimento_id);
+                    return (
+                      <TableRow key={s.movimento_id + s.lancamento_id}>
+                        <TableCell>
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => {
+                              setSelecionadas((curr) => {
+                                const next = new Set(curr);
+                                if (v) next.add(s.movimento_id);
+                                else next.delete(s.movimento_id);
+                                return next;
+                              });
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <ScoreBadge score={s.score} />
+                        </TableCell>
+                        <TableCell>
+                          {mov ? (
+                            <div>
+                              <div className="text-sm font-medium truncate max-w-[260px]">
+                                {mov.descricao}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatDate(mov.data_movimento)} •{" "}
+                                <span
+                                  className={
+                                    Number(mov.valor) >= 0 ? "text-success" : "text-destructive"
+                                  }
+                                >
+                                  {formatBRL(Number(mov.valor))}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {lanc ? (
+                            <div>
+                              <div className="text-sm font-medium truncate max-w-[260px]">
+                                {lanc.descricao}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Venc.:{" "}
+                                {lanc.data_vencimento ? formatDate(lanc.data_vencimento) : "—"}{" "}
+                                • {formatBRL(Number(lanc.valor))}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              Lançamento fora da página atual
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <MotivosBadges motivos={s.motivos} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              conciliarManual.mutate(
+                                {
+                                  movimento_id: s.movimento_id,
+                                  lancamento_id: s.lancamento_id,
+                                },
+                                {
+                                  onSuccess: () =>
+                                    setSugestoes((curr) =>
+                                      curr.filter((x) => x.movimento_id !== s.movimento_id)
+                                    ),
+                                }
+                              )
+                            }
+                          >
+                            <Link2 className="w-3.5 h-3.5 mr-1" />
+                            Aplicar
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -308,6 +592,66 @@ export default function FinConciliacao() {
   );
 }
 
+// ----------------------------------------------------------------------------
+// Auxiliares visuais
+// ----------------------------------------------------------------------------
+
+function ScoreBadge({ score }: { score: number }) {
+  const cor =
+    score >= 90
+      ? "bg-success text-success-foreground"
+      : score >= 75
+      ? "bg-primary text-primary-foreground"
+      : score >= 60
+      ? "bg-warning text-warning-foreground"
+      : "bg-destructive text-destructive-foreground";
+  const rotulo =
+    score >= 90 ? "Alta" : score >= 75 ? "Boa" : score >= 60 ? "Média" : "Baixa";
+  return (
+    <div className="flex flex-col gap-1">
+      <span
+        className={`inline-flex items-center justify-center rounded-md text-xs font-semibold px-2 py-0.5 ${cor}`}
+      >
+        {score}/100
+      </span>
+      <span className="text-[10px] text-muted-foreground text-center">{rotulo}</span>
+    </div>
+  );
+}
+
+function MotivosBadges({ motivos }: { motivos: Record<string, unknown> }) {
+  const valor = motivos?.valor_match === true;
+  const dias = Number(motivos?.diferenca_dias ?? -1);
+  const sim = Number(motivos?.similaridade_descricao ?? 0);
+  const mesmaConta = motivos?.mesma_conta === true;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {valor && (
+        <Badge variant="outline" className="text-[10px] border-success text-success">
+          Valor exato
+        </Badge>
+      )}
+      {dias >= 0 && (
+        <Badge variant="outline" className="text-[10px]">
+          {dias === 0 ? "Mesma data" : `±${dias}d`}
+        </Badge>
+      )}
+      {sim > 0 && (
+        <Badge variant="outline" className="text-[10px]">
+          Texto {Math.round(sim * 100)}%
+        </Badge>
+      )}
+      {mesmaConta && (
+        <Badge variant="outline" className="text-[10px]">
+          Mesma conta
+        </Badge>
+      )}
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Diálogo de vínculo manual
 // ----------------------------------------------------------------------------
 
 function DialogVincularManual({
