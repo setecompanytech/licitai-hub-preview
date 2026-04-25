@@ -545,13 +545,11 @@ function AgentConfig({ empresaId }: { empresaId: string }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-sm text-muted-foreground">Valor mínimo (R$)</label>
-              <input type="number" value={config.valor_minimo} onChange={e => setConfig(c => ({ ...c, valor_minimo: Number(e.target.value) }))}
-                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <MoneyInput value={Number(config.valor_minimo) || 0} onValueChange={v => setConfig(c => ({ ...c, valor_minimo: v }))} className="mt-1" />
             </div>
             <div>
               <label className="text-sm text-muted-foreground">Valor máximo (R$)</label>
-              <input type="number" value={config.valor_maximo} onChange={e => setConfig(c => ({ ...c, valor_maximo: Number(e.target.value) }))}
-                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <MoneyInput value={Number(config.valor_maximo) || 0} onValueChange={v => setConfig(c => ({ ...c, valor_maximo: v }))} className="mt-1" />
             </div>
           </div>
         </CardContent>

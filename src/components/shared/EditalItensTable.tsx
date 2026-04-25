@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, AlertTriangle, Pencil, Check, X } from 'lucide-react';
@@ -151,11 +152,9 @@ export default function EditalItensTable({
         </TableCell>
         <TableCell className="w-28 text-right">
           {isEditing ? (
-            <Input
-              type="number"
-              step="0.01"
-              value={editValues.valor_unitario ?? ''}
-              onChange={(e) => setEditValues(prev => ({ ...prev, valor_unitario: parseFloat(e.target.value) || 0 }))}
+            <MoneyInput
+              value={Number(editValues.valor_unitario) || 0}
+              onValueChange={(v) => setEditValues(prev => ({ ...prev, valor_unitario: v }))}
               className="h-7 text-xs w-28"
             />
           ) : (

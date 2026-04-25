@@ -3,6 +3,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -172,7 +173,7 @@ export default function ComprasGovEnvio() {
                           </Select>
                         </td>
                         <td className="px-3 py-2">
-                          <Input type="number" value={item.valorUnitario} onChange={e => updateItem(item.id, 'valorUnitario', Number(e.target.value))} className="h-8 text-sm text-right" min={0} step={0.01} />
+                          <MoneyInput value={Number(item.valorUnitario) || 0} onValueChange={v => updateItem(item.id, 'valorUnitario', v)} className="h-8 text-sm" />
                         </td>
                         <td className="px-3 py-2">
                           <Input value={item.marca} onChange={e => updateItem(item.id, 'marca', e.target.value)} placeholder="Marca" className="h-8 text-sm" />

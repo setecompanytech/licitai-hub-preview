@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -367,7 +368,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
               {mod1.baseInsalubridade === 'salario_minimo' && (
                 <div>
                   <Label className="text-xs">Salário Mínimo (R$)</Label>
-                  <Input type="number" value={mod1.salarioMinimo} onChange={e => updMod1('salarioMinimo', parseFloat(e.target.value) || 0)} className="mt-1" />
+                  <MoneyInput value={Number(mod1.salarioMinimo) || 0} onValueChange={v => updMod1('salarioMinimo', v)} className="mt-1" />
                 </div>
               )}
             </div>
@@ -444,7 +445,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
             </div>
             <div>
               <Label className="text-xs">Valor Intrajornada (R$/mês)</Label>
-              <Input type="number" value={mod4.intrajornadaValor || ''} onChange={e => updMod4('intrajornadaValor', parseFloat(e.target.value) || 0)} className="mt-1 max-w-xs" />
+              <MoneyInput value={Number(mod4.intrajornadaValor) || 0} onValueChange={v => updMod4('intrajornadaValor', v)} className="mt-1 max-w-xs" />
               <p className="text-[8px] text-muted-foreground mt-0.5">Substituto na cobertura de intervalo p/ repouso</p>
             </div>
           </div>
@@ -520,7 +521,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
               {insumos.map((ins, i) => (
                 <div key={i} className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-4"><Input value={ins.descricao} onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, descricao: e.target.value } : x))} placeholder="Descrição" /></div>
-                  <div className="col-span-3"><Input type="number" value={ins.valorMensal || ''} onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, valorMensal: parseFloat(e.target.value) || 0 } : x))} placeholder="Valor/mês" /></div>
+                  <div className="col-span-3"><MoneyInput value={Number(ins.valorMensal) || 0} onValueChange={v => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, valorMensal: v } : x))} placeholder="R$ 0,00" /></div>
                   <div className="col-span-4"><Input value={ins.detalhes} onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, detalhes: e.target.value } : x))} placeholder="Detalhes (ex: 2 jogos/ano)" /></div>
                   <div className="col-span-1">{insumos.length > 1 && <Button variant="ghost" size="sm" onClick={() => removeInsumo(i)} className="text-destructive h-8 w-8 p-0"><Trash2 className="w-3 h-3" /></Button>}</div>
                 </div>

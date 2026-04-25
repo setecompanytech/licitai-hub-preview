@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -117,7 +118,7 @@ export default function WhatsAppPipeline() {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label className="text-xs">Valor Estimado (R$)</Label><Input type="number" value={newLead.valor_estimado} onChange={e => setNewLead(p => ({ ...p, valor_estimado: e.target.value }))} className="mt-1" /></div>
+              <div><Label className="text-xs">Valor Estimado (R$)</Label><MoneyInput value={Number(newLead.valor_estimado) || 0} onValueChange={v => setNewLead(p => ({ ...p, valor_estimado: String(v) }))} className="mt-1" /></div>
               <Button onClick={handleCreateLead} className="w-full">Criar Lead</Button>
             </div>
           </DialogContent>
