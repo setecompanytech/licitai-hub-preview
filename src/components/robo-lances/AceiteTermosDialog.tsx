@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -182,13 +183,9 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
               <DollarSign className="w-4 h-4 text-warning" />
               <label className="text-xs font-semibold">Limite Financeiro Máximo (R$) *</label>
             </div>
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              value={limiteFinanceiro}
-              onChange={(e) => setLimiteFinanceiro(e.target.value)}
-              placeholder="Ex: 500000.00"
+            <MoneyInput
+              value={parseFloat(limiteFinanceiro) || 0}
+              onValueChange={(v) => setLimiteFinanceiro(String(v))}
               className="font-mono"
             />
             <p className="text-[10px] text-muted-foreground mt-1">
