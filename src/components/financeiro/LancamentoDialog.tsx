@@ -66,6 +66,11 @@ export default function LancamentoDialog({ open, onOpenChange, initial }: Props)
   const [categoriaId, setCategoriaId] = useState<string>("");
   const [pessoaId, setPessoaId] = useState<string>("");
   const [observacoes, setObservacoes] = useState("");
+  const [tipoDocumento, setTipoDocumento] = useState<TipoDocumento | "">("");
+  const [numeroDocumento, setNumeroDocumento] = useState("");
+  const [serieDocumento, setSerieDocumento] = useState("");
+  const [chaveAcessoNfe, setChaveAcessoNfe] = useState("");
+  const [dataEmissao, setDataEmissao] = useState<string>("");
 
   useEffect(() => {
     if (!open) return;
