@@ -174,8 +174,8 @@ export default function FinConciliacao() {
                       {ex.conta?.nome ?? "—"} • {ex.total_movimentos ?? 0} mov.
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {ex.data_inicio ? formatDateBR(ex.data_inicio) : "?"} a{" "}
-                      {ex.data_fim ? formatDateBR(ex.data_fim) : "?"}
+                      {ex.data_inicio ? formatDate(ex.data_inicio) : "?"} a{" "}
+                      {ex.data_fim ? formatDate(ex.data_fim) : "?"}
                     </div>
                   </div>
                   <Badge variant={ex.status === "concluido" ? "default" : "secondary"}>
@@ -225,7 +225,7 @@ export default function FinConciliacao() {
                 {(movimentos ?? []).map((m) => (
                   <TableRow key={m.id}>
                     <TableCell className="whitespace-nowrap">
-                      {formatDateBR(m.data_movimento)}
+                      {formatDate(m.data_movimento)}
                     </TableCell>
                     <TableCell>
                       <div className="font-medium text-sm">{m.descricao}</div>
@@ -244,7 +244,7 @@ export default function FinConciliacao() {
                         Number(m.valor) >= 0 ? "text-emerald-600" : "text-red-600"
                       }`}
                     >
-                      {formatCurrency(Number(m.valor))}
+                      {formatBRL(Number(m.valor))}
                     </TableCell>
                     <TableCell>
                       {m.conciliado ? (
@@ -354,10 +354,10 @@ function DialogVincularManual({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{l.descricao}</span>
-                    <span className="text-sm font-mono">{formatCurrency(Number(l.valor))}</span>
+                    <span className="text-sm font-mono">{formatBRL(Number(l.valor))}</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Venc.: {l.data_vencimento ? formatDateBR(l.data_vencimento) : "—"}
+                    Venc.: {l.data_vencimento ? formatDate(l.data_vencimento) : "—"}
                   </div>
                 </button>
               ))}
@@ -377,7 +377,7 @@ function DialogVincularManual({
                   <div className="flex items-center justify-between">
                     <span className="text-sm">{l.descricao}</span>
                     <span className="text-sm font-mono text-muted-foreground">
-                      {formatCurrency(Number(l.valor))}
+                      {formatBRL(Number(l.valor))}
                     </span>
                   </div>
                 </button>
