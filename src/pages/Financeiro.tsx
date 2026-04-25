@@ -1,6 +1,7 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target, FileDown } from "lucide-react";
+import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target, FileDown, Calculator } from "lucide-react";
+import FinApuracao from "@/components/financeiro/FinApuracao";
 import FinPlanoContas from "@/components/financeiro/FinPlanoContas";
 import FinSaldosAbertura from "@/components/financeiro/FinSaldosAbertura";
 import FinOrcamento from "@/components/financeiro/FinOrcamento";
@@ -65,6 +66,7 @@ export default function Financeiro() {
               <TabsTrigger value="plano_contas"><BookOpen className="w-4 h-4 mr-1.5" />Plano de Contas</TabsTrigger>
               <TabsTrigger value="saldos_abertura"><Scale className="w-4 h-4 mr-1.5" />Saldos de Abertura</TabsTrigger>
               <TabsTrigger value="orcamento"><Target className="w-4 h-4 mr-1.5" />Orçamento</TabsTrigger>
+              <TabsTrigger value="apuracao"><Calculator className="w-4 h-4 mr-1.5" />Apuração</TabsTrigger>
               <TabsTrigger value="relatorios"><FileDown className="w-4 h-4 mr-1.5" />Relatórios</TabsTrigger>
             </TabsList>
             <TabsContent value="dashboard"><FinDashboardTabs /></TabsContent>
@@ -86,6 +88,7 @@ export default function Financeiro() {
             <TabsContent value="plano_contas"><FinPlanoContas /></TabsContent>
             <TabsContent value="saldos_abertura"><FinSaldosAbertura /></TabsContent>
             <TabsContent value="orcamento"><FinOrcamento /></TabsContent>
+            <TabsContent value="apuracao"><FinApuracao /></TabsContent>
             <TabsContent value="relatorios"><FinRelatorios /></TabsContent>
           </Tabs>
         )}

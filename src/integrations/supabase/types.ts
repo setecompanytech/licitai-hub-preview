@@ -6321,6 +6321,114 @@ export type Database = {
           },
         ]
       }
+      financeiro_apuracoes: {
+        Row: {
+          aliquota_efetiva_simples: number | null
+          base_csll: number | null
+          base_irpj: number | null
+          base_pis_cofins: number | null
+          competencia: string
+          created_at: string
+          created_by: string | null
+          detalhes: Json | null
+          empresa_id: string
+          id: string
+          observacoes: string | null
+          pago_em: string | null
+          rbt12: number | null
+          receita_bruta_comercio: number
+          receita_bruta_servico: number
+          receita_bruta_total: number
+          regime: string
+          status: string
+          updated_at: string
+          valor_adicional_irpj: number | null
+          valor_cofins: number | null
+          valor_csll: number | null
+          valor_icms: number | null
+          valor_irpj: number | null
+          valor_iss: number | null
+          valor_pis: number | null
+          valor_simples: number | null
+          valor_total: number
+        }
+        Insert: {
+          aliquota_efetiva_simples?: number | null
+          base_csll?: number | null
+          base_irpj?: number | null
+          base_pis_cofins?: number | null
+          competencia: string
+          created_at?: string
+          created_by?: string | null
+          detalhes?: Json | null
+          empresa_id: string
+          id?: string
+          observacoes?: string | null
+          pago_em?: string | null
+          rbt12?: number | null
+          receita_bruta_comercio?: number
+          receita_bruta_servico?: number
+          receita_bruta_total?: number
+          regime: string
+          status?: string
+          updated_at?: string
+          valor_adicional_irpj?: number | null
+          valor_cofins?: number | null
+          valor_csll?: number | null
+          valor_icms?: number | null
+          valor_irpj?: number | null
+          valor_iss?: number | null
+          valor_pis?: number | null
+          valor_simples?: number | null
+          valor_total?: number
+        }
+        Update: {
+          aliquota_efetiva_simples?: number | null
+          base_csll?: number | null
+          base_irpj?: number | null
+          base_pis_cofins?: number | null
+          competencia?: string
+          created_at?: string
+          created_by?: string | null
+          detalhes?: Json | null
+          empresa_id?: string
+          id?: string
+          observacoes?: string | null
+          pago_em?: string | null
+          rbt12?: number | null
+          receita_bruta_comercio?: number
+          receita_bruta_servico?: number
+          receita_bruta_total?: number
+          regime?: string
+          status?: string
+          updated_at?: string
+          valor_adicional_irpj?: number | null
+          valor_cofins?: number | null
+          valor_csll?: number | null
+          valor_icms?: number | null
+          valor_irpj?: number | null
+          valor_iss?: number | null
+          valor_pis?: number | null
+          valor_simples?: number | null
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_apuracoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_apuracoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financeiro_audit_log: {
         Row: {
           created_at: string
@@ -6378,6 +6486,7 @@ export type Database = {
           nome: string
           parent_id: string | null
           permite_lancamento: boolean
+          tipo_servico: string | null
           updated_at: string
         }
         Insert: {
@@ -6394,6 +6503,7 @@ export type Database = {
           nome: string
           parent_id?: string | null
           permite_lancamento?: boolean
+          tipo_servico?: string | null
           updated_at?: string
         }
         Update: {
@@ -6410,6 +6520,7 @@ export type Database = {
           nome?: string
           parent_id?: string | null
           permite_lancamento?: boolean
+          tipo_servico?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -6785,6 +6896,87 @@ export type Database = {
             columns: ["lancamento_id"]
             isOneToOne: false
             referencedRelation: "financeiro_lancamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_config_tributaria: {
+        Row: {
+          adicional_irpj: number | null
+          aliquota_cofins: number | null
+          aliquota_cofins_nc: number | null
+          aliquota_csll: number | null
+          aliquota_icms: number | null
+          aliquota_irpj: number | null
+          aliquota_iss: number | null
+          aliquota_pis: number | null
+          aliquota_pis_nc: number | null
+          anexo_simples: number | null
+          created_at: string
+          empresa_id: string
+          limite_adicional_irpj: number | null
+          presuncao_csll_comercio: number | null
+          presuncao_csll_servico: number | null
+          presuncao_irpj_comercio: number | null
+          presuncao_irpj_servico: number | null
+          regime: string
+          updated_at: string
+        }
+        Insert: {
+          adicional_irpj?: number | null
+          aliquota_cofins?: number | null
+          aliquota_cofins_nc?: number | null
+          aliquota_csll?: number | null
+          aliquota_icms?: number | null
+          aliquota_irpj?: number | null
+          aliquota_iss?: number | null
+          aliquota_pis?: number | null
+          aliquota_pis_nc?: number | null
+          anexo_simples?: number | null
+          created_at?: string
+          empresa_id: string
+          limite_adicional_irpj?: number | null
+          presuncao_csll_comercio?: number | null
+          presuncao_csll_servico?: number | null
+          presuncao_irpj_comercio?: number | null
+          presuncao_irpj_servico?: number | null
+          regime?: string
+          updated_at?: string
+        }
+        Update: {
+          adicional_irpj?: number | null
+          aliquota_cofins?: number | null
+          aliquota_cofins_nc?: number | null
+          aliquota_csll?: number | null
+          aliquota_icms?: number | null
+          aliquota_irpj?: number | null
+          aliquota_iss?: number | null
+          aliquota_pis?: number | null
+          aliquota_pis_nc?: number | null
+          anexo_simples?: number | null
+          created_at?: string
+          empresa_id?: string
+          limite_adicional_irpj?: number | null
+          presuncao_csll_comercio?: number | null
+          presuncao_csll_servico?: number | null
+          presuncao_irpj_comercio?: number | null
+          presuncao_irpj_servico?: number | null
+          regime?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_config_tributaria_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_config_tributaria_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -13472,6 +13664,10 @@ export type Database = {
       financeiro_recalcular_saldo_conta: {
         Args: { p_conta_id: string }
         Returns: undefined
+      }
+      financeiro_receita_competencia: {
+        Args: { p_competencia: string; p_empresa_id: string }
+        Returns: Json
       }
       financeiro_seed_plano_contas_pme: {
         Args: { p_empresa_id: string }
