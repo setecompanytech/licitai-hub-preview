@@ -445,7 +445,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
             </div>
             <div>
               <Label className="text-xs">Valor Intrajornada (R$/mês)</Label>
-              <Input type="number" value={mod4.intrajornadaValor || ''} onChange={e => updMod4('intrajornadaValor', parseFloat(e.target.value) || 0)} className="mt-1 max-w-xs" />
+              <MoneyInput value={Number(mod4.intrajornadaValor) || 0} onValueChange={v => updMod4('intrajornadaValor', v)} className="mt-1 max-w-xs" />
               <p className="text-[8px] text-muted-foreground mt-0.5">Substituto na cobertura de intervalo p/ repouso</p>
             </div>
           </div>
