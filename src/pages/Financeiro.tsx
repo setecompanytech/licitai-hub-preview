@@ -88,6 +88,7 @@ export default function Financeiro() {
             <TabsContent value="plano_contas"><FinPlanoContas /></TabsContent>
             <TabsContent value="saldos_abertura"><FinSaldosAbertura /></TabsContent>
             <TabsContent value="orcamento"><FinOrcamento /></TabsContent>
+            <TabsContent value="apuracao"><FinApuracao /></TabsContent>
             <TabsContent value="relatorios"><FinRelatorios /></TabsContent>
           </Tabs>
         )}
