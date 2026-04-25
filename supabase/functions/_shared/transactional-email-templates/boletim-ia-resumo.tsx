@@ -55,7 +55,7 @@ const BoletimIaResumo = ({
   <Html lang="pt-BR" dir="ltr">
     <Head />
     <Preview>
-      {total_editais} editais publicados nas últimas 24h{uf_sede ? ` • ${editaisSede.length} no ${uf_sede}` : ''}
+      {`${total_editais} editais publicados nas últimas 24h${uf_sede ? ` • ${editaisSede.length} no ${uf_sede}` : ''}`}
     </Preview>
     <Body style={main}>
       <Container style={container}>
