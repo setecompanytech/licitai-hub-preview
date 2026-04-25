@@ -6324,12 +6324,15 @@ export type Database = {
       financeiro_apuracoes: {
         Row: {
           aliquota_efetiva_simples: number | null
+          apuracao_desatualizada: boolean
           base_csll: number | null
           base_irpj: number | null
           base_pis_cofins: number | null
           competencia: string
           created_at: string
           created_by: string | null
+          desatualizada_em: string | null
+          desatualizada_motivo: string | null
           detalhes: Json | null
           empresa_id: string
           id: string
@@ -6354,12 +6357,15 @@ export type Database = {
         }
         Insert: {
           aliquota_efetiva_simples?: number | null
+          apuracao_desatualizada?: boolean
           base_csll?: number | null
           base_irpj?: number | null
           base_pis_cofins?: number | null
           competencia: string
           created_at?: string
           created_by?: string | null
+          desatualizada_em?: string | null
+          desatualizada_motivo?: string | null
           detalhes?: Json | null
           empresa_id: string
           id?: string
@@ -6384,12 +6390,15 @@ export type Database = {
         }
         Update: {
           aliquota_efetiva_simples?: number | null
+          apuracao_desatualizada?: boolean
           base_csll?: number | null
           base_irpj?: number | null
           base_pis_cofins?: number | null
           competencia?: string
           created_at?: string
           created_by?: string | null
+          desatualizada_em?: string | null
+          desatualizada_motivo?: string | null
           detalhes?: Json | null
           empresa_id?: string
           id?: string
@@ -8061,6 +8070,112 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_notas_importadas: {
+        Row: {
+          chave_acesso: string | null
+          cnpj_destinatario: string | null
+          cnpj_emitente: string | null
+          competencia: string
+          created_at: string
+          data_emissao: string
+          direcao: string
+          empresa_id: string
+          erro_mensagem: string | null
+          id: string
+          importado_por: string | null
+          iss_retido: number | null
+          lancamento_id: string | null
+          nome_destinatario: string | null
+          nome_emitente: string | null
+          numero: string | null
+          serie: string | null
+          status: string
+          tipo: string
+          tipo_servico: string | null
+          updated_at: string
+          valor_produtos: number | null
+          valor_servicos: number | null
+          valor_total: number
+          xml_original: string | null
+        }
+        Insert: {
+          chave_acesso?: string | null
+          cnpj_destinatario?: string | null
+          cnpj_emitente?: string | null
+          competencia: string
+          created_at?: string
+          data_emissao: string
+          direcao: string
+          empresa_id: string
+          erro_mensagem?: string | null
+          id?: string
+          importado_por?: string | null
+          iss_retido?: number | null
+          lancamento_id?: string | null
+          nome_destinatario?: string | null
+          nome_emitente?: string | null
+          numero?: string | null
+          serie?: string | null
+          status?: string
+          tipo: string
+          tipo_servico?: string | null
+          updated_at?: string
+          valor_produtos?: number | null
+          valor_servicos?: number | null
+          valor_total?: number
+          xml_original?: string | null
+        }
+        Update: {
+          chave_acesso?: string | null
+          cnpj_destinatario?: string | null
+          cnpj_emitente?: string | null
+          competencia?: string
+          created_at?: string
+          data_emissao?: string
+          direcao?: string
+          empresa_id?: string
+          erro_mensagem?: string | null
+          id?: string
+          importado_por?: string | null
+          iss_retido?: number | null
+          lancamento_id?: string | null
+          nome_destinatario?: string | null
+          nome_emitente?: string | null
+          numero?: string | null
+          serie?: string | null
+          status?: string
+          tipo?: string
+          tipo_servico?: string | null
+          updated_at?: string
+          valor_produtos?: number | null
+          valor_servicos?: number | null
+          valor_total?: number
+          xml_original?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_notas_importadas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_notas_importadas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_notas_importadas_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_lancamentos"
             referencedColumns: ["id"]
           },
         ]

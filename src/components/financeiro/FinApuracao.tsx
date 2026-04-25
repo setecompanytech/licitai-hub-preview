@@ -11,7 +11,8 @@ import { Separator } from "@/components/ui/separator";
 import { useApuracaoTributaria, type Regime } from "@/hooks/useApuracaoTributaria";
 import { useValidacaoApuracao, type DivergenciaApuracao } from "@/hooks/useValidacaoApuracao";
 import { DialogDivergenciasApuracao } from "./DialogDivergenciasApuracao";
-import { Calculator, Settings, FileBarChart, Save, Download, RefreshCw, CheckCircle2, ShieldCheck } from "lucide-react";
+import FinImportarNotas from "./FinImportarNotas";
+import { Calculator, Settings, FileBarChart, Save, Download, RefreshCw, CheckCircle2, ShieldCheck, FileUp, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 const fmt = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n || 0);
@@ -23,7 +24,7 @@ function competenciaAtual(): string {
 }
 
 export default function FinApuracao() {
-  const { config, apuracoes, loading, salvarConfig, buscarReceita, calcular, salvarApuracao, marcarComoPago } = useApuracaoTributaria();
+  const { config, apuracoes, loading, salvarConfig, buscarReceita, calcular, salvarApuracao, marcarComoPago, carregar, recalcular } = useApuracaoTributaria();
   const [competencia, setCompetencia] = useState(competenciaAtual());
   const [receitaComercio, setReceitaComercio] = useState(0);
   const [receitaServico, setReceitaServico] = useState(0);
@@ -112,9 +113,15 @@ export default function FinApuracao() {
     <Tabs defaultValue="apurar" className="space-y-4">
       <TabsList>
         <TabsTrigger value="apurar"><Calculator className="w-4 h-4 mr-1.5" />Apuração</TabsTrigger>
+        <TabsTrigger value="importar"><FileUp className="w-4 h-4 mr-1.5" />Importar notas</TabsTrigger>
         <TabsTrigger value="historico"><FileBarChart className="w-4 h-4 mr-1.5" />Histórico</TabsTrigger>
         <TabsTrigger value="config"><Settings className="w-4 h-4 mr-1.5" />Configuração</TabsTrigger>
       </TabsList>
+
+      {/* IMPORTAR NOTAS */}
+      <TabsContent value="importar" className="space-y-4">
+        <FinImportarNotas onImportacaoConcluida={carregar} />
+      </TabsContent>
 
       {/* APURAÇÃO */}
       <TabsContent value="apurar" className="space-y-4">
@@ -278,16 +285,30 @@ export default function FinApuracao() {
                         <TableCell className="text-right font-medium">{fmt(a.valor_total)}</TableCell>
                         <TableCell className="text-right">{carga.toFixed(2)}%</TableCell>
                         <TableCell>
-                          <Badge variant={a.status === "pago" ? "default" : a.status === "apurado" ? "secondary" : "outline"}>
-                            {a.status}
-                          </Badge>
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant={a.status === "pago" ? "default" : a.status === "apurado" ? "secondary" : "outline"}>
+                              {a.status}
+                            </Badge>
+                            {a.apuracao_desatualizada && (
+                              <Badge variant="destructive" className="gap-1" title={a.desatualizada_motivo ?? "Apuração desatualizada"}>
+                                <AlertTriangle className="w-3 h-3" />desatualizada
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
-                          {a.status !== "pago" && (
-                            <Button size="sm" variant="ghost" onClick={() => marcarComoPago(a.id)}>
-                              <CheckCircle2 className="w-4 h-4 mr-1" />Marcar pago
-                            </Button>
-                          )}
+                          <div className="flex gap-1">
+                            {a.apuracao_desatualizada && a.status !== "pago" && (
+                              <Button size="sm" variant="outline" onClick={() => recalcular(a)}>
+                                <RefreshCw className="w-4 h-4 mr-1" />Recalcular
+                              </Button>
+                            )}
+                            {a.status !== "pago" && (
+                              <Button size="sm" variant="ghost" onClick={() => marcarComoPago(a.id)}>
+                                <CheckCircle2 className="w-4 h-4 mr-1" />Marcar pago
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
