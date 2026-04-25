@@ -217,11 +217,11 @@ export default function DocumentDetectionDialog({
               </div>
               <div>
                 <Label className="text-xs">Valor Acréscimo (R$)</Label>
-                <Input type="number" step="0.01" value={adForm.valor_acrescimo} onChange={e => setAdForm(f => ({ ...f, valor_acrescimo: e.target.value }))} />
+                <MoneyInput value={parseFloat(adForm.valor_acrescimo) || 0} onValueChange={v => setAdForm(f => ({ ...f, valor_acrescimo: String(v) }))} />
               </div>
               <div>
                 <Label className="text-xs">Valor Supressão (R$)</Label>
-                <Input type="number" step="0.01" value={adForm.valor_supressao} onChange={e => setAdForm(f => ({ ...f, valor_supressao: e.target.value }))} />
+                <MoneyInput value={parseFloat(adForm.valor_supressao) || 0} onValueChange={v => setAdForm(f => ({ ...f, valor_supressao: String(v) }))} />
               </div>
               <div>
                 <Label className="text-xs">Qtde Acréscimo</Label>
