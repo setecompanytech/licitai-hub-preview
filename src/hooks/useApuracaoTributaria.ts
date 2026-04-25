@@ -53,6 +53,9 @@ export interface Apuracao {
   observacoes: string | null;
   detalhes: any;
   created_at: string;
+  apuracao_desatualizada?: boolean;
+  desatualizada_motivo?: string | null;
+  desatualizada_em?: string | null;
 }
 
 const DEFAULT_CONFIG: Omit<ConfigTributaria, "empresa_id"> = {
