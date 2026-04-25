@@ -1,8 +1,9 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale } from "lucide-react";
+import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target } from "lucide-react";
 import FinPlanoContas from "@/components/financeiro/FinPlanoContas";
 import FinSaldosAbertura from "@/components/financeiro/FinSaldosAbertura";
+import FinOrcamento from "@/components/financeiro/FinOrcamento";
 import FinDashboard from "@/components/financeiro/FinDashboard";
 import FinLancamentos from "@/components/financeiro/FinLancamentos";
 import FinContas from "@/components/financeiro/FinContas";
@@ -62,6 +63,7 @@ export default function Financeiro() {
               <TabsTrigger value="categorias"><Tags className="w-4 h-4 mr-1.5" />Categorias</TabsTrigger>
               <TabsTrigger value="plano_contas"><BookOpen className="w-4 h-4 mr-1.5" />Plano de Contas</TabsTrigger>
               <TabsTrigger value="saldos_abertura"><Scale className="w-4 h-4 mr-1.5" />Saldos de Abertura</TabsTrigger>
+              <TabsTrigger value="orcamento"><Target className="w-4 h-4 mr-1.5" />Orçamento</TabsTrigger>
             </TabsList>
             <TabsContent value="dashboard"><FinDashboard /></TabsContent>
             <TabsContent value="lancamentos"><FinLancamentos /></TabsContent>
@@ -81,6 +83,7 @@ export default function Financeiro() {
             <TabsContent value="categorias"><FinCategorias /></TabsContent>
             <TabsContent value="plano_contas"><FinPlanoContas /></TabsContent>
             <TabsContent value="saldos_abertura"><FinSaldosAbertura /></TabsContent>
+            <TabsContent value="orcamento"><FinOrcamento /></TabsContent>
           </Tabs>
         )}
       </div>
