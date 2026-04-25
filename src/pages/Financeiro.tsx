@@ -79,6 +79,8 @@ export default function Financeiro() {
             <TabsContent value="centros_custo"><FinCentrosCusto /></TabsContent>
             <TabsContent value="pessoas"><FinPessoas /></TabsContent>
             <TabsContent value="categorias"><FinCategorias /></TabsContent>
+            <TabsContent value="plano_contas"><FinPlanoContas /></TabsContent>
+            <TabsContent value="saldos_abertura"><FinSaldosAbertura /></TabsContent>
           </Tabs>
         )}
       </div>
