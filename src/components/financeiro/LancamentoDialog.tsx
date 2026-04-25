@@ -224,6 +224,49 @@ export default function LancamentoDialog({ open, onOpenChange, initial }: Props)
             </Select>
           </div>
 
+          {/* Documento fiscal (Sprint D) */}
+          <div className="col-span-2 pt-2 mt-1 border-t">
+            <p className="text-xs font-medium text-muted-foreground mb-2">DOCUMENTO FISCAL</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Tipo de documento</Label>
+            <Select value={tipoDocumento || "none"} onValueChange={(v) => setTipoDocumento(v === "none" ? "" : (v as TipoDocumento))}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— Não informado —</SelectItem>
+                {TIPO_DOC_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Data de emissão</Label>
+            <Input type="date" value={dataEmissao} onChange={(e) => setDataEmissao(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Número do documento</Label>
+            <Input value={numeroDocumento} onChange={(e) => setNumeroDocumento(e.target.value)} placeholder="Ex.: 000123" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Série</Label>
+            <Input value={serieDocumento} onChange={(e) => setSerieDocumento(e.target.value)} placeholder="Ex.: 1" />
+          </div>
+          {(tipoDocumento === "nfe" || tipoDocumento === "nfce" || tipoDocumento === "nfse" || tipoDocumento === "cte") && (
+            <div className="col-span-2 space-y-1.5">
+              <Label>Chave de acesso (44 dígitos)</Label>
+              <Input
+                value={chaveAcessoNfe}
+                onChange={(e) => setChaveAcessoNfe(e.target.value.replace(/\D/g, "").slice(0, 44))}
+                placeholder="00000000000000000000000000000000000000000000"
+                maxLength={44}
+              />
+              {chaveAcessoNfe && chaveAcessoNfe.length !== 44 && (
+                <p className="text-xs text-destructive">A chave deve ter 44 dígitos numéricos.</p>
+              )}
+            </div>
+          )}
+
           <div className="col-span-2 space-y-1.5">
             <Label>Observações</Label>
             <Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={2} />
