@@ -18,6 +18,27 @@ import type { Database } from "@/integrations/supabase/types";
 type Tipo = Database["public"]["Enums"]["financeiro_tipo_lancamento"];
 type Status = Database["public"]["Enums"]["financeiro_status_lancamento"];
 type Natureza = Database["public"]["Enums"]["financeiro_natureza"];
+type TipoDocumento = Database["public"]["Enums"]["financeiro_tipo_documento"];
+
+const TIPO_DOC_OPTIONS: { value: TipoDocumento; label: string }[] = [
+  { value: "nfe", label: "NF-e (Mercadoria)" },
+  { value: "nfse", label: "NFS-e (Serviço)" },
+  { value: "nfce", label: "NFC-e (Consumidor)" },
+  { value: "cte", label: "CT-e (Transporte)" },
+  { value: "recibo", label: "Recibo" },
+  { value: "boleto", label: "Boleto" },
+  { value: "duplicata", label: "Duplicata" },
+  { value: "fatura", label: "Fatura" },
+  { value: "contrato", label: "Contrato" },
+  { value: "pix", label: "PIX" },
+  { value: "ted", label: "TED" },
+  { value: "doc", label: "DOC" },
+  { value: "darf", label: "DARF" },
+  { value: "das", label: "DAS" },
+  { value: "gps", label: "GPS (INSS)" },
+  { value: "gnre", label: "GNRE" },
+  { value: "outros", label: "Outros" },
+];
 
 type Props = {
   open: boolean;
