@@ -138,11 +138,9 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           </div>
           {editingGlobal ? (
             <div className="flex items-center gap-1">
-              <Input
-                type="number"
-                step="0.01"
-                value={globalInput}
-                onChange={e => setGlobalInput(e.target.value)}
+              <MoneyInput
+                value={parseFloat(globalInput) || 0}
+                onValueChange={v => setGlobalInput(String(v))}
                 className="h-7 text-sm"
                 autoFocus
               />
