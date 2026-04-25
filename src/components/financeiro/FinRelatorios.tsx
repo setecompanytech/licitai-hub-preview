@@ -119,10 +119,10 @@ export default function FinRelatorios() {
           await gerarFluxoRealizado(filename, titulo);
           break;
         case "contas_pagar":
-          await gerarTitulos(filename, titulo, "despesa");
+          await gerarTitulos(filename, titulo, "a_pagar");
           break;
         case "contas_receber":
-          await gerarTitulos(filename, titulo, "receita");
+          await gerarTitulos(filename, titulo, "a_receber");
           break;
         case "dre_simplificada":
           await gerarDRESimplificada(filename, titulo);
