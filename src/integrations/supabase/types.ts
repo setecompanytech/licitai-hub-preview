@@ -7854,6 +7854,94 @@ export type Database = {
           },
         ]
       }
+      financeiro_plano_contas: {
+        Row: {
+          aceita_lancamento: boolean
+          ativo: boolean
+          centro_resultado: string | null
+          codigo: string
+          conta_referencial_sped: string | null
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          id: string
+          natureza: string
+          natureza_saldo: string
+          nivel: number
+          nome: string
+          observacao: string | null
+          ordem: number | null
+          parent_id: string | null
+          tipo_conta: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          aceita_lancamento?: boolean
+          ativo?: boolean
+          centro_resultado?: string | null
+          codigo: string
+          conta_referencial_sped?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          id?: string
+          natureza: string
+          natureza_saldo: string
+          nivel: number
+          nome: string
+          observacao?: string | null
+          ordem?: number | null
+          parent_id?: string | null
+          tipo_conta: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          aceita_lancamento?: boolean
+          ativo?: boolean
+          centro_resultado?: string | null
+          codigo?: string
+          conta_referencial_sped?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          id?: string
+          natureza?: string
+          natureza_saldo?: string
+          nivel?: number
+          nome?: string
+          observacao?: string | null
+          ordem?: number | null
+          parent_id?: string | null
+          tipo_conta?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_plano_contas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_plano_contas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_plano_contas_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_plano_contas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financeiro_regras_categorizacao: {
         Row: {
           ativa: boolean
@@ -13204,6 +13292,10 @@ export type Database = {
       financeiro_recalcular_saldo_conta: {
         Args: { p_conta_id: string }
         Returns: undefined
+      }
+      financeiro_seed_plano_contas_pme: {
+        Args: { p_empresa_id: string }
+        Returns: Json
       }
       has_role: {
         Args: {
