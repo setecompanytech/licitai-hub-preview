@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -770,16 +771,10 @@ export default function PlanilhaCustosEdital({
                       />
                     </td>
                     <td className="px-3 py-2">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={it.valorUnitario ?? ''}
-                        onChange={(e) => {
-                          const v = e.target.value ? parseFloat(e.target.value) : null;
-                          updateItem(idx, 'valorUnitario', v);
-                        }}
-                        className="h-7 text-xs text-right w-24 ml-auto bg-primary/5 border-primary/20 font-medium"
-                        placeholder="0,00"
+                      <MoneyInput
+                        value={it.valorUnitario ?? 0}
+                        onValueChange={(v) => updateItem(idx, 'valorUnitario', v || null)}
+                        className="h-7 text-xs w-28 ml-auto bg-primary/5 border-primary/20 font-medium"
                       />
                     </td>
                     <td className="px-3 py-2 text-right text-xs font-semibold">
