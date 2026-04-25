@@ -1,6 +1,6 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree } from "lucide-react";
+import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart } from "lucide-react";
 import FinDashboard from "@/components/financeiro/FinDashboard";
 import FinLancamentos from "@/components/financeiro/FinLancamentos";
 import FinContas from "@/components/financeiro/FinContas";
@@ -10,8 +10,8 @@ import FinConciliacao from "@/components/financeiro/FinConciliacao";
 import FinContasPagar from "@/components/financeiro/FinContasPagar";
 import FinContasReceber from "@/components/financeiro/FinContasReceber";
 import FinCentrosCusto from "@/components/financeiro/FinCentrosCusto";
-import { useEmpresa } from "@/contexts/EmpresaContext";
-import { Card, CardContent } from "@/components/ui/card";
+import FinFluxoCaixa from "@/components/financeiro/FinFluxoCaixa";
+import FinDRE from "@/components/financeiro/FinDRE";
 
 export default function Financeiro() {
   const { empresaAtiva, loading } = useEmpresa();
