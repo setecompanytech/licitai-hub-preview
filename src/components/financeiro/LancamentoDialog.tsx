@@ -116,7 +116,12 @@ export default function LancamentoDialog({ open, onOpenChange, initial }: Props)
       categoria_id: categoriaId || null,
       pessoa_id: pessoaId || null,
       observacoes: observacoes.trim() || null,
-    });
+      tipo_documento: tipoDocumento || null,
+      numero_documento: numeroDocumento.trim() || null,
+      serie_documento: serieDocumento.trim() || null,
+      chave_acesso_nfe: chaveAcessoNfe.replace(/\D/g, "").trim() || null,
+      data_emissao: dataEmissao || null,
+    } as any);
     onOpenChange(false);
   };
 
