@@ -17,17 +17,24 @@ export const CFOPS_FREQUENTES: CFOPOption[] = [
   // Vendas internas (mesmo estado)
   { codigo: "5101", descricao: "Venda de produção do estabelecimento", tipo: "saida", uf_destino: "mesma" },
   { codigo: "5102", descricao: "Venda de mercadoria adquirida/recebida de terceiros", tipo: "saida", uf_destino: "mesma" },
+  { codigo: "5103", descricao: "Venda de produção efetuada fora do estabelecimento", tipo: "saida", uf_destino: "mesma" },
+  { codigo: "5104", descricao: "Venda de mercadoria de terceiros, fora do estabelecimento", tipo: "saida", uf_destino: "mesma" },
+  { codigo: "5115", descricao: "Venda de mercadoria recebida em consignação mercantil", tipo: "saida", uf_destino: "mesma" },
+  { codigo: "5202", descricao: "Devolução de compra para comercialização", tipo: "saida", uf_destino: "mesma" },
   { codigo: "5405", descricao: "Venda de mercadoria adquirida — ICMS retido por ST", tipo: "saida", uf_destino: "mesma" },
+  { codigo: "5901", descricao: "Remessa para industrialização por encomenda", tipo: "saida", uf_destino: "mesma" },
   { codigo: "5910", descricao: "Remessa em bonificação, doação ou brinde", tipo: "saida", uf_destino: "mesma" },
   { codigo: "5915", descricao: "Remessa para conserto ou reparo", tipo: "saida", uf_destino: "mesma" },
   { codigo: "5916", descricao: "Retorno de mercadoria recebida para conserto", tipo: "saida", uf_destino: "mesma" },
-  { codigo: "5202", descricao: "Devolução de compra para industrialização", tipo: "saida", uf_destino: "mesma" },
+  { codigo: "5924", descricao: "Remessa p/ industrialização por conta e ordem (sem trânsito)", tipo: "saida", uf_destino: "mesma" },
+  { codigo: "5933", descricao: "Prestação de serviço tributado pelo ISSQN", tipo: "saida", uf_destino: "mesma" },
   { codigo: "5949", descricao: "Outra saída de mercadoria não especificada", tipo: "saida", uf_destino: "mesma" },
 
   // Vendas interestaduais
   { codigo: "6101", descricao: "Venda de produção do estabelecimento (outra UF)", tipo: "saida", uf_destino: "outra" },
   { codigo: "6102", descricao: "Venda de mercadoria adquirida (outra UF)", tipo: "saida", uf_destino: "outra" },
   { codigo: "6108", descricao: "Venda destinada a não contribuinte (outra UF)", tipo: "saida", uf_destino: "outra" },
+  { codigo: "6202", descricao: "Devolução de compra para comercialização (outra UF)", tipo: "saida", uf_destino: "outra" },
   { codigo: "6910", descricao: "Remessa em bonificação/doação/brinde (outra UF)", tipo: "saida", uf_destino: "outra" },
   { codigo: "6949", descricao: "Outra saída não especificada (outra UF)", tipo: "saida", uf_destino: "outra" },
 
@@ -35,6 +42,36 @@ export const CFOPS_FREQUENTES: CFOPOption[] = [
   { codigo: "7101", descricao: "Venda de produção do estabelecimento (exterior)", tipo: "saida", uf_destino: "exterior" },
   { codigo: "7102", descricao: "Venda de mercadoria adquirida (exterior)", tipo: "saida", uf_destino: "exterior" },
 ];
+
+/**
+ * Validação preventiva do CFOP — evita rejeições comuns da SEFAZ.
+ * Fonte: doutrina contábil + manual de rejeições NF-e (327/733).
+ */
+export function validarCFOP(
+  codigo: string,
+  ctx: { ufEmitente?: string; ufDestinatario?: string; finalidade?: string }
+): { ok: boolean; alerta?: string; codigoRejeicao?: string } {
+  if (!codigo || codigo.length !== 4) return { ok: false, alerta: "CFOP deve ter 4 dígitos." };
+  const primeiro = codigo[0];
+  const grupo = codigo.substring(1, 2);
+
+  // Rejeição 733: CFOP incompatível com UF do destinatário
+  if (ctx.ufEmitente && ctx.ufDestinatario) {
+    const mesmaUF = ctx.ufEmitente === ctx.ufDestinatario;
+    if (mesmaUF && primeiro === "6")
+      return { ok: false, codigoRejeicao: "733", alerta: "CFOP 6xxx é para outra UF. Use 5xxx (mesma UF)." };
+    if (!mesmaUF && primeiro === "5")
+      return { ok: false, codigoRejeicao: "733", alerta: "CFOP 5xxx é para mesma UF. Use 6xxx (interestadual)." };
+    if (ctx.ufDestinatario === "EX" && primeiro !== "7")
+      return { ok: false, codigoRejeicao: "733", alerta: "Operação para o exterior exige CFOP 7xxx." };
+  }
+
+  // Rejeição 327: finalidade Devolução exige CFOP de devolução (x2xx)
+  if (ctx.finalidade === "4" && grupo !== "2")
+    return { ok: false, codigoRejeicao: "327", alerta: "Finalidade Devolução exige CFOP do grupo x2xx (ex.: 5202/6202)." };
+
+  return { ok: true };
+}
 
 export const NATUREZAS_OPERACAO = [
   "Venda de mercadoria adquirida/recebida de terceiros",
