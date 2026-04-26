@@ -69,10 +69,10 @@ const LABEL_TIPO_PESSOA: Record<string, string> = {
 
 const LABEL_STATUS: Record<string, string> = {
   previsto: "Previsto",
-  pago: "Pago",
-  atrasado: "Atrasado",
+  realizado: "Realizado",
+  em_atraso: "Em atraso",
+  conciliado: "Conciliado",
   cancelado: "Cancelado",
-  parcial: "Pago parcial",
 };
 
 export default function FinExportarOMIE() {
