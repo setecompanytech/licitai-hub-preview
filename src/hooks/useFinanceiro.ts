@@ -1006,6 +1006,7 @@ export function useResumoVisorFinanceiro() {
 
       return {
         saldoTotal,
+        contasSaldo,
         proximos10Dias,
         hojePagar,
         hojeReceber,
