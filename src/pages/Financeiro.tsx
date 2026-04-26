@@ -72,6 +72,7 @@ export default function Financeiro() {
               <TabsTrigger value="apuracao"><Calculator className="w-4 h-4 mr-1.5" />Apuração</TabsTrigger>
               <TabsTrigger value="relatorios"><FileDown className="w-4 h-4 mr-1.5" />Relatórios</TabsTrigger>
             </TabsList>
+            <TabsContent value="resumo"><FinResumoVisor /></TabsContent>
             <TabsContent value="dashboard"><FinDashboardTabs /></TabsContent>
             <TabsContent value="lancamentos"><FinLancamentos /></TabsContent>
             <TabsContent value="a_pagar"><FinContasPagar /></TabsContent>
