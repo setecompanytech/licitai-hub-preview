@@ -647,10 +647,22 @@ export default function FinEmissorNFe() {
                             <TableCell><Badge variant={n.ambiente === "producao" ? "default" : "outline"}>{n.ambiente}</Badge></TableCell>
                             <TableCell className="text-xs text-muted-foreground">{n.data_emissao ? new Date(n.data_emissao).toLocaleString("pt-BR") : "—"}</TableCell>
                             <TableCell>
-                              <div className="flex gap-2">
+                              <div className="flex gap-2 items-center">
                                 {n.xml_url && <a href={n.xml_url} target="_blank" rel="noopener noreferrer" className="text-xs underline inline-flex items-center gap-1">XML <ExternalLink className="w-3 h-3" /></a>}
-                                {n.danfe_url && <a href={n.danfe_url} target="_blank" rel="noopener noreferrer" className="text-xs underline inline-flex items-center gap-1"><FileDown className="w-3 h-3" />DANFE</a>}
-                                {!n.xml_url && !n.danfe_url && <span className="text-xs text-muted-foreground">—</span>}
+                                {n.status === "autorizada" ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs"
+                                    onClick={() => baixarDanfe(n.id)}
+                                    disabled={downloading}
+                                  >
+                                    {downloading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <FileDown className="w-3 h-3 mr-1" />}
+                                    DANFE
+                                  </Button>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">DANFE indisponível</span>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
