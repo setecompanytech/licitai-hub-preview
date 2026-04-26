@@ -81,6 +81,16 @@ interface EmitirNFeRequest {
     peso_bruto?: string | number;
     peso_liquido?: string | number;
   };
+  // SEFAZ 4.00 — Sprints 1/2/3
+  fiscais?: {
+    tpNF?: "0" | "1";
+    indFinal?: "0" | "1";
+    idDest?: "1" | "2" | "3";
+    tpEmis?: "1" | "2" | "3" | "4" | "5" | "6" | "7" | "9";
+    refNFe?: string;
+    numero_manual?: number;
+    autXML?: string[];
+  };
 }
 
 serve(async (req) => {
