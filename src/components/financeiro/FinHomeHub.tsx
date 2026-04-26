@@ -20,31 +20,33 @@ export const HUB_ITEMS: HubItem[] = [
   { id: "resumo", label: "Resumo", description: "Visor executivo com saldo, projeção e atrasos.", icon: Eye, group: "operacao", highlight: true },
   { id: "dashboard", label: "Dashboard", description: "KPIs, gráficos e indicadores em tempo real.", icon: LayoutDashboard, group: "operacao" },
   { id: "lancamentos", label: "Lançamentos", description: "Todos os lançamentos com filtros avançados.", icon: ListOrdered, group: "operacao" },
-  { id: "a_pagar", label: "Contas a Pagar", description: "Pendências, vencimentos e baixa em lote.", icon: ArrowUpCircle, group: "operacao", badge: "Em breve: lote" },
-  { id: "a_receber", label: "Contas a Receber", description: "Cobranças, recebimentos e inadimplência.", icon: ArrowDownCircle, group: "operacao", badge: "Em breve: lote" },
+  { id: "a_pagar", label: "Contas a Pagar", description: "Pendências, vencimentos e baixa em lote.", icon: ArrowUpCircle, group: "operacao" },
+  { id: "a_receber", label: "Contas a Receber", description: "Cobranças, recebimentos e inadimplência.", icon: ArrowDownCircle, group: "operacao" },
+  { id: "baixa_lote", label: "Baixa em lote", description: "Liquide múltiplos lançamentos com 1 clique.", icon: Sparkles, group: "operacao", badge: "Novo" },
+  { id: "importar_planilha", label: "Importar Planilha", description: "Importação em massa via CSV.", icon: FileSpreadsheet, group: "operacao", badge: "Novo" },
   { id: "fluxo_caixa", label: "Fluxo de Caixa", description: "Entradas, saídas e saldo projetado.", icon: LineChart, group: "operacao" },
 
   // Bancos
   { id: "contas", label: "Contas Correntes", description: "Saldos consolidados e movimentações.", icon: Wallet, group: "bancos" },
   { id: "conciliacao", label: "Conciliação", description: "Concilie extratos com lançamentos do sistema.", icon: Banknote, group: "bancos" },
-  { id: "transferencia", label: "Transferência entre contas", description: "Movimente saldo com lançamento duplo automático.", icon: ArrowRightLeft, group: "bancos", badge: "Sprint 1" },
-  { id: "importar_ofx", label: "Importar Extrato OFX", description: "Conciliação sugerida por IA com 1 clique.", icon: Upload, group: "bancos", badge: "Sprint 2" },
-  { id: "cnab", label: "Remessa & Retorno CNAB", description: "Cobrança 240/400 + pagamentos em massa.", icon: FileSpreadsheet, group: "bancos", badge: "Sprint 2" },
+  { id: "transferencia", label: "Transferência entre contas", description: "Movimente saldo entre contas correntes.", icon: ArrowRightLeft, group: "bancos", badge: "Novo" },
+  { id: "importar_ofx", label: "Importar Extrato OFX", description: "Conciliação sugerida automaticamente.", icon: Upload, group: "bancos", badge: "Novo" },
+  { id: "cnab", label: "Remessa & Retorno CNAB", description: "Cobrança 240 + pagamentos em massa.", icon: FileSpreadsheet, group: "bancos", badge: "Novo" },
   { id: "integracoes", label: "Integrações Bancárias", description: "Histórico de transmissões e webhooks.", icon: Plug, group: "bancos" },
 
   // Fiscal
   { id: "emissor_nfe", label: "Emissor NF-e", description: "Emissão homologada SEFAZ schema 4.00.", icon: FileText, group: "fiscal" },
   { id: "nfe_entrada", label: "NF-e Entrada", description: "Consulta e download de XML por chave.", icon: Inbox, group: "fiscal" },
-  { id: "nfse", label: "NFS-e Municipal", description: "Monitor e emissão multi-prefeitura.", icon: Building2, group: "fiscal", badge: "Sprint 4" },
+  { id: "nfse", label: "NFS-e Municipal", description: "Monitor e emissão multi-prefeitura.", icon: Building2, group: "fiscal", badge: "Novo" },
   { id: "ocr", label: "OCR de Documentos", description: "Extraia dados de notas e boletos via IA.", icon: ScanLine, group: "fiscal" },
 
   // Relatórios
   { id: "dre", label: "DRE", description: "Demonstrativo de Resultados completo.", icon: FileBarChart, group: "relatorios" },
-  { id: "resumo_exec", label: "Resumo Executivo", description: "One-pager imprimível para diretoria.", icon: Sparkles, group: "relatorios", badge: "Sprint 3" },
-  { id: "previsto_realizado", label: "Previsto × Realizado", description: "Compare orçamento com execução mensal.", icon: Target, group: "relatorios", badge: "Sprint 3" },
+  { id: "resumo_exec", label: "Resumo Executivo", description: "One-pager imprimível para diretoria.", icon: Sparkles, group: "relatorios", badge: "Novo" },
+  { id: "previsto_realizado", label: "Previsto × Realizado", description: "Compare orçamento com execução mensal.", icon: Target, group: "relatorios", badge: "Novo" },
   { id: "relatorios", label: "Relatórios", description: "Exportações personalizadas em PDF/Excel.", icon: FileDown, group: "relatorios" },
   { id: "apuracao", label: "Apuração", description: "Apuração de impostos e tributos.", icon: Calculator, group: "relatorios" },
-  { id: "aprovacoes", label: "Aprovação de Pagamentos", description: "Workflow multi-nível com alçada por valor.", icon: ShieldCheck, group: "relatorios", badge: "Sprint 4" },
+  { id: "aprovacoes", label: "Aprovação de Pagamentos", description: "Workflow multi-nível com alçada por valor.", icon: ShieldCheck, group: "relatorios", badge: "Novo" },
 
   // Cadastros
   { id: "pessoas", label: "Clientes & Fornecedores", description: "Cadastro unificado com integração Receita.", icon: Users, group: "cadastros" },
