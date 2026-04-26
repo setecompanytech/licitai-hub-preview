@@ -182,7 +182,7 @@ export default function FinExportarOMIE() {
       .from("financeiro_lancamentos")
       .select("*, pessoa:financeiro_pessoas(nome, documento)")
       .eq("empresa_id", empresaId!)
-      .eq("tipo", entidade)
+      .eq("tipo", entidade as "a_pagar" | "a_receber")
       .gte("data_vencimento", dataInicio)
       .lte("data_vencimento", dataFim)
       .order("data_vencimento");
