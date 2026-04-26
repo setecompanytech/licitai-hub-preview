@@ -5,11 +5,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { RefreshCw, Wallet, ArrowDownCircle, ArrowUpCircle, AlertTriangle, TrendingUp, Clock, Activity } from "lucide-react";
+import {
+  RefreshCw, Wallet, ArrowDownCircle, ArrowUpCircle, AlertTriangle, TrendingUp, Clock, Activity,
+  Plus, ArrowLeftRight, FileSpreadsheet, CheckCircle2, Layers, Banknote, Landmark, PiggyBank, CreditCard,
+} from "lucide-react";
 import { ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
 import { useResumoVisorFinanceiro } from "@/hooks/useFinanceiro";
 import { formatBRL } from "@/lib/financeiro/formatters";
 import { useQueryClient } from "@tanstack/react-query";
+
+function navegarFinanceiro(view: string) {
+  window.dispatchEvent(new CustomEvent("fin:navigate", { detail: view }));
+}
 
 const AUTO_OPEN_KEY = "fin_resumo_auto_open";
 
