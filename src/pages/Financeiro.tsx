@@ -29,6 +29,7 @@ import FinRelatorios from "@/components/financeiro/FinRelatorios";
 import FinTransferencia from "@/components/financeiro/FinTransferencia";
 import FinBaixaLote from "@/components/financeiro/FinBaixaLote";
 import FinImportarPlanilha from "@/components/financeiro/FinImportarPlanilha";
+import FinImportarOMIE from "@/components/financeiro/FinImportarOMIE";
 import FinImportarOFX from "@/components/financeiro/FinImportarOFX";
 import FinCNAB from "@/components/financeiro/FinCNAB";
 import FinPrevistoRealizado from "@/components/financeiro/FinPrevistoRealizado";
@@ -63,7 +64,9 @@ const VIEW_MAP: Record<string, () => JSX.Element> = {
   relatorios: () => <FinRelatorios />,
   transferencia: () => <FinTransferencia />,
   baixa_lote: () => <FinBaixaLote />,
-  importar_planilha: () => <FinImportarPlanilha />,
+  importar_planilha: () => <FinImportarOMIE />,
+  importar_planilha_csv: () => <FinImportarPlanilha />,
+  importar_omie: () => <FinImportarOMIE />,
   importar_ofx: () => <FinImportarOFX />,
   cnab: () => <FinCNAB />,
   previsto_realizado: () => <FinPrevistoRealizado />,
