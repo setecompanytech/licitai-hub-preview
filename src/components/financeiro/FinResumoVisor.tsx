@@ -95,6 +95,36 @@ export default function FinResumoVisor() {
         </div>
       </div>
 
+      {/* Atalhos rápidos */}
+      <Card className="border-dashed">
+        <CardContent className="p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground mr-2 ml-1">Ações rápidas</span>
+            <Button size="sm" variant="default" onClick={() => navegarFinanceiro("a_pagar")}>
+              <Plus className="w-4 h-4 mr-1.5" /> Conta a Pagar
+            </Button>
+            <Button size="sm" variant="default" onClick={() => navegarFinanceiro("a_receber")}>
+              <Plus className="w-4 h-4 mr-1.5" /> Conta a Receber
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navegarFinanceiro("transferencia")}>
+              <ArrowLeftRight className="w-4 h-4 mr-1.5" /> Transferência
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navegarFinanceiro("conciliacao")}>
+              <CheckCircle2 className="w-4 h-4 mr-1.5" /> Conciliação
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navegarFinanceiro("baixa_lote")}>
+              <Layers className="w-4 h-4 mr-1.5" /> Baixa em Lote
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navegarFinanceiro("importar_ofx")}>
+              <FileSpreadsheet className="w-4 h-4 mr-1.5" /> Importar OFX
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => navegarFinanceiro("contas")}>
+              <Wallet className="w-4 h-4 mr-1.5" /> Gerenciar Contas
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Hero + gráfico */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Hero */}
