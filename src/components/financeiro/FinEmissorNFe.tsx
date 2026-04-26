@@ -545,23 +545,51 @@ export default function FinEmissorNFe() {
                 <CardTitle className="flex items-center gap-2"><Truck className="w-5 h-5" />5. Transporte</CardTitle>
                 <CardDescription>Modalidade de frete e dados do transportador (se houver).</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-4">
+                {/* Modalidade */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                  <div className="md:col-span-4">
+                  <div className="md:col-span-12">
                     <Label>Modalidade do frete</Label>
                     <Select value={transporte.modalidade_frete} onValueChange={v => setTransporte({ ...transporte, modalidade_frete: v })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>{FRETE_MODALIDADES.map(f => <SelectItem key={f.codigo} value={f.codigo}>{f.codigo} — {f.descricao}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="md:col-span-5"><Label>Transportador (nome)</Label><Input value={transporte.transportador_nome} onChange={e => setTransporte({ ...transporte, transportador_nome: e.target.value })} /></div>
-                  <div className="md:col-span-3"><Label>CNPJ/CPF</Label><Input value={transporte.transportador_doc} onChange={e => setTransporte({ ...transporte, transportador_doc: e.target.value })} /></div>
-                  <div className="md:col-span-2"><Label>Placa</Label><Input value={transporte.placa_veiculo} onChange={e => setTransporte({ ...transporte, placa_veiculo: e.target.value.toUpperCase() })} /></div>
-                  <div className="md:col-span-1"><Label>UF</Label><Input maxLength={2} value={transporte.uf_veiculo} onChange={e => setTransporte({ ...transporte, uf_veiculo: e.target.value.toUpperCase() })} /></div>
-                  <div className="md:col-span-2"><Label>Volumes</Label><Input value={transporte.qtd_volumes} onChange={e => setTransporte({ ...transporte, qtd_volumes: e.target.value })} /></div>
-                  <div className="md:col-span-3"><Label>Espécie</Label><Input value={transporte.especie} onChange={e => setTransporte({ ...transporte, especie: e.target.value })} placeholder="Caixa, Volume, Pallet..." /></div>
-                  <div className="md:col-span-2"><Label>Peso bruto (kg)</Label><Input value={transporte.peso_bruto} onChange={e => setTransporte({ ...transporte, peso_bruto: e.target.value })} /></div>
-                  <div className="md:col-span-2"><Label>Peso líquido (kg)</Label><Input value={transporte.peso_liquido} onChange={e => setTransporte({ ...transporte, peso_liquido: e.target.value })} /></div>
+                </div>
+
+                {/* Transportador */}
+                {transporte.modalidade_frete !== "9" && (
+                  <div className="space-y-3 rounded-md border p-3 bg-muted/30">
+                    <div className="text-xs font-semibold uppercase text-muted-foreground">Dados do transportador</div>
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                      <div className="md:col-span-6"><Label>Razão social / Nome</Label><Input value={transporte.transportador_nome} onChange={e => setTransporte({ ...transporte, transportador_nome: e.target.value })} /></div>
+                      <div className="md:col-span-3"><Label>CNPJ/CPF</Label><Input value={transporte.transportador_doc} onChange={e => setTransporte({ ...transporte, transportador_doc: e.target.value })} placeholder="00.000.000/0000-00" /></div>
+                      <div className="md:col-span-3"><Label>Inscrição Estadual</Label><Input value={transporte.transportador_ie} onChange={e => setTransporte({ ...transporte, transportador_ie: e.target.value })} placeholder="ISENTO ou nº" /></div>
+                      <div className="md:col-span-6"><Label>Endereço completo</Label><Input value={transporte.transportador_endereco} onChange={e => setTransporte({ ...transporte, transportador_endereco: e.target.value })} placeholder="Rua, nº, bairro" /></div>
+                      <div className="md:col-span-4"><Label>Município</Label><Input value={transporte.transportador_municipio} onChange={e => setTransporte({ ...transporte, transportador_municipio: e.target.value })} /></div>
+                      <div className="md:col-span-2"><Label>UF</Label><Input maxLength={2} value={transporte.transportador_uf} onChange={e => setTransporte({ ...transporte, transportador_uf: e.target.value.toUpperCase() })} /></div>
+                    </div>
+
+                    <div className="text-xs font-semibold uppercase text-muted-foreground pt-1">Veículo</div>
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                      <div className="md:col-span-3"><Label>Placa</Label><Input value={transporte.placa_veiculo} onChange={e => setTransporte({ ...transporte, placa_veiculo: e.target.value.toUpperCase() })} placeholder="ABC1D23" /></div>
+                      <div className="md:col-span-2"><Label>UF da placa</Label><Input maxLength={2} value={transporte.uf_veiculo} onChange={e => setTransporte({ ...transporte, uf_veiculo: e.target.value.toUpperCase() })} /></div>
+                      <div className="md:col-span-3"><Label>RNTRC / ANTT</Label><Input value={transporte.rntrc_antt} onChange={e => setTransporte({ ...transporte, rntrc_antt: e.target.value })} placeholder="Registro ANTT" /></div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Volumes */}
+                <div className="space-y-2 rounded-md border p-3 bg-muted/30">
+                  <div className="text-xs font-semibold uppercase text-muted-foreground">Volumes transportados</div>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                    <div className="md:col-span-2"><Label>Quantidade</Label><Input value={transporte.qtd_volumes} onChange={e => setTransporte({ ...transporte, qtd_volumes: e.target.value })} placeholder="Ex: 5" /></div>
+                    <div className="md:col-span-3"><Label>Espécie</Label><Input value={transporte.especie} onChange={e => setTransporte({ ...transporte, especie: e.target.value })} placeholder="Caixa, Pallet, Volume..." /></div>
+                    <div className="md:col-span-3"><Label>Marca</Label><Input value={transporte.marca_volumes} onChange={e => setTransporte({ ...transporte, marca_volumes: e.target.value })} placeholder="Marca da embalagem" /></div>
+                    <div className="md:col-span-4"><Label>Numeração</Label><Input value={transporte.numeracao_volumes} onChange={e => setTransporte({ ...transporte, numeracao_volumes: e.target.value })} placeholder="Ex: 001-005" /></div>
+                    <div className="md:col-span-3"><Label>Peso bruto (kg)</Label><Input type="number" step="0.001" value={transporte.peso_bruto} onChange={e => setTransporte({ ...transporte, peso_bruto: e.target.value })} placeholder="Ex: 12.500" /></div>
+                    <div className="md:col-span-3"><Label>Peso líquido (kg)</Label><Input type="number" step="0.001" value={transporte.peso_liquido} onChange={e => setTransporte({ ...transporte, peso_liquido: e.target.value })} placeholder="Ex: 12.000" /></div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
