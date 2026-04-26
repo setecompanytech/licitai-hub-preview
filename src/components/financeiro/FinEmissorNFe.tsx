@@ -53,10 +53,17 @@ type Transporte = {
   modalidade_frete: string;
   transportador_nome: string;
   transportador_doc: string;
+  transportador_ie: string;
+  transportador_endereco: string;
+  transportador_municipio: string;
+  transportador_uf: string;
   placa_veiculo: string;
   uf_veiculo: string;
+  rntrc_antt: string;
   qtd_volumes: string;
   especie: string;
+  marca_volumes: string;
+  numeracao_volumes: string;
   peso_bruto: string;
   peso_liquido: string;
 };
