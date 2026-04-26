@@ -275,8 +275,9 @@ export default function FinExportarOMIE() {
                   <SelectContent>
                     <SelectItem value="todos">Todos</SelectItem>
                     <SelectItem value="previsto">Previsto</SelectItem>
-                    <SelectItem value="pago">Pago</SelectItem>
-                    <SelectItem value="atrasado">Atrasado</SelectItem>
+                    <SelectItem value="realizado">Realizado / Pago</SelectItem>
+                    <SelectItem value="em_atraso">Em atraso</SelectItem>
+                    <SelectItem value="conciliado">Conciliado</SelectItem>
                     <SelectItem value="cancelado">Cancelado</SelectItem>
                   </SelectContent>
                 </Select>
