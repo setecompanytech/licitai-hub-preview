@@ -49,6 +49,27 @@ type Destinatario = {
   indicador_ie: string; // 1=Contribuinte, 2=Isento, 9=Não contribuinte
 };
 
+// SEFAZ 4.00 — campos fiscais adicionais
+type FiscaisExtras = {
+  tpNF: "0" | "1";              // 0=Entrada, 1=Saída
+  indFinal: "0" | "1";          // 0=Normal, 1=Consumidor final
+  idDest: "1" | "2" | "3";      // 1=Interna, 2=Interestadual, 3=Exterior — auto
+  tpEmis: "1" | "2" | "3" | "4" | "5" | "6" | "7" | "9"; // 1=Normal, 6=SVC-AN, 7=SVC-RS, etc.
+  refNFe: string;               // Chave 44 dígitos da NF-e referenciada (devolução)
+  numero_manual: string;        // Override de numeração (migração)
+  autXML: string[];             // CNPJs autorizados a baixar XML (até 10)
+};
+
+const fiscaisExtrasVazio = (): FiscaisExtras => ({
+  tpNF: "1",
+  indFinal: "1",
+  idDest: "1",
+  tpEmis: "1",
+  refNFe: "",
+  numero_manual: "",
+  autXML: [],
+});
+
 type Transporte = {
   modalidade_frete: string;
   transportador_nome: string;
