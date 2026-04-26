@@ -193,16 +193,43 @@ async function handleEmitirNFe(req: Request, supabase: any, userId: string, mode
   if (t.peso_bruto) transporteFields.peso_bruto_total = String(t.peso_bruto).replace(",", ".");
   if (t.peso_liquido) transporteFields.peso_liquido_total = String(t.peso_liquido).replace(",", ".");
 
+  // ===== SEFAZ 4.00 — Sprints 1/2/3 =====
+  const f = body.fiscais ?? {};
+  const fiscaisFields: Record<string, unknown> = {};
+  // tpNF — tipo de operação (entrada/saída)
+  fiscaisFields.tipo_documento = f.tpNF ?? "1";
+  // indFinal — consumidor final
+  fiscaisFields.consumidor_final = (f.indFinal ?? "1") === "1" ? "1" : "0";
+  // idDest — destino da operação
+  if (f.idDest) fiscaisFields.local_destino = f.idDest;
+  // tpEmis — tipo de emissão (contingência)
+  if (f.tpEmis) fiscaisFields.forma_emissao = f.tpEmis;
+  // refNFe — chave da NF-e referenciada (devolução)
+  if (f.refNFe && /^\d{44}$/.test(f.refNFe)) {
+    fiscaisFields.notas_fiscais_referenciadas = [{ chave_acesso_nfe_referenciada: f.refNFe }];
+  }
+  // Numeração manual (override)
+  if (f.numero_manual && Number.isInteger(f.numero_manual) && f.numero_manual > 0) {
+    fiscaisFields.numero = f.numero_manual;
+  }
+  // autXML — CNPJs autorizados a baixar XML (até 10)
+  if (Array.isArray(f.autXML) && f.autXML.length > 0) {
+    fiscaisFields.autorizados_baixar_xml = f.autXML
+      .map((c) => c.replace(/\D/g, ""))
+      .filter((c) => c.length === 14)
+      .slice(0, 10)
+      .map((cnpj) => ({ cnpj }));
+  }
+
   const payload = {
     natureza_operacao: body.natureza_operacao,
     data_emissao: new Date().toISOString(),
     data_entrada_saida: new Date().toISOString(),
-    tipo_documento: "1",
     finalidade_emissao: body.finalidade ?? "1",
     cnpj_emitente: body.cnpj_emitente.replace(/\D/g, ""),
     presenca_comprador: body.presenca ?? "9",
+    ...fiscaisFields,
     ...transporteFields,
-    local_destino: "1",
     nome_destinatario: body.destinatario.razao_social,
     cnpj_destinatario: body.destinatario.cnpj?.replace(/\D/g, ""),
     cpf_destinatario: body.destinatario.cpf?.replace(/\D/g, ""),
