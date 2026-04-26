@@ -30,6 +30,7 @@ import FinTransferencia from "@/components/financeiro/FinTransferencia";
 import FinBaixaLote from "@/components/financeiro/FinBaixaLote";
 import FinImportarPlanilha from "@/components/financeiro/FinImportarPlanilha";
 import FinImportarOMIE from "@/components/financeiro/FinImportarOMIE";
+import FinExportarOMIE from "@/components/financeiro/FinExportarOMIE";
 import FinImportarOFX from "@/components/financeiro/FinImportarOFX";
 import FinCNAB from "@/components/financeiro/FinCNAB";
 import FinPrevistoRealizado from "@/components/financeiro/FinPrevistoRealizado";
