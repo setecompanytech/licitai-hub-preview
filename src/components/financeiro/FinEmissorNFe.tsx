@@ -594,8 +594,10 @@ export default function FinEmissorNFe() {
                   <span className="text-muted-foreground">Valor total da nota: </span>
                   <span className="text-2xl font-bold">{totalNota.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
                 </div>
-                <Button onClick={emitir} disabled={emitting || !validacoes.ok} size="lg">
-                  {emitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Transmitindo à SEFAZ...</> : <><Send className="w-4 h-4 mr-2" />Assinar e transmitir</>}
+                <Button onClick={emitir} disabled={emitting || polling || !validacoes.ok} size="lg">
+                  {emitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Transmitindo à SEFAZ...</>
+                    : polling ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Aguardando autorização...</>
+                    : <><Send className="w-4 h-4 mr-2" />Assinar e transmitir</>}
                 </Button>
               </div>
             </CardContent>
