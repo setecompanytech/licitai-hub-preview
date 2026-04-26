@@ -481,10 +481,10 @@ export default function FinEmissorNFe() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="col-span-3 md:col-span-1.5"><Label className="text-xs">% ICMS</Label><Input type="number" step="0.01" value={it.aliq_icms} onChange={e => atualizarItem(idx, "aliq_icms", Number(e.target.value))} /></div>
-                      <div className="col-span-3 md:col-span-1.5"><Label className="text-xs">% IPI</Label><Input type="number" step="0.01" value={it.aliq_ipi} onChange={e => atualizarItem(idx, "aliq_ipi", Number(e.target.value))} /></div>
-                      <div className="col-span-3 md:col-span-1.5"><Label className="text-xs">% PIS</Label><Input type="number" step="0.01" value={it.aliq_pis} onChange={e => atualizarItem(idx, "aliq_pis", Number(e.target.value))} /></div>
-                      <div className="col-span-3 md:col-span-1.5"><Label className="text-xs">% COFINS</Label><Input type="number" step="0.01" value={it.aliq_cofins} onChange={e => atualizarItem(idx, "aliq_cofins", Number(e.target.value))} /></div>
+                      <div className="col-span-3 md:col-span-2"><Label className="text-xs">% ICMS</Label><Input type="number" step="0.01" value={it.aliq_icms} onChange={e => atualizarItem(idx, "aliq_icms", Number(e.target.value))} /></div>
+                      <div className="col-span-3 md:col-span-2"><Label className="text-xs">% IPI</Label><Input type="number" step="0.01" value={it.aliq_ipi} onChange={e => atualizarItem(idx, "aliq_ipi", Number(e.target.value))} /></div>
+                      <div className="col-span-3 md:col-span-2"><Label className="text-xs">% PIS</Label><Input type="number" step="0.01" value={it.aliq_pis} onChange={e => atualizarItem(idx, "aliq_pis", Number(e.target.value))} /></div>
+                      <div className="col-span-3 md:col-span-2"><Label className="text-xs">% COFINS</Label><Input type="number" step="0.01" value={it.aliq_cofins} onChange={e => atualizarItem(idx, "aliq_cofins", Number(e.target.value))} /></div>
                     </div>
                   </div>
                 ))}
