@@ -17,6 +17,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useBuscaCNPJ } from "@/hooks/useBuscaCNPJ";
+import { useDanfeDownload } from "@/hooks/useDanfeDownload";
 import { toast } from "sonner";
 import {
   CFOPS_FREQUENTES, NATUREZAS_OPERACAO, CSOSN_OPCOES, CST_ICMS_OPCOES,
