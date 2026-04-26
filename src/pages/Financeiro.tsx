@@ -68,6 +68,7 @@ const VIEW_MAP: Record<string, () => JSX.Element> = {
   importar_planilha: () => <FinImportarOMIE />,
   importar_planilha_csv: () => <FinImportarPlanilha />,
   importar_omie: () => <FinImportarOMIE />,
+  exportar_omie: () => <FinExportarOMIE />,
   importar_ofx: () => <FinImportarOFX />,
   cnab: () => <FinCNAB />,
   previsto_realizado: () => <FinPrevistoRealizado />,
