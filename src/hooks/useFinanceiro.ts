@@ -863,7 +863,7 @@ export function useFluxoCaixa(diasFrente = 90) {
 // ----------------------------------------------------------------------------
 export type ResumoVisor = {
   saldoTotal: number;
-  contasSaldo: Array<{ id: string; nome: string; tipo: string | null; banco: string | null; saldoAtual: number; ativa: boolean }>;
+  contasSaldo: Array<{ id: string; nome: string; tipo: string | null; banco: string | null; agencia: string | null; conta: string | null; cor: string | null; saldoAtual: number; ativa: boolean }>;
   proximos10Dias: Array<{ data: string; previstoPagar: number; previstoReceber: number; saldoProjetado: number }>;
   hojePagar: { qtd: number; total: number; atraso: number };
   hojeReceber: { qtd: number; total: number; atraso: number };
