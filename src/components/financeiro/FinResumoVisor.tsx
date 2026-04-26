@@ -331,3 +331,88 @@ function TopAtrasosCard({ titulo, itens, tipo }: { titulo: string; itens: Array<
     </Card>
   );
 }
+
+function iconeContaTipo(tipo: string | null) {
+  switch ((tipo ?? "").toLowerCase()) {
+    case "corrente": return Landmark;
+    case "poupanca":
+    case "poupança": return PiggyBank;
+    case "cartao":
+    case "cartão":
+    case "cartao_credito": return CreditCard;
+    case "caixa":
+    case "dinheiro": return Banknote;
+    default: return Wallet;
+  }
+}
+
+function SaldosPorConta({ contas, saldoTotal }: { contas: Array<{ id: string; nome: string; tipo: string | null; banco: string | null; agencia: string | null; conta: string | null; cor: string | null; saldoAtual: number; ativa: boolean }>; saldoTotal: number }) {
+  const ativas = contas.filter((c) => c.ativa);
+  return (
+    <Card>
+      <CardHeader className="pb-2 flex flex-row items-center justify-between">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Wallet className="w-4 h-4 text-primary" />
+          Saldos por conta
+          <Badge variant="secondary" className="ml-1 text-[10px]">{ativas.length} ativas</Badge>
+        </CardTitle>
+        <Button size="sm" variant="ghost" onClick={() => navegarFinanceiro("contas")}>Gerenciar</Button>
+      </CardHeader>
+      <CardContent className="p-0">
+        {ativas.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm text-muted-foreground">
+            Nenhuma conta cadastrada.{" "}
+            <Button size="sm" variant="link" onClick={() => navegarFinanceiro("contas")}>Cadastrar agora</Button>
+          </div>
+        ) : (
+          <ul className="divide-y">
+            {ativas.map((c) => {
+              const Icon = iconeContaTipo(c.tipo);
+              const negativo = c.saldoAtual < 0;
+              const pct = saldoTotal > 0 ? (c.saldoAtual / saldoTotal) * 100 : 0;
+              const subtitulo = [c.banco, c.agencia, c.conta].filter(Boolean).join(" · ");
+              return (
+                <li
+                  key={c.id}
+                  className="flex items-center gap-3 px-5 py-3 hover:bg-muted/40 transition-colors cursor-pointer"
+                  onClick={() => navegarFinanceiro("contas")}
+                >
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: c.cor ? `${c.cor}22` : "hsl(var(--muted))", color: c.cor ?? "hsl(var(--foreground))" }}
+                  >
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{c.nome}</div>
+                    {subtitulo && <div className="text-[11px] text-muted-foreground truncate">{subtitulo}</div>}
+                    <div className="h-1 bg-muted rounded-full mt-1.5 overflow-hidden">
+                      <div
+                        className={negativo ? "h-full bg-rose-500" : "h-full bg-primary"}
+                        style={{ width: `${Math.min(100, Math.abs(pct))}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className={`text-sm font-semibold tabular-nums ${negativo ? "text-rose-600 dark:text-rose-400" : "text-foreground"}`}>
+                      {formatBRL(c.saldoAtual)}
+                    </div>
+                    {saldoTotal > 0 && !negativo && (
+                      <div className="text-[10px] text-muted-foreground tabular-nums">{pct.toFixed(1)}%</div>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+            <li className="flex items-center justify-between px-5 py-3 bg-muted/30 font-medium">
+              <span className="text-sm">Saldo consolidado</span>
+              <span className={`text-sm tabular-nums ${saldoTotal < 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground"}`}>
+                {formatBRL(saldoTotal)}
+              </span>
+            </li>
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
