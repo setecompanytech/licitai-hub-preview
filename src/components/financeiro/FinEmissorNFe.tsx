@@ -652,35 +652,60 @@ export default function FinEmissorNFe() {
                         <TableHead>Destinatário</TableHead>
                         <TableHead>Valor</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Progresso / Motivo</TableHead>
                         <TableHead>Ambiente</TableHead>
                         <TableHead>Emissão</TableHead>
-                        <TableHead>Arquivos</TableHead>
+                        <TableHead>Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {emitidas.map(n => {
                         const dest = (n.destinatario_dados || {}) as any;
+                        const isRefreshing = refreshingId === n.id;
+                        const podeAtualizar = ["processando", "rascunho", "rejeitada"].includes(n.status);
+                        const motivoTexto = n.motivo || STATUS_LABEL[n.status] || "—";
                         return (
                           <TableRow key={n.id}>
-                            <TableCell className="uppercase">{n.modelo}</TableCell>
-                            <TableCell>{n.numero ?? "—"}/{n.serie ?? "—"}</TableCell>
-                            <TableCell className="font-mono text-xs">{n.chave_acesso ? `${n.chave_acesso.slice(0, 8)}…${n.chave_acesso.slice(-4)}` : "—"}</TableCell>
+                            <TableCell className="uppercase whitespace-nowrap">{n.modelo}</TableCell>
+                            <TableCell className="whitespace-nowrap">{n.numero ?? "—"}/{n.serie ?? "—"}</TableCell>
+                            <TableCell className="font-mono text-xs whitespace-nowrap">{n.chave_acesso ? `${n.chave_acesso.slice(0, 8)}…${n.chave_acesso.slice(-4)}` : "—"}</TableCell>
                             <TableCell>
                               <div className="text-sm">{dest.nome || "—"}</div>
                               <div className="text-xs text-muted-foreground">{dest.documento || ""}</div>
                             </TableCell>
-                            <TableCell>{(n.valor_total || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</TableCell>
+                            <TableCell className="whitespace-nowrap">{(n.valor_total || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</TableCell>
                             <TableCell><Badge variant={STATUS_VARIANT[n.status] || "secondary"}>{n.status}</Badge></TableCell>
+                            <TableCell className="max-w-[280px]">
+                              <div className="flex items-start gap-1.5">
+                                {n.status === "processando" && <Loader2 className="w-3 h-3 mt-0.5 animate-spin text-muted-foreground shrink-0" />}
+                                {n.status === "autorizada" && <CheckCircle2 className="w-3 h-3 mt-0.5 text-green-500 shrink-0" />}
+                                {(n.status === "rejeitada" || n.status === "denegada") && <AlertCircle className="w-3 h-3 mt-0.5 text-destructive shrink-0" />}
+                                <span className="text-xs text-muted-foreground line-clamp-2" title={motivoTexto}>{motivoTexto}</span>
+                              </div>
+                            </TableCell>
                             <TableCell><Badge variant={n.ambiente === "producao" ? "default" : "outline"}>{n.ambiente}</Badge></TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{n.data_emissao ? new Date(n.data_emissao).toLocaleString("pt-BR") : "—"}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{n.data_emissao ? new Date(n.data_emissao).toLocaleString("pt-BR") : "—"}</TableCell>
                             <TableCell>
-                              <div className="flex gap-2 items-center">
-                                {n.xml_url && <a href={n.xml_url} target="_blank" rel="noopener noreferrer" className="text-xs underline inline-flex items-center gap-1">XML <ExternalLink className="w-3 h-3" /></a>}
+                              <div className="flex gap-2 items-center flex-wrap">
+                                {podeAtualizar && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs shrink-0"
+                                    onClick={() => atualizarStatusLinha(n.id)}
+                                    disabled={isRefreshing}
+                                    title="Consultar status atual na SEFAZ"
+                                  >
+                                    {isRefreshing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                                    Atualizar status
+                                  </Button>
+                                )}
+                                {n.xml_url && <a href={n.xml_url} target="_blank" rel="noopener noreferrer" className="text-xs underline inline-flex items-center gap-1 shrink-0">XML <ExternalLink className="w-3 h-3" /></a>}
                                 {n.status === "autorizada" ? (
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-7 px-2 text-xs"
+                                    className="h-7 px-2 text-xs shrink-0"
                                     onClick={() => baixarDanfe(n.id)}
                                     disabled={downloading}
                                   >
