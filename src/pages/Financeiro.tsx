@@ -26,6 +26,16 @@ import FinIntegracoes from "@/components/financeiro/FinIntegracoes";
 import FinEmissorNFe from "@/components/financeiro/FinEmissorNFe";
 import FinConsultaNFeEntrada from "@/components/financeiro/FinConsultaNFeEntrada";
 import FinRelatorios from "@/components/financeiro/FinRelatorios";
+import FinTransferencia from "@/components/financeiro/FinTransferencia";
+import FinBaixaLote from "@/components/financeiro/FinBaixaLote";
+import FinImportarPlanilha from "@/components/financeiro/FinImportarPlanilha";
+import FinImportarOFX from "@/components/financeiro/FinImportarOFX";
+import FinCNAB from "@/components/financeiro/FinCNAB";
+import FinPrevistoRealizado from "@/components/financeiro/FinPrevistoRealizado";
+import FinResumoExecutivo from "@/components/financeiro/FinResumoExecutivo";
+import FinAprovacoes from "@/components/financeiro/FinAprovacoes";
+import FinNFSe from "@/components/financeiro/FinNFSe";
+import FinCommandPalette from "@/components/financeiro/FinCommandPalette";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 
 const VIEW_MAP: Record<string, () => JSX.Element> = {
@@ -51,16 +61,18 @@ const VIEW_MAP: Record<string, () => JSX.Element> = {
   orcamento: () => <FinOrcamento />,
   apuracao: () => <FinApuracao />,
   relatorios: () => <FinRelatorios />,
+  transferencia: () => <FinTransferencia />,
+  baixa_lote: () => <FinBaixaLote />,
+  importar_planilha: () => <FinImportarPlanilha />,
+  importar_ofx: () => <FinImportarOFX />,
+  cnab: () => <FinCNAB />,
+  previsto_realizado: () => <FinPrevistoRealizado />,
+  resumo_exec: () => <FinResumoExecutivo />,
+  aprovacoes: () => <FinAprovacoes />,
+  nfse: () => <FinNFSe />,
 };
 
 const COMING_SOON: Record<string, { title: string; description: string }> = {
-  transferencia: { title: "Transferência entre contas", description: "Em breve (Sprint 1) — Movimente saldo entre contas correntes com lançamento duplo automático." },
-  importar_ofx: { title: "Importar Extrato OFX", description: "Em breve (Sprint 2) — Conciliação sugerida por IA com 1 clique." },
-  cnab: { title: "Remessa & Retorno CNAB", description: "Em breve (Sprint 2) — Cobrança bancária 240/400 e pagamentos em massa." },
-  nfse: { title: "NFS-e Municipal", description: "Em breve (Sprint 4) — Monitor e emissão multi-prefeitura." },
-  resumo_exec: { title: "Resumo Executivo", description: "Em breve (Sprint 3) — One-pager imprimível para diretoria." },
-  previsto_realizado: { title: "Previsto × Realizado", description: "Em breve (Sprint 3) — Compare orçamento com execução mensal." },
-  aprovacoes: { title: "Aprovação de Pagamentos", description: "Em breve (Sprint 4) — Workflow multi-nível com alçada por valor." },
   comissoes: { title: "Comissões de Vendas", description: "Acesse pela Gestão de Contratos → quitação de NF gera comissão automaticamente." },
 };
 
@@ -136,6 +148,7 @@ export default function Financeiro() {
         ) : (
           <FinHomeHub onNavigate={setActiveView} />
         )}
+        <FinCommandPalette onNavigate={setActiveView} />
       </div>
     </AppLayout>
   );
