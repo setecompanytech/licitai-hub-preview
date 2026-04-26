@@ -368,6 +368,16 @@ export default function FinEmissorNFe() {
         transporte: { ...transporte },
         valores: { frete: valorFrete, seguro: valorSeguro, desconto, outras: outrasDespesas },
         info_complementares: infoComplementares || undefined,
+        // SEFAZ 4.00 — Sprints 1/2/3
+        fiscais: {
+          tpNF: fiscais.tpNF,
+          indFinal: fiscais.indFinal,
+          idDest: fiscais.idDest,
+          tpEmis: fiscais.tpEmis,
+          refNFe: fiscais.refNFe ? fiscais.refNFe.replace(/\D/g, "") : undefined,
+          numero_manual: fiscais.numero_manual ? Number(fiscais.numero_manual) : undefined,
+          autXML: fiscais.autXML.map(c => c.replace(/\D/g, "")).filter(c => c.length === 14),
+        },
       };
       if (modelo === "nfse") {
         payload.servico = { descricao: serviceDescricao, valor: serviceValor, codigo_servico: serviceCodigo || undefined };
