@@ -72,6 +72,8 @@ project_id = "sbnlovigyifvrkgsoalj"
     verify_jwt = false
   [functions.distribuir-editais]
     verify_jwt = false
+  [functions.coletar-diario-belem]
+    verify_jwt = false
 
   [functions.pncp-gerar-embeddings]
     verify_jwt = false
