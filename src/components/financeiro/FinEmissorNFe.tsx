@@ -212,6 +212,46 @@ export default function FinEmissorNFe() {
     ? serviceValor
     : totalProdutos + valorFrete + valorSeguro + outrasDespesas - desconto;
 
+  // ======= Validação específica do bloco Transporte (modalidade_frete) =======
+  const transporteValidacao = useMemo(() => {
+    const erros: string[] = [];
+    const avisos: string[] = [];
+    const m = transporte.modalidade_frete;
+    const exigeTransportador = m === "0" || m === "1" || m === "2"; // CIF, FOB, terceiros
+    const proprio = m === "3" || m === "4"; // próprio remetente/destinatário
+    const semFrete = m === "9";
+
+    if (semFrete) {
+      const algumDado =
+        transporte.transportador_nome || transporte.transportador_doc ||
+        transporte.placa_veiculo || transporte.qtd_volumes ||
+        transporte.peso_bruto || transporte.peso_liquido;
+      if (algumDado) avisos.push('Modalidade "9 — Sem frete" dispensa transportador e volumes. Os dados preenchidos serão ignorados pela SEFAZ.');
+    }
+
+    if (exigeTransportador || proprio) {
+      if (!transporte.transportador_nome.trim()) erros.push("Informe a razão social/nome do transportador.");
+      const docLimpo = transporte.transportador_doc.replace(/\D/g, "");
+      if (!docLimpo) erros.push("Informe o CNPJ/CPF do transportador.");
+      else if (docLimpo.length !== 11 && docLimpo.length !== 14) erros.push("CNPJ/CPF do transportador inválido.");
+      if (!transporte.transportador_uf || transporte.transportador_uf.length !== 2) avisos.push("UF do transportador não informada.");
+      // Volumes
+      const qtd = Number(transporte.qtd_volumes);
+      if (!transporte.qtd_volumes || isNaN(qtd) || qtd <= 0) erros.push("Informe a quantidade de volumes transportados.");
+      if (!transporte.especie.trim()) erros.push("Informe a espécie dos volumes (Caixa, Pallet, etc.).");
+      const pb = Number(String(transporte.peso_bruto).replace(",", "."));
+      const pl = Number(String(transporte.peso_liquido).replace(",", "."));
+      if (!transporte.peso_bruto || isNaN(pb) || pb <= 0) erros.push("Informe o peso bruto total (kg).");
+      if (!transporte.peso_liquido || isNaN(pl) || pl <= 0) erros.push("Informe o peso líquido total (kg).");
+      if (!isNaN(pb) && !isNaN(pl) && pl > pb) erros.push("Peso líquido não pode ser maior que o peso bruto.");
+      // Veículo (apenas avisos — opcional na SEFAZ)
+      if (proprio && !transporte.placa_veiculo.trim()) avisos.push("Frete próprio: recomenda-se informar a placa do veículo.");
+      if (transporte.placa_veiculo && !transporte.uf_veiculo) avisos.push("UF da placa do veículo não informada.");
+    }
+
+    return { erros, avisos };
+  }, [transporte]);
+
   // ======= Validações pré-envio (estilo SEFAZ) =======
   const validacoes = useMemo(() => {
     const erros: string[] = [];
@@ -228,12 +268,14 @@ export default function FinEmissorNFe() {
       if (itens.some(i => i.valor_unitario <= 0)) erros.push("Item com valor unitário zerado.");
       if (itens.some(i => i.quantidade <= 0)) erros.push("Item com quantidade zerada.");
       if (totalNota <= 0) erros.push("Valor total da nota deve ser maior que zero.");
+      erros.push(...transporteValidacao.erros);
+      avisos.push(...transporteValidacao.avisos);
     } else {
       if (!serviceDescricao) erros.push("Descrição do serviço obrigatória.");
       if (serviceValor <= 0) erros.push("Valor do serviço deve ser maior que zero.");
     }
     return { erros, avisos, ok: erros.length === 0 };
-  }, [empresaAtiva, destinatario, itens, modelo, serviceDescricao, serviceValor, totalNota]);
+  }, [empresaAtiva, destinatario, itens, modelo, serviceDescricao, serviceValor, totalNota, transporteValidacao]);
 
   const emitir = async () => {
     if (!validacoes.ok) {
@@ -591,6 +633,31 @@ export default function FinEmissorNFe() {
                     <div className="md:col-span-3"><Label>Peso líquido (kg)</Label><Input type="number" step="0.001" value={transporte.peso_liquido} onChange={e => setTransporte({ ...transporte, peso_liquido: e.target.value })} placeholder="Ex: 12.000" /></div>
                   </div>
                 </div>
+
+                {/* Alertas contextuais por modalidade */}
+                {transporteValidacao.erros.length > 0 && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Dados de transporte obrigatórios</AlertTitle>
+                    <AlertDescription>
+                      <ul className="list-disc pl-5 text-sm space-y-0.5 mt-1">
+                        {transporteValidacao.erros.map((e, i) => <li key={i}>{e}</li>)}
+                      </ul>
+                      <p className="text-xs mt-2 opacity-80">A emissão será bloqueada até que estes campos sejam preenchidos.</p>
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {transporteValidacao.erros.length === 0 && transporteValidacao.avisos.length > 0 && (
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>Atenção ao bloco de transporte</AlertTitle>
+                    <AlertDescription>
+                      <ul className="list-disc pl-5 text-sm space-y-0.5 mt-1">
+                        {transporteValidacao.avisos.map((a, i) => <li key={i}>{a}</li>)}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
               </CardContent>
             </Card>
           )}
