@@ -18,7 +18,7 @@ import { writeExcelFile } from "@/lib/excel-utils";
  * --------------------------------------------------------------------------*/
 
 type Entidade = "pessoas" | "a_pagar" | "a_receber";
-type Status = "todos" | "previsto" | "pago" | "atrasado" | "cancelado";
+type Status = "todos" | "previsto" | "realizado" | "em_atraso" | "conciliado" | "cancelado";
 
 const HEADERS_PESSOAS = [
   "Tipo (cliente/fornecedor)", "CNPJ/CPF", "Razão Social / Nome", "Nome Fantasia",
