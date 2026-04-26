@@ -678,7 +678,7 @@ export default function FinEmissorNFe() {
                             <TableCell className="max-w-[280px]">
                               <div className="flex items-start gap-1.5">
                                 {n.status === "processando" && <Loader2 className="w-3 h-3 mt-0.5 animate-spin text-muted-foreground shrink-0" />}
-                                {n.status === "autorizada" && <CheckCircle2 className="w-3 h-3 mt-0.5 text-green-500 shrink-0" />}
+                                {n.status === "autorizada" && <CheckCircle2 className="w-3 h-3 mt-0.5 text-primary shrink-0" />}
                                 {(n.status === "rejeitada" || n.status === "denegada") && <AlertCircle className="w-3 h-3 mt-0.5 text-destructive shrink-0" />}
                                 <span className="text-xs text-muted-foreground line-clamp-2" title={motivoTexto}>{motivoTexto}</span>
                               </div>
