@@ -369,7 +369,7 @@ export default function FinImportarOMIE() {
     }));
     const { error } = await supabase.from("financeiro_lancamentos").insert(payload as any);
     if (error) throw error;
-    const semVinculo = payload.filter((p) => !p.pessoa_id && d_haviaPessoa(p)).length;
+    const semVinculo = validas.filter(({ data: d }) => d.pessoa_documento && !pessoaPorDoc[d.pessoa_documento]).length;
     toast.success(
       `${payload.length} lançamento(s) importado(s).${semVinculo ? ` ${semVinculo} sem vínculo automático de pessoa.` : ""}`
     );
