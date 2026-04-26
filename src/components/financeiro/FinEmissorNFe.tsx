@@ -94,7 +94,9 @@ const destinatarioVazio = (): Destinatario => ({
 
 const transporteVazio = (): Transporte => ({
   modalidade_frete: "9", transportador_nome: "", transportador_doc: "",
-  placa_veiculo: "", uf_veiculo: "", qtd_volumes: "", especie: "",
+  transportador_ie: "", transportador_endereco: "", transportador_municipio: "", transportador_uf: "",
+  placa_veiculo: "", uf_veiculo: "", rntrc_antt: "",
+  qtd_volumes: "", especie: "", marca_volumes: "", numeracao_volumes: "",
   peso_bruto: "", peso_liquido: "",
 });
 
