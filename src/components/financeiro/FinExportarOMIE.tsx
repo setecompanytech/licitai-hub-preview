@@ -101,7 +101,7 @@ export default function FinExportarOMIE() {
           .from("financeiro_lancamentos")
           .select("id", { count: "exact", head: true })
           .eq("empresa_id", empresaId)
-          .eq("tipo", entidade)
+          .eq("tipo", entidade as "a_pagar" | "a_receber")
           .gte("data_vencimento", dataInicio)
           .lte("data_vencimento", dataFim);
         if (status !== "todos") q = q.eq("status", status);
