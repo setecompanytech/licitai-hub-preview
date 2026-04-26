@@ -24,6 +24,7 @@ import {
   ORIGEM_MERCADORIA, UNIDADES_COMERCIAIS, FRETE_MODALIDADES, FINALIDADES_NFE,
   PRESENCA_COMPRADOR, ETAPAS_EMISSAO,
 } from "@/lib/nfeReference";
+import { CFOPSelect } from "./CFOPSelect";
 
 type ItemNFe = {
   codigo: string;
@@ -446,14 +447,18 @@ export default function FinEmissorNFe() {
                       <div className="col-span-12 md:col-span-2"><Label className="text-xs">Código</Label><Input value={it.codigo} onChange={e => atualizarItem(idx, "codigo", e.target.value)} placeholder="PRD0001" /></div>
                       <div className="col-span-12 md:col-span-6"><Label className="text-xs">Descrição</Label><Input value={it.descricao} onChange={e => atualizarItem(idx, "descricao", e.target.value)} /></div>
                       <div className="col-span-6 md:col-span-2"><Label className="text-xs">NCM</Label><Input maxLength={8} value={it.ncm} onChange={e => atualizarItem(idx, "ncm", e.target.value.replace(/\D/g, ""))} placeholder="00000000" /></div>
-                      <div className="col-span-6 md:col-span-2">
+                      <div className="col-span-12 md:col-span-4">
                         <Label className="text-xs">CFOP</Label>
-                        <Select value={it.cfop} onValueChange={v => atualizarItem(idx, "cfop", v)}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent className="max-h-72">
-                            {CFOPS_FREQUENTES.map(c => <SelectItem key={c.codigo} value={c.codigo}>{c.codigo} — {c.descricao}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <CFOPSelect
+                          value={it.cfop}
+                          onChange={(v) => atualizarItem(idx, "cfop", v)}
+                          tipo="saida"
+                          ufDestino={
+                            destinatario.uf && empresaAtiva?.uf
+                              ? destinatario.uf === empresaAtiva.uf ? "mesma" : "outra"
+                              : undefined
+                          }
+                        />
                       </div>
                       <div className="col-span-4 md:col-span-2">
                         <Label className="text-xs">Unidade</Label>

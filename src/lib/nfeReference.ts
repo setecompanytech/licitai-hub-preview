@@ -1,8 +1,18 @@
 // Referências fiscais para emissão de NF-e
-// Base: Manual SEBRAE de Emissão Fiscal + tabelas oficiais SEFAZ
+// Base: Manual SEBRAE de Emissão Fiscal + tabelas oficiais SEFAZ + Anexo CFOP/ECF da Receita Federal
+
+import { CFOPS_COMPLETOS, CFOPS_INDEX, filtrarCFOPs, sugerirCFOPVenda } from "./cfopCompleto";
 
 export type CFOPOption = { codigo: string; descricao: string; tipo: "saida" | "entrada"; uf_destino: "mesma" | "outra" | "exterior" };
 
+// Reexports para uso direto em componentes
+export { CFOPS_COMPLETOS, CFOPS_INDEX, filtrarCFOPs, sugerirCFOPVenda };
+
+/**
+ * Subconjunto curado dos CFOPs mais usados no dia a dia (vendas, devoluções,
+ * remessas, exportação). Útil para selects rápidos. Para a lista completa use
+ * `CFOPS_COMPLETOS` (296 códigos oficiais da Receita Federal).
+ */
 export const CFOPS_FREQUENTES: CFOPOption[] = [
   // Vendas internas (mesmo estado)
   { codigo: "5101", descricao: "Venda de produção do estabelecimento", tipo: "saida", uf_destino: "mesma" },
