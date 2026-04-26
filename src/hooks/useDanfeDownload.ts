@@ -113,5 +113,38 @@ export function useDanfeDownload() {
 
   const cancelar = useCallback(() => { cancelPolling.current = true; }, []);
 
-  return { baixarDanfe, aguardarAutorizacaoEBaixar, cancelar, downloading, polling };
+  /**
+   * Consulta única (sem polling) do status na SEFAZ. Retorna o resultado e,
+   * quando autorizada, dispara o download do DANFE automaticamente.
+   */
+  const consultarStatus = useCallback(async (
+    nfeId: string,
+    opts?: { autoBaixar?: boolean; silencioso?: boolean }
+  ): Promise<ConsultaResult | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke("emitir-nfe?action=consultar", {
+        body: { nfe_id: nfeId },
+      });
+      if (error) throw error;
+      const result = data as ConsultaResult;
+      if (!opts?.silencioso) {
+        if (result?.status === "autorizada") {
+          toast.success(`NF-e autorizada — protocolo ${result.protocolo || "registrado"}`);
+        } else if (result?.status === "rejeitada" || result?.status === "denegada") {
+          toast.error(`NF-e ${result.status}: ${result.mensagem || "verifique o motivo"}`);
+        } else {
+          toast.info(`Status atual: ${result?.status || "desconhecido"}`);
+        }
+      }
+      if (result?.status === "autorizada" && opts?.autoBaixar !== false) {
+        await baixarDanfe(nfeId, { silencioso: true });
+      }
+      return result;
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao consultar status");
+      return null;
+    }
+  }, [baixarDanfe]);
+
+  return { baixarDanfe, aguardarAutorizacaoEBaixar, consultarStatus, cancelar, downloading, polling };
 }
