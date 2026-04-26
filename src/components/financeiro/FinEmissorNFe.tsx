@@ -24,6 +24,7 @@ import {
   ORIGEM_MERCADORIA, UNIDADES_COMERCIAIS, FRETE_MODALIDADES, FINALIDADES_NFE,
   PRESENCA_COMPRADOR, ETAPAS_EMISSAO,
 } from "@/lib/nfeReference";
+import { CFOPSelect } from "./CFOPSelect";
 
 type ItemNFe = {
   codigo: string;
