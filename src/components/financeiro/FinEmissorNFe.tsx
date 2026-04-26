@@ -268,12 +268,14 @@ export default function FinEmissorNFe() {
       if (itens.some(i => i.valor_unitario <= 0)) erros.push("Item com valor unitário zerado.");
       if (itens.some(i => i.quantidade <= 0)) erros.push("Item com quantidade zerada.");
       if (totalNota <= 0) erros.push("Valor total da nota deve ser maior que zero.");
+      erros.push(...transporteValidacao.erros);
+      avisos.push(...transporteValidacao.avisos);
     } else {
       if (!serviceDescricao) erros.push("Descrição do serviço obrigatória.");
       if (serviceValor <= 0) erros.push("Valor do serviço deve ser maior que zero.");
     }
     return { erros, avisos, ok: erros.length === 0 };
-  }, [empresaAtiva, destinatario, itens, modelo, serviceDescricao, serviceValor, totalNota]);
+  }, [empresaAtiva, destinatario, itens, modelo, serviceDescricao, serviceValor, totalNota, transporteValidacao]);
 
   const emitir = async () => {
     if (!validacoes.ok) {
