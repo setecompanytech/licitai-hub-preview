@@ -93,6 +93,7 @@ const transporteVazio = (): Transporte => ({
 export default function FinEmissorNFe() {
   const { empresaAtiva } = useEmpresa();
   const { buscarPorDocumento, loading: buscandoCNPJ } = useBuscaCNPJ();
+  const { baixarDanfe, aguardarAutorizacaoEBaixar, downloading, polling } = useDanfeDownload();
 
   const [modelo, setModelo] = useState<"nfe" | "nfce" | "nfse">("nfe");
   const [naturezaOp, setNaturezaOp] = useState(NATUREZAS_OPERACAO[0]);
