@@ -174,6 +174,15 @@ export default function FinEmissorNFe() {
   const [loadingList, setLoadingList] = useState(false);
   const [activeTab, setActiveTab] = useState("emissao");
 
+  // ====== Cálculo automático do idDest (1=Interna, 2=Interestadual, 3=Exterior) ======
+  useEffect(() => {
+    const ufEmit = (empresaAtiva?.uf || "").toUpperCase();
+    const ufDest = (destinatario.uf || "").toUpperCase();
+    if (!ufEmit || !ufDest) return;
+    const novo: FiscaisExtras["idDest"] = ufDest === "EX" ? "3" : ufDest === ufEmit ? "1" : "2";
+    if (novo !== fiscais.idDest) setFiscais(f => ({ ...f, idDest: novo }));
+  }, [empresaAtiva?.uf, destinatario.uf, fiscais.idDest]);
+
   const carregar = async () => {
     if (!empresaAtiva) return;
     setLoadingList(true);
