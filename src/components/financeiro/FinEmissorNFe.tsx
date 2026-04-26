@@ -254,9 +254,16 @@ export default function FinEmissorNFe() {
         toast.warning(data.message || "Configure FOCUS_NFE_API_TOKEN para emitir.");
         return;
       }
-      toast.success(data?.message || "Solicitação de emissão enviada à SEFAZ");
+      toast.success(data?.message || "NF-e enviada à SEFAZ — aguardando autorização...");
       await carregar();
       setActiveTab("emitidas");
+
+      // Polling automático até autorização + download do DANFE
+      const nfeId = data?.nfe_id;
+      if (nfeId && modelo !== "nfse") {
+        await aguardarAutorizacaoEBaixar(nfeId);
+        await carregar();
+      }
     } catch (e: any) {
       toast.error(e.message);
     } finally {
