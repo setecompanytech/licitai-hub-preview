@@ -1,6 +1,7 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target, FileDown, Calculator } from "lucide-react";
+import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target, FileDown, Calculator, Eye } from "lucide-react";
+import FinResumoVisor, { getResumoAutoOpen } from "@/components/financeiro/FinResumoVisor";
 import FinApuracao from "@/components/financeiro/FinApuracao";
 import FinPlanoContas from "@/components/financeiro/FinPlanoContas";
 import FinSaldosAbertura from "@/components/financeiro/FinSaldosAbertura";
@@ -27,6 +28,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export default function Financeiro() {
   const { empresaAtiva, loading } = useEmpresa();
+  const defaultTab = getResumoAutoOpen() ? "resumo" : "dashboard";
 
   return (
     <AppLayout>
@@ -45,8 +47,9 @@ export default function Financeiro() {
             </CardContent>
           </Card>
         ) : (
-          <Tabs defaultValue="dashboard" className="space-y-4">
+          <Tabs defaultValue={defaultTab} className="space-y-4">
             <TabsList className="flex flex-wrap h-auto w-full">
+              <TabsTrigger value="resumo"><Eye className="w-4 h-4 mr-1.5" />Resumo</TabsTrigger>
               <TabsTrigger value="dashboard"><LayoutDashboard className="w-4 h-4 mr-1.5" />Dashboard</TabsTrigger>
               <TabsTrigger value="lancamentos"><ListOrdered className="w-4 h-4 mr-1.5" />Lançamentos</TabsTrigger>
               <TabsTrigger value="a_pagar"><ArrowUpCircle className="w-4 h-4 mr-1.5" />Contas a Pagar</TabsTrigger>
@@ -69,6 +72,7 @@ export default function Financeiro() {
               <TabsTrigger value="apuracao"><Calculator className="w-4 h-4 mr-1.5" />Apuração</TabsTrigger>
               <TabsTrigger value="relatorios"><FileDown className="w-4 h-4 mr-1.5" />Relatórios</TabsTrigger>
             </TabsList>
+            <TabsContent value="resumo"><FinResumoVisor /></TabsContent>
             <TabsContent value="dashboard"><FinDashboardTabs /></TabsContent>
             <TabsContent value="lancamentos"><FinLancamentos /></TabsContent>
             <TabsContent value="a_pagar"><FinContasPagar /></TabsContent>
