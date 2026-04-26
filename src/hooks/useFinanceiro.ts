@@ -920,7 +920,19 @@ export function useResumoVisorFinanceiro() {
       if (atrasosRes.error) throw atrasosRes.error;
       if (mesRes.error) throw mesRes.error;
 
-      const saldoTotal = (contasRes.data ?? []).reduce((s, c) => s + Number(c.saldo_atual ?? 0), 0);
+      const contasRows = (contasRes.data ?? []) as Array<{ id: string; nome: string; tipo: string | null; banco_nome: string | null; agencia: string | null; conta: string | null; cor: string | null; saldo_atual: number | null; ativa: boolean }>;
+      const contasSaldo = contasRows.map((c) => ({
+        id: c.id,
+        nome: c.nome,
+        tipo: c.tipo,
+        banco: c.banco_nome,
+        agencia: c.agencia,
+        conta: c.conta,
+        cor: c.cor,
+        saldoAtual: Number(c.saldo_atual ?? 0),
+        ativa: c.ativa,
+      }));
+      const saldoTotal = contasSaldo.filter((c) => c.ativa).reduce((s, c) => s + c.saldoAtual, 0);
 
       // Próximos 10 dias
       const buckets = new Map<string, { previstoPagar: number; previstoReceber: number }>();
