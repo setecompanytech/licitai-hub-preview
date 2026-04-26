@@ -5,11 +5,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { RefreshCw, Wallet, ArrowDownCircle, ArrowUpCircle, AlertTriangle, TrendingUp, Clock, Activity } from "lucide-react";
+import {
+  RefreshCw, Wallet, ArrowDownCircle, ArrowUpCircle, AlertTriangle, TrendingUp, Clock, Activity,
+  Plus, ArrowLeftRight, FileSpreadsheet, CheckCircle2, Layers, Banknote, Landmark, PiggyBank, CreditCard,
+} from "lucide-react";
 import { ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
 import { useResumoVisorFinanceiro } from "@/hooks/useFinanceiro";
 import { formatBRL } from "@/lib/financeiro/formatters";
 import { useQueryClient } from "@tanstack/react-query";
+
+function navegarFinanceiro(view: string) {
+  window.dispatchEvent(new CustomEvent("fin:navigate", { detail: view }));
+}
 
 const AUTO_OPEN_KEY = "fin_resumo_auto_open";
 
@@ -88,6 +95,36 @@ export default function FinResumoVisor() {
         </div>
       </div>
 
+      {/* Atalhos rápidos */}
+      <Card className="border-dashed">
+        <CardContent className="p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground mr-2 ml-1">Ações rápidas</span>
+            <Button size="sm" variant="default" onClick={() => navegarFinanceiro("a_pagar")}>
+              <Plus className="w-4 h-4 mr-1.5" /> Conta a Pagar
+            </Button>
+            <Button size="sm" variant="default" onClick={() => navegarFinanceiro("a_receber")}>
+              <Plus className="w-4 h-4 mr-1.5" /> Conta a Receber
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navegarFinanceiro("transferencia")}>
+              <ArrowLeftRight className="w-4 h-4 mr-1.5" /> Transferência
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navegarFinanceiro("conciliacao")}>
+              <CheckCircle2 className="w-4 h-4 mr-1.5" /> Conciliação
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navegarFinanceiro("baixa_lote")}>
+              <Layers className="w-4 h-4 mr-1.5" /> Baixa em Lote
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navegarFinanceiro("importar_ofx")}>
+              <FileSpreadsheet className="w-4 h-4 mr-1.5" /> Importar OFX
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => navegarFinanceiro("contas")}>
+              <Wallet className="w-4 h-4 mr-1.5" /> Gerenciar Contas
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Hero + gráfico */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Hero */}
@@ -160,6 +197,9 @@ export default function FinResumoVisor() {
           atraso={data.hojeReceber.atraso}
         />
       </div>
+
+      {/* Saldos por conta */}
+      <SaldosPorConta contas={data.contasSaldo} saldoTotal={data.saldoTotal} />
 
       {/* Indicadores extras */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -285,6 +325,91 @@ function TopAtrasosCard({ titulo, itens, tipo }: { titulo: string; itens: Array<
                 </li>
               );
             })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function iconeContaTipo(tipo: string | null) {
+  switch ((tipo ?? "").toLowerCase()) {
+    case "corrente": return Landmark;
+    case "poupanca":
+    case "poupança": return PiggyBank;
+    case "cartao":
+    case "cartão":
+    case "cartao_credito": return CreditCard;
+    case "caixa":
+    case "dinheiro": return Banknote;
+    default: return Wallet;
+  }
+}
+
+function SaldosPorConta({ contas, saldoTotal }: { contas: Array<{ id: string; nome: string; tipo: string | null; banco: string | null; agencia: string | null; conta: string | null; cor: string | null; saldoAtual: number; ativa: boolean }>; saldoTotal: number }) {
+  const ativas = contas.filter((c) => c.ativa);
+  return (
+    <Card>
+      <CardHeader className="pb-2 flex flex-row items-center justify-between">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Wallet className="w-4 h-4 text-primary" />
+          Saldos por conta
+          <Badge variant="secondary" className="ml-1 text-[10px]">{ativas.length} ativas</Badge>
+        </CardTitle>
+        <Button size="sm" variant="ghost" onClick={() => navegarFinanceiro("contas")}>Gerenciar</Button>
+      </CardHeader>
+      <CardContent className="p-0">
+        {ativas.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm text-muted-foreground">
+            Nenhuma conta cadastrada.{" "}
+            <Button size="sm" variant="link" onClick={() => navegarFinanceiro("contas")}>Cadastrar agora</Button>
+          </div>
+        ) : (
+          <ul className="divide-y">
+            {ativas.map((c) => {
+              const Icon = iconeContaTipo(c.tipo);
+              const negativo = c.saldoAtual < 0;
+              const pct = saldoTotal > 0 ? (c.saldoAtual / saldoTotal) * 100 : 0;
+              const subtitulo = [c.banco, c.agencia, c.conta].filter(Boolean).join(" · ");
+              return (
+                <li
+                  key={c.id}
+                  className="flex items-center gap-3 px-5 py-3 hover:bg-muted/40 transition-colors cursor-pointer"
+                  onClick={() => navegarFinanceiro("contas")}
+                >
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: c.cor ? `${c.cor}22` : "hsl(var(--muted))", color: c.cor ?? "hsl(var(--foreground))" }}
+                  >
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{c.nome}</div>
+                    {subtitulo && <div className="text-[11px] text-muted-foreground truncate">{subtitulo}</div>}
+                    <div className="h-1 bg-muted rounded-full mt-1.5 overflow-hidden">
+                      <div
+                        className={negativo ? "h-full bg-rose-500" : "h-full bg-primary"}
+                        style={{ width: `${Math.min(100, Math.abs(pct))}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className={`text-sm font-semibold tabular-nums ${negativo ? "text-rose-600 dark:text-rose-400" : "text-foreground"}`}>
+                      {formatBRL(c.saldoAtual)}
+                    </div>
+                    {saldoTotal > 0 && !negativo && (
+                      <div className="text-[10px] text-muted-foreground tabular-nums">{pct.toFixed(1)}%</div>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+            <li className="flex items-center justify-between px-5 py-3 bg-muted/30 font-medium">
+              <span className="text-sm">Saldo consolidado</span>
+              <span className={`text-sm tabular-nums ${saldoTotal < 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground"}`}>
+                {formatBRL(saldoTotal)}
+              </span>
+            </li>
           </ul>
         )}
       </CardContent>

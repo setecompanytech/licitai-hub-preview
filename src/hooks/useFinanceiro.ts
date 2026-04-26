@@ -863,6 +863,7 @@ export function useFluxoCaixa(diasFrente = 90) {
 // ----------------------------------------------------------------------------
 export type ResumoVisor = {
   saldoTotal: number;
+  contasSaldo: Array<{ id: string; nome: string; tipo: string | null; banco: string | null; agencia: string | null; conta: string | null; cor: string | null; saldoAtual: number; ativa: boolean }>;
   proximos10Dias: Array<{ data: string; previstoPagar: number; previstoReceber: number; saldoProjetado: number }>;
   hojePagar: { qtd: number; total: number; atraso: number };
   hojeReceber: { qtd: number; total: number; atraso: number };
@@ -890,7 +891,7 @@ export function useResumoVisorFinanceiro() {
       const mesAtual = hoje.toISOString().slice(0, 7);
 
       const [contasRes, futurosRes, atrasosRes, mesRes] = await Promise.all([
-        supabase.from("financeiro_contas").select("saldo_atual").eq("empresa_id", empresaId!).eq("ativa", true),
+        supabase.from("financeiro_contas").select("id, nome, tipo, banco_nome, agencia, conta, cor, saldo_atual, ativa, ordem").eq("empresa_id", empresaId!).order("ordem", { ascending: true }),
         supabase
           .from("financeiro_lancamentos")
           .select("id, valor, tipo, status, data_vencimento")
@@ -919,7 +920,19 @@ export function useResumoVisorFinanceiro() {
       if (atrasosRes.error) throw atrasosRes.error;
       if (mesRes.error) throw mesRes.error;
 
-      const saldoTotal = (contasRes.data ?? []).reduce((s, c) => s + Number(c.saldo_atual ?? 0), 0);
+      const contasRows = (contasRes.data ?? []) as Array<{ id: string; nome: string; tipo: string | null; banco_nome: string | null; agencia: string | null; conta: string | null; cor: string | null; saldo_atual: number | null; ativa: boolean }>;
+      const contasSaldo = contasRows.map((c) => ({
+        id: c.id,
+        nome: c.nome,
+        tipo: c.tipo,
+        banco: c.banco_nome,
+        agencia: c.agencia,
+        conta: c.conta,
+        cor: c.cor,
+        saldoAtual: Number(c.saldo_atual ?? 0),
+        ativa: c.ativa,
+      }));
+      const saldoTotal = contasSaldo.filter((c) => c.ativa).reduce((s, c) => s + c.saldoAtual, 0);
 
       // Próximos 10 dias
       const buckets = new Map<string, { previstoPagar: number; previstoReceber: number }>();
@@ -993,6 +1006,7 @@ export function useResumoVisorFinanceiro() {
 
       return {
         saldoTotal,
+        contasSaldo,
         proximos10Dias,
         hojePagar,
         hojeReceber,
