@@ -94,7 +94,27 @@ const transporteVazio = (): Transporte => ({
 export default function FinEmissorNFe() {
   const { empresaAtiva } = useEmpresa();
   const { buscarPorDocumento, loading: buscandoCNPJ } = useBuscaCNPJ();
-  const { baixarDanfe, aguardarAutorizacaoEBaixar, downloading, polling } = useDanfeDownload();
+  const { baixarDanfe, aguardarAutorizacaoEBaixar, consultarStatus, downloading, polling } = useDanfeDownload();
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+
+  const atualizarStatusLinha = async (nfeId: string) => {
+    setRefreshingId(nfeId);
+    try {
+      await consultarStatus(nfeId, { autoBaixar: true });
+      await carregar();
+    } finally {
+      setRefreshingId(null);
+    }
+  };
+
+  const STATUS_LABEL: Record<string, string> = {
+    rascunho: "Rascunho",
+    processando: "Aguardando autorização da SEFAZ",
+    autorizada: "Autorizada — DANFE disponível",
+    rejeitada: "Rejeitada pela SEFAZ",
+    denegada: "Denegada pela SEFAZ",
+    cancelada: "Cancelada",
+  };
 
   const [modelo, setModelo] = useState<"nfe" | "nfce" | "nfse">("nfe");
   const [naturezaOp, setNaturezaOp] = useState(NATUREZAS_OPERACAO[0]);
