@@ -434,28 +434,29 @@ export function useMembrosEmpresa() {
     queryKey: ["fin-membros-empresa", empresaId],
     enabled: !!empresaId,
     queryFn: async (): Promise<MembroEmpresa[]> => {
-      const { data: membros, error } = await supabase
+      const { data, error } = await supabase
         .from("empresa_membros")
-        .select("user_id, papel")
-        .eq("empresa_id", empresaId!);
+        .select("user_id, papel, nome, email")
+        .eq("empresa_id", empresaId!)
+        .order("nome", { nullsFirst: false });
       if (error) throw error;
-      const ids = (membros ?? []).map((m: any) => m.user_id);
-      if (ids.length === 0) return [];
-      const { data: perfis, error: errP } = await supabase
-        .from("profiles")
-        .select("user_id, nome_completo, email")
-        .in("user_id", ids);
-      if (errP) throw errP;
-      const mapPerfis = new Map((perfis ?? []).map((p: any) => [p.user_id, p]));
-      return (membros ?? []).map((m: any) => {
-        const p = mapPerfis.get(m.user_id) ?? {};
-        return {
-          user_id: m.user_id,
-          papel: m.papel ?? null,
-          nome_completo: (p as any).nome_completo ?? null,
-          email: (p as any).email ?? null,
-        };
-      });
+      // Enriquecimento com profiles (nome_completo) — best-effort
+      const ids = (data ?? []).map((m: any) => m.user_id);
+      let perfis: any[] = [];
+      if (ids.length > 0) {
+        const { data: pData } = await supabase
+          .from("profiles")
+          .select("user_id, nome_completo")
+          .in("user_id", ids);
+        perfis = pData ?? [];
+      }
+      const mapPerfis = new Map(perfis.map((p) => [p.user_id, p.nome_completo]));
+      return (data ?? []).map((m: any) => ({
+        user_id: m.user_id,
+        papel: m.papel ?? null,
+        nome_completo: m.nome ?? mapPerfis.get(m.user_id) ?? null,
+        email: m.email ?? null,
+      }));
     },
   });
 }
