@@ -63,6 +63,24 @@ interface EmitirNFeRequest {
   pagamentos?: Array<{ forma: string; valor: number }>;
   informacoes_adicionais?: string;
   empresa_id?: string;
+  transporte?: {
+    modalidade_frete?: string;
+    transportador_nome?: string;
+    transportador_doc?: string;
+    transportador_ie?: string;
+    transportador_endereco?: string;
+    transportador_municipio?: string;
+    transportador_uf?: string;
+    placa_veiculo?: string;
+    uf_veiculo?: string;
+    rntrc_antt?: string;
+    qtd_volumes?: string | number;
+    especie?: string;
+    marca_volumes?: string;
+    numeracao_volumes?: string;
+    peso_bruto?: string | number;
+    peso_liquido?: string | number;
+  };
 }
 
 serve(async (req) => {
