@@ -155,6 +155,8 @@ export default function FinEmissorNFe() {
   const [destinatario, setDestinatario] = useState<Destinatario>(destinatarioVazio());
   const [itens, setItens] = useState<ItemNFe[]>([itemVazio()]);
   const [transporte, setTransporte] = useState<Transporte>(transporteVazio());
+  const [fiscais, setFiscais] = useState<FiscaisExtras>(fiscaisExtrasVazio());
+  const [autXmlInput, setAutXmlInput] = useState("");
 
   const [valorFrete, setValorFrete] = useState(0);
   const [valorSeguro, setValorSeguro] = useState(0);
