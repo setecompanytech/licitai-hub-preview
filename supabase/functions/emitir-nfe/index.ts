@@ -161,6 +161,28 @@ async function handleEmitirNFe(req: Request, supabase: any, userId: string, mode
 
   if (localErr) throw new Error(`criar_local: ${localErr.message}`);
 
+  const t = body.transporte ?? {};
+  const transporteFields: Record<string, unknown> = {
+    modalidade_frete: t.modalidade_frete ?? "9",
+  };
+  if (t.transportador_nome) transporteFields.nome_transportador = t.transportador_nome;
+  const docTransp = (t.transportador_doc ?? "").replace(/\D/g, "");
+  if (docTransp.length === 14) transporteFields.cnpj_transportador = docTransp;
+  else if (docTransp.length === 11) transporteFields.cpf_transportador = docTransp;
+  if (t.transportador_ie) transporteFields.inscricao_estadual_transportador = t.transportador_ie;
+  if (t.transportador_endereco) transporteFields.endereco_transportador = t.transportador_endereco;
+  if (t.transportador_municipio) transporteFields.municipio_transportador = t.transportador_municipio;
+  if (t.transportador_uf) transporteFields.uf_transportador = t.transportador_uf.toUpperCase();
+  if (t.placa_veiculo) transporteFields.placa_veiculo_transportador = t.placa_veiculo.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (t.uf_veiculo) transporteFields.uf_veiculo_transportador = t.uf_veiculo.toUpperCase();
+  if (t.rntrc_antt) transporteFields.rntc_veiculo_transportador = t.rntrc_antt.replace(/\D/g, "");
+  if (t.qtd_volumes) transporteFields.quantidade_volumes_transportados = String(t.qtd_volumes);
+  if (t.especie) transporteFields.especie_volumes_transportados = t.especie;
+  if (t.marca_volumes) transporteFields.marca_volumes_transportados = t.marca_volumes;
+  if (t.numeracao_volumes) transporteFields.numeracao_volumes_transportados = t.numeracao_volumes;
+  if (t.peso_bruto) transporteFields.peso_bruto_total = String(t.peso_bruto).replace(",", ".");
+  if (t.peso_liquido) transporteFields.peso_liquido_total = String(t.peso_liquido).replace(",", ".");
+
   const payload = {
     natureza_operacao: body.natureza_operacao,
     data_emissao: new Date().toISOString(),
@@ -169,7 +191,7 @@ async function handleEmitirNFe(req: Request, supabase: any, userId: string, mode
     finalidade_emissao: body.finalidade ?? "1",
     cnpj_emitente: body.cnpj_emitente.replace(/\D/g, ""),
     presenca_comprador: body.presenca ?? "9",
-    modalidade_frete: "9",
+    ...transporteFields,
     local_destino: "1",
     nome_destinatario: body.destinatario.razao_social,
     cnpj_destinatario: body.destinatario.cnpj?.replace(/\D/g, ""),
