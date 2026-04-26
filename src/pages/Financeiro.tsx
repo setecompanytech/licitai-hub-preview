@@ -81,6 +81,16 @@ export default function Financeiro() {
   const initialView = getResumoAutoOpen() ? "resumo" : null;
   const [activeView, setActiveView] = useState<string | null>(initialView);
 
+  // Atalhos rápidos do FinResumoVisor disparam navegação programática
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail;
+      if (typeof detail === "string" && detail.length > 0) setActiveView(detail);
+    };
+    window.addEventListener("fin:navigate", handler);
+    return () => window.removeEventListener("fin:navigate", handler);
+  }, []);
+
   const activeItem = activeView ? HUB_ITEMS.find((i) => i.id === activeView) : null;
 
   const renderActive = () => {
