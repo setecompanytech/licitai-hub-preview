@@ -28,6 +28,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export default function Financeiro() {
   const { empresaAtiva, loading } = useEmpresa();
+  const defaultTab = getResumoAutoOpen() ? "resumo" : "dashboard";
 
   return (
     <AppLayout>
