@@ -11223,6 +11223,45 @@ export type Database = {
           },
         ]
       }
+      publicacoes_belem_processadas: {
+        Row: {
+          alertas_gerados_count: number
+          data_edicao: string
+          hash_conteudo: string
+          id: string
+          numero_edicao: string | null
+          orgao: string | null
+          processado_em: string
+          tipo: string | null
+          titulo: string | null
+          url_origem: string | null
+        }
+        Insert: {
+          alertas_gerados_count?: number
+          data_edicao: string
+          hash_conteudo: string
+          id?: string
+          numero_edicao?: string | null
+          orgao?: string | null
+          processado_em?: string
+          tipo?: string | null
+          titulo?: string | null
+          url_origem?: string | null
+        }
+        Update: {
+          alertas_gerados_count?: number
+          data_edicao?: string
+          hash_conteudo?: string
+          id?: string
+          numero_edicao?: string | null
+          orgao?: string | null
+          processado_em?: string
+          tipo?: string | null
+          titulo?: string | null
+          url_origem?: string | null
+        }
+        Relationships: []
+      }
       publicacoes_dou_processadas: {
         Row: {
           cnpj_mencionado: string | null
