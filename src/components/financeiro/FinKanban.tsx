@@ -1,84 +1,120 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useEmpresa } from "@/contexts/EmpresaContext";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CheckCircle2, AlertCircle, Clock, FileText, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  FileText,
+  Loader2,
+  Plus,
+  Search,
+  Pencil,
+  User2,
+  Layers,
+} from "lucide-react";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { toast } from "@/hooks/use-toast";
-
-interface Lancamento {
-  id: string;
-  descricao: string;
-  valor: number;
-  data_competencia: string;
-  data_pagamento: string | null;
-  status: string;
-  documento_ref: string | null;
-}
+import {
+  useLancamentos,
+  useUpsertLancamento,
+  useMembrosEmpresa,
+  type Lancamento,
+} from "@/hooks/useFinanceiro";
+import LancamentoDialog from "./LancamentoDialog";
 
 type ColunaKanban = "aberto" | "vence_7d" | "vencido" | "pago";
 
 const COLUNAS: { id: ColunaKanban; nome: string; cor: string; icone: typeof Clock }[] = [
-  { id: "aberto", nome: "Em aberto", cor: "bg-info/10 border-info/30", icone: FileText },
-  { id: "vence_7d", nome: "Vence em 7 dias", cor: "bg-warning/10 border-warning/30", icone: Clock },
-  { id: "vencido", nome: "Vencido", cor: "bg-destructive/10 border-destructive/30", icone: AlertCircle },
-  { id: "pago", nome: "Concluído", cor: "bg-success/10 border-success/30", icone: CheckCircle2 },
+  { id: "aberto",   nome: "Em aberto",        cor: "bg-info/10 border-info/30",               icone: FileText },
+  { id: "vence_7d", nome: "Vence em 7 dias",  cor: "bg-warning/10 border-warning/30",         icone: Clock },
+  { id: "vencido",  nome: "Vencido",          cor: "bg-destructive/10 border-destructive/30", icone: AlertCircle },
+  { id: "pago",     nome: "Concluído",        cor: "bg-success/10 border-success/30",         icone: CheckCircle2 },
 ];
 
 interface Props {
   tipo: "a_pagar" | "a_receber";
 }
 
+type LancamentoCard = Lancamento & {
+  conta?: { id: string; nome: string } | null;
+  categoria?: { id: string; nome: string; natureza: string } | null;
+  pessoa?: { id: string; nome: string } | null;
+};
+
 export default function FinKanban({ tipo }: Props) {
-  const { empresaAtiva } = useEmpresa();
-  const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [busca, setBusca] = useState("");
+  const [filtroVendedor, setFiltroVendedor] = useState<string>("todos");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<Partial<Lancamento> | null>(null);
 
-  const carregar = async () => {
-    if (!empresaAtiva) return;
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("fin_lancamentos")
-      .select("id, descricao, valor, data_competencia, data_pagamento, status, documento_ref")
-      .eq("empresa_id", empresaAtiva.id)
-      .eq("tipo", tipo)
-      .order("data_competencia", { ascending: true })
-      .limit(500);
-    if (error) toast({ title: "Erro ao carregar", description: error.message, variant: "destructive" });
-    setLancamentos(data || []);
-    setLoading(false);
-  };
+  const { data = [], isLoading } = useLancamentos({ tipo });
+  const { data: membros = [] } = useMembrosEmpresa();
+  const upsert = useUpsertLancamento();
 
-  useEffect(() => {
-    carregar();
-  }, [empresaAtiva?.id, tipo]);
+  const lancamentos = data as LancamentoCard[];
 
-  const classificar = (l: Lancamento): ColunaKanban => {
+  const dataReferenciaVenc = (l: LancamentoCard): string =>
+    l.data_vencimento ?? l.data_competencia;
+
+  const classificar = (l: LancamentoCard): ColunaKanban => {
     if (l.status === "realizado" || l.status === "conciliado") return "pago";
-    const dias = differenceInDays(parseISO(l.data_competencia), new Date());
+    const ref = dataReferenciaVenc(l);
+    const dias = differenceInDays(parseISO(ref), new Date());
     if (dias < 0) return "vencido";
     if (dias <= 7) return "vence_7d";
     return "aberto";
   };
 
-  const marcarPago = async (id: string) => {
-    const { error } = await supabase
-      .from("fin_lancamentos")
-      .update({ status: "realizado", data_pagamento: new Date().toISOString().slice(0, 10) })
-      .eq("id", id);
-    if (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-      return;
-    }
-    toast({ title: tipo === "a_pagar" ? "Marcado como pago" : "Marcado como recebido" });
-    carregar();
+  const lancamentosFiltrados = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    return lancamentos.filter((l) => {
+      if (filtroVendedor !== "todos" && (l as any).vendedor_responsavel_id !== filtroVendedor) {
+        return false;
+      }
+      if (!termo) return true;
+      return (
+        l.descricao.toLowerCase().includes(termo) ||
+        (l.numero_documento ?? "").toLowerCase().includes(termo) ||
+        (l.pessoa?.nome ?? "").toLowerCase().includes(termo)
+      );
+    });
+  }, [lancamentos, busca, filtroVendedor]);
+
+  const total = lancamentosFiltrados.reduce(
+    (s, l) => (classificar(l) !== "pago" ? s + Number(l.valor) : s),
+    0,
+  );
+
+  const marcarPago = async (l: LancamentoCard) => {
+    await upsert.mutateAsync({
+      id: l.id,
+      status: "realizado",
+      data_realizado: new Date().toISOString().slice(0, 10),
+    } as any);
   };
 
-  if (loading) {
+  const abrirNovo = () => {
+    setEditing(null);
+    setDialogOpen(true);
+  };
+
+  const abrirEditar = (l: LancamentoCard) => {
+    setEditing(l);
+    setDialogOpen(true);
+  };
+
+  const nomeVendedor = (id: string | null | undefined) => {
+    if (!id) return null;
+    const m = membros.find((x) => x.user_id === id);
+    return m?.nome_completo || m?.email || null;
+  };
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -86,27 +122,56 @@ export default function FinKanban({ tipo }: Props) {
     );
   }
 
-  const total = lancamentos.reduce((s, l) => (classificar(l) !== "pago" ? s + Number(l.valor) : s), 0);
-
   return (
     <div className="space-y-4">
+      {/* Cabeçalho com totalizador, filtros e ação */}
       <Card>
-        <CardContent className="pt-4 flex items-center justify-between">
+        <CardContent className="pt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
             <p className="text-sm text-muted-foreground">
               Total {tipo === "a_pagar" ? "a pagar" : "a receber"} em aberto
             </p>
-            <p className="text-2xl font-bold">
+            <p className="text-2xl font-bold tabular-nums">
               {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
             </p>
           </div>
-          <Badge variant="outline">{lancamentos.length} lançamentos</Badge>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar descrição, doc ou pessoa…"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                className="pl-8 w-64"
+              />
+            </div>
+            <Select value={filtroVendedor} onValueChange={setFiltroVendedor}>
+              <SelectTrigger className="w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os responsáveis</SelectItem>
+                {membros.map((m) => (
+                  <SelectItem key={m.user_id} value={m.user_id}>
+                    {m.nome_completo || m.email || m.user_id.slice(0, 8)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Badge variant="outline">{lancamentosFiltrados.length} lançamentos</Badge>
+            <Button size="sm" onClick={abrirNovo}>
+              <Plus className="w-4 h-4 mr-1" />
+              Novo {tipo === "a_pagar" ? "pagamento" : "recebimento"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
+      {/* Quadro Kanban */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {COLUNAS.map((col) => {
-          const items = lancamentos.filter((l) => classificar(l) === col.id);
+          const items = lancamentosFiltrados.filter((l) => classificar(l) === col.id);
           const subtotal = items.reduce((s, l) => s + Number(l.valor), 0);
           const Icone = col.icone;
           return (
@@ -116,8 +181,9 @@ export default function FinKanban({ tipo }: Props) {
                   <Icone className="w-4 h-4" />
                   {col.nome}
                 </CardTitle>
-                <p className="text-xs text-muted-foreground">
-                  {items.length} · {subtotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                <p className="text-xs text-muted-foreground tabular-nums">
+                  {items.length} ·{" "}
+                  {subtotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                 </p>
               </CardHeader>
               <CardContent className="p-2">
@@ -126,34 +192,84 @@ export default function FinKanban({ tipo }: Props) {
                     {items.length === 0 ? (
                       <p className="text-xs text-muted-foreground text-center py-6">Nenhum item</p>
                     ) : (
-                      items.map((l) => (
-                        <Card key={l.id} className="bg-card border shadow-sm">
-                          <CardContent className="p-3 space-y-1">
-                            <p className="text-sm font-medium line-clamp-2">{l.descricao}</p>
-                            {l.documento_ref && (
-                              <p className="text-[11px] text-muted-foreground">Doc: {l.documento_ref}</p>
-                            )}
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">
-                                {format(parseISO(l.data_competencia), "dd/MM/yy", { locale: ptBR })}
-                              </span>
-                              <span className="text-sm font-semibold">
-                                {Number(l.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                              </span>
-                            </div>
-                            {col.id !== "pago" && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="w-full h-7 text-xs"
-                                onClick={() => marcarPago(l.id)}
-                              >
-                                {tipo === "a_pagar" ? "Marcar pago" : "Marcar recebido"}
-                              </Button>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))
+                      items.map((l) => {
+                        const venc = dataReferenciaVenc(l);
+                        const vendedor = nomeVendedor((l as any).vendedor_responsavel_id);
+                        const total = Number(l.parcela_total ?? 1);
+                        const num = Number(l.parcela_numero ?? 1);
+                        const isParcelado = total > 1;
+                        return (
+                          <Card key={l.id} className="bg-card border shadow-sm">
+                            <CardContent className="p-3 space-y-1.5">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-sm font-medium line-clamp-2 flex-1">
+                                  {l.descricao}
+                                </p>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6 shrink-0"
+                                  onClick={() => abrirEditar(l)}
+                                  title="Editar"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+
+                              {l.pessoa?.nome && (
+                                <p className="text-[11px] text-muted-foreground truncate">
+                                  {tipo === "a_pagar" ? "Fornecedor" : "Cliente"}: {l.pessoa.nome}
+                                </p>
+                              )}
+                              {l.numero_documento && (
+                                <p className="text-[11px] text-muted-foreground">
+                                  Doc: {l.numero_documento}
+                                  {l.serie_documento ? ` / ${l.serie_documento}` : ""}
+                                </p>
+                              )}
+
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {isParcelado && (
+                                  <Badge variant="secondary" className="text-[10px] gap-1">
+                                    <Layers className="w-3 h-3" />
+                                    {num}/{total}
+                                  </Badge>
+                                )}
+                                {vendedor && (
+                                  <Badge variant="outline" className="text-[10px] gap-1">
+                                    <User2 className="w-3 h-3" />
+                                    {vendedor}
+                                  </Badge>
+                                )}
+                              </div>
+
+                              <div className="flex items-center justify-between pt-1">
+                                <span className="text-xs text-muted-foreground">
+                                  Venc: {format(parseISO(venc), "dd/MM/yy", { locale: ptBR })}
+                                </span>
+                                <span className="text-sm font-semibold tabular-nums">
+                                  {Number(l.valor).toLocaleString("pt-BR", {
+                                    style: "currency",
+                                    currency: "BRL",
+                                  })}
+                                </span>
+                              </div>
+
+                              {col.id !== "pago" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full h-7 text-xs"
+                                  onClick={() => marcarPago(l)}
+                                  disabled={upsert.isPending}
+                                >
+                                  {tipo === "a_pagar" ? "Marcar pago" : "Marcar recebido"}
+                                </Button>
+                              )}
+                            </CardContent>
+                          </Card>
+                        );
+                      })
                     )}
                   </div>
                 </ScrollArea>
@@ -162,6 +278,13 @@ export default function FinKanban({ tipo }: Props) {
           );
         })}
       </div>
+
+      <LancamentoDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        initial={editing}
+        defaultTipo={tipo}
+      />
     </div>
   );
 }
