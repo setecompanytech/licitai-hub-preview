@@ -478,6 +478,9 @@ export default function FinEmissorNFe() {
                               ? destinatario.uf === empresaAtiva.uf ? "mesma" : "outra"
                               : undefined
                           }
+                          ufEmitente={empresaAtiva?.uf}
+                          ufDestinatario={destinatario.uf}
+                          finalidade={finalidade}
                         />
                       </div>
                       <div className="col-span-4 md:col-span-2">
