@@ -326,9 +326,12 @@ export default function FinEmissorNFe() {
         const n = Number(fiscais.numero_manual);
         if (!Number.isInteger(n) || n <= 0 || n > 999999999) erros.push("Número manual da NF-e inválido (1 a 999.999.999).");
       }
+    } else {
+      if (!serviceDescricao) erros.push("Descrição do serviço obrigatória.");
+      if (serviceValor <= 0) erros.push("Valor do serviço deve ser maior que zero.");
     }
     return { erros, avisos, ok: erros.length === 0 };
-  }, [empresaAtiva, destinatario, itens, modelo, serviceDescricao, serviceValor, totalNota, transporteValidacao]);
+  }, [empresaAtiva, destinatario, itens, modelo, serviceDescricao, serviceValor, totalNota, transporteValidacao, finalidade, presenca, fiscais, infoComplementares]);
 
   const emitir = async () => {
     if (!validacoes.ok) {
