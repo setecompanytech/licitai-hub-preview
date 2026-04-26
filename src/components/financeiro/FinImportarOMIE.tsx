@@ -566,6 +566,3 @@ function inferirTipo(v: any): string {
   return "fornecedor";
 }
 
-function d_haviaPessoa(p: any): boolean {
-  return Boolean(p && (p.descricao || "").length > 0); // placeholder só p/ contagem
-}
