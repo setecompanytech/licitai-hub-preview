@@ -633,6 +633,31 @@ export default function FinEmissorNFe() {
                     <div className="md:col-span-3"><Label>Peso líquido (kg)</Label><Input type="number" step="0.001" value={transporte.peso_liquido} onChange={e => setTransporte({ ...transporte, peso_liquido: e.target.value })} placeholder="Ex: 12.000" /></div>
                   </div>
                 </div>
+
+                {/* Alertas contextuais por modalidade */}
+                {transporteValidacao.erros.length > 0 && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Dados de transporte obrigatórios</AlertTitle>
+                    <AlertDescription>
+                      <ul className="list-disc pl-5 text-sm space-y-0.5 mt-1">
+                        {transporteValidacao.erros.map((e, i) => <li key={i}>{e}</li>)}
+                      </ul>
+                      <p className="text-xs mt-2 opacity-80">A emissão será bloqueada até que estes campos sejam preenchidos.</p>
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {transporteValidacao.erros.length === 0 && transporteValidacao.avisos.length > 0 && (
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>Atenção ao bloco de transporte</AlertTitle>
+                    <AlertDescription>
+                      <ul className="list-disc pl-5 text-sm space-y-0.5 mt-1">
+                        {transporteValidacao.avisos.map((a, i) => <li key={i}>{a}</li>)}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
               </CardContent>
             </Card>
           )}
