@@ -8183,6 +8183,8 @@ export type Database = {
       financeiro_pessoas: {
         Row: {
           ativo: boolean
+          cnae_principal: string | null
+          contato_secundario: Json | null
           created_at: string
           dados_bancarios: Json | null
           documento: string
@@ -8190,16 +8192,26 @@ export type Database = {
           empresa_id: string
           endereco: Json | null
           id: string
+          ie: string | null
+          im: string | null
+          ind_ie_dest: number | null
+          limite_credito: number | null
           nome: string
           nome_fantasia: string | null
           observacoes: string | null
           pessoa_tipo: string
+          prazo_padrao_dias: number | null
+          regime_tributario: string | null
+          site: string | null
+          tags: string[] | null
           telefone: string | null
           tipo: string
           updated_at: string
         }
         Insert: {
           ativo?: boolean
+          cnae_principal?: string | null
+          contato_secundario?: Json | null
           created_at?: string
           dados_bancarios?: Json | null
           documento: string
@@ -8207,16 +8219,26 @@ export type Database = {
           empresa_id: string
           endereco?: Json | null
           id?: string
+          ie?: string | null
+          im?: string | null
+          ind_ie_dest?: number | null
+          limite_credito?: number | null
           nome: string
           nome_fantasia?: string | null
           observacoes?: string | null
           pessoa_tipo: string
+          prazo_padrao_dias?: number | null
+          regime_tributario?: string | null
+          site?: string | null
+          tags?: string[] | null
           telefone?: string | null
           tipo: string
           updated_at?: string
         }
         Update: {
           ativo?: boolean
+          cnae_principal?: string | null
+          contato_secundario?: Json | null
           created_at?: string
           dados_bancarios?: Json | null
           documento?: string
@@ -8224,10 +8246,18 @@ export type Database = {
           empresa_id?: string
           endereco?: Json | null
           id?: string
+          ie?: string | null
+          im?: string | null
+          ind_ie_dest?: number | null
+          limite_credito?: number | null
           nome?: string
           nome_fantasia?: string | null
           observacoes?: string | null
           pessoa_tipo?: string
+          prazo_padrao_dias?: number | null
+          regime_tributario?: string | null
+          site?: string | null
+          tags?: string[] | null
           telefone?: string | null
           tipo?: string
           updated_at?: string
