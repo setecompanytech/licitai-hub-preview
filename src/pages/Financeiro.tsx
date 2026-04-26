@@ -47,8 +47,9 @@ export default function Financeiro() {
             </CardContent>
           </Card>
         ) : (
-          <Tabs defaultValue="dashboard" className="space-y-4">
+          <Tabs defaultValue={defaultTab} className="space-y-4">
             <TabsList className="flex flex-wrap h-auto w-full">
+              <TabsTrigger value="resumo"><Eye className="w-4 h-4 mr-1.5" />Resumo</TabsTrigger>
               <TabsTrigger value="dashboard"><LayoutDashboard className="w-4 h-4 mr-1.5" />Dashboard</TabsTrigger>
               <TabsTrigger value="lancamentos"><ListOrdered className="w-4 h-4 mr-1.5" />Lançamentos</TabsTrigger>
               <TabsTrigger value="a_pagar"><ArrowUpCircle className="w-4 h-4 mr-1.5" />Contas a Pagar</TabsTrigger>
