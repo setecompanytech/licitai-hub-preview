@@ -302,9 +302,30 @@ export default function FinEmissorNFe() {
       if (totalNota <= 0) erros.push("Valor total da nota deve ser maior que zero.");
       erros.push(...transporteValidacao.erros);
       avisos.push(...transporteValidacao.avisos);
-    } else {
-      if (!serviceDescricao) erros.push("Descrição do serviço obrigatória.");
-      if (serviceValor <= 0) erros.push("Valor do serviço deve ser maior que zero.");
+
+      // Sprint 1: refNFe obrigatória em devolução (finalidade=4)
+      if (finalidade === "4") {
+        const chave = (fiscais.refNFe || "").replace(/\D/g, "");
+        if (!chave) erros.push("Devolução (finalidade 4) exige a chave da NF-e referenciada (44 dígitos).");
+        else if (chave.length !== 44) erros.push("Chave da NF-e referenciada inválida — deve conter 44 dígitos.");
+      }
+      // Sprint 1: indFinal=1 → presença não pode ser 0 (sem operação presencial)
+      if (fiscais.indFinal === "1" && presenca === "0") {
+        avisos.push("Consumidor final geralmente exige indicador de presença diferente de 0.");
+      }
+      // Sprint 2: contingência exige justificativa em info complementar
+      if (fiscais.tpEmis !== "1" && (!infoComplementares || infoComplementares.trim().length < 15)) {
+        erros.push("Modo de emissão em contingência exige justificativa (mín. 15 caracteres) nas informações complementares.");
+      }
+      // Sprint 3: validar CNPJs autorizados (autXML)
+      if (fiscais.autXML.length > 10) erros.push("Máximo de 10 CNPJs autorizados a baixar o XML.");
+      const autInvalidos = fiscais.autXML.filter(c => c.replace(/\D/g, "").length !== 14);
+      if (autInvalidos.length) erros.push(`CNPJ(s) autorizado(s) inválido(s): ${autInvalidos.join(", ")}`);
+      // Sprint 3: numeração manual
+      if (fiscais.numero_manual) {
+        const n = Number(fiscais.numero_manual);
+        if (!Number.isInteger(n) || n <= 0 || n > 999999999) erros.push("Número manual da NF-e inválido (1 a 999.999.999).");
+      }
     }
     return { erros, avisos, ok: erros.length === 0 };
   }, [empresaAtiva, destinatario, itens, modelo, serviceDescricao, serviceValor, totalNota, transporteValidacao]);
