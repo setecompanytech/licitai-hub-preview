@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import {
   FileText, Plus, Trash2, Send, AlertCircle, Loader2, ExternalLink, Search,
-  CheckCircle2, Building2, User, Truck, Calculator, ShieldCheck, FileDown, Info,
+  CheckCircle2, Building2, User, Truck, Calculator, ShieldCheck, FileDown, Info, RefreshCw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
