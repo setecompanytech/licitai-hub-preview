@@ -7540,6 +7540,9 @@ export type Database = {
           observacoes: string | null
           origem: Database["public"]["Enums"]["financeiro_origem_movimento"]
           origem_ref: string | null
+          parcela_numero: number | null
+          parcela_pai_id: string | null
+          parcela_total: number | null
           pessoa_id: string | null
           recorrencia_id: string | null
           recorrencia_rrule: string | null
@@ -7558,6 +7561,7 @@ export type Database = {
           valor_juros: number | null
           valor_multa: number | null
           valor_tarifa: number | null
+          vendedor_responsavel_id: string | null
         }
         Insert: {
           anexos?: Json | null
@@ -7589,6 +7593,9 @@ export type Database = {
           observacoes?: string | null
           origem?: Database["public"]["Enums"]["financeiro_origem_movimento"]
           origem_ref?: string | null
+          parcela_numero?: number | null
+          parcela_pai_id?: string | null
+          parcela_total?: number | null
           pessoa_id?: string | null
           recorrencia_id?: string | null
           recorrencia_rrule?: string | null
@@ -7607,6 +7614,7 @@ export type Database = {
           valor_juros?: number | null
           valor_multa?: number | null
           valor_tarifa?: number | null
+          vendedor_responsavel_id?: string | null
         }
         Update: {
           anexos?: Json | null
@@ -7638,6 +7646,9 @@ export type Database = {
           observacoes?: string | null
           origem?: Database["public"]["Enums"]["financeiro_origem_movimento"]
           origem_ref?: string | null
+          parcela_numero?: number | null
+          parcela_pai_id?: string | null
+          parcela_total?: number | null
           pessoa_id?: string | null
           recorrencia_id?: string | null
           recorrencia_rrule?: string | null
@@ -7656,6 +7667,7 @@ export type Database = {
           valor_juros?: number | null
           valor_multa?: number | null
           valor_tarifa?: number | null
+          vendedor_responsavel_id?: string | null
         }
         Relationships: [
           {
@@ -7726,6 +7738,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_parcela_pai_id_fkey"
+            columns: ["parcela_pai_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_lancamentos"
             referencedColumns: ["id"]
           },
           {

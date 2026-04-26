@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,11 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MoneyInput } from "@/components/ui/money-input";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Info } from "lucide-react";
 import {
   useContas,
   useCategorias,
   usePessoas,
   useUpsertLancamento,
+  useGerarParcelas,
+  useMembrosEmpresa,
   type Lancamento,
 } from "@/hooks/useFinanceiro";
 import type { Database } from "@/integrations/supabase/types";
@@ -40,19 +46,36 @@ const TIPO_DOC_OPTIONS: { value: TipoDocumento; label: string }[] = [
   { value: "outro", label: "Outros" },
 ];
 
+const FORMAS_PAGAMENTO = [
+  { value: "boleto", label: "Boleto" },
+  { value: "pix", label: "PIX" },
+  { value: "ted", label: "TED" },
+  { value: "doc", label: "DOC" },
+  { value: "dinheiro", label: "Dinheiro" },
+  { value: "cartao_credito", label: "Cartão de crédito" },
+  { value: "cartao_debito", label: "Cartão de débito" },
+  { value: "cheque", label: "Cheque" },
+  { value: "debito_automatico", label: "Débito automático" },
+  { value: "transferencia", label: "Transferência" },
+];
+
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   initial?: Partial<Lancamento> | null;
+  /** Pré-define o tipo (a_pagar / a_receber) ao abrir um novo */
+  defaultTipo?: Tipo;
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-export default function LancamentoDialog({ open, onOpenChange, initial }: Props) {
+export default function LancamentoDialog({ open, onOpenChange, initial, defaultTipo }: Props) {
   const { data: contas = [] } = useContas();
   const { data: categorias = [] } = useCategorias();
   const { data: pessoas = [] } = usePessoas();
+  const { data: membros = [] } = useMembrosEmpresa();
   const upsert = useUpsertLancamento();
+  const gerarParcelas = useGerarParcelas();
 
   const [tipo, setTipo] = useState<Tipo>("a_pagar");
   const [natureza, setNatureza] = useState<Natureza>("despesa");
@@ -66,15 +89,31 @@ export default function LancamentoDialog({ open, onOpenChange, initial }: Props)
   const [categoriaId, setCategoriaId] = useState<string>("");
   const [pessoaId, setPessoaId] = useState<string>("");
   const [observacoes, setObservacoes] = useState("");
+
+  // Documento fiscal
   const [tipoDocumento, setTipoDocumento] = useState<TipoDocumento | "">("");
   const [numeroDocumento, setNumeroDocumento] = useState("");
   const [serieDocumento, setSerieDocumento] = useState("");
   const [chaveAcessoNfe, setChaveAcessoNfe] = useState("");
   const [dataEmissao, setDataEmissao] = useState<string>("");
 
+  // Cobrança / acréscimos / descontos (estilo OMIE)
+  const [valorJuros, setValorJuros] = useState(0);
+  const [valorMulta, setValorMulta] = useState(0);
+  const [valorDesconto, setValorDesconto] = useState(0);
+  const [valorTarifa, setValorTarifa] = useState(0);
+  const [formaPagamento, setFormaPagamento] = useState<string>("");
+
+  // Parcelamento
+  const [parcelar, setParcelar] = useState(false);
+  const [qtdParcelas, setQtdParcelas] = useState<number>(2);
+
+  // Vendedor responsável
+  const [vendedorId, setVendedorId] = useState<string>("");
+
   useEffect(() => {
     if (!open) return;
-    setTipo((initial?.tipo as Tipo) ?? "a_pagar");
+    setTipo((initial?.tipo as Tipo) ?? defaultTipo ?? "a_pagar");
     setNatureza((initial?.natureza as Natureza) ?? "despesa");
     setStatus((initial?.status as Status) ?? "previsto");
     setDescricao(initial?.descricao ?? "");
@@ -91,7 +130,15 @@ export default function LancamentoDialog({ open, onOpenChange, initial }: Props)
     setSerieDocumento((initial as any)?.serie_documento ?? "");
     setChaveAcessoNfe((initial as any)?.chave_acesso_nfe ?? "");
     setDataEmissao((initial as any)?.data_emissao ?? "");
-  }, [open, initial]);
+    setValorJuros(Number((initial as any)?.valor_juros ?? 0));
+    setValorMulta(Number((initial as any)?.valor_multa ?? 0));
+    setValorDesconto(Number((initial as any)?.valor_desconto ?? 0));
+    setValorTarifa(Number((initial as any)?.valor_tarifa ?? 0));
+    setFormaPagamento((initial as any)?.forma_pagamento ?? "");
+    setVendedorId((initial as any)?.vendedor_responsavel_id ?? "");
+    setParcelar(false);
+    setQtdParcelas(2);
+  }, [open, initial, defaultTipo]);
 
   // Sincroniza natureza padrão por tipo
   useEffect(() => {
@@ -100,10 +147,17 @@ export default function LancamentoDialog({ open, onOpenChange, initial }: Props)
     else setNatureza("movimentacao");
   }, [tipo]);
 
+  const valorLiquido = useMemo(
+    () => Math.max(0, Number(valor) + Number(valorJuros) + Number(valorMulta) + Number(valorTarifa) - Number(valorDesconto)),
+    [valor, valorJuros, valorMulta, valorDesconto, valorTarifa],
+  );
+
+  const editando = !!initial?.id;
+  const podeParcelar = !editando && (tipo === "a_pagar" || tipo === "a_receber");
+
   const handleSubmit = async () => {
     if (!descricao.trim()) return;
-    await upsert.mutateAsync({
-      id: initial?.id,
+    const baseBody: any = {
       tipo,
       natureza,
       status,
@@ -121,162 +175,318 @@ export default function LancamentoDialog({ open, onOpenChange, initial }: Props)
       serie_documento: serieDocumento.trim() || null,
       chave_acesso_nfe: chaveAcessoNfe.replace(/\D/g, "").trim() || null,
       data_emissao: dataEmissao || null,
-    } as any);
+      valor_juros: valorJuros || 0,
+      valor_multa: valorMulta || 0,
+      valor_desconto: valorDesconto || 0,
+      valor_tarifa: valorTarifa || 0,
+      forma_pagamento: formaPagamento || null,
+      vendedor_responsavel_id: vendedorId || null,
+    };
+
+    if (parcelar && podeParcelar && qtdParcelas >= 2 && dataVencimento) {
+      await gerarParcelas.mutateAsync({
+        ...baseBody,
+        parcelas: qtdParcelas,
+        valor_total: valor,
+        data_vencimento: dataVencimento,
+      });
+    } else {
+      await upsert.mutateAsync({ id: initial?.id, ...baseBody });
+    }
     onOpenChange(false);
   };
 
   const categoriasFiltradas = categorias.filter((c) =>
-    natureza === "movimentacao" ? true : c.natureza === natureza
+    natureza === "movimentacao" ? true : c.natureza === natureza,
   );
+
+  const pessoasFiltradas = pessoas.filter((p) => {
+    if (tipo === "a_pagar") return p.pessoa_tipo !== "cliente";
+    if (tipo === "a_receber") return p.pessoa_tipo !== "fornecedor";
+    return true;
+  });
+
+  const isSalvando = upsert.isPending || gerarParcelas.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{initial?.id ? "Editar lançamento" : "Novo lançamento"}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {editando ? "Editar lançamento" : "Novo lançamento"}
+            <Badge variant="outline" className="text-xs">
+              {tipo === "a_pagar" ? "Conta a pagar" : tipo === "a_receber" ? "Conta a receber" : tipo}
+            </Badge>
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label>Tipo</Label>
-            <Select value={tipo} onValueChange={(v) => setTipo(v as Tipo)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="a_pagar">A pagar</SelectItem>
-                <SelectItem value="a_receber">A receber</SelectItem>
-                <SelectItem value="movimento_bancario">Movimento bancário</SelectItem>
-                <SelectItem value="transferencia">Transferência</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Status</Label>
-            <Select value={status} onValueChange={(v) => setStatus(v as Status)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="previsto">Previsto</SelectItem>
-                <SelectItem value="realizado">Realizado</SelectItem>
-                <SelectItem value="conciliado">Conciliado</SelectItem>
-                <SelectItem value="em_atraso">Em atraso</SelectItem>
-                <SelectItem value="cancelado">Cancelado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <Tabs defaultValue="geral" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="geral">Geral</TabsTrigger>
+            <TabsTrigger value="cobranca">Cobrança</TabsTrigger>
+            <TabsTrigger value="documento">Documento fiscal</TabsTrigger>
+            <TabsTrigger value="parcelas" disabled={!podeParcelar}>Parcelamento</TabsTrigger>
+          </TabsList>
 
-          <div className="col-span-2 space-y-1.5">
-            <Label>Descrição *</Label>
-            <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: Pagamento fornecedor X" />
-          </div>
+          {/* ---------------- GERAL ---------------- */}
+          <TabsContent value="geral" className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Tipo</Label>
+                <Select value={tipo} onValueChange={(v) => setTipo(v as Tipo)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="a_pagar">A pagar</SelectItem>
+                    <SelectItem value="a_receber">A receber</SelectItem>
+                    <SelectItem value="movimento_bancario">Movimento bancário</SelectItem>
+                    <SelectItem value="transferencia">Transferência</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Status</Label>
+                <Select value={status} onValueChange={(v) => setStatus(v as Status)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="previsto">Previsto</SelectItem>
+                    <SelectItem value="realizado">Realizado</SelectItem>
+                    <SelectItem value="conciliado">Conciliado</SelectItem>
+                    <SelectItem value="em_atraso">Em atraso</SelectItem>
+                    <SelectItem value="cancelado">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="space-y-1.5">
-            <Label>Valor *</Label>
-            <MoneyInput value={valor} onValueChange={setValor} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Conta</Label>
-            <Select value={contaId || "none"} onValueChange={(v) => setContaId(v === "none" ? "" : v)}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">— Sem conta —</SelectItem>
-                {contas.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              <div className="col-span-2 space-y-1.5">
+                <Label>Descrição *</Label>
+                <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: Pagamento fornecedor X" />
+              </div>
 
-          <div className="space-y-1.5">
-            <Label>Competência *</Label>
-            <Input type="date" value={dataCompetencia} onChange={(e) => setDataCompetencia(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Vencimento</Label>
-            <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} />
-          </div>
+              <div className="space-y-1.5">
+                <Label>Valor *</Label>
+                <MoneyInput value={valor} onValueChange={setValor} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Conta</Label>
+                <Select value={contaId || "none"} onValueChange={(v) => setContaId(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Sem conta —</SelectItem>
+                    {contas.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="space-y-1.5">
-            <Label>Pago / recebido em</Label>
-            <Input type="date" value={dataRealizado} onChange={(e) => setDataRealizado(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Categoria</Label>
-            <Select value={categoriaId || "none"} onValueChange={(v) => setCategoriaId(v === "none" ? "" : v)}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">— Sem categoria —</SelectItem>
-                {categoriasFiltradas.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.codigo} · {c.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              <div className="space-y-1.5">
+                <Label>Competência *</Label>
+                <Input type="date" value={dataCompetencia} onChange={(e) => setDataCompetencia(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Vencimento {parcelar && <span className="text-xs text-muted-foreground">(1ª parcela)</span>}</Label>
+                <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} />
+              </div>
 
-          <div className="col-span-2 space-y-1.5">
-            <Label>Pessoa (cliente / fornecedor)</Label>
-            <Select value={pessoaId || "none"} onValueChange={(v) => setPessoaId(v === "none" ? "" : v)}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">— Não informado —</SelectItem>
-                {pessoas.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              <div className="space-y-1.5">
+                <Label>Pago / recebido em</Label>
+                <Input type="date" value={dataRealizado} onChange={(e) => setDataRealizado(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Categoria</Label>
+                <Select value={categoriaId || "none"} onValueChange={(v) => setCategoriaId(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Sem categoria —</SelectItem>
+                    {categoriasFiltradas.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.codigo} · {c.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          {/* Documento fiscal (Sprint D) */}
-          <div className="col-span-2 pt-2 mt-1 border-t">
-            <p className="text-xs font-medium text-muted-foreground mb-2">DOCUMENTO FISCAL</p>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Tipo de documento</Label>
-            <Select value={tipoDocumento || "none"} onValueChange={(v) => setTipoDocumento(v === "none" ? "" : (v as TipoDocumento))}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">— Não informado —</SelectItem>
-                {TIPO_DOC_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Data de emissão</Label>
-            <Input type="date" value={dataEmissao} onChange={(e) => setDataEmissao(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Número do documento</Label>
-            <Input value={numeroDocumento} onChange={(e) => setNumeroDocumento(e.target.value)} placeholder="Ex.: 000123" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Série</Label>
-            <Input value={serieDocumento} onChange={(e) => setSerieDocumento(e.target.value)} placeholder="Ex.: 1" />
-          </div>
-          {(tipoDocumento === "nfe" || tipoDocumento === "nfce" || tipoDocumento === "nfse" || tipoDocumento === "cte") && (
-            <div className="col-span-2 space-y-1.5">
-              <Label>Chave de acesso (44 dígitos)</Label>
-              <Input
-                value={chaveAcessoNfe}
-                onChange={(e) => setChaveAcessoNfe(e.target.value.replace(/\D/g, "").slice(0, 44))}
-                placeholder="00000000000000000000000000000000000000000000"
-                maxLength={44}
-              />
-              {chaveAcessoNfe && chaveAcessoNfe.length !== 44 && (
-                <p className="text-xs text-destructive">A chave deve ter 44 dígitos numéricos.</p>
+              <div className="space-y-1.5">
+                <Label>{tipo === "a_pagar" ? "Fornecedor" : tipo === "a_receber" ? "Cliente" : "Pessoa"}</Label>
+                <Select value={pessoaId || "none"} onValueChange={(v) => setPessoaId(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Não informado —</SelectItem>
+                    {pessoasFiltradas.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.nome}
+                        {p.documento ? ` · ${p.documento}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Vendedor / responsável</Label>
+                <Select value={vendedorId || "none"} onValueChange={(v) => setVendedorId(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Não atribuído —</SelectItem>
+                    {membros.map((m) => (
+                      <SelectItem key={m.user_id} value={m.user_id}>
+                        {m.nome_completo || m.email || m.user_id.slice(0, 8)}
+                        {m.papel ? ` · ${m.papel}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="col-span-2 space-y-1.5">
+                <Label>Observações</Label>
+                <Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={2} />
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ---------------- COBRANÇA ---------------- */}
+          <TabsContent value="cobranca" className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Forma de pagamento</Label>
+                <Select value={formaPagamento || "none"} onValueChange={(v) => setFormaPagamento(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Não informada —</SelectItem>
+                    {FORMAS_PAGAMENTO.map((f) => (
+                      <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Valor base</Label>
+                <MoneyInput value={valor} onValueChange={setValor} />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Juros (R$)</Label>
+                <MoneyInput value={valorJuros} onValueChange={setValorJuros} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Multa (R$)</Label>
+                <MoneyInput value={valorMulta} onValueChange={setValorMulta} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Desconto (R$)</Label>
+                <MoneyInput value={valorDesconto} onValueChange={setValorDesconto} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Tarifa bancária (R$)</Label>
+                <MoneyInput value={valorTarifa} onValueChange={setValorTarifa} />
+              </div>
+            </div>
+
+            <div className="rounded-md border bg-muted/40 p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Info className="w-4 h-4" />
+                Valor líquido a {tipo === "a_pagar" ? "pagar" : "receber"}
+              </div>
+              <div className="text-lg font-semibold tabular-nums">
+                {valorLiquido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ---------------- DOCUMENTO ---------------- */}
+          <TabsContent value="documento" className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Tipo de documento</Label>
+                <Select value={tipoDocumento || "none"} onValueChange={(v) => setTipoDocumento(v === "none" ? "" : (v as TipoDocumento))}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Não informado —</SelectItem>
+                    {TIPO_DOC_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Data de emissão</Label>
+                <Input type="date" value={dataEmissao} onChange={(e) => setDataEmissao(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Número do documento</Label>
+                <Input value={numeroDocumento} onChange={(e) => setNumeroDocumento(e.target.value)} placeholder="Ex.: 000123" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Série</Label>
+                <Input value={serieDocumento} onChange={(e) => setSerieDocumento(e.target.value)} placeholder="Ex.: 1" />
+              </div>
+              {(tipoDocumento === "nfe" || tipoDocumento === "nfce" || tipoDocumento === "nfse" || tipoDocumento === "cte") && (
+                <div className="col-span-2 space-y-1.5">
+                  <Label>Chave de acesso (44 dígitos)</Label>
+                  <Input
+                    value={chaveAcessoNfe}
+                    onChange={(e) => setChaveAcessoNfe(e.target.value.replace(/\D/g, "").slice(0, 44))}
+                    placeholder="00000000000000000000000000000000000000000000"
+                    maxLength={44}
+                  />
+                  {chaveAcessoNfe && chaveAcessoNfe.length !== 44 && (
+                    <p className="text-xs text-destructive">A chave deve ter 44 dígitos numéricos.</p>
+                  )}
+                </div>
               )}
             </div>
-          )}
+          </TabsContent>
 
-          <div className="col-span-2 space-y-1.5">
-            <Label>Observações</Label>
-            <Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={2} />
-          </div>
-        </div>
+          {/* ---------------- PARCELAMENTO ---------------- */}
+          <TabsContent value="parcelas" className="space-y-4">
+            <div className="rounded-md border p-4 flex items-center justify-between">
+              <div>
+                <p className="font-medium">Gerar série de parcelas</p>
+                <p className="text-xs text-muted-foreground">
+                  Divide o valor em N parcelas mensais a partir do vencimento informado.
+                </p>
+              </div>
+              <Switch checked={parcelar} onCheckedChange={setParcelar} />
+            </div>
 
-        <DialogFooter>
+            {parcelar && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Quantidade de parcelas</Label>
+                  <Input
+                    type="number"
+                    min={2}
+                    max={120}
+                    value={qtdParcelas}
+                    onChange={(e) => setQtdParcelas(Math.max(2, parseInt(e.target.value || "2", 10)))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Valor por parcela (estimado)</Label>
+                  <Input
+                    readOnly
+                    value={(valor / Math.max(1, qtdParcelas)).toLocaleString("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    })}
+                    className="text-right tabular-nums"
+                  />
+                </div>
+                <div className="col-span-2 text-xs text-muted-foreground flex items-start gap-2">
+                  <Info className="w-4 h-4 mt-0.5 shrink-0" />
+                  As parcelas serão geradas com vencimentos mensais e numeradas como{" "}
+                  <strong>1/{qtdParcelas}</strong>, <strong>2/{qtdParcelas}</strong>, … A última parcela
+                  recebe o ajuste de centavos para fechar o valor total.
+                </div>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        <DialogFooter className="pt-2 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={upsert.isPending || !descricao.trim()}>
-            {upsert.isPending ? "Salvando..." : "Salvar"}
+          <Button onClick={handleSubmit} disabled={isSalvando || !descricao.trim()}>
+            {isSalvando ? "Salvando..." : parcelar && podeParcelar ? `Gerar ${qtdParcelas} parcelas` : "Salvar"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -312,6 +312,156 @@ export function useDeleteLancamento() {
 }
 
 // ----------------------------------------------------------------------------
+// Parcelamento — gera N lançamentos com vencimentos mensais a partir do "pai".
+// O 1º lançamento é o "pai" (parcela_pai_id = null) e referenciado pelas demais.
+// ----------------------------------------------------------------------------
+export type GerarParcelasInput = Partial<LancamentoInsert> & {
+  parcelas: number;            // total (>=2)
+  data_vencimento: string;     // vencimento da 1ª parcela (YYYY-MM-DD)
+  valor_total: number;         // valor total a ser dividido (em reais)
+  intervalo_dias?: number;     // padrão: mensal (mesmo dia do mês)
+};
+
+export function useGerarParcelas() {
+  const qc = useQueryClient();
+  const empresaId = useEmpresaId();
+  return useMutation({
+    mutationFn: async (input: GerarParcelasInput) => {
+      if (!empresaId) throw new Error("Selecione uma empresa ativa.");
+      const total = Math.max(2, Math.floor(input.parcelas));
+      const valorParcela = Math.round((input.valor_total / total) * 100) / 100;
+      // Ajusta a última parcela para fechar a soma exata
+      const valorUltima = +(input.valor_total - valorParcela * (total - 1)).toFixed(2);
+
+      const baseVenc = new Date(input.data_vencimento + "T12:00:00");
+      const baseComp = input.data_competencia
+        ? new Date(input.data_competencia + "T12:00:00")
+        : baseVenc;
+
+      const datas: { competencia: string; vencimento: string }[] = [];
+      for (let i = 0; i < total; i++) {
+        const v = new Date(baseVenc);
+        const c = new Date(baseComp);
+        if (input.intervalo_dias && input.intervalo_dias > 0) {
+          v.setDate(v.getDate() + input.intervalo_dias * i);
+          c.setDate(c.getDate() + input.intervalo_dias * i);
+        } else {
+          v.setMonth(v.getMonth() + i);
+          c.setMonth(c.getMonth() + i);
+        }
+        datas.push({
+          competencia: c.toISOString().slice(0, 10),
+          vencimento: v.toISOString().slice(0, 10),
+        });
+      }
+
+      const baseBody: LancamentoInsert = {
+        ...(input as LancamentoInsert),
+        empresa_id: empresaId,
+        descricao: input.descricao ?? "",
+        valor: valorParcela,
+        natureza: input.natureza ?? "despesa",
+        tipo: input.tipo ?? "a_pagar",
+        status: input.status ?? "previsto",
+        data_competencia: datas[0].competencia,
+        data_vencimento: datas[0].vencimento,
+        parcela_numero: 1,
+        parcela_total: total,
+        parcela_pai_id: null,
+      };
+      // remove campos auxiliares
+      delete (baseBody as any).parcelas;
+      delete (baseBody as any).valor_total;
+      delete (baseBody as any).intervalo_dias;
+
+      const { data: paiInserido, error: errPai } = await supabase
+        .from("financeiro_lancamentos")
+        .insert(baseBody)
+        .select()
+        .single();
+      if (errPai) throw errPai;
+
+      const filhos: LancamentoInsert[] = [];
+      for (let i = 1; i < total; i++) {
+        filhos.push({
+          ...baseBody,
+          descricao: `${baseBody.descricao} (${i + 1}/${total})`,
+          valor: i === total - 1 ? valorUltima : valorParcela,
+          data_competencia: datas[i].competencia,
+          data_vencimento: datas[i].vencimento,
+          parcela_numero: i + 1,
+          parcela_pai_id: paiInserido.id,
+        });
+      }
+
+      // Renomeia a 1ª também para padronizar "(1/N)"
+      await supabase
+        .from("financeiro_lancamentos")
+        .update({ descricao: `${baseBody.descricao} (1/${total})` })
+        .eq("id", paiInserido.id);
+
+      if (filhos.length > 0) {
+        const { error: errFilhos } = await supabase
+          .from("financeiro_lancamentos")
+          .insert(filhos);
+        if (errFilhos) throw errFilhos;
+      }
+
+      return { pai_id: paiInserido.id, total };
+    },
+    onSuccess: ({ total }) => {
+      qc.invalidateQueries({ queryKey: ["fin-lancamentos"] });
+      qc.invalidateQueries({ queryKey: ["fin-resumo"] });
+      toast.success(`${total} parcelas geradas.`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// ----------------------------------------------------------------------------
+// Membros da empresa (para selecionar vendedor/responsável)
+// ----------------------------------------------------------------------------
+export type MembroEmpresa = {
+  user_id: string;
+  papel: string | null;
+  nome_completo: string | null;
+  email: string | null;
+};
+
+export function useMembrosEmpresa() {
+  const empresaId = useEmpresaId();
+  return useQuery({
+    queryKey: ["fin-membros-empresa", empresaId],
+    enabled: !!empresaId,
+    queryFn: async (): Promise<MembroEmpresa[]> => {
+      const { data, error } = await supabase
+        .from("empresa_membros")
+        .select("user_id, papel, nome, email")
+        .eq("empresa_id", empresaId!)
+        .order("nome", { nullsFirst: false });
+      if (error) throw error;
+      // Enriquecimento com profiles (nome_completo) — best-effort
+      const ids = (data ?? []).map((m: any) => m.user_id);
+      let perfis: any[] = [];
+      if (ids.length > 0) {
+        const { data: pData } = await supabase
+          .from("profiles")
+          .select("user_id, nome_completo")
+          .in("user_id", ids);
+        perfis = pData ?? [];
+      }
+      const mapPerfis = new Map(perfis.map((p) => [p.user_id, p.nome_completo]));
+      return (data ?? []).map((m: any) => ({
+        user_id: m.user_id,
+        papel: m.papel ?? null,
+        nome_completo: m.nome ?? mapPerfis.get(m.user_id) ?? null,
+        email: m.email ?? null,
+      }));
+    },
+  });
+}
+
+// ----------------------------------------------------------------------------
 // Resumo (Dashboard)
 // ----------------------------------------------------------------------------
 export type ResumoFinanceiro = {
