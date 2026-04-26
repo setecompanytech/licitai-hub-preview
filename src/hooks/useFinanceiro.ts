@@ -708,6 +708,153 @@ export function useFluxoCaixa(diasFrente = 90) {
   });
 }
 
+// ----------------------------------------------------------------------------
+// Resumo Visor (próximos 10 dias + cards de hoje + maiores atrasos)
+// ----------------------------------------------------------------------------
+export type ResumoVisor = {
+  saldoTotal: number;
+  proximos10Dias: Array<{ data: string; previstoPagar: number; previstoReceber: number; saldoProjetado: number }>;
+  hojePagar: { qtd: number; total: number; atraso: number };
+  hojeReceber: { qtd: number; total: number; atraso: number };
+  topAtrasosPagar: Array<{ id: string; descricao: string; pessoa: string; diasAtraso: number; valor: number; vencimento: string }>;
+  topAtrasosReceber: Array<{ id: string; descricao: string; pessoa: string; diasAtraso: number; valor: number; vencimento: string }>;
+  inadimplenciaMesPct: number;
+  runwayDias: number | null;
+};
+
+export function useResumoVisorFinanceiro() {
+  const empresaId = useEmpresaId();
+  return useQuery({
+    queryKey: ["fin-resumo-visor", empresaId],
+    enabled: !!empresaId,
+    refetchInterval: 60_000,
+    queryFn: async (): Promise<ResumoVisor> => {
+      const hoje = new Date();
+      const hojeStr = hoje.toISOString().slice(0, 10);
+      const fim10 = new Date(hoje);
+      fim10.setDate(fim10.getDate() + 10);
+      const fim10Str = fim10.toISOString().slice(0, 10);
+      const inicio30 = new Date(hoje);
+      inicio30.setDate(inicio30.getDate() - 30);
+      const inicio30Str = inicio30.toISOString().slice(0, 10);
+      const mesAtual = hoje.toISOString().slice(0, 7);
+
+      const [contasRes, futurosRes, atrasosRes, mesRes] = await Promise.all([
+        supabase.from("financeiro_contas").select("saldo_atual").eq("empresa_id", empresaId!).eq("ativa", true),
+        supabase
+          .from("financeiro_lancamentos")
+          .select("id, valor, tipo, status, data_vencimento")
+          .eq("empresa_id", empresaId!)
+          .in("status", ["previsto", "em_atraso"])
+          .gte("data_vencimento", hojeStr)
+          .lte("data_vencimento", fim10Str)
+          .limit(2000),
+        supabase
+          .from("financeiro_lancamentos")
+          .select("id, descricao, valor, tipo, status, data_vencimento, pessoa:financeiro_pessoas(nome)")
+          .eq("empresa_id", empresaId!)
+          .in("status", ["previsto", "em_atraso"])
+          .lt("data_vencimento", hojeStr)
+          .order("data_vencimento", { ascending: true })
+          .limit(500),
+        supabase
+          .from("financeiro_lancamentos")
+          .select("valor, tipo, status, natureza, data_realizado, data_competencia")
+          .eq("empresa_id", empresaId!)
+          .gte("data_competencia", inicio30Str)
+          .limit(2000),
+      ]);
+      if (contasRes.error) throw contasRes.error;
+      if (futurosRes.error) throw futurosRes.error;
+      if (atrasosRes.error) throw atrasosRes.error;
+      if (mesRes.error) throw mesRes.error;
+
+      const saldoTotal = (contasRes.data ?? []).reduce((s, c) => s + Number(c.saldo_atual ?? 0), 0);
+
+      // Próximos 10 dias
+      const buckets = new Map<string, { previstoPagar: number; previstoReceber: number }>();
+      for (let i = 0; i < 10; i++) {
+        const d = new Date(hoje);
+        d.setDate(d.getDate() + i);
+        buckets.set(d.toISOString().slice(0, 10), { previstoPagar: 0, previstoReceber: 0 });
+      }
+      (futurosRes.data ?? []).forEach((l) => {
+        const k = (l.data_vencimento ?? "").slice(0, 10);
+        const b = buckets.get(k);
+        if (!b) return;
+        const v = Number(l.valor ?? 0);
+        if (l.tipo === "a_pagar") b.previstoPagar += v;
+        else if (l.tipo === "a_receber") b.previstoReceber += v;
+      });
+      let saldoAcumulado = saldoTotal;
+      const proximos10Dias = Array.from(buckets.entries()).map(([data, v]) => {
+        saldoAcumulado += v.previstoReceber - v.previstoPagar;
+        return { data, previstoPagar: v.previstoPagar, previstoReceber: v.previstoReceber, saldoProjetado: saldoAcumulado };
+      });
+
+      // Hoje (a pagar / a receber)
+      const futuros = futurosRes.data ?? [];
+      const atrasos = atrasosRes.data ?? [];
+      const hojePagarLancs = futuros.filter((l) => l.data_vencimento === hojeStr && l.tipo === "a_pagar");
+      const hojeReceberLancs = futuros.filter((l) => l.data_vencimento === hojeStr && l.tipo === "a_receber");
+      const atrasoPagarTot = atrasos.filter((l) => l.tipo === "a_pagar").reduce((s, l) => s + Number(l.valor ?? 0), 0);
+      const atrasoReceberTot = atrasos.filter((l) => l.tipo === "a_receber").reduce((s, l) => s + Number(l.valor ?? 0), 0);
+
+      const hojePagar = {
+        qtd: hojePagarLancs.length,
+        total: hojePagarLancs.reduce((s, l) => s + Number(l.valor ?? 0), 0),
+        atraso: atrasoPagarTot,
+      };
+      const hojeReceber = {
+        qtd: hojeReceberLancs.length,
+        total: hojeReceberLancs.reduce((s, l) => s + Number(l.valor ?? 0), 0),
+        atraso: atrasoReceberTot,
+      };
+
+      // Top atrasos
+      const mapAtraso = (l: typeof atrasos[number]) => {
+        const venc = new Date(l.data_vencimento ?? hojeStr);
+        const dias = Math.max(0, Math.floor((hoje.getTime() - venc.getTime()) / 86400000));
+        return {
+          id: l.id,
+          descricao: l.descricao ?? "Sem descrição",
+          pessoa: (l.pessoa as { nome?: string } | null)?.nome ?? "—",
+          diasAtraso: dias,
+          valor: Number(l.valor ?? 0),
+          vencimento: l.data_vencimento ?? "",
+        };
+      };
+      const topAtrasosPagar = atrasos.filter((l) => l.tipo === "a_pagar").map(mapAtraso).sort((a, b) => b.diasAtraso - a.diasAtraso).slice(0, 5);
+      const topAtrasosReceber = atrasos.filter((l) => l.tipo === "a_receber").map(mapAtraso).sort((a, b) => b.diasAtraso - a.diasAtraso).slice(0, 5);
+
+      // Inadimplência mês = atraso a receber / (recebido + atraso) do mês
+      const lancsMes = (mesRes.data ?? []).filter((l) => (l.data_competencia ?? "").startsWith(mesAtual));
+      const recebidoMes = lancsMes.filter((l) => l.tipo === "a_receber" && (l.status === "realizado" || l.status === "conciliado")).reduce((s, l) => s + Number(l.valor ?? 0), 0);
+      const atrasoReceberMes = lancsMes.filter((l) => l.tipo === "a_receber" && l.status === "em_atraso").reduce((s, l) => s + Number(l.valor ?? 0), 0);
+      const baseInad = recebidoMes + atrasoReceberMes;
+      const inadimplenciaMesPct = baseInad > 0 ? (atrasoReceberMes / baseInad) * 100 : 0;
+
+      // Runway = saldo / (despesa média diária dos últimos 30 dias)
+      const despesa30 = (mesRes.data ?? [])
+        .filter((l) => l.natureza === "despesa" && (l.status === "realizado" || l.status === "conciliado"))
+        .reduce((s, l) => s + Number(l.valor ?? 0), 0);
+      const despDiaria = despesa30 / 30;
+      const runwayDias = despDiaria > 0 ? Math.floor(saldoTotal / despDiaria) : null;
+
+      return {
+        saldoTotal,
+        proximos10Dias,
+        hojePagar,
+        hojeReceber,
+        topAtrasosPagar,
+        topAtrasosReceber,
+        inadimplenciaMesPct,
+        runwayDias,
+      };
+    },
+  });
+}
+
 export function useRefreshFinanceiroViews() {
   const qc = useQueryClient();
   return useMutation({
