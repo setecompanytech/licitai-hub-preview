@@ -198,6 +198,9 @@ export default function FinResumoVisor() {
         />
       </div>
 
+      {/* Saldos por conta */}
+      <SaldosPorConta contas={data.contasSaldo} saldoTotal={data.saldoTotal} />
+
       {/* Indicadores extras */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <IndicadorCard
