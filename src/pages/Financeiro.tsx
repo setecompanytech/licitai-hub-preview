@@ -1,6 +1,9 @@
+import { useState } from "react";
 import AppLayout from "@/components/layout/AppLayout";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target, FileDown, Calculator, Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { ArrowLeft, Home } from "lucide-react";
+import FinHomeHub, { HUB_ITEMS } from "@/components/financeiro/FinHomeHub";
 import FinResumoVisor, { getResumoAutoOpen } from "@/components/financeiro/FinResumoVisor";
 import FinApuracao from "@/components/financeiro/FinApuracao";
 import FinPlanoContas from "@/components/financeiro/FinPlanoContas";
@@ -24,20 +27,102 @@ import FinEmissorNFe from "@/components/financeiro/FinEmissorNFe";
 import FinConsultaNFeEntrada from "@/components/financeiro/FinConsultaNFeEntrada";
 import FinRelatorios from "@/components/financeiro/FinRelatorios";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { Card, CardContent } from "@/components/ui/card";
+
+const VIEW_MAP: Record<string, () => JSX.Element> = {
+  resumo: () => <FinResumoVisor />,
+  dashboard: () => <FinDashboardTabs />,
+  lancamentos: () => <FinLancamentos />,
+  a_pagar: () => <FinContasPagar />,
+  a_receber: () => <FinContasReceber />,
+  conciliacao: () => <FinConciliacao />,
+  fluxo_caixa: () => <FinFluxoCaixa />,
+  dre: () => <FinDRE />,
+  folha: () => <FinFolha />,
+  ocr: () => <FinOCRDocumentos />,
+  emissor_nfe: () => <FinEmissorNFe />,
+  nfe_entrada: () => <FinConsultaNFeEntrada />,
+  integracoes: () => <FinIntegracoes />,
+  contas: () => <FinContas />,
+  centros_custo: () => <FinCentrosCusto />,
+  pessoas: () => <FinPessoas />,
+  categorias: () => <FinCategorias />,
+  plano_contas: () => <FinPlanoContas />,
+  saldos_abertura: () => <FinSaldosAbertura />,
+  orcamento: () => <FinOrcamento />,
+  apuracao: () => <FinApuracao />,
+  relatorios: () => <FinRelatorios />,
+};
+
+const COMING_SOON: Record<string, { title: string; description: string }> = {
+  transferencia: { title: "Transferência entre contas", description: "Em breve (Sprint 1) — Movimente saldo entre contas correntes com lançamento duplo automático." },
+  importar_ofx: { title: "Importar Extrato OFX", description: "Em breve (Sprint 2) — Conciliação sugerida por IA com 1 clique." },
+  cnab: { title: "Remessa & Retorno CNAB", description: "Em breve (Sprint 2) — Cobrança bancária 240/400 e pagamentos em massa." },
+  nfse: { title: "NFS-e Municipal", description: "Em breve (Sprint 4) — Monitor e emissão multi-prefeitura." },
+  resumo_exec: { title: "Resumo Executivo", description: "Em breve (Sprint 3) — One-pager imprimível para diretoria." },
+  previsto_realizado: { title: "Previsto × Realizado", description: "Em breve (Sprint 3) — Compare orçamento com execução mensal." },
+  aprovacoes: { title: "Aprovação de Pagamentos", description: "Em breve (Sprint 4) — Workflow multi-nível com alçada por valor." },
+  comissoes: { title: "Comissões de Vendas", description: "Acesse pela Gestão de Contratos → quitação de NF gera comissão automaticamente." },
+};
 
 export default function Financeiro() {
   const { empresaAtiva, loading } = useEmpresa();
-  const defaultTab = getResumoAutoOpen() ? "resumo" : "dashboard";
+  const initialView = getResumoAutoOpen() ? "resumo" : null;
+  const [activeView, setActiveView] = useState<string | null>(initialView);
+
+  const activeItem = activeView ? HUB_ITEMS.find((i) => i.id === activeView) : null;
+
+  const renderActive = () => {
+    if (!activeView) return null;
+    const View = VIEW_MAP[activeView];
+    if (View) return <View />;
+    const cs = COMING_SOON[activeView];
+    if (cs) {
+      return (
+        <Card>
+          <CardContent className="py-16 text-center space-y-2">
+            <h3 className="text-lg font-semibold">{cs.title}</h3>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">{cs.description}</p>
+          </CardContent>
+        </Card>
+      );
+    }
+    return null;
+  };
 
   return (
     <AppLayout>
       <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-4">
-        <header>
-          <h1 className="text-2xl font-semibold tracking-tight">Financeiro</h1>
-          <p className="text-sm text-muted-foreground">
-            Gestão completa de contas a pagar, receber, conciliação bancária, fluxo de caixa e DRE.
-          </p>
+        <header className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+              <button
+                onClick={() => setActiveView(null)}
+                className="hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                <Home className="w-3 h-3" /> Financeiro
+              </button>
+              {activeItem && (
+                <>
+                  <span>/</span>
+                  <span className="text-foreground">{activeItem.label}</span>
+                </>
+              )}
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {activeItem ? activeItem.label : "Financeiro"}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {activeItem
+                ? activeItem.description
+                : "Hub central de operações financeiras — escolha um módulo abaixo."}
+            </p>
+          </div>
+          {activeView && (
+            <Button variant="outline" size="sm" onClick={() => setActiveView(null)}>
+              <ArrowLeft className="w-4 h-4 mr-1.5" />
+              Voltar ao Hub
+            </Button>
+          )}
         </header>
 
         {!loading && !empresaAtiva ? (
@@ -46,55 +131,10 @@ export default function Financeiro() {
               Selecione uma empresa ativa no menu superior para acessar o módulo financeiro.
             </CardContent>
           </Card>
+        ) : activeView ? (
+          renderActive()
         ) : (
-          <Tabs defaultValue={defaultTab} className="space-y-4">
-            <TabsList className="flex flex-wrap h-auto w-full">
-              <TabsTrigger value="resumo"><Eye className="w-4 h-4 mr-1.5" />Resumo</TabsTrigger>
-              <TabsTrigger value="dashboard"><LayoutDashboard className="w-4 h-4 mr-1.5" />Dashboard</TabsTrigger>
-              <TabsTrigger value="lancamentos"><ListOrdered className="w-4 h-4 mr-1.5" />Lançamentos</TabsTrigger>
-              <TabsTrigger value="a_pagar"><ArrowUpCircle className="w-4 h-4 mr-1.5" />Contas a Pagar</TabsTrigger>
-              <TabsTrigger value="a_receber"><ArrowDownCircle className="w-4 h-4 mr-1.5" />Contas a Receber</TabsTrigger>
-              <TabsTrigger value="conciliacao"><Banknote className="w-4 h-4 mr-1.5" />Conciliação</TabsTrigger>
-              <TabsTrigger value="fluxo_caixa"><LineChart className="w-4 h-4 mr-1.5" />Fluxo de Caixa</TabsTrigger>
-              <TabsTrigger value="dre"><FileBarChart className="w-4 h-4 mr-1.5" />DRE</TabsTrigger>
-              <TabsTrigger value="folha"><Briefcase className="w-4 h-4 mr-1.5" />Folha</TabsTrigger>
-              <TabsTrigger value="ocr"><ScanLine className="w-4 h-4 mr-1.5" />OCR Docs</TabsTrigger>
-              <TabsTrigger value="emissor_nfe"><FileText className="w-4 h-4 mr-1.5" />Emissor NF-e</TabsTrigger>
-              <TabsTrigger value="nfe_entrada"><Inbox className="w-4 h-4 mr-1.5" />NF-e Entrada</TabsTrigger>
-              <TabsTrigger value="integracoes"><Plug className="w-4 h-4 mr-1.5" />Integrações</TabsTrigger>
-              <TabsTrigger value="contas"><Wallet className="w-4 h-4 mr-1.5" />Contas</TabsTrigger>
-              <TabsTrigger value="centros_custo"><FolderTree className="w-4 h-4 mr-1.5" />Centros de Custo</TabsTrigger>
-              <TabsTrigger value="pessoas"><Users className="w-4 h-4 mr-1.5" />Pessoas</TabsTrigger>
-              <TabsTrigger value="categorias"><Tags className="w-4 h-4 mr-1.5" />Categorias</TabsTrigger>
-              <TabsTrigger value="plano_contas"><BookOpen className="w-4 h-4 mr-1.5" />Plano de Contas</TabsTrigger>
-              <TabsTrigger value="saldos_abertura"><Scale className="w-4 h-4 mr-1.5" />Saldos de Abertura</TabsTrigger>
-              <TabsTrigger value="orcamento"><Target className="w-4 h-4 mr-1.5" />Orçamento</TabsTrigger>
-              <TabsTrigger value="apuracao"><Calculator className="w-4 h-4 mr-1.5" />Apuração</TabsTrigger>
-              <TabsTrigger value="relatorios"><FileDown className="w-4 h-4 mr-1.5" />Relatórios</TabsTrigger>
-            </TabsList>
-            <TabsContent value="resumo"><FinResumoVisor /></TabsContent>
-            <TabsContent value="dashboard"><FinDashboardTabs /></TabsContent>
-            <TabsContent value="lancamentos"><FinLancamentos /></TabsContent>
-            <TabsContent value="a_pagar"><FinContasPagar /></TabsContent>
-            <TabsContent value="a_receber"><FinContasReceber /></TabsContent>
-            <TabsContent value="conciliacao"><FinConciliacao /></TabsContent>
-            <TabsContent value="fluxo_caixa"><FinFluxoCaixa /></TabsContent>
-            <TabsContent value="dre"><FinDRE /></TabsContent>
-            <TabsContent value="folha"><FinFolha /></TabsContent>
-            <TabsContent value="ocr"><FinOCRDocumentos /></TabsContent>
-            <TabsContent value="emissor_nfe"><FinEmissorNFe /></TabsContent>
-            <TabsContent value="nfe_entrada"><FinConsultaNFeEntrada /></TabsContent>
-            <TabsContent value="integracoes"><FinIntegracoes /></TabsContent>
-            <TabsContent value="contas"><FinContas /></TabsContent>
-            <TabsContent value="centros_custo"><FinCentrosCusto /></TabsContent>
-            <TabsContent value="pessoas"><FinPessoas /></TabsContent>
-            <TabsContent value="categorias"><FinCategorias /></TabsContent>
-            <TabsContent value="plano_contas"><FinPlanoContas /></TabsContent>
-            <TabsContent value="saldos_abertura"><FinSaldosAbertura /></TabsContent>
-            <TabsContent value="orcamento"><FinOrcamento /></TabsContent>
-            <TabsContent value="apuracao"><FinApuracao /></TabsContent>
-            <TabsContent value="relatorios"><FinRelatorios /></TabsContent>
-          </Tabs>
+          <FinHomeHub onNavigate={setActiveView} />
         )}
       </div>
     </AppLayout>
