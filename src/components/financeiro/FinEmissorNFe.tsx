@@ -49,6 +49,27 @@ type Destinatario = {
   indicador_ie: string; // 1=Contribuinte, 2=Isento, 9=Não contribuinte
 };
 
+// SEFAZ 4.00 — campos fiscais adicionais
+type FiscaisExtras = {
+  tpNF: "0" | "1";              // 0=Entrada, 1=Saída
+  indFinal: "0" | "1";          // 0=Normal, 1=Consumidor final
+  idDest: "1" | "2" | "3";      // 1=Interna, 2=Interestadual, 3=Exterior — auto
+  tpEmis: "1" | "2" | "3" | "4" | "5" | "6" | "7" | "9"; // 1=Normal, 6=SVC-AN, 7=SVC-RS, etc.
+  refNFe: string;               // Chave 44 dígitos da NF-e referenciada (devolução)
+  numero_manual: string;        // Override de numeração (migração)
+  autXML: string[];             // CNPJs autorizados a baixar XML (até 10)
+};
+
+const fiscaisExtrasVazio = (): FiscaisExtras => ({
+  tpNF: "1",
+  indFinal: "1",
+  idDest: "1",
+  tpEmis: "1",
+  refNFe: "",
+  numero_manual: "",
+  autXML: [],
+});
+
 type Transporte = {
   modalidade_frete: string;
   transportador_nome: string;
@@ -134,6 +155,8 @@ export default function FinEmissorNFe() {
   const [destinatario, setDestinatario] = useState<Destinatario>(destinatarioVazio());
   const [itens, setItens] = useState<ItemNFe[]>([itemVazio()]);
   const [transporte, setTransporte] = useState<Transporte>(transporteVazio());
+  const [fiscais, setFiscais] = useState<FiscaisExtras>(fiscaisExtrasVazio());
+  const [autXmlInput, setAutXmlInput] = useState("");
 
   const [valorFrete, setValorFrete] = useState(0);
   const [valorSeguro, setValorSeguro] = useState(0);
@@ -150,6 +173,15 @@ export default function FinEmissorNFe() {
   const [emitidas, setEmitidas] = useState<NFeRow[]>([]);
   const [loadingList, setLoadingList] = useState(false);
   const [activeTab, setActiveTab] = useState("emissao");
+
+  // ====== Cálculo automático do idDest (1=Interna, 2=Interestadual, 3=Exterior) ======
+  useEffect(() => {
+    const ufEmit = (empresaAtiva?.uf || "").toUpperCase();
+    const ufDest = (destinatario.uf || "").toUpperCase();
+    if (!ufEmit || !ufDest) return;
+    const novo: FiscaisExtras["idDest"] = ufDest === "EX" ? "3" : ufDest === ufEmit ? "1" : "2";
+    if (novo !== fiscais.idDest) setFiscais(f => ({ ...f, idDest: novo }));
+  }, [empresaAtiva?.uf, destinatario.uf, fiscais.idDest]);
 
   const carregar = async () => {
     if (!empresaAtiva) return;
@@ -270,12 +302,36 @@ export default function FinEmissorNFe() {
       if (totalNota <= 0) erros.push("Valor total da nota deve ser maior que zero.");
       erros.push(...transporteValidacao.erros);
       avisos.push(...transporteValidacao.avisos);
+
+      // Sprint 1: refNFe obrigatória em devolução (finalidade=4)
+      if (finalidade === "4") {
+        const chave = (fiscais.refNFe || "").replace(/\D/g, "");
+        if (!chave) erros.push("Devolução (finalidade 4) exige a chave da NF-e referenciada (44 dígitos).");
+        else if (chave.length !== 44) erros.push("Chave da NF-e referenciada inválida — deve conter 44 dígitos.");
+      }
+      // Sprint 1: indFinal=1 → presença não pode ser 0 (sem operação presencial)
+      if (fiscais.indFinal === "1" && presenca === "0") {
+        avisos.push("Consumidor final geralmente exige indicador de presença diferente de 0.");
+      }
+      // Sprint 2: contingência exige justificativa em info complementar
+      if (fiscais.tpEmis !== "1" && (!infoComplementares || infoComplementares.trim().length < 15)) {
+        erros.push("Modo de emissão em contingência exige justificativa (mín. 15 caracteres) nas informações complementares.");
+      }
+      // Sprint 3: validar CNPJs autorizados (autXML)
+      if (fiscais.autXML.length > 10) erros.push("Máximo de 10 CNPJs autorizados a baixar o XML.");
+      const autInvalidos = fiscais.autXML.filter(c => c.replace(/\D/g, "").length !== 14);
+      if (autInvalidos.length) erros.push(`CNPJ(s) autorizado(s) inválido(s): ${autInvalidos.join(", ")}`);
+      // Sprint 3: numeração manual
+      if (fiscais.numero_manual) {
+        const n = Number(fiscais.numero_manual);
+        if (!Number.isInteger(n) || n <= 0 || n > 999999999) erros.push("Número manual da NF-e inválido (1 a 999.999.999).");
+      }
     } else {
       if (!serviceDescricao) erros.push("Descrição do serviço obrigatória.");
       if (serviceValor <= 0) erros.push("Valor do serviço deve ser maior que zero.");
     }
     return { erros, avisos, ok: erros.length === 0 };
-  }, [empresaAtiva, destinatario, itens, modelo, serviceDescricao, serviceValor, totalNota, transporteValidacao]);
+  }, [empresaAtiva, destinatario, itens, modelo, serviceDescricao, serviceValor, totalNota, transporteValidacao, finalidade, presenca, fiscais, infoComplementares]);
 
   const emitir = async () => {
     if (!validacoes.ok) {
@@ -312,6 +368,16 @@ export default function FinEmissorNFe() {
         transporte: { ...transporte },
         valores: { frete: valorFrete, seguro: valorSeguro, desconto, outras: outrasDespesas },
         info_complementares: infoComplementares || undefined,
+        // SEFAZ 4.00 — Sprints 1/2/3
+        fiscais: {
+          tpNF: fiscais.tpNF,
+          indFinal: fiscais.indFinal,
+          idDest: fiscais.idDest,
+          tpEmis: fiscais.tpEmis,
+          refNFe: fiscais.refNFe ? fiscais.refNFe.replace(/\D/g, "") : undefined,
+          numero_manual: fiscais.numero_manual ? Number(fiscais.numero_manual) : undefined,
+          autXML: fiscais.autXML.map(c => c.replace(/\D/g, "")).filter(c => c.length === 14),
+        },
       };
       if (modelo === "nfse") {
         payload.servico = { descricao: serviceDescricao, valor: serviceValor, codigo_servico: serviceCodigo || undefined };
@@ -412,6 +478,158 @@ export default function FinEmissorNFe() {
               )}
             </CardContent>
           </Card>
+
+          {/* 1.5 Campos fiscais SEFAZ 4.00 */}
+          {modelo !== "nfse" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><ShieldCheck className="w-5 h-5" />1.5 Identificação fiscal (SEFAZ 4.00)</CardTitle>
+                <CardDescription>
+                  Campos obrigatórios do schema NF-e: tipo de operação, destino, consumidor final, contingência e referências.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div>
+                    <Label>Tipo de operação (tpNF)</Label>
+                    <Select value={fiscais.tpNF} onValueChange={v => setFiscais({ ...fiscais, tpNF: v as "0" | "1" })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 — Saída</SelectItem>
+                        <SelectItem value="0">0 — Entrada (devolução de fornecedor)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Consumidor final (indFinal)</Label>
+                    <Select value={fiscais.indFinal} onValueChange={v => setFiscais({ ...fiscais, indFinal: v as "0" | "1" })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">0 — Operação normal</SelectItem>
+                        <SelectItem value="1">1 — Consumidor final</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Destino (idDest) — auto</Label>
+                    <Select value={fiscais.idDest} onValueChange={v => setFiscais({ ...fiscais, idDest: v as "1" | "2" | "3" })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 — Operação interna</SelectItem>
+                        <SelectItem value="2">2 — Interestadual</SelectItem>
+                        <SelectItem value="3">3 — Exterior</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] text-muted-foreground mt-1">Calculado automaticamente pela UF emitente × destinatário.</p>
+                  </div>
+                  <div>
+                    <Label>Tipo de emissão (tpEmis)</Label>
+                    <Select value={fiscais.tpEmis} onValueChange={v => setFiscais({ ...fiscais, tpEmis: v as FiscaisExtras["tpEmis"] })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 — Normal</SelectItem>
+                        <SelectItem value="2">2 — Contingência FS-IA</SelectItem>
+                        <SelectItem value="4">4 — EPEC (SCAN)</SelectItem>
+                        <SelectItem value="5">5 — Contingência FS-DA</SelectItem>
+                        <SelectItem value="6">6 — Contingência SVC-AN</SelectItem>
+                        <SelectItem value="7">7 — Contingência SVC-RS</SelectItem>
+                        <SelectItem value="9">9 — Contingência off-line NFC-e</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Referência NF-e (Devolução) */}
+                {finalidade === "4" && (
+                  <div className="rounded-md border p-3 bg-muted/30 space-y-2">
+                    <Label className="text-xs font-semibold uppercase">NF-e referenciada (devolução)</Label>
+                    <Input
+                      value={fiscais.refNFe}
+                      onChange={e => setFiscais({ ...fiscais, refNFe: e.target.value.replace(/\D/g, "").slice(0, 44) })}
+                      placeholder="44 dígitos da chave de acesso da NF-e original"
+                      className="font-mono"
+                      maxLength={44}
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Obrigatório (Rejeição 539). Cole a chave da NF-e original que está sendo devolvida.
+                    </p>
+                  </div>
+                )}
+
+                {/* Numeração manual (Sprint 3) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <Label>Número manual da NF-e (opcional)</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={fiscais.numero_manual}
+                      onChange={e => setFiscais({ ...fiscais, numero_manual: e.target.value })}
+                      placeholder="Deixe vazio para autonumeração"
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-1">Use para migrar de outro emissor mantendo a sequência.</p>
+                  </div>
+                </div>
+
+                {/* CNPJs autorizados (autXML) — Sprint 3 */}
+                <div className="rounded-md border p-3 space-y-2">
+                  <Label className="text-xs font-semibold uppercase">CNPJs autorizados a baixar XML (autXML)</Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Até 10 CNPJs (ex.: contador, transportadora). Aparecem no XML autorizado pela SEFAZ.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      value={autXmlInput}
+                      onChange={e => setAutXmlInput(e.target.value)}
+                      placeholder="00.000.000/0000-00"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        const limpo = autXmlInput.replace(/\D/g, "");
+                        if (limpo.length !== 14) { toast.error("CNPJ inválido"); return; }
+                        if (fiscais.autXML.includes(limpo)) { toast.error("CNPJ já adicionado"); return; }
+                        if (fiscais.autXML.length >= 10) { toast.error("Máximo de 10 CNPJs"); return; }
+                        setFiscais({ ...fiscais, autXML: [...fiscais.autXML, limpo] });
+                        setAutXmlInput("");
+                      }}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  {fiscais.autXML.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {fiscais.autXML.map((c, i) => (
+                        <Badge key={i} variant="secondary" className="gap-1">
+                          {c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")}
+                          <button
+                            type="button"
+                            onClick={() => setFiscais({ ...fiscais, autXML: fiscais.autXML.filter((_, idx) => idx !== i) })}
+                            className="ml-1 hover:text-destructive"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Alerta contingência */}
+                {fiscais.tpEmis !== "1" && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Modo contingência ativo</AlertTitle>
+                    <AlertDescription className="text-xs">
+                      Use somente quando a SEFAZ de origem estiver indisponível. Justifique nas informações complementares (mín. 15 caracteres).
+                      Após o restabelecimento, transmita as notas em até 168h.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* 2. Emitente */}
           <Card>
