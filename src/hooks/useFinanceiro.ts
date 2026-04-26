@@ -891,7 +891,7 @@ export function useResumoVisorFinanceiro() {
       const mesAtual = hoje.toISOString().slice(0, 7);
 
       const [contasRes, futurosRes, atrasosRes, mesRes] = await Promise.all([
-        supabase.from("financeiro_contas").select("saldo_atual").eq("empresa_id", empresaId!).eq("ativa", true),
+        supabase.from("financeiro_contas").select("id, nome, tipo, banco, saldo_atual, ativa").eq("empresa_id", empresaId!).order("ordem", { ascending: true }),
         supabase
           .from("financeiro_lancamentos")
           .select("id, valor, tipo, status, data_vencimento")
