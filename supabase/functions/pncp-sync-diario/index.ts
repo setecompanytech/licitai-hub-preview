@@ -89,9 +89,10 @@ async function processarUf(
 
         let res: Response;
         try {
-          res = await fetchComTimeout(url);
+          res = await fetchComRetry(url);
         } catch (e: any) {
           errosLocal.push(`${uf}/m${modalidade.id}/${dataStr}/p${pagina}: ${e.message}`);
+          // não aborta toda a UF — pula para próxima modalidade/dia
           break;
         }
 
