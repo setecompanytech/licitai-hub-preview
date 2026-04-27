@@ -119,8 +119,31 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    if (!Deno.env.get("FOCUS_NFE_API_TOKEN")) {
-      return error(503, "FOCUS_NFE_API_TOKEN não configurado. Adicione o secret nas configurações da Lovable Cloud.");
+    // Resolve provedor a partir da config da empresa (fallback para FocusNFe global).
+    let provedor: "focusnfe" | "nfeio" | "sefaz_direto" = "focusnfe";
+    let providerToken = Deno.env.get("FOCUS_NFE_API_TOKEN") ?? "";
+    try {
+      const reqBody = await req.clone().json().catch(() => ({} as any));
+      const empresaId = reqBody?.empresa_id;
+      if (empresaId) {
+        const { data: cfg } = await supabase
+          .from("fin_config_nfe")
+          .select("provedor, ambiente, api_token")
+          .eq("empresa_id", empresaId)
+          .eq("ativo", true)
+          .maybeSingle();
+        if (cfg) {
+          provedor = cfg.provedor as any;
+          if (cfg.api_token) providerToken = cfg.api_token;
+        }
+      }
+    } catch (_) { /* ignora — segue com fallback */ }
+
+    if (provedor === "nfeio" || provedor === "sefaz_direto") {
+      return error(501, `Provedor "${provedor}" registrado mas ainda não implementado. Use FocusNFe ou aguarde habilitação.`);
+    }
+    if (!providerToken) {
+      return error(503, "Token do provedor NF-e não configurado. Cadastre em Financeiro → Integrações → NF-e ou adicione FOCUS_NFE_API_TOKEN.");
     }
 
     switch (action) {
