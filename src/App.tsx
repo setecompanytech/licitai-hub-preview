@@ -42,6 +42,7 @@ const DiariosOficiais = lazyPage(() => import("./pages/DiariosOficiais"));
 const Configuracoes = lazyPage(() => import("./pages/Configuracoes"));
 const Empresas = lazyPage(() => import("./pages/Empresas"));
 const AdminTemplates = lazyPage(() => import("./pages/AdminTemplates"));
+const AdminMuralTelemetria = lazyPage(() => import("./pages/AdminMuralTelemetria"));
 const Cadastro = lazyPage(() => import("./pages/Cadastro"));
 const FaqPage = lazyPage(() => import("./pages/FaqPage"));
 const Suporte = lazyPage(() => import("./pages/Suporte"));
