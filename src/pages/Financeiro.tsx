@@ -43,6 +43,8 @@ import FinOpenFinance from "@/components/financeiro/FinOpenFinance";
 import FinDemonstracoes from "@/components/financeiro/FinDemonstracoes";
 import FinQuadroOmie from "@/components/financeiro/FinQuadroOmie";
 import FinAtividadeUsuarios from "@/components/financeiro/FinAtividadeUsuarios";
+import FinConfigNFe from "@/components/financeiro/FinConfigNFe";
+import FinPixCobranca from "@/components/financeiro/FinPixCobranca";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 
 const VIEW_MAP: Record<string, () => JSX.Element> = {
@@ -85,6 +87,8 @@ const VIEW_MAP: Record<string, () => JSX.Element> = {
   demonstracoes: () => <FinDemonstracoes />,
   quadro_omie: () => <FinQuadroOmie />,
   atividade_usuarios: () => <FinAtividadeUsuarios />,
+  config_nfe: () => <FinConfigNFe />,
+  pix_cobranca: () => <FinPixCobranca />,
 };
 
 const COMING_SOON: Record<string, { title: string; description: string }> = {

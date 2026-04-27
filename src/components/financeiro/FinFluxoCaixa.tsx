@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -91,16 +91,41 @@ function formatRunway(meses: number | null): { label: string; cor: string } {
   return { label: `${meses.toFixed(1)} meses`, cor };
 }
 
+type Cenario = "pessimista" | "realista" | "otimista";
+const CENARIOS: { v: Cenario; l: string; entradaMul: number; saidaMul: number; cor: string }[] = [
+  { v: "pessimista", l: "Pessimista", entradaMul: 0.85, saidaMul: 1.10, cor: "hsl(var(--destructive))" },
+  { v: "realista", l: "Realista", entradaMul: 1.00, saidaMul: 1.00, cor: "hsl(var(--accent-foreground))" },
+  { v: "otimista", l: "Otimista", entradaMul: 1.10, saidaMul: 0.95, cor: "hsl(var(--primary))" },
+];
+
 export default function FinFluxoCaixa() {
   const [dias, setDias] = useState(90);
   const [mesesDFC, setMesesDFC] = useState(6);
+  const [cenario, setCenario] = useState<Cenario>("realista");
   const { data, isLoading } = useFluxoCaixa(dias);
   const { data: dfc, isLoading: loadingDFC } = useDFC(mesesDFC);
   const refresh = useRefreshFinanceiroViews();
 
-  const saldoFinal = data?.dias[data.dias.length - 1]?.saldo_acumulado ?? data?.saldoInicial ?? 0;
-  const menorSaldo = data ? Math.min(data.saldoInicial, ...data.dias.map((d) => d.saldo_acumulado)) : 0;
-  const diasNegativos = data?.dias.filter((d) => d.saldo_acumulado < 0) ?? [];
+  // Aplica multiplicadores do cenário sobre os PREVISTOS (realizados são fato consumado).
+  const dadosCenario = useMemo(() => {
+    if (!data) return null;
+    const cfg = CENARIOS.find((c) => c.v === cenario)!;
+    let acum = data.saldoInicial;
+    const dias2 = data.dias.map((d) => {
+      const entradas_previstas = d.entradas_previstas * cfg.entradaMul;
+      const saidas_previstas = d.saidas_previstas * cfg.saidaMul;
+      const saldo_dia =
+        entradas_previstas + d.entradas_realizadas - saidas_previstas - d.saidas_realizadas;
+      acum += saldo_dia;
+      return { ...d, entradas_previstas, saidas_previstas, saldo_dia, saldo_acumulado: acum };
+    });
+    return { ...data, dias: dias2 };
+  }, [data, cenario]);
+
+  const dadosUI = dadosCenario ?? data;
+  const saldoFinal = dadosUI?.dias[dadosUI.dias.length - 1]?.saldo_acumulado ?? dadosUI?.saldoInicial ?? 0;
+  const menorSaldo = dadosUI ? Math.min(dadosUI.saldoInicial, ...dadosUI.dias.map((d) => d.saldo_acumulado)) : 0;
+  const diasNegativos = dadosUI?.dias.filter((d) => d.saldo_acumulado < 0) ?? [];
 
   return (
     <Tabs defaultValue="projecao" className="space-y-4">
@@ -115,12 +140,12 @@ export default function FinFluxoCaixa() {
           <Card>
             <CardContent className="pt-4">
               <p className="text-xs text-muted-foreground">Saldo atual</p>
-              <p className="text-xl font-semibold mt-1">{formatBRL(data?.saldoInicial ?? 0)}</p>
+              <p className="text-xl font-semibold mt-1">{formatBRL(dadosUI?.saldoInicial ?? 0)}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4">
-              <p className="text-xs text-muted-foreground">Saldo projetado ({dias}d)</p>
+              <p className="text-xs text-muted-foreground">Saldo projetado ({dias}d · {CENARIOS.find(c => c.v === cenario)?.l})</p>
               <p className={`text-xl font-semibold mt-1 ${saldoFinal < 0 ? "text-destructive" : ""}`}>{formatBRL(saldoFinal)}</p>
             </CardContent>
           </Card>
@@ -131,6 +156,25 @@ export default function FinFluxoCaixa() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Seletor de cenário */}
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-xs text-muted-foreground">Cenário de projeção:</p>
+              <Tabs value={cenario} onValueChange={(v) => setCenario(v as Cenario)}>
+                <TabsList>
+                  {CENARIOS.map((c) => (
+                    <TabsTrigger key={c.v} value={c.v}>{c.l}</TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+              <p className="text-[11px] text-muted-foreground ml-auto">
+                Pessimista: −15% receitas, +10% despesas · Otimista: +10% receitas, −5% despesas
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         {diasNegativos.length > 0 && (
           <Card className="border-destructive/30 bg-destructive/5">
@@ -175,11 +219,11 @@ export default function FinFluxoCaixa() {
             </div>
           </CardHeader>
           <CardContent className="h-96">
-            {isLoading || !data ? (
+            {isLoading || !dadosUI ? (
               <Skeleton className="w-full h-full" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={data.dias}>
+                <ComposedChart data={dadosUI.dias}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis
                     dataKey="data"
@@ -224,7 +268,7 @@ export default function FinFluxoCaixa() {
             <CardTitle className="text-base">Detalhamento diário</CardTitle>
           </CardHeader>
           <CardContent>
-            {isLoading || !data ? (
+            {isLoading || !dadosUI ? (
               <Skeleton className="w-full h-48" />
             ) : (
               <div className="overflow-auto max-h-96">
@@ -239,7 +283,7 @@ export default function FinFluxoCaixa() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.dias.map((d) => {
+                    {dadosUI.dias.map((d) => {
                       const entrada = d.entradas_previstas + d.entradas_realizadas;
                       const saida = d.saidas_previstas + d.saidas_realizadas;
                       return (
