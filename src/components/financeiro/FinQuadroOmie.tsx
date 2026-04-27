@@ -46,7 +46,7 @@ function useQuadroOmie() {
           .eq("empresa_id", empresaId!)
           .gte("data_competencia", ini12m),
         supabase.from("financeiro_contas").select("id, nome, saldo_atual, ativa").eq("empresa_id", empresaId!).eq("ativa", true),
-        supabase.from("financeiro_comissoes_calculadas").select("valor_comissao, status").eq("empresa_id", empresaId!).limit(1000),
+        supabase.from("financeiro_comissoes_calculadas").select("valor, status").eq("empresa_id", empresaId!).limit(1000),
       ]);
 
       const pessoas = pessoasRes.data ?? [];
@@ -91,7 +91,7 @@ function useQuadroOmie() {
       const previstoDespesas = noMes.filter((l) => l.tipo === "a_pagar").reduce((s, l) => s + Number(l.valor), 0);
       const realizadoDespesas = noMes.filter((l) => l.tipo === "a_pagar" && ["realizado", "conciliado"].includes(l.status as string)).reduce((s, l) => s + Number(l.valor), 0);
 
-      const comissoesAbertas = comissoes.filter((c) => c.status !== "paga").reduce((s, c) => s + Number(c.valor_comissao ?? 0), 0);
+      const comissoesAbertas = comissoes.filter((c) => c.status !== "paga").reduce((s, c) => s + Number(c.valor ?? 0), 0);
 
       // Atividades hoje (audit log)
       const inicioHoje = new Date(); inicioHoje.setHours(0, 0, 0, 0);
