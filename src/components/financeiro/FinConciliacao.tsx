@@ -59,6 +59,7 @@ type MatchSugestao = {
 
 export default function FinConciliacao() {
   const fileRef = useRef<HTMLInputElement>(null);
+  const csvRef = useRef<HTMLInputElement>(null);
   const [contaSelecionada, setContaSelecionada] = useState<string>("");
   const [filtroConciliado, setFiltroConciliado] = useState<"todos" | "pendente" | "conciliado">(
     "pendente"
