@@ -214,7 +214,17 @@ export default function FinConciliacao() {
   }
 
   return (
-    <div className="space-y-4">
+    <Tabs defaultValue="conciliar" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="conciliar">
+          <Link2 className="w-3.5 h-3.5 mr-1.5" />Conciliação
+        </TabsTrigger>
+        <TabsTrigger value="relatorio">
+          <BarChart3 className="w-3.5 h-3.5 mr-1.5" />Relatório por período
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="conciliar" className="space-y-4 mt-0">
       {/* Toolbar */}
       <Card>
         <CardContent className="p-4 flex flex-wrap items-end gap-3">
