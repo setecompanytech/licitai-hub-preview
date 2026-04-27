@@ -5359,6 +5359,48 @@ export type Database = {
         }
         Relationships: []
       }
+      fin_lancamento_rateios: {
+        Row: {
+          centro_custo_id: string
+          created_at: string
+          id: string
+          lancamento_id: string
+          percentual: number
+          valor: number
+        }
+        Insert: {
+          centro_custo_id: string
+          created_at?: string
+          id?: string
+          lancamento_id: string
+          percentual: number
+          valor?: number
+        }
+        Update: {
+          centro_custo_id?: string
+          created_at?: string
+          id?: string
+          lancamento_id?: string
+          percentual?: number
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_lancamento_rateios_centro_custo_id_fkey"
+            columns: ["centro_custo_id"]
+            isOneToOne: false
+            referencedRelation: "fin_centros_custo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_lancamento_rateios_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_lancamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fin_lancamentos: {
         Row: {
           arquivo_url: string | null
