@@ -41,6 +41,8 @@ import FinCalculadoraMargem from "@/components/financeiro/FinCalculadoraMargem";
 import FinCommandPalette from "@/components/financeiro/FinCommandPalette";
 import FinOpenFinance from "@/components/financeiro/FinOpenFinance";
 import FinDemonstracoes from "@/components/financeiro/FinDemonstracoes";
+import FinQuadroOmie from "@/components/financeiro/FinQuadroOmie";
+import FinAtividadeUsuarios from "@/components/financeiro/FinAtividadeUsuarios";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 
 const VIEW_MAP: Record<string, () => JSX.Element> = {
@@ -81,6 +83,8 @@ const VIEW_MAP: Record<string, () => JSX.Element> = {
   calc_margem: () => <FinCalculadoraMargem />,
   open_finance: () => <FinOpenFinance />,
   demonstracoes: () => <FinDemonstracoes />,
+  quadro_omie: () => <FinQuadroOmie />,
+  atividade_usuarios: () => <FinAtividadeUsuarios />,
 };
 
 const COMING_SOON: Record<string, { title: string; description: string }> = {

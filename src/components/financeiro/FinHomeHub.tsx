@@ -18,6 +18,7 @@ export type HubItem = {
 export const HUB_ITEMS: HubItem[] = [
   // Operação diária
   { id: "resumo", label: "Resumo", description: "Visor executivo com saldo, projeção e atrasos.", icon: Eye, group: "operacao", highlight: true },
+  { id: "quadro_omie", label: "Quadro Financeiro", description: "Visão estilo Omie com 9 cards de operação consolidados.", icon: LayoutDashboard, group: "operacao", badge: "Novo" },
   { id: "dashboard", label: "Dashboard", description: "KPIs, gráficos e indicadores em tempo real.", icon: LayoutDashboard, group: "operacao" },
   { id: "lancamentos", label: "Lançamentos", description: "Todos os lançamentos com filtros avançados.", icon: ListOrdered, group: "operacao" },
   { id: "a_pagar", label: "Contas a Pagar", description: "Pendências, vencimentos e baixa em lote.", icon: ArrowUpCircle, group: "operacao" },
@@ -44,7 +45,8 @@ export const HUB_ITEMS: HubItem[] = [
   // Relatórios
   { id: "dre", label: "DRE", description: "Demonstrativo de Resultados completo.", icon: FileBarChart, group: "relatorios" },
   { id: "demonstracoes", label: "Demonstrações Contábeis", description: "Balanço Patrimonial, DFC Indireta e DMPL conforme NBC TG 26/03.", icon: Scale, group: "relatorios", badge: "Novo" },
-  { id: "resumo_exec", label: "Resumo Executivo", description: "One-pager imprimível para diretoria.", icon: Sparkles, group: "relatorios", badge: "Novo" },
+  { id: "resumo_exec", label: "Resumo Executivo", description: "One-pager imprimível com CP, CR e contas correntes detalhadas.", icon: Sparkles, group: "relatorios", badge: "Novo" },
+  { id: "atividade_usuarios", label: "Atividade dos Usuários", description: "Auditoria cronológica por usuário, data e tipo (modelo Omie).", icon: Activity, group: "relatorios", badge: "Novo" },
   { id: "previsto_realizado", label: "Previsto × Realizado", description: "Compare orçamento com execução mensal.", icon: Target, group: "relatorios", badge: "Novo" },
   { id: "relatorios", label: "Relatórios", description: "Exportações personalizadas em PDF/Excel.", icon: FileDown, group: "relatorios" },
   { id: "apuracao", label: "Apuração", description: "Apuração de impostos e tributos.", icon: Calculator, group: "relatorios" },
