@@ -97,7 +97,18 @@ export function useIndicadoresCFO() {
       const bp = (bpRes.data ?? [])[0];
 
       // ===== Rentabilidade (DRE simplificada do mês corrente) =====
-      const mesAtualKey = hoje.toISOString().slice(0, 7);
+      // Janela: usa o mês corrente; se vazio, faz fallback para o último mês com dados (ambientes mock)
+      const mesCorrente = hoje.toISOString().slice(0, 7);
+      const mesesComDados = Array.from(
+        new Set(
+          lancs
+            .filter((l) => l.status !== "cancelado")
+            .map((l) => (l.data_realizado ?? l.data_competencia ?? "").slice(0, 7))
+            .filter(Boolean)
+        )
+      ).sort();
+      const temDadosNoMes = mesesComDados.includes(mesCorrente);
+      const mesAtualKey = temDadosNoMes ? mesCorrente : mesesComDados[mesesComDados.length - 1] ?? mesCorrente;
       const realizadoMes = lancs.filter(
         (l) => l.status !== "cancelado" && (l.data_realizado ?? l.data_competencia ?? "").startsWith(mesAtualKey)
       );
