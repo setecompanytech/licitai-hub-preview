@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2, Search, Loader2, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Loader2, X, ShieldCheck } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -86,6 +87,43 @@ export default function FinPessoas() {
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [tagInput, setTagInput] = useState("");
+  const [validandoSefaz, setValidandoSefaz] = useState(false);
+
+  const handleValidarSefaz = async () => {
+    const cnpj = form.documento.replace(/\D/g, "");
+    if (cnpj.length !== 14) {
+      toast.error("Informe um CNPJ válido (14 dígitos) para validar a Inscrição Estadual.");
+      return;
+    }
+    if (!form.ie || form.ie.trim().length < 2) {
+      toast.error("Informe a Inscrição Estadual antes de validar.");
+      return;
+    }
+    if (!form.endereco.uf) {
+      toast.error("Informe a UF (na aba Endereço) antes de validar a IE no SEFAZ.");
+      return;
+    }
+    setValidandoSefaz(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("nfe-consult-sefaz", {
+        body: { cnpj_emitente: cnpj, inscricao_estadual: form.ie.replace(/\D/g, ""), uf: form.endereco.uf, modo: "ie" },
+      });
+      if (error) throw error;
+      if ((data as any)?.setup_required) {
+        toast.warning("Consulta SEFAZ ainda não configurada. Validação local aplicada.");
+        return;
+      }
+      if ((data as any)?.ok) {
+        toast.success("Inscrição Estadual validada no SEFAZ.");
+      } else {
+        toast.error((data as any)?.error || "Inscrição Estadual não localizada.");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao consultar SEFAZ.");
+    } finally {
+      setValidandoSefaz(false);
+    }
+  };
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -401,7 +439,20 @@ export default function FinPessoas() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Inscrição Estadual</Label>
-                  <Input value={form.ie} onChange={(e) => set("ie", e.target.value)} placeholder="ISENTO se aplicável" />
+                  <div className="flex gap-2">
+                    <Input value={form.ie} onChange={(e) => set("ie", e.target.value)} placeholder="ISENTO se aplicável" />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleValidarSefaz}
+                      disabled={validandoSefaz}
+                      title="Validar Inscrição Estadual no SEFAZ"
+                      className="shrink-0"
+                    >
+                      {validandoSefaz ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Inscrição Municipal</Label>
