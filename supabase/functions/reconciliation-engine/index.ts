@@ -284,11 +284,14 @@ Responda em JSON estrito: {"escolha": <índice numérico do candidato ou null>, 
     }
 
     let aplicados = 0;
+    // Auto-aplica somente matches com confiança >= 90 (preferência do usuário)
+    // matches abaixo ficam como sugestão para revisão manual.
+    const LIMITE_AUTO = 90;
     if (auto_aplicar && matches.length > 0) {
       for (const m of matches) {
+        if (m.score < LIMITE_AUTO) continue;
         const motivosFinal: Record<string, unknown> = { ...m.motivos };
         if (m.justificativa_ia) motivosFinal.justificativa_ia = m.justificativa_ia;
-        // Insere conciliação
         const { error: errCon } = await supabase
           .from("financeiro_conciliacoes")
           .insert({
@@ -312,6 +315,17 @@ Responda em JSON estrito: {"escolha": <índice numérico do candidato ou null>, 
           .from("financeiro_lancamentos")
           .update({ status: "conciliado", data_conciliado: new Date().toISOString() })
           .eq("id", m.lancamento_id);
+        // Log reversível
+        await supabase.from("fin_conciliacao_log").insert({
+          empresa_id,
+          movimento_id: m.movimento_id,
+          lancamento_id: m.lancamento_id,
+          acao: "auto_match",
+          confianca: m.score,
+          metodo: m.metodo === "ia" ? "ia_descritor" : "deterministico",
+          detalhes: motivosFinal,
+          user_id: user.id,
+        });
         aplicados++;
       }
     }
