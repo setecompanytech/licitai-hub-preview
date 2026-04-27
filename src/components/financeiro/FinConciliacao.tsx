@@ -149,17 +149,22 @@ export default function FinConciliacao() {
     }
   }
 
-  function buscarSugestoes() {
+  function buscarSugestoes(usar_ia = false) {
     conciliarAuto.mutate(
       {
         conta_id: contaSelecionada || undefined,
         auto_aplicar: false,
         score_minimo: scoreMinimo,
+        usar_ia,
       },
       {
         onSuccess: (data) => {
           setSugestoes(data.matches ?? []);
           setSelecionadas(new Set((data.matches ?? []).map((m) => m.movimento_id)));
+          const iaSug = (data as { ia_sugeridos?: number }).ia_sugeridos;
+          if (usar_ia && iaSug) {
+            toast.success(`IA sugeriu ${iaSug} novos matches.`);
+          }
         },
       }
     );
