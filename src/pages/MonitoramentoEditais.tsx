@@ -601,13 +601,42 @@ export default function MonitoramentoEditais() {
         informacaoComplementar: '',
       }));
 
-      // Total: usa o total reportado pela fonte se nenhum filtro client-side reduziu o conjunto;
-      // caso contrário, reporta o tamanho efetivo após filtros.
-      const totalReportado = usouCache ? totalCache : totalLive;
-      const totalBruto = Math.max(totalReportado, rows.length);
+      // Validação do total reportado pela API (soma UF×modalidade):
+      // 1) Não pode ser menor que a quantidade efetivamente recebida (rowsRaw) — indica
+      //    que a fonte reportou totais inconsistentes; nesse caso usamos o que veio.
+      // 2) Após dedup, o total único nunca pode exceder o reportado; corrigimos divergências.
+      // 3) Se filtros client-side reduziram o conjunto, o total passa a refletir o filtrado.
+      const totalSomado = usouCache ? totalCache : totalLive;
+      const totalRecebido = rowsRaw.length;
+      const totalUnico = rows.length;
+
+      let totalReportado = totalSomado;
+      const divergencias: Record<string, number> = {};
+      if (totalSomado < totalRecebido) {
+        divergencias.somado_menor_que_recebido = totalRecebido - totalSomado;
+        totalReportado = totalRecebido;
+      }
+      // Desconta duplicatas detectadas para não inflar o total exibido.
+      const duplicatasDetectadas = totalRecebido - totalUnico;
+      if (duplicatasDetectadas > 0) {
+        divergencias.duplicatas_descontadas = duplicatasDetectadas;
+        totalReportado = Math.max(totalUnico, totalReportado - duplicatasDetectadas);
+      }
+
       const reduziu = filtrados.length !== rows.length;
-      const total = reduziu ? filtrados.length : totalBruto;
+      const total = reduziu ? filtrados.length : Math.max(totalReportado, totalUnico);
       const paginas = Math.max(1, Math.ceil(total / tamanho));
+
+      if (Object.keys(divergencias).length > 0) {
+        logCtx({
+          etapa: 'total_validacao',
+          totalSomado,
+          totalRecebido,
+          totalUnico,
+          totalFinal: total,
+          divergencias,
+        });
+      }
 
       // Paginação client-side: como agregamos múltiplas chamadas (UF×modalidade),
       // recortamos a página solicitada de forma consistente.
