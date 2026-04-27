@@ -58,6 +58,8 @@ type MatchSugestao = {
   lancamento_id: string;
   score: number;
   motivos: Record<string, unknown>;
+  metodo?: string;
+  justificativa_ia?: string;
 };
 
 export default function FinConciliacao() {
