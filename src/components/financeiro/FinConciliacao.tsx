@@ -270,6 +270,26 @@ export default function FinConciliacao() {
             Importar OFX
           </Button>
 
+          <input
+            ref={csvRef}
+            type="file"
+            accept=".csv,.CSV,text/csv"
+            className="hidden"
+            onChange={onCsvFile}
+          />
+          <Button
+            variant="outline"
+            onClick={() => csvRef.current?.click()}
+            disabled={importar.isPending || !contaSelecionada}
+            title="CSV com colunas: data, descricao, valor (opcional documento)"
+          >
+            {importar.isPending ? (
+              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+            ) : (
+              <Upload className="w-4 h-4 mr-1.5" />
+            )}
+            Importar CSV
+
           <Button
             onClick={() =>
               conciliarAuto.mutate({
