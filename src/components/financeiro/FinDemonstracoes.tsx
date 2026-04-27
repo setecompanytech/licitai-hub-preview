@@ -46,7 +46,7 @@ export default function FinDemonstracoes() {
         .eq("empresa_id", empresaId!)
         .gte("data_competencia", dataInicio)
         .lte("data_competencia", dataFim)
-        .in("status", ["realizado", "conciliado", "pago"])
+        .in("status", ["realizado", "conciliado"])
         .limit(5000);
       if (error) throw error;
       return (data ?? []) as Lancamento[];
@@ -59,9 +59,10 @@ export default function FinDemonstracoes() {
     queryFn: async () => {
       const { data } = await supabase
         .from("financeiro_categorias")
-        .select("id, nome, tipo, codigo_dre")
+        .select("id, nome, codigo_dre, natureza")
         .eq("empresa_id", empresaId!);
-      return (data ?? []) as Categoria[];
+      return ((data ?? []) as unknown as Array<{ id: string; nome: string; natureza: string; codigo_dre: string | null }>)
+        .map((c) => ({ id: c.id, nome: c.nome, tipo: c.natureza, codigo_dre: c.codigo_dre })) as Categoria[];
     },
   });
 
