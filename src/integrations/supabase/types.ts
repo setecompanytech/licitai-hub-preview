@@ -9650,6 +9650,69 @@ export type Database = {
         }
         Relationships: []
       }
+      mural_busca_telemetria: {
+        Row: {
+          chamadas_erro: number
+          chamadas_ok: number
+          chamadas_total: number
+          created_at: string
+          divergencias: Json
+          duplicatas: number
+          duracao_ms: number | null
+          filtros: Json
+          fonte: string
+          id: string
+          pagina: number
+          severidade: string
+          total_filtrado: number
+          total_final: number
+          total_recebido: number
+          total_somado: number
+          total_unico: number
+          user_id: string | null
+        }
+        Insert: {
+          chamadas_erro?: number
+          chamadas_ok?: number
+          chamadas_total?: number
+          created_at?: string
+          divergencias?: Json
+          duplicatas?: number
+          duracao_ms?: number | null
+          filtros?: Json
+          fonte: string
+          id?: string
+          pagina?: number
+          severidade?: string
+          total_filtrado?: number
+          total_final?: number
+          total_recebido?: number
+          total_somado?: number
+          total_unico?: number
+          user_id?: string | null
+        }
+        Update: {
+          chamadas_erro?: number
+          chamadas_ok?: number
+          chamadas_total?: number
+          created_at?: string
+          divergencias?: Json
+          duplicatas?: number
+          duracao_ms?: number | null
+          filtros?: Json
+          fonte?: string
+          id?: string
+          pagina?: number
+          severidade?: string
+          total_filtrado?: number
+          total_final?: number
+          total_recebido?: number
+          total_somado?: number
+          total_unico?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       nota_fiscal_itens: {
         Row: {
           cfop: string | null
@@ -14356,6 +14419,7 @@ export type Database = {
         }
         Returns: number
       }
+      mural_telemetria_painel: { Args: { p_horas?: number }; Returns: Json }
       pncp_editais_pendentes_embedding: {
         Args: { p_limite?: number }
         Returns: {

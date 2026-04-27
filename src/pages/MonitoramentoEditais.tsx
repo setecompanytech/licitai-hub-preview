@@ -653,6 +653,46 @@ export default function MonitoramentoEditais() {
 
       const dt = Math.round(performance.now() - t0);
       logCtx({ etapa: 'fim', registros: editais.length, total, ms: dt });
+
+      // Telemetria de consistência: registra a busca no banco para investigação posterior.
+      try {
+        const fonteUsada: 'live' | 'cache' | 'misto' | 'nenhuma' =
+          totalRecebido === 0 ? 'nenhuma' : usouCache ? 'cache' : 'live';
+        const temDivergencia = Object.keys(divergencias).length > 0;
+        const severidade: 'info' | 'warning' | 'error' =
+          liveErr > 0 && liveOk === 0 ? 'error'
+          : temDivergencia || duplicatasDetectadas > 0 ? 'warning'
+          : 'info';
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase.from('mural_busca_telemetria' as any).insert({
+          user_id: user?.id ?? null,
+          pagina: pag,
+          fonte: fonteUsada,
+          total_somado: totalSomado,
+          total_recebido: totalRecebido,
+          total_unico: totalUnico,
+          total_filtrado: filtrados.length,
+          total_final: total,
+          duplicatas: duplicatasDetectadas,
+          divergencias,
+          filtros: {
+            ufs: filtros.ufs,
+            modalidades: modalidadesEfetivas,
+            municipios: filtros.municipios,
+            uasgs: filtros.uasgs,
+            dataIni, dataFim,
+            termo: termo ?? null,
+          },
+          chamadas_total: liveOk + liveErr,
+          chamadas_ok: liveOk,
+          chamadas_erro: liveErr,
+          duracao_ms: dt,
+          severidade,
+        });
+      } catch (telErr) {
+        console.warn('[Mural/telemetria] falha ao registrar:', telErr);
+      }
+
       if (editais.length === 0) {
         toast.info('Nenhum edital encontrado', {
           description: 'Tente ampliar o período ou remover filtros (UF, modalidade, município).',

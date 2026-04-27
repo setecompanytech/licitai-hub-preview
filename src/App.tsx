@@ -42,6 +42,7 @@ const DiariosOficiais = lazyPage(() => import("./pages/DiariosOficiais"));
 const Configuracoes = lazyPage(() => import("./pages/Configuracoes"));
 const Empresas = lazyPage(() => import("./pages/Empresas"));
 const AdminTemplates = lazyPage(() => import("./pages/AdminTemplates"));
+const AdminMuralTelemetria = lazyPage(() => import("./pages/AdminMuralTelemetria"));
 const Cadastro = lazyPage(() => import("./pages/Cadastro"));
 const FaqPage = lazyPage(() => import("./pages/FaqPage"));
 const Suporte = lazyPage(() => import("./pages/Suporte"));
@@ -176,6 +177,7 @@ const App = () => (
               <Route path="/admin/marketing" element={<ProtectedPages><AdminGuard><AdminMarketing /></AdminGuard></ProtectedPages>} />
               <Route path="/admin/auditoria" element={<ProtectedPages><AdminGuard><AuditoriaAdmin /></AdminGuard></ProtectedPages>} />
               <Route path="/admin/distribuicao" element={<ProtectedPages><AdminGuard><PainelDistribuicao /></AdminGuard></ProtectedPages>} />
+              <Route path="/admin/mural-telemetria" element={<ProtectedPages><AdminGuard><AdminMuralTelemetria /></AdminGuard></ProtectedPages>} />
               <Route path="/monitoramento-chat" element={<ProtectedPages><MonitoramentoChat /></ProtectedPages>} />
               <Route path="/analise-mercado" element={<PlanPages><AnaliseMercado /></PlanPages>} />
               <Route path="/licitacoes-estrategicas" element={<ProtectedPages><LicitacoesEstrategicas /></ProtectedPages>} />
