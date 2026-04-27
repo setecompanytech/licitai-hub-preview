@@ -47,6 +47,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { formatBRL, formatDate } from "@/lib/financeiro/formatters";
+import { parseCsvExtrato, csvParaOfx } from "@/lib/financeiro/csvToOfx";
 import { toast } from "sonner";
 
 type MatchSugestao = {
@@ -58,6 +59,7 @@ type MatchSugestao = {
 
 export default function FinConciliacao() {
   const fileRef = useRef<HTMLInputElement>(null);
+  const csvRef = useRef<HTMLInputElement>(null);
   const [contaSelecionada, setContaSelecionada] = useState<string>("");
   const [filtroConciliado, setFiltroConciliado] = useState<"todos" | "pendente" | "conciliado">(
     "pendente"
@@ -109,6 +111,37 @@ export default function FinConciliacao() {
       { conta_id: contaSelecionada, arquivo_nome: file.name, conteudo_ofx: conteudo },
       { onSettled: () => (e.target.value = "") }
     );
+  }
+
+  async function onCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!contaSelecionada) {
+      toast.error("Selecione uma conta antes de importar.");
+      e.target.value = "";
+      return;
+    }
+    try {
+      const texto = await file.text();
+      const linhas = parseCsvExtrato(texto);
+      if (linhas.length === 0) {
+        toast.error("Nenhuma linha válida encontrada no CSV. Verifique cabeçalhos: data, descricao, valor.");
+        e.target.value = "";
+        return;
+      }
+      const ofxEquivalente = csvParaOfx(linhas);
+      const nome = file.name.replace(/\.csv$/i, ".csv.ofx");
+      importar.mutate(
+        { conta_id: contaSelecionada, arquivo_nome: nome, conteudo_ofx: ofxEquivalente },
+        {
+          onSuccess: () => toast.success(`${linhas.length} linha(s) do CSV convertidas e importadas.`),
+          onSettled: () => (e.target.value = ""),
+        }
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao processar CSV.");
+      e.target.value = "";
+    }
   }
 
   function buscarSugestoes() {
@@ -235,6 +268,27 @@ export default function FinConciliacao() {
               <Upload className="w-4 h-4 mr-1.5" />
             )}
             Importar OFX
+          </Button>
+
+          <input
+            ref={csvRef}
+            type="file"
+            accept=".csv,.CSV,text/csv"
+            className="hidden"
+            onChange={onCsvFile}
+          />
+          <Button
+            variant="outline"
+            onClick={() => csvRef.current?.click()}
+            disabled={importar.isPending || !contaSelecionada}
+            title="CSV com colunas: data, descricao, valor (opcional documento)"
+          >
+            {importar.isPending ? (
+              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+            ) : (
+              <Upload className="w-4 h-4 mr-1.5" />
+            )}
+            Importar CSV
           </Button>
 
           <Button
