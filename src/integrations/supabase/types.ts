@@ -9012,6 +9012,75 @@ export type Database = {
         }
         Relationships: []
       }
+      lgpd_tratamento_log: {
+        Row: {
+          base_legal: string
+          categoria_dados: string
+          created_at: string
+          descricao: string | null
+          empresa_id: string | null
+          finalidade: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          modulo: string
+          operacao: string
+          titular_id: string | null
+          titular_tipo: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          base_legal?: string
+          categoria_dados: string
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string | null
+          finalidade: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          modulo: string
+          operacao: string
+          titular_id?: string | null
+          titular_tipo?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          base_legal?: string
+          categoria_dados?: string
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string | null
+          finalidade?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          modulo?: string
+          operacao?: string
+          titular_id?: string | null
+          titular_tipo?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lgpd_tratamento_log_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lgpd_tratamento_log_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       licitacao_itens: {
         Row: {
           created_at: string
@@ -14002,6 +14071,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      expurgo_auditoria_5anos: { Args: never; Returns: Json }
       financeiro_dfc_mensal: {
         Args: { p_empresa_id: string; p_meses?: number }
         Returns: {
