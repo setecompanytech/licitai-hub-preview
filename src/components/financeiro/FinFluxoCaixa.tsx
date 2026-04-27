@@ -219,11 +219,11 @@ export default function FinFluxoCaixa() {
             </div>
           </CardHeader>
           <CardContent className="h-96">
-            {isLoading || !data ? (
+            {isLoading || !dadosUI ? (
               <Skeleton className="w-full h-full" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={data.dias}>
+                <ComposedChart data={dadosUI.dias}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis
                     dataKey="data"
@@ -268,7 +268,7 @@ export default function FinFluxoCaixa() {
             <CardTitle className="text-base">Detalhamento diário</CardTitle>
           </CardHeader>
           <CardContent>
-            {isLoading || !data ? (
+            {isLoading || !dadosUI ? (
               <Skeleton className="w-full h-48" />
             ) : (
               <div className="overflow-auto max-h-96">
@@ -283,7 +283,7 @@ export default function FinFluxoCaixa() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.dias.map((d) => {
+                    {dadosUI.dias.map((d) => {
                       const entrada = d.entradas_previstas + d.entradas_realizadas;
                       const saida = d.saidas_previstas + d.saidas_realizadas;
                       return (
