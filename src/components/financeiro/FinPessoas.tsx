@@ -87,6 +87,43 @@ export default function FinPessoas() {
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [tagInput, setTagInput] = useState("");
+  const [validandoSefaz, setValidandoSefaz] = useState(false);
+
+  const handleValidarSefaz = async () => {
+    const cnpj = form.documento.replace(/\D/g, "");
+    if (cnpj.length !== 14) {
+      toast.error("Informe um CNPJ válido (14 dígitos) para validar a Inscrição Estadual.");
+      return;
+    }
+    if (!form.ie || form.ie.trim().length < 2) {
+      toast.error("Informe a Inscrição Estadual antes de validar.");
+      return;
+    }
+    if (!form.endereco.uf) {
+      toast.error("Informe a UF (na aba Endereço) antes de validar a IE no SEFAZ.");
+      return;
+    }
+    setValidandoSefaz(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("nfe-consult-sefaz", {
+        body: { cnpj_emitente: cnpj, inscricao_estadual: form.ie.replace(/\D/g, ""), uf: form.endereco.uf, modo: "ie" },
+      });
+      if (error) throw error;
+      if ((data as any)?.setup_required) {
+        toast.warning("Consulta SEFAZ ainda não configurada. Validação local aplicada.");
+        return;
+      }
+      if ((data as any)?.ok) {
+        toast.success("Inscrição Estadual validada no SEFAZ.");
+      } else {
+        toast.error((data as any)?.error || "Inscrição Estadual não localizada.");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao consultar SEFAZ.");
+    } finally {
+      setValidandoSefaz(false);
+    }
+  };
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
