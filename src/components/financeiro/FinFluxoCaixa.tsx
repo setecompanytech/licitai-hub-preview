@@ -140,12 +140,12 @@ export default function FinFluxoCaixa() {
           <Card>
             <CardContent className="pt-4">
               <p className="text-xs text-muted-foreground">Saldo atual</p>
-              <p className="text-xl font-semibold mt-1">{formatBRL(data?.saldoInicial ?? 0)}</p>
+              <p className="text-xl font-semibold mt-1">{formatBRL(dadosUI?.saldoInicial ?? 0)}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4">
-              <p className="text-xs text-muted-foreground">Saldo projetado ({dias}d)</p>
+              <p className="text-xs text-muted-foreground">Saldo projetado ({dias}d · {CENARIOS.find(c => c.v === cenario)?.l})</p>
               <p className={`text-xl font-semibold mt-1 ${saldoFinal < 0 ? "text-destructive" : ""}`}>{formatBRL(saldoFinal)}</p>
             </CardContent>
           </Card>
@@ -156,6 +156,25 @@ export default function FinFluxoCaixa() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Seletor de cenário */}
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-xs text-muted-foreground">Cenário de projeção:</p>
+              <Tabs value={cenario} onValueChange={(v) => setCenario(v as Cenario)}>
+                <TabsList>
+                  {CENARIOS.map((c) => (
+                    <TabsTrigger key={c.v} value={c.v}>{c.l}</TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+              <p className="text-[11px] text-muted-foreground ml-auto">
+                Pessimista: −15% receitas, +10% despesas · Otimista: +10% receitas, −5% despesas
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         {diasNegativos.length > 0 && (
           <Card className="border-destructive/30 bg-destructive/5">
