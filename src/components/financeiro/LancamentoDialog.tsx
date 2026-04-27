@@ -20,6 +20,7 @@ import {
   type Lancamento,
 } from "@/hooks/useFinanceiro";
 import type { Database } from "@/integrations/supabase/types";
+import RateioCentroCustoEditor from "./RateioCentroCustoEditor";
 
 type Tipo = Database["public"]["Enums"]["financeiro_tipo_lancamento"];
 type Status = Database["public"]["Enums"]["financeiro_status_lancamento"];
@@ -221,10 +222,11 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
         </DialogHeader>
 
         <Tabs defaultValue="geral" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="geral">Geral</TabsTrigger>
             <TabsTrigger value="cobranca">Cobrança</TabsTrigger>
             <TabsTrigger value="documento">Documento fiscal</TabsTrigger>
+            <TabsTrigger value="rateio" disabled={!editando}>Rateio</TabsTrigger>
             <TabsTrigger value="parcelas" disabled={!podeParcelar}>Parcelamento</TabsTrigger>
           </TabsList>
 
