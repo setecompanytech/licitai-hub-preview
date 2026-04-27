@@ -58,6 +58,8 @@ type MatchSugestao = {
   lancamento_id: string;
   score: number;
   motivos: Record<string, unknown>;
+  metodo?: string;
+  justificativa_ia?: string;
 };
 
 export default function FinConciliacao() {
@@ -147,17 +149,22 @@ export default function FinConciliacao() {
     }
   }
 
-  function buscarSugestoes() {
+  function buscarSugestoes(usar_ia = false) {
     conciliarAuto.mutate(
       {
         conta_id: contaSelecionada || undefined,
         auto_aplicar: false,
         score_minimo: scoreMinimo,
+        usar_ia,
       },
       {
         onSuccess: (data) => {
           setSugestoes(data.matches ?? []);
           setSelecionadas(new Set((data.matches ?? []).map((m) => m.movimento_id)));
+          const iaSug = (data as { ia_sugeridos?: number }).ia_sugeridos;
+          if (usar_ia && iaSug) {
+            toast.success(`IA sugeriu ${iaSug} novos matches.`);
+          }
         },
       }
     );
@@ -355,7 +362,7 @@ export default function FinConciliacao() {
             </div>
             <Button
               variant="outline"
-              onClick={buscarSugestoes}
+              onClick={() => buscarSugestoes(false)}
               disabled={conciliarAuto.isPending}
             >
               {conciliarAuto.isPending ? (
@@ -364,6 +371,19 @@ export default function FinConciliacao() {
                 <Search className="w-4 h-4 mr-1.5" />
               )}
               Buscar sugestões
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => buscarSugestoes(true)}
+              disabled={conciliarAuto.isPending}
+              title="Usa IA para encontrar matches em casos ambíguos (descrições diferentes, valores próximos)"
+            >
+              {conciliarAuto.isPending ? (
+                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4 mr-1.5 text-primary" />
+              )}
+              Sugerir com IA
             </Button>
             {sugestoes.length > 0 && (
               <>
@@ -426,7 +446,15 @@ export default function FinConciliacao() {
                           />
                         </TableCell>
                         <TableCell>
-                          <ScoreBadge score={s.score} />
+                          <div className="flex flex-col gap-1">
+                            <ScoreBadge score={s.score} />
+                            {s.metodo === "ia" && (
+                              <Badge variant="outline" className="text-[10px] gap-1 border-primary/40 text-primary">
+                                <Sparkles className="w-2.5 h-2.5" />
+                                IA
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           {mov ? (
@@ -468,7 +496,14 @@ export default function FinConciliacao() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <MotivosBadges motivos={s.motivos} />
+                          <div className="space-y-1">
+                            <MotivosBadges motivos={s.motivos} />
+                            {s.justificativa_ia && (
+                              <p className="text-[11px] italic text-muted-foreground max-w-[280px] leading-snug">
+                                "{s.justificativa_ia}"
+                              </p>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
