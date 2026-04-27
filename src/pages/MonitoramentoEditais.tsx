@@ -398,6 +398,15 @@ export default function MonitoramentoEditais() {
       // Se a fonte não responder, volta para o cache PNCP local.
       const ufsList = filtros.ufs.length > 0 ? filtros.ufs : [null];
       const modList = modalidadesEfetivas.length > 0 ? modalidadesEfetivas : [null];
+      // Chave estável para deduplicação cross-fonte: prioriza pncp_id/numero_controle,
+      // cai para id, e por último uma assinatura derivada (numero_compra + cnpj + ano)
+      const chaveDedup = (r: any): string => {
+        const k = r?.pncp_id || r?.numero_controle_pncp || r?.id;
+        if (k) return String(k);
+        const sig = `${r?.numero_compra || ''}|${r?.cnpj_orgao || ''}|${r?.ano_compra || ''}|${r?.uf || ''}`;
+        return sig.length > 4 ? sig : `__sem_chave__${Math.random()}`;
+      };
+
       const consultarCache = async () => {
         const calls: Promise<{ data: any[] | null; error: any }>[] = [];
         for (const uf of ufsList) {
@@ -428,22 +437,39 @@ export default function MonitoramentoEditais() {
         if (erros.length === respostas.length) {
           throw new Error(erros[0] || 'Falha ao consultar o cache PNCP');
         }
-        return respostas.flatMap(r => r.data || []);
+        // Soma total_count de cada chamada (cada UF/modalidade tem seu próprio total).
+        // Como o RPC já retorna total_count em cada linha, pegamos só o primeiro de cada chamada.
+        let totalSomado = 0;
+        const todas: any[] = [];
+        for (const r of respostas) {
+          const data = r.data || [];
+          if (data.length > 0) totalSomado += Number(data[0].total_count) || 0;
+          todas.push(...data);
+        }
+        return { rows: todas, totalSomado };
       };
 
       let rowsRaw: any[] = [];
+      let totalLive = 0;
+      let totalCache = 0;
       let liveOk = 0;
       let liveErr = 0;
+      let usouCache = false;
+
       if (dataIni && dataFim) {
         const modalidadesAoVivo = modalidadesEfetivas.length > 0 ? modalidadesEfetivas : ALL_MODALIDADE_IDS;
-        const livePageSize = filtros.municipios.length > 0 || filtros.uasgs.length > 0 ? 50 : tamanho;
+        // Página > 1: pede mais itens para garantir que a página solicitada esteja no resultado
+        // (a fonte live é por UF×modalidade, não global; agregamos no client)
+        const livePageSize = filtros.municipios.length > 0 || filtros.uasgs.length > 0
+          ? 50
+          : Math.min(50, tamanho * Math.max(1, pag));
         const liveCalls = ufsList.flatMap(uf =>
           modalidadesAoVivo.map(modalidade =>
             supabase.functions.invoke('busca-licitacoes', {
               body: {
                 termo: termo || '',
                 uf: uf || '',
-                pagina: 1,
+                pagina: pag, // respeita a página solicitada
                 tamanhoPagina: livePageSize,
                 dataInicial: dataIni,
                 dataFinal: dataFim,
@@ -454,7 +480,7 @@ export default function MonitoramentoEditais() {
           )
         );
 
-        logCtx({ etapa: 'live_inicio', chamadas: liveCalls.length });
+        logCtx({ etapa: 'live_inicio', chamadas: liveCalls.length, pageSize: livePageSize });
         const liveRespostas = await Promise.allSettled(liveCalls);
         rowsRaw = liveRespostas.flatMap((resp) => {
           if (resp.status !== 'fulfilled' || resp.value.error) {
@@ -468,10 +494,14 @@ export default function MonitoramentoEditais() {
           }
           liveOk++;
           const payload = resp.value.data as any;
-          const totalCount = Number(payload?.total) || 0;
+          // Soma o total de cada chamada (cada UF×modalidade é um conjunto independente)
+          totalLive += Number(payload?.total) || 0;
           return (payload?.data || []).map((item: any) => ({
             id: item.id,
+            pncp_id: item.pncpId || item.numeroControlePncp || item.id,
+            numero_controle_pncp: item.numeroControlePncp || null,
             numero_compra: item.numeroCompra,
+            ano_compra: item.anoCompra ? String(item.anoCompra) : null,
             objeto: item.objeto,
             orgao: item.orgao,
             cnpj_orgao: item.cnpj,
@@ -489,29 +519,32 @@ export default function MonitoramentoEditais() {
             tipo_instrumento: item.tipoEdital,
             link_sistema_origem: item.link,
             url_pncp: item.linkPncp,
-            total_count: totalCount,
           }));
         });
-        logCtx({ etapa: 'live_fim', ok: liveOk, erros: liveErr, registros: rowsRaw.length });
+        logCtx({ etapa: 'live_fim', ok: liveOk, erros: liveErr, registros: rowsRaw.length, totalLive });
       }
 
-      // Sempre tenta o cache também quando a busca live retornar vazio,
-      // garantindo resultados mesmo se a fonte oficial falhar/estiver lenta.
+      // Fallback / complemento: consulta o cache quando o live falhou ou veio vazio.
       if (rowsRaw.length === 0) {
         logCtx({ etapa: 'fallback_cache' });
-        rowsRaw = await consultarCache();
-        logCtx({ etapa: 'fallback_cache_fim', registros: rowsRaw.length });
+        const cacheRes = await consultarCache();
+        rowsRaw = cacheRes.rows;
+        totalCache = cacheRes.totalSomado;
+        usouCache = true;
+        logCtx({ etapa: 'fallback_cache_fim', registros: rowsRaw.length, totalCache });
       }
 
-      // Mescla, deduplica por id e aplica filtros client-side (uasg, município nome, ano)
+      // Deduplicação global por chave estável (suporta merge live+cache no futuro)
       const seen = new Set<string>();
-      let totalEstimado = 0;
-      const rows = rowsRaw.filter(r => {
-        if (!r?.id || seen.has(r.id)) return false;
-        seen.add(r.id);
-        totalEstimado = Math.max(totalEstimado, Number(r.total_count) || 0);
-        return true;
-      });
+      const rows: any[] = [];
+      for (const r of rowsRaw) {
+        const k = chaveDedup(r);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        rows.push(r);
+      }
+      const removidosDup = rowsRaw.length - rows.length;
+      if (removidosDup > 0) logCtx({ etapa: 'dedup', removidos: removidosDup });
 
       // Filtros locais adicionais (campos sem cobertura na RPC)
       const ufsSet = new Set(filtros.ufs);
@@ -568,11 +601,21 @@ export default function MonitoramentoEditais() {
         informacaoComplementar: '',
       }));
 
-      const total = filtrados.length === rows.length ? totalEstimado : filtrados.length;
+      // Total: usa o total reportado pela fonte se nenhum filtro client-side reduziu o conjunto;
+      // caso contrário, reporta o tamanho efetivo após filtros.
+      const totalReportado = usouCache ? totalCache : totalLive;
+      const totalBruto = Math.max(totalReportado, rows.length);
+      const reduziu = filtrados.length !== rows.length;
+      const total = reduziu ? filtrados.length : totalBruto;
       const paginas = Math.max(1, Math.ceil(total / tamanho));
 
+      // Paginação client-side: como agregamos múltiplas chamadas (UF×modalidade),
+      // recortamos a página solicitada de forma consistente.
+      const inicio = (pag - 1) * tamanho;
+      const editaisPagina = editais.slice(inicio, inicio + tamanho);
+
       setResultado({
-        data: editais,
+        data: editaisPagina,
         total,
         paginas,
         pagina: pag,
