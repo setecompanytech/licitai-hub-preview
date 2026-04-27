@@ -33,8 +33,9 @@ const MODALIDADES = [
 ];
 
 const PAGE_SIZE = 50;
-const MAX_PAGES_POR_BUSCA = 20; // 1.000 editais por (UF,modalidade,dia) — suficiente
-const TIMEOUT_FETCH_MS = 15_000;
+const MAX_PAGES_POR_BUSCA = 20;
+const TIMEOUT_FETCH_MS = 45_000; // PNCP pode demorar; 15s era curto demais
+const MAX_RETRIES = 2;           // tenta até 3x antes de abandonar
 const PNCP_BASE = "https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao";
 
 function fmtDate(d: Date) {
@@ -52,6 +53,21 @@ async function fetchComTimeout(url: string, timeoutMs = TIMEOUT_FETCH_MS) {
   } finally {
     clearTimeout(t);
   }
+}
+
+async function fetchComRetry(url: string): Promise<Response> {
+  let ultimoErro: any = null;
+  for (let tentativa = 0; tentativa <= MAX_RETRIES; tentativa++) {
+    try {
+      return await fetchComTimeout(url);
+    } catch (e: any) {
+      ultimoErro = e;
+      if (tentativa < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, 1000 * (tentativa + 1))); // 1s, 2s
+      }
+    }
+  }
+  throw ultimoErro ?? new Error("fetch falhou sem motivo");
 }
 
 async function processarUf(
@@ -73,9 +89,10 @@ async function processarUf(
 
         let res: Response;
         try {
-          res = await fetchComTimeout(url);
+          res = await fetchComRetry(url);
         } catch (e: any) {
           errosLocal.push(`${uf}/m${modalidade.id}/${dataStr}/p${pagina}: ${e.message}`);
+          // não aborta toda a UF — pula para próxima modalidade/dia
           break;
         }
 
