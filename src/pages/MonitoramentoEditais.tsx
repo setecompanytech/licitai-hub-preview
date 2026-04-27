@@ -601,11 +601,21 @@ export default function MonitoramentoEditais() {
         informacaoComplementar: '',
       }));
 
-      const total = filtrados.length === rows.length ? totalEstimado : filtrados.length;
+      // Total: usa o total reportado pela fonte se nenhum filtro client-side reduziu o conjunto;
+      // caso contrário, reporta o tamanho efetivo após filtros.
+      const totalReportado = usouCache ? totalCache : totalLive;
+      const totalBruto = Math.max(totalReportado, rows.length);
+      const reduziu = filtrados.length !== rows.length;
+      const total = reduziu ? filtrados.length : totalBruto;
       const paginas = Math.max(1, Math.ceil(total / tamanho));
 
+      // Paginação client-side: como agregamos múltiplas chamadas (UF×modalidade),
+      // recortamos a página solicitada de forma consistente.
+      const inicio = (pag - 1) * tamanho;
+      const editaisPagina = editais.slice(inicio, inicio + tamanho);
+
       setResultado({
-        data: editais,
+        data: editaisPagina,
         total,
         paginas,
         pagina: pag,
