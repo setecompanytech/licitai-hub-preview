@@ -207,6 +207,48 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
         </CardContent>
       </Card>
 
+      {/* Filtros */}
+      <Card>
+        <CardContent className="pt-4 flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[220px]">
+            <label className="text-xs text-muted-foreground">Buscar por descrição, pessoa ou categoria</label>
+            <div className="relative mt-1">
+              <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Ex.: aluguel, fornecedor X, energia…"
+                className="pl-8 h-9"
+              />
+              {busca && (
+                <button
+                  onClick={() => setBusca("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  title="Limpar"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="min-w-[160px]">
+            <label className="text-xs text-muted-foreground">Status</label>
+            <Select value={filtroStatus} onValueChange={(v) => setFiltroStatus(v as typeof filtroStatus)}>
+              <SelectTrigger className="h-9 mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="previsto">Em aberto (no prazo)</SelectItem>
+                <SelectItem value="atrasado">Atrasados</SelectItem>
+                <SelectItem value="pago">{tipo === "a_pagar" ? "Pagos" : "Recebidos"}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="text-xs text-muted-foreground pb-2">
+            <span className="font-semibold text-foreground">{lancamentos.length}</span> de {todos.length} lançamentos
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Grade do calendário */}
       <Card>
         <CardContent className="p-2">
