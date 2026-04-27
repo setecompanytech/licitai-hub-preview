@@ -80,12 +80,37 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
   const inicioGrid = startOfWeek(inicioMes, { weekStartsOn: 0 });
   const fimGrid = endOfWeek(fimMes, { weekStartsOn: 0 });
 
+  const [busca, setBusca] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState<"todos" | "previsto" | "realizado" | "atrasado" | "pago">("todos");
+
   const { data = [], isLoading } = useLancamentos({
     tipo,
     dataInicio: format(inicioGrid, "yyyy-MM-dd"),
     dataFim: format(fimGrid, "yyyy-MM-dd"),
   });
-  const lancamentos = data as LancamentoCal[];
+  const todos = data as LancamentoCal[];
+
+  const lancamentos = useMemo(() => {
+    const buscaLow = busca.trim().toLowerCase();
+    return todos.filter((l) => {
+      // Filtro de status
+      if (filtroStatus !== "todos") {
+        const venc = l.data_vencimento ?? l.data_competencia;
+        const dias = differenceInDays(parseISO(venc), new Date());
+        const ehPago = l.status === "realizado" || l.status === "conciliado";
+        if (filtroStatus === "pago" && !ehPago) return false;
+        if (filtroStatus === "realizado" && !ehPago) return false;
+        if (filtroStatus === "previsto" && (ehPago || l.status === "cancelado" || dias < 0)) return false;
+        if (filtroStatus === "atrasado" && (ehPago || l.status === "cancelado" || dias >= 0)) return false;
+      }
+      // Filtro de busca
+      if (buscaLow) {
+        const alvo = `${l.descricao ?? ""} ${l.pessoa?.nome ?? ""} ${l.categoria?.nome ?? ""}`.toLowerCase();
+        if (!alvo.includes(buscaLow)) return false;
+      }
+      return true;
+    });
+  }, [todos, busca, filtroStatus]);
 
   // Indexa por dia (yyyy-MM-dd)
   const porDia = useMemo(() => {
