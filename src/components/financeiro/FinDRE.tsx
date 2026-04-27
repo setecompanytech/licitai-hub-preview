@@ -34,6 +34,7 @@ import {
   Minus,
   Scale,
 } from "lucide-react";
+import FinDREporCentroCusto from "./FinDREporCentroCusto";
 
 // ----------------------------------------------------------------------------
 // Apresentação de sinais (despesas e deduções aparecem como "(–)")
@@ -114,6 +115,7 @@ export default function FinDRE() {
 
   return (
     <div className="space-y-4">
+      <FinDREporCentroCusto />
       <Card>
         <CardHeader className="flex flex-row items-end justify-between gap-2 flex-wrap">
           <div>
