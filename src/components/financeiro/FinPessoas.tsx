@@ -439,7 +439,20 @@ export default function FinPessoas() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Inscrição Estadual</Label>
-                  <Input value={form.ie} onChange={(e) => set("ie", e.target.value)} placeholder="ISENTO se aplicável" />
+                  <div className="flex gap-2">
+                    <Input value={form.ie} onChange={(e) => set("ie", e.target.value)} placeholder="ISENTO se aplicável" />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleValidarSefaz}
+                      disabled={validandoSefaz}
+                      title="Validar Inscrição Estadual no SEFAZ"
+                      className="shrink-0"
+                    >
+                      {validandoSefaz ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Inscrição Municipal</Label>
