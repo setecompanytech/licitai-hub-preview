@@ -1,0 +1,2 @@
+ALTER TABLE public.financeiro_lancamentos ENABLE TRIGGER trg_audit_fl;
+ALTER TABLE public.financeiro_lancamentos ENABLE TRIGGER trg_marcar_apuracao_desatualizada;
