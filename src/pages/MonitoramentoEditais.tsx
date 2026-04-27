@@ -578,6 +578,14 @@ export default function MonitoramentoEditais() {
         pagina: pag,
       });
       setPagina(pag);
+
+      const dt = Math.round(performance.now() - t0);
+      logCtx({ etapa: 'fim', registros: editais.length, total, ms: dt });
+      if (editais.length === 0) {
+        toast.info('Nenhum edital encontrado', {
+          description: 'Tente ampliar o período ou remover filtros (UF, modalidade, município).',
+        });
+      }
     } catch (e: unknown) {
       if (e instanceof Error && e.name === 'AbortError') return;
       const msg = e instanceof Error ? e.message : 'Erro ao consultar o cache PNCP';
