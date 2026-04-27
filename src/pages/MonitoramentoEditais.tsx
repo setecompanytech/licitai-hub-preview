@@ -349,6 +349,10 @@ export default function MonitoramentoEditais() {
     setErro(null);
     setResultado(null);
 
+    const t0 = performance.now();
+    const logCtx = (extra: Record<string, unknown> = {}) =>
+      console.log('[Mural/buscar]', { pagina: pag, ...extra });
+
     try {
       // Monta termo de busca: combina objeto + nº licitação + uasgs como tokens
       const termoPartes: string[] = [];
@@ -360,7 +364,35 @@ export default function MonitoramentoEditais() {
       const dataIni = filtros.dataIni ? dmyToIso(filtros.dataIni) : null;
       const dataFim = filtros.dataFim ? dmyToIso(filtros.dataFim) : null;
 
+      // Validação: se usuário preencheu apenas uma das datas, avisa
+      if ((filtros.dataIni && !filtros.dataFim) || (!filtros.dataIni && filtros.dataFim)) {
+        const msg = 'Informe data inicial e final do período.';
+        setErro(msg);
+        setCarregando(false);
+        toast.warning('Filtro de período incompleto', { description: msg });
+        return;
+      }
+      // Validação: data inicial não pode ser maior que final
+      if (dataIni && dataFim && dataIni > dataFim) {
+        const msg = 'Data inicial não pode ser posterior à data final.';
+        setErro(msg);
+        setCarregando(false);
+        toast.warning('Período inválido', { description: msg });
+        return;
+      }
+
       const tamanho = 20;
+
+      logCtx({
+        etapa: 'inicio',
+        termo,
+        dataIni,
+        dataFim,
+        ufs: filtros.ufs,
+        modalidades: modalidadesEfetivas,
+        municipios: filtros.municipios,
+        uasgs: filtros.uasgs,
+      });
 
       // Quando há período informado, consulta a fonte oficial em tempo real.
       // Se a fonte não responder, volta para o cache PNCP local.
@@ -391,6 +423,8 @@ export default function MonitoramentoEditais() {
 
         const respostas = await Promise.all(calls);
         const erros = respostas.filter(r => r.error).map(r => r.error?.message);
+        const okCount = respostas.length - erros.length;
+        logCtx({ etapa: 'cache', total_calls: respostas.length, ok: okCount, erros });
         if (erros.length === respostas.length) {
           throw new Error(erros[0] || 'Falha ao consultar o cache PNCP');
         }
@@ -398,6 +432,8 @@ export default function MonitoramentoEditais() {
       };
 
       let rowsRaw: any[] = [];
+      let liveOk = 0;
+      let liveErr = 0;
       if (dataIni && dataFim) {
         const modalidadesAoVivo = modalidadesEfetivas.length > 0 ? modalidadesEfetivas : ALL_MODALIDADE_IDS;
         const livePageSize = filtros.municipios.length > 0 || filtros.uasgs.length > 0 ? 50 : tamanho;
@@ -418,9 +454,19 @@ export default function MonitoramentoEditais() {
           )
         );
 
+        logCtx({ etapa: 'live_inicio', chamadas: liveCalls.length });
         const liveRespostas = await Promise.allSettled(liveCalls);
         rowsRaw = liveRespostas.flatMap((resp) => {
-          if (resp.status !== 'fulfilled' || resp.value.error) return [];
+          if (resp.status !== 'fulfilled' || resp.value.error) {
+            liveErr++;
+            if (resp.status === 'fulfilled' && resp.value.error) {
+              console.warn('[Mural/buscar] live erro:', resp.value.error?.message || resp.value.error);
+            } else if (resp.status === 'rejected') {
+              console.warn('[Mural/buscar] live rejected:', resp.reason);
+            }
+            return [];
+          }
+          liveOk++;
           const payload = resp.value.data as any;
           const totalCount = Number(payload?.total) || 0;
           return (payload?.data || []).map((item: any) => ({
@@ -446,9 +492,16 @@ export default function MonitoramentoEditais() {
             total_count: totalCount,
           }));
         });
+        logCtx({ etapa: 'live_fim', ok: liveOk, erros: liveErr, registros: rowsRaw.length });
       }
 
-      if (rowsRaw.length === 0) rowsRaw = await consultarCache();
+      // Sempre tenta o cache também quando a busca live retornar vazio,
+      // garantindo resultados mesmo se a fonte oficial falhar/estiver lenta.
+      if (rowsRaw.length === 0) {
+        logCtx({ etapa: 'fallback_cache' });
+        rowsRaw = await consultarCache();
+        logCtx({ etapa: 'fallback_cache_fim', registros: rowsRaw.length });
+      }
 
       // Mescla, deduplica por id e aplica filtros client-side (uasg, município nome, ano)
       const seen = new Set<string>();
@@ -525,6 +578,14 @@ export default function MonitoramentoEditais() {
         pagina: pag,
       });
       setPagina(pag);
+
+      const dt = Math.round(performance.now() - t0);
+      logCtx({ etapa: 'fim', registros: editais.length, total, ms: dt });
+      if (editais.length === 0) {
+        toast.info('Nenhum edital encontrado', {
+          description: 'Tente ampliar o período ou remover filtros (UF, modalidade, município).',
+        });
+      }
     } catch (e: unknown) {
       if (e instanceof Error && e.name === 'AbortError') return;
       const msg = e instanceof Error ? e.message : 'Erro ao consultar o cache PNCP';
