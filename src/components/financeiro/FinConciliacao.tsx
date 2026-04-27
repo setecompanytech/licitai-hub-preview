@@ -47,6 +47,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { formatBRL, formatDate } from "@/lib/financeiro/formatters";
+import { parseCsvExtrato, csvParaOfx } from "@/lib/financeiro/csvToOfx";
 import { toast } from "sonner";
 
 type MatchSugestao = {
