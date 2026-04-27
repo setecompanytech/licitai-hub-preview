@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target, FileDown, Calculator, Eye, ArrowRightLeft, Upload, CheckCheck, FileSpreadsheet, ShieldCheck, Receipt, Building2, Sparkles } from "lucide-react";
+import { Search, LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target, FileDown, Calculator, Eye, ArrowRightLeft, Upload, CheckCheck, FileSpreadsheet, ShieldCheck, Receipt, Building2, Sparkles, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type HubItem = {
