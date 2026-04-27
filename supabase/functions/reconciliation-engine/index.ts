@@ -91,6 +91,7 @@ Deno.serve(async (req) => {
       conta_id,
       auto_aplicar = false,
       score_minimo = 70,
+      usar_ia = false,
     } = body;
     if (!empresa_id) {
       return new Response(JSON.stringify({ error: "empresa_id obrigatório" }), {
