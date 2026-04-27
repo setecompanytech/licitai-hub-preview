@@ -92,10 +92,8 @@ export function useIndicadoresCFO() {
       ]);
 
       if (contasRes.error) throw contasRes.error;
-      if (lancRes.error) throw lancRes.error;
 
       const contas = contasRes.data ?? [];
-      const lancs = lancRes.data ?? [];
       const bp = (bpRes.data ?? [])[0];
 
       // ===== Rentabilidade (DRE simplificada do mês corrente) =====
