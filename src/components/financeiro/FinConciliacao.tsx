@@ -45,10 +45,13 @@ import {
   Search,
   CheckCircle2,
   TrendingUp,
+  BarChart3,
 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBRL, formatDate } from "@/lib/financeiro/formatters";
 import { parseCsvExtrato, csvParaOfx } from "@/lib/financeiro/csvToOfx";
 import { toast } from "sonner";
+import FinRelatorioConciliacao from "./FinRelatorioConciliacao";
 
 type MatchSugestao = {
   movimento_id: string;
