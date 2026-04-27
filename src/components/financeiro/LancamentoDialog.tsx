@@ -440,6 +440,12 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
           </TabsContent>
 
           {/* ---------------- PARCELAMENTO ---------------- */}
+          {/* ---------------- RATEIO ---------------- */}
+          <TabsContent value="rateio" className="space-y-3">
+            <RateioCentroCustoEditor lancamentoId={initial?.id ?? null} valorBase={Number(valor) || 0} />
+          </TabsContent>
+
+          {/* ---------------- PARCELAMENTO ---------------- */}
           <TabsContent value="parcelas" className="space-y-4">
             <div className="rounded-md border p-4 flex items-center justify-between">
               <div>
