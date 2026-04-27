@@ -7161,6 +7161,66 @@ export type Database = {
           },
         ]
       }
+      financeiro_demonstracoes: {
+        Row: {
+          competencia_fim: string
+          competencia_inicio: string
+          created_at: string
+          dados: Json
+          empresa_id: string
+          gerado_por: string | null
+          id: string
+          observacoes: string | null
+          resultado_liquido: number | null
+          tipo: string
+          total_ativo: number | null
+          total_passivo: number | null
+        }
+        Insert: {
+          competencia_fim: string
+          competencia_inicio: string
+          created_at?: string
+          dados?: Json
+          empresa_id: string
+          gerado_por?: string | null
+          id?: string
+          observacoes?: string | null
+          resultado_liquido?: number | null
+          tipo: string
+          total_ativo?: number | null
+          total_passivo?: number | null
+        }
+        Update: {
+          competencia_fim?: string
+          competencia_inicio?: string
+          created_at?: string
+          dados?: Json
+          empresa_id?: string
+          gerado_por?: string | null
+          id?: string
+          observacoes?: string | null
+          resultado_liquido?: number | null
+          tipo?: string
+          total_ativo?: number | null
+          total_passivo?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_demonstracoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_demonstracoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financeiro_documentos_fiscais: {
         Row: {
           arquivo_url: string | null
@@ -8237,6 +8297,143 @@ export type Database = {
             columns: ["lancamento_id"]
             isOneToOne: false
             referencedRelation: "financeiro_lancamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_open_finance_conexoes: {
+        Row: {
+          banco_codigo: string | null
+          banco_nome: string
+          conta_id: string | null
+          created_at: string
+          criado_por: string | null
+          empresa_id: string
+          erro_mensagem: string | null
+          frequencia_horas: number
+          id: string
+          item_id_externo: string | null
+          metadata: Json
+          provedor: string
+          proxima_sincronizacao: string | null
+          status: string
+          ultima_sincronizacao: string | null
+          updated_at: string
+        }
+        Insert: {
+          banco_codigo?: string | null
+          banco_nome: string
+          conta_id?: string | null
+          created_at?: string
+          criado_por?: string | null
+          empresa_id: string
+          erro_mensagem?: string | null
+          frequencia_horas?: number
+          id?: string
+          item_id_externo?: string | null
+          metadata?: Json
+          provedor: string
+          proxima_sincronizacao?: string | null
+          status?: string
+          ultima_sincronizacao?: string | null
+          updated_at?: string
+        }
+        Update: {
+          banco_codigo?: string | null
+          banco_nome?: string
+          conta_id?: string | null
+          created_at?: string
+          criado_por?: string | null
+          empresa_id?: string
+          erro_mensagem?: string | null
+          frequencia_horas?: number
+          id?: string
+          item_id_externo?: string | null
+          metadata?: Json
+          provedor?: string
+          proxima_sincronizacao?: string | null
+          status?: string
+          ultima_sincronizacao?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_open_finance_conexoes_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_open_finance_conexoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_open_finance_conexoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_open_finance_sync_log: {
+        Row: {
+          conexao_id: string
+          created_at: string
+          duracao_ms: number | null
+          empresa_id: string
+          erro: string | null
+          id: string
+          movimentos_novos: number
+          saldo_atual: number | null
+          status: string
+        }
+        Insert: {
+          conexao_id: string
+          created_at?: string
+          duracao_ms?: number | null
+          empresa_id: string
+          erro?: string | null
+          id?: string
+          movimentos_novos?: number
+          saldo_atual?: number | null
+          status: string
+        }
+        Update: {
+          conexao_id?: string
+          created_at?: string
+          duracao_ms?: number | null
+          empresa_id?: string
+          erro?: string | null
+          id?: string
+          movimentos_novos?: number
+          saldo_atual?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_open_finance_sync_log_conexao_id_fkey"
+            columns: ["conexao_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_open_finance_conexoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_open_finance_sync_log_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_open_finance_sync_log_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
         ]
