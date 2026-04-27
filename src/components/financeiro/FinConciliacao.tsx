@@ -113,6 +113,37 @@ export default function FinConciliacao() {
     );
   }
 
+  async function onCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!contaSelecionada) {
+      toast.error("Selecione uma conta antes de importar.");
+      e.target.value = "";
+      return;
+    }
+    try {
+      const texto = await file.text();
+      const linhas = parseCsvExtrato(texto);
+      if (linhas.length === 0) {
+        toast.error("Nenhuma linha válida encontrada no CSV. Verifique cabeçalhos: data, descricao, valor.");
+        e.target.value = "";
+        return;
+      }
+      const ofxEquivalente = csvParaOfx(linhas);
+      const nome = file.name.replace(/\.csv$/i, ".csv.ofx");
+      importar.mutate(
+        { conta_id: contaSelecionada, arquivo_nome: nome, conteudo_ofx: ofxEquivalente },
+        {
+          onSuccess: () => toast.success(`${linhas.length} linha(s) do CSV convertidas e importadas.`),
+          onSettled: () => (e.target.value = ""),
+        }
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao processar CSV.");
+      e.target.value = "";
+    }
+  }
+
   function buscarSugestoes() {
     conciliarAuto.mutate(
       {
