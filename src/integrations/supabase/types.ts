@@ -9650,6 +9650,51 @@ export type Database = {
         }
         Relationships: []
       }
+      mural_alerta_log: {
+        Row: {
+          amostras: Json
+          created_at: string
+          destinatarios_email: Json
+          divergencias: Json
+          duplicatas_total: number
+          envios_email: Json
+          id: string
+          janela_minutos: number
+          slack: Json
+          total_errors: number
+          total_eventos: number
+          total_warnings: number
+        }
+        Insert: {
+          amostras?: Json
+          created_at?: string
+          destinatarios_email?: Json
+          divergencias?: Json
+          duplicatas_total?: number
+          envios_email?: Json
+          id?: string
+          janela_minutos: number
+          slack?: Json
+          total_errors?: number
+          total_eventos?: number
+          total_warnings?: number
+        }
+        Update: {
+          amostras?: Json
+          created_at?: string
+          destinatarios_email?: Json
+          divergencias?: Json
+          duplicatas_total?: number
+          envios_email?: Json
+          id?: string
+          janela_minutos?: number
+          slack?: Json
+          total_errors?: number
+          total_eventos?: number
+          total_warnings?: number
+        }
+        Relationships: []
+      }
       mural_busca_telemetria: {
         Row: {
           chamadas_erro: number
