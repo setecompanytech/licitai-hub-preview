@@ -4083,6 +4083,78 @@ export type Database = {
           },
         ]
       }
+      fin_apuracao_impostos: {
+        Row: {
+          aliquota: number | null
+          base_calculo: number | null
+          competencia: string
+          created_at: string | null
+          divergencia: number | null
+          empresa_id: string
+          id: string
+          origem: Json | null
+          status: string | null
+          tributo: string
+          updated_at: string | null
+          user_id: string
+          valor_apurado: number | null
+          valor_devido: number | null
+          valor_pago: number | null
+          valor_retido: number | null
+        }
+        Insert: {
+          aliquota?: number | null
+          base_calculo?: number | null
+          competencia: string
+          created_at?: string | null
+          divergencia?: number | null
+          empresa_id: string
+          id?: string
+          origem?: Json | null
+          status?: string | null
+          tributo: string
+          updated_at?: string | null
+          user_id?: string
+          valor_apurado?: number | null
+          valor_devido?: number | null
+          valor_pago?: number | null
+          valor_retido?: number | null
+        }
+        Update: {
+          aliquota?: number | null
+          base_calculo?: number | null
+          competencia?: string
+          created_at?: string | null
+          divergencia?: number | null
+          empresa_id?: string
+          id?: string
+          origem?: Json | null
+          status?: string | null
+          tributo?: string
+          updated_at?: string | null
+          user_id?: string
+          valor_apurado?: number | null
+          valor_devido?: number | null
+          valor_pago?: number | null
+          valor_retido?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_apuracao_impostos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_apuracao_impostos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fin_categorias: {
         Row: {
           ativo: boolean | null
@@ -4267,6 +4339,136 @@ export type Database = {
             columns: ["lancamento_id"]
             isOneToOne: false
             referencedRelation: "fin_lancamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_conciliacao_log: {
+        Row: {
+          acao: string
+          confianca: number | null
+          created_at: string
+          detalhes: Json | null
+          empresa_id: string
+          id: string
+          lancamento_id: string | null
+          metodo: string
+          movimento_id: string | null
+          revertido: boolean | null
+          revertido_em: string | null
+          revertido_por: string | null
+          user_id: string
+        }
+        Insert: {
+          acao: string
+          confianca?: number | null
+          created_at?: string
+          detalhes?: Json | null
+          empresa_id: string
+          id?: string
+          lancamento_id?: string | null
+          metodo: string
+          movimento_id?: string | null
+          revertido?: boolean | null
+          revertido_em?: string | null
+          revertido_por?: string | null
+          user_id?: string
+        }
+        Update: {
+          acao?: string
+          confianca?: number | null
+          created_at?: string
+          detalhes?: Json | null
+          empresa_id?: string
+          id?: string
+          lancamento_id?: string | null
+          metodo?: string
+          movimento_id?: string | null
+          revertido?: boolean | null
+          revertido_em?: string | null
+          revertido_por?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_conciliacao_log_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_conciliacao_log_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_conciliacao_regras: {
+        Row: {
+          ativo: boolean | null
+          categoria_id: string | null
+          confianca: number | null
+          created_at: string | null
+          empresa_id: string
+          id: string
+          origem: string | null
+          padrao_descritor: string
+          pessoa_id: string | null
+          plano_conta_id: string | null
+          updated_at: string | null
+          vezes_usada: number | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          categoria_id?: string | null
+          confianca?: number | null
+          created_at?: string | null
+          empresa_id: string
+          id?: string
+          origem?: string | null
+          padrao_descritor: string
+          pessoa_id?: string | null
+          plano_conta_id?: string | null
+          updated_at?: string | null
+          vezes_usada?: number | null
+        }
+        Update: {
+          ativo?: boolean | null
+          categoria_id?: string | null
+          confianca?: number | null
+          created_at?: string | null
+          empresa_id?: string
+          id?: string
+          origem?: string | null
+          padrao_descritor?: string
+          pessoa_id?: string | null
+          plano_conta_id?: string | null
+          updated_at?: string | null
+          vezes_usada?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_conciliacao_regras_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_conciliacao_regras_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_conciliacao_regras_plano_conta_id_fkey"
+            columns: ["plano_conta_id"]
+            isOneToOne: false
+            referencedRelation: "fin_plano_contas"
             referencedColumns: ["id"]
           },
         ]
@@ -6185,6 +6387,73 @@ export type Database = {
           },
         ]
       }
+      fin_orcamento: {
+        Row: {
+          ano: number
+          cenario: string | null
+          centro_custo_id: string | null
+          created_at: string | null
+          empresa_id: string
+          id: string
+          mes: number
+          observacoes: string | null
+          plano_conta_id: string
+          updated_at: string | null
+          user_id: string
+          valor_orcado: number
+        }
+        Insert: {
+          ano: number
+          cenario?: string | null
+          centro_custo_id?: string | null
+          created_at?: string | null
+          empresa_id: string
+          id?: string
+          mes: number
+          observacoes?: string | null
+          plano_conta_id: string
+          updated_at?: string | null
+          user_id?: string
+          valor_orcado?: number
+        }
+        Update: {
+          ano?: number
+          cenario?: string | null
+          centro_custo_id?: string | null
+          created_at?: string | null
+          empresa_id?: string
+          id?: string
+          mes?: number
+          observacoes?: string | null
+          plano_conta_id?: string
+          updated_at?: string | null
+          user_id?: string
+          valor_orcado?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_orcamento_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_orcamento_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_orcamento_plano_conta_id_fkey"
+            columns: ["plano_conta_id"]
+            isOneToOne: false
+            referencedRelation: "fin_plano_contas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fin_pessoas: {
         Row: {
           ativo: boolean | null
@@ -6506,6 +6775,135 @@ export type Database = {
           },
           {
             foreignKeyName: "fin_projetos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_sefaz_agendamentos: {
+        Row: {
+          ativo: boolean | null
+          cnpj: string
+          created_at: string | null
+          empresa_id: string
+          frequencia: string
+          id: string
+          proxima_execucao: string | null
+          total_importadas: number | null
+          ultima_execucao: string | null
+          ultimo_erro: string | null
+          ultimo_nsu: string | null
+          ultimo_status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          cnpj: string
+          created_at?: string | null
+          empresa_id: string
+          frequencia?: string
+          id?: string
+          proxima_execucao?: string | null
+          total_importadas?: number | null
+          ultima_execucao?: string | null
+          ultimo_erro?: string | null
+          ultimo_nsu?: string | null
+          ultimo_status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Update: {
+          ativo?: boolean | null
+          cnpj?: string
+          created_at?: string | null
+          empresa_id?: string
+          frequencia?: string
+          id?: string
+          proxima_execucao?: string | null
+          total_importadas?: number | null
+          ultima_execucao?: string | null
+          ultimo_erro?: string | null
+          ultimo_nsu?: string | null
+          ultimo_status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_sefaz_agendamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_sefaz_agendamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_sped_arquivos: {
+        Row: {
+          arquivo_url: string | null
+          competencia: string
+          created_at: string | null
+          empresa_id: string
+          hash_sha256: string | null
+          id: string
+          recibo: string | null
+          status: string
+          tipo: string
+          total_registros: number | null
+          updated_at: string | null
+          user_id: string
+          validacao: Json | null
+        }
+        Insert: {
+          arquivo_url?: string | null
+          competencia: string
+          created_at?: string | null
+          empresa_id: string
+          hash_sha256?: string | null
+          id?: string
+          recibo?: string | null
+          status?: string
+          tipo: string
+          total_registros?: number | null
+          updated_at?: string | null
+          user_id?: string
+          validacao?: Json | null
+        }
+        Update: {
+          arquivo_url?: string | null
+          competencia?: string
+          created_at?: string | null
+          empresa_id?: string
+          hash_sha256?: string | null
+          id?: string
+          recibo?: string | null
+          status?: string
+          tipo?: string
+          total_registros?: number | null
+          updated_at?: string | null
+          user_id?: string
+          validacao?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_sped_arquivos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_sped_arquivos_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas_safe"
@@ -14527,6 +14925,10 @@ export type Database = {
         Returns: number
       }
       expurgo_auditoria_5anos: { Args: never; Returns: Json }
+      fin_seed_plano_contas_padrao: {
+        Args: { p_empresa_id: string }
+        Returns: Json
+      }
       financeiro_dfc_mensal: {
         Args: { p_empresa_id: string; p_meses?: number }
         Returns: {
