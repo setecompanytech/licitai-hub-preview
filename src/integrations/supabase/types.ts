@@ -4394,6 +4394,72 @@ export type Database = {
           },
         ]
       }
+      fin_config_nfe: {
+        Row: {
+          ambiente: string
+          api_token: string | null
+          api_token_secundario: string | null
+          ativo: boolean
+          certificado_pfx_url: string | null
+          created_at: string
+          empresa_id: string
+          id: string
+          observacoes: string | null
+          provedor: string
+          proximo_numero: number | null
+          senha_certificado: string | null
+          serie_padrao: number | null
+          updated_at: string
+        }
+        Insert: {
+          ambiente?: string
+          api_token?: string | null
+          api_token_secundario?: string | null
+          ativo?: boolean
+          certificado_pfx_url?: string | null
+          created_at?: string
+          empresa_id: string
+          id?: string
+          observacoes?: string | null
+          provedor?: string
+          proximo_numero?: number | null
+          senha_certificado?: string | null
+          serie_padrao?: number | null
+          updated_at?: string
+        }
+        Update: {
+          ambiente?: string
+          api_token?: string | null
+          api_token_secundario?: string | null
+          ativo?: boolean
+          certificado_pfx_url?: string | null
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          observacoes?: string | null
+          provedor?: string
+          proximo_numero?: number | null
+          senha_certificado?: string | null
+          serie_padrao?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_config_nfe_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_config_nfe_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fin_contas: {
         Row: {
           agencia: string | null
@@ -6226,6 +6292,90 @@ export type Database = {
           },
           {
             foreignKeyName: "fin_pessoas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_pix_cobrancas: {
+        Row: {
+          beneficiario_cidade: string
+          beneficiario_nome: string
+          br_code: string
+          chave_pix: string
+          created_at: string
+          created_by: string | null
+          data_expiracao: string | null
+          data_pagamento: string | null
+          descricao: string | null
+          empresa_id: string
+          id: string
+          lancamento_id: string | null
+          pessoa_id: string | null
+          qr_code_image: string | null
+          status: string
+          tipo: string
+          txid: string | null
+          updated_at: string
+          valor: number
+          webhook_payload: Json | null
+        }
+        Insert: {
+          beneficiario_cidade?: string
+          beneficiario_nome: string
+          br_code: string
+          chave_pix: string
+          created_at?: string
+          created_by?: string | null
+          data_expiracao?: string | null
+          data_pagamento?: string | null
+          descricao?: string | null
+          empresa_id: string
+          id?: string
+          lancamento_id?: string | null
+          pessoa_id?: string | null
+          qr_code_image?: string | null
+          status?: string
+          tipo?: string
+          txid?: string | null
+          updated_at?: string
+          valor: number
+          webhook_payload?: Json | null
+        }
+        Update: {
+          beneficiario_cidade?: string
+          beneficiario_nome?: string
+          br_code?: string
+          chave_pix?: string
+          created_at?: string
+          created_by?: string | null
+          data_expiracao?: string | null
+          data_pagamento?: string | null
+          descricao?: string | null
+          empresa_id?: string
+          id?: string
+          lancamento_id?: string | null
+          pessoa_id?: string | null
+          qr_code_image?: string | null
+          status?: string
+          tipo?: string
+          txid?: string | null
+          updated_at?: string
+          valor?: number
+          webhook_payload?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_pix_cobrancas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_pix_cobrancas_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas_safe"
