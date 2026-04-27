@@ -158,34 +158,43 @@ export function useIndicadoresCFO() {
       const burnMensal = burns.length > 0 ? burns.reduce((a, b) => a + b, 0) / burns.length : 0;
       const runwayMeses = burnMensal > 0 && saldoCaixaAtual > 0 ? saldoCaixaAtual / burnMensal : null;
 
-      // ===== Projeção 90d (saldo + recebíveis previstos - pagáveis previstos por dia) =====
+      // ===== Projeção 90d — algoritmo O(n+90) com varredura única =====
       const proximos90 = new Date(hoje.getTime() + 90 * 86400000).toISOString().slice(0, 10);
-      const previstos = lancs.filter(
-        (l) =>
-          (l.status === "previsto" || l.status === "em_atraso") &&
-          l.data_vencimento &&
-          l.data_vencimento >= hojeStr &&
-          l.data_vencimento <= proximos90
-      );
+      const previstos = lancs
+        .filter(
+          (l) =>
+            (l.status === "previsto" || l.status === "em_atraso") &&
+            l.data_vencimento &&
+            l.data_vencimento >= hojeStr &&
+            l.data_vencimento <= proximos90
+        )
+        .sort((a, b) => (a.data_vencimento! < b.data_vencimento! ? -1 : 1));
+
       const projecao90d: { dia: string; saldo_projetado: number }[] = [];
       let saldoAcum = saldoCaixaAtual;
-      for (let d = 0; d <= 90; d += 5) {
+      const burnDiario = burnMensal / 30;
+      let idx = 0;
+      for (let d = 0; d <= 90; d++) {
         const dia = new Date(hoje.getTime() + d * 86400000).toISOString().slice(0, 10);
-        const eventos = previstos.filter((l) => l.data_vencimento! <= dia);
-        const entradas = eventos
-          .filter((l) => l.tipo === "a_receber")
-          .reduce((s, l) => s + Number(l.valor ?? 0), 0);
-        const saidas = eventos
-          .filter((l) => l.tipo === "a_pagar")
-          .reduce((s, l) => s + Number(l.valor ?? 0), 0);
-        // Considera burn médio diário também
-        const diasDecorridos = d;
-        const burnDiario = burnMensal / 30;
-        projecao90d.push({
-          dia,
-          saldo_projetado: saldoAcum + entradas - saidas - burnDiario * diasDecorridos,
-        });
+        // aplica todos os eventos cujo vencimento <= dia, marcha avante
+        while (idx < previstos.length && previstos[idx].data_vencimento! <= dia) {
+          const v = Number(previstos[idx].valor ?? 0);
+          saldoAcum += previstos[idx].tipo === "a_receber" ? v : -v;
+          idx++;
+        }
+        // burn diário acumulado
+        const saldoFinal = saldoAcum - burnDiario * d;
+        if (d % 3 === 0) {
+          projecao90d.push({
+            dia,
+            saldo_projetado: Number.isFinite(saldoFinal) ? saldoFinal : 0,
+          });
+        }
       }
+
+      // sanitiza qualquer NaN/Infinity decorrente de divisões por zero
+      const safe = (n: number) => (Number.isFinite(n) ? n : 0);
+
 
       return {
         receitaLiquida,
