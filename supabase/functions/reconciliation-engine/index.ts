@@ -286,6 +286,8 @@ Responda em JSON estrito: {"escolha": <índice numérico do candidato ou null>, 
     let aplicados = 0;
     if (auto_aplicar && matches.length > 0) {
       for (const m of matches) {
+        const motivosFinal: Record<string, unknown> = { ...m.motivos };
+        if (m.justificativa_ia) motivosFinal.justificativa_ia = m.justificativa_ia;
         // Insere conciliação
         const { error: errCon } = await supabase
           .from("financeiro_conciliacoes")
@@ -294,20 +296,18 @@ Responda em JSON estrito: {"escolha": <índice numérico do candidato ou null>, 
             extrato_movimento_id: m.movimento_id,
             lancamento_id: m.lancamento_id,
             score: m.score,
-            metodo: "auto",
-            motivos: m.motivos,
+            metodo: m.metodo === "ia" ? "ia" : "auto",
+            motivos: motivosFinal,
             conciliado_por: user.id,
           });
         if (errCon) {
           console.error("erro conciliacao:", errCon);
           continue;
         }
-        // Atualiza movimento
         await supabase
           .from("financeiro_extrato_movimentos")
           .update({ conciliado: true, lancamento_id: m.lancamento_id })
           .eq("id", m.movimento_id);
-        // Atualiza lançamento
         await supabase
           .from("financeiro_lancamentos")
           .update({ status: "conciliado", data_conciliado: new Date().toISOString() })
@@ -322,6 +322,8 @@ Responda em JSON estrito: {"escolha": <índice numérico do candidato ou null>, 
         movimentos_analisados: movimentos?.length || 0,
         sugestoes: matches.length,
         aplicados,
+        ia_consultados,
+        ia_sugeridos,
         matches: auto_aplicar ? [] : matches,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
