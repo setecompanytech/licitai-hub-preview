@@ -446,7 +446,15 @@ export default function FinConciliacao() {
                           />
                         </TableCell>
                         <TableCell>
-                          <ScoreBadge score={s.score} />
+                          <div className="flex flex-col gap-1">
+                            <ScoreBadge score={s.score} />
+                            {s.metodo === "ia" && (
+                              <Badge variant="outline" className="text-[10px] gap-1 border-primary/40 text-primary">
+                                <Sparkles className="w-2.5 h-2.5" />
+                                IA
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           {mov ? (
@@ -488,7 +496,14 @@ export default function FinConciliacao() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <MotivosBadges motivos={s.motivos} />
+                          <div className="space-y-1">
+                            <MotivosBadges motivos={s.motivos} />
+                            {s.justificativa_ia && (
+                              <p className="text-[11px] italic text-muted-foreground max-w-[280px] leading-snug">
+                                "{s.justificativa_ia}"
+                              </p>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
