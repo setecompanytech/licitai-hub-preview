@@ -54,17 +54,34 @@ export function useIndicadoresCFO() {
       const inicio6m = new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1).toISOString().slice(0, 10);
       const hojeStr = hoje.toISOString().slice(0, 10);
 
-      const [contasRes, lancRes, bpRes] = await Promise.all([
+      // Paginação para evitar truncamento silencioso (limite default Supabase: 1000)
+      const fetchLancsPaginado = async () => {
+        const PAGE = 1000;
+        let from = 0;
+        const acc: any[] = [];
+        // teto de segurança 50k registros (≈ 25 páginas)
+        for (let i = 0; i < 50; i++) {
+          const { data, error } = await supabase
+            .from("financeiro_lancamentos")
+            .select("valor, tipo, status, natureza, data_competencia, data_vencimento, data_realizado, categoria_id")
+            .eq("empresa_id", empresaId!)
+            .gte("data_competencia", inicio6m)
+            .order("data_competencia", { ascending: true })
+            .range(from, from + PAGE - 1);
+          if (error) throw error;
+          acc.push(...(data ?? []));
+          if (!data || data.length < PAGE) break;
+          from += PAGE;
+        }
+        return acc;
+      };
+
+      const [contasRes, lancs, bpRes] = await Promise.all([
         supabase
           .from("financeiro_contas")
           .select("saldo_atual, ativa")
           .eq("empresa_id", empresaId!),
-        supabase
-          .from("financeiro_lancamentos")
-          .select("valor, tipo, status, natureza, data_competencia, data_vencimento, data_realizado, categoria_id")
-          .eq("empresa_id", empresaId!)
-          .gte("data_competencia", inicio6m)
-          .limit(10000),
+        fetchLancsPaginado(),
         supabase
           .from("financeiro_demonstracoes")
           .select("dados, total_ativo, total_passivo, resultado_liquido, competencia_fim")
