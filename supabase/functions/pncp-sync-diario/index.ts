@@ -143,17 +143,34 @@ async function processarUf(
           };
         });
 
+        // Deduplica o batch por (fonte,fonte_id) — ON CONFLICT não pode atingir
+        // a mesma linha duas vezes no mesmo statement.
+        const dedupMap = new Map<string, typeof rows[number]>();
+        for (const r of rows) {
+          if (!r.fonte_id) continue; // sem chave estável, descarta para evitar conflito vazio
+          const k = `${r.fonte}::${r.fonte_id}`;
+          dedupMap.set(k, r); // mantém o último (mais novo na ordem da página)
+        }
+        const batch = Array.from(dedupMap.values());
+
+        if (batch.length === 0) {
+          if (items.length < PAGE_SIZE) break;
+          pagina++;
+          continue;
+        }
+
         const { error: upErr } = await supabase
           .from("pncp_editais_cache")
-          .upsert(rows, { onConflict: "fonte,fonte_id", ignoreDuplicates: false });
+          .upsert(batch, { onConflict: "fonte,fonte_id", ignoreDuplicates: false });
 
         if (upErr) {
-          errosLocal.push(`upsert ${uf}/m${modalidade.id}: ${upErr.message}`);
+          errosLocal.push(`upsert ${uf}/m${modalidade.id} p${pagina}: ${upErr.message} (batch=${batch.length})`);
+          console.error(`[pncp-sync-diario] upsert falhou ${uf}/m${modalidade.id} p${pagina}:`, upErr);
           break;
         }
 
-        total += rows.length;
-        novos += rows.length;
+        total += batch.length;
+        novos += batch.length;
         if (items.length < PAGE_SIZE) break;
         pagina++;
       }
