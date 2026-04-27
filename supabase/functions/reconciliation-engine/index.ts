@@ -135,7 +135,9 @@ Deno.serve(async (req) => {
       movimento_id: string;
       lancamento_id: string;
       score: number;
+      metodo: string;
       motivos: Record<string, unknown>;
+      justificativa_ia?: string;
     }> = [];
 
     const lancUsados = new Set<string>();
@@ -180,9 +182,104 @@ Deno.serve(async (req) => {
           movimento_id: mov.id,
           lancamento_id: melhor.lanc.id,
           score: melhor.score,
+          metodo: "heuristica",
           motivos: melhor.motivos,
         });
         lancUsados.add(melhor.lanc.id);
+      }
+    }
+
+    // ===== Camada IA (Lovable AI Gateway) =====
+    // Para cada movimento ainda sem match, monta candidatos relaxados (±15 dias, valor ±5%)
+    // e pede ao Gemini Flash que escolha o melhor (ou nenhum) com justificativa.
+    let ia_consultados = 0;
+    let ia_sugeridos = 0;
+    if (usar_ia) {
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (!LOVABLE_API_KEY) {
+        console.warn("LOVABLE_API_KEY ausente — pulando camada IA");
+      } else {
+        const movsSemMatch = ((movimentos || []) as Movimento[]).filter(
+          (m) => !matches.find((x) => x.movimento_id === m.id)
+        );
+        // Limita para controlar custo/latência
+        const MAX_IA = 30;
+        for (const mov of movsSemMatch.slice(0, MAX_IA)) {
+          const valorAbs = Math.abs(mov.valor);
+          const naturezaEsperada = mov.valor >= 0 ? "credito" : "debito";
+          const candidatos = (lancamentos || [])
+            .filter((l: Lancamento) => {
+              if (lancUsados.has(l.id)) return false;
+              if (l.natureza !== naturezaEsperada) return false;
+              const dataLanc = l.data_vencimento || l.data_competencia;
+              if (daysBetween(dataLanc, mov.data_movimento) > 15) return false;
+              const diffPct = Math.abs(Number(l.valor) - valorAbs) / Math.max(valorAbs, 0.01);
+              if (diffPct > 0.05) return false; // 5% de tolerância (taxas, juros)
+              return true;
+            })
+            .slice(0, 8); // top 8 candidatos
+          if (candidatos.length === 0) continue;
+          ia_consultados++;
+          try {
+            const prompt = `Você é um contador especialista em conciliação bancária brasileira. Analise o movimento bancário e os lançamentos previstos candidatos. Escolha o ÚNICO lançamento que melhor corresponde, ou retorne null se nenhum for confiável (ex: divergências grandes, descrições incompatíveis).
+
+Movimento bancário:
+- Data: ${mov.data_movimento}
+- Valor: R$ ${mov.valor.toFixed(2)} (${naturezaEsperada})
+- Descrição: "${mov.descricao}"
+
+Candidatos (lançamentos previstos):
+${candidatos.map((c: Lancamento, i: number) => `${i}. ID=${c.id} | data=${c.data_vencimento || c.data_competencia} | valor=R$ ${Number(c.valor).toFixed(2)} | descrição="${c.descricao}"`).join("\n")}
+
+Responda em JSON estrito: {"escolha": <índice numérico do candidato ou null>, "confianca": <0-100>, "justificativa": "<frase curta em PT-BR explicando o match ou a recusa>"}`;
+
+            const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash-lite",
+                messages: [{ role: "user", content: prompt }],
+                response_format: { type: "json_object" },
+              }),
+            });
+            if (!resp.ok) {
+              if (resp.status === 429) console.warn("IA rate-limited");
+              else if (resp.status === 402) console.warn("IA sem créditos");
+              continue;
+            }
+            const json = await resp.json();
+            const content = json?.choices?.[0]?.message?.content;
+            if (!content) continue;
+            const parsed = JSON.parse(content);
+            const idx = parsed?.escolha;
+            const confianca = Number(parsed?.confianca ?? 0);
+            const justificativa = String(parsed?.justificativa ?? "").slice(0, 280);
+            if (idx === null || idx === undefined || idx < 0 || idx >= candidatos.length) continue;
+            if (confianca < 60) continue; // gate mínimo de confiança
+            const lancEscolhido = candidatos[idx] as Lancamento;
+            const dataLanc = lancEscolhido.data_vencimento || lancEscolhido.data_competencia;
+            matches.push({
+              movimento_id: mov.id,
+              lancamento_id: lancEscolhido.id,
+              score: Math.min(100, Math.round(confianca)),
+              metodo: "ia",
+              motivos: {
+                ia: true,
+                confianca,
+                diferenca_dias: daysBetween(dataLanc, mov.data_movimento),
+                diferenca_valor: Math.abs(Number(lancEscolhido.valor) - valorAbs),
+              },
+              justificativa_ia: justificativa,
+            });
+            lancUsados.add(lancEscolhido.id);
+            ia_sugeridos++;
+          } catch (e) {
+            console.error("Erro IA match:", e);
+          }
+        }
       }
     }
 
