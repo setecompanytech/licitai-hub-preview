@@ -349,6 +349,10 @@ export default function MonitoramentoEditais() {
     setErro(null);
     setResultado(null);
 
+    const t0 = performance.now();
+    const logCtx = (extra: Record<string, unknown> = {}) =>
+      console.log('[Mural/buscar]', { pagina: pag, ...extra });
+
     try {
       // Monta termo de busca: combina objeto + nº licitação + uasgs como tokens
       const termoPartes: string[] = [];
@@ -360,7 +364,35 @@ export default function MonitoramentoEditais() {
       const dataIni = filtros.dataIni ? dmyToIso(filtros.dataIni) : null;
       const dataFim = filtros.dataFim ? dmyToIso(filtros.dataFim) : null;
 
+      // Validação: se usuário preencheu apenas uma das datas, avisa
+      if ((filtros.dataIni && !filtros.dataFim) || (!filtros.dataIni && filtros.dataFim)) {
+        const msg = 'Informe data inicial e final do período.';
+        setErro(msg);
+        setCarregando(false);
+        toast.warning('Filtro de período incompleto', { description: msg });
+        return;
+      }
+      // Validação: data inicial não pode ser maior que final
+      if (dataIni && dataFim && dataIni > dataFim) {
+        const msg = 'Data inicial não pode ser posterior à data final.';
+        setErro(msg);
+        setCarregando(false);
+        toast.warning('Período inválido', { description: msg });
+        return;
+      }
+
       const tamanho = 20;
+
+      logCtx({
+        etapa: 'inicio',
+        termo,
+        dataIni,
+        dataFim,
+        ufs: filtros.ufs,
+        modalidades: modalidadesEfetivas,
+        municipios: filtros.municipios,
+        uasgs: filtros.uasgs,
+      });
 
       // Quando há período informado, consulta a fonte oficial em tempo real.
       // Se a fonte não responder, volta para o cache PNCP local.
