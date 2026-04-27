@@ -655,7 +655,12 @@ export default function FinConciliacao() {
           );
         }}
       />
-    </div>
+      </TabsContent>
+
+      <TabsContent value="relatorio" className="mt-0">
+        <FinRelatorioConciliacao />
+      </TabsContent>
+    </Tabs>
   );
 }
 
