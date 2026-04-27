@@ -362,7 +362,7 @@ export default function FinConciliacao() {
             </div>
             <Button
               variant="outline"
-              onClick={buscarSugestoes}
+              onClick={() => buscarSugestoes(false)}
               disabled={conciliarAuto.isPending}
             >
               {conciliarAuto.isPending ? (
@@ -371,6 +371,19 @@ export default function FinConciliacao() {
                 <Search className="w-4 h-4 mr-1.5" />
               )}
               Buscar sugestões
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => buscarSugestoes(true)}
+              disabled={conciliarAuto.isPending}
+              title="Usa IA para encontrar matches em casos ambíguos (descrições diferentes, valores próximos)"
+            >
+              {conciliarAuto.isPending ? (
+                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4 mr-1.5 text-primary" />
+              )}
+              Sugerir com IA
             </Button>
             {sugestoes.length > 0 && (
               <>

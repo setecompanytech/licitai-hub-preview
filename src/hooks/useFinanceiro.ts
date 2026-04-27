@@ -622,7 +622,7 @@ export function useConciliarAutomatico() {
   const qc = useQueryClient();
   const empresaId = useEmpresaId();
   return useMutation({
-    mutationFn: async (input: { extrato_id?: string; conta_id?: string; auto_aplicar?: boolean; score_minimo?: number }) => {
+    mutationFn: async (input: { extrato_id?: string; conta_id?: string; auto_aplicar?: boolean; score_minimo?: number; usar_ia?: boolean }) => {
       if (!empresaId) throw new Error("Selecione uma empresa ativa.");
       const { data, error } = await supabase.functions.invoke("reconciliation-engine", {
         body: { empresa_id: empresaId, ...input },
@@ -634,7 +634,9 @@ export function useConciliarAutomatico() {
         movimentos_analisados: number;
         sugestoes: number;
         aplicados: number;
-        matches: Array<{ movimento_id: string; lancamento_id: string; score: number; motivos: Record<string, unknown> }>;
+        ia_consultados?: number;
+        ia_sugeridos?: number;
+        matches: Array<{ movimento_id: string; lancamento_id: string; score: number; metodo?: string; motivos: Record<string, unknown>; justificativa_ia?: string }>;
       };
     },
     onSuccess: (data) => {
