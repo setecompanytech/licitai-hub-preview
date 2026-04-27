@@ -121,6 +121,8 @@ const TIPOS_LEILAO = [
   { id: 'todos_leilao', label: 'Todos' },
 ];
 
+const ALL_MODALIDADE_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+
 const STATUS_CONFIG = {
   aberto:     { label: 'Aberto',     Icon: CheckCircle2, cls: 'bg-success/15 text-success border-success/30' },
   aguardando: { label: 'Aguardando', Icon: Clock,        cls: 'bg-info/15 text-info border-info/30' },
@@ -360,40 +362,95 @@ export default function MonitoramentoEditais() {
 
       const tamanho = 20;
 
-      // Quando há múltiplas UFs ou modalidades, paralelizamos a RPC e mesclamos
+      // Quando há período informado, consulta a fonte oficial em tempo real.
+      // Se a fonte não responder, volta para o cache PNCP local.
       const ufsList = filtros.ufs.length > 0 ? filtros.ufs : [null];
       const modList = modalidadesEfetivas.length > 0 ? modalidadesEfetivas : [null];
-
-      const calls: Promise<{ data: any[] | null; error: any }>[] = [];
-      for (const uf of ufsList) {
-        for (const mod of modList) {
-          calls.push(
-            Promise.resolve(supabase.rpc('busca_editais_instantanea' as any, {
-              p_q: termo,
-              p_uf: uf,
-              p_municipio_ibge: null,
-              p_esfera: null,
-              p_modalidade_id: mod,
-              p_segmento: null,
-              p_data_inicio: dataIni,
-              p_data_fim: dataFim,
-              p_ordenacao: 'data_publicacao',
-              p_direcao: 'desc',
-              p_pagina: pag,
-              p_tamanho: tamanho,
-            }) as any)
-          );
+      const consultarCache = async () => {
+        const calls: Promise<{ data: any[] | null; error: any }>[] = [];
+        for (const uf of ufsList) {
+          for (const mod of modList) {
+            calls.push(
+              Promise.resolve(supabase.rpc('busca_editais_instantanea' as any, {
+                p_q: termo,
+                p_uf: uf,
+                p_municipio_ibge: null,
+                p_esfera: null,
+                p_modalidade_id: mod,
+                p_segmento: null,
+                p_data_inicio: dataIni,
+                p_data_fim: dataFim,
+                p_ordenacao: 'data_publicacao',
+                p_direcao: 'desc',
+                p_pagina: pag,
+                p_tamanho: tamanho,
+              }) as any)
+            );
+          }
         }
+
+        const respostas = await Promise.all(calls);
+        const erros = respostas.filter(r => r.error).map(r => r.error?.message);
+        if (erros.length === respostas.length) {
+          throw new Error(erros[0] || 'Falha ao consultar o cache PNCP');
+        }
+        return respostas.flatMap(r => r.data || []);
+      };
+
+      let rowsRaw: any[] = [];
+      if (dataIni && dataFim) {
+        const modalidadesAoVivo = modalidadesEfetivas.length > 0 ? modalidadesEfetivas : ALL_MODALIDADE_IDS;
+        const livePageSize = filtros.municipios.length > 0 || filtros.uasgs.length > 0 ? 50 : tamanho;
+        const liveCalls = ufsList.flatMap(uf =>
+          modalidadesAoVivo.map(modalidade =>
+            supabase.functions.invoke('busca-licitacoes', {
+              body: {
+                termo: termo || '',
+                uf: uf || '',
+                pagina: 1,
+                tamanhoPagina: livePageSize,
+                dataInicial: dataIni,
+                dataFinal: dataFim,
+                modalidade: String(modalidade),
+                situacao: 'todas',
+              },
+            })
+          )
+        );
+
+        const liveRespostas = await Promise.allSettled(liveCalls);
+        rowsRaw = liveRespostas.flatMap((resp) => {
+          if (resp.status !== 'fulfilled' || resp.value.error) return [];
+          const payload = resp.value.data as any;
+          const totalCount = Number(payload?.total) || 0;
+          return (payload?.data || []).map((item: any) => ({
+            id: item.id,
+            numero_compra: item.numeroCompra,
+            objeto: item.objeto,
+            orgao: item.orgao,
+            cnpj_orgao: item.cnpj,
+            municipio: item.municipio,
+            uf: item.uf,
+            esfera_id: item.esfera,
+            modalidade_id: item.modalidadeId,
+            modalidade_nome: item.modalidade,
+            valor_total_estimado: item.valorEstimado,
+            data_publicacao_pncp: item.dataPublicacao,
+            data_abertura_proposta: item.dataAbertura,
+            data_encerramento_proposta: item.dataEncerramento,
+            situacao: item.situacaoNome,
+            srp: item.srp,
+            tipo_instrumento: item.tipoEdital,
+            link_sistema_origem: item.link,
+            url_pncp: item.linkPncp,
+            total_count: totalCount,
+          }));
+        });
       }
 
-      const respostas = await Promise.all(calls);
-      const erros = respostas.filter(r => r.error).map(r => r.error?.message);
-      if (erros.length === respostas.length) {
-        throw new Error(erros[0] || 'Falha ao consultar o cache PNCP');
-      }
+      if (rowsRaw.length === 0) rowsRaw = await consultarCache();
 
       // Mescla, deduplica por id e aplica filtros client-side (uasg, município nome, ano)
-      const rowsRaw: any[] = respostas.flatMap(r => r.data || []);
       const seen = new Set<string>();
       let totalEstimado = 0;
       const rows = rowsRaw.filter(r => {
