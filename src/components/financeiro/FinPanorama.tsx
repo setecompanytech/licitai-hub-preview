@@ -1,9 +1,10 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Eye, Activity, BarChart3, LayoutDashboard } from "lucide-react";
+import { Eye, Activity, BarChart3, LayoutDashboard, CalendarDays } from "lucide-react";
 import FinResumoVisor from "./FinResumoVisor";
 import FinDashboard from "./FinDashboard";
 import FinDashboardExecutivo from "./FinDashboardExecutivo";
 import FinCFODashboard from "./FinCFODashboard";
+import FinCalendarioFinanceiro from "./FinCalendarioFinanceiro";
 
 /**
  * Painel Financeiro — unifica o antigo "Resumo" e "Dashboard".
