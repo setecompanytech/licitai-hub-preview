@@ -11,7 +11,7 @@ import FinApuracao from "@/components/financeiro/FinApuracao";
 import FinPlanoContas from "@/components/financeiro/FinPlanoContas";
 import FinSaldosAbertura from "@/components/financeiro/FinSaldosAbertura";
 import FinOrcamento from "@/components/financeiro/FinOrcamento";
-import FinDashboardTabs from "@/components/financeiro/FinDashboardTabs";
+
 import FinLancamentos from "@/components/financeiro/FinLancamentos";
 import FinContas from "@/components/financeiro/FinContas";
 import FinPessoas from "@/components/financeiro/FinPessoas";
