@@ -5,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Home } from "lucide-react";
 import FinHomeHub, { HUB_ITEMS } from "@/components/financeiro/FinHomeHub";
 import FinResumoVisor, { getResumoAutoOpen } from "@/components/financeiro/FinResumoVisor";
+import FinPanorama from "@/components/financeiro/FinPanorama";
+import FinCalendarioFinanceiro from "@/components/financeiro/FinCalendarioFinanceiro";
 import FinApuracao from "@/components/financeiro/FinApuracao";
 import FinPlanoContas from "@/components/financeiro/FinPlanoContas";
 import FinSaldosAbertura from "@/components/financeiro/FinSaldosAbertura";
@@ -51,8 +53,11 @@ import FinIntegracoesFiscais from "@/components/financeiro/FinIntegracoesFiscais
 import { useEmpresa } from "@/contexts/EmpresaContext";
 
 const VIEW_MAP: Record<string, () => JSX.Element> = {
-  resumo: () => <FinResumoVisor />,
-  dashboard: () => <FinDashboardTabs />,
+  panorama: () => <FinPanorama />,
+  calendario_financeiro: () => <FinCalendarioFinanceiro />,
+  // Aliases retrocompatíveis: rotas antigas redirecionam para o painel unificado
+  resumo: () => <FinPanorama />,
+  dashboard: () => <FinPanorama />,
   lancamentos: () => <FinLancamentos />,
   a_pagar: () => <FinContasPagar />,
   a_receber: () => <FinContasReceber />,
@@ -103,7 +108,7 @@ const COMING_SOON: Record<string, { title: string; description: string }> = {
 
 export default function Financeiro() {
   const { empresaAtiva, loading } = useEmpresa();
-  const initialView = getResumoAutoOpen() ? "resumo" : null;
+  const initialView = getResumoAutoOpen() ? "panorama" : null;
   const [activeView, setActiveView] = useState<string | null>(initialView);
 
   // Atalhos rápidos do FinResumoVisor disparam navegação programática
