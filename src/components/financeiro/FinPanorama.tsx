@@ -1,9 +1,10 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Eye, Activity, BarChart3, LayoutDashboard } from "lucide-react";
+import { Eye, Activity, BarChart3, LayoutDashboard, CalendarDays } from "lucide-react";
 import FinResumoVisor from "./FinResumoVisor";
 import FinDashboard from "./FinDashboard";
 import FinDashboardExecutivo from "./FinDashboardExecutivo";
 import FinCFODashboard from "./FinCFODashboard";
+import FinCalendarioFinanceiro from "./FinCalendarioFinanceiro";
 
 /**
  * Painel Financeiro — unifica o antigo "Resumo" e "Dashboard".
@@ -12,37 +13,52 @@ import FinCFODashboard from "./FinCFODashboard";
  */
 export default function FinPanorama() {
   return (
-    <Tabs defaultValue="visao" className="space-y-4">
-      <TabsList className="flex flex-wrap h-auto">
-        <TabsTrigger value="visao">
-          <Eye className="w-4 h-4 mr-1.5" />
-          Visão Geral
-        </TabsTrigger>
-        <TabsTrigger value="cfo">
-          <Activity className="w-4 h-4 mr-1.5" />
-          CFO
-        </TabsTrigger>
-        <TabsTrigger value="executivo">
-          <BarChart3 className="w-4 h-4 mr-1.5" />
-          Executivo
-        </TabsTrigger>
-        <TabsTrigger value="operacional">
-          <LayoutDashboard className="w-4 h-4 mr-1.5" />
-          Operacional
-        </TabsTrigger>
-      </TabsList>
-      <TabsContent value="visao">
-        <FinResumoVisor />
-      </TabsContent>
-      <TabsContent value="cfo">
-        <FinCFODashboard />
-      </TabsContent>
-      <TabsContent value="executivo">
-        <FinDashboardExecutivo />
-      </TabsContent>
-      <TabsContent value="operacional">
-        <FinDashboard />
-      </TabsContent>
-    </Tabs>
+    <div className="space-y-6">
+      <Tabs defaultValue="visao" className="space-y-4">
+        <TabsList className="flex flex-wrap h-auto">
+          <TabsTrigger value="visao">
+            <Eye className="w-4 h-4 mr-1.5" />
+            Visão Geral
+          </TabsTrigger>
+          <TabsTrigger value="cfo">
+            <Activity className="w-4 h-4 mr-1.5" />
+            CFO
+          </TabsTrigger>
+          <TabsTrigger value="executivo">
+            <BarChart3 className="w-4 h-4 mr-1.5" />
+            Executivo
+          </TabsTrigger>
+          <TabsTrigger value="operacional">
+            <LayoutDashboard className="w-4 h-4 mr-1.5" />
+            Operacional
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="visao">
+          <FinResumoVisor />
+        </TabsContent>
+        <TabsContent value="cfo">
+          <FinCFODashboard />
+        </TabsContent>
+        <TabsContent value="executivo">
+          <FinDashboardExecutivo />
+        </TabsContent>
+        <TabsContent value="operacional">
+          <FinDashboard />
+        </TabsContent>
+      </Tabs>
+
+      <section className="space-y-3 pt-2 border-t border-border/60">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="w-5 h-5 text-primary" />
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Calendário Financeiro</h2>
+            <p className="text-xs text-muted-foreground">
+              Espelho dinâmico de pagamentos e recebimentos do mês.
+            </p>
+          </div>
+        </div>
+        <FinCalendarioFinanceiro />
+      </section>
+    </div>
   );
 }
