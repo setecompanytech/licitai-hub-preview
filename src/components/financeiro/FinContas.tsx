@@ -424,7 +424,7 @@ export default function FinContas() {
                       setSaldoInicial(v);
                       if (erros.saldoInicial) setErros((p) => ({ ...p, saldoInicial: undefined }));
                     }}
-                    allowNegative={false}
+                    allowNegative
                     className={cn(erros.saldoInicial && "border-destructive focus-visible:ring-destructive")}
                   />
                   {erros.saldoInicial && (
