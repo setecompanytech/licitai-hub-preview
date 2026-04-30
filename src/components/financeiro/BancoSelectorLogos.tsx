@@ -118,7 +118,7 @@ const BRAND: Record<string, BrandStyle> = {
   "376": { bg: "#0F4C81", fg: "#FFFFFF", initials: "JPM" },       // JP Morgan
   "380": { bg: "#21C25E", fg: "#FFFFFF", initials: "PP" },        // PicPay
   "389": { bg: "#FFB81C", fg: "#1F2A44", initials: "MB" },        // Mercantil
-  "399": { bg: "#DB0011", fg: "#FFFFFF", initials: "HSBC" },      // HSBC
+  
   "422": { bg: "#0E2A47", fg: "#C8A04A", initials: "SF" },        // Safra
   "473": { bg: "#005CA9", fg: "#FFFFFF", initials: "BCG" },       // Caixa Geral
   "600": { bg: "#0033A0", fg: "#FFFFFF", initials: "LB" },        // Luso Brasileiro
