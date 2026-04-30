@@ -8,12 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Pencil, Trash2, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertCircle, RefreshCw } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useContas, useUpsertConta, useDeleteConta, type Conta } from "@/hooks/useFinanceiro";
+import { useContas, useUpsertConta, useDeleteConta, useEmpresaId, type Conta } from "@/hooks/useFinanceiro";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { formatBRL } from "@/lib/financeiro/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
