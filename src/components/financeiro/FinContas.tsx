@@ -240,6 +240,25 @@ export default function FinContas() {
             placeholder="Nome, agência ou número da conta…"
           />
         </div>
+        <Button
+          variant="outline"
+          onClick={() => setConfirmSync(true)}
+          disabled={sincronizando || candidatasSync === 0}
+          className="shrink-0"
+          title={
+            candidatasSync === 0
+              ? "Todos os saldos já estão sincronizados"
+              : `${candidatasSync} conta(s) com saldo dessincronizado`
+          }
+        >
+          <RefreshCw className={cn("w-4 h-4 mr-1", sincronizando && "animate-spin")} />
+          {sincronizando ? "Sincronizando…" : "Sincronizar saldos"}
+          {candidatasSync > 0 && !sincronizando && (
+            <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-semibold px-1.5 min-w-[18px] h-[18px] tabular-nums">
+              {candidatasSync}
+            </span>
+          )}
+        </Button>
         <Button onClick={() => openDialog(null)} className="shrink-0">
           <Plus className="w-4 h-4 mr-1" /> Nova conta
         </Button>
