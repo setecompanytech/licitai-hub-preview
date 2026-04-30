@@ -437,6 +437,33 @@ export default function FinContas() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={confirmSync} onOpenChange={(o) => !sincronizando && setConfirmSync(o)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sincronizar saldos das contas?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação ajusta o saldo atual igualando-o ao saldo inicial cadastrado,
+              <strong> apenas para contas que ainda não possuem nenhum lançamento</strong>.
+              Contas com movimentações registradas não serão alteradas.
+              {candidatasSync > 0 && (
+                <span className="block mt-2 text-foreground">
+                  {candidatasSync} conta(s) candidata(s) à sincronização.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={sincronizando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); sincronizarSaldos(); }}
+              disabled={sincronizando}
+            >
+              {sincronizando ? "Sincronizando…" : "Confirmar sincronização"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
