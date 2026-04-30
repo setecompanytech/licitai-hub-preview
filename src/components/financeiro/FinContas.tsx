@@ -8,12 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Pencil, Trash2, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertCircle, RefreshCw } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useContas, useUpsertConta, useDeleteConta, type Conta } from "@/hooks/useFinanceiro";
+import { useContas, useUpsertConta, useDeleteConta, useEmpresaId, type Conta } from "@/hooks/useFinanceiro";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { formatBRL } from "@/lib/financeiro/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -94,11 +96,54 @@ export default function FinContas() {
   const { data: contas = [], isLoading } = useContas();
   const upsert = useUpsertConta();
   const del = useDeleteConta();
+  const empresaId = useEmpresaId();
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Conta | null>(null);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [filtroBanco, setFiltroBanco] = useState<string>("");
   const [busca, setBusca] = useState("");
+  const [sincronizando, setSincronizando] = useState(false);
+  const [confirmSync, setConfirmSync] = useState(false);
+
+  // Quantas contas estão dessincronizadas e elegíveis para o recálculo em lote
+  // (saldo_atual ≠ saldo_inicial). A função do banco fará o filtro final
+  // garantindo que apenas contas SEM lançamentos sejam ajustadas.
+  const candidatasSync = contas.filter(
+    (c) => Number(c.saldo_atual ?? 0) !== Number(c.saldo_inicial ?? 0),
+  ).length;
+
+  const sincronizarSaldos = async () => {
+    if (!empresaId) {
+      toast.error("Selecione uma empresa ativa.");
+      return;
+    }
+    setSincronizando(true);
+    try {
+      const { data, error } = await supabase.rpc(
+        "sincronizar_saldos_contas_sem_movimento",
+        { p_empresa_id: empresaId },
+      );
+      if (error) throw error;
+      const total = Number(data ?? 0);
+      if (total === 0) {
+        toast.info("Nenhuma conta precisava ser sincronizada.");
+      } else {
+        toast.success(
+          total === 1
+            ? "1 conta sincronizada com sucesso."
+            : `${total} contas sincronizadas com sucesso.`,
+        );
+      }
+      await qc.invalidateQueries({ queryKey: ["fin-contas"] });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao sincronizar saldos.";
+      toast.error(msg);
+    } finally {
+      setSincronizando(false);
+      setConfirmSync(false);
+    }
+  };
 
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState("corrente");
@@ -195,6 +240,25 @@ export default function FinContas() {
             placeholder="Nome, agência ou número da conta…"
           />
         </div>
+        <Button
+          variant="outline"
+          onClick={() => setConfirmSync(true)}
+          disabled={sincronizando || candidatasSync === 0}
+          className="shrink-0"
+          title={
+            candidatasSync === 0
+              ? "Todos os saldos já estão sincronizados"
+              : `${candidatasSync} conta(s) com saldo dessincronizado`
+          }
+        >
+          <RefreshCw className={cn("w-4 h-4 mr-1", sincronizando && "animate-spin")} />
+          {sincronizando ? "Sincronizando…" : "Sincronizar saldos"}
+          {candidatasSync > 0 && !sincronizando && (
+            <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-semibold px-1.5 min-w-[18px] h-[18px] tabular-nums">
+              {candidatasSync}
+            </span>
+          )}
+        </Button>
         <Button onClick={() => openDialog(null)} className="shrink-0">
           <Plus className="w-4 h-4 mr-1" /> Nova conta
         </Button>
@@ -370,6 +434,33 @@ export default function FinContas() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={async () => { if (confirmDel) await del.mutateAsync(confirmDel); setConfirmDel(null); }}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmSync} onOpenChange={(o) => !sincronizando && setConfirmSync(o)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sincronizar saldos das contas?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação ajusta o saldo atual igualando-o ao saldo inicial cadastrado,
+              <strong> apenas para contas que ainda não possuem nenhum lançamento</strong>.
+              Contas com movimentações registradas não serão alteradas.
+              {candidatasSync > 0 && (
+                <span className="block mt-2 text-foreground">
+                  {candidatasSync} conta(s) candidata(s) à sincronização.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={sincronizando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); sincronizarSaldos(); }}
+              disabled={sincronizando}
+            >
+              {sincronizando ? "Sincronizando…" : "Confirmar sincronização"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
