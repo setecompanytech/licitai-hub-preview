@@ -124,11 +124,15 @@ export default function FinContas() {
 
   const validar = (): Erros => {
     const r = contaSchema.safeParse({ nome, tipo, banco, agencia, conta });
-    if (r.success) return {};
     const e: Erros = {};
-    for (const issue of r.error.issues) {
-      const k = issue.path[0] as keyof Erros;
-      if (k && !e[k]) e[k] = issue.message;
+    if (!r.success) {
+      for (const issue of r.error.issues) {
+        const k = issue.path[0] as keyof Erros;
+        if (k && !e[k]) e[k] = issue.message;
+      }
+    }
+    if (possuiSaldo && !(saldoInicial > 0)) {
+      e.saldoInicial = "Informe um saldo inicial maior que zero ou desmarque a opção 'Esta conta possui saldo disponível'.";
     }
     return e;
   };
@@ -147,7 +151,7 @@ export default function FinContas() {
       banco_nome: banco.trim() || null,
       agencia: agencia.trim() || null,
       conta: conta.trim() || null,
-      saldo_inicial: saldoInicial,
+      saldo_inicial: possuiSaldo ? saldoInicial : 0,
     });
     setOpen(false);
   };
