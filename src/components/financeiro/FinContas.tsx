@@ -329,7 +329,7 @@ export default function FinContas() {
         </CardContent>
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editing?.id ? "Editar conta" : "Nova conta"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
