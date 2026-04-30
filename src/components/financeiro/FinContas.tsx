@@ -195,8 +195,8 @@ export default function FinContas() {
         if (k && !e[k]) e[k] = issue.message;
       }
     }
-    if (possuiSaldo && !(saldoInicial > 0)) {
-      e.saldoInicial = "Informe um saldo inicial maior que zero ou desmarque a opção 'Esta conta possui saldo disponível'.";
+    if (possuiSaldo && !(Number.isFinite(saldoInicial) && saldoInicial !== 0)) {
+      e.saldoInicial = "Informe um saldo inicial diferente de zero ou desmarque a opção 'Esta conta possui saldo disponível'.";
     }
     return e;
   };
