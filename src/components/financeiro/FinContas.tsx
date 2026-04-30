@@ -154,6 +154,20 @@ export default function FinContas() {
   const [possuiSaldo, setPossuiSaldo] = useState(false);
   const [erros, setErros] = useState<Erros>({});
 
+  // Reseta o formulário (usado ao fechar o diálogo, evitando resíduos
+  // entre uma edição e a próxima abertura como "Nova conta").
+  const resetForm = () => {
+    setEditing(null);
+    setNome("");
+    setTipo("corrente");
+    setBanco("");
+    setAgencia("");
+    setConta("");
+    setSaldoInicial(0);
+    setPossuiSaldo(false);
+    setErros({});
+  };
+
   const openDialog = (c: Conta | null) => {
     setEditing(c);
     setNome(c?.nome ?? "");
@@ -161,9 +175,13 @@ export default function FinContas() {
     setBanco(c?.banco_nome ?? "");
     setAgencia(c?.agencia ?? "");
     setConta(c?.conta ?? "");
-    const si = Number(c?.saldo_inicial ?? 0);
-    setSaldoInicial(si);
-    setPossuiSaldo(si !== 0);
+    // saldo_inicial pode vir como número, string numérica ou null no Postgres.
+    // Normaliza com segurança e considera negativo como "possui saldo".
+    const raw = c?.saldo_inicial;
+    const si = raw === null || raw === undefined ? 0 : Number(raw);
+    const siSeguro = Number.isFinite(si) ? si : 0;
+    setSaldoInicial(siSeguro);
+    setPossuiSaldo(siSeguro !== 0);
     setErros({});
     setOpen(true);
   };
