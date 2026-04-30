@@ -25,13 +25,18 @@ export interface BancoOption {
   apelido?: string; // slug/identificador curto p/ logo
 }
 
+/**
+ * Lista oficial de bancos brasileiros com código COMPE de 3 dígitos.
+ * Fonte: Tabela de Participantes da Compe — Banco Central do Brasil.
+ * Mantida em ordem crescente por código para auditoria.
+ */
 export const BANCOS_BRASIL: BancoOption[] = [
   { codigo: "001", nome: "Banco do Brasil", apelido: "bb" },
   { codigo: "003", nome: "Banco da Amazônia", apelido: "basa" },
-  { codigo: "004", nome: "Banco do Nordeste", apelido: "bnb" },
+  { codigo: "004", nome: "Banco do Nordeste do Brasil", apelido: "bnb" },
   { codigo: "021", nome: "Banestes", apelido: "banestes" },
   { codigo: "025", nome: "Banco Alfa", apelido: "alfa" },
-  { codigo: "033", nome: "Santander", apelido: "santander" },
+  { codigo: "033", nome: "Banco Santander (Brasil)", apelido: "santander" },
   { codigo: "037", nome: "Banpará", apelido: "banpara" },
   { codigo: "041", nome: "Banrisul", apelido: "banrisul" },
   { codigo: "047", nome: "Banese", apelido: "banese" },
@@ -39,38 +44,36 @@ export const BANCOS_BRASIL: BancoOption[] = [
   { codigo: "077", nome: "Banco Inter", apelido: "inter" },
   { codigo: "082", nome: "Banco Topázio", apelido: "topazio" },
   { codigo: "104", nome: "Caixa Econômica Federal", apelido: "caixa" },
-  { codigo: "136", nome: "Unicred", apelido: "unicred" },
-  { codigo: "184", nome: "Itaú BBA", apelido: "itau" },
-  { codigo: "197", nome: "Stone", apelido: "stone" },
-  { codigo: "208", nome: "BTG Pactual", apelido: "btg" },
+  { codigo: "136", nome: "Unicred Cooperativa", apelido: "unicred" },
+  { codigo: "184", nome: "Itaú BBA", apelido: "itau-bba" },
+  { codigo: "197", nome: "Stone Pagamentos", apelido: "stone" },
+  { codigo: "208", nome: "Banco BTG Pactual", apelido: "btg" },
   { codigo: "212", nome: "Banco Original", apelido: "original" },
   { codigo: "237", nome: "Bradesco", apelido: "bradesco" },
-  { codigo: "246", nome: "ABC Brasil", apelido: "abc" },
-  { codigo: "260", nome: "Nubank", apelido: "nubank" },
-  { codigo: "290", nome: "PagBank", apelido: "pagbank" },
+  { codigo: "246", nome: "Banco ABC Brasil", apelido: "abc" },
+  { codigo: "260", nome: "Nu Pagamentos (Nubank)", apelido: "nubank" },
+  { codigo: "290", nome: "PagSeguro / PagBank", apelido: "pagbank" },
   { codigo: "318", nome: "Banco BMG", apelido: "bmg" },
   { codigo: "323", nome: "Mercado Pago", apelido: "mercadopago" },
   { codigo: "336", nome: "Banco C6", apelido: "c6" },
   { codigo: "341", nome: "Itaú Unibanco", apelido: "itau" },
-  { codigo: "364", nome: "Gerencianet", apelido: "gerencianet" },
-  { codigo: "376", nome: "JP Morgan", apelido: "jpmorgan" },
+  { codigo: "364", nome: "Efí (Gerencianet)", apelido: "efi" },
+  { codigo: "376", nome: "Banco J.P. Morgan", apelido: "jpmorgan" },
   { codigo: "380", nome: "PicPay", apelido: "picpay" },
-  { codigo: "389", nome: "Mercantil do Brasil", apelido: "mercantil" },
-  { codigo: "399", nome: "HSBC", apelido: "hsbc" },
-  { codigo: "422", nome: "Safra", apelido: "safra" },
-  { codigo: "473", nome: "Banco Caixa Geral", apelido: "caixageral" },
+  { codigo: "389", nome: "Banco Mercantil do Brasil", apelido: "mercantil" },
+  { codigo: "422", nome: "Banco Safra", apelido: "safra" },
+  { codigo: "473", nome: "Banco Caixa Geral - Brasil", apelido: "caixageral" },
   { codigo: "600", nome: "Banco Luso Brasileiro", apelido: "luso" },
   { codigo: "633", nome: "Banco Rendimento", apelido: "rendimento" },
   { codigo: "637", nome: "Banco Sofisa", apelido: "sofisa" },
   { codigo: "655", nome: "Banco Votorantim (BV)", apelido: "bv" },
-  { codigo: "707", nome: "Daycoval", apelido: "daycoval" },
-  { codigo: "735", nome: "Neon", apelido: "neon" },
-  { codigo: "739", nome: "Cetelem", apelido: "cetelem" },
+  { codigo: "707", nome: "Banco Daycoval", apelido: "daycoval" },
+  { codigo: "735", nome: "Neon Pagamentos", apelido: "neon" },
+  { codigo: "739", nome: "Banco Cetelem", apelido: "cetelem" },
   { codigo: "741", nome: "Banco Ribeirão Preto", apelido: "brp" },
   { codigo: "745", nome: "Citibank", apelido: "citi" },
   { codigo: "748", nome: "Sicredi", apelido: "sicredi" },
-  { codigo: "756", nome: "Sicoob", apelido: "sicoob" },
-  { codigo: "077", nome: "Banco Inter", apelido: "inter" },
+  { codigo: "756", nome: "Sicoob (Bancoob)", apelido: "sicoob" },
 ];
 
 /**
@@ -115,7 +118,7 @@ const BRAND: Record<string, BrandStyle> = {
   "376": { bg: "#0F4C81", fg: "#FFFFFF", initials: "JPM" },       // JP Morgan
   "380": { bg: "#21C25E", fg: "#FFFFFF", initials: "PP" },        // PicPay
   "389": { bg: "#FFB81C", fg: "#1F2A44", initials: "MB" },        // Mercantil
-  "399": { bg: "#DB0011", fg: "#FFFFFF", initials: "HSBC" },      // HSBC
+  
   "422": { bg: "#0E2A47", fg: "#C8A04A", initials: "SF" },        // Safra
   "473": { bg: "#005CA9", fg: "#FFFFFF", initials: "BCG" },       // Caixa Geral
   "600": { bg: "#0033A0", fg: "#FFFFFF", initials: "LB" },        // Luso Brasileiro
