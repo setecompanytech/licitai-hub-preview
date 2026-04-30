@@ -31,6 +31,8 @@ export default function FinContas() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Conta | null>(null);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
+  const [filtroBanco, setFiltroBanco] = useState<string>("");
+  const [busca, setBusca] = useState("");
 
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState("corrente");
