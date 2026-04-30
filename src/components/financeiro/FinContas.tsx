@@ -105,6 +105,7 @@ export default function FinContas() {
   const [agencia, setAgencia] = useState("");
   const [conta, setConta] = useState("");
   const [saldoInicial, setSaldoInicial] = useState(0);
+  const [possuiSaldo, setPossuiSaldo] = useState(false);
   const [erros, setErros] = useState<Erros>({});
 
   const openDialog = (c: Conta | null) => {
