@@ -164,7 +164,7 @@ export default function FinContas() {
               <Label>Nome *</Label>
               <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Itaú PJ Principal" />
             </div>
-            <div className="space-y-1.5">
+            <div className="col-span-2 space-y-1.5">
               <Label>Tipo</Label>
               <Select value={tipo} onValueChange={setTipo}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
