@@ -58,6 +58,26 @@ export function useUpsertConta() {
         empresa_id: empresaId,
         nome: payload.nome ?? "Nova conta",
       };
+
+      // Sincroniza saldo_atual com saldo_inicial:
+      //  - na criação: saldo_atual = saldo_inicial (zero se não informado)
+      //  - na edição: só re-sincroniza se o usuário editou o saldo_inicial e
+      //    a conta ainda não tem movimentações (saldo_atual == saldo_inicial antigo)
+      if (!payload.id) {
+        body.saldo_atual = Number(payload.saldo_inicial ?? 0);
+      } else if (payload.saldo_inicial !== undefined) {
+        const { data: atual } = await supabase
+          .from("financeiro_contas")
+          .select("saldo_inicial, saldo_atual")
+          .eq("id", payload.id)
+          .maybeSingle();
+        const semMovimento =
+          atual && Number(atual.saldo_inicial ?? 0) === Number(atual.saldo_atual ?? 0);
+        if (semMovimento) {
+          body.saldo_atual = Number(payload.saldo_inicial ?? 0);
+        }
+      }
+
       const q = payload.id
         ? supabase.from("financeiro_contas").update(body).eq("id", payload.id).select().single()
         : supabase.from("financeiro_contas").insert(body).select().single();
