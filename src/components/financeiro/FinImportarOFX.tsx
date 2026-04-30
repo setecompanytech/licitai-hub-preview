@@ -201,36 +201,49 @@ export default function FinImportarOFX() {
           <div className="space-y-1.5">
             <Label>Conta de destino</Label>
             <Select value={contaId} onValueChange={setContaId}>
-              <SelectTrigger className="h-auto min-h-[44px] py-1.5">
+              <SelectTrigger className="h-auto min-h-[56px] py-2 px-3">
                 {(() => {
                   const sel = contas.find((c) => c.id === contaId);
-                  if (!sel) return <SelectValue placeholder="Selecione a conta corrente que deseja utilizar para importar o extrato" />;
+                  if (!sel) return <SelectValue placeholder="Selecione a conta corrente para importar o extrato" />;
                   const b = findBanco(sel.banco_nome ?? "");
+                  const nomeExibido = b?.nome ?? sel.banco_nome ?? sel.nome;
                   return (
-                    <div className="flex items-center gap-2.5 text-left">
-                      <BancoLogo codigo={b?.codigo} nome={sel.banco_nome ?? sel.nome} size={28} />
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium truncate">{b?.nome ?? sel.banco_nome ?? sel.nome}</div>
-                        <div className="text-[11px] text-muted-foreground truncate">
-                          {sel.agencia ? `Ag: ${sel.agencia}` : ""}{sel.agencia && sel.conta ? " / " : ""}{sel.conta ? `Conta: ${sel.conta}` : ""}
+                    <div className="flex items-center gap-3 text-left w-full">
+                      <div className="shrink-0 w-10 h-10 rounded-md bg-background border border-border flex items-center justify-center overflow-hidden">
+                        <BancoLogo codigo={b?.codigo} nome={nomeExibido} size={32} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[13px] font-semibold leading-tight truncate text-foreground">
+                          {nomeExibido}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground leading-tight truncate tabular-nums mt-0.5">
+                          {sel.agencia ? `Ag. ${sel.agencia}` : "Ag. —"}
+                          <span className="mx-1.5 opacity-50">•</span>
+                          {sel.conta ? `C/C ${sel.conta}` : "C/C —"}
                         </div>
                       </div>
                     </div>
                   );
                 })()}
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-[320px]">
                 {contas.filter((c) => c.ativa).map((c) => {
                   const b = findBanco(c.banco_nome ?? "");
                   const nomeExibido = b?.nome ?? c.banco_nome ?? c.nome;
                   return (
-                    <SelectItem key={c.id} value={c.id} className="py-2">
-                      <div className="flex items-center gap-2.5">
-                        <BancoLogo codigo={b?.codigo} nome={nomeExibido} size={28} />
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium leading-tight truncate">{nomeExibido}</div>
-                          <div className="text-[11px] text-muted-foreground leading-tight truncate">
-                            {c.agencia ? `Ag: ${c.agencia}` : "—"}{c.agencia && c.conta ? " / " : c.conta ? " " : ""}{c.conta ? `Conta: ${c.conta}` : ""}
+                    <SelectItem key={c.id} value={c.id} className="py-2.5 px-2 focus:bg-accent/60">
+                      <div className="flex items-center gap-3 w-full">
+                        <div className="shrink-0 w-9 h-9 rounded-md bg-background border border-border flex items-center justify-center overflow-hidden">
+                          <BancoLogo codigo={b?.codigo} nome={nomeExibido} size={28} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[13px] font-semibold leading-tight truncate text-foreground">
+                            {nomeExibido}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground leading-tight truncate tabular-nums mt-0.5">
+                            {c.agencia ? `Ag. ${c.agencia}` : "Ag. —"}
+                            <span className="mx-1.5 opacity-50">•</span>
+                            {c.conta ? `C/C ${c.conta}` : "C/C —"}
                           </div>
                         </div>
                       </div>
