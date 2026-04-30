@@ -73,35 +73,74 @@ export const BANCOS_BRASIL: BancoOption[] = [
   { codigo: "077", nome: "Banco Inter", apelido: "inter" },
 ];
 
-// Mapa de logos — usa CDN público gratuito (pix-logo / brasil-banks).
-// Fallback automático para ícone quando não disponível.
-const LOGO_BASE = "https://logosmarcas.net/wp-content/uploads/2020/04";
-const CUSTOM_LOGOS: Record<string, string> = {
-  "001": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Banco_do_Brasil_logo.svg/200px-Banco_do_Brasil_logo.svg.png",
-  "033": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Banco_Santander_Logotipo.svg/200px-Banco_Santander_Logotipo.svg.png",
-  "104": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Caixa_Econ%C3%B4mica_Federal_logo.svg/200px-Caixa_Econ%C3%B4mica_Federal_logo.svg.png",
-  "237": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Banco_Bradesco_logo_%28horizontal%29.svg/200px-Banco_Bradesco_logo_%28horizontal%29.svg.png",
-  "260": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Nubank_Logo.svg/200px-Nubank_Logo.svg.png",
-  "341": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Banco_Ita%C3%BA_logo.svg/200px-Banco_Ita%C3%BA_logo.svg.png",
-  "077": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Banco_Inter_logo_2.svg/200px-Banco_Inter_logo_2.svg.png",
-  "336": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Banco_C6_logo.svg/200px-Banco_C6_logo.svg.png",
-  "208": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/BTG_Pactual_logo.svg/200px-BTG_Pactual_logo.svg.png",
-  "748": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Sicredi_logo.svg/200px-Sicredi_logo.svg.png",
-  "756": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Sicoob_logo.svg/200px-Sicoob_logo.svg.png",
-  "422": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Banco_Safra_logo.svg/200px-Banco_Safra_logo.svg.png",
-  "323": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Mercado_Pago_logo.svg/200px-Mercado_Pago_logo.svg.png",
-  "380": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/PicPay_logo.svg/200px-PicPay_logo.svg.png",
-  "070": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/BRB_logo.svg/200px-BRB_logo.svg.png",
-  "212": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Banco_Original_logo.svg/200px-Banco_Original_logo.svg.png",
-  "041": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Banrisul_logo.svg/200px-Banrisul_logo.svg.png",
-  "655": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Banco_BV_logo.svg/200px-Banco_BV_logo.svg.png",
-  "735": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Neon_logo.svg/200px-Neon_logo.svg.png",
-  "290": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/PagBank_logo.svg/200px-PagBank_logo.svg.png",
-  "197": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Stone_logo.svg/200px-Stone_logo.svg.png",
+/**
+ * Identidade visual oficial dos principais bancos brasileiros.
+ * Renderizada via SVG inline (cor da marca + iniciais), garantindo
+ * disponibilidade 100% offline, sem dependência de CDN externo.
+ */
+interface BrandStyle {
+  bg: string;
+  fg: string;
+  initials: string; // 1-3 caracteres
+}
+
+const BRAND: Record<string, BrandStyle> = {
+  "001": { bg: "#FAE128", fg: "#003A70", initials: "BB" },        // Banco do Brasil
+  "003": { bg: "#005CA9", fg: "#FFFFFF", initials: "BASA" },      // Banco da Amazônia
+  "004": { bg: "#A6192E", fg: "#FFFFFF", initials: "BNB" },       // Banco do Nordeste
+  "021": { bg: "#0066B3", fg: "#FFFFFF", initials: "BTS" },       // Banestes
+  "025": { bg: "#0033A0", fg: "#FFFFFF", initials: "α" },         // Banco Alfa
+  "033": { bg: "#EC0000", fg: "#FFFFFF", initials: "S" },         // Santander
+  "037": { bg: "#005DAA", fg: "#FFFFFF", initials: "BPA" },       // Banpará
+  "041": { bg: "#005CA9", fg: "#FFFFFF", initials: "BR" },        // Banrisul
+  "047": { bg: "#005CA9", fg: "#FFFFFF", initials: "BSE" },       // Banese
+  "070": { bg: "#003F7F", fg: "#FFFFFF", initials: "BRB" },       // BRB
+  "077": { bg: "#FF7A00", fg: "#FFFFFF", initials: "INT" },       // Banco Inter
+  "082": { bg: "#0E2A47", fg: "#FFFFFF", initials: "TPZ" },       // Topázio
+  "104": { bg: "#0070AF", fg: "#FFFFFF", initials: "CEF" },       // Caixa
+  "136": { bg: "#00754A", fg: "#FFFFFF", initials: "UC" },        // Unicred
+  "184": { bg: "#003399", fg: "#FF6900", initials: "IBA" },       // Itaú BBA
+  "197": { bg: "#00A868", fg: "#FFFFFF", initials: "ST" },        // Stone
+  "208": { bg: "#0F1B2D", fg: "#C8A04A", initials: "BTG" },       // BTG Pactual
+  "212": { bg: "#00B259", fg: "#FFFFFF", initials: "ORG" },       // Original
+  "237": { bg: "#CC092F", fg: "#FFFFFF", initials: "BD" },        // Bradesco
+  "246": { bg: "#0033A0", fg: "#FFFFFF", initials: "ABC" },       // ABC Brasil
+  "260": { bg: "#820AD1", fg: "#FFFFFF", initials: "Nu" },        // Nubank
+  "290": { bg: "#FFC907", fg: "#1A1A1A", initials: "PB" },        // PagBank
+  "318": { bg: "#FF6F00", fg: "#FFFFFF", initials: "BMG" },       // BMG
+  "323": { bg: "#00B1EA", fg: "#FFFFFF", initials: "MP" },        // Mercado Pago
+  "336": { bg: "#242424", fg: "#D4AF37", initials: "C6" },        // C6 Bank
+  "341": { bg: "#FF6900", fg: "#003399", initials: "I" },         // Itaú
+  "364": { bg: "#0E5BA0", fg: "#FFFFFF", initials: "GN" },        // Gerencianet (Efí)
+  "376": { bg: "#0F4C81", fg: "#FFFFFF", initials: "JPM" },       // JP Morgan
+  "380": { bg: "#21C25E", fg: "#FFFFFF", initials: "PP" },        // PicPay
+  "389": { bg: "#FFB81C", fg: "#1F2A44", initials: "MB" },        // Mercantil
+  "399": { bg: "#DB0011", fg: "#FFFFFF", initials: "HSBC" },      // HSBC
+  "422": { bg: "#0E2A47", fg: "#C8A04A", initials: "SF" },        // Safra
+  "473": { bg: "#005CA9", fg: "#FFFFFF", initials: "BCG" },       // Caixa Geral
+  "600": { bg: "#0033A0", fg: "#FFFFFF", initials: "LB" },        // Luso Brasileiro
+  "633": { bg: "#0F4C81", fg: "#FFFFFF", initials: "RD" },        // Rendimento
+  "637": { bg: "#003D7C", fg: "#FFFFFF", initials: "SF" },        // Sofisa
+  "655": { bg: "#FF6B00", fg: "#FFFFFF", initials: "BV" },        // BV
+  "707": { bg: "#003D7C", fg: "#FFFFFF", initials: "DC" },        // Daycoval
+  "735": { bg: "#0F1F35", fg: "#15E0A6", initials: "NE" },        // Neon
+  "739": { bg: "#0033A0", fg: "#FFFFFF", initials: "CT" },        // Cetelem
+  "741": { bg: "#0F4C81", fg: "#FFFFFF", initials: "BRP" },       // Ribeirão Preto
+  "745": { bg: "#003B70", fg: "#FFFFFF", initials: "C" },         // Citibank
+  "748": { bg: "#3FA535", fg: "#FFFFFF", initials: "SC" },        // Sicredi
+  "756": { bg: "#003641", fg: "#7DB72F", initials: "SI" },        // Sicoob
 };
 
-export function getBancoLogoUrl(codigo: string): string | null {
-  return CUSTOM_LOGOS[codigo] ?? null;
+const DEFAULT_BRAND: BrandStyle = { bg: "#1F2937", fg: "#9CA3AF", initials: "$" };
+
+export function getBrandStyle(codigo?: string | null): BrandStyle {
+  if (!codigo) return DEFAULT_BRAND;
+  return BRAND[codigo] ?? DEFAULT_BRAND;
+}
+
+// Compatibilidade reversa (não há mais URL externa)
+export function getBancoLogoUrl(_codigo: string): string | null {
+  return null;
 }
 
 export function findBanco(value: string | null | undefined): BancoOption | undefined {
@@ -123,42 +162,31 @@ interface BancoLogoProps {
 }
 
 export function BancoLogo({ codigo, nome, size = 28, className }: BancoLogoProps) {
-  const url = codigo ? getBancoLogoUrl(codigo) : null;
-  const [erro, setErro] = useState(false);
-
-  if (!url || erro) {
-    return (
-      <div
-        className={cn(
-          "flex items-center justify-center rounded-md bg-muted text-muted-foreground border border-border/60",
-          className,
-        )}
-        style={{ width: size, height: size }}
-        aria-label={nome ?? "Banco"}
-      >
-        <Building2 className="w-1/2 h-1/2" />
-      </div>
-    );
-  }
+  const brand = getBrandStyle(codigo);
+  const initials = brand.initials;
+  // Tamanho de fonte responsivo conforme largura das iniciais
+  const fontSize = initials.length <= 2 ? size * 0.45 : initials.length === 3 ? size * 0.36 : size * 0.28;
 
   return (
     <div
       className={cn(
-        "flex items-center justify-center rounded-md bg-white border border-border/60 overflow-hidden p-1",
+        "flex items-center justify-center rounded-md border border-border/40 overflow-hidden shrink-0 shadow-sm",
         className,
       )}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, background: brand.bg }}
+      role="img"
+      aria-label={nome ?? "Logo do banco"}
     >
-      <img
-        src={url}
-        alt={nome ?? "Logo do banco"}
-        className="max-w-full max-h-full object-contain"
-        loading="lazy"
-        onError={() => setErro(true)}
-      />
+      <span
+        className="font-bold leading-none tracking-tight tabular-nums select-none"
+        style={{ color: brand.fg, fontSize, fontFamily: "system-ui, -apple-system, sans-serif" }}
+      >
+        {initials}
+      </span>
     </div>
   );
 }
+
 
 interface BancoSelectorLogosProps {
   value: string;
