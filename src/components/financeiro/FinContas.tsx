@@ -245,7 +245,17 @@ export default function FinContas() {
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 space-y-1.5">
               <Label>Nome *</Label>
-              <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Itaú PJ Principal" />
+              <Input
+                value={nome}
+                onChange={(e) => { setNome(e.target.value); if (erros.nome) setErros((p) => ({ ...p, nome: undefined })); }}
+                placeholder="Ex.: Itaú PJ Principal"
+                aria-invalid={!!erros.nome}
+                className={cn(erros.nome && "border-destructive focus-visible:ring-destructive")}
+                maxLength={80}
+              />
+              {erros.nome && (
+                <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.nome}</p>
+              )}
             </div>
             <div className="col-span-2 space-y-1.5">
               <Label>Tipo</Label>
@@ -258,17 +268,41 @@ export default function FinContas() {
               <Label>Banco</Label>
               <BancoSelectorLogos
                 value={banco}
-                onChange={(v) => setBanco(v)}
+                onChange={(v) => { setBanco(v); if (erros.banco) setErros((p) => ({ ...p, banco: undefined })); }}
                 placeholder="Selecione o banco…"
+                className={cn(erros.banco && "border-destructive focus-visible:ring-destructive")}
               />
+              {erros.banco && (
+                <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.banco}</p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Agência</Label>
-              <Input value={agencia} onChange={(e) => setAgencia(e.target.value)} />
+              <Input
+                value={agencia}
+                onChange={(e) => { setAgencia(e.target.value.replace(/[^\dxX-]/g, "").slice(0, 7)); if (erros.agencia) setErros((p) => ({ ...p, agencia: undefined })); }}
+                placeholder="1234 ou 1234-5"
+                aria-invalid={!!erros.agencia}
+                inputMode="text"
+                className={cn("tabular-nums", erros.agencia && "border-destructive focus-visible:ring-destructive")}
+              />
+              {erros.agencia && (
+                <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.agencia}</p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Conta</Label>
-              <Input value={conta} onChange={(e) => setConta(e.target.value)} />
+              <Input
+                value={conta}
+                onChange={(e) => { setConta(e.target.value.replace(/[^\dxX-]/g, "").slice(0, 14)); if (erros.conta) setErros((p) => ({ ...p, conta: undefined })); }}
+                placeholder="12345-6"
+                aria-invalid={!!erros.conta}
+                inputMode="text"
+                className={cn("tabular-nums", erros.conta && "border-destructive focus-visible:ring-destructive")}
+              />
+              {erros.conta && (
+                <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.conta}</p>
+              )}
             </div>
             <div className="col-span-2 space-y-1.5">
               <Label>Saldo inicial</Label>
