@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { z } from "zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MoneyInput } from "@/components/ui/money-input";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertCircle } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -14,7 +15,71 @@ import {
 import { useContas, useUpsertConta, useDeleteConta, type Conta } from "@/hooks/useFinanceiro";
 import { formatBRL } from "@/lib/financeiro/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
-import BancoSelectorLogos, { BancoLogo, findBanco } from "./BancoSelectorLogos";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import BancoSelectorLogos, { BancoLogo, findBanco, BANCOS_BRASIL } from "./BancoSelectorLogos";
+
+/**
+ * Validação (zod):
+ * - Banco: opcional, mas, se preenchido, deve corresponder a um banco da lista
+ *   (código COMPE de 3 dígitos válido). Sem banco, agência/conta também precisam ficar vazios.
+ * - Agência: 1–5 dígitos, com dígito verificador opcional (ex.: "1234" ou "1234-5" / "1234-X").
+ * - Conta:   1–12 dígitos, com dígito verificador obrigatório (ex.: "12345-6" ou "12345-X").
+ */
+const RE_AGENCIA = /^\d{1,5}(-[\dxX])?$/;
+const RE_CONTA = /^\d{1,12}-[\dxX]$/;
+const CODIGOS_VALIDOS = new Set(BANCOS_BRASIL.map((b) => b.codigo));
+
+const contaSchema = z
+  .object({
+    nome: z.string().trim().min(2, "Informe um nome com ao menos 2 caracteres.").max(80, "Máximo 80 caracteres."),
+    tipo: z.string().min(1),
+    banco: z.string().trim().max(120).optional().or(z.literal("")),
+    agencia: z.string().trim().max(10).optional().or(z.literal("")),
+    conta: z.string().trim().max(20).optional().or(z.literal("")),
+  })
+  .superRefine((v, ctx) => {
+    const banco = (v.banco ?? "").trim();
+    const agencia = (v.agencia ?? "").trim();
+    const conta = (v.conta ?? "").trim();
+
+    if (banco) {
+      // Aceita "XXX - Nome" ou apenas o nome listado
+      const codigo = banco.split(/\s|-/)[0].padStart(3, "0");
+      const reconhecido = CODIGOS_VALIDOS.has(codigo) || BANCOS_BRASIL.some((b) => b.nome.toLowerCase() === banco.toLowerCase());
+      if (!reconhecido) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["banco"],
+          message: "Código bancário não reconhecido. Selecione um banco da lista.",
+        });
+      }
+    } else if (agencia || conta) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["banco"],
+        message: "Selecione o banco antes de informar agência/conta.",
+      });
+    }
+
+    if (agencia && !RE_AGENCIA.test(agencia)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["agencia"],
+        message: "Agência inválida. Use 1 a 5 dígitos, com DV opcional (ex.: 1234 ou 1234-5).",
+      });
+    }
+
+    if (conta && !RE_CONTA.test(conta)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["conta"],
+        message: "Conta inválida. Informe número e dígito verificador (ex.: 12345-6).",
+      });
+    }
+  });
+
+type Erros = Partial<Record<"nome" | "banco" | "agencia" | "conta", string>>;
 
 const TIPOS = [
   { value: "corrente", label: "Conta corrente" },
