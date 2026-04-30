@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { BancoLogo, findBanco } from "./BancoSelectorLogos";
 
 interface MovimentoOFX {
   fitid: string;
@@ -175,11 +176,42 @@ export default function FinImportarOFX() {
           <div className="space-y-1.5">
             <Label>Conta de destino</Label>
             <Select value={contaId} onValueChange={setContaId}>
-              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+              <SelectTrigger className="h-auto min-h-[44px] py-1.5">
+                {(() => {
+                  const sel = contas.find((c) => c.id === contaId);
+                  if (!sel) return <SelectValue placeholder="Selecione a conta corrente que deseja utilizar para importar o extrato" />;
+                  const b = findBanco(sel.banco_nome ?? "");
+                  return (
+                    <div className="flex items-center gap-2.5 text-left">
+                      <BancoLogo codigo={b?.codigo} nome={sel.banco_nome ?? sel.nome} size={28} />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{b?.nome ?? sel.banco_nome ?? sel.nome}</div>
+                        <div className="text-[11px] text-muted-foreground truncate">
+                          {sel.agencia ? `Ag: ${sel.agencia}` : ""}{sel.agencia && sel.conta ? " / " : ""}{sel.conta ? `Conta: ${sel.conta}` : ""}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </SelectTrigger>
               <SelectContent>
-                {contas.filter((c) => c.ativa).map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                ))}
+                {contas.filter((c) => c.ativa).map((c) => {
+                  const b = findBanco(c.banco_nome ?? "");
+                  const nomeExibido = b?.nome ?? c.banco_nome ?? c.nome;
+                  return (
+                    <SelectItem key={c.id} value={c.id} className="py-2">
+                      <div className="flex items-center gap-2.5">
+                        <BancoLogo codigo={b?.codigo} nome={nomeExibido} size={28} />
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium leading-tight truncate">{nomeExibido}</div>
+                          <div className="text-[11px] text-muted-foreground leading-tight truncate">
+                            {c.agencia ? `Ag: ${c.agencia}` : "—"}{c.agencia && c.conta ? " / " : c.conta ? " " : ""}{c.conta ? `Conta: ${c.conta}` : ""}
+                          </div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
