@@ -199,24 +199,24 @@ export default function FinImportarOFX() {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label>Conta de destino</Label>
+            <Label className="text-[12px] font-medium text-foreground/80">Conta de destino</Label>
             <Select value={contaId} onValueChange={setContaId}>
-              <SelectTrigger className="h-auto min-h-[56px] py-2 px-3">
+              <SelectTrigger className="h-[52px] py-0 pl-2 pr-3 [&>span]:line-clamp-none">
                 {(() => {
                   const sel = contas.find((c) => c.id === contaId);
                   if (!sel) return <SelectValue placeholder="Selecione a conta corrente para importar o extrato" />;
                   const b = findBanco(sel.banco_nome ?? "");
                   const nomeExibido = b?.nome ?? sel.banco_nome ?? sel.nome;
                   return (
-                    <div className="flex items-center gap-3 text-left w-full">
-                      <div className="shrink-0 w-10 h-10 rounded-md bg-background border border-border flex items-center justify-center overflow-hidden">
-                        <BancoLogo codigo={b?.codigo} nome={nomeExibido} size={32} />
+                    <div className="flex items-center gap-2.5 text-left w-full min-w-0">
+                      <div className="shrink-0 w-9 h-9 rounded-[6px] bg-background border border-border/70 flex items-center justify-center overflow-hidden">
+                        <BancoLogo codigo={b?.codigo} nome={nomeExibido} size={28} />
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[13px] font-semibold leading-tight truncate text-foreground">
+                      <div className="min-w-0 flex-1 flex flex-col justify-center">
+                        <div className="text-[13px] font-semibold leading-[1.15] truncate text-foreground">
                           {nomeExibido}
                         </div>
-                        <div className="text-[11px] text-muted-foreground leading-tight truncate tabular-nums mt-0.5">
+                        <div className="text-[11px] font-normal text-muted-foreground leading-[1.3] truncate tabular-nums mt-[2px]">
                           {sel.agencia ? `Ag. ${sel.agencia}` : "Ag. —"}
                           <span className="mx-1.5 opacity-50">•</span>
                           {sel.conta ? `C/C ${sel.conta}` : "C/C —"}
@@ -226,21 +226,25 @@ export default function FinImportarOFX() {
                   );
                 })()}
               </SelectTrigger>
-              <SelectContent className="max-h-[320px]">
+              <SelectContent className="max-h-[320px] p-1">
                 {contas.filter((c) => c.ativa).map((c) => {
                   const b = findBanco(c.banco_nome ?? "");
                   const nomeExibido = b?.nome ?? c.banco_nome ?? c.nome;
                   return (
-                    <SelectItem key={c.id} value={c.id} className="py-2.5 px-2 focus:bg-accent/60">
-                      <div className="flex items-center gap-3 w-full">
-                        <div className="shrink-0 w-9 h-9 rounded-md bg-background border border-border flex items-center justify-center overflow-hidden">
+                    <SelectItem
+                      key={c.id}
+                      value={c.id}
+                      className="h-[48px] py-0 pl-2 pr-2 rounded-[6px] focus:bg-accent/60 [&>span:first-child]:hidden [&>span:last-child]:w-full"
+                    >
+                      <div className="flex items-center gap-2.5 w-full min-w-0">
+                        <div className="shrink-0 w-9 h-9 rounded-[6px] bg-background border border-border/70 flex items-center justify-center overflow-hidden">
                           <BancoLogo codigo={b?.codigo} nome={nomeExibido} size={28} />
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[13px] font-semibold leading-tight truncate text-foreground">
+                        <div className="min-w-0 flex-1 flex flex-col justify-center">
+                          <div className="text-[13px] font-semibold leading-[1.15] truncate text-foreground">
                             {nomeExibido}
                           </div>
-                          <div className="text-[11px] text-muted-foreground leading-tight truncate tabular-nums mt-0.5">
+                          <div className="text-[11px] font-normal text-muted-foreground leading-[1.3] truncate tabular-nums mt-[2px]">
                             {c.agencia ? `Ag. ${c.agencia}` : "Ag. —"}
                             <span className="mx-1.5 opacity-50">•</span>
                             {c.conta ? `C/C ${c.conta}` : "C/C —"}
