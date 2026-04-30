@@ -105,6 +105,7 @@ export default function FinContas() {
   const [agencia, setAgencia] = useState("");
   const [conta, setConta] = useState("");
   const [saldoInicial, setSaldoInicial] = useState(0);
+  const [erros, setErros] = useState<Erros>({});
 
   const openDialog = (c: Conta | null) => {
     setEditing(c);
@@ -114,11 +115,28 @@ export default function FinContas() {
     setAgencia(c?.agencia ?? "");
     setConta(c?.conta ?? "");
     setSaldoInicial(Number(c?.saldo_inicial ?? 0));
+    setErros({});
     setOpen(true);
   };
 
+  const validar = (): Erros => {
+    const r = contaSchema.safeParse({ nome, tipo, banco, agencia, conta });
+    if (r.success) return {};
+    const e: Erros = {};
+    for (const issue of r.error.issues) {
+      const k = issue.path[0] as keyof Erros;
+      if (k && !e[k]) e[k] = issue.message;
+    }
+    return e;
+  };
+
   const handleSave = async () => {
-    if (!nome.trim()) return;
+    const e = validar();
+    setErros(e);
+    if (Object.keys(e).length > 0) {
+      toast.error("Verifique os campos destacados antes de salvar.");
+      return;
+    }
     await upsert.mutateAsync({
       id: editing?.id,
       nome: nome.trim(),
