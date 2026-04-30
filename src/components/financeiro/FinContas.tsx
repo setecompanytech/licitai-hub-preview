@@ -79,7 +79,7 @@ const contaSchema = z
     }
   });
 
-type Erros = Partial<Record<"nome" | "banco" | "agencia" | "conta", string>>;
+type Erros = Partial<Record<"nome" | "banco" | "agencia" | "conta" | "saldoInicial", string>>;
 
 const TIPOS = [
   { value: "corrente", label: "Conta corrente" },
