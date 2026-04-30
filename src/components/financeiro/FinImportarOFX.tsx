@@ -239,6 +239,21 @@ export default function FinImportarOFX() {
                 })}
               </SelectContent>
             </Select>
+            {(() => {
+              const sel = contas.find((c) => c.id === contaId);
+              if (!sel) return null;
+              const erros = validarConta(sel);
+              if (erros.length === 0) return null;
+              return (
+                <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-[11px] text-destructive space-y-0.5">
+                  <div className="font-medium">Cadastro da conta incompleto:</div>
+                  <ul className="list-disc list-inside">
+                    {erros.map((e, i) => <li key={i}>{e}</li>)}
+                  </ul>
+                  <div className="text-muted-foreground">Atualize em Financeiro › Contas antes de importar.</div>
+                </div>
+              );
+            })()}
           </div>
           <div className="space-y-1.5">
             <Label>Arquivo .ofx</Label>
