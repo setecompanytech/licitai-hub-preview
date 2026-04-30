@@ -61,6 +61,7 @@ const HistoricoLicitacoes = lazyPage(() => import("./pages/HistoricoLicitacoes")
 const Ferramentas = lazyPage(() => import("./pages/Ferramentas"));
 const GestaoContratos = lazyPage(() => import("./pages/GestaoContratos"));
 const Financeiro = lazyPage(() => import("./pages/Financeiro"));
+const AuditoriaBancos = lazyPage(() => import("./pages/AuditoriaBancos"));
 const WhatsAppCRM = lazyPage(() => import("./pages/WhatsAppCRM"));
 const Calendario = lazyPage(() => import("./pages/Calendario"));
 const TermosDeUso = lazyPage(() => import("./pages/TermosDeUso"));
@@ -201,6 +202,7 @@ const App = () => (
               <Route path="/relatorio-contabil" element={<ProtectedPages><RelatorioContabil /></ProtectedPages>} />
               <Route path="/gestao-contratos" element={<PlanPages><GestaoContratos /></PlanPages>} />
               <Route path="/financeiro" element={<ProtectedPages><Financeiro /></ProtectedPages>} />
+              <Route path="/auditoria-bancos" element={<ProtectedPages><AuditoriaBancos /></ProtectedPages>} />
               <Route path="/equipe" element={<PlanPages><EquipeColaboradores /></PlanPages>} />
               <Route path="/assistente-especializado" element={<PlanPages><AssistenteEspecializado /></PlanPages>} />
               <Route path="/termos-de-uso" element={<TermosDeUso />} />
