@@ -154,6 +154,25 @@ export function findBanco(value: string | null | undefined): BancoOption | undef
   );
 }
 
+/**
+ * Logos oficiais dos bancos.
+ * Carregadas como assets locais via Vite (`src/assets/banks/{codigo}.svg`).
+ * Para adicionar novas, basta soltar o SVG no diretório com o nome `{codigoCOMPE}.svg`.
+ * Quando não há SVG oficial, exibe um monograma estilizado com a cor da marca.
+ */
+const LOGO_MODULES = import.meta.glob("@/assets/banks/*.svg", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
+
+const LOGOS_OFICIAIS: Record<string, string> = Object.fromEntries(
+  Object.entries(LOGO_MODULES).map(([path, url]) => {
+    const codigo = path.split("/").pop()!.replace(".svg", "");
+    return [codigo, url];
+  }),
+);
+
 interface BancoLogoProps {
   codigo?: string | null;
   nome?: string | null;
@@ -162,10 +181,37 @@ interface BancoLogoProps {
 }
 
 export function BancoLogo({ codigo, nome, size = 28, className }: BancoLogoProps) {
+  const logoUrl = codigo ? LOGOS_OFICIAIS[codigo] : undefined;
+  const [erroImg, setErroImg] = useState(false);
+
+  // Se houver SVG oficial e não falhou ao carregar → renderiza a logo real
+  if (logoUrl && !erroImg) {
+    return (
+      <div
+        className={cn(
+          "flex items-center justify-center rounded-md border border-border/40 bg-white overflow-hidden shrink-0 shadow-sm p-1",
+          className,
+        )}
+        style={{ width: size, height: size }}
+        role="img"
+        aria-label={nome ?? "Logo do banco"}
+      >
+        <img
+          src={logoUrl}
+          alt={nome ?? "Logo do banco"}
+          className="max-w-full max-h-full object-contain"
+          loading="lazy"
+          onError={() => setErroImg(true)}
+        />
+      </div>
+    );
+  }
+
+  // Fallback elegante: monograma com cor institucional da marca
   const brand = getBrandStyle(codigo);
   const initials = brand.initials;
-  // Tamanho de fonte responsivo conforme largura das iniciais
-  const fontSize = initials.length <= 2 ? size * 0.45 : initials.length === 3 ? size * 0.36 : size * 0.28;
+  const fontSize =
+    initials.length <= 2 ? size * 0.45 : initials.length === 3 ? size * 0.36 : size * 0.28;
 
   return (
     <div
@@ -179,7 +225,11 @@ export function BancoLogo({ codigo, nome, size = 28, className }: BancoLogoProps
     >
       <span
         className="font-bold leading-none tracking-tight tabular-nums select-none"
-        style={{ color: brand.fg, fontSize, fontFamily: "system-ui, -apple-system, sans-serif" }}
+        style={{
+          color: brand.fg,
+          fontSize,
+          fontFamily: "system-ui, -apple-system, sans-serif",
+        }}
       >
         {initials}
       </span>
