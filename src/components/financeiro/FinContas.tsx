@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { z } from "zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MoneyInput } from "@/components/ui/money-input";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertCircle } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -14,7 +15,71 @@ import {
 import { useContas, useUpsertConta, useDeleteConta, type Conta } from "@/hooks/useFinanceiro";
 import { formatBRL } from "@/lib/financeiro/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
-import BancoSelectorLogos, { BancoLogo, findBanco } from "./BancoSelectorLogos";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import BancoSelectorLogos, { BancoLogo, findBanco, BANCOS_BRASIL } from "./BancoSelectorLogos";
+
+/**
+ * Validação (zod):
+ * - Banco: opcional, mas, se preenchido, deve corresponder a um banco da lista
+ *   (código COMPE de 3 dígitos válido). Sem banco, agência/conta também precisam ficar vazios.
+ * - Agência: 1–5 dígitos, com dígito verificador opcional (ex.: "1234" ou "1234-5" / "1234-X").
+ * - Conta:   1–12 dígitos, com dígito verificador obrigatório (ex.: "12345-6" ou "12345-X").
+ */
+const RE_AGENCIA = /^\d{1,5}(-[\dxX])?$/;
+const RE_CONTA = /^\d{1,12}-[\dxX]$/;
+const CODIGOS_VALIDOS = new Set(BANCOS_BRASIL.map((b) => b.codigo));
+
+const contaSchema = z
+  .object({
+    nome: z.string().trim().min(2, "Informe um nome com ao menos 2 caracteres.").max(80, "Máximo 80 caracteres."),
+    tipo: z.string().min(1),
+    banco: z.string().trim().max(120).optional().or(z.literal("")),
+    agencia: z.string().trim().max(10).optional().or(z.literal("")),
+    conta: z.string().trim().max(20).optional().or(z.literal("")),
+  })
+  .superRefine((v, ctx) => {
+    const banco = (v.banco ?? "").trim();
+    const agencia = (v.agencia ?? "").trim();
+    const conta = (v.conta ?? "").trim();
+
+    if (banco) {
+      // Aceita "XXX - Nome" ou apenas o nome listado
+      const codigo = banco.split(/\s|-/)[0].padStart(3, "0");
+      const reconhecido = CODIGOS_VALIDOS.has(codigo) || BANCOS_BRASIL.some((b) => b.nome.toLowerCase() === banco.toLowerCase());
+      if (!reconhecido) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["banco"],
+          message: "Código bancário não reconhecido. Selecione um banco da lista.",
+        });
+      }
+    } else if (agencia || conta) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["banco"],
+        message: "Selecione o banco antes de informar agência/conta.",
+      });
+    }
+
+    if (agencia && !RE_AGENCIA.test(agencia)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["agencia"],
+        message: "Agência inválida. Use 1 a 5 dígitos, com DV opcional (ex.: 1234 ou 1234-5).",
+      });
+    }
+
+    if (conta && !RE_CONTA.test(conta)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["conta"],
+        message: "Conta inválida. Informe número e dígito verificador (ex.: 12345-6).",
+      });
+    }
+  });
+
+type Erros = Partial<Record<"nome" | "banco" | "agencia" | "conta", string>>;
 
 const TIPOS = [
   { value: "corrente", label: "Conta corrente" },
@@ -40,6 +105,7 @@ export default function FinContas() {
   const [agencia, setAgencia] = useState("");
   const [conta, setConta] = useState("");
   const [saldoInicial, setSaldoInicial] = useState(0);
+  const [erros, setErros] = useState<Erros>({});
 
   const openDialog = (c: Conta | null) => {
     setEditing(c);
@@ -49,11 +115,28 @@ export default function FinContas() {
     setAgencia(c?.agencia ?? "");
     setConta(c?.conta ?? "");
     setSaldoInicial(Number(c?.saldo_inicial ?? 0));
+    setErros({});
     setOpen(true);
   };
 
+  const validar = (): Erros => {
+    const r = contaSchema.safeParse({ nome, tipo, banco, agencia, conta });
+    if (r.success) return {};
+    const e: Erros = {};
+    for (const issue of r.error.issues) {
+      const k = issue.path[0] as keyof Erros;
+      if (k && !e[k]) e[k] = issue.message;
+    }
+    return e;
+  };
+
   const handleSave = async () => {
-    if (!nome.trim()) return;
+    const e = validar();
+    setErros(e);
+    if (Object.keys(e).length > 0) {
+      toast.error("Verifique os campos destacados antes de salvar.");
+      return;
+    }
     await upsert.mutateAsync({
       id: editing?.id,
       nome: nome.trim(),
@@ -162,7 +245,17 @@ export default function FinContas() {
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 space-y-1.5">
               <Label>Nome *</Label>
-              <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Itaú PJ Principal" />
+              <Input
+                value={nome}
+                onChange={(e) => { setNome(e.target.value); if (erros.nome) setErros((p) => ({ ...p, nome: undefined })); }}
+                placeholder="Ex.: Itaú PJ Principal"
+                aria-invalid={!!erros.nome}
+                className={cn(erros.nome && "border-destructive focus-visible:ring-destructive")}
+                maxLength={80}
+              />
+              {erros.nome && (
+                <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.nome}</p>
+              )}
             </div>
             <div className="col-span-2 space-y-1.5">
               <Label>Tipo</Label>
@@ -175,17 +268,41 @@ export default function FinContas() {
               <Label>Banco</Label>
               <BancoSelectorLogos
                 value={banco}
-                onChange={(v) => setBanco(v)}
+                onChange={(v) => { setBanco(v); if (erros.banco) setErros((p) => ({ ...p, banco: undefined })); }}
                 placeholder="Selecione o banco…"
+                className={cn(erros.banco && "border-destructive focus-visible:ring-destructive")}
               />
+              {erros.banco && (
+                <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.banco}</p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Agência</Label>
-              <Input value={agencia} onChange={(e) => setAgencia(e.target.value)} />
+              <Input
+                value={agencia}
+                onChange={(e) => { setAgencia(e.target.value.replace(/[^\dxX-]/g, "").slice(0, 7)); if (erros.agencia) setErros((p) => ({ ...p, agencia: undefined })); }}
+                placeholder="1234 ou 1234-5"
+                aria-invalid={!!erros.agencia}
+                inputMode="text"
+                className={cn("tabular-nums", erros.agencia && "border-destructive focus-visible:ring-destructive")}
+              />
+              {erros.agencia && (
+                <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.agencia}</p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Conta</Label>
-              <Input value={conta} onChange={(e) => setConta(e.target.value)} />
+              <Input
+                value={conta}
+                onChange={(e) => { setConta(e.target.value.replace(/[^\dxX-]/g, "").slice(0, 14)); if (erros.conta) setErros((p) => ({ ...p, conta: undefined })); }}
+                placeholder="12345-6"
+                aria-invalid={!!erros.conta}
+                inputMode="text"
+                className={cn("tabular-nums", erros.conta && "border-destructive focus-visible:ring-destructive")}
+              />
+              {erros.conta && (
+                <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.conta}</p>
+              )}
             </div>
             <div className="col-span-2 space-y-1.5">
               <Label>Saldo inicial</Label>
