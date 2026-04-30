@@ -312,9 +312,46 @@ export default function FinContas() {
                 <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.conta}</p>
               )}
             </div>
-            <div className="col-span-2 space-y-1.5">
-              <Label>Saldo inicial</Label>
-              <MoneyInput value={saldoInicial} onValueChange={setSaldoInicial} allowNegative />
+            <div className="col-span-2 space-y-2 rounded-md border border-border/60 bg-muted/20 p-3">
+              <label className="flex items-start gap-2 cursor-pointer select-none">
+                <Checkbox
+                  checked={possuiSaldo}
+                  onCheckedChange={(v) => {
+                    const marcado = v === true;
+                    setPossuiSaldo(marcado);
+                    if (!marcado) {
+                      setSaldoInicial(0);
+                      if (erros.saldoInicial) setErros((p) => ({ ...p, saldoInicial: undefined }));
+                    }
+                  }}
+                  className="mt-0.5"
+                />
+                <span className="text-sm leading-tight">
+                  Esta conta possui saldo disponível
+                  <span className="block text-[11px] text-muted-foreground mt-0.5">
+                    Marque para informar o saldo inicial. Caso contrário, a conta começa com R$ 0,00.
+                  </span>
+                </span>
+              </label>
+              {possuiSaldo && (
+                <div className="space-y-1.5 pl-6">
+                  <Label className="text-xs text-muted-foreground">Saldo inicial *</Label>
+                  <MoneyInput
+                    value={saldoInicial}
+                    onValueChange={(v) => {
+                      setSaldoInicial(v);
+                      if (erros.saldoInicial) setErros((p) => ({ ...p, saldoInicial: undefined }));
+                    }}
+                    allowNegative={false}
+                    className={cn(erros.saldoInicial && "border-destructive focus-visible:ring-destructive")}
+                  />
+                  {erros.saldoInicial && (
+                    <p className="text-xs text-destructive flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />{erros.saldoInicial}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
