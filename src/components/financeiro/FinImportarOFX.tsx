@@ -116,8 +116,33 @@ export default function FinImportarOFX() {
     }
   }
 
+  function validarConta(conta: typeof contas[number] | undefined): string[] {
+    const erros: string[] = [];
+    if (!conta) {
+      erros.push("Selecione uma conta de destino.");
+      return erros;
+    }
+    if (!conta.banco_nome || !String(conta.banco_nome).trim()) {
+      erros.push("A conta selecionada não possui banco cadastrado (banco_nome).");
+    }
+    if (!conta.agencia || !String(conta.agencia).trim()) {
+      erros.push("A conta selecionada não possui agência cadastrada.");
+    }
+    if (!conta.conta || !String(conta.conta).trim()) {
+      erros.push("A conta selecionada não possui número da conta cadastrado.");
+    }
+    return erros;
+  }
+
   async function importar() {
     if (!contaId || movimentos.length === 0) return;
+    const contaSel = contas.find((c) => c.id === contaId);
+    const erros = validarConta(contaSel);
+    if (erros.length > 0) {
+      erros.forEach((e) => toast.error(e));
+      toast.error("Cadastro da conta incompleto. Atualize em Financeiro › Contas antes de importar o OFX.");
+      return;
+    }
     setImportando(true);
     try {
       const ativos = movimentos.filter((m) => !m._ignorar);
