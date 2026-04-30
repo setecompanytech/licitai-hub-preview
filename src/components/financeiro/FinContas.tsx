@@ -115,7 +115,9 @@ export default function FinContas() {
     setBanco(c?.banco_nome ?? "");
     setAgencia(c?.agencia ?? "");
     setConta(c?.conta ?? "");
-    setSaldoInicial(Number(c?.saldo_inicial ?? 0));
+    const si = Number(c?.saldo_inicial ?? 0);
+    setSaldoInicial(si);
+    setPossuiSaldo(si !== 0);
     setErros({});
     setOpen(true);
   };
