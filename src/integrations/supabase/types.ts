@@ -15062,6 +15062,10 @@ export type Database = {
         Args: { p_empresa_id: string }
         Returns: undefined
       }
+      sincronizar_saldos_contas_sem_movimento: {
+        Args: { p_empresa_id: string }
+        Returns: number
+      }
       user_has_active_subscription: {
         Args: { _user_id: string }
         Returns: boolean
