@@ -96,11 +96,54 @@ export default function FinContas() {
   const { data: contas = [], isLoading } = useContas();
   const upsert = useUpsertConta();
   const del = useDeleteConta();
+  const empresaId = useEmpresaId();
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Conta | null>(null);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [filtroBanco, setFiltroBanco] = useState<string>("");
   const [busca, setBusca] = useState("");
+  const [sincronizando, setSincronizando] = useState(false);
+  const [confirmSync, setConfirmSync] = useState(false);
+
+  // Quantas contas estão dessincronizadas e elegíveis para o recálculo em lote
+  // (saldo_atual ≠ saldo_inicial). A função do banco fará o filtro final
+  // garantindo que apenas contas SEM lançamentos sejam ajustadas.
+  const candidatasSync = contas.filter(
+    (c) => Number(c.saldo_atual ?? 0) !== Number(c.saldo_inicial ?? 0),
+  ).length;
+
+  const sincronizarSaldos = async () => {
+    if (!empresaId) {
+      toast.error("Selecione uma empresa ativa.");
+      return;
+    }
+    setSincronizando(true);
+    try {
+      const { data, error } = await supabase.rpc(
+        "sincronizar_saldos_contas_sem_movimento",
+        { p_empresa_id: empresaId },
+      );
+      if (error) throw error;
+      const total = Number(data ?? 0);
+      if (total === 0) {
+        toast.info("Nenhuma conta precisava ser sincronizada.");
+      } else {
+        toast.success(
+          total === 1
+            ? "1 conta sincronizada com sucesso."
+            : `${total} contas sincronizadas com sucesso.`,
+        );
+      }
+      await qc.invalidateQueries({ queryKey: ["fin-contas"] });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao sincronizar saldos.";
+      toast.error(msg);
+    } finally {
+      setSincronizando(false);
+      setConfirmSync(false);
+    }
+  };
 
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState("corrente");
