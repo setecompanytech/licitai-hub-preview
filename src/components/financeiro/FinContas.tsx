@@ -171,9 +171,13 @@ export default function FinContas() {
                 <SelectContent>{TIPOS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
+            <div className="col-span-2 space-y-1.5">
               <Label>Banco</Label>
-              <Input value={banco} onChange={(e) => setBanco(e.target.value)} />
+              <BancoSelectorLogos
+                value={banco}
+                onChange={(v) => setBanco(v)}
+                placeholder="Selecione o banco…"
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Agência</Label>
