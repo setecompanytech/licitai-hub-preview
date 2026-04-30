@@ -14,6 +14,7 @@ import {
 import { useContas, useUpsertConta, useDeleteConta, type Conta } from "@/hooks/useFinanceiro";
 import { formatBRL } from "@/lib/financeiro/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
+import BancoSelectorLogos, { BancoLogo, findBanco } from "./BancoSelectorLogos";
 
 const TIPOS = [
   { value: "corrente", label: "Conta corrente" },
