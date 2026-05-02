@@ -166,7 +166,7 @@ export default function Financeiro() {
           <div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
               <button
-                onClick={() => setActiveView(null)}
+                onClick={() => navigateToView(null)}
                 className="hover:text-foreground transition-colors flex items-center gap-1"
               >
                 <Home className="w-3 h-3" /> Financeiro
@@ -188,7 +188,7 @@ export default function Financeiro() {
             </p>
           </div>
           {activeView && (
-            <Button variant="outline" size="sm" onClick={() => setActiveView(null)}>
+            <Button variant="outline" size="sm" onClick={() => navigateToView(null)}>
               <ArrowLeft className="w-4 h-4 mr-1.5" />
               Voltar ao Hub
             </Button>
@@ -204,9 +204,9 @@ export default function Financeiro() {
         ) : activeView ? (
           renderActive()
         ) : (
-          <FinHomeHub onNavigate={setActiveView} />
+          <FinHomeHub onNavigate={navigateToView} />
         )}
-        <FinCommandPalette onNavigate={setActiveView} />
+        <FinCommandPalette onNavigate={navigateToView} />
       </div>
     </AppLayout>
   );
