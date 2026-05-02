@@ -1,9 +1,19 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle, FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target, FileDown, Calculator, Eye, ArrowRightLeft, Upload, CheckCheck, FileSpreadsheet, ShieldCheck, Receipt, Building2, Sparkles, Activity, QrCode, History, Landmark, CalendarDays } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Search, LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle,
+  FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target,
+  FileDown, Calculator, Eye, ArrowRightLeft, Upload, CheckCheck, FileSpreadsheet, ShieldCheck, Receipt,
+  Building2, Sparkles, Activity, QrCode, History, Landmark, CalendarDays, Star, Clock4, Plus, Zap,
+  TrendingUp, TrendingDown, AlertTriangle, ArrowRight,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useResumoVisorFinanceiro } from "@/hooks/useFinanceiro";
+import { formatBRL } from "@/lib/financeiro/formatters";
 
 export type HubItem = {
   id: string;
@@ -70,12 +80,36 @@ export const HUB_ITEMS: HubItem[] = [
 ];
 
 const GROUPS = [
-  { id: "operacao", label: "Operação Diária", description: "O que você usa todos os dias", color: "from-primary/10 to-primary/5" },
-  { id: "bancos", label: "Bancos & Conciliação", description: "Integração com instituições financeiras", color: "from-blue-500/10 to-blue-500/5" },
-  { id: "fiscal", label: "Fiscal & Documentos", description: "Notas, boletos e fiscalização", color: "from-amber-500/10 to-amber-500/5" },
-  { id: "relatorios", label: "Análises & Relatórios", description: "Visão consolidada do negócio", color: "from-emerald-500/10 to-emerald-500/5" },
-  { id: "cadastros", label: "Cadastros & Configuração", description: "Estrutura base do financeiro", color: "from-muted to-muted/50" },
+  { id: "operacao", label: "Operação Diária", description: "O que você usa todos os dias", color: "from-primary/10 to-primary/5", iconColor: "text-primary" },
+  { id: "bancos", label: "Bancos & Conciliação", description: "Integração com instituições financeiras", color: "from-blue-500/10 to-blue-500/5", iconColor: "text-blue-500" },
+  { id: "fiscal", label: "Fiscal & Documentos", description: "Notas, boletos e fiscalização", color: "from-amber-500/10 to-amber-500/5", iconColor: "text-amber-500" },
+  { id: "relatorios", label: "Análises & Relatórios", description: "Visão consolidada do negócio", color: "from-emerald-500/10 to-emerald-500/5", iconColor: "text-emerald-500" },
+  { id: "cadastros", label: "Cadastros & Configuração", description: "Estrutura base do financeiro", color: "from-muted to-muted/50", iconColor: "text-muted-foreground" },
 ] as const;
+
+const QUICK_ACTIONS: Array<{ id: string; label: string; icon: React.ComponentType<{ className?: string }> }> = [
+  { id: "lancamentos", label: "Novo Lançamento", icon: Plus },
+  { id: "conciliacao", label: "Conciliar", icon: CheckCheck },
+  { id: "importar_ofx", label: "Importar OFX", icon: Upload },
+  { id: "emissor_nfe", label: "Emitir NF-e", icon: FileText },
+  { id: "pix_cobranca", label: "Cobrança PIX", icon: QrCode },
+];
+
+const FAVORITES_KEY = "fin_hub_favorites_v1";
+const RECENTS_KEY = "fin_hub_recents_v1";
+const MAX_RECENTS = 6;
+
+function loadList(key: string): string[] {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((x) => typeof x === "string") : [];
+  } catch { return []; }
+}
+function saveList(key: string, list: string[]) {
+  try { localStorage.setItem(key, JSON.stringify(list)); } catch { /* noop */ }
+}
 
 interface FinHomeHubProps {
   onNavigate: (tabId: string) => void;
@@ -83,14 +117,52 @@ interface FinHomeHubProps {
 
 export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
   const [search, setSearch] = useState("");
+  const [activeGroup, setActiveGroup] = useState<string>("all");
+  const [favorites, setFavorites] = useState<string[]>(() => loadList(FAVORITES_KEY));
+  const [recents, setRecents] = useState<string[]>(() => loadList(RECENTS_KEY));
+  const [hoverPos, setHoverPos] = useState<Record<string, { x: number; y: number }>>({});
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { data: resumo, isLoading: loadingResumo } = useResumoVisorFinanceiro();
+
+  // Atalho `/` foca a busca
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (e.key === "/" && tag !== "INPUT" && tag !== "TEXTAREA") {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const handleNavigate = useCallback((id: string) => {
+    setRecents((prev) => {
+      const next = [id, ...prev.filter((x) => x !== id)].slice(0, MAX_RECENTS);
+      saveList(RECENTS_KEY, next);
+      return next;
+    });
+    onNavigate(id);
+  }, [onNavigate]);
+
+  const toggleFavorite = useCallback((e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setFavorites((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      saveList(FAVORITES_KEY, next);
+      return next;
+    });
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return HUB_ITEMS;
-    return HUB_ITEMS.filter(
-      (i) => i.label.toLowerCase().includes(q) || i.description.toLowerCase().includes(q)
-    );
-  }, [search]);
+    return HUB_ITEMS.filter((i) => {
+      const matchGroup = activeGroup === "all" || i.group === activeGroup;
+      const matchQ = !q || i.label.toLowerCase().includes(q) || i.description.toLowerCase().includes(q);
+      return matchGroup && matchQ;
+    });
+  }, [search, activeGroup]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, HubItem[]>();
@@ -101,68 +173,265 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
     return map;
   }, [filtered]);
 
+  const favoriteItems = useMemo(
+    () => favorites.map((id) => HUB_ITEMS.find((i) => i.id === id)).filter(Boolean) as HubItem[],
+    [favorites],
+  );
+  const recentItems = useMemo(
+    () => recents.map((id) => HUB_ITEMS.find((i) => i.id === id)).filter(Boolean) as HubItem[],
+    [recents],
+  );
+
+  // KPIs vivos
+  const kpis = useMemo(() => {
+    if (!resumo) return null;
+    return {
+      saldo: resumo.saldoTotal,
+      pagar: resumo.hojePagar.total,
+      pagarQtd: resumo.hojePagar.qtd,
+      receber: resumo.hojeReceber.total,
+      receberQtd: resumo.hojeReceber.qtd,
+      atrasoPagar: resumo.hojePagar.atraso,
+      atrasoReceber: resumo.hojeReceber.atraso,
+    };
+  }, [resumo]);
+
+  const renderCard = (item: HubItem, idx: number) => {
+    const Icon = item.icon;
+    const isFav = favorites.includes(item.id);
+    const groupColor = GROUPS.find((g) => g.id === item.group)?.iconColor ?? "text-primary";
+    const pos = hoverPos[item.id];
+    return (
+      <Card
+        key={item.id}
+        onClick={() => handleNavigate(item.id)}
+        onMouseMove={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setHoverPos((p) => ({ ...p, [item.id]: { x: e.clientX - r.left, y: e.clientY - r.top } }));
+        }}
+        onMouseLeave={() => setHoverPos((p) => { const n = { ...p }; delete n[item.id]; return n; })}
+        className={cn(
+          "group relative cursor-pointer overflow-hidden border-border/60 transition-all duration-300",
+          "hover:shadow-lg hover:-translate-y-1 hover:border-primary/50",
+          "animate-in fade-in slide-in-from-bottom-2",
+          item.highlight && "border-primary/50 bg-primary/5 ring-1 ring-primary/20",
+        )}
+        style={{ animationDelay: `${Math.min(idx * 30, 400)}ms`, animationFillMode: "backwards" }}
+      >
+        {/* Spotlight no mouse */}
+        {pos && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+            style={{
+              background: `radial-gradient(280px circle at ${pos.x}px ${pos.y}px, hsl(var(--primary) / 0.10), transparent 60%)`,
+            }}
+          />
+        )}
+        {/* Estrela favorito */}
+        <button
+          type="button"
+          onClick={(e) => toggleFavorite(e, item.id)}
+          className={cn(
+            "absolute right-2 top-2 z-10 p-1 rounded-md transition-all",
+            "opacity-0 group-hover:opacity-100 hover:bg-primary/10",
+            isFav && "opacity-100",
+          )}
+          aria-label={isFav ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+        >
+          <Star className={cn("w-3.5 h-3.5", isFav ? "fill-amber-400 text-amber-400" : "text-muted-foreground")} />
+        </button>
+
+        <CardContent className="p-4 flex items-start gap-3 relative">
+          <div
+            className={cn(
+              "shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300",
+              "group-hover:scale-110 group-hover:rotate-3",
+              item.highlight
+                ? "bg-primary/15 text-primary"
+                : cn("bg-muted", groupColor, "group-hover:bg-primary/10 group-hover:text-primary"),
+            )}
+          >
+            <Icon className="w-5 h-5" />
+          </div>
+          <div className="min-w-0 flex-1 pr-5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-medium text-sm leading-tight">{item.label}</h3>
+              {item.badge && (
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    "text-[10px] px-1.5 py-0 h-4 shrink-0",
+                    (item.badge === "Novo" || item.badge.startsWith("Fase")) &&
+                      "bg-primary/10 text-primary border-primary/20",
+                  )}
+                >
+                  {item.badge}
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
+            <div className="flex items-center gap-1 mt-2 text-[11px] text-primary opacity-0 -translate-x-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0">
+              Acessar <ArrowRight className="w-3 h-3" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="space-y-6">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar funcionalidade... (ex: conciliação, NF-e, comissão)"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 h-11 text-sm"
-          autoFocus
+      {/* ============ KPIs vivos ============ */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiTile
+          loading={loadingResumo}
+          icon={Wallet}
+          label="Saldo consolidado"
+          value={kpis ? formatBRL(kpis.saldo) : "—"}
+          tone="neutral"
+          onClick={() => handleNavigate("contas")}
+        />
+        <KpiTile
+          loading={loadingResumo}
+          icon={ArrowDownCircle}
+          label={`Receber hoje${kpis?.receberQtd ? ` (${kpis.receberQtd})` : ""}`}
+          value={kpis ? formatBRL(kpis.receber) : "—"}
+          sub={kpis && kpis.atrasoReceber > 0 ? `Em atraso: ${formatBRL(kpis.atrasoReceber)}` : undefined}
+          tone="positive"
+          onClick={() => handleNavigate("a_receber")}
+        />
+        <KpiTile
+          loading={loadingResumo}
+          icon={ArrowUpCircle}
+          label={`Pagar hoje${kpis?.pagarQtd ? ` (${kpis.pagarQtd})` : ""}`}
+          value={kpis ? formatBRL(kpis.pagar) : "—"}
+          sub={kpis && kpis.atrasoPagar > 0 ? `Em atraso: ${formatBRL(kpis.atrasoPagar)}` : undefined}
+          tone="negative"
+          onClick={() => handleNavigate("a_pagar")}
+        />
+        <KpiTile
+          loading={loadingResumo}
+          icon={AlertTriangle}
+          label="Atrasos totais"
+          value={kpis ? formatBRL(kpis.atrasoPagar + kpis.atrasoReceber) : "—"}
+          tone={kpis && (kpis.atrasoPagar + kpis.atrasoReceber) > 0 ? "warning" : "neutral"}
+          onClick={() => handleNavigate("panorama")}
         />
       </div>
 
+      {/* ============ Atalhos rápidos ============ */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mr-1">
+          <Zap className="w-3.5 h-3.5 text-primary" /> Atalhos:
+        </div>
+        {QUICK_ACTIONS.map((a) => {
+          const Icon = a.icon;
+          return (
+            <Button
+              key={a.id}
+              size="sm"
+              variant="outline"
+              onClick={() => handleNavigate(a.id)}
+              className="h-8 text-xs hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all"
+            >
+              <Icon className="w-3.5 h-3.5 mr-1.5" />
+              {a.label}
+            </Button>
+          );
+        })}
+      </div>
+
+      {/* ============ Busca + filtros por categoria ============ */}
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            ref={inputRef}
+            placeholder="Buscar funcionalidade... (pressione / para focar)"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 pr-16 h-11 text-sm"
+          />
+          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-[10px] font-mono text-muted-foreground">
+            /
+          </kbd>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <CategoryChip active={activeGroup === "all"} onClick={() => setActiveGroup("all")} count={HUB_ITEMS.length}>
+            Todos
+          </CategoryChip>
+          {GROUPS.map((g) => (
+            <CategoryChip
+              key={g.id}
+              active={activeGroup === g.id}
+              onClick={() => setActiveGroup(g.id)}
+              count={HUB_ITEMS.filter((i) => i.group === g.id).length}
+            >
+              {g.label}
+            </CategoryChip>
+          ))}
+        </div>
+      </div>
+
+      {/* ============ Favoritos ============ */}
+      {favoriteItems.length > 0 && !search && activeGroup === "all" && (
+        <section className="space-y-3 animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2">
+            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+            <h2 className="text-sm font-semibold">Favoritos</h2>
+            <span className="text-xs text-muted-foreground">({favoriteItems.length})</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {favoriteItems.map((item, idx) => renderCard(item, idx))}
+          </div>
+        </section>
+      )}
+
+      {/* ============ Recentes ============ */}
+      {recentItems.length > 0 && !search && activeGroup === "all" && (
+        <section className="space-y-3 animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2">
+            <Clock4 className="w-4 h-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold">Acessados recentemente</h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {recentItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavigate(item.id)}
+                  className="group flex items-center gap-2 px-3 py-1.5 rounded-md border border-border/60 bg-card text-xs hover:border-primary/40 hover:bg-primary/5 hover:text-primary transition-all"
+                >
+                  <Icon className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <span className="font-medium">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ============ Grupos ============ */}
       {GROUPS.map((group) => {
         const items = grouped.get(group.id);
         if (!items?.length) return null;
         return (
           <section key={group.id} className="space-y-3">
-            <div className={cn("rounded-lg p-4 bg-gradient-to-r border", group.color)}>
-              <h2 className="text-base font-semibold">{group.label}</h2>
-              <p className="text-xs text-muted-foreground">{group.description}</p>
+            <div className={cn("rounded-lg p-4 bg-gradient-to-r border border-border/60", group.color)}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold">{group.label}</h2>
+                  <p className="text-xs text-muted-foreground">{group.description}</p>
+                </div>
+                <Badge variant="outline" className="text-[10px] bg-background/60">
+                  {items.length} {items.length === 1 ? "módulo" : "módulos"}
+                </Badge>
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {items.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Card
-                    key={item.id}
-                    onClick={() => onNavigate(item.id)}
-                    className={cn(
-                      "group cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-primary/40",
-                      item.highlight && "border-primary/40 bg-primary/5"
-                    )}
-                  >
-                    <CardContent className="p-4 flex items-start gap-3">
-                      <div
-                        className={cn(
-                          "shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
-                          item.highlight
-                            ? "bg-primary/15 text-primary"
-                            : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
-                        )}
-                      >
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-medium text-sm leading-tight">{item.label}</h3>
-                          {item.badge && (
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
-                              {item.badge}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          {item.description}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+              {items.map((item, idx) => renderCard(item, idx))}
             </div>
           </section>
         );
@@ -170,11 +439,94 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
 
       {filtered.length === 0 && (
         <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            Nenhuma funcionalidade encontrada para "{search}".
+          <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
+            <Search className="w-8 h-8 mx-auto text-muted-foreground/50" />
+            <p>Nenhuma funcionalidade encontrada para "{search}".</p>
+            <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setActiveGroup("all"); }}>
+              Limpar filtros
+            </Button>
           </CardContent>
         </Card>
       )}
     </div>
+  );
+}
+
+// ============================================================================
+// Subcomponentes
+// ============================================================================
+
+function CategoryChip({
+  active, onClick, count, children,
+}: { active: boolean; onClick: () => void; count: number; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
+        active
+          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+          : "bg-card text-muted-foreground border-border/60 hover:border-primary/40 hover:text-foreground",
+      )}
+    >
+      {children}
+      <span className={cn("px-1.5 py-0 rounded text-[10px]", active ? "bg-primary-foreground/20" : "bg-muted")}>
+        {count}
+      </span>
+    </button>
+  );
+}
+
+function KpiTile({
+  loading, icon: Icon, label, value, sub, tone, onClick,
+}: {
+  loading: boolean;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  sub?: string;
+  tone: "neutral" | "positive" | "negative" | "warning";
+  onClick?: () => void;
+}) {
+  const toneClasses = {
+    neutral: "text-foreground",
+    positive: "text-emerald-600 dark:text-emerald-400",
+    negative: "text-rose-600 dark:text-rose-400",
+    warning: "text-amber-600 dark:text-amber-400",
+  };
+  const ringClasses = {
+    neutral: "hover:border-primary/40",
+    positive: "hover:border-emerald-500/40",
+    negative: "hover:border-rose-500/40",
+    warning: "hover:border-amber-500/40",
+  };
+  return (
+    <Card
+      onClick={onClick}
+      className={cn(
+        "cursor-pointer transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 border-border/60",
+        ringClasses[tone],
+      )}
+    >
+      <CardContent className="p-3.5 space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide truncate">
+            {label}
+          </span>
+          <Icon className={cn("w-4 h-4 shrink-0", toneClasses[tone])} />
+        </div>
+        {loading ? (
+          <Skeleton className="h-7 w-3/4" />
+        ) : (
+          <div className={cn("text-xl font-semibold tabular-nums tracking-tight", toneClasses[tone])}>
+            {value}
+          </div>
+        )}
+        {sub && !loading && (
+          <div className="text-[11px] text-amber-600 dark:text-amber-400 truncate">{sub}</div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
