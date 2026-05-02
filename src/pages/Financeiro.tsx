@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -108,17 +109,34 @@ const COMING_SOON: Record<string, { title: string; description: string }> = {
 
 export default function Financeiro() {
   const { empresaAtiva, loading } = useEmpresa();
-  const initialView = getResumoAutoOpen() ? "panorama" : null;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewParam = searchParams.get("view");
+  const initialView = viewParam || (getResumoAutoOpen() ? "panorama" : null);
   const [activeView, setActiveView] = useState<string | null>(initialView);
+
+  // Sync activeView <-> ?view= URL param (enables deep-link from global Ctrl+K)
+  useEffect(() => {
+    const v = searchParams.get("view");
+    if (v !== activeView) setActiveView(v);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  const navigateToView = (id: string | null) => {
+    setActiveView(id);
+    const next = new URLSearchParams(searchParams);
+    if (id) next.set("view", id); else next.delete("view");
+    setSearchParams(next, { replace: true });
+  };
 
   // Atalhos rápidos do FinResumoVisor disparam navegação programática
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<string>).detail;
-      if (typeof detail === "string" && detail.length > 0) setActiveView(detail);
+      if (typeof detail === "string" && detail.length > 0) navigateToView(detail);
     };
     window.addEventListener("fin:navigate", handler);
     return () => window.removeEventListener("fin:navigate", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const activeItem = activeView ? HUB_ITEMS.find((i) => i.id === activeView) : null;
@@ -148,7 +166,7 @@ export default function Financeiro() {
           <div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
               <button
-                onClick={() => setActiveView(null)}
+                onClick={() => navigateToView(null)}
                 className="hover:text-foreground transition-colors flex items-center gap-1"
               >
                 <Home className="w-3 h-3" /> Financeiro
@@ -170,7 +188,7 @@ export default function Financeiro() {
             </p>
           </div>
           {activeView && (
-            <Button variant="outline" size="sm" onClick={() => setActiveView(null)}>
+            <Button variant="outline" size="sm" onClick={() => navigateToView(null)}>
               <ArrowLeft className="w-4 h-4 mr-1.5" />
               Voltar ao Hub
             </Button>
@@ -186,9 +204,9 @@ export default function Financeiro() {
         ) : activeView ? (
           renderActive()
         ) : (
-          <FinHomeHub onNavigate={setActiveView} />
+          <FinHomeHub onNavigate={navigateToView} />
         )}
-        <FinCommandPalette onNavigate={setActiveView} />
+        <FinCommandPalette onNavigate={navigateToView} />
       </div>
     </AppLayout>
   );
