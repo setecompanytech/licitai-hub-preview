@@ -14,6 +14,7 @@ export default function ResetPassword() {
   const [success, setSuccess] = useState(false);
   const [verifying, setVerifying] = useState(true);
   const [canReset, setCanReset] = useState(false);
+  const [isInvite, setIsInvite] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,17 +33,21 @@ export default function ResetPassword() {
           if (error) throw error;
         }
 
-        // Format 2 (legado): #access_token=...&refresh_token=...&type=recovery
+        // Format 2 (legado): #access_token=...&refresh_token=...&type=recovery|invite
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
         const type = hashParams.get('type');
-        if (!code && accessToken && refreshToken && type === 'recovery') {
+        if (!code && accessToken && refreshToken && (type === 'recovery' || type === 'invite' || type === 'signup')) {
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
           if (error) throw error;
         }
+
+        // Detecta se é primeiro acesso (convite) — usuário sem senha definida ainda.
+        const inviteHint = type === 'invite' || type === 'signup' || url.searchParams.get('type') === 'invite';
+        if (inviteHint) setIsInvite(true);
 
         // Erro vindo do link (expirado/inválido)
         const errorDescription = hashParams.get('error_description') || url.searchParams.get('error_description');
@@ -116,11 +121,18 @@ export default function ResetPassword() {
             </div>
           ) : canReset ? (
             <>
-              <h2 className="text-xl font-bold text-center mb-6">Definir nova senha</h2>
+              <h2 className="text-xl font-bold text-center mb-2">
+                {isInvite ? 'Bem-vindo! Crie sua senha' : 'Definir nova senha'}
+              </h2>
+              <p className="text-xs text-muted-foreground text-center mb-6">
+                {isInvite
+                  ? 'Defina uma senha para acessar sua conta no PRAEFECTUS.'
+                  : 'Escolha uma nova senha para sua conta.'}
+              </p>
               <form onSubmit={handleReset} className="space-y-4">
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input type="password" placeholder="Nova senha" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" required minLength={6} autoFocus />
+                  <Input type="password" placeholder={isInvite ? 'Crie uma senha' : 'Nova senha'} value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" required minLength={6} autoFocus />
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -128,7 +140,7 @@ export default function ResetPassword() {
                 </div>
                 <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={loading}>
                   {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  Salvar nova senha
+                  {isInvite ? 'Criar senha e acessar' : 'Salvar nova senha'}
                 </Button>
               </form>
             </>
