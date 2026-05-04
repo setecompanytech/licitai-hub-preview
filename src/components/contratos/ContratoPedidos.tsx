@@ -682,6 +682,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
                     </div>
 
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/20">
+                      <Checkbox id="ger-cr-batch" checked={gerarContaReceber} onCheckedChange={(v) => setGerarContaReceber(!!v)} />
+                      <Label htmlFor="ger-cr-batch" className="text-xs cursor-pointer">
+                        <DollarSign className="w-3 h-3 inline mr-1" />
+                        Gerar <b>contas a receber</b> (uma por item) no Financeiro vinculadas a este contrato
+                      </Label>
+                    </div>
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
                       <Button onClick={handleSaveBatch} disabled={saving}>
