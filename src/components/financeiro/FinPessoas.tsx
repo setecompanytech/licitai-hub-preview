@@ -176,32 +176,144 @@ export default function FinPessoas() {
       toast.error("Informe um CNPJ válido (14 dígitos) para consultar a Receita Federal.");
       return;
     }
-    const data = await buscarPorDocumento(doc);
-    if (!data || !data.razao_social) {
-      toast.error("CNPJ não localizado na Receita Federal.");
+
+    setBuscandoCNPJEdge(true);
+    try {
+      // 1ª tentativa: edge function consulta-cnpj (server-side, sem CORS, com retries)
+      const { data: edge, error: edgeErr } = await supabase.functions.invoke("consulta-cnpj", {
+        body: { cnpj: doc },
+      });
+
+      if (!edgeErr && edge && !edge.error && edge.razaoSocial) {
+        const cepLimpo = (edge.cep || "").replace(/\D/g, "");
+        // Endereço pode vir concatenado em `endereco` (logradouro, numero) — separamos
+        let logradouro = "";
+        let numero = "";
+        if (typeof edge.endereco === "string") {
+          const partes = edge.endereco.split(",").map((s: string) => s.trim());
+          logradouro = partes[0] || "";
+          numero = partes[1] || "";
+        }
+        setForm((f) => ({
+          ...f,
+          pessoa_tipo: "PJ",
+          nome: edge.razaoSocial,
+          nome_fantasia: edge.nomeFantasia || f.nome_fantasia,
+          email: edge.email || f.email,
+          telefone: edge.telefone || f.telefone,
+          ie: edge.inscricaoEstadual || f.ie,
+          cnae_principal: edge.cnaePrincipal || f.cnae_principal,
+          endereco: {
+            ...f.endereco,
+            logradouro: logradouro || f.endereco.logradouro,
+            numero: numero || f.endereco.numero,
+            complemento: edge.complemento || f.endereco.complemento,
+            bairro: edge.bairro || f.endereco.bairro,
+            cep: cepLimpo || f.endereco.cep,
+            municipio: edge.municipio || f.endereco.municipio,
+            uf: edge.uf || f.endereco.uf,
+          },
+        }));
+        toast.success("Dados da Receita Federal preenchidos.");
+        setBuscandoCNPJEdge(false);
+        return;
+      }
+
+      // Mensagem amigável se a edge devolveu erro de negócio
+      if (edge?.error) {
+        toast.error(edge.error);
+        setBuscandoCNPJEdge(false);
+        return;
+      }
+
+      // 2ª tentativa: fallback browser (BrasilAPI/ReceitaWS)
+      console.warn("[FinPessoas] Edge consulta-cnpj falhou, usando fallback:", edgeErr);
+      const data = await buscarPorDocumento(doc);
+      if (!data || !data.razao_social) {
+        toast.error("CNPJ não localizado na Receita Federal.");
+        return;
+      }
+      setForm((f) => ({
+        ...f,
+        pessoa_tipo: "PJ",
+        nome: data.razao_social,
+        nome_fantasia: data.nome_fantasia ?? f.nome_fantasia,
+        email: data.email ?? f.email,
+        telefone: data.telefone ?? f.telefone,
+        cnae_principal: data.cnae_principal ?? f.cnae_principal,
+        endereco: {
+          ...f.endereco,
+          logradouro: data.logradouro ?? f.endereco.logradouro,
+          numero: data.numero ?? f.endereco.numero,
+          complemento: data.complemento ?? f.endereco.complemento,
+          bairro: data.bairro ?? f.endereco.bairro,
+          cep: data.cep ?? f.endereco.cep,
+          municipio: data.municipio ?? f.endereco.municipio,
+          uf: data.uf ?? f.endereco.uf,
+        },
+      }));
+      toast.success("Dados da Receita Federal preenchidos.");
+    } catch (e: any) {
+      toast.error(`Falha ao consultar CNPJ: ${e?.message || "erro desconhecido"}`);
+    } finally {
+      setBuscandoCNPJEdge(false);
+    }
+  };
+
+  const handleBuscarCEP = async () => {
+    const cep = (form.endereco.cep || "").replace(/\D/g, "");
+    if (cep.length !== 8) {
+      toast.error("Informe um CEP válido (8 dígitos).");
       return;
     }
-    setForm((f) => ({
-      ...f,
-      pessoa_tipo: "PJ",
-      nome: data.razao_social,
-      nome_fantasia: data.nome_fantasia ?? f.nome_fantasia,
-      email: data.email ?? f.email,
-      telefone: data.telefone ?? f.telefone,
-      cnae_principal: data.cnae_principal ?? f.cnae_principal,
-      endereco: {
-        ...f.endereco,
-        logradouro: data.logradouro ?? f.endereco.logradouro,
-        numero: data.numero ?? f.endereco.numero,
-        complemento: data.complemento ?? f.endereco.complemento,
-        bairro: data.bairro ?? f.endereco.bairro,
-        cep: data.cep ?? f.endereco.cep,
-        municipio: data.municipio ?? f.endereco.municipio,
-        uf: data.uf ?? f.endereco.uf,
-      },
-    }));
-    toast.success("Dados da Receita Federal preenchidos.");
+    setBuscandoCEP(true);
+    try {
+      // ViaCEP — público, com CORS aberto
+      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      if (!res.ok) throw new Error(`ViaCEP ${res.status}`);
+      const data = await res.json();
+      if (data.erro) {
+        toast.error("CEP não localizado.");
+        return;
+      }
+      setForm((f) => ({
+        ...f,
+        endereco: {
+          ...f.endereco,
+          logradouro: data.logradouro || f.endereco.logradouro,
+          bairro: data.bairro || f.endereco.bairro,
+          municipio: data.localidade || f.endereco.municipio,
+          uf: data.uf || f.endereco.uf,
+          complemento: f.endereco.complemento || data.complemento || "",
+          cod_municipio_ibge: data.ibge || f.endereco.cod_municipio_ibge,
+        },
+      }));
+      toast.success("Endereço preenchido a partir do CEP.");
+    } catch (e: any) {
+      // Fallback: BrasilAPI CEP v2
+      try {
+        const res2 = await fetch(`https://brasilapi.com.br/api/cep/v2/${cep}`);
+        if (!res2.ok) throw new Error(`BrasilAPI ${res2.status}`);
+        const d = await res2.json();
+        setForm((f) => ({
+          ...f,
+          endereco: {
+            ...f.endereco,
+            logradouro: d.street || f.endereco.logradouro,
+            bairro: d.neighborhood || f.endereco.bairro,
+            municipio: d.city || f.endereco.municipio,
+            uf: d.state || f.endereco.uf,
+          },
+        }));
+        toast.success("Endereço preenchido a partir do CEP.");
+      } catch (e2: any) {
+        toast.error(`Falha ao consultar CEP: ${e2?.message || e?.message || "erro"}`);
+      }
+    } finally {
+      setBuscandoCEP(false);
+    }
   };
+
 
   // Auto-detecta PF/PJ pelo número de dígitos
   useEffect(() => {
