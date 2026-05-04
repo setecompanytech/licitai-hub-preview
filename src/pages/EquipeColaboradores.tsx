@@ -281,7 +281,7 @@ export default function EquipeColaboradores() {
                             {(m as any).email && <p className="text-xs text-muted-foreground truncate">{(m as any).email}</p>}
                           </div>
                         </div>
-                        {isAdmin && !isCurrentUser && (
+                        {isAdmin && (
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <Select value={(m as any).equipe || 'geral'} onValueChange={(v) => handleUpdateEquipe(m.id, v)}>
                               <SelectTrigger className="w-[130px] h-8 text-xs">
@@ -293,7 +293,16 @@ export default function EquipeColaboradores() {
                                 ))}
                               </SelectContent>
                             </Select>
-                            <Select value={m.papel} onValueChange={(v) => handleUpdatePapel(m.id, v)}>
+                            <Select
+                              value={m.papel}
+                              onValueChange={(v) => {
+                                if (isCurrentUser && m.papel === 'admin' && v !== 'admin') {
+                                  toast.error('Você não pode rebaixar seu próprio papel de Administrador. Peça a outro admin.');
+                                  return;
+                                }
+                                handleUpdatePapel(m.id, v);
+                              }}
+                            >
                               <SelectTrigger className="w-[130px] h-8 text-xs">
                                 <SelectValue />
                               </SelectTrigger>
@@ -306,7 +315,7 @@ export default function EquipeColaboradores() {
                             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => openPermDialog(m)} title="Gerenciar Permissões">
                               <Shield className="w-4 h-4" />
                             </Button>
-                            {(m as any).email && (
+                            {(m as any).email && !isCurrentUser && (
                               <Button
                                 variant="outline"
                                 size="icon"
@@ -320,9 +329,11 @@ export default function EquipeColaboradores() {
                                   : <Mail className="w-4 h-4" />}
                               </Button>
                             )}
-                            <Button variant="ghost" size="icon" className="text-destructive/60 hover:text-destructive h-8 w-8" onClick={() => handleRemove(m.id, (m as any).nome || 'Colaborador')}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            {!isCurrentUser && (
+                              <Button variant="ghost" size="icon" className="text-destructive/60 hover:text-destructive h-8 w-8" onClick={() => handleRemove(m.id, (m as any).nome || 'Colaborador')} title="Remover colaborador">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>
