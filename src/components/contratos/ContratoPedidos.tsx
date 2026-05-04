@@ -124,6 +124,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     tipo_documento: 'ordem_fornecimento', origem_aditivo_id: '',
   });
   const [origemFilter, setOrigemFilter] = useState<string>('__todos__');
+  /** Quando true, ao salvar pedido(s) o sistema também cria lançamento(s) "a receber" no Financeiro vinculados a este contrato. */
+  const [gerarContaReceber, setGerarContaReceber] = useState(true);
 
   // Multi-item support
   const [extractedItens, setExtractedItens] = useState<Array<{
