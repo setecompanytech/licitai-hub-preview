@@ -46,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     subscriptionEnd: null,
     loading: true,
   });
+  const lastUserIdRef = useRef<string | null>(null);
 
   const checkSubscription = useCallback(async (accessToken?: string) => {
     const token = accessToken || (await supabase.auth.getSession()).data.session?.access_token;
