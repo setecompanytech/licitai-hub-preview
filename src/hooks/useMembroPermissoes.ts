@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -33,14 +33,33 @@ interface MembroInfo {
 
 export function useMembroPermissoes() {
   const { user } = useAuth();
-  const { empresaAtiva } = useEmpresa();
-  const { isAdmin: isGlobalAdmin } = useUserRole();
+  const { empresaAtiva, empresas, loading: empresaLoading } = useEmpresa();
+  const { isAdmin: isGlobalAdmin, loading: roleLoading } = useUserRole();
   const [membro, setMembro] = useState<MembroInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const isEmpresaAdminFromContext = useMemo(() => {
+    if (!empresaAtiva) return empresas.some((empresa) => empresa.papel === 'admin');
+    return empresas.some((empresa) => empresa.empresa_id === empresaAtiva.id && empresa.papel === 'admin');
+  }, [empresaAtiva, empresas]);
+
   useEffect(() => {
-    if (!user || !empresaAtiva) {
+    if (!user) {
       setMembro(null);
+      setLoading(false);
+      return;
+    }
+
+    if (empresaLoading || roleLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!empresaAtiva) {
+      setMembro(isEmpresaAdminFromContext
+        ? { setor: 'geral', papel: 'admin', permissoes: [], isEmpresaAdmin: true }
+        : null
+      );
       setLoading(false);
       return;
     }
@@ -62,20 +81,23 @@ export function useMembroPermissoes() {
           setor,
           papel,
           permissoes,
-          isEmpresaAdmin: papel === 'admin',
+          isEmpresaAdmin: papel === 'admin' || isEmpresaAdminFromContext,
         });
       } else {
-        setMembro(null);
+        setMembro(isEmpresaAdminFromContext
+          ? { setor: 'geral', papel: 'admin', permissoes: [], isEmpresaAdmin: true }
+          : null
+        );
       }
       setLoading(false);
     };
 
     load();
-  }, [user, empresaAtiva]);
+  }, [user, empresaAtiva, empresaLoading, roleLoading, isEmpresaAdminFromContext]);
 
   const temPermissao = (modulo: ModuloSistema): boolean => {
-    // Admin global do sistema ignora bloqueios.
-    if (isGlobalAdmin) return true;
+    // Admin global ou ADMIN da empresa ignora bloqueios de módulo.
+    if (isGlobalAdmin || membro?.isEmpresaAdmin || isEmpresaAdminFromContext) return true;
     if (!membro) return false;
     // Permissão explícita
     if (membro.permissoes.includes(modulo)) return true;
@@ -90,15 +112,16 @@ export function useMembroPermissoes() {
    * Admin global libera tudo. Caso contrário, valida pelo setor do membro.
    */
   const canAccessRoute = (path: string): boolean => {
-    if (isGlobalAdmin) return true;
+    if (isGlobalAdmin || membro?.isEmpresaAdmin || isEmpresaAdminFromContext) return true;
     if (!membro) return false;
     // Setor 'geral' (não classificado) — limitar a rotas marcadas como 'geral'.
     return isSectorAllowedForRoute(membro.setor, path);
   };
 
-  const isFinanceiro = isGlobalAdmin || membro?.setor === 'financeiro';
-  const isComercial = isGlobalAdmin || membro?.setor === 'comercial';
-  const isLogistica = isGlobalAdmin || membro?.setor === 'logistica';
+  const isAnyAdmin = isGlobalAdmin || membro?.isEmpresaAdmin || isEmpresaAdminFromContext;
+  const isFinanceiro = isAnyAdmin || membro?.setor === 'financeiro';
+  const isComercial = isAnyAdmin || membro?.setor === 'comercial';
+  const isLogistica = isAnyAdmin || membro?.setor === 'logistica';
 
   return {
     membro,
@@ -108,10 +131,10 @@ export function useMembroPermissoes() {
     isFinanceiro,
     isComercial,
     isLogistica,
-    /** Admin global do sistema (user_roles). */
-    isAdmin: isGlobalAdmin,
+    /** Admin global do sistema ou ADMIN dentro da empresa atual. */
+    isAdmin: !!isAnyAdmin,
     /** Admin dentro da empresa atual. */
-    isEmpresaAdmin: membro?.isEmpresaAdmin ?? false,
+    isEmpresaAdmin: !!(membro?.isEmpresaAdmin || isEmpresaAdminFromContext),
     setor: membro?.setor ?? 'geral',
   };
 }

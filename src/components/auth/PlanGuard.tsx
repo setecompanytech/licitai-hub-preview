@@ -1,5 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { hasAccessToRoute, getRequiredPlan, planDisplayNames } from '@/data/plan-features';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Lock, ArrowRight, Loader2 } from 'lucide-react';
@@ -12,11 +13,12 @@ interface PlanGuardProps {
 export default function PlanGuard({ children }: PlanGuardProps) {
   const { subscription } = useAuth();
   const { isAdmin, loading: roleLoading } = useUserRole();
+  const { isEmpresaAdmin, loading: memberLoading } = useMembroPermissoes();
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Still loading role or subscription — show spinner
-  if (roleLoading || subscription.loading) {
+  // Aguarda apenas a identificação administrativa antes de consultar bloqueios de plano.
+  if (roleLoading || memberLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-accent" />
@@ -24,8 +26,16 @@ export default function PlanGuard({ children }: PlanGuardProps) {
     );
   }
 
-  // Admins bypass plan restrictions
-  if (isAdmin) return <>{children}</>;
+  // Admin global e ADMIN da empresa bypassam restrições de plano.
+  if (isAdmin || isEmpresaAdmin) return <>{children}</>;
+
+  if (subscription.loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      </div>
+    );
+  }
 
   const hasAccess = hasAccessToRoute(subscription.planSlug, location.pathname);
 

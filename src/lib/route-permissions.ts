@@ -6,8 +6,8 @@ import type { Setor } from '@/hooks/useMembroPermissoes';
  *
  * Regras:
  * - 'geral' aparece quando o item está disponível para qualquer setor (ex.: dashboard, suporte).
- * - Admin global do sistema (user_roles.role='admin') ignora todos os bloqueios.
- * - Admin de empresa NÃO ignora — ele só vê o que é do(s) seu(s) setor(es).
+ * - Admin global e ADMIN da empresa ignoram todos os bloqueios no hook de permissões.
+ * - Operadores e visualizadores seguem o setor configurado.
  */
 export const ROUTE_SECTOR_MAP: Record<string, Setor[]> = {
   // --- Painel (todos veem)

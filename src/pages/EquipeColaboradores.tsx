@@ -15,7 +15,7 @@ import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, F
 import RelatorioAtividades from '@/components/equipe/RelatorioAtividades';
 import TarefasColaborador from '@/components/equipe/TarefasColaborador';
 import ComissoesColaborador from '@/components/equipe/ComissoesColaborador';
-import { MODULOS_SISTEMA } from '@/hooks/useMembroPermissoes';
+import { MODULOS_SISTEMA, useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 
 const EQUIPES = [
   { value: 'geral', label: 'Geral', icon: Settings, color: 'bg-muted text-muted-foreground' },
@@ -60,7 +60,8 @@ export default function EquipeColaboradores() {
   const [permissoesSel, setPermissoesSel] = useState<string[]>([]);
 
   const currentMembro = empresas.find(e => e.empresa_id === empresaAtiva?.id);
-  const isAdmin = currentMembro?.papel === 'admin';
+  const { isAdmin: hasAdminAccess } = useMembroPermissoes();
+  const isAdmin = hasAdminAccess || currentMembro?.papel === 'admin';
 
   useEffect(() => {
     if (!empresaAtiva) { setMembros([]); setLoading(false); return; }
