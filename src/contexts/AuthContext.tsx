@@ -85,8 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         purgeSupabaseAuthStorage();
       }
 
-      const prevUserId = (user as User | null)?.id ?? null;
+      const prevUserId = lastUserIdRef.current;
       const nextUserId = session?.user?.id ?? null;
+      lastUserIdRef.current = nextUserId;
 
       // Skip redundant updates from cross-tab TOKEN_REFRESHED events
       setSession(prev => prev?.user?.id === session?.user?.id && prev?.access_token === session?.access_token ? prev : session);
