@@ -437,6 +437,38 @@ export default function VinculoContratoSelector({
           )}
         </div>
 
+        {/* ===== Alertas de divergência (documento × contrato) ===== */}
+        {divergencias.length > 0 && (
+          <div className="space-y-1.5">
+            {divergencias.map((d, i) => {
+              const isError = d.level === "error";
+              const Icon = isError ? AlertCircle : AlertTriangle;
+              return (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex gap-2 rounded-md border p-2 text-xs",
+                    isError
+                      ? "border-destructive/40 bg-destructive/10 text-destructive"
+                      : "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+                  )}
+                  role="alert"
+                >
+                  <Icon className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium">{d.titulo}</div>
+                    <div className="text-[11px] opacity-90">{d.detalhe}</div>
+                  </div>
+                </div>
+              );
+            })}
+            <p className="text-[10px] text-muted-foreground italic px-0.5">
+              Os alertas são informativos — você pode prosseguir com o lançamento, mas confirme os
+              valores antes de impactar o saldo do contrato.
+            </p>
+          </div>
+        )}
+
         {/* Item do contrato */}
         {value.contrato_id && (
           <div>
