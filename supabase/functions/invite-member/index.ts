@@ -87,37 +87,88 @@ Deno.serve(async (req) => {
       }
 
       // Usuário existe na auth mas não é membro desta empresa.
-      // Verifica se ele já tem senha definida (last_sign_in_at). Se nunca logou
-      // OU se nunca confirmou e-mail, reenvia convite. Caso contrário, manda
-      // link de recuperação para que ele possa redefinir/definir senha.
+      // Detecta o estado real do usuário no auth para decidir o fluxo correto.
+      // CRÍTICO: É OBRIGATÓRIO enviar um e-mail (invite ou recovery). Se ambos
+      // falharem, retornamos erro para que o admin saiba que precisa reenviar.
       const neverSignedIn = !existingUser.last_sign_in_at
       const notConfirmed = !existingUser.email_confirmed_at
+      const isUnconfirmed = neverSignedIn || notConfirmed
 
-      if (neverSignedIn || notConfirmed) {
-        // Reenvia o convite (recria token de invite)
+      let lastEmailError: string | null = null
+
+      if (isUnconfirmed) {
+        // Usuário não confirmado: SEMPRE força reenvio do convite.
+        // 1ª tentativa: inviteUserByEmail (recria token de convite)
         const { error: reinviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
           data: { nome_completo: nome || email, empresa_id, equipe: Array.isArray(equipe) ? equipe[0] : equipe },
           redirectTo: redirectUrl,
         })
+
         if (!reinviteError) {
           emailFlow = 'invite'
         } else {
-          // Fallback: gera link de recovery
+          lastEmailError = reinviteError.message
+          console.warn('[invite-member] inviteUserByEmail falhou, tentando recovery:', reinviteError.message)
+
+          // 2ª tentativa (fallback): gera link de recovery explícito.
+          // Se o usuário ainda não tem e-mail confirmado, força a confirmação
+          // antes para que o link de recovery funcione corretamente.
+          if (notConfirmed) {
+            const { error: confirmError } = await adminClient.auth.admin.updateUserById(userId, {
+              email_confirm: true,
+            })
+            if (confirmError) {
+              console.warn('[invite-member] updateUserById (email_confirm) falhou:', confirmError.message)
+            }
+          }
+
           const { error: recError } = await adminClient.auth.admin.generateLink({
             type: 'recovery',
             email,
             options: { redirectTo: redirectUrl },
           })
-          if (!recError) emailFlow = 'recovery'
+          if (!recError) {
+            emailFlow = 'recovery'
+            lastEmailError = null
+          } else {
+            lastEmailError = `${lastEmailError} | recovery: ${recError.message}`
+          }
         }
       } else {
-        // Usuário ativo: envia link de recuperação para confirmar acesso à nova empresa
+        // Usuário ativo e confirmado: envia recovery para definir/redefinir senha.
         const { error: recError } = await adminClient.auth.admin.generateLink({
           type: 'recovery',
           email,
           options: { redirectTo: redirectUrl },
         })
-        if (!recError) emailFlow = 'recovery'
+        if (!recError) {
+          emailFlow = 'recovery'
+        } else {
+          lastEmailError = recError.message
+          console.warn('[invite-member] recovery falhou, tentando invite:', recError.message)
+
+          // Fallback: tenta invite mesmo assim.
+          const { error: inviteFallbackError } = await adminClient.auth.admin.inviteUserByEmail(email, {
+            data: { nome_completo: nome || email, empresa_id, equipe: Array.isArray(equipe) ? equipe[0] : equipe },
+            redirectTo: redirectUrl,
+          })
+          if (!inviteFallbackError) {
+            emailFlow = 'invite'
+            lastEmailError = null
+          } else {
+            lastEmailError = `${lastEmailError} | invite: ${inviteFallbackError.message}`
+          }
+        }
+      }
+
+      // Se nenhum e-mail foi enviado, aborta — não vincula o membro silenciosamente.
+      if (emailFlow === 'none') {
+        return new Response(JSON.stringify({
+          error: `Não foi possível enviar o e-mail de acesso para ${email}. Detalhes: ${lastEmailError || 'erro desconhecido'}. Tente novamente em alguns instantes ou use "Reenviar convite".`,
+        }), {
+          status: 502,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
       }
     } else {
       // Convida o novo usuário por e-mail. O Supabase envia o e-mail de convite
