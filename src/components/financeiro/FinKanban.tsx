@@ -16,6 +16,7 @@ import {
   Pencil,
   User2,
   Layers,
+  ScanLine,
 } from "lucide-react";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -26,6 +27,7 @@ import {
   type Lancamento,
 } from "@/hooks/useFinanceiro";
 import LancamentoDialog from "./LancamentoDialog";
+import FinExtracaoDocumentos from "./FinExtracaoDocumentos";
 
 type ColunaKanban = "aberto" | "vence_7d" | "vencido" | "pago";
 
@@ -50,6 +52,7 @@ export default function FinKanban({ tipo }: Props) {
   const [busca, setBusca] = useState("");
   const [filtroVendedor, setFiltroVendedor] = useState<string>("todos");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [extracaoOpen, setExtracaoOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Lancamento> | null>(null);
 
   const { data = [], isLoading } = useLancamentos({ tipo });
@@ -160,6 +163,10 @@ export default function FinKanban({ tipo }: Props) {
               </SelectContent>
             </Select>
             <Badge variant="outline">{lancamentosFiltrados.length} lançamentos</Badge>
+            <Button size="sm" variant="outline" onClick={() => setExtracaoOpen(true)}>
+              <ScanLine className="w-4 h-4 mr-1" />
+              Extrair de documento
+            </Button>
             <Button size="sm" onClick={abrirNovo}>
               <Plus className="w-4 h-4 mr-1" />
               Novo {tipo === "a_pagar" ? "pagamento" : "recebimento"}
@@ -284,6 +291,12 @@ export default function FinKanban({ tipo }: Props) {
         onOpenChange={setDialogOpen}
         initial={editing}
         defaultTipo={tipo}
+      />
+
+      <FinExtracaoDocumentos
+        open={extracaoOpen}
+        onOpenChange={setExtracaoOpen}
+        tipo={tipo}
       />
     </div>
   );
