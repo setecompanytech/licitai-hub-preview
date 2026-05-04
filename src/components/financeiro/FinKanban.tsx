@@ -292,6 +292,12 @@ export default function FinKanban({ tipo }: Props) {
         initial={editing}
         defaultTipo={tipo}
       />
+
+      <FinExtracaoDocumentos
+        open={extracaoOpen}
+        onOpenChange={setExtracaoOpen}
+        tipo={tipo}
+      />
     </div>
   );
 }
