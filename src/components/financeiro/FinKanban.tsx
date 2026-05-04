@@ -52,6 +52,7 @@ export default function FinKanban({ tipo }: Props) {
   const [busca, setBusca] = useState("");
   const [filtroVendedor, setFiltroVendedor] = useState<string>("todos");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [extracaoOpen, setExtracaoOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Lancamento> | null>(null);
 
   const { data = [], isLoading } = useLancamentos({ tipo });
