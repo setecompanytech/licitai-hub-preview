@@ -159,9 +159,9 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
   });
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, subscription } = useAuth();
-  const { isAdmin } = useUserRole();
-  const { canAccessRoute, isEmpresaAdmin, loading: permLoading } = useMembroPermissoes();
+  const { signOut } = useAuth();
+  // Middleware único de autorização — bypass consistente para admin global/empresa.
+  const { isAdmin, isSystemAdmin, canAccessRoute, canAccessByPlan } = useAuthorization();
 
   // Filtra itens de cada grupo pelo setor/permissões do membro.
   // Admin global vê tudo (canAccessRoute retorna true para qualquer rota).
@@ -187,7 +187,7 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
 
   const renderNavItem = (item: NavItem) => {
     const isActive = location.pathname === item.path;
-    const locked = !isAdmin && !isEmpresaAdmin && !hasAccessToRoute(subscription.planSlug, item.path);
+    const locked = !canAccessByPlan(item.path);
 
     const button = (
       <button
