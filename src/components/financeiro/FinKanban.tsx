@@ -40,6 +40,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import FinExtracaoDocumentos from "./FinExtracaoDocumentos";
+import { toast } from "sonner";
 
 type ColunaKanban = "aberto" | "vence_7d" | "vencido" | "pago";
 
