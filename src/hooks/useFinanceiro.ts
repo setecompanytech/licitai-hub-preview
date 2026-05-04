@@ -19,6 +19,15 @@ export type LancamentoFiltro = {
   dataInicio?: string;
   dataFim?: string;
   busca?: string;
+  /**
+   * Campo de data usado para o intervalo dataInicio/dataFim.
+   * - "competencia" (padrão): filtra por data_competencia (retrocompatível).
+   * - "vencimento": filtra por data_vencimento (usado pelo Calendário Financeiro).
+   * - "ambos": retorna lançamentos cujo vencimento OU competência caia no intervalo
+   *   (ideal para visões de calendário que exibem por vencimento mas devem incluir
+   *   NFs com competência em mês anterior e pagamento no mês exibido).
+   */
+  campoData?: "competencia" | "vencimento" | "ambos";
 };
 
 export function useEmpresaId() {
@@ -270,8 +279,24 @@ export function useLancamentos(filtro: LancamentoFiltro = {}) {
         .limit(500);
       if (filtro.tipo && filtro.tipo !== "todos") q = q.eq("tipo", filtro.tipo);
       if (filtro.status && filtro.status !== "todos") q = q.eq("status", filtro.status);
-      if (filtro.dataInicio) q = q.gte("data_competencia", filtro.dataInicio);
-      if (filtro.dataFim) q = q.lte("data_competencia", filtro.dataFim);
+      const campo = filtro.campoData ?? "competencia";
+      if (campo === "ambos") {
+        // Retorna registros cujo vencimento OU competência caia no intervalo.
+        if (filtro.dataInicio && filtro.dataFim) {
+          q = q.or(
+            `and(data_vencimento.gte.${filtro.dataInicio},data_vencimento.lte.${filtro.dataFim}),` +
+              `and(data_competencia.gte.${filtro.dataInicio},data_competencia.lte.${filtro.dataFim})`
+          );
+        } else if (filtro.dataInicio) {
+          q = q.or(`data_vencimento.gte.${filtro.dataInicio},data_competencia.gte.${filtro.dataInicio}`);
+        } else if (filtro.dataFim) {
+          q = q.or(`data_vencimento.lte.${filtro.dataFim},data_competencia.lte.${filtro.dataFim}`);
+        }
+      } else {
+        const coluna = campo === "vencimento" ? "data_vencimento" : "data_competencia";
+        if (filtro.dataInicio) q = q.gte(coluna, filtro.dataInicio);
+        if (filtro.dataFim) q = q.lte(coluna, filtro.dataFim);
+      }
       if (filtro.busca) q = q.ilike("descricao", `%${filtro.busca}%`);
       const { data, error } = await q;
       if (error) throw error;

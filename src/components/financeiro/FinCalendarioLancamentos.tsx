@@ -87,6 +87,7 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
     tipo,
     dataInicio: format(inicioGrid, "yyyy-MM-dd"),
     dataFim: format(fimGrid, "yyyy-MM-dd"),
+    campoData: "ambos",
   });
   const todos = data as LancamentoCal[];
 
