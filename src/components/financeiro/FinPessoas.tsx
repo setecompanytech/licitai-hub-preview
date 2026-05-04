@@ -516,7 +516,29 @@ export default function FinPessoas() {
               <div className="grid grid-cols-6 gap-3">
                 <div className="col-span-2 space-y-1.5">
                   <Label>CEP</Label>
-                  <Input value={form.endereco.cep ?? ""} onChange={(e) => setEnd("cep", e.target.value)} />
+                  <div className="flex gap-2">
+                    <Input
+                      value={form.endereco.cep ?? ""}
+                      onChange={(e) => setEnd("cep", e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleBuscarCEP();
+                        }
+                      }}
+                      placeholder="00000-000"
+                    />
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="icon"
+                      onClick={handleBuscarCEP}
+                      disabled={buscandoCEP}
+                      title="Buscar endereço pelo CEP"
+                    >
+                      {buscandoCEP ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    </Button>
+                  </div>
                 </div>
                 <div className="col-span-4 space-y-1.5">
                   <Label>Logradouro</Label>
