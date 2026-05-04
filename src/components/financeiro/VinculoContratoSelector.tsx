@@ -397,9 +397,10 @@ export default function VinculoContratoSelector({
               </Button>
             </PopoverTrigger>
             <PopoverContent
-              className="p-0 w-[--radix-popover-trigger-width] min-w-[420px]"
+              className="p-0 w-[--radix-popover-trigger-width] min-w-[420px] max-w-[calc(100vw-2rem)] overflow-hidden"
               align="start"
               sideOffset={4}
+              avoidCollisions={false}
               // Evita que o Dialog/Modal pai roube o foco e o evento de wheel
               onWheel={(e) => e.stopPropagation()}
               onPointerDownOutside={(e) => {
@@ -425,7 +426,7 @@ export default function VinculoContratoSelector({
                   e não escape para containers ancestrais.
                 */}
                 <CommandList
-                  className="max-h-[340px] overflow-y-auto overscroll-contain"
+                  className="h-[min(42vh,340px)] max-h-[calc(100vh-14rem)] overflow-y-auto overscroll-contain"
                   onWheel={(e) => {
                     // Permite scroll nativo do mouse mesmo quando há foco
                     // capturado pelo CommandInput (cmdk às vezes consome o evento).
@@ -590,7 +591,7 @@ export default function VinculoContratoSelector({
               </div>
             ) : (
               <div
-                className="max-h-[220px] overflow-y-auto overscroll-contain rounded-md border border-border/60 divide-y divide-border/40"
+                className="h-[min(34vh,260px)] min-h-[120px] overflow-y-auto overscroll-contain rounded-md border border-border/60 divide-y divide-border/40"
                 onWheel={(e) => e.stopPropagation()}
               >
                 {itens.map((i) => {
