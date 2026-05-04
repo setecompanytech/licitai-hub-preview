@@ -349,7 +349,21 @@ export default function VinculoContratoSelector({
                 <ChevronsUpDown className="w-3.5 h-3.5 ml-2 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="p-0 w-[--radix-popover-trigger-width] min-w-[420px]" align="start">
+            <PopoverContent
+              className="p-0 w-[--radix-popover-trigger-width] min-w-[420px]"
+              align="start"
+              sideOffset={4}
+              // Evita que o Dialog/Modal pai roube o foco e o evento de wheel
+              onWheel={(e) => e.stopPropagation()}
+              onPointerDownOutside={(e) => {
+                // Mantém comportamento padrão de fechar ao clicar fora,
+                // mas evita conflito com overlay do Dialog em alguns navegadores.
+                const target = e.target as HTMLElement;
+                if (target.closest("[data-radix-popper-content-wrapper]")) {
+                  e.preventDefault();
+                }
+              }}
+            >
               <Command shouldFilter={false}>
                 <CommandInput
                   placeholder="Buscar por nº, órgão ou objeto…"
@@ -357,7 +371,20 @@ export default function VinculoContratoSelector({
                   onValueChange={setBusca}
                   className="text-xs"
                 />
-                <CommandList className="max-h-[320px]">
+                {/*
+                  CommandList: força altura máxima e overflow-y SEMPRE visível
+                  (não apenas auto) para que o scroll do mouse funcione mesmo
+                  dentro de Dialog. O onWheel garante que o evento role aqui
+                  e não escape para containers ancestrais.
+                */}
+                <CommandList
+                  className="max-h-[340px] overflow-y-auto overscroll-contain"
+                  onWheel={(e) => {
+                    // Permite scroll nativo do mouse mesmo quando há foco
+                    // capturado pelo CommandInput (cmdk às vezes consome o evento).
+                    e.stopPropagation();
+                  }}
+                >
                   <CommandEmpty className="py-4 text-xs text-muted-foreground text-center">
                     Nenhum contrato vigente corresponde à busca.
                   </CommandEmpty>
@@ -379,7 +406,7 @@ export default function VinculoContratoSelector({
                             )}
                           />
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               {c.tipo_documento === "ata_srp" && (
                                 <Badge variant="outline" className="text-[10px] py-0 px-1">
                                   ATA SRP
@@ -391,11 +418,14 @@ export default function VinculoContratoSelector({
                               </span>
                             </div>
                             {c.objeto && (
-                              <div className="text-[11px] text-muted-foreground truncate mt-0.5">
+                              <div
+                                className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2"
+                                title={c.objeto}
+                              >
                                 {c.objeto}
                               </div>
                             )}
-                            <div className="text-[11px] mt-0.5 flex gap-3">
+                            <div className="text-[11px] mt-0.5 flex gap-3 flex-wrap">
                               <span>
                                 Saldo:{" "}
                                 <b className={saldo > 0 ? "text-success" : "text-destructive"}>
