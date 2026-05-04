@@ -226,15 +226,26 @@ export default function FinKanban({ tipo }: Props) {
                                 <p className="text-sm font-medium line-clamp-2 flex-1">
                                   {l.descricao}
                                 </p>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-6 w-6 shrink-0"
-                                  onClick={() => abrirEditar(l)}
-                                  title="Editar"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </Button>
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6"
+                                    onClick={() => abrirEditar(l)}
+                                    title="Editar"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => setConfirmDel(l)}
+                                    title="Excluir"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
                               </div>
 
                               {l.pessoa?.nome && (
