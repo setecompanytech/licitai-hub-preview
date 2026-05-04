@@ -27,6 +27,7 @@ import {
   type Lancamento,
 } from "@/hooks/useFinanceiro";
 import LancamentoDialog from "./LancamentoDialog";
+import FinExtracaoDocumentos from "./FinExtracaoDocumentos";
 
 type ColunaKanban = "aberto" | "vence_7d" | "vencido" | "pago";
 
