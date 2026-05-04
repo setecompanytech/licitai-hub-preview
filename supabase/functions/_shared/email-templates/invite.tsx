@@ -45,13 +45,17 @@ export const InviteEmail = ({
           <Link href={siteUrl} style={link}>
             <strong>{siteName}</strong>
           </Link>
-          . Clique no botão abaixo para aceitar o convite e criar sua conta.
+          . Para ativar sua conta, clique no botão abaixo e defina uma senha de acesso.
         </Text>
         <Section style={buttonContainer}>
           <Button style={button} href={confirmationUrl}>
-            Aceitar Convite
+            Aceitar convite e criar senha
           </Button>
         </Section>
+        <Text style={textSmall}>
+          O link é válido por 24 horas. Após definir sua senha, você terá acesso imediato ao painel
+          com as permissões do setor atribuído pelo administrador da empresa.
+        </Text>
         <Text style={footer}>
           Se você não esperava este convite, ignore este e-mail com segurança.
         </Text>
@@ -75,6 +79,7 @@ const logoFectus = { color: '#f97316' }
 const divider = { borderColor: '#e5e7eb', margin: '20px 0' }
 const h1 = { fontSize: '22px', fontWeight: '700' as const, color: '#182a40', margin: '0 0 20px' }
 const text = { fontSize: '14px', color: '#727d8a', lineHeight: '1.6', margin: '0 0 20px' }
+const textSmall = { fontSize: '12px', color: '#9ca3af', lineHeight: '1.6', margin: '0 0 12px' }
 const link = { color: '#1e3352', textDecoration: 'underline' }
 const buttonContainer = { textAlign: 'center' as const, margin: '28px 0' }
 const button = {
