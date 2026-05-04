@@ -134,7 +134,10 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      message: `Convite reenviado para ${email}.`,
+      email_flow: emailFlow,
+      message: emailFlow === 'invite'
+        ? `Convite reenviado para ${email}. O colaborador receberá um e-mail para criar a senha.`
+        : `E-mail de redefinição de senha enviado para ${email}.`,
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
