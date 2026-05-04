@@ -36,7 +36,11 @@ const fmt = (v: number | null | undefined) =>
 
 export interface VinculoContratoValue {
   contrato_id: string | null;
+  /** Mantido por compatibilidade — corresponde ao primeiro item de `contrato_item_ids`. */
   contrato_item_id: string | null;
+  /** Permite vincular um único documento a múltiplos itens do contrato
+   *  (ex.: cota principal + cota reservada — Lei 14.133/21). */
+  contrato_item_ids?: string[];
   origem_aditivo_id: string | null;
   quantidade: number;
   valor_unitario: number;
