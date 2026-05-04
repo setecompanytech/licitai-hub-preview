@@ -81,6 +81,7 @@ export default function FinCalendarioFinanceiro() {
     tipo: filtroTipo === "todos" ? undefined : filtroTipo,
     dataInicio: format(inicioGrid, "yyyy-MM-dd"),
     dataFim: format(fimGrid, "yyyy-MM-dd"),
+    campoData: "ambos",
   });
   const todos = data as LancamentoCal[];
 
