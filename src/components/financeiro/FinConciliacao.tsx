@@ -770,17 +770,50 @@ function DialogVincularManual({
   onClose: () => void;
   onConfirm: (lancamentoId: string) => void;
 }) {
-  const { data: lancamentos } = useLancamentos({ status: "previsto" });
+  // Busca todos os lançamentos não cancelados/conciliados para permitir vínculo
+  // tanto com previstos (a pagar/a receber) quanto realizados (já lançados manualmente)
+  const { data: lancamentos } = useLancamentos({ status: "todos" });
   if (!info) return null;
 
-  // Sugestão: lançamentos com valor próximo (±10%) e mesma natureza
-  const sugeridos = (lancamentos ?? []).filter(
+  const elegiveis = (lancamentos ?? []).filter(
     (l) =>
       l.natureza === info.natureza &&
-      Math.abs(Number(l.valor) - info.valor) / info.valor < 0.1
+      l.status !== "conciliado" &&
+      l.status !== "cancelado",
   );
-  const outros = (lancamentos ?? []).filter(
-    (l) => l.natureza === info.natureza && !sugeridos.includes(l)
+
+  // Sugestão: valor próximo (±2%) e mesma natureza — alta probabilidade de match
+  const sugeridos = elegiveis.filter(
+    (l) =>
+      info.valor > 0 &&
+      Math.abs(Number(l.valor) - info.valor) / info.valor < 0.02,
+  );
+  const outros = elegiveis.filter((l) => !sugeridos.includes(l));
+
+  const renderItem = (l: (typeof elegiveis)[number], destaque = false) => (
+    <button
+      key={l.id}
+      onClick={() => onConfirm(l.id)}
+      className="w-full text-left border rounded-md p-2 hover:bg-accent transition-colors mb-1.5"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className={`text-sm ${destaque ? "font-medium" : ""} truncate`}>
+          {l.descricao}
+        </span>
+        <span className="text-sm font-mono whitespace-nowrap">
+          {formatBRL(Number(l.valor))}
+        </span>
+      </div>
+      <div className="text-xs text-muted-foreground flex items-center gap-2">
+        <span>{statusLabel[l.status] ?? l.status}</span>
+        <span>•</span>
+        <span>
+          {l.data_vencimento
+            ? `Venc.: ${formatDate(l.data_vencimento)}`
+            : `Comp.: ${formatDate(l.data_competencia)}`}
+        </span>
+      </div>
+    </button>
   );
 
   return (
@@ -795,47 +828,25 @@ function DialogVincularManual({
               <div className="text-xs font-semibold text-muted-foreground mb-1">
                 Sugestões (valor próximo)
               </div>
-              {sugeridos.map((l) => (
-                <button
-                  key={l.id}
-                  onClick={() => onConfirm(l.id)}
-                  className="w-full text-left border rounded-md p-2 hover:bg-accent transition-colors mb-1.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{l.descricao}</span>
-                    <span className="text-sm font-mono">{formatBRL(Number(l.valor))}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Venc.: {l.data_vencimento ? formatDate(l.data_vencimento) : "—"}
-                  </div>
-                </button>
-              ))}
+              {sugeridos.map((l) => renderItem(l, true))}
             </div>
           )}
           {outros.length > 0 && (
             <div>
               <div className="text-xs font-semibold text-muted-foreground mb-1">
-                Outros lançamentos {info.natureza === "receita" ? "a receber" : "a pagar"}
+                Outros lançamentos {info.natureza === "receita" ? "a receber" : "a pagar"} ({outros.length})
               </div>
-              {outros.slice(0, 30).map((l) => (
-                <button
-                  key={l.id}
-                  onClick={() => onConfirm(l.id)}
-                  className="w-full text-left border rounded-md p-2 hover:bg-accent transition-colors mb-1.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">{l.descricao}</span>
-                    <span className="text-sm font-mono text-muted-foreground">
-                      {formatBRL(Number(l.valor))}
-                    </span>
-                  </div>
-                </button>
-              ))}
+              {outros.slice(0, 50).map((l) => renderItem(l))}
             </div>
           )}
           {sugeridos.length === 0 && outros.length === 0 && (
-            <div className="text-sm text-muted-foreground text-center py-6">
-              Nenhum lançamento previsto encontrado para vincular.
+            <div className="text-sm text-muted-foreground text-center py-6 space-y-2">
+              <p>Nenhum lançamento disponível para vincular.</p>
+              <p className="text-xs">
+                Crie primeiro um lançamento em <strong>Lançamentos → Novo lançamento</strong>{" "}
+                ({info.natureza === "receita" ? "a receber" : "a pagar"}) com valor de{" "}
+                <strong>{formatBRL(info.valor)}</strong> e tente vincular novamente.
+              </p>
             </div>
           )}
         </div>
