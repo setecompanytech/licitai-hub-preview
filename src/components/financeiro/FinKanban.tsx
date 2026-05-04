@@ -163,6 +163,10 @@ export default function FinKanban({ tipo }: Props) {
               </SelectContent>
             </Select>
             <Badge variant="outline">{lancamentosFiltrados.length} lançamentos</Badge>
+            <Button size="sm" variant="outline" onClick={() => setExtracaoOpen(true)}>
+              <ScanLine className="w-4 h-4 mr-1" />
+              Extrair de documento
+            </Button>
             <Button size="sm" onClick={abrirNovo}>
               <Plus className="w-4 h-4 mr-1" />
               Novo {tipo === "a_pagar" ? "pagamento" : "recebimento"}
