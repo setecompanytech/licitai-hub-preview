@@ -163,18 +163,25 @@ export function findBanco(value: string | null | undefined): BancoOption | undef
  * Para adicionar novas, basta soltar o SVG no diretório com o nome `{codigoCOMPE}.svg`.
  * Quando não há SVG oficial, exibe um monograma estilizado com a cor da marca.
  */
-const LOGO_MODULES = import.meta.glob("@/assets/banks/*.svg", {
+const LOGO_MODULES = import.meta.glob("@/assets/banks/*.{svg,png,jpg,jpeg,webp}", {
   eager: true,
   query: "?url",
   import: "default",
 }) as Record<string, string>;
 
-const LOGOS_OFICIAIS: Record<string, string> = Object.fromEntries(
-  Object.entries(LOGO_MODULES).map(([path, url]) => {
-    const codigo = path.split("/").pop()!.replace(".svg", "");
-    return [codigo, url];
-  }),
-);
+// PNG/JPG/WebP têm prioridade sobre SVG (logos oficiais raster substituem placeholders SVG)
+const RASTER_EXT = /\.(png|jpe?g|webp)$/i;
+const LOGOS_OFICIAIS: Record<string, string> = (() => {
+  const map: Record<string, string> = {};
+  for (const [path, url] of Object.entries(LOGO_MODULES)) {
+    const file = path.split("/").pop()!;
+    const codigo = file.replace(/\.(svg|png|jpe?g|webp)$/i, "");
+    const isRaster = RASTER_EXT.test(file);
+    // raster sempre vence; svg só preenche se ainda não houver entrada
+    if (isRaster || !map[codigo]) map[codigo] = url;
+  }
+  return map;
+})();
 
 interface BancoLogoProps {
   codigo?: string | null;
