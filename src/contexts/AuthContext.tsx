@@ -5,6 +5,7 @@ import { stripePlans } from '@/data/stripe-config';
 import type { PlanSlug } from '@/data/plan-features';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { purgeSupabaseAuthStorage } from '@/lib/auth-bootstrap';
+import { queryClient, invalidatePermissionCaches } from '@/lib/query-client';
 
 type SubscriptionState = {
   subscribed: boolean;
