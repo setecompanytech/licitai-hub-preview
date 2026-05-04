@@ -124,6 +124,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     tipo_documento: 'ordem_fornecimento', origem_aditivo_id: '',
   });
   const [origemFilter, setOrigemFilter] = useState<string>('__todos__');
+  /** Quando true, ao salvar pedido(s) o sistema também cria lançamento(s) "a receber" no Financeiro vinculados a este contrato. */
+  const [gerarContaReceber, setGerarContaReceber] = useState(true);
 
   // Multi-item support
   const [extractedItens, setExtractedItens] = useState<Array<{
@@ -234,12 +236,56 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     }
   };
 
+  /** Cria lançamentos "a_receber" no Financeiro vinculados ao contrato e aos pedidos recém-criados. */
+  const gerarLancamentosFinanceiros = async (
+    pedidosCriados: Array<{ id: string; numero_pedido: string; descricao: string | null; valor_total: number; data_pedido: string | null; contrato_item_id?: string | null }>,
+  ) => {
+    if (!gerarContaReceber || pedidosCriados.length === 0) return;
+    try {
+      const { data: contratoInfo } = await supabase
+        .from('contratos')
+        .select('empresa_id, numero_contrato, orgao_contratante')
+        .eq('id', contratoId)
+        .single();
+      const empresaId = (contratoInfo as any)?.empresa_id || empresaAtiva?.id;
+      if (!empresaId) {
+        toast.warning('Pedido salvo, mas empresa do contrato não definida — lançamento financeiro não criado.');
+        return;
+      }
+      const inserts = pedidosCriados.map((p) => ({
+        empresa_id: empresaId,
+        tipo: 'a_receber' as const,
+        natureza: 'receita' as const,
+        status: 'previsto' as const,
+        descricao: `${(contratoInfo as any)?.numero_contrato ?? 'Contrato'} · Pedido ${p.numero_pedido}${p.descricao ? ' — ' + p.descricao : ''}`,
+        valor: p.valor_total,
+        data_competencia: p.data_pedido ?? new Date().toISOString().slice(0, 10),
+        data_emissao: p.data_pedido ?? null,
+        contrato_id: contratoId,
+        contrato_pedido_id: p.id,
+        contrato_item_id: p.contrato_item_id ?? null,
+        origem: 'manual' as const,
+        observacoes: `Lançamento gerado automaticamente a partir do pedido ${p.numero_pedido} do contrato ${(contratoInfo as any)?.numero_contrato ?? ''}.`,
+        created_by: user?.id ?? null,
+      }));
+      const { error } = await supabase.from('financeiro_lancamentos').insert(inserts as any);
+      if (error) {
+        console.error('Erro ao criar lançamento financeiro:', error);
+        toast.warning('Pedido salvo, mas houve erro ao criar conta a receber: ' + error.message);
+      } else {
+        toast.success(`${inserts.length} conta(s) a receber criada(s) no Financeiro.`);
+      }
+    } catch (e: any) {
+      console.error(e);
+    }
+  };
+
   const handleSaveSingle = async () => {
     if (!form.numero_pedido) { toast.error('Informe o número do pedido'); return; }
     const qty = parseFloat(form.quantidade) || 0;
     const unit = parseFloat(form.valor_unitario) || 0;
     setSaving(true);
-    const { error } = await supabase.from('contrato_pedidos').insert({
+    const { data: novoPedido, error } = await supabase.from('contrato_pedidos').insert({
       contrato_id: contratoId, user_id: user!.id,
       numero_pedido: form.numero_pedido, descricao: form.descricao || null,
       contrato_item_id: form.contrato_item_id || null,
@@ -248,9 +294,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       status: form.status, nota_fiscal: form.nota_fiscal || null,
       observacoes: form.observacoes || null,
       origem_aditivo_id: form.origem_aditivo_id || null,
-    } as any);
+    } as any).select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id').single();
+    if (error) { console.error('Erro ao salvar pedido:', error.message, error.details, error.code); toast.error('Erro ao salvar pedido: ' + error.message); setSaving(false); return; }
+    await gerarLancamentosFinanceiros([novoPedido as any]);
     setSaving(false);
-    if (error) { console.error('Erro ao salvar pedido:', error.message, error.details, error.code); toast.error('Erro ao salvar pedido: ' + error.message); return; }
     toast.success('Pedido registrado.');
     setDialogOpen(false);
     resetForm();
@@ -276,9 +323,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         observacoes: form.observacoes || null,
       };
     });
-    const { error } = await supabase.from('contrato_pedidos').insert(inserts as any);
+    const { data: novosPedidos, error } = await supabase
+      .from('contrato_pedidos')
+      .insert(inserts as any)
+      .select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id');
+    if (error) { console.error('Erro ao salvar pedidos:', error.message, error.details, error.code); toast.error('Erro ao salvar pedidos: ' + error.message); setSaving(false); return; }
+    await gerarLancamentosFinanceiros((novosPedidos ?? []) as any);
     setSaving(false);
-    if (error) { console.error('Erro ao salvar pedidos:', error.message, error.details, error.code); toast.error('Erro ao salvar pedidos: ' + error.message); return; }
     toast.success(`${inserts.length} itens registrados.`);
     setDialogOpen(false);
     resetForm();
@@ -631,6 +682,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
                     </div>
 
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/20">
+                      <Checkbox id="ger-cr-batch" checked={gerarContaReceber} onCheckedChange={(v) => setGerarContaReceber(!!v)} />
+                      <Label htmlFor="ger-cr-batch" className="text-xs cursor-pointer">
+                        <DollarSign className="w-3 h-3 inline mr-1" />
+                        Gerar <b>contas a receber</b> (uma por item) no Financeiro vinculadas a este contrato
+                      </Label>
+                    </div>
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
                       <Button onClick={handleSaveBatch} disabled={saving}>
@@ -692,6 +750,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     <div className="col-span-2">
                       <Label className="text-xs">Observações</Label>
                       <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/20">
+                      <Checkbox id="ger-cr-single" checked={gerarContaReceber} onCheckedChange={(v) => setGerarContaReceber(!!v)} />
+                      <Label htmlFor="ger-cr-single" className="text-xs cursor-pointer">
+                        <DollarSign className="w-3 h-3 inline mr-1" />
+                        Gerar <b>conta a receber</b> automaticamente no Financeiro vinculada a este contrato
+                      </Label>
                     </div>
                     <div className="flex justify-end gap-2 mt-2">
                       <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
