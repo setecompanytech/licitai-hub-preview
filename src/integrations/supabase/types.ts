@@ -8171,6 +8171,8 @@ export type Database = {
           conta_destino_id: string | null
           conta_id: string | null
           contrato_id: string | null
+          contrato_item_id: string | null
+          contrato_pedido_id: string | null
           created_at: string
           created_by: string | null
           data_competencia: string
@@ -8224,6 +8226,8 @@ export type Database = {
           conta_destino_id?: string | null
           conta_id?: string | null
           contrato_id?: string | null
+          contrato_item_id?: string | null
+          contrato_pedido_id?: string | null
           created_at?: string
           created_by?: string | null
           data_competencia: string
@@ -8277,6 +8281,8 @@ export type Database = {
           conta_destino_id?: string | null
           conta_id?: string | null
           contrato_id?: string | null
+          contrato_item_id?: string | null
+          contrato_pedido_id?: string | null
           created_at?: string
           created_by?: string | null
           data_competencia?: string
@@ -8367,6 +8373,20 @@ export type Database = {
             columns: ["conta_id"]
             isOneToOne: false
             referencedRelation: "financeiro_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_contrato_item_id_fkey"
+            columns: ["contrato_item_id"]
+            isOneToOne: false
+            referencedRelation: "contrato_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_contrato_pedido_id_fkey"
+            columns: ["contrato_pedido_id"]
+            isOneToOne: false
+            referencedRelation: "contrato_pedidos"
             referencedColumns: ["id"]
           },
           {
@@ -15069,6 +15089,31 @@ export type Database = {
       user_has_active_subscription: {
         Args: { _user_id: string }
         Returns: boolean
+      }
+      vincular_lancamento_a_pedido: {
+        Args: {
+          p_chave_acesso_nfe: string
+          p_contrato_id: string
+          p_contrato_item_id: string
+          p_data_competencia: string
+          p_data_emissao: string
+          p_data_pedido: string
+          p_data_vencimento: string
+          p_descricao: string
+          p_natureza: Database["public"]["Enums"]["financeiro_natureza"]
+          p_numero_documento: string
+          p_numero_pedido: string
+          p_observacoes: string
+          p_origem_aditivo_id: string
+          p_pessoa_id: string
+          p_quantidade: number
+          p_status: Database["public"]["Enums"]["financeiro_status_lancamento"]
+          p_tipo: Database["public"]["Enums"]["financeiro_tipo_lancamento"]
+          p_tipo_documento: Database["public"]["Enums"]["financeiro_tipo_documento"]
+          p_valor_total: number
+          p_valor_unitario: number
+        }
+        Returns: Json
       }
     }
     Enums: {
