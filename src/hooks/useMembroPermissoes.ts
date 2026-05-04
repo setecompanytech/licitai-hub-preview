@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { useUserRole } from '@/hooks/useUserRole';
+import { isSectorAllowedForRoute } from '@/lib/route-permissions';
 
 export type Setor = 'geral' | 'financeiro' | 'comercial' | 'logistica' | 'juridico' | 'contabil' | 'licitacoes' | 'documentos';
 
@@ -25,12 +27,14 @@ interface MembroInfo {
   setor: Setor;
   papel: string;
   permissoes: string[];
-  isAdmin: boolean;
+  /** Admin DENTRO da empresa (não é admin global do sistema). */
+  isEmpresaAdmin: boolean;
 }
 
 export function useMembroPermissoes() {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
+  const { isAdmin: isGlobalAdmin } = useUserRole();
   const [membro, setMembro] = useState<MembroInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -58,7 +62,7 @@ export function useMembroPermissoes() {
           setor,
           papel,
           permissoes,
-          isAdmin: papel === 'admin',
+          isEmpresaAdmin: papel === 'admin',
         });
       } else {
         setMembro(null);
@@ -70,28 +74,44 @@ export function useMembroPermissoes() {
   }, [user, empresaAtiva]);
 
   const temPermissao = (modulo: ModuloSistema): boolean => {
+    // Admin global do sistema ignora bloqueios.
+    if (isGlobalAdmin) return true;
     if (!membro) return false;
-    if (membro.isAdmin) return true;
-    // Check explicit permissions first
+    // Permissão explícita
     if (membro.permissoes.includes(modulo)) return true;
-    // Check sector-based defaults
+    // Padrão por setor
     const moduloConfig = MODULOS_SISTEMA.find(m => m.value === modulo);
     if (moduloConfig && moduloConfig.setores.includes(membro.setor)) return true;
     return false;
   };
 
-  const isFinanceiro = membro?.isAdmin || membro?.setor === 'financeiro';
-  const isComercial = membro?.isAdmin || membro?.setor === 'comercial';
-  const isLogistica = membro?.isAdmin || membro?.setor === 'logistica';
+  /**
+   * Verifica se a rota deve ser visível/acessível para o membro atual.
+   * Admin global libera tudo. Caso contrário, valida pelo setor do membro.
+   */
+  const canAccessRoute = (path: string): boolean => {
+    if (isGlobalAdmin) return true;
+    if (!membro) return false;
+    // Setor 'geral' (não classificado) — limitar a rotas marcadas como 'geral'.
+    return isSectorAllowedForRoute(membro.setor, path);
+  };
+
+  const isFinanceiro = isGlobalAdmin || membro?.setor === 'financeiro';
+  const isComercial = isGlobalAdmin || membro?.setor === 'comercial';
+  const isLogistica = isGlobalAdmin || membro?.setor === 'logistica';
 
   return {
     membro,
     loading,
     temPermissao,
+    canAccessRoute,
     isFinanceiro,
     isComercial,
     isLogistica,
-    isAdmin: membro?.isAdmin ?? false,
+    /** Admin global do sistema (user_roles). */
+    isAdmin: isGlobalAdmin,
+    /** Admin dentro da empresa atual. */
+    isEmpresaAdmin: membro?.isEmpresaAdmin ?? false,
     setor: membro?.setor ?? 'geral',
   };
 }
