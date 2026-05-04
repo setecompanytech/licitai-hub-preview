@@ -3,6 +3,7 @@ import PraefectusLogo from '@/components/shared/PraefectusLogo';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import {
   LayoutDashboard, Search, Kanban, Users, Bot, BarChart3, Settings,
   ChevronDown, Zap, Crosshair, Shield, Scale, DollarSign, Calculator,
