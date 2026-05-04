@@ -159,7 +159,7 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   // Middleware único de autorização — bypass consistente para admin global/empresa.
-  const { isAdmin, isSystemAdmin, canAccessRoute, canAccessByPlan } = useAuthorization();
+  const { isSystemAdmin, canAccessRoute, canAccessByPlan } = useAuthorization();
 
   // Filtra itens de cada grupo pelo setor/permissões do membro.
   // Admin global vê tudo (canAccessRoute retorna true para qualquer rota).
