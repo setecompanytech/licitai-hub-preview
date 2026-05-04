@@ -113,7 +113,28 @@ export default function EquipeColaboradores() {
     setSaving(false);
   };
 
-  const handleRemove = async (membroId: string, nome: string) => {
+  const [resendingFor, setResendingFor] = useState<string | null>(null);
+  const handleResendInvite = async (email: string) => {
+    if (!empresaAtiva || !email) return;
+    setResendingFor(email);
+    try {
+      const { data, error } = await supabase.functions.invoke('resend-invite', {
+        body: { email, empresa_id: empresaAtiva.id },
+      });
+      if (error) {
+        toast.error(`Erro ao reenviar convite: ${error.message}`);
+      } else if (data?.error) {
+        toast.error(data.error);
+      } else {
+        toast.success(data?.message || `Convite reenviado para ${email}.`);
+      }
+    } catch (err: any) {
+      toast.error(`Erro inesperado: ${err.message}`);
+    } finally {
+      setResendingFor(null);
+    }
+  };
+
     if (!confirm(`Remover "${nome}" da equipe?`)) return;
     const { error } = await supabase.from('empresa_membros').delete().eq('id', membroId);
     if (error) {
