@@ -83,6 +83,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'TOKEN_REFRESHED' && !session) {
         purgeSupabaseAuthStorage();
       }
+
+      const prevUserId = (user as User | null)?.id ?? null;
+      const nextUserId = session?.user?.id ?? null;
+
       // Skip redundant updates from cross-tab TOKEN_REFRESHED events
       setSession(prev => prev?.user?.id === session?.user?.id && prev?.access_token === session?.access_token ? prev : session);
       setUser(prev => prev?.id === session?.user?.id ? prev : (session?.user ?? null));
@@ -90,6 +94,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (initialLoad) {
         setLoading(false);
         initialLoad = false;
+      }
+
+      // Em qualquer evento que mude/renove a identidade, invalidar caches
+      // de role/permissões/empresa/plano para refletir mudanças sem logout.
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
+        invalidatePermissionCaches();
+      }
+      if (prevUserId && nextUserId && prevUserId !== nextUserId) {
+        // Troca de usuário na mesma aba — limpa todo cache para evitar vazamento.
+        queryClient.clear();
       }
 
       if (session?.access_token) {
