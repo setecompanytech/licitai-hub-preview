@@ -17,8 +17,8 @@ export default function PlanGuard({ children }: PlanGuardProps) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Still loading role or subscription — show spinner
-  if (roleLoading || memberLoading || subscription.loading) {
+  // Aguarda apenas a identificação administrativa antes de consultar bloqueios de plano.
+  if (roleLoading || memberLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-accent" />
@@ -28,6 +28,14 @@ export default function PlanGuard({ children }: PlanGuardProps) {
 
   // Admin global e ADMIN da empresa bypassam restrições de plano.
   if (isAdmin || isEmpresaAdmin) return <>{children}</>;
+
+  if (subscription.loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      </div>
+    );
+  }
 
   const hasAccess = hasAccessToRoute(subscription.planSlug, location.pathname);
 
