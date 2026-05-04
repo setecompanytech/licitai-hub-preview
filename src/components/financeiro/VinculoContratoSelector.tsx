@@ -196,7 +196,38 @@ export default function VinculoContratoSelector({
   }, [busca, contratos]);
 
   const contratoSel = contratos.find((c) => c.id === value.contrato_id);
-  const itemSel = itens.find((i) => i.id === value.contrato_item_id);
+
+  // Lista canônica de itens vinculados (suporte a múltiplos)
+  const itemIds = useMemo<string[]>(() => {
+    if (value.contrato_item_ids && value.contrato_item_ids.length > 0) return value.contrato_item_ids;
+    if (value.contrato_item_id) return [value.contrato_item_id];
+    return [];
+  }, [value.contrato_item_ids, value.contrato_item_id]);
+
+  const itensSelecionados = useMemo(
+    () => itens.filter((i) => itemIds.includes(i.id)),
+    [itens, itemIds],
+  );
+
+  // Quando há vários itens marcados, agregamos saldos para validação consolidada.
+  const itemSel = useMemo<ItemOpcao | null>(() => {
+    if (itensSelecionados.length === 0) return null;
+    if (itensSelecionados.length === 1) return itensSelecionados[0];
+    const sum = (xs: (number | null)[]) =>
+      xs.reduce<number>((acc, v) => acc + (Number(v) || 0), 0);
+    // Valor unitário "médio" só faz sentido se forem o mesmo objeto;
+    // para validação usamos o maior (mais conservador para alerta de divergência).
+    const vuMax = Math.max(...itensSelecionados.map((i) => Number(i.valor_unitario) || 0));
+    return {
+      id: "__multi__",
+      descricao: `${itensSelecionados.length} itens agrupados (cota principal + reservada)`,
+      unidade: itensSelecionados[0].unidade,
+      valor_unitario: vuMax,
+      saldo_quantitativo: sum(itensSelecionados.map((i) => i.saldo_quantitativo)),
+      saldo_financeiro: sum(itensSelecionados.map((i) => i.saldo_financeiro)),
+      origem_aditivo_id: itensSelecionados[0].origem_aditivo_id,
+    };
+  }, [itensSelecionados]);
 
   // ===== Divergências entre documento extraído × saldo do contrato/item =====
   // Tolerância de 1 centavo / 0,0001 unidade para evitar falso-positivo de arredondamento.
