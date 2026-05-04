@@ -478,7 +478,31 @@ export default function FinPessoas() {
                 <div className="space-y-1.5">
                   <Label>CPF / CNPJ</Label>
                   <div className="flex gap-2">
-                    <Input value={form.documento} onChange={(e) => set("documento", e.target.value)} placeholder="Apenas números" />
+                    <Input
+                      value={form.documento}
+                      onChange={(e) => {
+                        const d = e.target.value.replace(/\D/g, "").slice(0, 14);
+                        let masked = d;
+                        if (d.length <= 11) {
+                          // CPF: 000.000.000-00
+                          masked = d
+                            .replace(/^(\d{3})(\d)/, "$1.$2")
+                            .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+                            .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
+                        } else {
+                          // CNPJ: 00.000.000/0000-00
+                          masked = d
+                            .replace(/^(\d{2})(\d)/, "$1.$2")
+                            .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+                            .replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3/$4")
+                            .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/, "$1.$2.$3/$4-$5");
+                        }
+                        set("documento", masked);
+                      }}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleBuscarCNPJ(); } }}
+                      inputMode="numeric"
+                      placeholder="CPF ou CNPJ (com ou sem pontuação)"
+                    />
                     <Button type="button" variant="outline" size="icon" onClick={handleBuscarCNPJ} disabled={buscandoCNPJ} title="Consultar Receita Federal">
                       {buscandoCNPJ ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                     </Button>
