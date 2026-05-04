@@ -13,6 +13,58 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
 };
 
+const extractSubscriptionInfo = (subscriptions: Stripe.ApiList<Stripe.Subscription>) => {
+  const hasActiveSub = subscriptions.data.length > 0;
+  let productId = null;
+  let subscriptionEnd = null;
+
+  if (hasActiveSub) {
+    const sub = subscriptions.data[0];
+    logStep("Active subscription found", { subId: sub.id, rawPeriodEnd: sub.current_period_end, typeofPeriodEnd: typeof sub.current_period_end });
+
+    try {
+      const periodEnd = sub.current_period_end;
+      if (typeof periodEnd === 'number' && periodEnd > 0) {
+        subscriptionEnd = new Date(periodEnd * 1000).toISOString();
+      } else if (typeof periodEnd === 'string') {
+        const parsed = new Date(periodEnd);
+        if (!isNaN(parsed.getTime())) {
+          subscriptionEnd = parsed.toISOString();
+        }
+      }
+    } catch (e) {
+      logStep("Warning: could not parse period end, continuing without it");
+    }
+
+    productId = sub.items.data[0]?.price?.product ?? null;
+    logStep("Subscription details", { productId, subscriptionEnd });
+  }
+
+  return { hasActiveSub, productId, subscriptionEnd };
+};
+
+const getActiveSubscriptionByEmail = async (stripe: Stripe, email: string) => {
+  const customers = await stripe.customers.list({ email, limit: 1 });
+  if (customers.data.length === 0) {
+    logStep("No Stripe customer found for email", { email });
+    return { customers, hasActiveSub: false, productId: null, subscriptionEnd: null };
+  }
+
+  const customerId = customers.data[0].id;
+  logStep("Found customer", { customerId, billingEmail: email });
+
+  const subscriptions = await stripe.subscriptions.list({
+    customer: customerId,
+    status: "active",
+    limit: 1,
+  });
+
+  const info = extractSubscriptionInfo(subscriptions);
+  if (!info.hasActiveSub) logStep("No active subscription for customer", { customerId, billingEmail: email });
+
+  return { customers, ...info };
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -44,14 +96,21 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    // Convidados (membros) NÃO têm assinatura própria — herdam o plano da
-    // empresa que os convidou. Se não existir customer Stripe pelo e-mail
-    // do user, busca o e-mail do dono (created_by) da empresa e tenta de novo.
-    let billingEmail = userEmail;
+    // Convidados (membros) normalmente NÃO têm assinatura própria — herdam o
+    // plano da empresa que os convidou. Mesmo se houver customer Stripe antigo
+    // para o e-mail convidado, se ele não tiver assinatura ativa tentamos a
+    // assinatura do dono da empresa antes de bloquear o acesso.
     let inheritedFrom: string | null = null;
-    let customers = await stripe.customers.list({ email: userEmail, limit: 1 });
+    const directSubscription = await getActiveSubscriptionByEmail(stripe, userEmail);
 
-    if (customers.data.length === 0) {
+    if (directSubscription.hasActiveSub) {
+      return new Response(
+        JSON.stringify({ subscribed: true, product_id: directSubscription.productId, subscription_end: directSubscription.subscriptionEnd, inherited_from: null }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
+    {
       const adminClient = createClient(
         Deno.env.get("SUPABASE_URL") ?? "",
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -77,64 +136,23 @@ serve(async (req) => {
           const { data: ownerData } = await adminClient.auth.admin.getUserById(empresa.created_by);
           const ownerEmail = ownerData?.user?.email;
           if (ownerEmail) {
-            billingEmail = ownerEmail;
             inheritedFrom = empresa.created_by;
             logStep("Inheriting plan from empresa owner", { ownerEmail, empresa_id: membership.empresa_id });
-            customers = await stripe.customers.list({ email: ownerEmail, limit: 1 });
+            const inheritedSubscription = await getActiveSubscriptionByEmail(stripe, ownerEmail);
+
+            if (inheritedSubscription.hasActiveSub) {
+              return new Response(
+                JSON.stringify({ subscribed: true, product_id: inheritedSubscription.productId, subscription_end: inheritedSubscription.subscriptionEnd, inherited_from: inheritedFrom }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+              );
+            }
           }
         }
       }
-    }
-
-    if (customers.data.length === 0) {
-      logStep("No Stripe customer found (direct or inherited)");
-      return new Response(JSON.stringify({ subscribed: false, inherited_from: inheritedFrom }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    }
-
-    const customerId = customers.data[0].id;
-    logStep("Found customer", { customerId, billingEmail, inherited: !!inheritedFrom });
-
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "active",
-      limit: 1,
-    });
-
-    const hasActiveSub = subscriptions.data.length > 0;
-    let productId = null;
-    let subscriptionEnd = null;
-
-    if (hasActiveSub) {
-      const sub = subscriptions.data[0];
-      logStep("Active subscription found", { subId: sub.id, rawPeriodEnd: sub.current_period_end, typeofPeriodEnd: typeof sub.current_period_end });
-
-      // Safely handle current_period_end - it could be a number (unix timestamp) or a string
-      try {
-        const periodEnd = sub.current_period_end;
-        if (typeof periodEnd === 'number' && periodEnd > 0) {
-          subscriptionEnd = new Date(periodEnd * 1000).toISOString();
-        } else if (typeof periodEnd === 'string') {
-          // Already an ISO string or date string
-          const parsed = new Date(periodEnd);
-          if (!isNaN(parsed.getTime())) {
-            subscriptionEnd = parsed.toISOString();
-          }
-        }
-      } catch (e) {
-        logStep("Warning: could not parse period end, continuing without it");
-      }
-
-      productId = sub.items.data[0]?.price?.product ?? null;
-      logStep("Subscription details", { productId, subscriptionEnd });
-    } else {
-      logStep("No active subscription");
     }
 
     return new Response(
-      JSON.stringify({ subscribed: hasActiveSub, product_id: productId, subscription_end: subscriptionEnd, inherited_from: inheritedFrom }),
+      JSON.stringify({ subscribed: false, product_id: null, subscription_end: null, inherited_from: inheritedFrom }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error) {
