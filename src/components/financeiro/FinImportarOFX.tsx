@@ -422,8 +422,11 @@ export default function FinImportarOFX() {
       if (fileRef.current) fileRef.current.value = "";
       qc.invalidateQueries({ queryKey: ["fin-lancamentos"] });
       qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao importar OFX");
+    } catch (e: any) {
+      const msg =
+        e?.message || e?.error_description || e?.details || "Erro ao importar OFX";
+      console.error("[FinImportarOFX] erro:", e);
+      toast.error(msg);
     } finally {
       setImportando(false);
     }
