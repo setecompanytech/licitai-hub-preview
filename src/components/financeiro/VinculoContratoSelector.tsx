@@ -665,39 +665,34 @@ export default function VinculoContratoSelector({
             )}
           </div>
         )}
-        {value.contrato_id && false && (
-          <div>
-            {/* placeholder removido — bloco antigo do Select */}
-          </div>
-        )}
-            {itemSel && (
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <div>
-                  <Label className="text-[11px]">Quantidade</Label>
-                  <Input
-                    type="number"
-                    step="0.0001"
-                    value={value.quantidade || ""}
-                    onChange={(e) =>
-                      onChange({ ...value, quantidade: parseFloat(e.target.value) || 0 })
-                    }
-                    className="h-8 text-xs"
-                  />
-                </div>
-                <div>
-                  <Label className="text-[11px]">Valor unitário</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={value.valor_unitario || ""}
-                    onChange={(e) =>
-                      onChange({ ...value, valor_unitario: parseFloat(e.target.value) || 0 })
-                    }
-                    className="h-8 text-xs"
-                  />
-                </div>
-              </div>
-            )}
+        {value.contrato_id && itemSel && (
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[11px]">
+                Quantidade {itensSelecionados.length > 1 && "(total a ratear)"}
+              </Label>
+              <Input
+                type="number"
+                step="0.0001"
+                value={value.quantidade || ""}
+                onChange={(e) =>
+                  onChange({ ...value, quantidade: parseFloat(e.target.value) || 0 })
+                }
+                className="h-8 text-xs"
+              />
+            </div>
+            <div>
+              <Label className="text-[11px]">Valor unitário</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={value.valor_unitario || ""}
+                onChange={(e) =>
+                  onChange({ ...value, valor_unitario: parseFloat(e.target.value) || 0 })
+                }
+                className="h-8 text-xs"
+              />
+            </div>
           </div>
         )}
 
