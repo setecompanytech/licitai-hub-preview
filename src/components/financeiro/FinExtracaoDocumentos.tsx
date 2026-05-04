@@ -38,6 +38,7 @@ interface DocItem {
 const VINCULO_VAZIO: VinculoContratoValue = {
   contrato_id: null,
   contrato_item_id: null,
+  contrato_item_ids: [],
   origem_aditivo_id: null,
   quantidade: 0,
   valor_unitario: 0,
