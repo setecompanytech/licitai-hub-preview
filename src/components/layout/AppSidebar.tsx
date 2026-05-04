@@ -2,9 +2,7 @@ import { useState } from 'react';
 import PraefectusLogo from '@/components/shared/PraefectusLogo';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUserRole } from '@/hooks/useUserRole';
-import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
-import { hasAccessToRoute } from '@/data/plan-features';
+import { useAuthorization } from '@/hooks/useAuthorization';
 import {
   LayoutDashboard,
   Search,
@@ -159,9 +157,9 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
   });
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, subscription } = useAuth();
-  const { isAdmin } = useUserRole();
-  const { canAccessRoute, isEmpresaAdmin, loading: permLoading } = useMembroPermissoes();
+  const { signOut } = useAuth();
+  // Middleware único de autorização — bypass consistente para admin global/empresa.
+  const { isSystemAdmin, canAccessRoute, canAccessByPlan } = useAuthorization();
 
   // Filtra itens de cada grupo pelo setor/permissões do membro.
   // Admin global vê tudo (canAccessRoute retorna true para qualquer rota).
@@ -187,7 +185,7 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
 
   const renderNavItem = (item: NavItem) => {
     const isActive = location.pathname === item.path;
-    const locked = !isAdmin && !isEmpresaAdmin && !hasAccessToRoute(subscription.planSlug, item.path);
+    const locked = !canAccessByPlan(item.path);
 
     const button = (
       <button
@@ -276,7 +274,7 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
           );
         })}
 
-        {isAdmin && (
+        {isSystemAdmin && (
           <div>
             {!isCollapsed ? (
               <div className="px-3 py-1.5 mb-0.5">
