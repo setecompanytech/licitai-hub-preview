@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "next-themes";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/query-client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { EmpresaProvider } from "@/contexts/EmpresaContext";
@@ -100,22 +101,7 @@ const MetricasSaaS = lazyPage(() => import("./pages/MetricasSaaS"));
 const Investidores = lazyPage(() => import("./pages/Investidores"));
 const ProcessoWorkspace = lazyPage(() => import("./pages/ProcessoWorkspace"));
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      staleTime: 2 * 60 * 1000,
-      gcTime: 5 * 60 * 1000,
-      retry: (failureCount, error: any) => {
-        if (error?.status >= 400 && error?.status < 500) return false;
-        return failureCount < 2;
-      },
-    },
-    mutations: {
-      retry: false,
-    },
-  },
-});
+// queryClient definido em src/lib/query-client.ts (singleton compartilhado).
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-screen bg-background">
