@@ -236,12 +236,56 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     }
   };
 
+  /** Cria lançamentos "a_receber" no Financeiro vinculados ao contrato e aos pedidos recém-criados. */
+  const gerarLancamentosFinanceiros = async (
+    pedidosCriados: Array<{ id: string; numero_pedido: string; descricao: string | null; valor_total: number; data_pedido: string | null; contrato_item_id?: string | null }>,
+  ) => {
+    if (!gerarContaReceber || pedidosCriados.length === 0) return;
+    try {
+      const { data: contratoInfo } = await supabase
+        .from('contratos')
+        .select('empresa_id, numero_contrato, orgao_contratante')
+        .eq('id', contratoId)
+        .single();
+      const empresaId = (contratoInfo as any)?.empresa_id || empresaAtiva?.id;
+      if (!empresaId) {
+        toast.warning('Pedido salvo, mas empresa do contrato não definida — lançamento financeiro não criado.');
+        return;
+      }
+      const inserts = pedidosCriados.map((p) => ({
+        empresa_id: empresaId,
+        tipo: 'a_receber' as const,
+        natureza: 'receita' as const,
+        status: 'previsto' as const,
+        descricao: `${(contratoInfo as any)?.numero_contrato ?? 'Contrato'} · Pedido ${p.numero_pedido}${p.descricao ? ' — ' + p.descricao : ''}`,
+        valor: p.valor_total,
+        data_competencia: p.data_pedido ?? new Date().toISOString().slice(0, 10),
+        data_emissao: p.data_pedido ?? null,
+        contrato_id: contratoId,
+        contrato_pedido_id: p.id,
+        contrato_item_id: p.contrato_item_id ?? null,
+        origem: 'manual' as const,
+        observacoes: `Lançamento gerado automaticamente a partir do pedido ${p.numero_pedido} do contrato ${(contratoInfo as any)?.numero_contrato ?? ''}.`,
+        created_by: user?.id ?? null,
+      }));
+      const { error } = await supabase.from('financeiro_lancamentos').insert(inserts as any);
+      if (error) {
+        console.error('Erro ao criar lançamento financeiro:', error);
+        toast.warning('Pedido salvo, mas houve erro ao criar conta a receber: ' + error.message);
+      } else {
+        toast.success(`${inserts.length} conta(s) a receber criada(s) no Financeiro.`);
+      }
+    } catch (e: any) {
+      console.error(e);
+    }
+  };
+
   const handleSaveSingle = async () => {
     if (!form.numero_pedido) { toast.error('Informe o número do pedido'); return; }
     const qty = parseFloat(form.quantidade) || 0;
     const unit = parseFloat(form.valor_unitario) || 0;
     setSaving(true);
-    const { error } = await supabase.from('contrato_pedidos').insert({
+    const { data: novoPedido, error } = await supabase.from('contrato_pedidos').insert({
       contrato_id: contratoId, user_id: user!.id,
       numero_pedido: form.numero_pedido, descricao: form.descricao || null,
       contrato_item_id: form.contrato_item_id || null,
@@ -250,9 +294,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       status: form.status, nota_fiscal: form.nota_fiscal || null,
       observacoes: form.observacoes || null,
       origem_aditivo_id: form.origem_aditivo_id || null,
-    } as any);
+    } as any).select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id').single();
+    if (error) { console.error('Erro ao salvar pedido:', error.message, error.details, error.code); toast.error('Erro ao salvar pedido: ' + error.message); setSaving(false); return; }
+    await gerarLancamentosFinanceiros([novoPedido as any]);
     setSaving(false);
-    if (error) { console.error('Erro ao salvar pedido:', error.message, error.details, error.code); toast.error('Erro ao salvar pedido: ' + error.message); return; }
     toast.success('Pedido registrado.');
     setDialogOpen(false);
     resetForm();
@@ -278,9 +323,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         observacoes: form.observacoes || null,
       };
     });
-    const { error } = await supabase.from('contrato_pedidos').insert(inserts as any);
+    const { data: novosPedidos, error } = await supabase
+      .from('contrato_pedidos')
+      .insert(inserts as any)
+      .select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id');
+    if (error) { console.error('Erro ao salvar pedidos:', error.message, error.details, error.code); toast.error('Erro ao salvar pedidos: ' + error.message); setSaving(false); return; }
+    await gerarLancamentosFinanceiros((novosPedidos ?? []) as any);
     setSaving(false);
-    if (error) { console.error('Erro ao salvar pedidos:', error.message, error.details, error.code); toast.error('Erro ao salvar pedidos: ' + error.message); return; }
     toast.success(`${inserts.length} itens registrados.`);
     setDialogOpen(false);
     resetForm();
