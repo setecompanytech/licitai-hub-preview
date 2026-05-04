@@ -186,6 +186,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setSubscription({ subscribed: false, planSlug: null, subscriptionEnd: null, loading: false });
+    // 3. Limpa todo o cache do React Query (role, empresa, permissões, etc.)
+    queryClient.clear();
   };
 
   const resetPassword = async (email: string) => {
