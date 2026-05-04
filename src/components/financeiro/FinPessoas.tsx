@@ -170,10 +170,41 @@ export default function FinPessoas() {
     setOpen(true);
   };
 
+  const validarCPF = (cpf: string): boolean => {
+    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+    let s = 0;
+    for (let i = 0; i < 9; i++) s += parseInt(cpf[i]) * (10 - i);
+    let d1 = (s * 10) % 11;
+    if (d1 === 10) d1 = 0;
+    if (d1 !== parseInt(cpf[9])) return false;
+    s = 0;
+    for (let i = 0; i < 10; i++) s += parseInt(cpf[i]) * (11 - i);
+    let d2 = (s * 10) % 11;
+    if (d2 === 10) d2 = 0;
+    return d2 === parseInt(cpf[10]);
+  };
+
   const handleBuscarCNPJ = async () => {
     const doc = form.documento.replace(/\D/g, "");
+
+    // CPF (11 dígitos): consulta automática à Receita Federal não é permitida
+    // por restrição da LGPD/RFB. Validamos o dígito e formatamos o campo.
+    if (doc.length === 11) {
+      if (!validarCPF(doc)) {
+        toast.error("CPF inválido. Verifique os dígitos informados.");
+        return;
+      }
+      const formatado = doc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+      setForm((f) => ({ ...f, pessoa_tipo: "PF", documento: formatado }));
+      toast.info(
+        "CPF válido. Por restrição da Receita Federal (LGPD), o preenchimento automático de dados de pessoa física não é disponível — preencha o nome e endereço manualmente.",
+        { duration: 6000 }
+      );
+      return;
+    }
+
     if (doc.length !== 14) {
-      toast.error("Informe um CNPJ válido (14 dígitos) para consultar a Receita Federal.");
+      toast.error("Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.");
       return;
     }
 
