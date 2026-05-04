@@ -5,6 +5,7 @@ import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -12,8 +13,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Card, CardContent } from "@/components/ui/card";
-import { Link2, Search, FileText, Loader2 } from "lucide-react";
+import { Link2, FileText, Loader2, Check, ChevronsUpDown, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const fmt = (v: number | null | undefined) =>
   v == null ? "—" : Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
