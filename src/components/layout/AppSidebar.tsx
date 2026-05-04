@@ -245,7 +245,7 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
 
       {/* Nav */}
       <nav className="flex-1 py-2 px-2 overflow-y-auto space-y-1">
-        {navGroups.map((group) => {
+        {visibleNavGroups.map((group) => {
           const isOpen = openGroups[group.title] ?? true;
 
           return (
