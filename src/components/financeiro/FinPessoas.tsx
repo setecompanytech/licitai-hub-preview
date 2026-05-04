@@ -81,7 +81,10 @@ export default function FinPessoas() {
   const { data: pessoas = [], isLoading } = usePessoas();
   const upsert = useUpsertPessoa();
   const del = useDeletePessoa();
-  const { buscarPorDocumento, loading: buscandoCNPJ } = useBuscaCNPJ();
+  const { buscarPorDocumento, loading: buscandoCNPJFallback } = useBuscaCNPJ();
+  const [buscandoCNPJEdge, setBuscandoCNPJEdge] = useState(false);
+  const buscandoCNPJ = buscandoCNPJEdge || buscandoCNPJFallback;
+  const [buscandoCEP, setBuscandoCEP] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Pessoa | null>(null);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
