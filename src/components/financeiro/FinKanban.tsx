@@ -14,6 +14,7 @@ import {
   Plus,
   Search,
   Pencil,
+  Trash2,
   User2,
   Layers,
   ScanLine,
@@ -23,10 +24,21 @@ import { ptBR } from "date-fns/locale";
 import {
   useLancamentos,
   useUpsertLancamento,
+  useDeleteLancamento,
   useMembrosEmpresa,
   type Lancamento,
 } from "@/hooks/useFinanceiro";
 import LancamentoDialog from "./LancamentoDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import FinExtracaoDocumentos from "./FinExtracaoDocumentos";
 
 type ColunaKanban = "aberto" | "vence_7d" | "vencido" | "pago";
@@ -54,10 +66,12 @@ export default function FinKanban({ tipo }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [extracaoOpen, setExtracaoOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Lancamento> | null>(null);
+  const [confirmDel, setConfirmDel] = useState<LancamentoCard | null>(null);
 
   const { data = [], isLoading } = useLancamentos({ tipo });
   const { data: membros = [] } = useMembrosEmpresa();
   const upsert = useUpsertLancamento();
+  const del = useDeleteLancamento();
 
   const lancamentos = data as LancamentoCard[];
 
@@ -212,15 +226,26 @@ export default function FinKanban({ tipo }: Props) {
                                 <p className="text-sm font-medium line-clamp-2 flex-1">
                                   {l.descricao}
                                 </p>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-6 w-6 shrink-0"
-                                  onClick={() => abrirEditar(l)}
-                                  title="Editar"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </Button>
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6"
+                                    onClick={() => abrirEditar(l)}
+                                    title="Editar"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => setConfirmDel(l)}
+                                    title="Excluir"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
                               </div>
 
                               {l.pessoa?.nome && (
@@ -298,6 +323,34 @@ export default function FinKanban({ tipo }: Props) {
         onOpenChange={setExtracaoOpen}
         tipo={tipo}
       />
+
+      <AlertDialog open={!!confirmDel} onOpenChange={(o) => !o && setConfirmDel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir lançamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDel ? (
+                <>
+                  Esta ação removerá permanentemente o lançamento
+                  {confirmDel.descricao ? ` "${confirmDel.descricao}"` : ""}. Não pode ser desfeita.
+                </>
+              ) : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (confirmDel) await del.mutateAsync(confirmDel.id);
+                setConfirmDel(null);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
