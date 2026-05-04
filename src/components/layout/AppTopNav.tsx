@@ -188,7 +188,7 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
     <>
       {/* Desktop horizontal nav */}
       <nav className="hidden lg:flex items-center gap-0.5" ref={dropdownRef}>
-        {topNavLinks.map((link) => {
+        {filteredTopNavLinks.map((link) => {
           const active = isLinkActive(link);
           const isOpen = openDropdown === link.label;
           const groups = getGroupsForLink(link);
@@ -308,7 +308,7 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
           </div>
 
           <nav className="flex-1 py-3 px-3 overflow-y-auto max-h-[calc(100vh-120px)]">
-            {navGroups.map((group) => {
+            {filteredNavGroups.map((group) => {
               const isOpen = mobileOpenGroups[group.title] !== false;
               return (
                 <div key={group.title} className="mb-1">
