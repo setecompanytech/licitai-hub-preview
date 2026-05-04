@@ -223,51 +223,127 @@ export default function VinculoContratoSelector({
           recalcula saldo financeiro/quantitativo (e da ATA SRP, quando aplicável).
         </div>
 
-        {/* Busca/seleção de contrato */}
+        {/* Combobox único: lista filtrada de contratos pré-cadastrados em GESTÃO */}
         <div>
-          <Label className="text-xs">Contrato / ATA</Label>
-          <div className="flex gap-2 mt-1">
-            <div className="relative flex-1">
-              <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                placeholder="Buscar por nº, órgão ou objeto…"
-                className="h-8 pl-7 text-xs"
-              />
-            </div>
-            <Select value={value.contrato_id ?? ""} onValueChange={setContrato}>
-              <SelectTrigger className="h-8 w-[260px] text-xs">
-                <SelectValue placeholder="Selecione…" />
-              </SelectTrigger>
-              <SelectContent>
-                {filtrados.length === 0 ? (
-                  <div className="px-2 py-3 text-xs text-muted-foreground">
-                    Nenhum contrato vigente encontrado.
-                  </div>
+          <Label className="text-xs">Contrato / ATA SRP</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                role="combobox"
+                className="h-9 w-full justify-between mt-1 text-xs font-normal"
+                disabled={loading}
+              >
+                {contratoSel ? (
+                  <span className="flex items-center gap-1.5 truncate text-left">
+                    {contratoSel.tipo_documento === "ata_srp" && (
+                      <Badge variant="outline" className="text-[10px] py-0 px-1 shrink-0">
+                        ATA
+                      </Badge>
+                    )}
+                    <b className="shrink-0">{contratoSel.numero_contrato}</b>
+                    <span className="text-muted-foreground truncate">
+                      — {contratoSel.orgao_contratante}
+                    </span>
+                  </span>
                 ) : (
-                  filtrados.slice(0, 50).map((c) => (
-                    <SelectItem key={c.id} value={c.id} className="text-xs">
-                      <span className="flex items-center gap-1.5">
-                        {c.tipo_documento === "ata_srp" && (
-                          <Badge variant="outline" className="text-[10px] py-0 px-1">
-                            ATA
-                          </Badge>
-                        )}
-                        <b>{c.numero_contrato}</b> — {c.orgao_contratante}
-                      </span>
-                    </SelectItem>
-                  ))
+                  <span className="text-muted-foreground">
+                    {loading
+                      ? "Carregando contratos…"
+                      : contratos.length === 0
+                        ? "Nenhum contrato vigente cadastrado em Gestão"
+                        : `Selecione um contrato (${contratos.length} disponíveis)…`}
+                  </span>
                 )}
-              </SelectContent>
-            </Select>
-          </div>
+                <ChevronsUpDown className="w-3.5 h-3.5 ml-2 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="p-0 w-[--radix-popover-trigger-width] min-w-[420px]" align="start">
+              <Command shouldFilter={false}>
+                <CommandInput
+                  placeholder="Buscar por nº, órgão ou objeto…"
+                  value={busca}
+                  onValueChange={setBusca}
+                  className="text-xs"
+                />
+                <CommandList className="max-h-[320px]">
+                  <CommandEmpty className="py-4 text-xs text-muted-foreground text-center">
+                    Nenhum contrato vigente corresponde à busca.
+                  </CommandEmpty>
+                  <CommandGroup>
+                    {filtrados.slice(0, 80).map((c) => {
+                      const selecionado = value.contrato_id === c.id;
+                      const saldo = Number(c.saldo_remanescente ?? c.valor_global);
+                      return (
+                        <CommandItem
+                          key={c.id}
+                          value={c.id}
+                          onSelect={() => setContrato(c.id)}
+                          className="flex items-start gap-2 text-xs cursor-pointer"
+                        >
+                          <Check
+                            className={cn(
+                              "w-3.5 h-3.5 mt-0.5 shrink-0",
+                              selecionado ? "opacity-100 text-primary" : "opacity-0",
+                            )}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              {c.tipo_documento === "ata_srp" && (
+                                <Badge variant="outline" className="text-[10px] py-0 px-1">
+                                  ATA SRP
+                                </Badge>
+                              )}
+                              <b className="shrink-0">{c.numero_contrato}</b>
+                              <span className="text-muted-foreground truncate">
+                                — {c.orgao_contratante}
+                              </span>
+                            </div>
+                            {c.objeto && (
+                              <div className="text-[11px] text-muted-foreground truncate mt-0.5">
+                                {c.objeto}
+                              </div>
+                            )}
+                            <div className="text-[11px] mt-0.5 flex gap-3">
+                              <span>
+                                Saldo:{" "}
+                                <b className={saldo > 0 ? "text-success" : "text-destructive"}>
+                                  {fmt(saldo)}
+                                </b>
+                              </span>
+                              <span className="text-muted-foreground">
+                                Global: {fmt(c.valor_global)}
+                              </span>
+                            </div>
+                          </div>
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+
           {contratoSel && (
-            <p className="text-[11px] text-muted-foreground mt-1 truncate">
-              Saldo:{" "}
-              <b>{fmt(Number(contratoSel.saldo_remanescente ?? contratoSel.valor_global))}</b>{" "}
-              · Global: {fmt(contratoSel.valor_global)}
-            </p>
+            <div className="flex items-center justify-between mt-1.5">
+              <p className="text-[11px] text-muted-foreground truncate">
+                Saldo remanescente:{" "}
+                <b>{fmt(Number(contratoSel.saldo_remanescente ?? contratoSel.valor_global))}</b>
+                {" · "}Global: {fmt(contratoSel.valor_global)}
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-destructive"
+                onClick={() => setContrato("")}
+              >
+                <X className="w-3 h-3 mr-0.5" />
+                Limpar
+              </Button>
+            </div>
           )}
         </div>
 
