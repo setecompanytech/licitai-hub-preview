@@ -152,6 +152,38 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
   useEffect(() => { load(); }, [contratoId]);
 
+  // Realtime: reflete em tempo real exclusões/edições feitas no Financeiro
+  // (cascata via trigger trg_cleanup_contrato_pedido_on_lancamento_delete) ou em outras abas.
+  useEffect(() => {
+    if (!contratoId) return;
+    const channel = supabase
+      .channel(`contrato-pedidos-${contratoId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'contrato_pedidos', filter: `contrato_id=eq.${contratoId}` },
+        () => load(),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'contrato_itens', filter: `contrato_id=eq.${contratoId}` },
+        () => load(),
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'financeiro_lancamentos' },
+        (payload: any) => {
+          // Recarrega se o lançamento removido pertencia a algum pedido deste contrato
+          const pedidoId = payload?.old?.contrato_pedido_id;
+          if (pedidoId && pedidos.some((p) => p.id === pedidoId)) load();
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contratoId]);
+
   const handleItemChange = (itemId: string) => {
     setForm(f => {
       const item = itens.find(i => i.id === itemId);
