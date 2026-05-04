@@ -196,10 +196,18 @@ export default function EquipeColaboradores() {
             </p>
           </div>
           {isAdmin && (
-            <Button onClick={() => setShowInvite(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground self-start sm:self-auto flex-shrink-0">
-              <UserPlus className="w-4 h-4 mr-2" />
-              Adicionar Colaborador
-            </Button>
+            <div className="flex items-center gap-2 self-start sm:self-auto flex-shrink-0">
+              <Button asChild variant="outline">
+                <a href="/equipe/permissoes">
+                  <Shield className="w-4 h-4 mr-2" />
+                  Papéis & Permissões
+                </a>
+              </Button>
+              <Button onClick={() => setShowInvite(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                <UserPlus className="w-4 h-4 mr-2" />
+                Adicionar Colaborador
+              </Button>
+            </div>
           )}
         </div>
 
