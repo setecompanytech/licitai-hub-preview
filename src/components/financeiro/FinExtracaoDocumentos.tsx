@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Upload, Loader2, FileCheck2, FileX, ScanLine,
-  FileText, ImageIcon, Pencil, CheckCircle2, AlertCircle, Info,
+  FileText, ImageIcon, Pencil, CheckCircle2, AlertCircle, Info, Link2, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
