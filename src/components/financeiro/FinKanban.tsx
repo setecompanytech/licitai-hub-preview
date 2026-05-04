@@ -393,8 +393,8 @@ export default function FinKanban({ tipo }: Props) {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={async () => {
-                if (confirmDel) await del.mutateAsync(confirmDel.id);
+              onClick={() => {
+                if (confirmDel) agendarExclusao(confirmDel);
                 setConfirmDel(null);
               }}
             >
