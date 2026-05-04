@@ -135,6 +135,7 @@ export default function EquipeColaboradores() {
     }
   };
 
+  const handleRemove = async (membroId: string, nome: string) => {
     if (!confirm(`Remover "${nome}" da equipe?`)) return;
     const { error } = await supabase.from('empresa_membros').delete().eq('id', membroId);
     if (error) {
