@@ -224,6 +224,18 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
     setEditor({ open: true, initial });
   };
 
+  const setVinculo = (id: string, v: VinculoContratoValue) => {
+    setDocs((prev) => prev.map((x) => (x.id === id ? { ...x, vinculo: v } : x)));
+  };
+
+  const toggleVincular = (id: string) => {
+    setDocs((prev) =>
+      prev.map((x) =>
+        x.id === id ? { ...x, vincularExpandido: !x.vincularExpandido } : x,
+      ),
+    );
+  };
+
   const lancarRapido = async (item: DocItem) => {
     const d = item.dados ?? {};
     if (!d.valor_total) {
@@ -231,13 +243,66 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
       return;
     }
     try {
+      const v = item.vinculo;
+      const temVinculo = !!v?.contrato_id;
+
+      if (temVinculo) {
+        // Caminho com vínculo: cria pedido + lançamento via RPC (recalcula saldo do contrato/ATA)
+        const valorTotal = Number(d.valor_total);
+        const { data: rpcData, error: rpcErr } = await supabase.rpc(
+          "vincular_lancamento_a_pedido" as any,
+          {
+            p_contrato_id: v!.contrato_id,
+            p_contrato_item_id: v!.contrato_item_id,
+            p_origem_aditivo_id: v!.origem_aditivo_id,
+            p_numero_pedido:
+              d.numero_documento ||
+              `DOC-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`,
+            p_descricao:
+              d.descricao ||
+              `${(d.tipo_documento ?? "Documento").toString().toUpperCase()} ${d.numero_documento ?? ""}`.trim() ||
+              item.file.name,
+            p_quantidade: v!.quantidade || 1,
+            p_valor_unitario: v!.valor_unitario || valorTotal,
+            p_valor_total: valorTotal,
+            p_data_pedido: d.data_emissao ?? new Date().toISOString().slice(0, 10),
+            p_tipo: tipo,
+            p_natureza: tipo === "a_receber" ? "receita" : "despesa",
+            p_status: "previsto",
+            p_data_competencia: d.data_emissao ?? new Date().toISOString().slice(0, 10),
+            p_data_vencimento: d.data_vencimento ?? null,
+            p_data_emissao: d.data_emissao ?? null,
+            p_tipo_documento: (d.tipo_documento as any) ?? "outro",
+            p_numero_documento: d.numero_documento ?? null,
+            p_chave_acesso_nfe: d.chave_nfe ? String(d.chave_nfe).replace(/\D/g, "") : null,
+            p_pessoa_id: null,
+            p_observacoes: [
+              d.emitente_nome ? `Emitente: ${d.emitente_nome}` : null,
+              d.destinatario_nome ? `Destinatário: ${d.destinatario_nome}` : null,
+              item.motor ? `Extraído via ${item.motor}` : null,
+              "Pedido criado automaticamente a partir de documento financeiro.",
+            ].filter(Boolean).join("\n"),
+          },
+        );
+        if (rpcErr) {
+          toast.error(`Erro ao vincular: ${rpcErr.message}`);
+          return;
+        }
+        const lancId = (rpcData as any)?.lancamento_id ?? "ok";
+        setDocs((prev) => prev.map((x) => (x.id === item.id ? { ...x, lancamentoId: lancId } : x)));
+        toast.success("Lançamento criado e pedido vinculado ao contrato.");
+        return;
+      }
+
+      // Caminho sem vínculo: lançamento simples
       const r = await upsert.mutateAsync({
         tipo,
         natureza: tipo === "a_receber" ? "receita" : "despesa",
         status: "previsto",
-        descricao: d.descricao
-          || `${(d.tipo_documento ?? "Documento").toString().toUpperCase()} ${d.numero_documento ?? ""}`.trim()
-          || item.file.name,
+        descricao:
+          d.descricao ||
+          `${(d.tipo_documento ?? "Documento").toString().toUpperCase()} ${d.numero_documento ?? ""}`.trim() ||
+          item.file.name,
         valor: Number(d.valor_total),
         data_competencia: d.data_emissao ?? new Date().toISOString().slice(0, 10),
         data_vencimento: d.data_vencimento ?? null,
