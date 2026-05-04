@@ -72,7 +72,7 @@ serve(async (req) => {
   try {
     // Auth + rate limit: 20 requests per 5 minutes
     try {
-      await requireAuth(req, { functionName: "consulta-cnpj", maxRequests: 20, windowMinutes: 5 });
+      await requireAuth(req, { functionName: "consulta-cnpj", maxRequests: 60, windowMinutes: 5 });
     } catch (authResp) {
       if (authResp instanceof Response) return authResp;
       throw authResp;
@@ -86,30 +86,155 @@ serve(async (req) => {
 
     const cnpjLimpo = cnpj.replace(/\D/g, "");
 
-    // ── Fetch from all sources in parallel ──
+    // ── Helper: normaliza payload de provedores alternativos para o formato BrasilAPI ──
+    const normalizeFromCnpjWs = (d: any) => ({
+      razao_social: d.razao_social,
+      nome_fantasia: d.estabelecimento?.nome_fantasia,
+      descricao_situacao_cadastral: d.estabelecimento?.situacao_cadastral,
+      data_inicio_atividade: d.estabelecimento?.data_inicio_atividade,
+      codigo_natureza_juridica: d.natureza_juridica?.id,
+      natureza_juridica: d.natureza_juridica?.descricao,
+      cnae_fiscal: d.estabelecimento?.atividade_principal?.id,
+      cnae_fiscal_descricao: d.estabelecimento?.atividade_principal?.descricao,
+      cnaes_secundarios: (d.estabelecimento?.atividades_secundarias || []).map((a: any) => ({ codigo: a.id, descricao: a.descricao })),
+      logradouro: d.estabelecimento?.logradouro,
+      numero: d.estabelecimento?.numero,
+      complemento: d.estabelecimento?.complemento,
+      bairro: d.estabelecimento?.bairro,
+      cep: d.estabelecimento?.cep,
+      municipio: d.estabelecimento?.cidade?.nome,
+      uf: d.estabelecimento?.estado?.sigla,
+      porte: d.porte?.descricao,
+      capital_social: Number(d.capital_social || 0),
+      email: d.estabelecimento?.email,
+      ddd_telefone_1: d.estabelecimento?.ddd1 && d.estabelecimento?.telefone1
+        ? `${d.estabelecimento.ddd1}${d.estabelecimento.telefone1}` : "",
+      opcao_pelo_simples: !!d.simples?.simples,
+    });
+
+    const normalizeFromCnpja = (d: any) => ({
+      razao_social: d.company?.name || d.alias,
+      nome_fantasia: d.alias,
+      descricao_situacao_cadastral: d.status?.text,
+      data_inicio_atividade: d.founded,
+      codigo_natureza_juridica: d.company?.nature?.id,
+      natureza_juridica: d.company?.nature?.text,
+      cnae_fiscal: d.mainActivity?.id,
+      cnae_fiscal_descricao: d.mainActivity?.text,
+      cnaes_secundarios: (d.sideActivities || []).map((a: any) => ({ codigo: a.id, descricao: a.text })),
+      logradouro: [d.address?.street].filter(Boolean).join(" "),
+      numero: d.address?.number,
+      complemento: d.address?.details,
+      bairro: d.address?.district,
+      cep: d.address?.zip,
+      municipio: d.address?.city,
+      uf: d.address?.state,
+      porte: d.company?.size?.text,
+      capital_social: Number(d.company?.equity || 0),
+      email: d.emails?.[0]?.address,
+      ddd_telefone_1: d.phones?.[0] ? `${d.phones[0].area}${d.phones[0].number}` : "",
+      opcao_pelo_simples: !!d.company?.simples?.optant,
+    });
+
+    // ── Cadeia de provedores: BrasilAPI → CNPJ.ws → CNPJA → Receitaws ──
+    let data: any = null;
+    let providerUsed = "";
+
+    // Disparamos BrasilAPI + IE complementares em paralelo, mas tratamos fallback se 429/500
     const [brasilResp, cnpjaIE, speedioData] = await Promise.all([
-      fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`),
-      getIEFromCNPJA(cnpjLimpo, ""), // We'll refine with UF after BrasilAPI
+      fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`).catch(() => null),
+      getIEFromCNPJA(cnpjLimpo, ""),
       getIEFromSpeedio(cnpjLimpo),
     ]);
 
-    if (!brasilResp.ok) {
-      const status = brasilResp.status;
-      await brasilResp.text();
+    if (brasilResp && brasilResp.ok) {
+      data = await brasilResp.json();
+      providerUsed = "brasilapi";
+    } else {
+      const status = brasilResp?.status ?? 0;
+      console.warn(`BrasilAPI falhou (status=${status}), tentando CNPJ.ws…`);
       if (status === 404 || status === 400) {
         return new Response(JSON.stringify({ error: "CNPJ não encontrado na base da Receita Federal." }), {
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (status === 429) {
-        return new Response(JSON.stringify({ error: "Muitas consultas simultâneas. Aguarde e tente novamente." }), {
-          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+
+      // Fallback 1: CNPJ.ws (público, sem chave)
+      try {
+        const r = await fetch(`https://publica.cnpj.ws/cnpj/${cnpjLimpo}`);
+        if (r.ok) {
+          const j = await r.json();
+          data = normalizeFromCnpjWs(j);
+          providerUsed = "cnpj.ws";
+        } else {
+          console.warn(`CNPJ.ws falhou (status=${r.status})`);
+        }
+      } catch (e) {
+        console.warn("CNPJ.ws erro:", e);
       }
-      throw new Error(`Erro ao consultar CNPJ (código ${status}).`);
+
+      // Fallback 2: CNPJA Open
+      if (!data) {
+        try {
+          const r = await fetch(`https://open.cnpja.com/office/${cnpjLimpo}`, { headers: { Accept: "application/json" } });
+          if (r.ok) {
+            const j = await r.json();
+            data = normalizeFromCnpja(j);
+            providerUsed = "cnpja";
+          } else {
+            console.warn(`CNPJA falhou (status=${r.status})`);
+          }
+        } catch (e) {
+          console.warn("CNPJA erro:", e);
+        }
+      }
+
+      // Fallback 3: ReceitaWS
+      if (!data) {
+        try {
+          const r = await fetch(`https://www.receitaws.com.br/v1/cnpj/${cnpjLimpo}`);
+          if (r.ok) {
+            const j = await r.json();
+            if (j.status !== "ERROR") {
+              data = {
+                razao_social: j.nome,
+                nome_fantasia: j.fantasia,
+                descricao_situacao_cadastral: j.situacao,
+                data_inicio_atividade: j.abertura,
+                codigo_natureza_juridica: "",
+                natureza_juridica: j.natureza_juridica,
+                cnae_fiscal: j.atividade_principal?.[0]?.code,
+                cnae_fiscal_descricao: j.atividade_principal?.[0]?.text,
+                cnaes_secundarios: (j.atividades_secundarias || []).map((a: any) => ({ codigo: a.code, descricao: a.text })),
+                logradouro: j.logradouro,
+                numero: j.numero,
+                complemento: j.complemento,
+                bairro: j.bairro,
+                cep: j.cep,
+                municipio: j.municipio,
+                uf: j.uf,
+                porte: j.porte,
+                capital_social: Number(String(j.capital_social || "0").replace(/\D/g, "")) / 100,
+                email: j.email,
+                ddd_telefone_1: j.telefone,
+                opcao_pelo_simples: !!j.simples?.optante,
+              };
+              providerUsed = "receitaws";
+            }
+          }
+        } catch (e) {
+          console.warn("ReceitaWS erro:", e);
+        }
+      }
+
+      if (!data) {
+        return new Response(JSON.stringify({
+          error: "Os provedores públicos da Receita Federal estão temporariamente indisponíveis. Tente novamente em alguns minutos.",
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
-    const data = await brasilResp.json();
+    console.log(`Provedor usado: ${providerUsed}`);
 
     // ── Build full address ──
     const enderecoPartes = [data.logradouro, data.numero].filter(Boolean).join(", ");
