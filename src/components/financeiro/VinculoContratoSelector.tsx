@@ -193,6 +193,85 @@ export default function VinculoContratoSelector({
   const contratoSel = contratos.find((c) => c.id === value.contrato_id);
   const itemSel = itens.find((i) => i.id === value.contrato_item_id);
 
+  // ===== Divergências entre documento extraído × saldo do contrato/item =====
+  // Tolerância de 1 centavo / 0,0001 unidade para evitar falso-positivo de arredondamento.
+  const TOL_VALOR = 0.01;
+  const TOL_QTD = 0.0001;
+
+  const divergencias = useMemo(() => {
+    const alerts: Array<{
+      level: "warning" | "error";
+      titulo: string;
+      detalhe: string;
+    }> = [];
+    if (!contratoSel) return alerts;
+
+    const valorLancamento = Number(
+      valorTotal ?? (value.quantidade || 0) * (value.valor_unitario || 0),
+    );
+
+    // 1) Valor do documento > saldo remanescente do CONTRATO
+    const saldoContrato = Number(contratoSel.saldo_remanescente ?? contratoSel.valor_global);
+    if (valorLancamento > 0 && valorLancamento - saldoContrato > TOL_VALOR) {
+      alerts.push({
+        level: "error",
+        titulo: "Valor excede o saldo do contrato",
+        detalhe: `Documento: ${fmt(valorLancamento)} · Saldo disponível: ${fmt(saldoContrato)} · Excedente: ${fmt(valorLancamento - saldoContrato)}.`,
+      });
+    } else if (
+      valorLancamento > 0 &&
+      saldoContrato > 0 &&
+      valorLancamento / saldoContrato >= 0.9 &&
+      valorLancamento <= saldoContrato + TOL_VALOR
+    ) {
+      alerts.push({
+        level: "warning",
+        titulo: "Saldo do contrato quase esgotado",
+        detalhe: `Após este lançamento restará apenas ${fmt(saldoContrato - valorLancamento)} (${Math.round((1 - valorLancamento / saldoContrato) * 100)}%).`,
+      });
+    }
+
+    // 2) Validações específicas do ITEM (quando vinculado)
+    if (itemSel) {
+      const qtd = Number(value.quantidade || 0);
+      const vu = Number(value.valor_unitario || itemSel.valor_unitario || 0);
+      const valorItem = qtd * vu;
+
+      // 2a) Valor unitário diferente do contratado
+      const vuContrato = Number(itemSel.valor_unitario || 0);
+      if (vuContrato > 0 && vu > 0 && Math.abs(vu - vuContrato) > TOL_VALOR) {
+        const pct = ((vu - vuContrato) / vuContrato) * 100;
+        alerts.push({
+          level: Math.abs(pct) > 5 ? "error" : "warning",
+          titulo: "Valor unitário diverge do contrato",
+          detalhe: `Documento: ${fmt(vu)} · Contrato: ${fmt(vuContrato)} · Diferença: ${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%.`,
+        });
+      }
+
+      // 2b) Quantidade extraída > saldo quantitativo do item
+      const saldoQtd = Number(itemSel.saldo_quantitativo ?? 0);
+      if (itemSel.saldo_quantitativo != null && qtd - saldoQtd > TOL_QTD) {
+        alerts.push({
+          level: "error",
+          titulo: "Quantidade excede o saldo do item",
+          detalhe: `Documento: ${qtd.toLocaleString("pt-BR")} ${itemSel.unidade ?? ""} · Saldo: ${saldoQtd.toLocaleString("pt-BR")} ${itemSel.unidade ?? ""} · Excedente: ${(qtd - saldoQtd).toLocaleString("pt-BR")}.`,
+        });
+      }
+
+      // 2c) Valor total do item > saldo financeiro do item
+      const saldoFinItem = Number(itemSel.saldo_financeiro ?? 0);
+      if (itemSel.saldo_financeiro != null && valorItem - saldoFinItem > TOL_VALOR) {
+        alerts.push({
+          level: "error",
+          titulo: "Valor do item excede o saldo financeiro",
+          detalhe: `Documento: ${fmt(valorItem)} · Saldo financeiro do item: ${fmt(saldoFinItem)}.`,
+        });
+      }
+    }
+
+    return alerts;
+  }, [contratoSel, itemSel, value.quantidade, value.valor_unitario, valorTotal]);
+
   const setContrato = (id: string) => {
     onChange({
       ...value,
