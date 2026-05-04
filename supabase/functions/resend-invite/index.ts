@@ -64,15 +64,70 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Reenvia convite — gera um novo token válido por 24h
+    // Detecta o estado do usuário e escolhe o fluxo apropriado.
     const redirectUrl = 'https://app.praefectus.com.br/reset-password'
-    const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-      redirectTo: redirectUrl,
-    })
+    const { data: existingUsers } = await adminClient.auth.admin.listUsers()
+    const existingUser = existingUsers?.users?.find(u => u.email === email)
 
-    if (inviteError) {
-      return new Response(JSON.stringify({ error: `Erro ao reenviar convite: ${inviteError.message}` }), {
-        status: 500,
+    const notConfirmed = !existingUser?.email_confirmed_at
+    const neverSignedIn = !existingUser?.last_sign_in_at
+    const isUnconfirmed = notConfirmed || neverSignedIn
+
+    let emailFlow: 'invite' | 'recovery' | 'none' = 'none'
+    let lastEmailError: string | null = null
+
+    if (isUnconfirmed || !existingUser) {
+      const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
+        redirectTo: redirectUrl,
+      })
+      if (!inviteError) {
+        emailFlow = 'invite'
+      } else {
+        lastEmailError = inviteError.message
+        // Fallback para recovery — força confirmar e-mail antes
+        if (existingUser && notConfirmed) {
+          await adminClient.auth.admin.updateUserById(existingUser.id, { email_confirm: true }).catch(() => {})
+        }
+        const { error: recError } = await adminClient.auth.admin.generateLink({
+          type: 'recovery',
+          email,
+          options: { redirectTo: redirectUrl },
+        })
+        if (!recError) {
+          emailFlow = 'recovery'
+          lastEmailError = null
+        } else {
+          lastEmailError = `${lastEmailError} | recovery: ${recError.message}`
+        }
+      }
+    } else {
+      // Usuário já confirmado e ativo — envia recovery
+      const { error: recError } = await adminClient.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+        options: { redirectTo: redirectUrl },
+      })
+      if (!recError) {
+        emailFlow = 'recovery'
+      } else {
+        lastEmailError = recError.message
+        const { error: inviteFallback } = await adminClient.auth.admin.inviteUserByEmail(email, {
+          redirectTo: redirectUrl,
+        })
+        if (!inviteFallback) {
+          emailFlow = 'invite'
+          lastEmailError = null
+        } else {
+          lastEmailError = `${lastEmailError} | invite: ${inviteFallback.message}`
+        }
+      }
+    }
+
+    if (emailFlow === 'none') {
+      return new Response(JSON.stringify({
+        error: `Não foi possível reenviar o e-mail para ${email}. Detalhes: ${lastEmailError || 'erro desconhecido'}.`,
+      }), {
+        status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
