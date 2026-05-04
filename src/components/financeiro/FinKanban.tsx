@@ -119,6 +119,54 @@ export default function FinKanban({ tipo }: Props) {
     } as any);
   };
 
+  const agendarExclusao = (l: LancamentoCard) => {
+    const id = l.id;
+    // Esconde imediatamente
+    setPendingDeleteIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+
+    let cancelado = false;
+    const timer = setTimeout(async () => {
+      pendingTimersRef.current.delete(id);
+      if (cancelado) return;
+      try {
+        await del.mutateAsync(id);
+      } catch (e) {
+        // Em caso de falha, restaura na lista
+        setPendingDeleteIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        toast.error("Não foi possível excluir o lançamento.");
+      }
+    }, 6000);
+    pendingTimersRef.current.set(id, timer);
+
+    toast(`Lançamento "${l.descricao}" excluído`, {
+      description: "Você pode desfazer nos próximos 6 segundos.",
+      duration: 6000,
+      action: {
+        label: "Desfazer",
+        onClick: () => {
+          cancelado = true;
+          const t = pendingTimersRef.current.get(id);
+          if (t) clearTimeout(t);
+          pendingTimersRef.current.delete(id);
+          setPendingDeleteIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+          toast.success("Exclusão desfeita.");
+        },
+      },
+    });
+  };
+
   const abrirNovo = () => {
     setEditing(null);
     setDialogOpen(true);
