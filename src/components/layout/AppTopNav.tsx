@@ -176,7 +176,7 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
   };
 
   const getGroupsForLink = (link: typeof topNavLinks[0]) => {
-    return navGroups.filter(g => link.groups.includes(g.title));
+    return filteredNavGroups.filter(g => link.groups.includes(g.title));
   };
 
   const isLinkActive = (link: typeof topNavLinks[0]) => {
