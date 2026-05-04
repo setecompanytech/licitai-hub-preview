@@ -66,12 +66,8 @@ async function fileToDataUrl(file: File | Blob): Promise<string> {
 async function pdfPrimeiraPaginaParaImage(file: File): Promise<string> {
   const buffer = await file.arrayBuffer();
   const pdfjsLib: any = await import("pdfjs-dist");
-  try {
-    const workerModule = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
-    pdfjsLib.GlobalWorkerOptions.workerSrc = (workerModule as any).default;
-  } catch {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
-  }
+  const workerModule: any = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
   const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
   const page = await pdf.getPage(1);
   const viewport = page.getViewport({ scale: 2 });

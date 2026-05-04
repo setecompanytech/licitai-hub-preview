@@ -473,10 +473,8 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
       try {
         const fileBuffer = await file.arrayBuffer();
         const pdfjsLib: any = await import('pdfjs-dist');
-        // Use worker from public if available, fallback to inline
-        try {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
-        } catch {}
+        const workerModule: any = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
         const pdf = await pdfjsLib.getDocument({ data: fileBuffer }).promise;
         let texto = '';
         for (let i = 1; i <= Math.min(pdf.numPages, 50); i++) {
