@@ -144,6 +144,19 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { isAdmin } = useUserRole();
+  const { canAccessRoute } = useMembroPermissoes();
+
+  // Versão filtrada dos grupos: remove itens cuja rota o membro não pode acessar.
+  const filteredNavGroups: NavGroup[] = navGroups
+    .map((g) => ({ ...g, items: g.items.filter((it) => canAccessRoute(it.path)) }))
+    .filter((g) => g.items.length > 0);
+
+  const filteredTopNavLinks = topNavLinks
+    .map((link) => ({
+      ...link,
+      groups: link.groups.filter((title) => filteredNavGroups.some((g) => g.title === title)),
+    }))
+    .filter((link) => link.groups.length > 0);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
