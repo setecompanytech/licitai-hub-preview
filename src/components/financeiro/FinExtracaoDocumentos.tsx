@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useImportacaoNotas } from "@/hooks/useImportacaoNotas";
 import { useUpsertLancamento, type Lancamento } from "@/hooks/useFinanceiro";
 import LancamentoDialog from "./LancamentoDialog";
+import VinculoContratoSelector, { type VinculoContratoValue } from "./VinculoContratoSelector";
 
 type Tipo = "a_pagar" | "a_receber";
 
@@ -29,7 +30,18 @@ interface DocItem {
   dados?: any;
   // Lançamento já criado a partir deste doc
   lancamentoId?: string | null;
+  // Vínculo com Gestão (Contrato/ATA/Item/Aditivo)
+  vinculo?: VinculoContratoValue;
+  vincularExpandido?: boolean;
 }
+
+const VINCULO_VAZIO: VinculoContratoValue = {
+  contrato_id: null,
+  contrato_item_id: null,
+  origem_aditivo_id: null,
+  quantidade: 0,
+  valor_unitario: 0,
+};
 
 const fmt = (v: number | null | undefined) =>
   v == null ? "—" : Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
