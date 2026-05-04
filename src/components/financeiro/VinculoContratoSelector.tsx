@@ -108,7 +108,7 @@ export default function VinculoContratoSelector({
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-    let q = supabase
+    const q = supabase
       .from("contratos")
       .select(
         "id, numero_contrato, objeto, orgao_contratante, tipo_documento, saldo_remanescente, valor_global, status, empresa_id",
