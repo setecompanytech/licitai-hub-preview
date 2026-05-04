@@ -13,6 +13,8 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
 };
 
+const ENTERPRISE_PRODUCT_ID = "prod_UFFzoFGvapTwRU";
+
 const extractSubscriptionInfo = (subscriptions: Stripe.ApiList<Stripe.Subscription>) => {
   const hasActiveSub = subscriptions.data.length > 0;
   let productId = null;
@@ -94,6 +96,25 @@ serve(async (req) => {
 
     logStep("User authenticated", { userId: user.id, email: userEmail });
 
+    const adminClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+
+    const [{ data: systemRoles }, { data: adminMembership }] = await Promise.all([
+      adminClient.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").limit(1),
+      adminClient.from("empresa_membros").select("empresa_id").eq("user_id", user.id).eq("papel", "admin").limit(1),
+    ]);
+
+    if ((systemRoles?.length ?? 0) > 0 || (adminMembership?.length ?? 0) > 0) {
+      logStep("Admin bypass granted", { userId: user.id, systemAdmin: (systemRoles?.length ?? 0) > 0, empresaAdmin: (adminMembership?.length ?? 0) > 0 });
+      return new Response(
+        JSON.stringify({ subscribed: true, product_id: ENTERPRISE_PRODUCT_ID, subscription_end: null, inherited_from: "admin_bypass" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     // Convidados (membros) normalmente NÃO têm assinatura própria — herdam o
@@ -111,12 +132,6 @@ serve(async (req) => {
     }
 
     {
-      const adminClient = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-        { auth: { persistSession: false } }
-      );
-
       const { data: membership } = await adminClient
         .from("empresa_membros")
         .select("empresa_id")
