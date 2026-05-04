@@ -368,12 +368,20 @@ export default function FinCalendarioFinanceiro() {
                                 +{items.length - 3} mais…
                               </button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-80 p-2" align="start">
-                              <p className="text-xs font-semibold mb-2">
+                            <PopoverContent
+                              className="w-80 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden p-2"
+                              align="start"
+                              sideOffset={6}
+                              collisionPadding={12}
+                            >
+                              <p className="text-xs font-semibold mb-2 shrink-0">
                                 {format(d, "EEEE, d 'de' MMMM", { locale: ptBR })}
                               </p>
-                              <ScrollArea className="max-h-72">
-                                <div className="space-y-1">
+                              <ScrollArea
+                                className="h-[min(60vh,420px)] pr-3"
+                                onWheel={(e) => e.stopPropagation()}
+                              >
+                                <div className="space-y-1 pb-1">
                                   {items.map((l) => (
                                     <button
                                       key={l.id}

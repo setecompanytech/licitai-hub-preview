@@ -472,7 +472,7 @@ export default function CalendarioLicitacoes() {
                   Nenhum evento nesta data
                 </div>
               ) : (
-                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                <div className="space-y-2 h-[min(52vh,520px)] overflow-y-auto overscroll-contain pr-2">
                   {selectedEvents.licitacoes.map((l) => (
                     <div
                       key={l.id}
@@ -569,7 +569,7 @@ export default function CalendarioLicitacoes() {
                   Nenhuma licitação nos próximos 30 dias
                 </div>
               ) : (
-                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                <div className="space-y-2 h-[min(52vh,520px)] overflow-y-auto overscroll-contain pr-2">
                   {upcoming.map((l) => {
                     const d = new Date(l.data_abertura!);
                     const diffDias = Math.ceil((d.getTime() - hoje.getTime()) / 86400000);
@@ -625,7 +625,7 @@ export default function CalendarioLicitacoes() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                <div className="space-y-2 h-[min(52vh,520px)] overflow-y-auto overscroll-contain pr-2">
                   {docsValidade
                     .sort((a, b) => {
                       const order = { vencido: 0, vencendo: 1, ok: 2 };
