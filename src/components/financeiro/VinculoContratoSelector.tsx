@@ -97,24 +97,35 @@ export default function VinculoContratoSelector({
   const [loading, setLoading] = useState(false);
   const [loadingItens, setLoadingItens] = useState(false);
 
-  // Carrega contratos da empresa
+  // Carrega contratos do usuário (e da empresa ativa, quando vinculados).
+  // Importante: muitos contratos legados foram criados sem empresa_id (NULL),
+  // então NÃO filtramos por empresa_id aqui — confiamos no user_id + RLS.
   useEffect(() => {
-    if (!user || !empresaAtiva) return;
+    if (!user) return;
     setLoading(true);
-    supabase
+    let q = supabase
       .from("contratos")
       .select(
-        "id, numero_contrato, objeto, orgao_contratante, tipo_documento, saldo_remanescente, valor_global, status"
+        "id, numero_contrato, objeto, orgao_contratante, tipo_documento, saldo_remanescente, valor_global, status, empresa_id",
       )
       .eq("user_id", user.id)
-      .eq("empresa_id", empresaAtiva.id)
-      .in("status", ["vigente", "ativo"])
-      .order("data_assinatura", { ascending: false })
-      .limit(200)
-      .then(({ data }) => {
-        setContratos((data ?? []) as ContratoOpcao[]);
-        setLoading(false);
-      });
+      .in("status", ["vigente", "ativo", "em_execucao", "ativa"])
+      .order("data_assinatura", { ascending: false, nullsFirst: false })
+      .limit(300);
+    q.then(({ data, error }) => {
+      if (error) {
+        console.error("[VinculoContratoSelector] erro ao carregar contratos:", error);
+        setContratos([]);
+      } else {
+        // Quando há empresa ativa, prioriza contratos dela ou sem empresa (legados)
+        const all = (data ?? []) as (ContratoOpcao & { empresa_id: string | null })[];
+        const filtrados = empresaAtiva
+          ? all.filter((c) => !c.empresa_id || c.empresa_id === empresaAtiva.id)
+          : all;
+        setContratos(filtrados);
+      }
+      setLoading(false);
+    });
   }, [user, empresaAtiva]);
 
   // Carrega itens + aditivos quando contrato selecionado
