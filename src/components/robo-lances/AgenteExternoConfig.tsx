@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -36,13 +37,14 @@ const MANAGED_AGENT_KEY = 'praefectus_agente_2026_secreto';
 export default function AgenteExternoConfig() {
   const { user, subscription } = useAuth();
   const { empresaAtiva } = useEmpresa();
+  const { isAdmin } = useMembroPermissoes();
   const [agentes, setAgentes] = useState<AgenteConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [provisioning, setProvisioning] = useState(false);
   const [certLinkLoading, setCertLinkLoading] = useState(false);
   const [certUploadUrl, setCertUploadUrl] = useState<string | null>(null);
 
-  const planSlug = subscription.planSlug;
+  const planSlug = isAdmin ? 'enterprise' : subscription.planSlug;
   const planConfig = planSlug ? PLAN_SESSION_LIMITS[planSlug] : null;
 
   useEffect(() => {
