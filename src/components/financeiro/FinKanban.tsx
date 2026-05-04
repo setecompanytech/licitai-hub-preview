@@ -66,10 +66,12 @@ export default function FinKanban({ tipo }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [extracaoOpen, setExtracaoOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Lancamento> | null>(null);
+  const [confirmDel, setConfirmDel] = useState<LancamentoCard | null>(null);
 
   const { data = [], isLoading } = useLancamentos({ tipo });
   const { data: membros = [] } = useMembrosEmpresa();
   const upsert = useUpsertLancamento();
+  const del = useDeleteLancamento();
 
   const lancamentos = data as LancamentoCard[];
 
