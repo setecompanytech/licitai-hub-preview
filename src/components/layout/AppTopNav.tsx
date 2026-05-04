@@ -3,6 +3,7 @@ import PraefectusLogo from '@/components/shared/PraefectusLogo';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import {
   LayoutDashboard, Search, Kanban, Users, Bot, BarChart3, Settings,
   ChevronDown, Zap, Crosshair, Shield, Scale, DollarSign, Calculator,
@@ -143,6 +144,19 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { isAdmin } = useUserRole();
+  const { canAccessRoute } = useMembroPermissoes();
+
+  // Versão filtrada dos grupos: remove itens cuja rota o membro não pode acessar.
+  const filteredNavGroups: NavGroup[] = navGroups
+    .map((g) => ({ ...g, items: g.items.filter((it) => canAccessRoute(it.path)) }))
+    .filter((g) => g.items.length > 0);
+
+  const filteredTopNavLinks = topNavLinks
+    .map((link) => ({
+      ...link,
+      groups: link.groups.filter((title) => filteredNavGroups.some((g) => g.title === title)),
+    }))
+    .filter((link) => link.groups.length > 0);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -162,7 +176,7 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
   };
 
   const getGroupsForLink = (link: typeof topNavLinks[0]) => {
-    return navGroups.filter(g => link.groups.includes(g.title));
+    return filteredNavGroups.filter(g => link.groups.includes(g.title));
   };
 
   const isLinkActive = (link: typeof topNavLinks[0]) => {
@@ -174,7 +188,7 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
     <>
       {/* Desktop horizontal nav */}
       <nav className="hidden lg:flex items-center gap-0.5" ref={dropdownRef}>
-        {topNavLinks.map((link) => {
+        {filteredTopNavLinks.map((link) => {
           const active = isLinkActive(link);
           const isOpen = openDropdown === link.label;
           const groups = getGroupsForLink(link);
@@ -294,7 +308,7 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
           </div>
 
           <nav className="flex-1 py-3 px-3 overflow-y-auto max-h-[calc(100vh-120px)]">
-            {navGroups.map((group) => {
+            {filteredNavGroups.map((group) => {
               const isOpen = mobileOpenGroups[group.title] !== false;
               return (
                 <div key={group.title} className="mb-1">

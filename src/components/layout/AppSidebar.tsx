@@ -3,6 +3,7 @@ import PraefectusLogo from '@/components/shared/PraefectusLogo';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { hasAccessToRoute } from '@/data/plan-features';
 import {
   LayoutDashboard,
@@ -160,6 +161,17 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
   const navigate = useNavigate();
   const { signOut, subscription } = useAuth();
   const { isAdmin } = useUserRole();
+  const { canAccessRoute, loading: permLoading } = useMembroPermissoes();
+
+  // Filtra itens de cada grupo pelo setor/permissões do membro.
+  // Admin global vê tudo (canAccessRoute retorna true para qualquer rota).
+  const visibleNavGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => canAccessRoute(item.path)),
+    }))
+    .filter((group) => group.items.length > 0);
+
 
   const handleNav = (path: string) => {
     navigate(path);
@@ -233,7 +245,7 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
 
       {/* Nav */}
       <nav className="flex-1 py-2 px-2 overflow-y-auto space-y-1">
-        {navGroups.map((group) => {
+        {visibleNavGroups.map((group) => {
           const isOpen = openGroups[group.title] ?? true;
 
           return (

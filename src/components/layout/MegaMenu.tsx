@@ -8,6 +8,7 @@ import {
   ListChecks, FileText, Calculator, Workflow, Plug, FileBarChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 
 interface MegaMenuItem {
   icon: React.ElementType;
@@ -83,6 +84,11 @@ export default function MegaMenu() {
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { canAccessRoute } = useMembroPermissoes();
+
+  const visibleGroups = megaGroups
+    .map((g) => ({ ...g, items: g.items.filter((it) => canAccessRoute(it.path)) }))
+    .filter((g) => g.items.length > 0);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -121,7 +127,7 @@ export default function MegaMenu() {
       {open && (
         <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[calc(100vw-2rem)] max-w-[900px] bg-popover border border-border rounded-xl shadow-lg z-50 animate-in fade-in-0 slide-in-from-top-2 duration-200">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-0 p-4">
-            {megaGroups.map((group) => (
+            {visibleGroups.map((group) => (
               <div key={group.title} className="space-y-1 px-2">
                 <h4 className="text-[10px] font-bold uppercase tracking-wider text-accent mb-2">
                   {group.title}
