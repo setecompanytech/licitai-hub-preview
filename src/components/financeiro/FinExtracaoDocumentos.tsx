@@ -374,8 +374,8 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[calc(100vh-2rem)] grid-rows-[auto,minmax(0,1fr)] overflow-hidden p-0">
+          <DialogHeader className="px-6 pt-6 pb-0">
             <DialogTitle className="flex items-center gap-2">
               <ScanLine className="w-5 h-5" />
               Extração automática de documentos — {tipo === "a_receber" ? "Contas a Receber" : "Contas a Pagar"}
@@ -386,7 +386,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3">
+          <div className="space-y-3 overflow-y-auto overscroll-contain px-6 pb-6 pr-4 min-h-0">
             {/* Drop zone */}
             <div
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -455,7 +455,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                     </div>
                   </div>
 
-                  <ScrollArea className="max-h-[360px]">
+                  <ScrollArea className="h-[min(52vh,520px)] pr-3">
                     <div className="space-y-2">
                       {docs.map((d) => (
                         <div key={d.id} className="border rounded-md p-2.5 flex items-start gap-3">
