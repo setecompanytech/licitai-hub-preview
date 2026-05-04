@@ -29,6 +29,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
   const podeVerCustos = isFinanceiro || isAdmin;
 
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
       setLoading(true);
       const [contratoRes, itensRes, pedidosRes, custosRes, aditivosRes] = await Promise.all([
@@ -38,6 +39,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         supabase.from('contrato_custos').select('*').eq('contrato_id', contratoId),
         supabase.from('contrato_aditivos').select('*').eq('contrato_id', contratoId),
       ]);
+      if (cancelled) return;
       setData({
         contrato: contratoRes.data,
         itens: (itensRes.data as any[]) || [],
@@ -48,6 +50,27 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       setLoading(false);
     };
     load();
+
+    // Realtime: sincroniza Valor Global / % consumido quando pedidos forem
+    // criados ou removidos (inclusive via cascata do Financeiro).
+    const channel = supabase
+      .channel(`contrato-dashboard-${contratoId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'contrato_pedidos', filter: `contrato_id=eq.${contratoId}` },
+        () => load(),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'contrato_itens', filter: `contrato_id=eq.${contratoId}` },
+        () => load(),
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
   }, [contratoId]);
 
   const calc = useMemo(() => {
