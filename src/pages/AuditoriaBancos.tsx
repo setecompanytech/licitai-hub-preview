@@ -19,19 +19,22 @@ import { Button } from "@/components/ui/button";
  * Disponível em /auditoria-bancos
  */
 
-// SVGs oficiais reais (não monograma) já disponíveis no diretório
-const LOGO_MODULES = import.meta.glob("@/assets/banks/*.svg", {
+// Logos oficiais reais (SVG/PNG/JPG/WebP) já disponíveis no diretório
+const LOGO_MODULES = import.meta.glob("@/assets/banks/*.{svg,png,jpg,jpeg,webp}", {
   eager: true,
   query: "?url",
   import: "default",
 }) as Record<string, string>;
 
 const CODIGOS_COM_SVG = new Set(
-  Object.keys(LOGO_MODULES).map((p) => p.split("/").pop()!.replace(".svg", "")),
+  Object.keys(LOGO_MODULES).map((p) =>
+    p.split("/").pop()!.replace(/\.(svg|png|jpe?g|webp)$/i, ""),
+  ),
 );
 
-// Quais SVGs são logos oficiais reais (não placeholder gerado)
-const LOGOS_OFICIAIS_REAIS = new Set(["001", "033", "104", "341"]);
+// Quais arquivos são logos oficiais reais (não placeholder gerado).
+// Incluímos aqui os códigos que já receberam o logotipo oficial em raster (PNG) ou SVG real.
+const LOGOS_OFICIAIS_REAIS = new Set(["001", "033", "037", "104", "341"]);
 
 interface Auditoria {
   codigo: string;
