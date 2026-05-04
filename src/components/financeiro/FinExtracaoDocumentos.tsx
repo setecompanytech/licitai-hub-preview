@@ -246,48 +246,105 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
       if (temVinculo) {
         // Caminho com vínculo: cria pedido + lançamento via RPC (recalcula saldo do contrato/ATA)
         const valorTotal = Number(d.valor_total);
-        const { data: rpcData, error: rpcErr } = await supabase.rpc(
-          "vincular_lancamento_a_pedido" as any,
-          {
-            p_contrato_id: v!.contrato_id,
-            p_contrato_item_id: v!.contrato_item_id,
-            p_origem_aditivo_id: v!.origem_aditivo_id,
-            p_numero_pedido:
-              d.numero_documento ||
-              `DOC-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`,
-            p_descricao:
-              d.descricao ||
-              `${(d.tipo_documento ?? "Documento").toString().toUpperCase()} ${d.numero_documento ?? ""}`.trim() ||
-              item.file.name,
-            p_quantidade: v!.quantidade || 1,
-            p_valor_unitario: v!.valor_unitario || valorTotal,
-            p_valor_total: valorTotal,
-            p_data_pedido: d.data_emissao ?? new Date().toISOString().slice(0, 10),
-            p_tipo: tipo,
-            p_natureza: tipo === "a_receber" ? "receita" : "despesa",
-            p_status: "previsto",
-            p_data_competencia: d.data_emissao ?? new Date().toISOString().slice(0, 10),
-            p_data_vencimento: d.data_vencimento ?? null,
-            p_data_emissao: d.data_emissao ?? null,
-            p_tipo_documento: (d.tipo_documento as any) ?? "outro",
-            p_numero_documento: d.numero_documento ?? null,
-            p_chave_acesso_nfe: d.chave_nfe ? String(d.chave_nfe).replace(/\D/g, "") : null,
-            p_pessoa_id: null,
-            p_observacoes: [
-              d.emitente_nome ? `Emitente: ${d.emitente_nome}` : null,
-              d.destinatario_nome ? `Destinatário: ${d.destinatario_nome}` : null,
-              item.motor ? `Extraído via ${item.motor}` : null,
-              "Pedido criado automaticamente a partir de documento financeiro.",
-            ].filter(Boolean).join("\n"),
-          },
-        );
-        if (rpcErr) {
-          toast.error(`Erro ao vincular: ${rpcErr.message}`);
-          return;
+
+        // Lista de itens marcados (1 ou mais — cota principal + reservada)
+        const itemIds =
+          v!.contrato_item_ids && v!.contrato_item_ids.length > 0
+            ? v!.contrato_item_ids
+            : v!.contrato_item_id
+              ? [v!.contrato_item_id]
+              : [null];
+
+        // Rateio proporcional ao saldo financeiro de cada item.
+        // Quando não houver saldo conhecido, divide-se igualmente.
+        let pesos: number[] = [];
+        if (itemIds.length > 1 && itemIds.every(Boolean)) {
+          const { data: itensData } = await supabase
+            .from("contrato_itens")
+            .select("id, saldo_financeiro")
+            .in("id", itemIds as string[]);
+          const map = new Map(
+            (itensData ?? []).map((r: any) => [r.id, Number(r.saldo_financeiro) || 0]),
+          );
+          pesos = itemIds.map((id) => Math.max(map.get(id as string) ?? 0, 0));
+          const soma = pesos.reduce((a, b) => a + b, 0);
+          if (soma <= 0) pesos = itemIds.map(() => 1);
+        } else {
+          pesos = itemIds.map(() => 1);
         }
-        const lancId = (rpcData as any)?.lancamento_id ?? "ok";
-        setDocs((prev) => prev.map((x) => (x.id === item.id ? { ...x, lancamentoId: lancId } : x)));
-        toast.success("Lançamento criado e pedido vinculado ao contrato.");
+        const somaPesos = pesos.reduce((a, b) => a + b, 0);
+
+        let lancId: string | null = null;
+        let restante = valorTotal;
+        for (let idx = 0; idx < itemIds.length; idx++) {
+          const isUltimo = idx === itemIds.length - 1;
+          const fatia = isUltimo
+            ? restante
+            : Math.round(((valorTotal * pesos[idx]) / somaPesos) * 100) / 100;
+          restante = Math.round((restante - fatia) * 100) / 100;
+
+          const vu = v!.valor_unitario || valorTotal;
+          const qtd = vu > 0 ? Number((fatia / vu).toFixed(4)) : v!.quantidade || 1;
+
+          const { data: rpcData, error: rpcErr } = await supabase.rpc(
+            "vincular_lancamento_a_pedido" as any,
+            {
+              p_contrato_id: v!.contrato_id,
+              p_contrato_item_id: itemIds[idx],
+              p_origem_aditivo_id: v!.origem_aditivo_id,
+              p_numero_pedido:
+                (d.numero_documento ||
+                  `DOC-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`) +
+                (itemIds.length > 1 ? `-${idx + 1}` : ""),
+              p_descricao:
+                (d.descricao ||
+                  `${(d.tipo_documento ?? "Documento").toString().toUpperCase()} ${d.numero_documento ?? ""}`.trim() ||
+                  item.file.name) +
+                (itemIds.length > 1 ? ` (parte ${idx + 1}/${itemIds.length})` : ""),
+              p_quantidade: qtd || 1,
+              p_valor_unitario: vu,
+              p_valor_total: fatia,
+              p_data_pedido: d.data_emissao ?? new Date().toISOString().slice(0, 10),
+              p_tipo: tipo,
+              p_natureza: tipo === "a_receber" ? "receita" : "despesa",
+              p_status: "previsto",
+              p_data_competencia: d.data_emissao ?? new Date().toISOString().slice(0, 10),
+              p_data_vencimento: d.data_vencimento ?? null,
+              p_data_emissao: d.data_emissao ?? null,
+              p_tipo_documento: (d.tipo_documento as any) ?? "outro",
+              p_numero_documento: d.numero_documento ?? null,
+              p_chave_acesso_nfe: d.chave_nfe ? String(d.chave_nfe).replace(/\D/g, "") : null,
+              p_pessoa_id: null,
+              p_observacoes: [
+                d.emitente_nome ? `Emitente: ${d.emitente_nome}` : null,
+                d.destinatario_nome ? `Destinatário: ${d.destinatario_nome}` : null,
+                item.motor ? `Extraído via ${item.motor}` : null,
+                itemIds.length > 1
+                  ? `Vinculado a ${itemIds.length} itens do contrato (cota principal + reservada — Lei 14.133/21).`
+                  : null,
+                "Pedido criado automaticamente a partir de documento financeiro.",
+              ]
+                .filter(Boolean)
+                .join("\n"),
+            },
+          );
+          if (rpcErr) {
+            toast.error(
+              `Erro ao vincular${itemIds.length > 1 ? ` item ${idx + 1}/${itemIds.length}` : ""}: ${rpcErr.message}`,
+            );
+            return;
+          }
+          if (!lancId) lancId = (rpcData as any)?.lancamento_id ?? "ok";
+        }
+
+        setDocs((prev) =>
+          prev.map((x) => (x.id === item.id ? { ...x, lancamentoId: lancId ?? "ok" } : x)),
+        );
+        toast.success(
+          itemIds.length > 1
+            ? `Documento rateado entre ${itemIds.length} itens e vinculado ao contrato.`
+            : "Lançamento criado e pedido vinculado ao contrato.",
+        );
         return;
       }
 
