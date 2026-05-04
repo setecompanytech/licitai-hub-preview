@@ -104,7 +104,7 @@ export default function FinKanban({ tipo }: Props) {
         (l.pessoa?.nome ?? "").toLowerCase().includes(termo)
       );
     });
-  }, [lancamentos, busca, filtroVendedor]);
+  }, [lancamentos, busca, filtroVendedor, pendingDeleteIds]);
 
   const total = lancamentosFiltrados.reduce(
     (s, l) => (classificar(l) !== "pago" ? s + Number(l.valor) : s),
