@@ -48,7 +48,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatBRL, formatDate } from "@/lib/financeiro/formatters";
+import { formatBRL, formatDate, statusLabel } from "@/lib/financeiro/formatters";
 import { parseCsvExtrato, csvParaOfx } from "@/lib/financeiro/csvToOfx";
 import { toast } from "sonner";
 import FinRelatorioConciliacao from "./FinRelatorioConciliacao";
