@@ -84,6 +84,11 @@ export default function MegaMenu() {
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { canAccessRoute } = useMembroPermissoes();
+
+  const visibleGroups = megaGroups
+    .map((g) => ({ ...g, items: g.items.filter((it) => canAccessRoute(it.path)) }))
+    .filter((g) => g.items.length > 0);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
