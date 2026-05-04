@@ -453,13 +453,54 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                 Lançado automaticamente como {d.dados._direcao === "saida" ? "receita" : "despesa"}.
                               </p>
                             )}
+
+                            {/* Bloco de vínculo com Gestão (Contrato/ATA) */}
+                            {d.status === "ok" && !d.lancamentoId && (
+                              <div className="mt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleVincular(d.id)}
+                                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                                >
+                                  <Link2 className="w-3 h-3" />
+                                  {d.vinculo?.contrato_id
+                                    ? "Vinculado a contrato"
+                                    : "Vincular a contrato/ATA SRP"}
+                                  {d.vincularExpandido ? (
+                                    <ChevronUp className="w-3 h-3" />
+                                  ) : (
+                                    <ChevronDown className="w-3 h-3" />
+                                  )}
+                                </button>
+                                {d.vincularExpandido && (
+                                  <div className="mt-2">
+                                    <VinculoContratoSelector
+                                      tipo={tipo}
+                                      hintNome={
+                                        tipo === "a_receber"
+                                          ? d.dados?.destinatario_nome
+                                          : d.dados?.emitente_nome
+                                      }
+                                      hintCnpj={
+                                        tipo === "a_receber"
+                                          ? d.dados?.destinatario_cnpj_cpf
+                                          : d.dados?.emitente_cnpj
+                                      }
+                                      valorTotal={d.dados?.valor_total ?? null}
+                                      value={d.vinculo ?? VINCULO_VAZIO}
+                                      onChange={(v) => setVinculo(d.id, v)}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
 
                           <div className="flex flex-col gap-1 shrink-0">
                             {d.status === "ok" && !d.dados?._ja_lancada && !d.lancamentoId && (
                               <>
                                 <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => lancarRapido(d)} disabled={upsert.isPending}>
-                                  Lançar
+                                  {d.vinculo?.contrato_id ? "Lançar e vincular" : "Lançar"}
                                 </Button>
                                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => abrirEditorComDados(d)}>
                                   <Pencil className="w-3 h-3 mr-1" />Revisar
