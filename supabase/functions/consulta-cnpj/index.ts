@@ -72,7 +72,7 @@ serve(async (req) => {
   try {
     // Auth + rate limit: 20 requests per 5 minutes
     try {
-      await requireAuth(req, { functionName: "consulta-cnpj", maxRequests: 20, windowMinutes: 5 });
+      await requireAuth(req, { functionName: "consulta-cnpj", maxRequests: 60, windowMinutes: 5 });
     } catch (authResp) {
       if (authResp instanceof Response) return authResp;
       throw authResp;
