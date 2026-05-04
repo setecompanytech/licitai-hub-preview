@@ -93,6 +93,7 @@ export default function FinKanban({ tipo }: Props) {
   const lancamentosFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     return lancamentos.filter((l) => {
+      if (pendingDeleteIds.has(l.id)) return false;
       if (filtroVendedor !== "todos" && (l as any).vendedor_responsavel_id !== filtroVendedor) {
         return false;
       }
