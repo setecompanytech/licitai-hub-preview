@@ -255,7 +255,7 @@ export default function FinPessoas() {
     <div className="space-y-3">
       <div className="flex justify-end">
         <Button onClick={() => openDialog(null)}>
-          <Plus className="w-4 h-4 mr-1" /> Nova pessoa
+          <Plus className="w-4 h-4 mr-1" /> Novo Cliente/Fornecedor
         </Button>
       </div>
 
@@ -314,7 +314,7 @@ export default function FinPessoas() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing?.id ? "Editar pessoa" : "Nova pessoa"}</DialogTitle>
+            <DialogTitle>{editing?.id ? "Editar Cliente/Fornecedor" : "Novo Cliente/Fornecedor"}</DialogTitle>
           </DialogHeader>
 
           <Tabs defaultValue="identificacao" className="mt-2">
