@@ -24,6 +24,7 @@ import { ptBR } from "date-fns/locale";
 import {
   useLancamentos,
   useUpsertLancamento,
+  useDeleteLancamento,
   useMembrosEmpresa,
   type Lancamento,
 } from "@/hooks/useFinanceiro";
