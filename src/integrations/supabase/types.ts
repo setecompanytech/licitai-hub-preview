@@ -14934,6 +14934,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      cleanup_contrato_pedido_dependencias: {
+        Args: { _pedido_id: string }
+        Returns: undefined
+      }
       cleanup_rate_limit_log: { Args: never; Returns: undefined }
       delete_email: {
         Args: { message_id: number; queue_name: string }
