@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +40,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import FinExtracaoDocumentos from "./FinExtracaoDocumentos";
+import { toast } from "sonner";
 
 type ColunaKanban = "aberto" | "vence_7d" | "vencido" | "pago";
 
@@ -67,6 +68,8 @@ export default function FinKanban({ tipo }: Props) {
   const [extracaoOpen, setExtracaoOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Lancamento> | null>(null);
   const [confirmDel, setConfirmDel] = useState<LancamentoCard | null>(null);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(() => new Set());
+  const pendingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const { data = [], isLoading } = useLancamentos({ tipo });
   const { data: membros = [] } = useMembrosEmpresa();
@@ -90,6 +93,7 @@ export default function FinKanban({ tipo }: Props) {
   const lancamentosFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     return lancamentos.filter((l) => {
+      if (pendingDeleteIds.has(l.id)) return false;
       if (filtroVendedor !== "todos" && (l as any).vendedor_responsavel_id !== filtroVendedor) {
         return false;
       }
@@ -100,7 +104,7 @@ export default function FinKanban({ tipo }: Props) {
         (l.pessoa?.nome ?? "").toLowerCase().includes(termo)
       );
     });
-  }, [lancamentos, busca, filtroVendedor]);
+  }, [lancamentos, busca, filtroVendedor, pendingDeleteIds]);
 
   const total = lancamentosFiltrados.reduce(
     (s, l) => (classificar(l) !== "pago" ? s + Number(l.valor) : s),
@@ -113,6 +117,54 @@ export default function FinKanban({ tipo }: Props) {
       status: "realizado",
       data_realizado: new Date().toISOString().slice(0, 10),
     } as any);
+  };
+
+  const agendarExclusao = (l: LancamentoCard) => {
+    const id = l.id;
+    // Esconde imediatamente
+    setPendingDeleteIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+
+    let cancelado = false;
+    const timer = setTimeout(async () => {
+      pendingTimersRef.current.delete(id);
+      if (cancelado) return;
+      try {
+        await del.mutateAsync(id);
+      } catch (e) {
+        // Em caso de falha, restaura na lista
+        setPendingDeleteIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        toast.error("Não foi possível excluir o lançamento.");
+      }
+    }, 6000);
+    pendingTimersRef.current.set(id, timer);
+
+    toast(`Lançamento "${l.descricao}" excluído`, {
+      description: "Você pode desfazer nos próximos 6 segundos.",
+      duration: 6000,
+      action: {
+        label: "Desfazer",
+        onClick: () => {
+          cancelado = true;
+          const t = pendingTimersRef.current.get(id);
+          if (t) clearTimeout(t);
+          pendingTimersRef.current.delete(id);
+          setPendingDeleteIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+          toast.success("Exclusão desfeita.");
+        },
+      },
+    });
   };
 
   const abrirNovo = () => {
@@ -341,8 +393,8 @@ export default function FinKanban({ tipo }: Props) {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={async () => {
-                if (confirmDel) await del.mutateAsync(confirmDel.id);
+              onClick={() => {
+                if (confirmDel) agendarExclusao(confirmDel);
                 setConfirmDel(null);
               }}
             >
