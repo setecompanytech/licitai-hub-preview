@@ -14,6 +14,7 @@ import {
   Plus,
   Search,
   Pencil,
+  Trash2,
   User2,
   Layers,
   ScanLine,
