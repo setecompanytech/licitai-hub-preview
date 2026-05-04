@@ -1,7 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { useUserRole } from '@/hooks/useUserRole';
-import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
-import { hasAccessToRoute, getRequiredPlan, planDisplayNames } from '@/data/plan-features';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { getRequiredPlan, planDisplayNames } from '@/data/plan-features';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,15 +9,17 @@ interface PlanGuardProps {
   children: React.ReactNode;
 }
 
+/**
+ * Guard de plano. Toda a lógica de bypass (admin global / admin empresa)
+ * vive em `useAuthorization`. Aqui só renderizamos UI.
+ */
 export default function PlanGuard({ children }: PlanGuardProps) {
   const { subscription } = useAuth();
-  const { isAdmin, loading: roleLoading } = useUserRole();
-  const { isEmpresaAdmin, loading: memberLoading } = useMembroPermissoes();
+  const { loading, isAdmin, canAccessByPlan } = useAuthorization();
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Aguarda apenas a identificação administrativa antes de consultar bloqueios de plano.
-  if (roleLoading || memberLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-accent" />
@@ -26,8 +27,8 @@ export default function PlanGuard({ children }: PlanGuardProps) {
     );
   }
 
-  // Admin global e ADMIN da empresa bypassam restrições de plano.
-  if (isAdmin || isEmpresaAdmin) return <>{children}</>;
+  // Bypass total para qualquer admin.
+  if (isAdmin) return <>{children}</>;
 
   if (subscription.loading) {
     return (
@@ -37,9 +38,7 @@ export default function PlanGuard({ children }: PlanGuardProps) {
     );
   }
 
-  const hasAccess = hasAccessToRoute(subscription.planSlug, location.pathname);
-
-  if (hasAccess) return <>{children}</>;
+  if (canAccessByPlan(location.pathname)) return <>{children}</>;
 
   const requiredPlan = getRequiredPlan(location.pathname);
   const requiredPlanName = requiredPlan ? planDisplayNames[requiredPlan] : '';

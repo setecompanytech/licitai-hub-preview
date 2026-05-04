@@ -1,4 +1,4 @@
-import { useUserRole } from '@/hooks/useUserRole';
+import { useAuthorization } from '@/hooks/useAuthorization';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,8 +7,12 @@ interface AdminGuardProps {
   children: React.ReactNode;
 }
 
+/**
+ * Restringe rotas /admin/** ao ADMIN GLOBAL do sistema.
+ * Admins de empresa NÃO entram aqui (continuam restritos a operações da empresa).
+ */
 export default function AdminGuard({ children }: AdminGuardProps) {
-  const { isAdmin, loading } = useUserRole();
+  const { isSystemAdmin, loading } = useAuthorization();
   const navigate = useNavigate();
 
   if (loading) {
@@ -19,7 +23,7 @@ export default function AdminGuard({ children }: AdminGuardProps) {
     );
   }
 
-  if (!isAdmin) {
+  if (!isSystemAdmin) {
     return (
       <div className="flex items-center justify-center min-h-[60vh] p-6">
         <div className="max-w-md w-full text-center space-y-6">
