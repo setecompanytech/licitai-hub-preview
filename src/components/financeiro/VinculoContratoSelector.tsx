@@ -27,7 +27,8 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Card, CardContent } from "@/components/ui/card";
-import { Link2, FileText, Loader2, Check, ChevronsUpDown, X, AlertTriangle, AlertCircle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Link2, FileText, Loader2, Check, ChevronsUpDown, X, AlertTriangle, AlertCircle, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const fmt = (v: number | null | undefined) =>
