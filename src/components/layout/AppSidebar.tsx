@@ -2,9 +2,7 @@ import { useState } from 'react';
 import PraefectusLogo from '@/components/shared/PraefectusLogo';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUserRole } from '@/hooks/useUserRole';
-import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
-import { hasAccessToRoute } from '@/data/plan-features';
+import { useAuthorization } from '@/hooks/useAuthorization';
 import {
   LayoutDashboard,
   Search,
