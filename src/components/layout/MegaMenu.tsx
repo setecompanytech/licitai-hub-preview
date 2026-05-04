@@ -8,6 +8,7 @@ import {
   ListChecks, FileText, Calculator, Workflow, Plug, FileBarChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 
 interface MegaMenuItem {
   icon: React.ElementType;
