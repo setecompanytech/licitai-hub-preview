@@ -134,7 +134,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ subscribed: hasActiveSub, product_id: productId, subscription_end: subscriptionEnd }),
+      JSON.stringify({ subscribed: hasActiveSub, product_id: productId, subscription_end: subscriptionEnd, inherited_from: inheritedFrom }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error) {
