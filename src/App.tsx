@@ -76,6 +76,7 @@ const AuditoriaAdmin = lazyPage(() => import("./pages/AuditoriaAdmin"));
 const MeusCompromissos = lazyPage(() => import("./pages/MeusCompromissos"));
 const WorkflowIA = lazyPage(() => import("./pages/WorkflowIA"));
 const EquipeColaboradores = lazyPage(() => import("./pages/EquipeColaboradores"));
+const EquipePermissoes = lazyPage(() => import("./pages/EquipePermissoes"));
 const AssistenteEspecializado = lazyPage(() => import("./pages/AssistenteEspecializado"));
 const Unsubscribe = lazyPage(() => import("./pages/Unsubscribe"));
 const CertificadoUpload = lazyPage(() => import("./pages/CertificadoUpload"));
@@ -204,6 +205,7 @@ const App = () => (
               <Route path="/financeiro" element={<ProtectedPages><Financeiro /></ProtectedPages>} />
               <Route path="/auditoria-bancos" element={<ProtectedPages><AuditoriaBancos /></ProtectedPages>} />
               <Route path="/equipe" element={<PlanPages><EquipeColaboradores /></PlanPages>} />
+              <Route path="/equipe/permissoes" element={<PlanPages><EquipePermissoes /></PlanPages>} />
               <Route path="/assistente-especializado" element={<PlanPages><AssistenteEspecializado /></PlanPages>} />
               <Route path="/termos-de-uso" element={<TermosDeUso />} />
               <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />
