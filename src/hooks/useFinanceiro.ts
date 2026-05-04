@@ -19,6 +19,15 @@ export type LancamentoFiltro = {
   dataInicio?: string;
   dataFim?: string;
   busca?: string;
+  /**
+   * Campo de data usado para o intervalo dataInicio/dataFim.
+   * - "competencia" (padrão): filtra por data_competencia (retrocompatível).
+   * - "vencimento": filtra por data_vencimento (usado pelo Calendário Financeiro).
+   * - "ambos": retorna lançamentos cujo vencimento OU competência caia no intervalo
+   *   (ideal para visões de calendário que exibem por vencimento mas devem incluir
+   *   NFs com competência em mês anterior e pagamento no mês exibido).
+   */
+  campoData?: "competencia" | "vencimento" | "ambos";
 };
 
 export function useEmpresaId() {
