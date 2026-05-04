@@ -313,23 +313,34 @@ export default function VinculoContratoSelector({
       ...value,
       contrato_id: id || null,
       contrato_item_id: null,
+      contrato_item_ids: [],
       origem_aditivo_id: null,
     });
   };
 
-  const setItem = (id: string) => {
-    const item = itens.find((i) => i.id === id);
+  const toggleItem = (id: string, checked: boolean) => {
+    const atuais = new Set(itemIds);
+    if (checked) atuais.add(id);
+    else atuais.delete(id);
+    const novos = Array.from(atuais);
+    const itensMarcados = itens.filter((i) => novos.includes(i.id));
+
+    // Quando há vários itens, somamos quantidades de saldo (sugestão inicial)
+    // e usamos o valor unitário do primeiro como referência editável.
+    const qtdSugerida =
+      itensMarcados.length > 0 && valorTotal && itensMarcados[0].valor_unitario
+        ? Number((Number(valorTotal) / Number(itensMarcados[0].valor_unitario)).toFixed(4))
+        : value.quantidade;
+
     onChange({
       ...value,
-      contrato_item_id: id || null,
-      origem_aditivo_id: item?.origem_aditivo_id ?? value.origem_aditivo_id ?? null,
-      valor_unitario: item?.valor_unitario ?? value.valor_unitario,
+      contrato_item_ids: novos,
+      contrato_item_id: novos[0] ?? null,
+      origem_aditivo_id:
+        itensMarcados[0]?.origem_aditivo_id ?? value.origem_aditivo_id ?? null,
+      valor_unitario: itensMarcados[0]?.valor_unitario ?? value.valor_unitario,
       quantidade:
-        value.quantidade && value.quantidade > 0
-          ? value.quantidade
-          : valorTotal && item?.valor_unitario
-            ? Number((valorTotal / item.valor_unitario).toFixed(4))
-            : value.quantidade,
+        value.quantidade && value.quantidade > 0 ? value.quantidade : qtdSugerida,
     });
   };
 
