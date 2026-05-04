@@ -375,15 +375,19 @@ export default function FinImportarOFX() {
           })
           .eq("id", c._sugestao!.lancamento_id);
       }
-      const novos = ativos
-        .filter((m) => !m._sugestao)
+      // Filtra linhas informativas do OFX (saldos, totais) que vêm com valor 0
+      // — o banco rejeita valor = 0 (CHECK valor > 0).
+      const candidatos = ativos.filter((m) => !m._sugestao);
+      const ignoradosZero = candidatos.filter((m) => Math.abs(m.valor) < 0.005);
+      const novos = candidatos
+        .filter((m) => Math.abs(m.valor) >= 0.005)
         .map((m) => ({
           empresa_id: empresaId!,
           tipo: "movimento_bancario" as const,
           natureza:
             m.valor > 0 ? ("receita" as const) : ("despesa" as const),
           status: "realizado" as const,
-          descricao: m.memo,
+          descricao: (m.memo || "Movimento bancário").slice(0, 500),
           valor: Math.abs(m.valor),
           data_competencia: m.data,
           data_realizado: m.data,
@@ -397,20 +401,32 @@ export default function FinImportarOFX() {
           observacoes: m._detalhes.observacoes || null,
         }));
       if (novos.length > 0) {
+        // Upsert para evitar erro se o mesmo FITID já foi importado antes
         const { error } = await supabase
           .from("financeiro_lancamentos")
-          .insert(novos);
+          .upsert(novos, {
+            onConflict: "empresa_id,origem,origem_ref",
+            ignoreDuplicates: true,
+          });
         if (error) throw error;
       }
-      toast.success(
-        `Importação concluída: ${conciliacoes.length} conciliação(ões), ${novos.length} novo(s) lançamento(s).`
-      );
+      const partes = [
+        `${conciliacoes.length} conciliação(ões)`,
+        `${novos.length} novo(s) lançamento(s)`,
+      ];
+      if (ignoradosZero.length > 0) {
+        partes.push(`${ignoradosZero.length} saldo(s) informativo(s) ignorado(s)`);
+      }
+      toast.success(`Importação concluída: ${partes.join(", ")}.`);
       setMovimentos([]);
       if (fileRef.current) fileRef.current.value = "";
       qc.invalidateQueries({ queryKey: ["fin-lancamentos"] });
       qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao importar OFX");
+    } catch (e: any) {
+      const msg =
+        e?.message || e?.error_description || e?.details || "Erro ao importar OFX";
+      console.error("[FinImportarOFX] erro:", e);
+      toast.error(msg);
     } finally {
       setImportando(false);
     }
