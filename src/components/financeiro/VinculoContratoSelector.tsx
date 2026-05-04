@@ -27,7 +27,8 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Card, CardContent } from "@/components/ui/card";
-import { Link2, FileText, Loader2, Check, ChevronsUpDown, X, AlertTriangle, AlertCircle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Link2, FileText, Loader2, Check, ChevronsUpDown, X, AlertTriangle, AlertCircle, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const fmt = (v: number | null | undefined) =>
@@ -35,7 +36,11 @@ const fmt = (v: number | null | undefined) =>
 
 export interface VinculoContratoValue {
   contrato_id: string | null;
+  /** Mantido por compatibilidade — corresponde ao primeiro item de `contrato_item_ids`. */
   contrato_item_id: string | null;
+  /** Permite vincular um único documento a múltiplos itens do contrato
+   *  (ex.: cota principal + cota reservada — Lei 14.133/21). */
+  contrato_item_ids?: string[];
   origem_aditivo_id: string | null;
   quantidade: number;
   valor_unitario: number;
@@ -191,7 +196,38 @@ export default function VinculoContratoSelector({
   }, [busca, contratos]);
 
   const contratoSel = contratos.find((c) => c.id === value.contrato_id);
-  const itemSel = itens.find((i) => i.id === value.contrato_item_id);
+
+  // Lista canônica de itens vinculados (suporte a múltiplos)
+  const itemIds = useMemo<string[]>(() => {
+    if (value.contrato_item_ids && value.contrato_item_ids.length > 0) return value.contrato_item_ids;
+    if (value.contrato_item_id) return [value.contrato_item_id];
+    return [];
+  }, [value.contrato_item_ids, value.contrato_item_id]);
+
+  const itensSelecionados = useMemo(
+    () => itens.filter((i) => itemIds.includes(i.id)),
+    [itens, itemIds],
+  );
+
+  // Quando há vários itens marcados, agregamos saldos para validação consolidada.
+  const itemSel = useMemo<ItemOpcao | null>(() => {
+    if (itensSelecionados.length === 0) return null;
+    if (itensSelecionados.length === 1) return itensSelecionados[0];
+    const sum = (xs: (number | null)[]) =>
+      xs.reduce<number>((acc, v) => acc + (Number(v) || 0), 0);
+    // Valor unitário "médio" só faz sentido se forem o mesmo objeto;
+    // para validação usamos o maior (mais conservador para alerta de divergência).
+    const vuMax = Math.max(...itensSelecionados.map((i) => Number(i.valor_unitario) || 0));
+    return {
+      id: "__multi__",
+      descricao: `${itensSelecionados.length} itens agrupados (cota principal + reservada)`,
+      unidade: itensSelecionados[0].unidade,
+      valor_unitario: vuMax,
+      saldo_quantitativo: sum(itensSelecionados.map((i) => i.saldo_quantitativo)),
+      saldo_financeiro: sum(itensSelecionados.map((i) => i.saldo_financeiro)),
+      origem_aditivo_id: itensSelecionados[0].origem_aditivo_id,
+    };
+  }, [itensSelecionados]);
 
   // ===== Divergências entre documento extraído × saldo do contrato/item =====
   // Tolerância de 1 centavo / 0,0001 unidade para evitar falso-positivo de arredondamento.
@@ -277,23 +313,34 @@ export default function VinculoContratoSelector({
       ...value,
       contrato_id: id || null,
       contrato_item_id: null,
+      contrato_item_ids: [],
       origem_aditivo_id: null,
     });
   };
 
-  const setItem = (id: string) => {
-    const item = itens.find((i) => i.id === id);
+  const toggleItem = (id: string, checked: boolean) => {
+    const atuais = new Set(itemIds);
+    if (checked) atuais.add(id);
+    else atuais.delete(id);
+    const novos = Array.from(atuais);
+    const itensMarcados = itens.filter((i) => novos.includes(i.id));
+
+    // Quando há vários itens, somamos quantidades de saldo (sugestão inicial)
+    // e usamos o valor unitário do primeiro como referência editável.
+    const qtdSugerida =
+      itensMarcados.length > 0 && valorTotal && itensMarcados[0].valor_unitario
+        ? Number((Number(valorTotal) / Number(itensMarcados[0].valor_unitario)).toFixed(4))
+        : value.quantidade;
+
     onChange({
       ...value,
-      contrato_item_id: id || null,
-      origem_aditivo_id: item?.origem_aditivo_id ?? value.origem_aditivo_id ?? null,
-      valor_unitario: item?.valor_unitario ?? value.valor_unitario,
+      contrato_item_ids: novos,
+      contrato_item_id: novos[0] ?? null,
+      origem_aditivo_id:
+        itensMarcados[0]?.origem_aditivo_id ?? value.origem_aditivo_id ?? null,
+      valor_unitario: itensMarcados[0]?.valor_unitario ?? value.valor_unitario,
       quantidade:
-        value.quantidade && value.quantidade > 0
-          ? value.quantidade
-          : valorTotal && item?.valor_unitario
-            ? Number((valorTotal / item.valor_unitario).toFixed(4))
-            : value.quantidade,
+        value.quantidade && value.quantidade > 0 ? value.quantidade : qtdSugerida,
     });
   };
 
@@ -499,63 +546,153 @@ export default function VinculoContratoSelector({
           </div>
         )}
 
-        {/* Item do contrato */}
+        {/* Itens do contrato — múltipla seleção (cota principal + cota reservada) */}
         {value.contrato_id && (
           <div>
-            <Label className="text-xs">Item do contrato (opcional)</Label>
-            <Select
-              value={value.contrato_item_id ?? "__nenhum__"}
-              onValueChange={(v) => setItem(v === "__nenhum__" ? "" : v)}
-              disabled={loadingItens}
-            >
-              <SelectTrigger className="h-8 text-xs mt-1">
-                <SelectValue placeholder="Selecione um item…" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__nenhum__" className="text-xs">
-                  — Sem vínculo a item específico —
-                </SelectItem>
-                {itens.map((i) => (
-                  <SelectItem key={i.id} value={i.id} className="text-xs">
-                    <span className="flex items-center gap-1.5">
-                      <FileText className="w-3 h-3" />
-                      <span className="truncate max-w-[420px]">{i.descricao}</span>
-                      <Badge variant="secondary" className="text-[10px]">
-                        Saldo: {fmt(Number(i.saldo_financeiro ?? 0))}
-                      </Badge>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {itemSel && (
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <div>
-                  <Label className="text-[11px]">Quantidade</Label>
-                  <Input
-                    type="number"
-                    step="0.0001"
-                    value={value.quantidade || ""}
-                    onChange={(e) =>
-                      onChange({ ...value, quantidade: parseFloat(e.target.value) || 0 })
-                    }
-                    className="h-8 text-xs"
-                  />
+            <div className="flex items-center justify-between mb-1">
+              <Label className="text-xs flex items-center gap-1.5">
+                Itens do contrato (opcional)
+                {itensSelecionados.length > 1 && (
+                  <Badge variant="secondary" className="text-[10px] py-0 px-1.5 gap-1">
+                    <Layers className="w-2.5 h-2.5" />
+                    {itensSelecionados.length} agrupados
+                  </Badge>
+                )}
+              </Label>
+              {itemIds.length > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-destructive"
+                  onClick={() =>
+                    onChange({ ...value, contrato_item_ids: [], contrato_item_id: null })
+                  }
+                >
+                  <X className="w-3 h-3 mr-0.5" /> Limpar
+                </Button>
+              )}
+            </div>
+
+            <div className="text-[11px] text-muted-foreground mb-1.5">
+              Marque um ou mais itens. Para contratos com <b>cota principal e cota reservada</b> do
+              mesmo objeto (Lei 14.133/21), o sistema soma os saldos e rateia o valor do documento
+              proporcionalmente entre os itens marcados.
+            </div>
+
+            {loadingItens ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Carregando itens…
+              </div>
+            ) : itens.length === 0 ? (
+              <div className="text-xs text-muted-foreground italic py-2">
+                Este contrato não possui itens cadastrados.
+              </div>
+            ) : (
+              <div
+                className="max-h-[220px] overflow-y-auto overscroll-contain rounded-md border border-border/60 divide-y divide-border/40"
+                onWheel={(e) => e.stopPropagation()}
+              >
+                {itens.map((i) => {
+                  const checked = itemIds.includes(i.id);
+                  const saldoFin = Number(i.saldo_financeiro ?? 0);
+                  const saldoQtd = Number(i.saldo_quantitativo ?? 0);
+                  return (
+                    <label
+                      key={i.id}
+                      className={cn(
+                        "flex items-start gap-2 px-2 py-1.5 text-xs cursor-pointer hover:bg-muted/50 transition-colors",
+                        checked && "bg-primary/5",
+                      )}
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(v) => toggleItem(i.id, v === true)}
+                        className="mt-0.5 shrink-0"
+                      />
+                      <FileText className="w-3 h-3 mt-1 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="line-clamp-2 leading-tight" title={i.descricao}>
+                          {i.descricao}
+                        </div>
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[10px] text-muted-foreground">
+                          <span>
+                            Saldo financeiro:{" "}
+                            <b className={saldoFin > 0 ? "text-success" : "text-destructive"}>
+                              {fmt(saldoFin)}
+                            </b>
+                          </span>
+                          {i.saldo_quantitativo != null && (
+                            <span>
+                              Saldo qtd:{" "}
+                              <b>
+                                {saldoQtd.toLocaleString("pt-BR")} {i.unidade ?? ""}
+                              </b>
+                            </span>
+                          )}
+                          <span>VU: {fmt(Number(i.valor_unitario))}</span>
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+
+            {itensSelecionados.length > 1 && (
+              <div className="mt-1.5 rounded-md bg-primary/5 border border-primary/20 p-2 text-[11px]">
+                <div className="font-medium text-foreground flex items-center gap-1">
+                  <Layers className="w-3 h-3" /> Saldos somados dos itens marcados:
                 </div>
-                <div>
-                  <Label className="text-[11px]">Valor unitário</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={value.valor_unitario || ""}
-                    onChange={(e) =>
-                      onChange({ ...value, valor_unitario: parseFloat(e.target.value) || 0 })
-                    }
-                    className="h-8 text-xs"
-                  />
+                <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-muted-foreground">
+                  <span>
+                    Quantidade:{" "}
+                    <b className="text-foreground">
+                      {Number(itemSel?.saldo_quantitativo ?? 0).toLocaleString("pt-BR")}{" "}
+                      {itensSelecionados[0].unidade ?? ""}
+                    </b>
+                  </span>
+                  <span>
+                    Financeiro:{" "}
+                    <b className="text-foreground">{fmt(Number(itemSel?.saldo_financeiro ?? 0))}</b>
+                  </span>
+                </div>
+                <div className="text-[10px] mt-1 italic text-muted-foreground">
+                  O valor do documento será rateado proporcionalmente ao saldo financeiro de cada
+                  item ao lançar.
                 </div>
               </div>
             )}
+          </div>
+        )}
+        {value.contrato_id && itemSel && (
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[11px]">
+                Quantidade {itensSelecionados.length > 1 && "(total a ratear)"}
+              </Label>
+              <Input
+                type="number"
+                step="0.0001"
+                value={value.quantidade || ""}
+                onChange={(e) =>
+                  onChange({ ...value, quantidade: parseFloat(e.target.value) || 0 })
+                }
+                className="h-8 text-xs"
+              />
+            </div>
+            <div>
+              <Label className="text-[11px]">Valor unitário</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={value.valor_unitario || ""}
+                onChange={(e) =>
+                  onChange({ ...value, valor_unitario: parseFloat(e.target.value) || 0 })
+                }
+                className="h-8 text-xs"
+              />
+            </div>
           </div>
         )}
 
