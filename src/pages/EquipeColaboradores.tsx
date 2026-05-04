@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, FileText, Download, ClipboardList, DollarSign, Truck, ShoppingCart, Briefcase } from 'lucide-react';
+import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, FileText, Download, ClipboardList, DollarSign, Truck, ShoppingCart, Briefcase, Mail, Loader2 } from 'lucide-react';
 import RelatorioAtividades from '@/components/equipe/RelatorioAtividades';
 import TarefasColaborador from '@/components/equipe/TarefasColaborador';
 import ComissoesColaborador from '@/components/equipe/ComissoesColaborador';
@@ -111,6 +111,28 @@ export default function EquipeColaboradores() {
       toast.error(`Erro inesperado: ${err.message}`);
     }
     setSaving(false);
+  };
+
+  const [resendingFor, setResendingFor] = useState<string | null>(null);
+  const handleResendInvite = async (email: string) => {
+    if (!empresaAtiva || !email) return;
+    setResendingFor(email);
+    try {
+      const { data, error } = await supabase.functions.invoke('resend-invite', {
+        body: { email, empresa_id: empresaAtiva.id },
+      });
+      if (error) {
+        toast.error(`Erro ao reenviar convite: ${error.message}`);
+      } else if (data?.error) {
+        toast.error(data.error);
+      } else {
+        toast.success(data?.message || `Convite reenviado para ${email}.`);
+      }
+    } catch (err: any) {
+      toast.error(`Erro inesperado: ${err.message}`);
+    } finally {
+      setResendingFor(null);
+    }
   };
 
   const handleRemove = async (membroId: string, nome: string) => {
@@ -276,6 +298,20 @@ export default function EquipeColaboradores() {
                             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => openPermDialog(m)} title="Gerenciar Permissões">
                               <Shield className="w-4 h-4" />
                             </Button>
+                            {(m as any).email && (
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleResendInvite((m as any).email)}
+                                disabled={resendingFor === (m as any).email}
+                                title="Reenviar convite por e-mail"
+                              >
+                                {resendingFor === (m as any).email
+                                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                                  : <Mail className="w-4 h-4" />}
+                              </Button>
+                            )}
                             <Button variant="ghost" size="icon" className="text-destructive/60 hover:text-destructive h-8 w-8" onClick={() => handleRemove(m.id, (m as any).nome || 'Colaborador')}>
                               <Trash2 className="w-4 h-4" />
                             </Button>

@@ -83,10 +83,13 @@ Deno.serve(async (req) => {
         })
       }
     } else {
-      // Invite new user via email — Supabase sends the invite email automatically
-      const redirectUrl = 'https://app.praefectus.com.br'
+      // Convida o novo usuário por e-mail. O Supabase envia o e-mail de convite
+      // automaticamente (template 'invite' já customizado em _shared/email-templates).
+      // O redirectTo aponta para /reset-password para que o convidado defina a senha
+      // imediatamente após clicar no link — a página já trata fluxo PKCE/recovery.
+      const redirectUrl = 'https://app.praefectus.com.br/reset-password'
       const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-        data: { nome_completo: nome || email },
+        data: { nome_completo: nome || email, empresa_id, equipe: Array.isArray(equipe) ? equipe[0] : equipe },
         redirectTo: redirectUrl,
       })
 
