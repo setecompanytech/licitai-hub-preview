@@ -161,6 +161,17 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
   const navigate = useNavigate();
   const { signOut, subscription } = useAuth();
   const { isAdmin } = useUserRole();
+  const { canAccessRoute, loading: permLoading } = useMembroPermissoes();
+
+  // Filtra itens de cada grupo pelo setor/permissões do membro.
+  // Admin global vê tudo (canAccessRoute retorna true para qualquer rota).
+  const visibleNavGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => canAccessRoute(item.path)),
+    }))
+    .filter((group) => group.items.length > 0);
+
 
   const handleNav = (path: string) => {
     navigate(path);
