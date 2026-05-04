@@ -9,7 +9,7 @@ import {
   FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target,
   FileDown, Calculator, Eye, ArrowRightLeft, Upload, CheckCheck, FileSpreadsheet, ShieldCheck, Receipt,
   Building2, Sparkles, Activity, QrCode, History, Landmark, CalendarDays, Star, Clock4, Plus, Zap,
-  TrendingUp, TrendingDown, AlertTriangle, ArrowRight,
+  TrendingUp, TrendingDown, AlertTriangle, ArrowRight, Command, ChevronRight, Bell, Pin, PinOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useResumoVisorFinanceiro } from "@/hooks/useFinanceiro";
@@ -80,24 +80,33 @@ export const HUB_ITEMS: HubItem[] = [
 ];
 
 const GROUPS = [
-  { id: "operacao", label: "Operação Diária", description: "O que você usa todos os dias", color: "from-primary/10 to-primary/5", iconColor: "text-primary" },
-  { id: "bancos", label: "Bancos & Conciliação", description: "Integração com instituições financeiras", color: "from-blue-500/10 to-blue-500/5", iconColor: "text-blue-500" },
-  { id: "fiscal", label: "Fiscal & Documentos", description: "Notas, boletos e fiscalização", color: "from-amber-500/10 to-amber-500/5", iconColor: "text-amber-500" },
-  { id: "relatorios", label: "Análises & Relatórios", description: "Visão consolidada do negócio", color: "from-emerald-500/10 to-emerald-500/5", iconColor: "text-emerald-500" },
-  { id: "cadastros", label: "Cadastros & Configuração", description: "Estrutura base do financeiro", color: "from-muted to-muted/50", iconColor: "text-muted-foreground" },
+  { id: "operacao", label: "Operação Diária", short: "Operação", description: "Lançamentos, contas, fluxo de caixa", icon: Zap, accent: "primary" },
+  { id: "bancos", label: "Bancos & Conciliação", short: "Bancos", description: "Contas correntes, OFX, Open Finance", icon: Banknote, accent: "blue" },
+  { id: "fiscal", label: "Fiscal & Documentos", short: "Fiscal", description: "NF-e, NFS-e, PIX, OCR", icon: FileText, accent: "amber" },
+  { id: "relatorios", label: "Análises & Relatórios", short: "Análises", description: "DRE, dashboards, aprovações", icon: FileBarChart, accent: "emerald" },
+  { id: "cadastros", label: "Cadastros & Configuração", short: "Cadastros", description: "Pessoas, categorias, plano de contas", icon: FolderTree, accent: "muted" },
 ] as const;
 
-const QUICK_ACTIONS: Array<{ id: string; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-  { id: "lancamentos", label: "Novo Lançamento", icon: Plus },
+const ACCENT_MAP: Record<string, { icon: string; bg: string; ring: string; bar: string }> = {
+  primary: { icon: "text-primary", bg: "bg-primary/10", ring: "ring-primary/30", bar: "bg-primary" },
+  blue: { icon: "text-blue-500", bg: "bg-blue-500/10", ring: "ring-blue-500/30", bar: "bg-blue-500" },
+  amber: { icon: "text-amber-500", bg: "bg-amber-500/10", ring: "ring-amber-500/30", bar: "bg-amber-500" },
+  emerald: { icon: "text-emerald-500", bg: "bg-emerald-500/10", ring: "ring-emerald-500/30", bar: "bg-emerald-500" },
+  muted: { icon: "text-muted-foreground", bg: "bg-muted", ring: "ring-border", bar: "bg-muted-foreground/40" },
+};
+
+const QUICK_ACTIONS: Array<{ id: string; label: string; icon: React.ComponentType<{ className?: string }>; primary?: boolean }> = [
+  { id: "lancamentos", label: "Novo Lançamento", icon: Plus, primary: true },
   { id: "conciliacao", label: "Conciliar", icon: CheckCheck },
   { id: "importar_ofx", label: "Importar OFX", icon: Upload },
   { id: "emissor_nfe", label: "Emitir NF-e", icon: FileText },
   { id: "pix_cobranca", label: "Cobrança PIX", icon: QrCode },
+  { id: "baixa_lote", label: "Baixa em lote", icon: Sparkles },
 ];
 
-const FAVORITES_KEY = "fin_hub_favorites_v1";
-const RECENTS_KEY = "fin_hub_recents_v1";
-const MAX_RECENTS = 6;
+const FAVORITES_KEY = "fin_hub_favorites_v2";
+const RECENTS_KEY = "fin_hub_recents_v2";
+const MAX_RECENTS = 8;
 
 function loadList(key: string): string[] {
   try {
@@ -120,7 +129,6 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
   const [activeGroup, setActiveGroup] = useState<string>("all");
   const [favorites, setFavorites] = useState<string[]>(() => loadList(FAVORITES_KEY));
   const [recents, setRecents] = useState<string[]>(() => loadList(RECENTS_KEY));
-  const [hoverPos, setHoverPos] = useState<Record<string, { x: number; y: number }>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const { data: resumo, isLoading: loadingResumo } = useResumoVisorFinanceiro();
 
@@ -182,7 +190,6 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
     [recents],
   );
 
-  // KPIs vivos
   const kpis = useMemo(() => {
     if (!resumo) return null;
     return {
@@ -193,261 +200,310 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
       receberQtd: resumo.hojeReceber.qtd,
       atrasoPagar: resumo.hojePagar.atraso,
       atrasoReceber: resumo.hojeReceber.atraso,
+      atrasoTotal: resumo.hojePagar.atraso + resumo.hojeReceber.atraso,
+      saldoProjetado: resumo.saldoTotal + resumo.hojeReceber.total - resumo.hojePagar.total,
     };
   }, [resumo]);
 
-  const renderCard = (item: HubItem, idx: number) => {
-    const Icon = item.icon;
-    const isFav = favorites.includes(item.id);
-    const groupColor = GROUPS.find((g) => g.id === item.group)?.iconColor ?? "text-primary";
-    const pos = hoverPos[item.id];
-    return (
-      <Card
-        key={item.id}
-        onClick={() => handleNavigate(item.id)}
-        onMouseMove={(e) => {
-          const r = e.currentTarget.getBoundingClientRect();
-          setHoverPos((p) => ({ ...p, [item.id]: { x: e.clientX - r.left, y: e.clientY - r.top } }));
-        }}
-        onMouseLeave={() => setHoverPos((p) => { const n = { ...p }; delete n[item.id]; return n; })}
-        className={cn(
-          "group relative cursor-pointer overflow-hidden border-border/60 transition-all duration-300",
-          "hover:shadow-lg hover:-translate-y-1 hover:border-primary/50",
-          "animate-in fade-in slide-in-from-bottom-2",
-          item.highlight && "border-primary/50 bg-primary/5 ring-1 ring-primary/20",
-        )}
-        style={{ animationDelay: `${Math.min(idx * 30, 400)}ms`, animationFillMode: "backwards" }}
-      >
-        {/* Spotlight no mouse */}
-        {pos && (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-            style={{
-              background: `radial-gradient(280px circle at ${pos.x}px ${pos.y}px, hsl(var(--primary) / 0.10), transparent 60%)`,
-            }}
-          />
-        )}
-        {/* Estrela favorito */}
-        <button
-          type="button"
-          onClick={(e) => toggleFavorite(e, item.id)}
-          className={cn(
-            "absolute right-2 top-2 z-10 p-1 rounded-md transition-all",
-            "opacity-0 group-hover:opacity-100 hover:bg-primary/10",
-            isFav && "opacity-100",
-          )}
-          aria-label={isFav ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-        >
-          <Star className={cn("w-3.5 h-3.5", isFav ? "fill-amber-400 text-amber-400" : "text-muted-foreground")} />
-        </button>
-
-        <CardContent className="p-4 flex items-start gap-3 relative">
-          <div
-            className={cn(
-              "shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300",
-              "group-hover:scale-110 group-hover:rotate-3",
-              item.highlight
-                ? "bg-primary/15 text-primary"
-                : cn("bg-muted", groupColor, "group-hover:bg-primary/10 group-hover:text-primary"),
-            )}
-          >
-            <Icon className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 flex-1 pr-5">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-medium text-sm leading-tight">{item.label}</h3>
-              {item.badge && (
-                <Badge
-                  variant="secondary"
-                  className={cn(
-                    "text-[10px] px-1.5 py-0 h-4 shrink-0",
-                    (item.badge === "Novo" || item.badge.startsWith("Fase")) &&
-                      "bg-primary/10 text-primary border-primary/20",
-                  )}
-                >
-                  {item.badge}
-                </Badge>
+  return (
+    <div className="space-y-5">
+      {/* ============ HERO COMMAND CENTER ============ */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/[0.08] via-card to-background">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 -right-24 w-80 h-80 rounded-full bg-primary/10 blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-32 -left-20 w-96 h-96 rounded-full bg-emerald-500/5 blur-3xl"
+        />
+        <div className="relative grid lg:grid-cols-[1.4fr_1fr] gap-6 p-5 md:p-6">
+          {/* Saldo destaque */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                Saldo consolidado em tempo real
+              </div>
+            </div>
+            <div className="space-y-1">
+              {loadingResumo ? (
+                <Skeleton className="h-12 w-72" />
+              ) : (
+                <h2 className="text-4xl md:text-5xl font-semibold tabular-nums tracking-tight">
+                  {kpis ? formatBRL(kpis.saldo) : "—"}
+                </h2>
+              )}
+              {kpis && !loadingResumo && (
+                <p className="text-xs text-muted-foreground">
+                  Projetado para hoje:{" "}
+                  <span className={cn(
+                    "font-medium tabular-nums",
+                    kpis.saldoProjetado >= kpis.saldo ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400",
+                  )}>
+                    {formatBRL(kpis.saldoProjetado)}
+                  </span>
+                  {kpis.saldoProjetado >= kpis.saldo
+                    ? <TrendingUp className="inline w-3 h-3 ml-1 text-emerald-500" />
+                    : <TrendingDown className="inline w-3 h-3 ml-1 text-rose-500" />}
+                </p>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
-            <div className="flex items-center gap-1 mt-2 text-[11px] text-primary opacity-0 -translate-x-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0">
-              Acessar <ArrowRight className="w-3 h-3" />
+
+            {/* Linha de ações primárias */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {QUICK_ACTIONS.map((a) => {
+                const Icon = a.icon;
+                return (
+                  <Button
+                    key={a.id}
+                    size="sm"
+                    variant={a.primary ? "default" : "outline"}
+                    onClick={() => handleNavigate(a.id)}
+                    className={cn(
+                      "h-8 text-xs gap-1.5 transition-all hover:-translate-y-0.5",
+                      a.primary && "shadow-sm shadow-primary/20",
+                      !a.primary && "bg-card/60 backdrop-blur hover:border-primary/40 hover:text-primary hover:bg-primary/5",
+                    )}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {a.label}
+                  </Button>
+                );
+              })}
             </div>
           </div>
-        </CardContent>
-      </Card>
-    );
-  };
 
-  return (
-    <div className="space-y-6">
-      {/* ============ KPIs vivos ============ */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiTile
-          loading={loadingResumo}
-          icon={Wallet}
-          label="Saldo consolidado"
-          value={kpis ? formatBRL(kpis.saldo) : "—"}
-          tone="neutral"
-          onClick={() => handleNavigate("contas")}
-        />
-        <KpiTile
-          loading={loadingResumo}
-          icon={ArrowDownCircle}
-          label={`Receber hoje${kpis?.receberQtd ? ` (${kpis.receberQtd})` : ""}`}
-          value={kpis ? formatBRL(kpis.receber) : "—"}
-          sub={kpis && kpis.atrasoReceber > 0 ? `Em atraso: ${formatBRL(kpis.atrasoReceber)}` : undefined}
-          tone="positive"
-          onClick={() => handleNavigate("a_receber")}
-        />
-        <KpiTile
-          loading={loadingResumo}
-          icon={ArrowUpCircle}
-          label={`Pagar hoje${kpis?.pagarQtd ? ` (${kpis.pagarQtd})` : ""}`}
-          value={kpis ? formatBRL(kpis.pagar) : "—"}
-          sub={kpis && kpis.atrasoPagar > 0 ? `Em atraso: ${formatBRL(kpis.atrasoPagar)}` : undefined}
-          tone="negative"
-          onClick={() => handleNavigate("a_pagar")}
-        />
-        <KpiTile
-          loading={loadingResumo}
-          icon={AlertTriangle}
-          label="Atrasos totais"
-          value={kpis ? formatBRL(kpis.atrasoPagar + kpis.atrasoReceber) : "—"}
-          tone={kpis && (kpis.atrasoPagar + kpis.atrasoReceber) > 0 ? "warning" : "neutral"}
-          onClick={() => handleNavigate("panorama")}
-        />
-      </div>
-
-      {/* ============ Atalhos rápidos ============ */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mr-1">
-          <Zap className="w-3.5 h-3.5 text-primary" /> Atalhos:
+          {/* Mini KPIs lateral */}
+          <div className="grid grid-cols-2 gap-3 self-center">
+            <MiniMetric
+              loading={loadingResumo}
+              icon={ArrowDownCircle}
+              label={`Receber hoje${kpis?.receberQtd ? ` (${kpis.receberQtd})` : ""}`}
+              value={kpis ? formatBRL(kpis.receber) : "—"}
+              tone="positive"
+              onClick={() => handleNavigate("a_receber")}
+            />
+            <MiniMetric
+              loading={loadingResumo}
+              icon={ArrowUpCircle}
+              label={`Pagar hoje${kpis?.pagarQtd ? ` (${kpis.pagarQtd})` : ""}`}
+              value={kpis ? formatBRL(kpis.pagar) : "—"}
+              tone="negative"
+              onClick={() => handleNavigate("a_pagar")}
+            />
+            <MiniMetric
+              loading={loadingResumo}
+              icon={AlertTriangle}
+              label="Atrasos totais"
+              value={kpis ? formatBRL(kpis.atrasoTotal) : "—"}
+              tone={kpis && kpis.atrasoTotal > 0 ? "warning" : "neutral"}
+              onClick={() => handleNavigate("panorama")}
+            />
+            <MiniMetric
+              loading={loadingResumo}
+              icon={Activity}
+              label="Painel completo"
+              value="Abrir"
+              tone="neutral"
+              isAction
+              onClick={() => handleNavigate("panorama")}
+            />
+          </div>
         </div>
-        {QUICK_ACTIONS.map((a) => {
-          const Icon = a.icon;
-          return (
-            <Button
-              key={a.id}
-              size="sm"
-              variant="outline"
-              onClick={() => handleNavigate(a.id)}
-              className="h-8 text-xs hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all"
-            >
-              <Icon className="w-3.5 h-3.5 mr-1.5" />
-              {a.label}
-            </Button>
-          );
-        })}
       </div>
 
-      {/* ============ Busca + filtros por categoria ============ */}
-      <div className="space-y-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            ref={inputRef}
-            placeholder="Buscar funcionalidade... (pressione / para focar)"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 pr-16 h-11 text-sm"
-          />
-          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-[10px] font-mono text-muted-foreground">
+      {/* ============ Alerta de atrasos (contextual) ============ */}
+      {kpis && kpis.atrasoTotal > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-2.5 animate-in fade-in slide-in-from-top-1">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="shrink-0 w-7 h-7 rounded-full bg-amber-500/15 flex items-center justify-center">
+              <Bell className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="text-xs min-w-0">
+              <span className="font-medium text-amber-700 dark:text-amber-300">Há lançamentos em atraso.</span>{" "}
+              <span className="text-muted-foreground">
+                {formatBRL(kpis.atrasoPagar)} a pagar e {formatBRL(kpis.atrasoReceber)} a receber.
+              </span>
+            </div>
+          </div>
+          <Button size="sm" variant="ghost" className="h-7 text-xs shrink-0" onClick={() => handleNavigate("panorama")}>
+            Resolver <ArrowRight className="w-3 h-3 ml-1" />
+          </Button>
+        </div>
+      )}
+
+      {/* ============ Busca + Command palette hint ============ */}
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          ref={inputRef}
+          placeholder="Buscar funcionalidade... (ex: conciliação, NF-e, comissão)"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-11 pr-28 h-12 text-sm bg-card border-border/60 shadow-sm focus-visible:ring-primary/30"
+        />
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1.5">
+          <kbd className="inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-[10px] font-mono text-muted-foreground">
+            <Command className="w-2.5 h-2.5" />K
+          </kbd>
+          <span className="text-[10px] text-muted-foreground">ou</span>
+          <kbd className="inline-flex h-5 items-center justify-center rounded border border-border bg-muted px-1.5 text-[10px] font-mono text-muted-foreground">
             /
           </kbd>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          <CategoryChip active={activeGroup === "all"} onClick={() => setActiveGroup("all")} count={HUB_ITEMS.length}>
-            Todos
-          </CategoryChip>
-          {GROUPS.map((g) => (
-            <CategoryChip
-              key={g.id}
-              active={activeGroup === g.id}
-              onClick={() => setActiveGroup(g.id)}
-              count={HUB_ITEMS.filter((i) => i.group === g.id).length}
-            >
-              {g.label}
-            </CategoryChip>
-          ))}
-        </div>
       </div>
 
-      {/* ============ Favoritos ============ */}
-      {favoriteItems.length > 0 && !search && activeGroup === "all" && (
-        <section className="space-y-3 animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-center gap-2">
-            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-            <h2 className="text-sm font-semibold">Favoritos</h2>
-            <span className="text-xs text-muted-foreground">({favoriteItems.length})</span>
+      {/* ============ Layout 2 colunas: Sidebar categorias + conteúdo ============ */}
+      <div className="grid lg:grid-cols-[220px_1fr] gap-5">
+        {/* Sidebar de categorias */}
+        <aside className="lg:sticky lg:top-4 lg:self-start space-y-1">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1.5">
+            Categorias
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {favoriteItems.map((item, idx) => renderCard(item, idx))}
-          </div>
-        </section>
-      )}
+          <NavChip
+            label="Todos os módulos"
+            icon={LayoutDashboard}
+            count={HUB_ITEMS.length}
+            active={activeGroup === "all"}
+            onClick={() => setActiveGroup("all")}
+            accent="primary"
+          />
+          {GROUPS.map((g) => (
+            <NavChip
+              key={g.id}
+              label={g.label}
+              icon={g.icon}
+              count={HUB_ITEMS.filter((i) => i.group === g.id).length}
+              active={activeGroup === g.id}
+              onClick={() => setActiveGroup(g.id)}
+              accent={g.accent}
+            />
+          ))}
 
-      {/* ============ Recentes ============ */}
-      {recentItems.length > 0 && !search && activeGroup === "all" && (
-        <section className="space-y-3 animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-center gap-2">
-            <Clock4 className="w-4 h-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Acessados recentemente</h2>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {recentItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavigate(item.id)}
-                  className="group flex items-center gap-2 px-3 py-1.5 rounded-md border border-border/60 bg-card text-xs hover:border-primary/40 hover:bg-primary/5 hover:text-primary transition-all"
-                >
-                  <Icon className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
-                  <span className="font-medium">{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* ============ Grupos ============ */}
-      {GROUPS.map((group) => {
-        const items = grouped.get(group.id);
-        if (!items?.length) return null;
-        return (
-          <section key={group.id} className="space-y-3">
-            <div className={cn("rounded-lg p-4 bg-gradient-to-r border border-border/60", group.color)}>
+          {/* Stats lateral */}
+          <div className="mt-4 pt-4 border-t border-border/60 space-y-2">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2">
+              Resumo
+            </div>
+            <div className="px-2 space-y-1.5 text-[11px]">
               <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-base font-semibold">{group.label}</h2>
-                  <p className="text-xs text-muted-foreground">{group.description}</p>
-                </div>
-                <Badge variant="outline" className="text-[10px] bg-background/60">
-                  {items.length} {items.length === 1 ? "módulo" : "módulos"}
-                </Badge>
+                <span className="text-muted-foreground">Favoritos</span>
+                <span className="font-medium tabular-nums">{favorites.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Acessos recentes</span>
+                <span className="font-medium tabular-nums">{recents.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Total de módulos</span>
+                <span className="font-medium tabular-nums">{HUB_ITEMS.length}</span>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {items.map((item, idx) => renderCard(item, idx))}
-            </div>
-          </section>
-        );
-      })}
+          </div>
+        </aside>
 
-      {filtered.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
-            <Search className="w-8 h-8 mx-auto text-muted-foreground/50" />
-            <p>Nenhuma funcionalidade encontrada para "{search}".</p>
-            <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setActiveGroup("all"); }}>
-              Limpar filtros
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+        {/* Conteúdo principal */}
+        <div className="space-y-6 min-w-0">
+          {/* Favoritos */}
+          {favoriteItems.length > 0 && !search && activeGroup === "all" && (
+            <SectionBlock
+              title="Favoritos"
+              subtitle="Pinados por você"
+              icon={Star}
+              iconClass="fill-amber-400 text-amber-400"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
+                {favoriteItems.map((item, idx) => (
+                  <ModuleRow
+                    key={item.id}
+                    item={item}
+                    idx={idx}
+                    isFav
+                    onNavigate={handleNavigate}
+                    onToggleFav={toggleFavorite}
+                  />
+                ))}
+              </div>
+            </SectionBlock>
+          )}
+
+          {/* Recentes (chips horizontais) */}
+          {recentItems.length > 0 && !search && activeGroup === "all" && (
+            <SectionBlock
+              title="Acessados recentemente"
+              icon={Clock4}
+              iconClass="text-muted-foreground"
+            >
+              <div className="flex flex-wrap gap-1.5">
+                {recentItems.map((item) => {
+                  const Icon = item.icon;
+                  const accent = ACCENT_MAP[GROUPS.find((g) => g.id === item.group)?.accent ?? "primary"];
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleNavigate(item.id)}
+                      className="group inline-flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full border border-border/60 bg-card hover:border-primary/40 hover:bg-primary/5 transition-all text-xs"
+                    >
+                      <span className={cn("inline-flex items-center justify-center w-5 h-5 rounded-full", accent.bg)}>
+                        <Icon className={cn("w-3 h-3", accent.icon)} />
+                      </span>
+                      <span className="font-medium">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </SectionBlock>
+          )}
+
+          {/* Grupos */}
+          {GROUPS.map((group) => {
+            const items = grouped.get(group.id);
+            if (!items?.length) return null;
+            const accent = ACCENT_MAP[group.accent];
+            const GroupIcon = group.icon;
+            return (
+              <SectionBlock
+                key={group.id}
+                title={group.label}
+                subtitle={group.description}
+                icon={GroupIcon}
+                iconClass={accent.icon}
+                accentBar={accent.bar}
+                count={items.length}
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
+                  {items.map((item, idx) => (
+                    <ModuleRow
+                      key={item.id}
+                      item={item}
+                      idx={idx}
+                      isFav={favorites.includes(item.id)}
+                      onNavigate={handleNavigate}
+                      onToggleFav={toggleFavorite}
+                    />
+                  ))}
+                </div>
+              </SectionBlock>
+            );
+          })}
+
+          {filtered.length === 0 && (
+            <Card>
+              <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
+                <Search className="w-8 h-8 mx-auto text-muted-foreground/50" />
+                <p>Nenhuma funcionalidade encontrada para "{search}".</p>
+                <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setActiveGroup("all"); }}>
+                  Limpar filtros
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -456,77 +512,218 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
 // Subcomponentes
 // ============================================================================
 
-function CategoryChip({
-  active, onClick, count, children,
-}: { active: boolean; onClick: () => void; count: number; children: React.ReactNode }) {
+function NavChip({
+  label, icon: Icon, count, active, onClick, accent,
+}: {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+  accent: string;
+}) {
+  const a = ACCENT_MAP[accent] ?? ACCENT_MAP.primary;
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
+        "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs transition-all group relative",
         active
-          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-          : "bg-card text-muted-foreground border-border/60 hover:border-primary/40 hover:text-foreground",
+          ? "bg-primary/10 text-foreground font-medium"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
     >
-      {children}
-      <span className={cn("px-1.5 py-0 rounded text-[10px]", active ? "bg-primary-foreground/20" : "bg-muted")}>
+      {active && <span className={cn("absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r", a.bar)} />}
+      <span className={cn(
+        "shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-md transition-all",
+        active ? a.bg : "bg-transparent group-hover:bg-muted-foreground/10",
+      )}>
+        <Icon className={cn("w-3.5 h-3.5", active ? a.icon : "")} />
+      </span>
+      <span className="flex-1 text-left truncate">{label}</span>
+      <span className={cn(
+        "shrink-0 text-[10px] tabular-nums px-1.5 py-0.5 rounded",
+        active ? "bg-background text-foreground" : "bg-muted text-muted-foreground",
+      )}>
         {count}
       </span>
     </button>
   );
 }
 
-function KpiTile({
-  loading, icon: Icon, label, value, sub, tone, onClick,
+function SectionBlock({
+  title, subtitle, icon: Icon, iconClass, accentBar, count, children,
+}: {
+  title: string;
+  subtitle?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconClass?: string;
+  accentBar?: string;
+  count?: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-3 animate-in fade-in slide-in-from-bottom-1">
+      <div className="flex items-center gap-2.5">
+        {accentBar && <span className={cn("w-1 h-5 rounded-full", accentBar)} />}
+        <Icon className={cn("w-4 h-4", iconClass)} />
+        <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
+        {subtitle && <span className="text-xs text-muted-foreground hidden sm:inline">— {subtitle}</span>}
+        {typeof count === "number" && (
+          <Badge variant="outline" className="ml-auto text-[10px] h-5 px-1.5 bg-card">
+            {count}
+          </Badge>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function ModuleRow({
+  item, idx, isFav, onNavigate, onToggleFav,
+}: {
+  item: HubItem;
+  idx: number;
+  isFav: boolean;
+  onNavigate: (id: string) => void;
+  onToggleFav: (e: React.MouseEvent, id: string) => void;
+}) {
+  const Icon = item.icon;
+  const accent = ACCENT_MAP[GROUPS.find((g) => g.id === item.group)?.accent ?? "primary"];
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate(item.id)}
+      className={cn(
+        "group relative w-full text-left flex items-center gap-3 p-2.5 pr-2 rounded-xl border bg-card transition-all duration-200",
+        "hover:border-primary/40 hover:shadow-sm hover:-translate-y-0.5 hover:bg-card",
+        "animate-in fade-in",
+        item.highlight ? "border-primary/40 ring-1 ring-primary/15" : "border-border/60",
+      )}
+      style={{ animationDelay: `${Math.min(idx * 20, 240)}ms`, animationFillMode: "backwards" }}
+    >
+      {/* Accent bar à esquerda */}
+      <span className={cn(
+        "absolute left-0 top-3 bottom-3 w-0.5 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity",
+        accent.bar,
+      )} />
+
+      <div className={cn(
+        "shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200",
+        "group-hover:scale-105",
+        item.highlight ? "bg-primary/15 text-primary" : cn(accent.bg, accent.icon),
+      )}>
+        <Icon className="w-4 h-4" />
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="font-medium text-sm leading-tight truncate">{item.label}</span>
+          {item.badge && (
+            <Badge
+              variant="secondary"
+              className={cn(
+                "text-[9px] px-1.5 py-0 h-4 shrink-0 font-medium",
+                (item.badge === "Novo" || item.badge.startsWith("Fase")) &&
+                  "bg-primary/10 text-primary border-primary/20",
+              )}
+            >
+              {item.badge}
+            </Badge>
+          )}
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{item.description}</p>
+      </div>
+
+      <div className="shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => onToggleFav(e as any, item.id)}
+          onKeyDown={(e) => { if (e.key === "Enter") onToggleFav(e as any, item.id); }}
+          className="p-1.5 rounded-md hover:bg-muted transition-colors"
+          aria-label={isFav ? "Remover dos favoritos" : "Fixar nos favoritos"}
+        >
+          {isFav
+            ? <Pin className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+            : <Pin className="w-3.5 h-3.5 text-muted-foreground" />}
+        </span>
+        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+      </div>
+
+      {/* Pin sempre visível se favorito */}
+      {isFav && (
+        <span className="absolute top-1.5 right-1.5 group-hover:opacity-0 transition-opacity">
+          <Pin className="w-3 h-3 fill-amber-400 text-amber-500" />
+        </span>
+      )}
+    </button>
+  );
+}
+
+function MiniMetric({
+  loading, icon: Icon, label, value, tone, onClick, isAction,
 }: {
   loading: boolean;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
-  sub?: string;
   tone: "neutral" | "positive" | "negative" | "warning";
   onClick?: () => void;
+  isAction?: boolean;
 }) {
-  const toneClasses = {
+  const toneText = {
     neutral: "text-foreground",
     positive: "text-emerald-600 dark:text-emerald-400",
     negative: "text-rose-600 dark:text-rose-400",
     warning: "text-amber-600 dark:text-amber-400",
-  };
-  const ringClasses = {
+  }[tone];
+  const toneBg = {
+    neutral: "bg-muted",
+    positive: "bg-emerald-500/10",
+    negative: "bg-rose-500/10",
+    warning: "bg-amber-500/10",
+  }[tone];
+  const toneBorder = {
     neutral: "hover:border-primary/40",
     positive: "hover:border-emerald-500/40",
     negative: "hover:border-rose-500/40",
-    warning: "hover:border-amber-500/40",
-  };
+    warning: "border-amber-500/40 hover:border-amber-500/60",
+  }[tone];
+
   return (
-    <Card
+    <button
+      type="button"
       onClick={onClick}
       className={cn(
-        "cursor-pointer transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 border-border/60",
-        ringClasses[tone],
+        "group text-left rounded-xl border bg-card/80 backdrop-blur-sm p-3 transition-all duration-200",
+        "hover:shadow-sm hover:-translate-y-0.5",
+        toneBorder,
+        tone === "warning" ? "border-amber-500/40" : "border-border/60",
       )}
     >
-      <CardContent className="p-3.5 space-y-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide truncate">
-            {label}
-          </span>
-          <Icon className={cn("w-4 h-4 shrink-0", toneClasses[tone])} />
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider truncate">
+          {label}
+        </span>
+        <span className={cn("inline-flex items-center justify-center w-6 h-6 rounded-md", toneBg)}>
+          <Icon className={cn("w-3.5 h-3.5", toneText)} />
+        </span>
+      </div>
+      {loading ? (
+        <Skeleton className="h-6 w-3/4" />
+      ) : (
+        <div className={cn(
+          "font-semibold tabular-nums tracking-tight",
+          isAction ? "text-sm text-primary group-hover:translate-x-0.5 transition-transform inline-flex items-center gap-1" : "text-lg",
+          !isAction && toneText,
+        )}>
+          {value}
+          {isAction && <ArrowRight className="w-3.5 h-3.5" />}
         </div>
-        {loading ? (
-          <Skeleton className="h-7 w-3/4" />
-        ) : (
-          <div className={cn("text-xl font-semibold tabular-nums tracking-tight", toneClasses[tone])}>
-            {value}
-          </div>
-        )}
-        {sub && !loading && (
-          <div className="text-[11px] text-amber-600 dark:text-amber-400 truncate">{sub}</div>
-        )}
-      </CardContent>
-    </Card>
+      )}
+    </button>
   );
 }
