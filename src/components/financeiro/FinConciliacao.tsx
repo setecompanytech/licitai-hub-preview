@@ -321,6 +321,7 @@ export default function FinConciliacao() {
               <SelectContent>
                 <SelectItem value="pendente">Pendentes</SelectItem>
                 <SelectItem value="conciliado">Conciliados</SelectItem>
+                <SelectItem value="ignorado">Ignorados</SelectItem>
                 <SelectItem value="todos">Todos</SelectItem>
               </SelectContent>
             </Select>
