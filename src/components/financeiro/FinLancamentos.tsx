@@ -101,17 +101,17 @@ export default function FinLancamentos() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[1100px]">
               <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="text-left px-3 py-2">Competência</th>
+                  <th className="text-left px-3 py-2 whitespace-nowrap">Competência</th>
                   <th className="text-left px-3 py-2">Descrição</th>
-                  <th className="text-left px-3 py-2">Categoria</th>
-                  <th className="text-left px-3 py-2">Pessoa</th>
-                  <th className="text-left px-3 py-2">Conta</th>
-                  <th className="text-left px-3 py-2">Tipo</th>
-                  <th className="text-left px-3 py-2">Status</th>
-                  <th className="text-right px-3 py-2">Valor</th>
+                  <th className="text-left px-3 py-2 whitespace-nowrap">Categoria</th>
+                  <th className="text-left px-3 py-2 whitespace-nowrap">Pessoa</th>
+                  <th className="text-left px-3 py-2 whitespace-nowrap">Conta</th>
+                  <th className="text-left px-3 py-2 whitespace-nowrap">Tipo</th>
+                  <th className="text-left px-3 py-2 whitespace-nowrap">Status</th>
+                  <th className="text-right px-3 py-2 whitespace-nowrap">Valor</th>
                   <th className="px-3 py-2 w-24" />
                 </tr>
               </thead>
@@ -135,18 +135,18 @@ export default function FinLancamentos() {
                       <tr key={l.id} className="border-t hover:bg-muted/30">
                         <td className="px-3 py-2 whitespace-nowrap">{formatDate(l.data_competencia)}</td>
                         <td className="px-3 py-2 max-w-[280px] truncate" title={l.descricao}>{l.descricao}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{l.categoria?.nome ?? "—"}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{l.pessoa?.nome ?? "—"}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{l.conta?.nome ?? "—"}</td>
-                        <td className="px-3 py-2">
-                          <Badge variant="outline" className="text-xs">{tipoLabel[l.tipo] ?? l.tipo}</Badge>
+                        <td className="px-3 py-2 text-muted-foreground max-w-[160px] truncate whitespace-nowrap" title={l.categoria?.nome ?? ""}>{l.categoria?.nome ?? "—"}</td>
+                        <td className="px-3 py-2 text-muted-foreground max-w-[180px] truncate whitespace-nowrap" title={l.pessoa?.nome ?? ""}>{l.pessoa?.nome ?? "—"}</td>
+                        <td className="px-3 py-2 text-muted-foreground max-w-[140px] truncate whitespace-nowrap" title={l.conta?.nome ?? ""}>{l.conta?.nome ?? "—"}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <Badge variant="outline" className="text-xs whitespace-nowrap">{tipoLabel[l.tipo] ?? l.tipo}</Badge>
                         </td>
-                        <td className="px-3 py-2">
-                          <Badge className={`text-xs ring-1 ${statusColor[l.status] ?? ""}`} variant="outline">
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <Badge className={`text-xs ring-1 whitespace-nowrap ${statusColor[l.status] ?? ""}`} variant="outline">
                             {statusLabel[l.status] ?? l.status}
                           </Badge>
                         </td>
-                        <td className={`px-3 py-2 text-right tabular-nums font-medium ${isReceita ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                        <td className={`px-3 py-2 text-right tabular-nums font-medium whitespace-nowrap ${isReceita ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
                           {isReceita ? "+" : "−"} {formatBRL(Number(l.valor))}
                         </td>
                         <td className="px-3 py-2 text-right whitespace-nowrap">
