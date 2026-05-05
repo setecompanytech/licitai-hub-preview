@@ -215,29 +215,40 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
     const tipoDocMap: Record<string, string> = {
       nfe: "nfe", nfse: "nfse", nfce: "nfce",
       boleto: "boleto", recibo: "recibo", contrato: "contrato",
+      duplicata: "duplicata", fatura: "fatura",
     };
+    const obsContrato = item.vinculo?.contrato_id
+      ? `Vínculo: contrato ${item.vinculo.contrato_id}${
+          item.vinculo.contrato_item_ids?.length
+            ? ` · ${item.vinculo.contrato_item_ids.length} item(s)`
+            : ""
+        }.`
+      : null;
     const initial: any = {
       tipo,
       natureza: tipo === "a_receber" ? "receita" : "despesa",
       status: "previsto",
       descricao: d.descricao
-        || `${(d.tipo_documento ?? "Documento").toString().toUpperCase()} ${d.numero_documento ?? ""}`.trim(),
+        || `${(d.tipo_documento ?? "Documento").toString().toUpperCase()} ${d.numero_documento ?? ""}`.trim()
+        || item.file.name,
       valor: Number(d.valor_total ?? 0),
       data_competencia: d.data_emissao ?? new Date().toISOString().slice(0, 10),
-      data_vencimento: d.data_vencimento ?? null,
+      data_vencimento: d.data_vencimento ?? d.data_emissao ?? null,
       data_emissao: d.data_emissao ?? null,
-      tipo_documento: tipoDocBruto ? (tipoDocMap[tipoDocBruto] ?? "outro") : null,
+      tipo_documento: tipoDocBruto ? (tipoDocMap[tipoDocBruto] ?? "outro") : "outro",
       numero_documento: d.numero_documento ?? null,
       chave_acesso_nfe: d.chave_nfe ?? null,
       observacoes: [
         d.emitente_nome ? `Emitente: ${d.emitente_nome}` : null,
         d.emitente_cnpj ? `CNPJ emitente: ${d.emitente_cnpj}` : null,
         d.destinatario_nome ? `Destinatário: ${d.destinatario_nome}` : null,
+        d.destinatario_cnpj_cpf ? `CNPJ/CPF destinatário: ${d.destinatario_cnpj_cpf}` : null,
         d.codigo_barras ? `Código de barras: ${d.codigo_barras}` : null,
         item.motor ? `Extraído via ${item.motor}` : null,
+        obsContrato,
       ].filter(Boolean).join("\n") || null,
     };
-    setEditor({ open: true, initial });
+    setEditor({ open: true, initial, docId: item.id });
   };
 
   const setVinculo = (id: string, v: VinculoContratoValue) => {
