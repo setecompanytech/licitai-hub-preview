@@ -62,7 +62,16 @@ export default function FinCategorias() {
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 flex-wrap">
+        <Button
+          variant="outline"
+          onClick={() => sync.mutate()}
+          disabled={sync.isPending}
+          title="Importa todas as contas do Plano de Contas Padrão (Configurável) para a lista de Categorias"
+        >
+          <RefreshCw className={`w-4 h-4 mr-1 ${sync.isPending ? "animate-spin" : ""}`} />
+          {sync.isPending ? "Sincronizando..." : "Sincronizar com Plano de Contas"}
+        </Button>
         {cats.length === 0 && (
           <Button variant="outline" onClick={() => seed.mutate()} disabled={seed.isPending}>
             <Sparkles className="w-4 h-4 mr-1" />
