@@ -117,6 +117,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   const [intervaloDias, setIntervaloDias] = useState<number>(30);
   const [regraFds, setRegraFds] = useState<RegraFimSemana>("manter");
   const [diaFixo, setDiaFixo] = useState<string>("");
+  // Edições manuais da tabela de simulação (override por índice da parcela)
+  const [simulacaoEdits, setSimulacaoEdits] = useState<Record<number, { vencimento?: string; valor?: number }>>({});
 
   // Vendedor responsável
   const [vendedorId, setVendedorId] = useState<string>("");
