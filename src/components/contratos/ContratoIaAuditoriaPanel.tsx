@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
-import { Sparkles, FileText, RefreshCw, Loader2, AlertTriangle, Calculator, ScrollText, Eye } from 'lucide-react';
+import { Sparkles, FileText, RefreshCw, Loader2, AlertTriangle, Calculator, ScrollText, Eye, Wand2 } from 'lucide-react';
 import EventoAuditoriaDetalheDialog from './EventoAuditoriaDetalheDialog';
+import { toast } from 'sonner';
+import { useUserRole } from '@/hooks/useUserRole';
 
 const CAMPO_LABELS: Record<string, string> = {
   numero_contrato: 'Nº do Contrato',
@@ -63,6 +65,27 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('todos');
   const [eventoSelecionado, setEventoSelecionado] = useState<AuditoriaRow | null>(null);
+  const [reprocessando, setReprocessando] = useState(false);
+  const { isAdmin } = useUserRole();
+
+  const handleReprocessarTodos = async () => {
+    if (!confirm('Reprocessar TODOS os contratos com aditivos?\n\nEsta ação irá:\n• Remover alertas indevidos de aditivos de prazo/vigência\n• Recalcular alertas legais conforme art. 125 da Lei 14.133/21\n\nDeseja continuar?')) return;
+    setReprocessando(true);
+    try {
+      const { data, error } = await supabase.rpc('reprocessar_alertas_aditivos_todos_contratos' as any);
+      if (error) throw error;
+      const r = data as any;
+      toast.success(
+        `Reprocessamento concluído: ${r?.contratos_processados ?? 0} contrato(s). ` +
+        `${r?.alertas_removidos_prazo_vigencia ?? 0} alerta(s) indevido(s) de prazo/vigência removido(s).`
+      );
+      load();
+    } catch (e: any) {
+      toast.error(`Falha no reprocessamento: ${e?.message ?? 'erro desconhecido'}`);
+    } finally {
+      setReprocessando(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -165,9 +188,24 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
             </Badge>
           )}
         </div>
-        <Button variant="ghost" size="sm" onClick={load} disabled={loading} className="shrink-0">
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleReprocessarTodos}
+              disabled={reprocessando}
+              className="gap-1 shrink-0"
+              title="Reprocessar todos os contratos: limpa alertas indevidos de aditivos de prazo/vigência e recalcula conforme Lei 14.133/21"
+            >
+              {reprocessando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+              <span className="hidden sm:inline whitespace-nowrap">Reprocessar aditivos</span>
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={load} disabled={loading} className="shrink-0">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          </Button>
+        </div>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
