@@ -639,7 +639,7 @@ export default function FinConciliacao() {
                         <Badge variant="secondary">pendente</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right whitespace-nowrap">
                       {m.conciliado && m.lancamento_id ? (
                         <Button
                           size="sm"
