@@ -585,6 +585,15 @@ export default function FinKanban({ tipo }: Props) {
                           >
                             <CardContent className="p-3 space-y-1.5 kanban-card-body">
                               <div className="flex items-start gap-1.5 min-w-0 max-w-full">
+                                {col.id !== "pago" && (
+                                  <Checkbox
+                                    checked={selecionados.has(l.id)}
+                                    onCheckedChange={() => toggleSelecionado(l.id)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="mt-0.5 shrink-0"
+                                    aria-label="Selecionar lançamento"
+                                  />
+                                )}
                                 <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 mt-0.5 shrink-0" />
                                 <p className="kanban-card-title flex-1" title={l.descricao}>
                                   {l.descricao}
