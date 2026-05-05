@@ -677,7 +677,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
         <DialogFooter className="pt-2 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={isSalvando || !descricao.trim()}>
-            {isSalvando ? "Salvando..." : parcelar && podeParcelar ? `Gerar ${qtdParcelas} parcelas` : "Salvar"}
+            {isSalvando ? "Salvando..." : parcelar && podeParcelar ? `Gerar ${qtdParcelas} ${modoParc === "repetir" ? "repetições" : "parcelas"}` : "Salvar"}
           </Button>
         </DialogFooter>
       </DialogContent>
