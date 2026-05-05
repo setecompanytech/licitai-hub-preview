@@ -610,9 +610,21 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
 
       <LancamentoDialog
         open={editor.open}
-        onOpenChange={(v) => setEditor((s) => ({ ...s, open: v }))}
+        onOpenChange={(v) =>
+          setEditor((s) => (v ? { ...s, open: true } : { open: false, initial: null, docId: null }))
+        }
         initial={editor.initial}
         defaultTipo={tipo}
+        onSaved={(saved) => {
+          if (editor.docId) {
+            setDocs((prev) =>
+              prev.map((x) =>
+                x.id === editor.docId ? { ...x, lancamentoId: saved?.id ?? "ok" } : x,
+              ),
+            );
+          }
+          invalidarFinanceiro();
+        }}
       />
     </>
   );
