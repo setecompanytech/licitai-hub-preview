@@ -5,13 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Sparkles } from "lucide-react";
+import { Plus, Pencil, Trash2, Sparkles, RefreshCw } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
   useCategorias, useUpsertCategoria, useDeleteCategoria, useSeedPlanoContas,
+  useSyncPlanoContasCategorias,
   type Categoria,
 } from "@/hooks/useFinanceiro";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,6 +32,7 @@ export default function FinCategorias() {
   const upsert = useUpsertCategoria();
   const del = useDeleteCategoria();
   const seed = useSeedPlanoContas();
+  const sync = useSyncPlanoContasCategorias();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Categoria | null>(null);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
@@ -60,7 +62,16 @@ export default function FinCategorias() {
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 flex-wrap">
+        <Button
+          variant="outline"
+          onClick={() => sync.mutate()}
+          disabled={sync.isPending}
+          title="Importa todas as contas do Plano de Contas Padrão (Configurável) para a lista de Categorias"
+        >
+          <RefreshCw className={`w-4 h-4 mr-1 ${sync.isPending ? "animate-spin" : ""}`} />
+          {sync.isPending ? "Sincronizando..." : "Sincronizar com Plano de Contas"}
+        </Button>
         {cats.length === 0 && (
           <Button variant="outline" onClick={() => seed.mutate()} disabled={seed.isPending}>
             <Sparkles className="w-4 h-4 mr-1" />

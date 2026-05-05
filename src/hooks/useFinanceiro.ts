@@ -199,6 +199,33 @@ export function useSeedPlanoContas() {
   });
 }
 
+/**
+ * Sincroniza o Plano de Contas hierárquico (fin_plano_contas) com a tabela
+ * financeiro_categorias usada nos lançamentos. Idempotente (UPSERT por código).
+ */
+export function useSyncPlanoContasCategorias() {
+  const qc = useQueryClient();
+  const empresaId = useEmpresaId();
+  return useMutation({
+    mutationFn: async () => {
+      if (!empresaId) throw new Error("Selecione uma empresa ativa.");
+      const { data, error } = await supabase.rpc(
+        "fin_sync_plano_contas_to_categorias" as never,
+        { p_empresa_id: empresaId } as never,
+      );
+      if (error) throw error;
+      return data as { inseridas: number; atualizadas: number; total_depois: number };
+    },
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["fin-categorias"] });
+      toast.success(
+        `Categorias sincronizadas: ${r?.inseridas ?? 0} novas · ${r?.atualizadas ?? 0} atualizadas · total ${r?.total_depois ?? 0}.`,
+      );
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 // ----------------------------------------------------------------------------
 // Pessoas
 // ----------------------------------------------------------------------------

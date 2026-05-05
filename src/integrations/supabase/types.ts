@@ -15008,6 +15008,10 @@ export type Database = {
         Args: { p_empresa_id: string }
         Returns: Json
       }
+      fin_sync_plano_contas_to_categorias: {
+        Args: { p_empresa_id: string }
+        Returns: Json
+      }
       financeiro_dfc_mensal: {
         Args: { p_empresa_id: string; p_meses?: number }
         Returns: {
