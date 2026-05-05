@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,14 +20,20 @@ import {
   Layers,
   ScanLine,
   GripVertical,
+  X,
+  Filter,
+  CheckSquare,
 } from "lucide-react";
-import { format, differenceInDays, parseISO } from "date-fns";
+import { format, differenceInDays, parseISO, isToday, isThisWeek, isThisMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   useLancamentos,
   useUpsertLancamento,
   useDeleteLancamento,
   useMembrosEmpresa,
+  useCategorias,
+  usePessoas,
+  useContas,
   type Lancamento,
 } from "@/hooks/useFinanceiro";
 import LancamentoDialog from "./LancamentoDialog";
