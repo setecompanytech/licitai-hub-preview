@@ -49,17 +49,19 @@ const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
 const TIPOS_ARQUIVO: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string }> = {
   ata_srp: { label: 'ATA SRP', color: 'bg-amber-500/10 text-amber-600' },
   contrato_original: { label: 'Contrato Original', color: 'bg-primary/10 text-primary' },
-  aditivo_valor: { label: 'Aditivo de Valor', color: 'bg-success/10 text-success', isAditivo: true, tipoAditivo: 'valor' },
-  aditivo_quantidade: { label: 'Aditivo de Quantidade', color: 'bg-accent/10 text-accent', isAditivo: true, tipoAditivo: 'quantidade' },
-  aditivo_valor_quantidade: { label: 'Aditivo de Valor e Qtde', color: 'bg-blue-500/10 text-blue-600', isAditivo: true, tipoAditivo: 'valor_quantidade' },
-  aditivo_prazo: { label: 'Aditivo de Prazo', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo' },
-  aditivo_escopo: { label: 'Aditivo de Escopo', color: 'bg-primary/10 text-primary', isAditivo: true, tipoAditivo: 'escopo' },
+  aditivo_prazo: { label: 'Termo Aditivo de Prazo', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo' },
+  aditivo_valor: { label: 'Termo Aditivo de Valor', color: 'bg-success/10 text-success', isAditivo: true, tipoAditivo: 'valor' },
+  aditivo_quantidade: { label: 'Termo Aditivo de Quantidade', color: 'bg-accent/10 text-accent', isAditivo: true, tipoAditivo: 'quantidade' },
+  aditivo_prazo_valor: { label: 'Termo Aditivo de Prazo e Valor', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_valor' },
+  aditivo_prazo_quantidade: { label: 'Termo Aditivo de Prazo e Quantidade', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_quantidade' },
+  aditivo_valor_quantidade: { label: 'Termo Aditivo de Quantidade e Valor', color: 'bg-blue-500/10 text-blue-600', isAditivo: true, tipoAditivo: 'valor_quantidade' },
+  aditivo_escopo: { label: 'Termo Aditivo de Escopo', color: 'bg-primary/10 text-primary', isAditivo: true, tipoAditivo: 'escopo' },
   outro: { label: 'Outro Documento', color: 'bg-muted text-muted-foreground' },
 };
 
-const showValueFields = (tipo: string) => ['aditivo_valor', 'aditivo_valor_quantidade', 'aditivo_escopo', 'aditivo_prazo'].includes(tipo);
-const showQtyFields = (tipo: string) => ['aditivo_quantidade', 'aditivo_valor_quantidade', 'aditivo_prazo'].includes(tipo);
-const showDateField = (tipo: string) => ['aditivo_prazo'].includes(tipo);
+const showValueFields = (tipo: string) => ['aditivo_valor', 'aditivo_valor_quantidade', 'aditivo_prazo_valor', 'aditivo_escopo'].includes(tipo);
+const showQtyFields = (tipo: string) => ['aditivo_quantidade', 'aditivo_valor_quantidade', 'aditivo_prazo_quantidade'].includes(tipo);
+const showDateField = (tipo: string) => ['aditivo_prazo', 'aditivo_prazo_valor', 'aditivo_prazo_quantidade'].includes(tipo);
 const isAditivoType = (tipo: string) => TIPOS_ARQUIVO[tipo]?.isAditivo === true;
 
 function formatBytes(bytes: number | null): string {
