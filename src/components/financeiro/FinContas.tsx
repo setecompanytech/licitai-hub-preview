@@ -288,7 +288,6 @@ export default function FinContas() {
     });
     setOpen(false);
   };
-  };
 
   // Filtro: por banco selecionado e por busca livre (nome / agência / conta)
   const contasFiltradas = contas.filter((c) => {
