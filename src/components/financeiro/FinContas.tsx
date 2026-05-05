@@ -90,11 +90,21 @@ const contaSchema = z
 type Erros = Partial<Record<"nome" | "banco" | "agencia" | "conta" | "saldoInicial", string>>;
 
 const TIPOS = [
-  { value: "corrente", label: "Conta corrente" },
-  { value: "poupanca", label: "Poupança" },
-  { value: "caixa", label: "Caixa / dinheiro" },
-  { value: "cartao", label: "Cartão de crédito" },
+  { value: "adiantamento", label: "Adiantamento" },
+  { value: "administradora_cartoes", label: "Administradora de Cartões" },
+  { value: "caixinha", label: "Caixinha" },
+  { value: "cartao", label: "Cartão de Crédito" },
+  { value: "carteira_virtual", label: "Carteira Virtual" },
+  { value: "aplicacao", label: "Conta Aplicação" },
+  { value: "corrente", label: "Conta Corrente" },
+  { value: "pagamento", label: "Conta de Pagamento" },
+  { value: "emprestimo", label: "Conta Empréstimo" },
+  { value: "garantida", label: "Conta Garantida" },
+  { value: "poupanca", label: "Conta Poupança" },
+  { value: "crediario", label: "Crediário / Carnê" },
+  { value: "mutuo", label: "Mútuo" },
   { value: "investimento", label: "Investimento" },
+  { value: "caixa", label: "Caixa / Dinheiro" },
 ];
 
 export default function FinContas() {
