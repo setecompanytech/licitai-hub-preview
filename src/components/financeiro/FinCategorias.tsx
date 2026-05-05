@@ -32,6 +32,7 @@ export default function FinCategorias() {
   const upsert = useUpsertCategoria();
   const del = useDeleteCategoria();
   const seed = useSeedPlanoContas();
+  const sync = useSyncPlanoContasCategorias();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Categoria | null>(null);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
