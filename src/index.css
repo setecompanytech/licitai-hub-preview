@@ -283,3 +283,42 @@
   background-clip: text;
   animation: shimmer 4s linear infinite;
 }
+
+/* ============================================================
+   Kanban — Padronização de contenção, quebra e overflow
+   Usado em todos os Kanbans do sistema (Financeiro, Licitações, etc.)
+   ============================================================ */
+@layer utilities {
+  /* Coluna do Kanban: largura controlada, nunca expande além do grid */
+  .kanban-col {
+    @apply min-w-0 max-w-full overflow-hidden flex flex-col;
+  }
+  /* Área rolável interna da coluna */
+  .kanban-col-scroll {
+    @apply w-full min-w-0 max-w-full overscroll-contain;
+  }
+  /* Container de cards dentro da coluna */
+  .kanban-col-body {
+    @apply space-y-2 min-w-0 max-w-full;
+  }
+  /* Card individual: contém o conteúdo, nunca vaza */
+  .kanban-card {
+    @apply w-full min-w-0 max-w-full overflow-hidden;
+  }
+  /* Conteúdo do card */
+  .kanban-card-body {
+    @apply min-w-0 max-w-full overflow-hidden;
+  }
+  /* Título do card: 2 linhas, quebra inclusive em palavras longas */
+  .kanban-card-title {
+    @apply text-sm font-medium line-clamp-2 min-w-0 break-words [overflow-wrap:anywhere];
+  }
+  /* Linha auxiliar (cliente, doc, categoria): uma linha truncada */
+  .kanban-card-meta {
+    @apply text-[11px] text-muted-foreground truncate min-w-0 max-w-full;
+  }
+  /* Linha auxiliar que pode quebrar (descrições maiores) */
+  .kanban-card-meta-wrap {
+    @apply text-[11px] text-muted-foreground min-w-0 max-w-full break-words [overflow-wrap:anywhere];
+  }
+}

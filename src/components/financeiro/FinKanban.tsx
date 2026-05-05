@@ -248,7 +248,7 @@ export default function FinKanban({ tipo }: Props) {
           const subtotal = items.reduce((s, l) => s + Number(l.valor), 0);
           const Icone = col.icone;
           return (
-            <Card key={col.id} className={`${col.cor} border-2 min-w-0 flex flex-col`}>
+            <Card key={col.id} className={`${col.cor} border-2 kanban-col`}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Icone className="w-4 h-4" />
@@ -259,9 +259,9 @@ export default function FinKanban({ tipo }: Props) {
                   {subtotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                 </p>
               </CardHeader>
-              <CardContent className="p-2 min-w-0 max-w-full overflow-hidden">
-                <ScrollArea className="h-[min(65vh,520px)] w-full pr-3 overscroll-contain">
-                  <div className="space-y-2 min-w-0 max-w-full">
+              <CardContent className="p-2 kanban-col">
+                <ScrollArea className="h-[min(65vh,520px)] kanban-col-scroll pr-3">
+                  <div className="kanban-col-body">
                     {items.length === 0 ? (
                       <p className="text-xs text-muted-foreground text-center py-6">Nenhum item</p>
                     ) : (
@@ -272,13 +272,10 @@ export default function FinKanban({ tipo }: Props) {
                         const num = Number(l.parcela_numero ?? 1);
                         const isParcelado = total > 1;
                         return (
-                          <Card key={l.id} className="bg-card border shadow-sm w-full min-w-0 max-w-full overflow-hidden">
-                            <CardContent className="p-3 space-y-1.5 min-w-0 max-w-full overflow-hidden">
+                          <Card key={l.id} className="bg-card border shadow-sm kanban-card">
+                            <CardContent className="p-3 space-y-1.5 kanban-card-body">
                               <div className="flex items-start justify-between gap-2 min-w-0 max-w-full">
-                                <p
-                                  className="text-sm font-medium line-clamp-2 flex-1 min-w-0 break-words [overflow-wrap:anywhere]"
-                                  title={l.descricao}
-                                >
+                                <p className="kanban-card-title flex-1" title={l.descricao}>
                                   {l.descricao}
                                 </p>
                                 <div className="flex items-center gap-0.5 shrink-0">
@@ -305,14 +302,14 @@ export default function FinKanban({ tipo }: Props) {
 
                               {l.pessoa?.nome && (
                                 <p
-                                  className="text-[11px] text-muted-foreground truncate min-w-0 max-w-full"
+                                  className="kanban-card-meta"
                                   title={`${tipo === "a_pagar" ? "Fornecedor" : "Cliente"}: ${l.pessoa.nome}`}
                                 >
                                   {tipo === "a_pagar" ? "Fornecedor" : "Cliente"}: {l.pessoa.nome}
                                 </p>
                               )}
                               {l.numero_documento && (
-                                <p className="text-[11px] text-muted-foreground truncate min-w-0 max-w-full">
+                                <p className="kanban-card-meta">
                                   Doc: {l.numero_documento}
                                   {l.serie_documento ? ` / ${l.serie_documento}` : ""}
                                 </p>
