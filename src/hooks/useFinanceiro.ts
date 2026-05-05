@@ -496,7 +496,7 @@ export function useGerarParcelas() {
         ...(input as LancamentoInsert),
         empresa_id: empresaId,
         descricao: input.descricao ?? "",
-        valor: valorParcela,
+        valor: datas[0].valor,
         natureza: input.natureza ?? "despesa",
         tipo: input.tipo ?? "a_pagar",
         status: input.status ?? "previsto",
@@ -510,6 +510,11 @@ export function useGerarParcelas() {
       delete (baseBody as any).parcelas;
       delete (baseBody as any).valor_total;
       delete (baseBody as any).intervalo_dias;
+      delete (baseBody as any).periodicidade;
+      delete (baseBody as any).modo;
+      delete (baseBody as any).regra_fim_semana;
+      delete (baseBody as any).dia_fixo;
+      delete (baseBody as any).datas_customizadas;
 
       const { data: paiInserido, error: errPai } = await supabase
         .from("financeiro_lancamentos")
@@ -523,7 +528,7 @@ export function useGerarParcelas() {
         filhos.push({
           ...baseBody,
           descricao: `${baseBody.descricao} (${i + 1}/${total})`,
-          valor: i === total - 1 ? valorUltima : valorParcela,
+          valor: datas[i].valor,
           data_competencia: datas[i].competencia,
           data_vencimento: datas[i].vencimento,
           parcela_numero: i + 1,
