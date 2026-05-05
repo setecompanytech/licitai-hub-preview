@@ -360,12 +360,115 @@ export function useDeleteLancamento() {
 // Parcelamento — gera N lançamentos com vencimentos mensais a partir do "pai".
 // O 1º lançamento é o "pai" (parcela_pai_id = null) e referenciado pelas demais.
 // ----------------------------------------------------------------------------
+export type Periodicidade = "mensal" | "semanal" | "quinzenal" | "bimestral" | "trimestral" | "semestral" | "anual" | "dias";
+export type RegraFimSemana = "manter" | "antecipar" | "postergar";
+export type ModoParcelamento = "dividir" | "repetir";
+
 export type GerarParcelasInput = Partial<LancamentoInsert> & {
   parcelas: number;            // total (>=2)
   data_vencimento: string;     // vencimento da 1ª parcela (YYYY-MM-DD)
-  valor_total: number;         // valor total a ser dividido (em reais)
-  intervalo_dias?: number;     // padrão: mensal (mesmo dia do mês)
+  valor_total: number;         // valor total (modo "dividir") ou valor unitário (modo "repetir")
+  intervalo_dias?: number;     // usado quando periodicidade = "dias"
+  periodicidade?: Periodicidade; // padrão: mensal
+  modo?: ModoParcelamento;     // padrão: dividir
+  regra_fim_semana?: RegraFimSemana; // padrão: manter
+  dia_fixo?: number | null;    // forçar dia do mês (ex.: 10)
+  /** Datas pré-calculadas pela simulação (sobrepõem os cálculos internos) */
+  datas_customizadas?: { competencia: string; vencimento: string; valor: number }[];
 };
+
+/**
+ * Gera a lista de datas e valores para a série de parcelas/repetições.
+ * Exposta para que a UI possa pré-visualizar antes de salvar.
+ */
+export function calcularSerieParcelas(input: {
+  parcelas: number;
+  data_vencimento: string;
+  data_competencia?: string;
+  valor_total: number;
+  periodicidade?: Periodicidade;
+  intervalo_dias?: number;
+  modo?: ModoParcelamento;
+  regra_fim_semana?: RegraFimSemana;
+  dia_fixo?: number | null;
+}) {
+  const total = Math.max(2, Math.floor(input.parcelas));
+  const periodicidade = input.periodicidade ?? "mensal";
+  const modo = input.modo ?? "dividir";
+  const regra = input.regra_fim_semana ?? "manter";
+
+  // Valores
+  let valores: number[];
+  if (modo === "repetir") {
+    const v = +Number(input.valor_total).toFixed(2);
+    valores = Array(total).fill(v);
+  } else {
+    const valorParcela = Math.round((input.valor_total / total) * 100) / 100;
+    const valorUltima = +(input.valor_total - valorParcela * (total - 1)).toFixed(2);
+    valores = Array.from({ length: total }, (_, i) => (i === total - 1 ? valorUltima : valorParcela));
+  }
+
+  const baseVenc = new Date(input.data_vencimento + "T12:00:00");
+  const baseComp = input.data_competencia
+    ? new Date(input.data_competencia + "T12:00:00")
+    : baseVenc;
+
+  const advance = (d: Date, i: number) => {
+    switch (periodicidade) {
+      case "semanal":
+        d.setDate(d.getDate() + 7 * i); break;
+      case "quinzenal":
+        d.setDate(d.getDate() + 15 * i); break;
+      case "bimestral":
+        d.setMonth(d.getMonth() + 2 * i); break;
+      case "trimestral":
+        d.setMonth(d.getMonth() + 3 * i); break;
+      case "semestral":
+        d.setMonth(d.getMonth() + 6 * i); break;
+      case "anual":
+        d.setFullYear(d.getFullYear() + i); break;
+      case "dias":
+        d.setDate(d.getDate() + (input.intervalo_dias ?? 30) * i); break;
+      case "mensal":
+      default:
+        d.setMonth(d.getMonth() + i);
+    }
+  };
+
+  const aplicarDiaFixo = (d: Date) => {
+    if (!input.dia_fixo) return;
+    const ano = d.getFullYear();
+    const mes = d.getMonth();
+    const ultimoDia = new Date(ano, mes + 1, 0).getDate();
+    d.setDate(Math.min(input.dia_fixo, ultimoDia));
+  };
+
+  const aplicarRegraFds = (d: Date) => {
+    if (regra === "manter") return;
+    const dow = d.getDay(); // 0=dom, 6=sab
+    if (dow === 6) d.setDate(d.getDate() + (regra === "postergar" ? 2 : -1));
+    else if (dow === 0) d.setDate(d.getDate() + (regra === "postergar" ? 1 : -2));
+  };
+
+  const datas: { competencia: string; vencimento: string; valor: number }[] = [];
+  for (let i = 0; i < total; i++) {
+    const v = new Date(baseVenc);
+    const c = new Date(baseComp);
+    advance(v, i);
+    advance(c, i);
+    if (periodicidade !== "semanal" && periodicidade !== "quinzenal" && periodicidade !== "dias") {
+      aplicarDiaFixo(v);
+      aplicarDiaFixo(c);
+    }
+    aplicarRegraFds(v);
+    datas.push({
+      competencia: c.toISOString().slice(0, 10),
+      vencimento: v.toISOString().slice(0, 10),
+      valor: valores[i],
+    });
+  }
+  return datas;
+}
 
 export function useGerarParcelas() {
   const qc = useQueryClient();
@@ -374,31 +477,20 @@ export function useGerarParcelas() {
     mutationFn: async (input: GerarParcelasInput) => {
       if (!empresaId) throw new Error("Selecione uma empresa ativa.");
       const total = Math.max(2, Math.floor(input.parcelas));
-      const valorParcela = Math.round((input.valor_total / total) * 100) / 100;
-      // Ajusta a última parcela para fechar a soma exata
-      const valorUltima = +(input.valor_total - valorParcela * (total - 1)).toFixed(2);
 
-      const baseVenc = new Date(input.data_vencimento + "T12:00:00");
-      const baseComp = input.data_competencia
-        ? new Date(input.data_competencia + "T12:00:00")
-        : baseVenc;
-
-      const datas: { competencia: string; vencimento: string }[] = [];
-      for (let i = 0; i < total; i++) {
-        const v = new Date(baseVenc);
-        const c = new Date(baseComp);
-        if (input.intervalo_dias && input.intervalo_dias > 0) {
-          v.setDate(v.getDate() + input.intervalo_dias * i);
-          c.setDate(c.getDate() + input.intervalo_dias * i);
-        } else {
-          v.setMonth(v.getMonth() + i);
-          c.setMonth(c.getMonth() + i);
-        }
-        datas.push({
-          competencia: c.toISOString().slice(0, 10),
-          vencimento: v.toISOString().slice(0, 10),
-        });
-      }
+      const datas = input.datas_customizadas && input.datas_customizadas.length === total
+        ? input.datas_customizadas
+        : calcularSerieParcelas({
+            parcelas: total,
+            data_vencimento: input.data_vencimento,
+            data_competencia: input.data_competencia ?? undefined,
+            valor_total: input.valor_total,
+            periodicidade: input.periodicidade,
+            intervalo_dias: input.intervalo_dias,
+            modo: input.modo,
+            regra_fim_semana: input.regra_fim_semana,
+            dia_fixo: input.dia_fixo ?? null,
+          });
 
       const baseBody: LancamentoInsert = {
         ...(input as LancamentoInsert),
