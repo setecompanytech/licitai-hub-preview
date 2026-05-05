@@ -257,6 +257,24 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
               </SelectContent>
             </Select>
             <Badge variant="outline">{filtrados.length} lançamentos</Badge>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" disabled={filtrados.length === 0}>
+                  <Download className="w-4 h-4 mr-1" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={exportarCSV}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Exportar CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarPDF}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Exportar PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button size="sm" onClick={abrirNovo}>
               <Plus className="w-4 h-4 mr-1" />
               Novo {tipo === "a_pagar" ? "pagamento" : "recebimento"}
