@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -93,13 +94,31 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
   const [dragOver, setDragOver] = useState(false);
   const [docs, setDocs] = useState<DocItem[]>([]);
   const [processando, setProcessando] = useState(false);
-  const [editor, setEditor] = useState<{ open: boolean; initial: Partial<Lancamento> | null }>({
+  const [editor, setEditor] = useState<{ open: boolean; initial: Partial<Lancamento> | null; docId: string | null }>({
     open: false,
     initial: null,
+    docId: null,
   });
 
+  const qc = useQueryClient();
   const { importar } = useImportacaoNotas();
   const upsert = useUpsertLancamento();
+
+  // Invalida todas as queries do financeiro impactadas por novos lançamentos
+  // (lista, kanban, resumos, fluxo de caixa, contratos vinculados, etc.).
+  const invalidarFinanceiro = useCallback(() => {
+    [
+      "fin-lancamentos",
+      "fin-resumo",
+      "fin-resumo-visor",
+      "fin-fluxo-caixa",
+      "fin-dre",
+      "fin-movimentos",
+      "fin-extratos",
+      "contratos",
+      "contrato-pedidos",
+    ].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+  }, [qc]);
 
   const tipoLabel = tipo === "a_receber" ? "recebimento" : "pagamento";
 
@@ -196,29 +215,40 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
     const tipoDocMap: Record<string, string> = {
       nfe: "nfe", nfse: "nfse", nfce: "nfce",
       boleto: "boleto", recibo: "recibo", contrato: "contrato",
+      duplicata: "duplicata", fatura: "fatura",
     };
+    const obsContrato = item.vinculo?.contrato_id
+      ? `Vínculo: contrato ${item.vinculo.contrato_id}${
+          item.vinculo.contrato_item_ids?.length
+            ? ` · ${item.vinculo.contrato_item_ids.length} item(s)`
+            : ""
+        }.`
+      : null;
     const initial: any = {
       tipo,
       natureza: tipo === "a_receber" ? "receita" : "despesa",
       status: "previsto",
       descricao: d.descricao
-        || `${(d.tipo_documento ?? "Documento").toString().toUpperCase()} ${d.numero_documento ?? ""}`.trim(),
+        || `${(d.tipo_documento ?? "Documento").toString().toUpperCase()} ${d.numero_documento ?? ""}`.trim()
+        || item.file.name,
       valor: Number(d.valor_total ?? 0),
       data_competencia: d.data_emissao ?? new Date().toISOString().slice(0, 10),
-      data_vencimento: d.data_vencimento ?? null,
+      data_vencimento: d.data_vencimento ?? d.data_emissao ?? null,
       data_emissao: d.data_emissao ?? null,
-      tipo_documento: tipoDocBruto ? (tipoDocMap[tipoDocBruto] ?? "outro") : null,
+      tipo_documento: tipoDocBruto ? (tipoDocMap[tipoDocBruto] ?? "outro") : "outro",
       numero_documento: d.numero_documento ?? null,
       chave_acesso_nfe: d.chave_nfe ?? null,
       observacoes: [
         d.emitente_nome ? `Emitente: ${d.emitente_nome}` : null,
         d.emitente_cnpj ? `CNPJ emitente: ${d.emitente_cnpj}` : null,
         d.destinatario_nome ? `Destinatário: ${d.destinatario_nome}` : null,
+        d.destinatario_cnpj_cpf ? `CNPJ/CPF destinatário: ${d.destinatario_cnpj_cpf}` : null,
         d.codigo_barras ? `Código de barras: ${d.codigo_barras}` : null,
         item.motor ? `Extraído via ${item.motor}` : null,
+        obsContrato,
       ].filter(Boolean).join("\n") || null,
     };
-    setEditor({ open: true, initial });
+    setEditor({ open: true, initial, docId: item.id });
   };
 
   const setVinculo = (id: string, v: VinculoContratoValue) => {
@@ -340,6 +370,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         setDocs((prev) =>
           prev.map((x) => (x.id === item.id ? { ...x, lancamentoId: lancId ?? "ok" } : x)),
         );
+        invalidarFinanceiro();
         toast.success(
           itemIds.length > 1
             ? `Documento rateado entre ${itemIds.length} itens e vinculado ao contrato.`
@@ -359,13 +390,14 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
           item.file.name,
         valor: Number(d.valor_total),
         data_competencia: d.data_emissao ?? new Date().toISOString().slice(0, 10),
-        data_vencimento: d.data_vencimento ?? null,
+        data_vencimento: d.data_vencimento ?? d.data_emissao ?? null,
         data_emissao: d.data_emissao ?? null,
         tipo_documento: (d.tipo_documento as any) ?? "outro",
         numero_documento: d.numero_documento ?? null,
         chave_acesso_nfe: d.chave_nfe ? String(d.chave_nfe).replace(/\D/g, "") : null,
       } as any);
       setDocs((prev) => prev.map((x) => (x.id === item.id ? { ...x, lancamentoId: (r as any)?.id ?? "ok" } : x)));
+      invalidarFinanceiro();
     } catch {
       /* toast já exibido pelo hook */
     }
@@ -578,9 +610,21 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
 
       <LancamentoDialog
         open={editor.open}
-        onOpenChange={(v) => setEditor((s) => ({ ...s, open: v }))}
+        onOpenChange={(v) =>
+          setEditor((s) => (v ? { ...s, open: true } : { open: false, initial: null, docId: null }))
+        }
         initial={editor.initial}
         defaultTipo={tipo}
+        onSaved={(saved) => {
+          if (editor.docId) {
+            setDocs((prev) =>
+              prev.map((x) =>
+                x.id === editor.docId ? { ...x, lancamentoId: saved?.id ?? "ok" } : x,
+              ),
+            );
+          }
+          invalidarFinanceiro();
+        }}
       />
     </>
   );

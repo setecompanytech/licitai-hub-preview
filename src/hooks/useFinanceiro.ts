@@ -361,6 +361,9 @@ export function useUpsertLancamento() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["fin-lancamentos"] });
       qc.invalidateQueries({ queryKey: ["fin-resumo"] });
+      qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
+      qc.invalidateQueries({ queryKey: ["fin-fluxo-caixa"] });
+      qc.invalidateQueries({ queryKey: ["fin-dre"] });
       toast.success("Lançamento salvo.");
     },
     onError: (e: Error) => toast.error(e.message),
