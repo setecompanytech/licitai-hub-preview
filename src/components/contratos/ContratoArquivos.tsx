@@ -662,6 +662,8 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
     quantidade: Package,
     valor_quantidade: Layers,
     prazo: Calendar,
+    prazo_valor: Calendar,
+    prazo_quantidade: Calendar,
     escopo: FilePlus2,
   };
 
