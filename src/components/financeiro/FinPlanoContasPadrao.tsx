@@ -83,12 +83,30 @@ export default function FinPlanoContasPadrao() {
               Estrutura hierárquica padrão (31 contas em 5 grupos). Você pode editar, expandir ou criar contas adicionais por empresa.
             </CardDescription>
           </div>
-          {contas.length === 0 && !loading && (
-            <Button onClick={seed} disabled={seeding} className="shrink-0">
-              {seeding ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1.5" />}
-              Importar plano padrão
-            </Button>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {contas.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => syncCategorias.mutate()}
+                disabled={syncCategorias.isPending}
+                className="shrink-0"
+                title="Copia todas as contas deste plano para a lista de Categorias usada em Contas a Pagar/Receber"
+              >
+                {syncCategorias.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-1.5" />
+                )}
+                Sincronizar com Categorias
+              </Button>
+            )}
+            {contas.length === 0 && !loading && (
+              <Button onClick={seed} disabled={seeding} className="shrink-0">
+                {seeding ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1.5" />}
+                Importar plano padrão
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
