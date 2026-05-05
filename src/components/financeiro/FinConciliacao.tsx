@@ -9,6 +9,8 @@ import {
   useDesfazerConciliacao,
   useLancamentos,
 } from "@/hooks/useFinanceiro";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +38,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Upload,
   Sparkles,
   Link2,
@@ -46,12 +56,19 @@ import {
   CheckCircle2,
   TrendingUp,
   BarChart3,
+  Plus,
+  ArrowLeftRight,
+  Ban,
+  ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBRL, formatDate, statusLabel } from "@/lib/financeiro/formatters";
 import { parseCsvExtrato, csvParaOfx } from "@/lib/financeiro/csvToOfx";
 import { toast } from "sonner";
 import FinRelatorioConciliacao from "./FinRelatorioConciliacao";
+import LancamentoDialog from "./LancamentoDialog";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 
 type MatchSugestao = {
   movimento_id: string;
