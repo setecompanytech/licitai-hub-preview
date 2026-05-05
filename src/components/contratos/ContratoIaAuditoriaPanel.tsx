@@ -65,6 +65,27 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('todos');
   const [eventoSelecionado, setEventoSelecionado] = useState<AuditoriaRow | null>(null);
+  const [reprocessando, setReprocessando] = useState(false);
+  const { isAdmin } = useUserRole();
+
+  const handleReprocessarTodos = async () => {
+    if (!confirm('Reprocessar TODOS os contratos com aditivos?\n\nEsta ação irá:\n• Remover alertas indevidos de aditivos de prazo/vigência\n• Recalcular alertas legais conforme art. 125 da Lei 14.133/21\n\nDeseja continuar?')) return;
+    setReprocessando(true);
+    try {
+      const { data, error } = await supabase.rpc('reprocessar_alertas_aditivos_todos_contratos' as any);
+      if (error) throw error;
+      const r = data as any;
+      toast.success(
+        `Reprocessamento concluído: ${r?.contratos_processados ?? 0} contrato(s). ` +
+        `${r?.alertas_removidos_prazo_vigencia ?? 0} alerta(s) indevido(s) de prazo/vigência removido(s).`
+      );
+      load();
+    } catch (e: any) {
+      toast.error(`Falha no reprocessamento: ${e?.message ?? 'erro desconhecido'}`);
+    } finally {
+      setReprocessando(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
