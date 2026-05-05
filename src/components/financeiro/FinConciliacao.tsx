@@ -68,7 +68,7 @@ import { parseCsvExtrato, csvParaOfx } from "@/lib/financeiro/csvToOfx";
 import { toast } from "sonner";
 import FinRelatorioConciliacao from "./FinRelatorioConciliacao";
 import LancamentoDialog from "./LancamentoDialog";
-import { useEmpresa } from "@/contexts/EmpresaContext";
+
 
 type MatchSugestao = {
   movimento_id: string;
