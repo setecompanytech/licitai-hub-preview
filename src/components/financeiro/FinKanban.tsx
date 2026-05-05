@@ -180,7 +180,54 @@ export default function FinKanban({ tipo }: Props) {
     setDialogOpen(true);
   };
 
-  const nomeVendedor = (id: string | null | undefined) => {
+  // ===== Drag & Drop entre colunas =====
+  const handleDragStart = (id: string) => (e: React.DragEvent) => {
+    setDragItemId(id);
+    e.dataTransfer.effectAllowed = "move";
+    try { e.dataTransfer.setData("text/plain", id); } catch {}
+  };
+  const handleDragEnd = () => {
+    setDragItemId(null);
+    setDragOverCol(null);
+  };
+  const handleColDragOver = (colId: ColunaKanban) => (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverCol(colId);
+  };
+  const handleColDrop = (colId: ColunaKanban) => async (e: React.DragEvent) => {
+    e.preventDefault();
+    const id = dragItemId;
+    setDragOverCol(null);
+    setDragItemId(null);
+    if (!id) return;
+    const lanc = lancamentos.find((x) => x.id === id);
+    if (!lanc) return;
+    const colAtual = classificar(lanc);
+    if (colAtual === colId) return;
+
+    try {
+      if (colId === "pago") {
+        await upsert.mutateAsync({
+          id,
+          status: "realizado",
+          data_realizado: new Date().toISOString().slice(0, 10),
+        } as any);
+        toast.success("Lançamento marcado como concluído.");
+      } else {
+        // Tirar de "pago" → volta para previsto; recalcula coluna pelo vencimento
+        await upsert.mutateAsync({
+          id,
+          status: "previsto",
+          data_realizado: null,
+        } as any);
+        toast.success("Lançamento reaberto.");
+      }
+    } catch {
+      toast.error("Não foi possível mover o lançamento.");
+    }
+  };
+
     if (!id) return null;
     const m = membros.find((x) => x.user_id === id);
     return m?.nome_completo || m?.email || null;
