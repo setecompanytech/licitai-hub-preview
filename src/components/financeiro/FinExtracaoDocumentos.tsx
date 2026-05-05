@@ -94,13 +94,31 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
   const [dragOver, setDragOver] = useState(false);
   const [docs, setDocs] = useState<DocItem[]>([]);
   const [processando, setProcessando] = useState(false);
-  const [editor, setEditor] = useState<{ open: boolean; initial: Partial<Lancamento> | null }>({
+  const [editor, setEditor] = useState<{ open: boolean; initial: Partial<Lancamento> | null; docId: string | null }>({
     open: false,
     initial: null,
+    docId: null,
   });
 
+  const qc = useQueryClient();
   const { importar } = useImportacaoNotas();
   const upsert = useUpsertLancamento();
+
+  // Invalida todas as queries do financeiro impactadas por novos lançamentos
+  // (lista, kanban, resumos, fluxo de caixa, contratos vinculados, etc.).
+  const invalidarFinanceiro = useCallback(() => {
+    [
+      "fin-lancamentos",
+      "fin-resumo",
+      "fin-resumo-visor",
+      "fin-fluxo-caixa",
+      "fin-dre",
+      "fin-movimentos",
+      "fin-extratos",
+      "contratos",
+      "contrato-pedidos",
+    ].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+  }, [qc]);
 
   const tipoLabel = tipo === "a_receber" ? "recebimento" : "pagamento";
 
