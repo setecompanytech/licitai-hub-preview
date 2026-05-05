@@ -146,7 +146,54 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
     return m?.nome_completo || m?.email || null;
   };
 
-  if (isLoading) {
+  const buildExportRows = () => {
+    const headers = [
+      "Vencimento",
+      "Descrição",
+      "Categoria",
+      tipo === "a_pagar" ? "Fornecedor" : "Cliente",
+      "Documento",
+      "Parcela",
+      "Responsável",
+      "Status",
+      "Valor (R$)",
+    ];
+    const rows = filtrados.map((l) => {
+      const st = statusEfetivo(l);
+      const meta = STATUS_LABEL[st] ?? STATUS_LABEL.previsto;
+      const total = Number(l.parcela_total ?? 1);
+      const num = Number(l.parcela_numero ?? 1);
+      const venc = dataRefVenc(l);
+      return [
+        format(parseISO(venc), "dd/MM/yyyy", { locale: ptBR }),
+        l.descricao ?? "",
+        l.categoria?.nome ?? "",
+        l.pessoa?.nome ?? "",
+        l.numero_documento
+          ? `${l.numero_documento}${l.serie_documento ? ` / ${l.serie_documento}` : ""}`
+          : "",
+        total > 1 ? `${num}/${total}` : "",
+        nomeVendedor((l as any).vendedor_responsavel_id) ?? "",
+        meta.label,
+        Number(l.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      ];
+    });
+    return { headers, rows };
+  };
+
+  const exportarCSV = () => {
+    const { headers, rows } = buildExportRows();
+    const nome = `financeiro-${tipo}-${new Date().toISOString().slice(0, 10)}`;
+    downloadCSV(nome, headers, rows);
+  };
+
+  const exportarPDF = () => {
+    const { headers, rows } = buildExportRows();
+    const titulo = `Financeiro · ${tipo === "a_pagar" ? "Contas a Pagar" : "Contas a Receber"}`;
+    const subtitulo = `${filtrados.length} lançamento(s) · Total em aberto: ${totalAberto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} · Total pago: ${totalPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
+    const nome = `financeiro-${tipo}-${new Date().toISOString().slice(0, 10)}`;
+    downloadPDF(nome, `${titulo} — ${subtitulo}`, headers, rows);
+  };
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
