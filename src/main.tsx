@@ -4,6 +4,7 @@ import App from "./App.tsx";
 import "./index.css";
 import { initSecurityGuard } from "./lib/security-guard";
 import { clearChunkReloadState, installChunkErrorRecovery } from "./lib/chunk-recovery";
+import { installVersionChecker } from "./lib/version-checker";
 import {
   validateAndCleanAuthStorage,
   installAuthFetchInterceptor,
@@ -79,6 +80,7 @@ const clearLegacyBrowserState = async () => {
 
 void clearLegacyBrowserState();
 initSecurityGuard();
+installVersionChecker();
 
 if (typeof window !== "undefined") {
   window.addEventListener("load", () => {
