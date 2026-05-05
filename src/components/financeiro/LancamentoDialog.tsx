@@ -9,7 +9,7 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Info } from "lucide-react";
+import { Info, CheckCircle2 } from "lucide-react";
 import {
   useContas,
   useCategorias,
@@ -17,7 +17,11 @@ import {
   useUpsertLancamento,
   useGerarParcelas,
   useMembrosEmpresa,
+  calcularSerieParcelas,
   type Lancamento,
+  type Periodicidade,
+  type RegraFimSemana,
+  type ModoParcelamento,
 } from "@/hooks/useFinanceiro";
 import type { Database } from "@/integrations/supabase/types";
 import RateioCentroCustoEditor from "./RateioCentroCustoEditor";
