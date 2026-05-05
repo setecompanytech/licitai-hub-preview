@@ -223,27 +223,27 @@ export default function KanbanPage() {
                     <div
                       key={lic.id}
                       className={cn(
-                        'bg-card rounded-lg border border-border/50 p-3 shadow-sm cursor-grab active:cursor-grabbing transition-all hover:shadow-md',
+                        'bg-card rounded-lg border border-border/50 p-3 shadow-sm cursor-grab active:cursor-grabbing transition-all hover:shadow-md kanban-card',
                         dragItem === lic.id && 'opacity-40 scale-95'
                       )}
                       draggable
                       onDragStart={() => handleDragStart(lic.id)}
                       onDragEnd={() => { setDragItem(null); setDragOverCol(null); }}
                     >
-                      <div className="flex items-start gap-1.5">
+                      <div className="flex items-start gap-1.5 kanban-card-body">
                         <GripVertical className="w-3.5 h-3.5 text-muted-foreground/30 mt-0.5 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-mono text-muted-foreground">{lic.numero}</span>
+                        <div className="flex-1 min-w-0 max-w-full">
+                          <div className="flex items-center justify-between gap-2 min-w-0">
+                            <span className="text-[10px] font-mono text-muted-foreground truncate">{lic.numero}</span>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleEdit(lic); }}
-                              className="p-1 rounded-md hover:bg-accent/10 text-muted-foreground/40 hover:text-accent transition-colors"
+                              className="p-1 rounded-md hover:bg-accent/10 text-muted-foreground/40 hover:text-accent transition-colors shrink-0"
                               title="Editar processo"
                             >
                               <Pencil className="w-3 h-3" />
                             </button>
                           </div>
-                          <p className="text-xs font-medium mt-0.5 line-clamp-2 leading-tight">{lic.objeto}</p>
+                          <p className="kanban-card-title mt-0.5 leading-tight" title={lic.objeto}>{lic.objeto}</p>
                           <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground flex-wrap">
                             {lic.municipio && lic.uf && (
                               <span className="flex items-center gap-0.5">
