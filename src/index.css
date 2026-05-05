@@ -185,7 +185,6 @@
   a {
     overflow-wrap: anywhere;
   }
-}
 
   /* Improve tap targets on mobile */
   @media (max-width: 640px) {
