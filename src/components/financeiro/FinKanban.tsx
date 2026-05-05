@@ -272,10 +272,13 @@ export default function FinKanban({ tipo }: Props) {
                         const num = Number(l.parcela_numero ?? 1);
                         const isParcelado = total > 1;
                         return (
-                          <Card key={l.id} className="bg-card border shadow-sm min-w-0">
-                            <CardContent className="p-3 space-y-1.5 min-w-0">
-                              <div className="flex items-start justify-between gap-2 min-w-0">
-                                <p className="text-sm font-medium line-clamp-2 flex-1 min-w-0 break-words">
+                          <Card key={l.id} className="bg-card border shadow-sm w-full min-w-0 max-w-full overflow-hidden">
+                            <CardContent className="p-3 space-y-1.5 min-w-0 max-w-full overflow-hidden">
+                              <div className="flex items-start justify-between gap-2 min-w-0 max-w-full">
+                                <p
+                                  className="text-sm font-medium line-clamp-2 flex-1 min-w-0 break-words [overflow-wrap:anywhere]"
+                                  title={l.descricao}
+                                >
                                   {l.descricao}
                                 </p>
                                 <div className="flex items-center gap-0.5 shrink-0">
@@ -301,12 +304,15 @@ export default function FinKanban({ tipo }: Props) {
                               </div>
 
                               {l.pessoa?.nome && (
-                                <p className="text-[11px] text-muted-foreground truncate">
+                                <p
+                                  className="text-[11px] text-muted-foreground truncate min-w-0 max-w-full"
+                                  title={`${tipo === "a_pagar" ? "Fornecedor" : "Cliente"}: ${l.pessoa.nome}`}
+                                >
                                   {tipo === "a_pagar" ? "Fornecedor" : "Cliente"}: {l.pessoa.nome}
                                 </p>
                               )}
                               {l.numero_documento && (
-                                <p className="text-[11px] text-muted-foreground">
+                                <p className="text-[11px] text-muted-foreground truncate min-w-0 max-w-full">
                                   Doc: {l.numero_documento}
                                   {l.serie_documento ? ` / ${l.serie_documento}` : ""}
                                 </p>
