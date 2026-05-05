@@ -363,11 +363,27 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                 <Label>Categoria</Label>
                 <Select value={categoriaId || "none"} onValueChange={(v) => setCategoriaId(v === "none" ? "" : v)}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[400px]">
                     <SelectItem value="none">— Sem categoria —</SelectItem>
-                    {categoriasFiltradas.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.codigo} · {c.nome}</SelectItem>
-                    ))}
+                    {ordemGrupos.map(({ key, label }) => {
+                      const itens = categoriasAgrupadas[key];
+                      if (!itens || itens.length === 0) return null;
+                      return (
+                        <SelectGroup key={key}>
+                          <SelectLabel className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {label}
+                          </SelectLabel>
+                          {itens
+                            .slice()
+                            .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || "", "pt-BR", { numeric: true }))
+                            .map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.codigo} · {c.nome}
+                              </SelectItem>
+                            ))}
+                        </SelectGroup>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
