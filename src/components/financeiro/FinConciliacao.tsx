@@ -82,10 +82,12 @@ type MatchSugestao = {
 export default function FinConciliacao() {
   const fileRef = useRef<HTMLInputElement>(null);
   const csvRef = useRef<HTMLInputElement>(null);
+  const qc = useQueryClient();
+  const { empresaAtiva } = useEmpresa();
   const [contaSelecionada, setContaSelecionada] = useState<string>("");
-  const [filtroConciliado, setFiltroConciliado] = useState<"todos" | "pendente" | "conciliado">(
-    "pendente"
-  );
+  const [filtroConciliado, setFiltroConciliado] = useState<
+    "todos" | "pendente" | "conciliado" | "ignorado"
+  >("pendente");
   const [scoreMinimo, setScoreMinimo] = useState<number>(75);
   const [sugestoes, setSugestoes] = useState<MatchSugestao[]>([]);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
@@ -95,11 +97,21 @@ export default function FinConciliacao() {
     natureza: "receita" | "despesa";
   } | null>(null);
 
+  // Diálogo de criação on-the-fly de lançamento direto da conciliação (estilo Omie)
+  const [novoLanc, setNovoLanc] = useState<{
+    movimento_id: string;
+    initial: Record<string, unknown>;
+    defaultTipo: "a_pagar" | "a_receber" | "movimentacao";
+  } | null>(null);
+
   const { data: contas } = useContas();
   const { data: extratos } = useExtratosImportados();
   const { data: movimentos, isLoading: loadingMov } = useMovimentosExtrato({
     conta_id: contaSelecionada || undefined,
-    conciliado: filtroConciliado === "todos" ? undefined : filtroConciliado === "conciliado",
+    conciliado:
+      filtroConciliado === "todos" || filtroConciliado === "ignorado"
+        ? undefined
+        : filtroConciliado === "conciliado",
   });
   const { data: lancamentosTodos } = useLancamentos({});
 
@@ -107,6 +119,33 @@ export default function FinConciliacao() {
   const conciliarAuto = useConciliarAutomatico();
   const conciliarManual = useConciliarManual();
   const desfazer = useDesfazerConciliacao();
+
+  // Marca/desmarca movimento como ignorado (tarifas, estornos, lançamentos pessoais)
+  const ignorarMov = useMutation({
+    mutationFn: async (params: { id: string; ignorar: boolean; motivo?: string }) => {
+      const patch: Record<string, unknown> = params.ignorar
+        ? { ignorado: true, ignorado_em: new Date().toISOString(), ignorado_motivo: params.motivo ?? null }
+        : { ignorado: false, ignorado_em: null, ignorado_motivo: null };
+      const { error } = await supabase
+        .from("financeiro_extrato_movimentos")
+        .update(patch as never)
+        .eq("id", params.id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["fin-movimentos-extrato"] });
+      toast.success(vars.ignorar ? "Movimento ignorado." : "Movimento restaurado.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Filtragem client-side por status "ignorado" (mantém compatibilidade com o hook atual)
+  const movimentosFiltrados = useMemo(() => {
+    const lista = movimentos ?? [];
+    if (filtroConciliado === "ignorado") return lista.filter((m: any) => m.ignorado === true);
+    if (filtroConciliado === "pendente") return lista.filter((m: any) => !m.ignorado);
+    return lista;
+  }, [movimentos, filtroConciliado]);
 
   // Indexa movimentos e lançamentos para exibir detalhes nas sugestões
   const movMap = useMemo(() => {
