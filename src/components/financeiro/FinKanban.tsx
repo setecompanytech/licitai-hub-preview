@@ -18,6 +18,7 @@ import {
   User2,
   Layers,
   ScanLine,
+  GripVertical,
 } from "lucide-react";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
