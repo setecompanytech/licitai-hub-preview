@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,14 +20,20 @@ import {
   Layers,
   ScanLine,
   GripVertical,
+  X,
+  Filter,
+  CheckSquare,
 } from "lucide-react";
-import { format, differenceInDays, parseISO } from "date-fns";
+import { format, differenceInDays, parseISO, isToday, isThisWeek, isThisMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   useLancamentos,
   useUpsertLancamento,
   useDeleteLancamento,
   useMembrosEmpresa,
+  useCategorias,
+  usePessoas,
+  useContas,
   type Lancamento,
 } from "@/hooks/useFinanceiro";
 import LancamentoDialog from "./LancamentoDialog";
@@ -62,9 +69,19 @@ type LancamentoCard = Lancamento & {
   pessoa?: { id: string; nome: string } | null;
 };
 
+type VencFiltro = "todos" | "hoje" | "semana" | "mes" | "atrasados";
+
 export default function FinKanban({ tipo }: Props) {
   const [busca, setBusca] = useState("");
   const [filtroVendedor, setFiltroVendedor] = useState<string>("todos");
+  const [filtroCategoria, setFiltroCategoria] = useState<string>("todos");
+  const [filtroPessoa, setFiltroPessoa] = useState<string>("todos");
+  const [filtroConta, setFiltroConta] = useState<string>("todos");
+  const [filtroVenc, setFiltroVenc] = useState<VencFiltro>("todos");
+  const [valorMin, setValorMin] = useState<string>("");
+  const [valorMax, setValorMax] = useState<string>("");
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  const [selecionados, setSelecionados] = useState<Set<string>>(() => new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [extracaoOpen, setExtracaoOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Lancamento> | null>(null);
@@ -76,6 +93,9 @@ export default function FinKanban({ tipo }: Props) {
 
   const { data = [], isLoading } = useLancamentos({ tipo });
   const { data: membros = [] } = useMembrosEmpresa();
+  const { data: categorias = [] } = useCategorias();
+  const { data: pessoas = [] } = usePessoas();
+  const { data: contas = [] } = useContas();
   const upsert = useUpsertLancamento();
   const del = useDeleteLancamento();
 
@@ -93,26 +113,97 @@ export default function FinKanban({ tipo }: Props) {
     return "aberto";
   };
 
+  const matchVencimento = (l: LancamentoCard): boolean => {
+    if (filtroVenc === "todos") return true;
+    const ref = parseISO(dataReferenciaVenc(l));
+    if (filtroVenc === "hoje") return isToday(ref);
+    if (filtroVenc === "semana") return isThisWeek(ref, { weekStartsOn: 1 });
+    if (filtroVenc === "mes") return isThisMonth(ref);
+    if (filtroVenc === "atrasados") {
+      return l.status !== "realizado" && l.status !== "conciliado" && differenceInDays(ref, new Date()) < 0;
+    }
+    return true;
+  };
+
   const lancamentosFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
+    const vMin = valorMin ? Number(valorMin) : null;
+    const vMax = valorMax ? Number(valorMax) : null;
     return lancamentos.filter((l) => {
       if (pendingDeleteIds.has(l.id)) return false;
-      if (filtroVendedor !== "todos" && (l as any).vendedor_responsavel_id !== filtroVendedor) {
-        return false;
-      }
+      if (filtroVendedor !== "todos" && (l as any).vendedor_responsavel_id !== filtroVendedor) return false;
+      if (filtroCategoria !== "todos" && l.categoria_id !== filtroCategoria) return false;
+      if (filtroPessoa !== "todos" && l.pessoa_id !== filtroPessoa) return false;
+      if (filtroConta !== "todos" && l.conta_id !== filtroConta) return false;
+      if (!matchVencimento(l)) return false;
+      const valor = Number(l.valor);
+      if (vMin !== null && valor < vMin) return false;
+      if (vMax !== null && valor > vMax) return false;
       if (!termo) return true;
       return (
         l.descricao.toLowerCase().includes(termo) ||
         (l.numero_documento ?? "").toLowerCase().includes(termo) ||
-        (l.pessoa?.nome ?? "").toLowerCase().includes(termo)
+        (l.pessoa?.nome ?? "").toLowerCase().includes(termo) ||
+        (l.categoria?.nome ?? "").toLowerCase().includes(termo)
       );
     });
-  }, [lancamentos, busca, filtroVendedor, pendingDeleteIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lancamentos, busca, filtroVendedor, filtroCategoria, filtroPessoa, filtroConta, filtroVenc, valorMin, valorMax, pendingDeleteIds]);
+
+  const filtrosAtivos =
+    (filtroVendedor !== "todos" ? 1 : 0) +
+    (filtroCategoria !== "todos" ? 1 : 0) +
+    (filtroPessoa !== "todos" ? 1 : 0) +
+    (filtroConta !== "todos" ? 1 : 0) +
+    (filtroVenc !== "todos" ? 1 : 0) +
+    (valorMin ? 1 : 0) +
+    (valorMax ? 1 : 0);
+
+  const limparFiltros = () => {
+    setFiltroVendedor("todos");
+    setFiltroCategoria("todos");
+    setFiltroPessoa("todos");
+    setFiltroConta("todos");
+    setFiltroVenc("todos");
+    setValorMin("");
+    setValorMax("");
+    setBusca("");
+  };
 
   const total = lancamentosFiltrados.reduce(
     (s, l) => (classificar(l) !== "pago" ? s + Number(l.valor) : s),
     0,
   );
+
+  // ===== Seleção em lote =====
+  const idsSelecionaveis = lancamentosFiltrados.filter((l) => classificar(l) !== "pago").map((l) => l.id);
+  const totalSelecionado = lancamentosFiltrados
+    .filter((l) => selecionados.has(l.id))
+    .reduce((s, l) => s + Number(l.valor), 0);
+
+  const toggleSelecionado = (id: string) => {
+    setSelecionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const selecionarTodosVisiveis = () => setSelecionados(new Set(idsSelecionaveis));
+  const limparSelecao = () => setSelecionados(new Set());
+  const marcarSelecionadosPagos = async () => {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const ids = Array.from(selecionados);
+    try {
+      await Promise.all(
+        ids.map((id) => upsert.mutateAsync({ id, status: "realizado", data_realizado: hoje } as any)),
+      );
+      toast.success(`${ids.length} lançamento(s) marcados como ${tipo === "a_pagar" ? "pagos" : "recebidos"}.`);
+      limparSelecao();
+    } catch {
+      toast.error("Falha ao atualizar alguns lançamentos.");
+    }
+  };
 
   const marcarPago = async (l: LancamentoCard) => {
     await upsert.mutateAsync({
@@ -242,9 +333,17 @@ export default function FinKanban({ tipo }: Props) {
     );
   }
 
+  const VENC_CHIPS: { id: VencFiltro; label: string }[] = [
+    { id: "todos", label: "Todos vencimentos" },
+    { id: "atrasados", label: "Atrasados" },
+    { id: "hoje", label: "Hoje" },
+    { id: "semana", label: "Esta semana" },
+    { id: "mes", label: "Este mês" },
+  ];
+
   return (
     <div className="space-y-4">
-      {/* Cabeçalho com totalizador, filtros e ação */}
+      {/* Cabeçalho com totalizador, busca e ações */}
       <Card>
         <CardContent className="pt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
@@ -260,25 +359,25 @@ export default function FinKanban({ tipo }: Props) {
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar descrição, doc ou pessoa…"
+                placeholder="Buscar descrição, doc, pessoa ou categoria…"
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                className="pl-8 w-64"
+                className="pl-8 w-72"
               />
             </div>
-            <Select value={filtroVendedor} onValueChange={setFiltroVendedor}>
-              <SelectTrigger className="w-56">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os responsáveis</SelectItem>
-                {membros.map((m) => (
-                  <SelectItem key={m.user_id} value={m.user_id}>
-                    {m.nome_completo || m.email || m.user_id.slice(0, 8)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Button
+              size="sm"
+              variant={mostrarFiltros || filtrosAtivos > 0 ? "default" : "outline"}
+              onClick={() => setMostrarFiltros((v) => !v)}
+            >
+              <Filter className="w-4 h-4 mr-1" />
+              Filtros
+              {filtrosAtivos > 0 && (
+                <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-[10px]">
+                  {filtrosAtivos}
+                </Badge>
+              )}
+            </Button>
             <Badge variant="outline">{lancamentosFiltrados.length} lançamentos</Badge>
             <Button size="sm" variant="outline" onClick={() => setExtracaoOpen(true)}>
               <ScanLine className="w-4 h-4 mr-1" />
@@ -291,6 +390,138 @@ export default function FinKanban({ tipo }: Props) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Chips de vencimento (sempre visíveis para acesso rápido) */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {VENC_CHIPS.map((c) => (
+          <Button
+            key={c.id}
+            size="sm"
+            variant={filtroVenc === c.id ? "default" : "outline"}
+            className="h-7 px-3 text-xs"
+            onClick={() => setFiltroVenc(c.id)}
+          >
+            {c.label}
+          </Button>
+        ))}
+        {filtrosAtivos > 0 && (
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground" onClick={limparFiltros}>
+            <X className="w-3.5 h-3.5 mr-1" />
+            Limpar filtros
+          </Button>
+        )}
+      </div>
+
+      {/* Painel expansível de filtros avançados */}
+      {mostrarFiltros && (
+        <Card>
+          <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Categoria</label>
+              <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas as categorias</SelectItem>
+                  {categorias
+                    .filter((c) => tipo === "a_pagar" ? c.natureza !== "receita" : c.natureza !== "despesa")
+                    .map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">
+                {tipo === "a_pagar" ? "Fornecedor" : "Cliente"}
+              </label>
+              <Select value={filtroPessoa} onValueChange={setFiltroPessoa}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  {pessoas.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Conta</label>
+              <Select value={filtroConta} onValueChange={setFiltroConta}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas as contas</SelectItem>
+                  {contas.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Responsável</label>
+              <Select value={filtroVendedor} onValueChange={setFiltroVendedor}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os responsáveis</SelectItem>
+                  {membros.map((m) => (
+                    <SelectItem key={m.user_id} value={m.user_id}>
+                      {m.nome_completo || m.email || m.user_id.slice(0, 8)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Valor mínimo (R$)</label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                placeholder="0,00"
+                value={valorMin}
+                onChange={(e) => setValorMin(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Valor máximo (R$)</label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                placeholder="0,00"
+                value={valorMax}
+                onChange={(e) => setValorMax(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Barra de seleção em lote */}
+      {selecionados.size > 0 && (
+        <Card className="border-primary/40 bg-primary/5">
+          <CardContent className="py-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 text-sm">
+              <CheckSquare className="w-4 h-4 text-primary" />
+              <span>
+                <strong>{selecionados.size}</strong> selecionado(s) ·{" "}
+                <span className="tabular-nums font-semibold">
+                  {totalSelecionado.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </span>
+              </span>
+              {idsSelecionaveis.length > selecionados.size && (
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={selecionarTodosVisiveis}>
+                  Selecionar todos visíveis ({idsSelecionaveis.length})
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" onClick={limparSelecao}>Cancelar</Button>
+              <Button size="sm" onClick={marcarSelecionadosPagos} disabled={upsert.isPending}>
+                <CheckCircle2 className="w-4 h-4 mr-1" />
+                Marcar como {tipo === "a_pagar" ? "pago" : "recebido"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quadro Kanban */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -354,6 +585,15 @@ export default function FinKanban({ tipo }: Props) {
                           >
                             <CardContent className="p-3 space-y-1.5 kanban-card-body">
                               <div className="flex items-start gap-1.5 min-w-0 max-w-full">
+                                {col.id !== "pago" && (
+                                  <Checkbox
+                                    checked={selecionados.has(l.id)}
+                                    onCheckedChange={() => toggleSelecionado(l.id)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="mt-0.5 shrink-0"
+                                    aria-label="Selecionar lançamento"
+                                  />
+                                )}
                                 <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 mt-0.5 shrink-0" />
                                 <p className="kanban-card-title flex-1" title={l.descricao}>
                                   {l.descricao}
