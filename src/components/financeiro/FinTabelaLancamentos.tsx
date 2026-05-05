@@ -16,7 +16,11 @@ import {
   Clock,
   FileText,
   Layers,
+  Download,
+  FileSpreadsheet,
 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { downloadCSV, downloadPDF } from "@/lib/download-utils";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
