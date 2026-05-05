@@ -626,7 +626,7 @@ export default function FinConciliacao() {
                     </TableCell>
                     <TableCell className="text-xs">{m.conta?.nome ?? "—"}</TableCell>
                     <TableCell
-                      className={`text-right font-mono ${
+                      className={`text-right font-mono whitespace-nowrap tabular-nums ${
                         Number(m.valor) >= 0 ? "text-success" : "text-destructive"
                       }`}
                     >
