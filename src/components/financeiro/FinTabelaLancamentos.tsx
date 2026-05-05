@@ -194,6 +194,8 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
     const nome = `financeiro-${tipo}-${new Date().toISOString().slice(0, 10)}`;
     downloadPDF(nome, `${titulo} — ${subtitulo}`, headers, rows);
   };
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
