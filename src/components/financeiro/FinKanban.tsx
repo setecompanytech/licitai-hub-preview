@@ -259,9 +259,9 @@ export default function FinKanban({ tipo }: Props) {
                   {subtotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                 </p>
               </CardHeader>
-              <CardContent className="p-2 min-w-0">
-                <ScrollArea className="h-[min(65vh,520px)] pr-3 overscroll-contain">
-                  <div className="space-y-2 min-w-0">
+              <CardContent className="p-2 min-w-0 max-w-full overflow-hidden">
+                <ScrollArea className="h-[min(65vh,520px)] w-full pr-3 overscroll-contain">
+                  <div className="space-y-2 min-w-0 max-w-full">
                     {items.length === 0 ? (
                       <p className="text-xs text-muted-foreground text-center py-6">Nenhum item</p>
                     ) : (
