@@ -148,6 +148,12 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     setVendedorId((initial as any)?.vendedor_responsavel_id ?? "");
     setParcelar(false);
     setQtdParcelas(2);
+    setModoParc("dividir");
+    setPeriodicidade("mensal");
+    setIntervaloDias(30);
+    setRegraFds("manter");
+    setDiaFixo("");
+    setSimulacaoEdits({});
   }, [open, initial, defaultTipo]);
 
   // Sincroniza natureza padrão por tipo
