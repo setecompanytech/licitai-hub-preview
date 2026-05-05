@@ -54,14 +54,22 @@ function ehPago(l: LancamentoCal) {
 }
 
 function corItem(l: LancamentoCal): string {
-  if (ehPago(l)) return "bg-success/15 text-success border-success/30";
-  if (l.status === "cancelado") return "bg-muted text-muted-foreground border-border";
+  if (l.status === "cancelado") return "bg-muted text-muted-foreground border-border line-through";
+  const pago = ehPago(l);
   const venc = l.data_vencimento ?? l.data_competencia;
   const dias = differenceInDays(parseISO(venc), new Date());
-  if (dias < 0) return "bg-destructive/15 text-destructive border-destructive/30";
-  if (dias <= 7) return "bg-warning/15 text-warning border-warning/30";
-  if (l.tipo === "a_receber") return "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30";
-  return "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30";
+  const atrasado = !pago && dias < 0;
+
+  if (l.tipo === "a_receber") {
+    // Verde — entradas
+    if (pago) return "bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border-emerald-500/50 font-semibold";
+    if (atrasado) return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-600 border-dashed";
+    return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/40";
+  }
+  // Vermelho — saídas (a_pagar e demais)
+  if (pago) return "bg-rose-500/25 text-rose-700 dark:text-rose-300 border-rose-500/50 font-semibold";
+  if (atrasado) return "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-600 border-dashed";
+  return "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/40";
 }
 
 export default function FinCalendarioFinanceiro() {
