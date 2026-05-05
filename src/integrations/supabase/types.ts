@@ -7922,6 +7922,9 @@ export type Database = {
           extrato_id: string
           fitid: string
           id: string
+          ignorado: boolean
+          ignorado_em: string | null
+          ignorado_motivo: string | null
           lancamento_id: string | null
           saldo_apos: number | null
           tipo: string
@@ -7938,6 +7941,9 @@ export type Database = {
           extrato_id: string
           fitid: string
           id?: string
+          ignorado?: boolean
+          ignorado_em?: string | null
+          ignorado_motivo?: string | null
           lancamento_id?: string | null
           saldo_apos?: number | null
           tipo: string
@@ -7954,6 +7960,9 @@ export type Database = {
           extrato_id?: string
           fitid?: string
           id?: string
+          ignorado?: boolean
+          ignorado_em?: string | null
+          ignorado_motivo?: string | null
           lancamento_id?: string | null
           saldo_apos?: number | null
           tipo?: string

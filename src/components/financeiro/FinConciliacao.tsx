@@ -9,6 +9,8 @@ import {
   useDesfazerConciliacao,
   useLancamentos,
 } from "@/hooks/useFinanceiro";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +38,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Upload,
   Sparkles,
   Link2,
@@ -46,12 +56,19 @@ import {
   CheckCircle2,
   TrendingUp,
   BarChart3,
+  Plus,
+  ArrowLeftRight,
+  Ban,
+  ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBRL, formatDate, statusLabel } from "@/lib/financeiro/formatters";
 import { parseCsvExtrato, csvParaOfx } from "@/lib/financeiro/csvToOfx";
 import { toast } from "sonner";
 import FinRelatorioConciliacao from "./FinRelatorioConciliacao";
+import LancamentoDialog from "./LancamentoDialog";
+
 
 type MatchSugestao = {
   movimento_id: string;
@@ -65,10 +82,12 @@ type MatchSugestao = {
 export default function FinConciliacao() {
   const fileRef = useRef<HTMLInputElement>(null);
   const csvRef = useRef<HTMLInputElement>(null);
+  const qc = useQueryClient();
+  
   const [contaSelecionada, setContaSelecionada] = useState<string>("");
-  const [filtroConciliado, setFiltroConciliado] = useState<"todos" | "pendente" | "conciliado">(
-    "pendente"
-  );
+  const [filtroConciliado, setFiltroConciliado] = useState<
+    "todos" | "pendente" | "conciliado" | "ignorado"
+  >("pendente");
   const [scoreMinimo, setScoreMinimo] = useState<number>(75);
   const [sugestoes, setSugestoes] = useState<MatchSugestao[]>([]);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
@@ -78,11 +97,21 @@ export default function FinConciliacao() {
     natureza: "receita" | "despesa";
   } | null>(null);
 
+  // Diálogo de criação on-the-fly de lançamento direto da conciliação (estilo Omie)
+  const [novoLanc, setNovoLanc] = useState<{
+    movimento_id: string;
+    initial: Record<string, unknown>;
+    defaultTipo: "a_pagar" | "a_receber" | "movimentacao";
+  } | null>(null);
+
   const { data: contas } = useContas();
   const { data: extratos } = useExtratosImportados();
   const { data: movimentos, isLoading: loadingMov } = useMovimentosExtrato({
     conta_id: contaSelecionada || undefined,
-    conciliado: filtroConciliado === "todos" ? undefined : filtroConciliado === "conciliado",
+    conciliado:
+      filtroConciliado === "todos" || filtroConciliado === "ignorado"
+        ? undefined
+        : filtroConciliado === "conciliado",
   });
   const { data: lancamentosTodos } = useLancamentos({});
 
@@ -90,6 +119,33 @@ export default function FinConciliacao() {
   const conciliarAuto = useConciliarAutomatico();
   const conciliarManual = useConciliarManual();
   const desfazer = useDesfazerConciliacao();
+
+  // Marca/desmarca movimento como ignorado (tarifas, estornos, lançamentos pessoais)
+  const ignorarMov = useMutation({
+    mutationFn: async (params: { id: string; ignorar: boolean; motivo?: string }) => {
+      const patch: Record<string, unknown> = params.ignorar
+        ? { ignorado: true, ignorado_em: new Date().toISOString(), ignorado_motivo: params.motivo ?? null }
+        : { ignorado: false, ignorado_em: null, ignorado_motivo: null };
+      const { error } = await supabase
+        .from("financeiro_extrato_movimentos")
+        .update(patch as never)
+        .eq("id", params.id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["fin-movimentos-extrato"] });
+      toast.success(vars.ignorar ? "Movimento ignorado." : "Movimento restaurado.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Filtragem client-side por status "ignorado" (mantém compatibilidade com o hook atual)
+  const movimentosFiltrados = useMemo(() => {
+    const lista = movimentos ?? [];
+    if (filtroConciliado === "ignorado") return lista.filter((m: any) => m.ignorado === true);
+    if (filtroConciliado === "pendente") return lista.filter((m: any) => !m.ignorado);
+    return lista;
+  }, [movimentos, filtroConciliado]);
 
   // Indexa movimentos e lançamentos para exibir detalhes nas sugestões
   const movMap = useMemo(() => {
@@ -265,6 +321,7 @@ export default function FinConciliacao() {
               <SelectContent>
                 <SelectItem value="pendente">Pendentes</SelectItem>
                 <SelectItem value="conciliado">Conciliados</SelectItem>
+                <SelectItem value="ignorado">Ignorados</SelectItem>
                 <SelectItem value="todos">Todos</SelectItem>
               </SelectContent>
             </Select>
@@ -601,78 +658,177 @@ export default function FinConciliacao() {
                     </TableCell>
                   </TableRow>
                 )}
-                {!loadingMov && (movimentos?.length ?? 0) === 0 && (
+                {!loadingMov && movimentosFiltrados.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       Nenhum movimento. Importe um arquivo OFX para começar.
                     </TableCell>
                   </TableRow>
                 )}
-                {(movimentos ?? []).map((m) => (
-                  <TableRow key={m.id}>
-                    <TableCell className="whitespace-nowrap">
-                      {formatDate(m.data_movimento)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium text-sm">{m.descricao}</div>
-                      {m.descricao_extra && (
-                        <div className="text-xs text-muted-foreground">{m.descricao_extra}</div>
-                      )}
-                      {m.lancamento && (
-                        <div className="text-xs text-primary mt-0.5">
-                          → {m.lancamento.descricao}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-xs">{m.conta?.nome ?? "—"}</TableCell>
-                    <TableCell
-                      className={`text-right font-mono whitespace-nowrap tabular-nums ${
-                        Number(m.valor) >= 0 ? "text-success" : "text-destructive"
-                      }`}
-                    >
-                      {formatBRL(Number(m.valor))}
-                    </TableCell>
-                    <TableCell>
-                      {m.conciliado ? (
-                        <Badge variant="default">conciliado</Badge>
-                      ) : (
-                        <Badge variant="secondary">pendente</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right whitespace-nowrap">
-                      {m.conciliado && m.lancamento_id ? (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            desfazer.mutate({
-                              movimento_id: m.id,
-                              lancamento_id: m.lancamento_id!,
-                            })
-                          }
-                        >
-                          <Unlink className="w-3.5 h-3.5 mr-1" />
-                          Desfazer
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            setDialogManual({
-                              movimento_id: m.id,
-                              valor: Math.abs(Number(m.valor)),
-                              natureza: Number(m.valor) >= 0 ? "receita" : "despesa",
-                            })
-                          }
-                        >
-                          <Link2 className="w-3.5 h-3.5 mr-1" />
-                          Vincular
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {movimentosFiltrados.map((m: any) => {
+                  const valorAbs = Math.abs(Number(m.valor));
+                  const isCredito = Number(m.valor) >= 0;
+                  const naturezaSugerida: "receita" | "despesa" = isCredito ? "receita" : "despesa";
+                  const baseInitial = {
+                    descricao: m.descricao || "Movimento bancário",
+                    valor: valorAbs,
+                    data_competencia: m.data_movimento,
+                    data_vencimento: m.data_movimento,
+                    data_realizado: m.data_movimento,
+                    conta_id: m.conta_id,
+                    status: "realizado" as const,
+                  };
+                  return (
+                    <TableRow key={m.id} className={m.ignorado ? "opacity-60" : ""}>
+                      <TableCell className="whitespace-nowrap">
+                        {formatDate(m.data_movimento)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium text-sm">{m.descricao}</div>
+                        {m.descricao_extra && (
+                          <div className="text-xs text-muted-foreground">{m.descricao_extra}</div>
+                        )}
+                        {m.lancamento && (
+                          <div className="text-xs text-primary mt-0.5">
+                            → {m.lancamento.descricao}
+                          </div>
+                        )}
+                        {m.ignorado && m.ignorado_motivo && (
+                          <div className="text-xs text-muted-foreground italic mt-0.5">
+                            Ignorado: {m.ignorado_motivo}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs">{m.conta?.nome ?? "—"}</TableCell>
+                      <TableCell
+                        className={`text-right font-mono whitespace-nowrap tabular-nums ${
+                          isCredito ? "text-success" : "text-destructive"
+                        }`}
+                      >
+                        {formatBRL(Number(m.valor))}
+                      </TableCell>
+                      <TableCell>
+                        {m.ignorado ? (
+                          <Badge variant="outline" className="border-muted-foreground/40 text-muted-foreground">
+                            ignorado
+                          </Badge>
+                        ) : m.conciliado ? (
+                          <Badge variant="default">conciliado</Badge>
+                        ) : (
+                          <Badge variant="secondary">pendente</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        {m.conciliado && m.lancamento_id ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              desfazer.mutate({
+                                movimento_id: m.id,
+                                lancamento_id: m.lancamento_id!,
+                              })
+                            }
+                            className="shrink-0"
+                          >
+                            <Unlink className="w-3.5 h-3.5 mr-1" />
+                            Desfazer
+                          </Button>
+                        ) : m.ignorado ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => ignorarMov.mutate({ id: m.id, ignorar: false })}
+                            className="shrink-0"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                            Restaurar
+                          </Button>
+                        ) : (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="outline" className="shrink-0">
+                                <Link2 className="w-3.5 h-3.5 mr-1" />
+                                Tratar
+                                <ChevronDown className="w-3 h-3 ml-1" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-64">
+                              <DropdownMenuLabel className="text-xs">
+                                Tratar movimento ({formatBRL(Number(m.valor))})
+                              </DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  setDialogManual({
+                                    movimento_id: m.id,
+                                    valor: valorAbs,
+                                    natureza: naturezaSugerida,
+                                  })
+                                }
+                              >
+                                <Link2 className="w-3.5 h-3.5 mr-2" />
+                                Vincular a lançamento existente
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  setNovoLanc({
+                                    movimento_id: m.id,
+                                    initial: { ...baseInitial, tipo: "a_pagar", natureza: "despesa" },
+                                    defaultTipo: "a_pagar",
+                                  })
+                                }
+                              >
+                                <Plus className="w-3.5 h-3.5 mr-2" />
+                                Criar conta a pagar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  setNovoLanc({
+                                    movimento_id: m.id,
+                                    initial: { ...baseInitial, tipo: "a_receber", natureza: "receita" },
+                                    defaultTipo: "a_receber",
+                                  })
+                                }
+                              >
+                                <Plus className="w-3.5 h-3.5 mr-2" />
+                                Criar conta a receber
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  setNovoLanc({
+                                    movimento_id: m.id,
+                                    initial: { ...baseInitial, tipo: "movimentacao", natureza: "movimentacao" },
+                                    defaultTipo: "movimentacao",
+                                  })
+                                }
+                              >
+                                <ArrowLeftRight className="w-3.5 h-3.5 mr-2" />
+                                Transferência / Movimentação
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-muted-foreground"
+                                onClick={() => {
+                                  const motivo = window.prompt(
+                                    "Motivo (opcional) para ignorar este movimento:",
+                                    ""
+                                  );
+                                  if (motivo === null) return;
+                                  ignorarMov.mutate({ id: m.id, ignorar: true, motivo: motivo || undefined });
+                                }}
+                              >
+                                <Ban className="w-3.5 h-3.5 mr-2" />
+                                Ignorar / desconsiderar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -690,6 +846,27 @@ export default function FinConciliacao() {
           );
         }}
       />
+
+      {/* Criação de lançamento on-the-fly direto da conciliação (estilo Omie).
+          Após salvar, vincula automaticamente o movimento ao lançamento criado. */}
+      {novoLanc && (
+        <LancamentoDialog
+          open={!!novoLanc}
+          onOpenChange={(v) => !v && setNovoLanc(null)}
+          initial={novoLanc.initial as never}
+          defaultTipo={novoLanc.defaultTipo as never}
+          onSaved={(lanc) => {
+            const movId = novoLanc.movimento_id;
+            setNovoLanc(null);
+            conciliarManual.mutate(
+              { movimento_id: movId, lancamento_id: (lanc as { id: string }).id },
+              {
+                onSuccess: () => toast.success("Lançamento criado e movimento conciliado."),
+              }
+            );
+          }}
+        />
+      )}
       </TabsContent>
 
       <TabsContent value="relatorio" className="mt-0">

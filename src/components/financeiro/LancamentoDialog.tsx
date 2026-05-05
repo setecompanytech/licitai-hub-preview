@@ -70,11 +70,13 @@ type Props = {
   initial?: Partial<Lancamento> | null;
   /** Pré-define o tipo (a_pagar / a_receber) ao abrir um novo */
   defaultTipo?: Tipo;
+  /** Callback opcional disparado após criar/editar (sem parcelamento). Recebe o registro salvo. */
+  onSaved?: (lancamento: Lancamento) => void;
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-export default function LancamentoDialog({ open, onOpenChange, initial, defaultTipo }: Props) {
+export default function LancamentoDialog({ open, onOpenChange, initial, defaultTipo, onSaved }: Props) {
   const { data: contas = [] } = useContas();
   const { data: categorias = [] } = useCategorias();
   const { data: pessoas = [] } = usePessoas();
@@ -238,7 +240,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
         datas_customizadas: simulacao.length === qtdParcelas ? simulacao : undefined,
       });
     } else {
-      await upsert.mutateAsync({ id: initial?.id, ...baseBody });
+      const saved = await upsert.mutateAsync({ id: initial?.id, ...baseBody });
+      if (saved && onSaved) onSaved(saved as unknown as Lancamento);
     }
     onOpenChange(false);
   };
