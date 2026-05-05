@@ -333,9 +333,17 @@ export default function FinKanban({ tipo }: Props) {
     );
   }
 
+  const VENC_CHIPS: { id: VencFiltro; label: string }[] = [
+    { id: "todos", label: "Todos vencimentos" },
+    { id: "atrasados", label: "Atrasados" },
+    { id: "hoje", label: "Hoje" },
+    { id: "semana", label: "Esta semana" },
+    { id: "mes", label: "Este mês" },
+  ];
+
   return (
     <div className="space-y-4">
-      {/* Cabeçalho com totalizador, filtros e ação */}
+      {/* Cabeçalho com totalizador, busca e ações */}
       <Card>
         <CardContent className="pt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
@@ -351,25 +359,25 @@ export default function FinKanban({ tipo }: Props) {
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar descrição, doc ou pessoa…"
+                placeholder="Buscar descrição, doc, pessoa ou categoria…"
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                className="pl-8 w-64"
+                className="pl-8 w-72"
               />
             </div>
-            <Select value={filtroVendedor} onValueChange={setFiltroVendedor}>
-              <SelectTrigger className="w-56">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os responsáveis</SelectItem>
-                {membros.map((m) => (
-                  <SelectItem key={m.user_id} value={m.user_id}>
-                    {m.nome_completo || m.email || m.user_id.slice(0, 8)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Button
+              size="sm"
+              variant={mostrarFiltros || filtrosAtivos > 0 ? "default" : "outline"}
+              onClick={() => setMostrarFiltros((v) => !v)}
+            >
+              <Filter className="w-4 h-4 mr-1" />
+              Filtros
+              {filtrosAtivos > 0 && (
+                <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-[10px]">
+                  {filtrosAtivos}
+                </Badge>
+              )}
+            </Button>
             <Badge variant="outline">{lancamentosFiltrados.length} lançamentos</Badge>
             <Button size="sm" variant="outline" onClick={() => setExtracaoOpen(true)}>
               <ScanLine className="w-4 h-4 mr-1" />
@@ -382,6 +390,138 @@ export default function FinKanban({ tipo }: Props) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Chips de vencimento (sempre visíveis para acesso rápido) */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {VENC_CHIPS.map((c) => (
+          <Button
+            key={c.id}
+            size="sm"
+            variant={filtroVenc === c.id ? "default" : "outline"}
+            className="h-7 px-3 text-xs"
+            onClick={() => setFiltroVenc(c.id)}
+          >
+            {c.label}
+          </Button>
+        ))}
+        {filtrosAtivos > 0 && (
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground" onClick={limparFiltros}>
+            <X className="w-3.5 h-3.5 mr-1" />
+            Limpar filtros
+          </Button>
+        )}
+      </div>
+
+      {/* Painel expansível de filtros avançados */}
+      {mostrarFiltros && (
+        <Card>
+          <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Categoria</label>
+              <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas as categorias</SelectItem>
+                  {categorias
+                    .filter((c) => tipo === "a_pagar" ? c.natureza !== "receita" : c.natureza !== "despesa")
+                    .map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">
+                {tipo === "a_pagar" ? "Fornecedor" : "Cliente"}
+              </label>
+              <Select value={filtroPessoa} onValueChange={setFiltroPessoa}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  {pessoas.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Conta</label>
+              <Select value={filtroConta} onValueChange={setFiltroConta}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas as contas</SelectItem>
+                  {contas.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Responsável</label>
+              <Select value={filtroVendedor} onValueChange={setFiltroVendedor}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os responsáveis</SelectItem>
+                  {membros.map((m) => (
+                    <SelectItem key={m.user_id} value={m.user_id}>
+                      {m.nome_completo || m.email || m.user_id.slice(0, 8)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Valor mínimo (R$)</label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                placeholder="0,00"
+                value={valorMin}
+                onChange={(e) => setValorMin(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Valor máximo (R$)</label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                placeholder="0,00"
+                value={valorMax}
+                onChange={(e) => setValorMax(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Barra de seleção em lote */}
+      {selecionados.size > 0 && (
+        <Card className="border-primary/40 bg-primary/5">
+          <CardContent className="py-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 text-sm">
+              <CheckSquare className="w-4 h-4 text-primary" />
+              <span>
+                <strong>{selecionados.size}</strong> selecionado(s) ·{" "}
+                <span className="tabular-nums font-semibold">
+                  {totalSelecionado.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </span>
+              </span>
+              {idsSelecionaveis.length > selecionados.size && (
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={selecionarTodosVisiveis}>
+                  Selecionar todos visíveis ({idsSelecionaveis.length})
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" onClick={limparSelecao}>Cancelar</Button>
+              <Button size="sm" onClick={marcarSelecionadosPagos} disabled={upsert.isPending}>
+                <CheckCircle2 className="w-4 h-4 mr-1" />
+                Marcar como {tipo === "a_pagar" ? "pago" : "recebido"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quadro Kanban */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
