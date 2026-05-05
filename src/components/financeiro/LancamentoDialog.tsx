@@ -109,9 +109,14 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   const [valorTarifa, setValorTarifa] = useState(0);
   const [formaPagamento, setFormaPagamento] = useState<string>("");
 
-  // Parcelamento
+  // Parcelamento / Repetições
   const [parcelar, setParcelar] = useState(false);
   const [qtdParcelas, setQtdParcelas] = useState<number>(2);
+  const [modoParc, setModoParc] = useState<ModoParcelamento>("dividir");
+  const [periodicidade, setPeriodicidade] = useState<Periodicidade>("mensal");
+  const [intervaloDias, setIntervaloDias] = useState<number>(30);
+  const [regraFds, setRegraFds] = useState<RegraFimSemana>("manter");
+  const [diaFixo, setDiaFixo] = useState<string>("");
 
   // Vendedor responsável
   const [vendedorId, setVendedorId] = useState<string>("");
