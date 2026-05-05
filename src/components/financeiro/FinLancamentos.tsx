@@ -101,17 +101,17 @@ export default function FinLancamentos() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[1100px]">
               <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="text-left px-3 py-2">Competência</th>
+                  <th className="text-left px-3 py-2 whitespace-nowrap">Competência</th>
                   <th className="text-left px-3 py-2">Descrição</th>
-                  <th className="text-left px-3 py-2">Categoria</th>
-                  <th className="text-left px-3 py-2">Pessoa</th>
-                  <th className="text-left px-3 py-2">Conta</th>
-                  <th className="text-left px-3 py-2">Tipo</th>
-                  <th className="text-left px-3 py-2">Status</th>
-                  <th className="text-right px-3 py-2">Valor</th>
+                  <th className="text-left px-3 py-2 whitespace-nowrap">Categoria</th>
+                  <th className="text-left px-3 py-2 whitespace-nowrap">Pessoa</th>
+                  <th className="text-left px-3 py-2 whitespace-nowrap">Conta</th>
+                  <th className="text-left px-3 py-2 whitespace-nowrap">Tipo</th>
+                  <th className="text-left px-3 py-2 whitespace-nowrap">Status</th>
+                  <th className="text-right px-3 py-2 whitespace-nowrap">Valor</th>
                   <th className="px-3 py-2 w-24" />
                 </tr>
               </thead>
