@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-auto">
+    <div className="relative w-full overflow-auto contain-text">
       <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
     </div>
   ),
@@ -55,10 +55,33 @@ const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<
 );
 TableHead.displayName = "TableHead";
 
-const TableCell = React.forwardRef<HTMLTableCellElement, React.TdHTMLAttributes<HTMLTableCellElement>>(
-  ({ className, ...props }, ref) => (
-    <td ref={ref} className={cn("p-4 align-middle [&:has([role=checkbox])]:pr-0", className)} {...props} />
-  ),
+interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
+  /** Trunca o conteúdo com reticências quando exceder o espaço disponível. */
+  truncate?: boolean;
+  /** Impede quebra de linha (útil para datas, valores e números de documento). */
+  nowrap?: boolean;
+}
+
+const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
+  ({ className, truncate, nowrap, children, title, ...props }, ref) => {
+    const inferredTitle =
+      title ?? (truncate && typeof children === "string" ? children : undefined);
+    return (
+      <td
+        ref={ref}
+        className={cn(
+          "p-4 align-middle [&:has([role=checkbox])]:pr-0",
+          truncate && "max-w-[280px] truncate",
+          nowrap && "whitespace-nowrap",
+          className,
+        )}
+        title={inferredTitle}
+        {...props}
+      >
+        {children}
+      </td>
+    );
+  },
 );
 TableCell.displayName = "TableCell";
 
