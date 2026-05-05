@@ -83,7 +83,7 @@ export default function FinConciliacao() {
   const fileRef = useRef<HTMLInputElement>(null);
   const csvRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
-  const { empresaAtiva } = useEmpresa();
+  
   const [contaSelecionada, setContaSelecionada] = useState<string>("");
   const [filtroConciliado, setFiltroConciliado] = useState<
     "todos" | "pendente" | "conciliado" | "ignorado"
