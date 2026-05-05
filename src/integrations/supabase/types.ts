@@ -15125,6 +15125,10 @@ export type Database = {
           read_ct: number
         }[]
       }
+      recalcular_alertas_aditivos_contrato: {
+        Args: { p_contrato_id: string }
+        Returns: undefined
+      }
       recalcular_saldos_atas_srp: { Args: { p_ata_id?: string }; Returns: Json }
       refresh_financeiro_views: { Args: never; Returns: undefined }
       relatorio_consumo_ata: {

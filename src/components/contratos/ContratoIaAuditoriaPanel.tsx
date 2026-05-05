@@ -76,7 +76,18 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [contratoId]);
+  useEffect(() => {
+    load();
+    const channel = supabase
+      .channel(`contrato-auditoria-${contratoId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'contrato_ia_auditoria', filter: `contrato_id=eq.${contratoId}` },
+        () => { load(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [contratoId]);
 
   const counts = {
     todos: rows.length,
