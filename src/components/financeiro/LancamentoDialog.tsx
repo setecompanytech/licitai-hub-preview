@@ -76,7 +76,7 @@ type Props = {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-export default function LancamentoDialog({ open, onOpenChange, initial, defaultTipo }: Props) {
+export default function LancamentoDialog({ open, onOpenChange, initial, defaultTipo, onSaved }: Props) {
   const { data: contas = [] } = useContas();
   const { data: categorias = [] } = useCategorias();
   const { data: pessoas = [] } = usePessoas();
