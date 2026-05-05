@@ -243,9 +243,28 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     onOpenChange(false);
   };
 
-  const categoriasFiltradas = categorias.filter((c) =>
-    natureza === "movimentacao" ? true : c.natureza === natureza,
-  );
+  // Em "A pagar" mostra despesa + movimentacao (transferências, tarifas).
+  // Em "A receber" mostra receita + movimentacao.
+  // Em "movimentacao" mostra todas (caso especial: aporte, transferência, etc.).
+  const categoriasFiltradas = categorias.filter((c) => {
+    if (tipo === "a_pagar") return c.natureza === "despesa" || c.natureza === "movimentacao";
+    if (tipo === "a_receber") return c.natureza === "receita" || c.natureza === "movimentacao";
+    return true;
+  });
+
+  // Agrupa por natureza para exibição organizada no Select
+  const categoriasAgrupadas = categoriasFiltradas.reduce<Record<string, typeof categoriasFiltradas>>((acc, c) => {
+    const key = c.natureza || "movimentacao";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(c);
+    return acc;
+  }, {});
+
+  const ordemGrupos: Array<{ key: string; label: string }> = [
+    { key: "despesa", label: "Despesas" },
+    { key: "receita", label: "Receitas" },
+    { key: "movimentacao", label: "Movimentações" },
+  ];
 
   const pessoasFiltradas = pessoas.filter((p) => {
     if (tipo === "a_pagar") return p.pessoa_tipo !== "cliente";
