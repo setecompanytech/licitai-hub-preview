@@ -167,19 +167,37 @@ export default function FinContas() {
   const [conta, setConta] = useState("");
   const [saldoInicial, setSaldoInicial] = useState(0);
   const [possuiSaldo, setPossuiSaldo] = useState(false);
+  // Outras informações (estilo OMIE)
+  const [dataSaldoInicial, setDataSaldoInicial] = useState<string>("");
+  const [limiteCredito, setLimiteCredito] = useState(0);
+  const [contaVinculadaId, setContaVinculadaId] = useState<string>("");
+  const [naoConsiderar, setNaoConsiderar] = useState(false);
+  const [observacao, setObservacao] = useState("");
+  // Sobre a Agência
+  const [gerenteNome, setGerenteNome] = useState("");
+  const [gerenteEmail, setGerenteEmail] = useState("");
+  const [gerenteDdd, setGerenteDdd] = useState("");
+  const [gerenteTelefone, setGerenteTelefone] = useState("");
+  const [endLogradouro, setEndLogradouro] = useState("");
+  const [endNumero, setEndNumero] = useState("");
+  const [endBairro, setEndBairro] = useState("");
+  const [endComplemento, setEndComplemento] = useState("");
+  const [endEstado, setEndEstado] = useState("");
+  const [endCidade, setEndCidade] = useState("");
+  const [endCep, setEndCep] = useState("");
   const [erros, setErros] = useState<Erros>({});
 
   // Reseta o formulário (usado ao fechar o diálogo, evitando resíduos
   // entre uma edição e a próxima abertura como "Nova conta").
   const resetForm = () => {
     setEditing(null);
-    setNome("");
-    setTipo("corrente");
-    setBanco("");
-    setAgencia("");
-    setConta("");
-    setSaldoInicial(0);
-    setPossuiSaldo(false);
+    setNome(""); setTipo("corrente"); setBanco(""); setAgencia(""); setConta("");
+    setSaldoInicial(0); setPossuiSaldo(false);
+    setDataSaldoInicial(""); setLimiteCredito(0); setContaVinculadaId("");
+    setNaoConsiderar(false); setObservacao("");
+    setGerenteNome(""); setGerenteEmail(""); setGerenteDdd(""); setGerenteTelefone("");
+    setEndLogradouro(""); setEndNumero(""); setEndBairro(""); setEndComplemento("");
+    setEndEstado(""); setEndCidade(""); setEndCep("");
     setErros({});
   };
 
@@ -190,13 +208,29 @@ export default function FinContas() {
     setBanco(c?.banco_nome ?? "");
     setAgencia(c?.agencia ?? "");
     setConta(c?.conta ?? "");
-    // saldo_inicial pode vir como número, string numérica ou null no Postgres.
-    // Normaliza com segurança e considera negativo como "possui saldo".
     const raw = c?.saldo_inicial;
     const si = raw === null || raw === undefined ? 0 : Number(raw);
     const siSeguro = Number.isFinite(si) ? si : 0;
     setSaldoInicial(siSeguro);
     setPossuiSaldo(siSeguro !== 0);
+    // Campos novos (acessados de forma defensiva — podem não existir em rows antigos)
+    const cAny = c as unknown as Record<string, unknown> | null;
+    setDataSaldoInicial(((cAny?.data_saldo_inicial as string) ?? "") || "");
+    setLimiteCredito(Number(cAny?.limite_credito ?? 0) || 0);
+    setContaVinculadaId(((cAny?.conta_vinculada_id as string) ?? "") || "");
+    setNaoConsiderar(cAny?.considerar_resumo === false);
+    setObservacao(((cAny?.observacao as string) ?? "") || "");
+    setGerenteNome(((cAny?.gerente_nome as string) ?? "") || "");
+    setGerenteEmail(((cAny?.gerente_email as string) ?? "") || "");
+    setGerenteDdd(((cAny?.gerente_ddd as string) ?? "") || "");
+    setGerenteTelefone(((cAny?.gerente_telefone as string) ?? "") || "");
+    setEndLogradouro(((cAny?.endereco_logradouro as string) ?? "") || "");
+    setEndNumero(((cAny?.endereco_numero as string) ?? "") || "");
+    setEndBairro(((cAny?.endereco_bairro as string) ?? "") || "");
+    setEndComplemento(((cAny?.endereco_complemento as string) ?? "") || "");
+    setEndEstado(((cAny?.endereco_estado as string) ?? "") || "");
+    setEndCidade(((cAny?.endereco_cidade as string) ?? "") || "");
+    setEndCep(((cAny?.endereco_cep as string) ?? "") || "");
     setErros({});
     setOpen(true);
   };
@@ -228,11 +262,32 @@ export default function FinContas() {
       nome: nome.trim(),
       tipo,
       banco_nome: banco.trim() || null,
+      banco_codigo: findBanco(banco)?.codigo ?? null,
       agencia: agencia.trim() || null,
       conta: conta.trim() || null,
       saldo_inicial: possuiSaldo ? saldoInicial : 0,
+      // Novos campos (cast para suportar tipagem ainda não regenerada)
+      ...({
+        data_saldo_inicial: dataSaldoInicial || null,
+        limite_credito: limiteCredito || 0,
+        conta_vinculada_id: contaVinculadaId || null,
+        considerar_resumo: !naoConsiderar,
+        observacao: observacao.trim() || null,
+        gerente_nome: gerenteNome.trim() || null,
+        gerente_email: gerenteEmail.trim() || null,
+        gerente_ddd: gerenteDdd.trim() || null,
+        gerente_telefone: gerenteTelefone.trim() || null,
+        endereco_logradouro: endLogradouro.trim() || null,
+        endereco_numero: endNumero.trim() || null,
+        endereco_bairro: endBairro.trim() || null,
+        endereco_complemento: endComplemento.trim() || null,
+        endereco_estado: endEstado || null,
+        endereco_cidade: endCidade.trim() || null,
+        endereco_cep: endCep.trim() || null,
+      } as Record<string, unknown>),
     });
     setOpen(false);
+  };
   };
 
   // Filtro: por banco selecionado e por busca livre (nome / agência / conta)
