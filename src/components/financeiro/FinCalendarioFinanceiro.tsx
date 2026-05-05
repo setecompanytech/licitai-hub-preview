@@ -441,19 +441,21 @@ export default function FinCalendarioFinanceiro() {
               {/* Legenda */}
               <div className="flex flex-wrap items-center gap-3 mt-3 px-2 text-[11px] text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
-                  <ArrowDownCircle className="w-3 h-3 text-emerald-500" />A receber
+                  <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500/15 border border-emerald-500/40" />
+                  <ArrowDownCircle className="w-3 h-3 text-emerald-600" />A receber (entrada)
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <ArrowUpCircle className="w-3 h-3 text-rose-500" />A pagar
+                  <span className="w-2.5 h-2.5 rounded-sm bg-rose-500/15 border border-rose-500/40" />
+                  <ArrowUpCircle className="w-3 h-3 text-rose-600" />A pagar (saída)
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-warning/40 border border-warning/40" />Vence ≤ 7 dias
+                  <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500/25 border border-emerald-500/50" />Recebido
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-destructive/40 border border-destructive/40" />Vencido
+                  <span className="w-2.5 h-2.5 rounded-sm bg-rose-500/25 border border-rose-500/50" />Pago
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-success/40 border border-success/40" />Liquidado
+                  <span className="w-2.5 h-2.5 rounded-sm border border-dashed border-rose-600" />Vencido
                 </span>
               </div>
             </>
