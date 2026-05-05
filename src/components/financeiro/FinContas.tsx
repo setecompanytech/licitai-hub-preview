@@ -18,6 +18,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBRL } from "@/lib/financeiro/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { UFS_BRASIL } from "@/constants/ufsBrasil";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import BancoSelectorLogos, { BancoLogo, findBanco, BANCOS_BRASIL } from "./BancoSelectorLogos";
@@ -85,11 +90,21 @@ const contaSchema = z
 type Erros = Partial<Record<"nome" | "banco" | "agencia" | "conta" | "saldoInicial", string>>;
 
 const TIPOS = [
-  { value: "corrente", label: "Conta corrente" },
-  { value: "poupanca", label: "Poupança" },
-  { value: "caixa", label: "Caixa / dinheiro" },
-  { value: "cartao", label: "Cartão de crédito" },
+  { value: "adiantamento", label: "Adiantamento" },
+  { value: "administradora_cartoes", label: "Administradora de Cartões" },
+  { value: "caixinha", label: "Caixinha" },
+  { value: "cartao", label: "Cartão de Crédito" },
+  { value: "carteira_virtual", label: "Carteira Virtual" },
+  { value: "aplicacao", label: "Conta Aplicação" },
+  { value: "corrente", label: "Conta Corrente" },
+  { value: "pagamento", label: "Conta de Pagamento" },
+  { value: "emprestimo", label: "Conta Empréstimo" },
+  { value: "garantida", label: "Conta Garantida" },
+  { value: "poupanca", label: "Conta Poupança" },
+  { value: "crediario", label: "Crediário / Carnê" },
+  { value: "mutuo", label: "Mútuo" },
   { value: "investimento", label: "Investimento" },
+  { value: "caixa", label: "Caixa / Dinheiro" },
 ];
 
 export default function FinContas() {
@@ -152,19 +167,37 @@ export default function FinContas() {
   const [conta, setConta] = useState("");
   const [saldoInicial, setSaldoInicial] = useState(0);
   const [possuiSaldo, setPossuiSaldo] = useState(false);
+  // Outras informações (estilo OMIE)
+  const [dataSaldoInicial, setDataSaldoInicial] = useState<string>("");
+  const [limiteCredito, setLimiteCredito] = useState(0);
+  const [contaVinculadaId, setContaVinculadaId] = useState<string>("");
+  const [naoConsiderar, setNaoConsiderar] = useState(false);
+  const [observacao, setObservacao] = useState("");
+  // Sobre a Agência
+  const [gerenteNome, setGerenteNome] = useState("");
+  const [gerenteEmail, setGerenteEmail] = useState("");
+  const [gerenteDdd, setGerenteDdd] = useState("");
+  const [gerenteTelefone, setGerenteTelefone] = useState("");
+  const [endLogradouro, setEndLogradouro] = useState("");
+  const [endNumero, setEndNumero] = useState("");
+  const [endBairro, setEndBairro] = useState("");
+  const [endComplemento, setEndComplemento] = useState("");
+  const [endEstado, setEndEstado] = useState("");
+  const [endCidade, setEndCidade] = useState("");
+  const [endCep, setEndCep] = useState("");
   const [erros, setErros] = useState<Erros>({});
 
   // Reseta o formulário (usado ao fechar o diálogo, evitando resíduos
   // entre uma edição e a próxima abertura como "Nova conta").
   const resetForm = () => {
     setEditing(null);
-    setNome("");
-    setTipo("corrente");
-    setBanco("");
-    setAgencia("");
-    setConta("");
-    setSaldoInicial(0);
-    setPossuiSaldo(false);
+    setNome(""); setTipo("corrente"); setBanco(""); setAgencia(""); setConta("");
+    setSaldoInicial(0); setPossuiSaldo(false);
+    setDataSaldoInicial(""); setLimiteCredito(0); setContaVinculadaId("");
+    setNaoConsiderar(false); setObservacao("");
+    setGerenteNome(""); setGerenteEmail(""); setGerenteDdd(""); setGerenteTelefone("");
+    setEndLogradouro(""); setEndNumero(""); setEndBairro(""); setEndComplemento("");
+    setEndEstado(""); setEndCidade(""); setEndCep("");
     setErros({});
   };
 
@@ -175,13 +208,29 @@ export default function FinContas() {
     setBanco(c?.banco_nome ?? "");
     setAgencia(c?.agencia ?? "");
     setConta(c?.conta ?? "");
-    // saldo_inicial pode vir como número, string numérica ou null no Postgres.
-    // Normaliza com segurança e considera negativo como "possui saldo".
     const raw = c?.saldo_inicial;
     const si = raw === null || raw === undefined ? 0 : Number(raw);
     const siSeguro = Number.isFinite(si) ? si : 0;
     setSaldoInicial(siSeguro);
     setPossuiSaldo(siSeguro !== 0);
+    // Campos novos (acessados de forma defensiva — podem não existir em rows antigos)
+    const cAny = c as unknown as Record<string, unknown> | null;
+    setDataSaldoInicial(((cAny?.data_saldo_inicial as string) ?? "") || "");
+    setLimiteCredito(Number(cAny?.limite_credito ?? 0) || 0);
+    setContaVinculadaId(((cAny?.conta_vinculada_id as string) ?? "") || "");
+    setNaoConsiderar(cAny?.considerar_resumo === false);
+    setObservacao(((cAny?.observacao as string) ?? "") || "");
+    setGerenteNome(((cAny?.gerente_nome as string) ?? "") || "");
+    setGerenteEmail(((cAny?.gerente_email as string) ?? "") || "");
+    setGerenteDdd(((cAny?.gerente_ddd as string) ?? "") || "");
+    setGerenteTelefone(((cAny?.gerente_telefone as string) ?? "") || "");
+    setEndLogradouro(((cAny?.endereco_logradouro as string) ?? "") || "");
+    setEndNumero(((cAny?.endereco_numero as string) ?? "") || "");
+    setEndBairro(((cAny?.endereco_bairro as string) ?? "") || "");
+    setEndComplemento(((cAny?.endereco_complemento as string) ?? "") || "");
+    setEndEstado(((cAny?.endereco_estado as string) ?? "") || "");
+    setEndCidade(((cAny?.endereco_cidade as string) ?? "") || "");
+    setEndCep(((cAny?.endereco_cep as string) ?? "") || "");
     setErros({});
     setOpen(true);
   };
@@ -213,9 +262,29 @@ export default function FinContas() {
       nome: nome.trim(),
       tipo,
       banco_nome: banco.trim() || null,
+      banco_codigo: findBanco(banco)?.codigo ?? null,
       agencia: agencia.trim() || null,
       conta: conta.trim() || null,
       saldo_inicial: possuiSaldo ? saldoInicial : 0,
+      // Novos campos (cast para suportar tipagem ainda não regenerada)
+      ...({
+        data_saldo_inicial: dataSaldoInicial || null,
+        limite_credito: limiteCredito || 0,
+        conta_vinculada_id: contaVinculadaId || null,
+        considerar_resumo: !naoConsiderar,
+        observacao: observacao.trim() || null,
+        gerente_nome: gerenteNome.trim() || null,
+        gerente_email: gerenteEmail.trim() || null,
+        gerente_ddd: gerenteDdd.trim() || null,
+        gerente_telefone: gerenteTelefone.trim() || null,
+        endereco_logradouro: endLogradouro.trim() || null,
+        endereco_numero: endNumero.trim() || null,
+        endereco_bairro: endBairro.trim() || null,
+        endereco_complemento: endComplemento.trim() || null,
+        endereco_estado: endEstado || null,
+        endereco_cidade: endCidade.trim() || null,
+        endereco_cep: endCep.trim() || null,
+      } as Record<string, unknown>),
     });
     setOpen(false);
   };
@@ -330,11 +399,36 @@ export default function FinContas() {
       </Card>
 
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{editing?.id ? "Editar conta" : "Nova conta"}</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2 space-y-1.5">
-              <Label>Nome *</Label>
+        <DialogContent className="max-w-3xl p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b">
+            <DialogTitle>{editing?.id ? "Editar conta" : "Nova conta corrente"}</DialogTitle>
+          </DialogHeader>
+
+          {/* Cabeçalho fixo: tipo, instituição, nome, agência, conta */}
+          <div className="px-6 pt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Tipo de Conta Corrente *</Label>
+              <Select value={tipo} onValueChange={setTipo}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {TIPOS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2 space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Instituição</Label>
+              <BancoSelectorLogos
+                value={banco}
+                onChange={(v) => { setBanco(v); if (erros.banco) setErros((p) => ({ ...p, banco: undefined })); }}
+                placeholder="Selecione o banco…"
+                className={cn(erros.banco && "border-destructive focus-visible:ring-destructive")}
+              />
+              {erros.banco && (
+                <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.banco}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Nome da Conta *</Label>
               <Input
                 value={nome}
                 onChange={(e) => { setNome(e.target.value); if (erros.nome) setErros((p) => ({ ...p, nome: undefined })); }}
@@ -347,27 +441,8 @@ export default function FinContas() {
                 <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.nome}</p>
               )}
             </div>
-            <div className="col-span-2 space-y-1.5">
-              <Label>Tipo</Label>
-              <Select value={tipo} onValueChange={setTipo}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{TIPOS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="col-span-2 space-y-1.5">
-              <Label>Banco</Label>
-              <BancoSelectorLogos
-                value={banco}
-                onChange={(v) => { setBanco(v); if (erros.banco) setErros((p) => ({ ...p, banco: undefined })); }}
-                placeholder="Selecione o banco…"
-                className={cn(erros.banco && "border-destructive focus-visible:ring-destructive")}
-              />
-              {erros.banco && (
-                <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.banco}</p>
-              )}
-            </div>
             <div className="space-y-1.5">
-              <Label>Agência</Label>
+              <Label className="text-xs text-muted-foreground">Agência</Label>
               <Input
                 value={agencia}
                 onChange={(e) => { setAgencia(e.target.value.replace(/[^\dxX-]/g, "").slice(0, 7)); if (erros.agencia) setErros((p) => ({ ...p, agencia: undefined })); }}
@@ -381,7 +456,7 @@ export default function FinContas() {
               )}
             </div>
             <div className="space-y-1.5">
-              <Label>Conta</Label>
+              <Label className="text-xs text-muted-foreground">Conta Corrente (com dígito)</Label>
               <Input
                 value={conta}
                 onChange={(e) => { setConta(e.target.value.replace(/[^\dxX-]/g, "").slice(0, 14)); if (erros.conta) setErros((p) => ({ ...p, conta: undefined })); }}
@@ -394,49 +469,161 @@ export default function FinContas() {
                 <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.conta}</p>
               )}
             </div>
-            <div className="col-span-2 space-y-2 rounded-md border border-border/60 bg-muted/20 p-3">
-              <label className="flex items-start gap-2 cursor-pointer select-none">
-                <Checkbox
-                  checked={possuiSaldo}
-                  onCheckedChange={(v) => {
-                    const marcado = v === true;
-                    setPossuiSaldo(marcado);
-                    if (!marcado) {
-                      setSaldoInicial(0);
-                      if (erros.saldoInicial) setErros((p) => ({ ...p, saldoInicial: undefined }));
-                    }
-                  }}
-                  className="mt-0.5"
-                />
-                <span className="text-sm leading-tight">
-                  Esta conta possui saldo disponível
-                  <span className="block text-[11px] text-muted-foreground mt-0.5">
-                    Marque para informar o saldo inicial. Caso contrário, a conta começa com R$ 0,00.
-                  </span>
-                </span>
-              </label>
-              {possuiSaldo && (
-                <div className="space-y-1.5 pl-6">
-                  <Label className="text-xs text-muted-foreground">Saldo inicial *</Label>
-                  <MoneyInput
-                    value={saldoInicial}
-                    onValueChange={(v) => {
-                      setSaldoInicial(v);
-                      if (erros.saldoInicial) setErros((p) => ({ ...p, saldoInicial: undefined }));
-                    }}
-                    allowNegative
-                    className={cn(erros.saldoInicial && "border-destructive focus-visible:ring-destructive")}
-                  />
-                  {erros.saldoInicial && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />{erros.saldoInicial}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
-          <DialogFooter>
+
+          {/* Abas: Outras Informações | Sobre a Agência */}
+          <Tabs defaultValue="outras" className="px-6 pt-4">
+            <TabsList className="grid grid-cols-2 w-full md:w-auto">
+              <TabsTrigger value="outras">Outras Informações</TabsTrigger>
+              <TabsTrigger value="agencia">Sobre a Agência</TabsTrigger>
+            </TabsList>
+
+            <ScrollArea className="max-h-[42vh] mt-3 pr-3">
+              <TabsContent value="outras" className="space-y-3 mt-0">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Saldo Inicial</Label>
+                    <MoneyInput
+                      value={saldoInicial}
+                      onValueChange={(v) => {
+                        setSaldoInicial(v);
+                        setPossuiSaldo(v !== 0);
+                        if (erros.saldoInicial) setErros((p) => ({ ...p, saldoInicial: undefined }));
+                      }}
+                      allowNegative
+                      className={cn(erros.saldoInicial && "border-destructive focus-visible:ring-destructive")}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Data do Saldo Inicial</Label>
+                    <Input
+                      type="date"
+                      value={dataSaldoInicial}
+                      onChange={(e) => setDataSaldoInicial(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Limite de Crédito</Label>
+                    <MoneyInput
+                      value={limiteCredito}
+                      onValueChange={setLimiteCredito}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Conta Vinculada</Label>
+                    <Select
+                      value={contaVinculadaId || "__none__"}
+                      onValueChange={(v) => setContaVinculadaId(v === "__none__" ? "" : v)}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        <SelectItem value="__none__">Nenhuma</SelectItem>
+                        {contas.filter((c) => c.id !== editing?.id).map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 rounded-md border bg-muted/30 p-3">
+                  <Switch checked={naoConsiderar} onCheckedChange={setNaoConsiderar} />
+                  <span className="text-sm leading-tight">
+                    Não considerar esta conta no “Resumo”, “Fluxo de Caixa” e “Orçamento de Caixa”
+                    <span className="block text-[11px] text-muted-foreground mt-0.5">
+                      Use para contas auxiliares (caixinha, garantias, etc.) que não devem entrar nas projeções financeiras.
+                    </span>
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Observação</Label>
+                  <Textarea
+                    value={observacao}
+                    onChange={(e) => setObservacao(e.target.value)}
+                    rows={3}
+                    placeholder="Anotações internas sobre esta conta…"
+                  />
+                </div>
+
+                {erros.saldoInicial && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />{erros.saldoInicial}
+                  </p>
+                )}
+              </TabsContent>
+
+              <TabsContent value="agencia" className="space-y-3 mt-0">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div className="md:col-span-2 space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Gerente da Conta</Label>
+                    <Input value={gerenteNome} onChange={(e) => setGerenteNome(e.target.value)} />
+                  </div>
+                  <div className="md:col-span-2 space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">E-mail</Label>
+                    <Input type="email" value={gerenteEmail} onChange={(e) => setGerenteEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">DDD</Label>
+                    <Input
+                      value={gerenteDdd}
+                      onChange={(e) => setGerenteDdd(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                      className="tabular-nums"
+                    />
+                  </div>
+                  <div className="md:col-span-3 space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Telefone</Label>
+                    <Input
+                      value={gerenteTelefone}
+                      onChange={(e) => setGerenteTelefone(e.target.value.replace(/[^\d-]/g, "").slice(0, 10))}
+                      className="tabular-nums"
+                    />
+                  </div>
+                  <div className="md:col-span-3 space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Endereço</Label>
+                    <Input value={endLogradouro} onChange={(e) => setEndLogradouro(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Número</Label>
+                    <Input value={endNumero} onChange={(e) => setEndNumero(e.target.value)} />
+                  </div>
+                  <div className="md:col-span-2 space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Bairro</Label>
+                    <Input value={endBairro} onChange={(e) => setEndBairro(e.target.value)} />
+                  </div>
+                  <div className="md:col-span-2 space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Complemento</Label>
+                    <Input value={endComplemento} onChange={(e) => setEndComplemento(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Estado</Label>
+                    <Select value={endEstado || "__none__"} onValueChange={(v) => setEndEstado(v === "__none__" ? "" : v)}>
+                      <SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        <SelectItem value="__none__">—</SelectItem>
+                        {UFS_BRASIL.map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="md:col-span-2 space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Cidade</Label>
+                    <Input value={endCidade} onChange={(e) => setEndCidade(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">CEP</Label>
+                    <Input
+                      value={endCep}
+                      onChange={(e) => setEndCep(e.target.value.replace(/[^\d-]/g, "").slice(0, 9))}
+                      placeholder="00000-000"
+                      className="tabular-nums"
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+            </ScrollArea>
+          </Tabs>
+
+          <DialogFooter className="px-6 py-4 border-t bg-muted/20">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={handleSave} disabled={upsert.isPending || !nome.trim()}>Salvar</Button>
           </DialogFooter>

@@ -7631,14 +7631,30 @@ export type Database = {
           ativa: boolean
           banco_codigo: string | null
           banco_nome: string | null
+          considerar_resumo: boolean
           conta: string | null
+          conta_vinculada_id: string | null
           cor: string | null
           created_at: string
           created_by: string | null
+          data_saldo_inicial: string | null
           empresa_id: string
+          endereco_bairro: string | null
+          endereco_cep: string | null
+          endereco_cidade: string | null
+          endereco_complemento: string | null
+          endereco_estado: string | null
+          endereco_logradouro: string | null
+          endereco_numero: string | null
+          gerente_ddd: string | null
+          gerente_email: string | null
+          gerente_nome: string | null
+          gerente_telefone: string | null
           id: string
+          limite_credito: number
           moeda: string
           nome: string
+          observacao: string | null
           ordem: number | null
           pluggy_account_id: string | null
           pluggy_item_id: string | null
@@ -7653,14 +7669,30 @@ export type Database = {
           ativa?: boolean
           banco_codigo?: string | null
           banco_nome?: string | null
+          considerar_resumo?: boolean
           conta?: string | null
+          conta_vinculada_id?: string | null
           cor?: string | null
           created_at?: string
           created_by?: string | null
+          data_saldo_inicial?: string | null
           empresa_id: string
+          endereco_bairro?: string | null
+          endereco_cep?: string | null
+          endereco_cidade?: string | null
+          endereco_complemento?: string | null
+          endereco_estado?: string | null
+          endereco_logradouro?: string | null
+          endereco_numero?: string | null
+          gerente_ddd?: string | null
+          gerente_email?: string | null
+          gerente_nome?: string | null
+          gerente_telefone?: string | null
           id?: string
+          limite_credito?: number
           moeda?: string
           nome: string
+          observacao?: string | null
           ordem?: number | null
           pluggy_account_id?: string | null
           pluggy_item_id?: string | null
@@ -7675,14 +7707,30 @@ export type Database = {
           ativa?: boolean
           banco_codigo?: string | null
           banco_nome?: string | null
+          considerar_resumo?: boolean
           conta?: string | null
+          conta_vinculada_id?: string | null
           cor?: string | null
           created_at?: string
           created_by?: string | null
+          data_saldo_inicial?: string | null
           empresa_id?: string
+          endereco_bairro?: string | null
+          endereco_cep?: string | null
+          endereco_cidade?: string | null
+          endereco_complemento?: string | null
+          endereco_estado?: string | null
+          endereco_logradouro?: string | null
+          endereco_numero?: string | null
+          gerente_ddd?: string | null
+          gerente_email?: string | null
+          gerente_nome?: string | null
+          gerente_telefone?: string | null
           id?: string
+          limite_credito?: number
           moeda?: string
           nome?: string
+          observacao?: string | null
           ordem?: number | null
           pluggy_account_id?: string | null
           pluggy_item_id?: string | null
@@ -7693,6 +7741,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "financeiro_contas_conta_vinculada_id_fkey"
+            columns: ["conta_vinculada_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_contas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "financeiro_contas_empresa_id_fkey"
             columns: ["empresa_id"]
