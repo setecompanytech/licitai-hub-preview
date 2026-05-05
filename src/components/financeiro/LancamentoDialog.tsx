@@ -70,6 +70,8 @@ type Props = {
   initial?: Partial<Lancamento> | null;
   /** Pré-define o tipo (a_pagar / a_receber) ao abrir um novo */
   defaultTipo?: Tipo;
+  /** Callback opcional disparado após criar/editar (sem parcelamento). Recebe o registro salvo. */
+  onSaved?: (lancamento: Lancamento) => void;
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
