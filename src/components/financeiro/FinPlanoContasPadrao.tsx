@@ -8,8 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Sparkles, Loader2, FolderTree, CheckCircle2 } from "lucide-react";
+import { Sparkles, Loader2, FolderTree, CheckCircle2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSyncPlanoContasCategorias } from "@/hooks/useFinanceiro";
 
 interface PC {
   id: string; codigo: string; nome: string; tipo: string; natureza: string;
