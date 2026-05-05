@@ -173,6 +173,29 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   const editando = !!initial?.id;
   const podeParcelar = !editando && (tipo === "a_pagar" || tipo === "a_receber");
 
+  // Simulação das parcelas/repetições (preview ao vivo, com possíveis edições manuais)
+  const simulacao = useMemo(() => {
+    if (!parcelar || !podeParcelar || qtdParcelas < 2 || !dataVencimento) return [];
+    const base = calcularSerieParcelas({
+      parcelas: qtdParcelas,
+      data_vencimento: dataVencimento,
+      data_competencia: dataCompetencia || undefined,
+      valor_total: valor,
+      periodicidade,
+      intervalo_dias: intervaloDias,
+      modo: modoParc,
+      regra_fim_semana: regraFds,
+      dia_fixo: diaFixo ? Math.max(1, Math.min(31, parseInt(diaFixo, 10))) : null,
+    });
+    return base.map((d, i) => ({
+      ...d,
+      vencimento: simulacaoEdits[i]?.vencimento ?? d.vencimento,
+      valor: simulacaoEdits[i]?.valor ?? d.valor,
+    }));
+  }, [parcelar, podeParcelar, qtdParcelas, dataVencimento, dataCompetencia, valor, periodicidade, intervaloDias, modoParc, regraFds, diaFixo, simulacaoEdits]);
+
+  const totalSerie = useMemo(() => simulacao.reduce((s, d) => s + (Number(d.valor) || 0), 0), [simulacao]);
+
   const handleSubmit = async () => {
     if (!descricao.trim()) return;
     const baseBody: any = {
@@ -207,6 +230,12 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
         parcelas: qtdParcelas,
         valor_total: valor,
         data_vencimento: dataVencimento,
+        periodicidade,
+        intervalo_dias: intervaloDias,
+        modo: modoParc,
+        regra_fim_semana: regraFds,
+        dia_fixo: diaFixo ? Math.max(1, Math.min(31, parseInt(diaFixo, 10))) : null,
+        datas_customizadas: simulacao.length === qtdParcelas ? simulacao : undefined,
       });
     } else {
       await upsert.mutateAsync({ id: initial?.id, ...baseBody });
