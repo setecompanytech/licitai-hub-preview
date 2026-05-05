@@ -15145,6 +15145,10 @@ export type Database = {
         Args: { p_ata_id?: string; p_limite?: number }
         Returns: Json
       }
+      reprocessar_alertas_aditivos_todos_contratos: {
+        Args: never
+        Returns: Json
+      }
       seed_plano_contas_padrao: {
         Args: { p_empresa_id: string }
         Returns: undefined
