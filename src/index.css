@@ -187,6 +187,17 @@
   }
 }
 
+  /* Improve tap targets on mobile */
+  @media (max-width: 640px) {
+    button, a, [role="button"] {
+      min-height: 32px;
+    }
+    h1 { font-size: 1.25rem; }
+    h2 { font-size: 1.1rem; }
+    h3 { font-size: 0.95rem; }
+  }
+}
+
 @layer utilities {
   /* ===== Utilitários de truncamento e quebra de texto ===== */
 
@@ -196,7 +207,7 @@
     word-break: normal;
   }
 
-  /* Limita texto a N linhas com reticências (já existe line-clamp do Tailwind, este é só alias) */
+  /* Limita texto a N linhas com reticências */
   .text-clamp-1 { @apply truncate; }
   .text-clamp-2 { @apply line-clamp-2 [overflow-wrap:anywhere]; }
   .text-clamp-3 { @apply line-clamp-3 [overflow-wrap:anywhere]; }
@@ -214,15 +225,6 @@
   /* Badge ou chip que precisa truncar conteúdo longo */
   .badge-truncate {
     @apply max-w-full truncate inline-flex items-center;
-  }
-  /* Improve tap targets on mobile */
-  @media (max-width: 640px) {
-    button, a, [role="button"] {
-      min-height: 32px;
-    }
-    h1 { font-size: 1.25rem; }
-    h2 { font-size: 1.1rem; }
-    h3 { font-size: 0.95rem; }
   }
 }
 
