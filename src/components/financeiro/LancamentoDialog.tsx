@@ -9,7 +9,7 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Info } from "lucide-react";
+import { Info, CheckCircle2 } from "lucide-react";
 import {
   useContas,
   useCategorias,
@@ -17,7 +17,11 @@ import {
   useUpsertLancamento,
   useGerarParcelas,
   useMembrosEmpresa,
+  calcularSerieParcelas,
   type Lancamento,
+  type Periodicidade,
+  type RegraFimSemana,
+  type ModoParcelamento,
 } from "@/hooks/useFinanceiro";
 import type { Database } from "@/integrations/supabase/types";
 import RateioCentroCustoEditor from "./RateioCentroCustoEditor";
@@ -105,9 +109,16 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   const [valorTarifa, setValorTarifa] = useState(0);
   const [formaPagamento, setFormaPagamento] = useState<string>("");
 
-  // Parcelamento
+  // Parcelamento / Repetições
   const [parcelar, setParcelar] = useState(false);
   const [qtdParcelas, setQtdParcelas] = useState<number>(2);
+  const [modoParc, setModoParc] = useState<ModoParcelamento>("dividir");
+  const [periodicidade, setPeriodicidade] = useState<Periodicidade>("mensal");
+  const [intervaloDias, setIntervaloDias] = useState<number>(30);
+  const [regraFds, setRegraFds] = useState<RegraFimSemana>("manter");
+  const [diaFixo, setDiaFixo] = useState<string>("");
+  // Edições manuais da tabela de simulação (override por índice da parcela)
+  const [simulacaoEdits, setSimulacaoEdits] = useState<Record<number, { vencimento?: string; valor?: number }>>({});
 
   // Vendedor responsável
   const [vendedorId, setVendedorId] = useState<string>("");
@@ -139,6 +150,12 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     setVendedorId((initial as any)?.vendedor_responsavel_id ?? "");
     setParcelar(false);
     setQtdParcelas(2);
+    setModoParc("dividir");
+    setPeriodicidade("mensal");
+    setIntervaloDias(30);
+    setRegraFds("manter");
+    setDiaFixo("");
+    setSimulacaoEdits({});
   }, [open, initial, defaultTipo]);
 
   // Sincroniza natureza padrão por tipo
@@ -155,6 +172,29 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
   const editando = !!initial?.id;
   const podeParcelar = !editando && (tipo === "a_pagar" || tipo === "a_receber");
+
+  // Simulação das parcelas/repetições (preview ao vivo, com possíveis edições manuais)
+  const simulacao = useMemo(() => {
+    if (!parcelar || !podeParcelar || qtdParcelas < 2 || !dataVencimento) return [];
+    const base = calcularSerieParcelas({
+      parcelas: qtdParcelas,
+      data_vencimento: dataVencimento,
+      data_competencia: dataCompetencia || undefined,
+      valor_total: valor,
+      periodicidade,
+      intervalo_dias: intervaloDias,
+      modo: modoParc,
+      regra_fim_semana: regraFds,
+      dia_fixo: diaFixo ? Math.max(1, Math.min(31, parseInt(diaFixo, 10))) : null,
+    });
+    return base.map((d, i) => ({
+      ...d,
+      vencimento: simulacaoEdits[i]?.vencimento ?? d.vencimento,
+      valor: simulacaoEdits[i]?.valor ?? d.valor,
+    }));
+  }, [parcelar, podeParcelar, qtdParcelas, dataVencimento, dataCompetencia, valor, periodicidade, intervaloDias, modoParc, regraFds, diaFixo, simulacaoEdits]);
+
+  const totalSerie = useMemo(() => simulacao.reduce((s, d) => s + (Number(d.valor) || 0), 0), [simulacao]);
 
   const handleSubmit = async () => {
     if (!descricao.trim()) return;
@@ -190,6 +230,12 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
         parcelas: qtdParcelas,
         valor_total: valor,
         data_vencimento: dataVencimento,
+        periodicidade,
+        intervalo_dias: intervaloDias,
+        modo: modoParc,
+        regra_fim_semana: regraFds,
+        dia_fixo: diaFixo ? Math.max(1, Math.min(31, parseInt(diaFixo, 10))) : null,
+        datas_customizadas: simulacao.length === qtdParcelas ? simulacao : undefined,
       });
     } else {
       await upsert.mutateAsync({ id: initial?.id, ...baseBody });
@@ -445,48 +491,185 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
             <RateioCentroCustoEditor lancamentoId={initial?.id ?? null} valorBase={Number(valor) || 0} />
           </TabsContent>
 
-          {/* ---------------- PARCELAMENTO ---------------- */}
+          {/* ---------------- PARCELAMENTO / REPETIÇÕES ---------------- */}
           <TabsContent value="parcelas" className="space-y-4">
-            <div className="rounded-md border p-4 flex items-center justify-between">
-              <div>
-                <p className="font-medium">Gerar série de parcelas</p>
+            <div className="rounded-md border p-4 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="font-medium">Incluir repetições / parcelamento</p>
                 <p className="text-xs text-muted-foreground">
-                  Divide o valor em N parcelas mensais a partir do vencimento informado.
+                  Para despesas fixas (ex.: aluguel, telefonia, energia) use{" "}
+                  <strong>Repetir o mesmo valor</strong>. Para parcelar uma compra,{" "}
+                  <strong>Dividir o valor</strong>. As repetições são geradas a partir do vencimento informado em <em>Geral</em>.
                 </p>
               </div>
               <Switch checked={parcelar} onCheckedChange={setParcelar} />
             </div>
 
             {parcelar && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>Quantidade de parcelas</Label>
-                  <Input
-                    type="number"
-                    min={2}
-                    max={120}
-                    value={qtdParcelas}
-                    onChange={(e) => setQtdParcelas(Math.max(2, parseInt(e.target.value || "2", 10)))}
-                  />
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setModoParc("dividir"); setSimulacaoEdits({}); }}
+                    className={`text-left rounded-md border p-3 transition-colors ${modoParc === "dividir" ? "border-primary ring-1 ring-primary/40 bg-primary/5" : "hover:bg-accent/40"}`}
+                  >
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      {modoParc === "dividir" && <CheckCircle2 className="w-4 h-4 text-primary" />}
+                      Dividir o valor em N parcelas
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Ex.: R$ 1.200 em 12x = R$ 100,00 cada. Última parcela ajusta centavos.
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setModoParc("repetir"); setSimulacaoEdits({}); }}
+                    className={`text-left rounded-md border p-3 transition-colors ${modoParc === "repetir" ? "border-primary ring-1 ring-primary/40 bg-primary/5" : "hover:bg-accent/40"}`}
+                  >
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      {modoParc === "repetir" && <CheckCircle2 className="w-4 h-4 text-primary" />}
+                      Repetir o mesmo valor (despesa fixa)
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Cada repetição mantém o valor cheio (ex.: aluguel R$ 2.500 todo mês).
+                    </p>
+                  </button>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Valor por parcela (estimado)</Label>
-                  <Input
-                    readOnly
-                    value={(valor / Math.max(1, qtdParcelas)).toLocaleString("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    })}
-                    className="text-right tabular-nums"
-                  />
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Quanto a sábados e domingos</Label>
+                    <Select value={regraFds} onValueChange={(v) => { setRegraFds(v as RegraFimSemana); setSimulacaoEdits({}); }}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manter">Manter a data de vencimento</SelectItem>
+                        <SelectItem value="antecipar">Antecipar para dia útil</SelectItem>
+                        <SelectItem value="postergar">Postergar para dia útil</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Periodicidade</Label>
+                    <Select value={periodicidade} onValueChange={(v) => { setPeriodicidade(v as Periodicidade); setSimulacaoEdits({}); }}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="semanal">Semanal</SelectItem>
+                        <SelectItem value="quinzenal">Quinzenal</SelectItem>
+                        <SelectItem value="mensal">Mensal</SelectItem>
+                        <SelectItem value="bimestral">Bimestral</SelectItem>
+                        <SelectItem value="trimestral">Trimestral</SelectItem>
+                        <SelectItem value="semestral">Semestral</SelectItem>
+                        <SelectItem value="anual">Anual</SelectItem>
+                        <SelectItem value="dias">Período específico (dias)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {periodicidade === "dias" ? (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">A cada (dias)</Label>
+                      <Input
+                        type="number" min={1} max={365}
+                        value={intervaloDias}
+                        onChange={(e) => { setIntervaloDias(Math.max(1, parseInt(e.target.value || "30", 10))); setSimulacaoEdits({}); }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Repetir todo dia</Label>
+                      <Input
+                        type="number" min={1} max={31}
+                        placeholder="(usa o dia do venc.)"
+                        value={diaFixo}
+                        onChange={(e) => { setDiaFixo(e.target.value.replace(/\D/g, "").slice(0, 2)); setSimulacaoEdits({}); }}
+                        disabled={periodicidade === "semanal" || periodicidade === "quinzenal"}
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Por (qtd. de repetições)</Label>
+                    <Input
+                      type="number" min={2} max={120}
+                      value={qtdParcelas}
+                      onChange={(e) => { setQtdParcelas(Math.max(2, parseInt(e.target.value || "2", 10))); setSimulacaoEdits({}); }}
+                    />
+                  </div>
                 </div>
-                <div className="col-span-2 text-xs text-muted-foreground flex items-start gap-2">
+
+                <div className="rounded-md border overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b gap-2 flex-wrap">
+                    <div className="text-sm font-medium">
+                      Simulação das repetições
+                      <span className="text-xs text-muted-foreground ml-2">
+                        (clique no vencimento ou valor para ajustar manualmente)
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Total da série: <strong className="text-foreground">{totalSerie.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
+                    </div>
+                  </div>
+                  <div className="max-h-72 overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/20 text-xs text-muted-foreground sticky top-0">
+                        <tr>
+                          <th className="text-left font-medium px-3 py-2 w-28">Situação</th>
+                          <th className="text-left font-medium px-3 py-2 w-24">Parcela</th>
+                          <th className="text-left font-medium px-3 py-2">Vencimento</th>
+                          <th className="text-right font-medium px-3 py-2 w-40">Valor</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {simulacao.map((d, i) => {
+                          const dt = new Date(d.vencimento + "T12:00:00");
+                          const dow = dt.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+                          const dataStr = dt.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+                          return (
+                            <tr key={i} className="border-t hover:bg-accent/30">
+                              <td className="px-3 py-1.5">
+                                <span className="inline-flex items-center gap-1 text-xs">
+                                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                  A vencer
+                                </span>
+                              </td>
+                              <td className="px-3 py-1.5 tabular-nums text-xs text-muted-foreground">
+                                {String(i + 1).padStart(3, "0")}/{String(qtdParcelas).padStart(3, "0")}
+                              </td>
+                              <td className="px-3 py-1.5">
+                                <input
+                                  type="date"
+                                  value={d.vencimento}
+                                  onChange={(e) => setSimulacaoEdits((prev) => ({ ...prev, [i]: { ...prev[i], vencimento: e.target.value } }))}
+                                  className="bg-transparent border-0 outline-none focus:ring-1 focus:ring-primary rounded px-1 py-0.5"
+                                />
+                                <span className="text-xs text-muted-foreground ml-2 capitalize">{dataStr} {dow}</span>
+                              </td>
+                              <td className="px-3 py-1.5 text-right">
+                                <input
+                                  type="number" step="0.01" min="0"
+                                  value={d.valor}
+                                  onChange={(e) => setSimulacaoEdits((prev) => ({ ...prev, [i]: { ...prev[i], valor: parseFloat(e.target.value || "0") } }))}
+                                  className="w-32 text-right bg-transparent border-0 outline-none focus:ring-1 focus:ring-primary rounded px-1 py-0.5 tabular-nums"
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {simulacao.length === 0 && (
+                          <tr><td colSpan={4} className="px-3 py-6 text-center text-xs text-muted-foreground">
+                            Informe valor e data de vencimento na aba <strong>Geral</strong> para visualizar a simulação.
+                          </td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="text-xs text-muted-foreground flex items-start gap-2">
                   <Info className="w-4 h-4 mt-0.5 shrink-0" />
-                  As parcelas serão geradas com vencimentos mensais e numeradas como{" "}
-                  <strong>1/{qtdParcelas}</strong>, <strong>2/{qtdParcelas}</strong>, … A última parcela
-                  recebe o ajuste de centavos para fechar o valor total.
+                  {modoParc === "repetir"
+                    ? <>Modo <strong>repetir</strong>: cada lançamento será criado com o valor cheio informado em <em>Geral</em>.</>
+                    : <>Modo <strong>dividir</strong>: o valor é distribuído igualmente entre as parcelas; a última recebe o ajuste de centavos.</>}
                 </div>
-              </div>
+              </>
             )}
           </TabsContent>
         </Tabs>
@@ -494,7 +677,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
         <DialogFooter className="pt-2 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={isSalvando || !descricao.trim()}>
-            {isSalvando ? "Salvando..." : parcelar && podeParcelar ? `Gerar ${qtdParcelas} parcelas` : "Salvar"}
+            {isSalvando ? "Salvando..." : parcelar && podeParcelar ? `Gerar ${qtdParcelas} ${modoParc === "repetir" ? "repetições" : "parcelas"}` : "Salvar"}
           </Button>
         </DialogFooter>
       </DialogContent>
