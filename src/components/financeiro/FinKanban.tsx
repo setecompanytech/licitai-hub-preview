@@ -228,6 +228,7 @@ export default function FinKanban({ tipo }: Props) {
     }
   };
 
+  const nomeVendedor = (id: string | null | undefined) => {
     if (!id) return null;
     const m = membros.find((x) => x.user_id === id);
     return m?.nome_completo || m?.email || null;
