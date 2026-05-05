@@ -69,9 +69,19 @@ type LancamentoCard = Lancamento & {
   pessoa?: { id: string; nome: string } | null;
 };
 
+type VencFiltro = "todos" | "hoje" | "semana" | "mes" | "atrasados";
+
 export default function FinKanban({ tipo }: Props) {
   const [busca, setBusca] = useState("");
   const [filtroVendedor, setFiltroVendedor] = useState<string>("todos");
+  const [filtroCategoria, setFiltroCategoria] = useState<string>("todos");
+  const [filtroPessoa, setFiltroPessoa] = useState<string>("todos");
+  const [filtroConta, setFiltroConta] = useState<string>("todos");
+  const [filtroVenc, setFiltroVenc] = useState<VencFiltro>("todos");
+  const [valorMin, setValorMin] = useState<string>("");
+  const [valorMax, setValorMax] = useState<string>("");
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  const [selecionados, setSelecionados] = useState<Set<string>>(() => new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [extracaoOpen, setExtracaoOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Lancamento> | null>(null);
@@ -83,6 +93,9 @@ export default function FinKanban({ tipo }: Props) {
 
   const { data = [], isLoading } = useLancamentos({ tipo });
   const { data: membros = [] } = useMembrosEmpresa();
+  const { data: categorias = [] } = useCategorias();
+  const { data: pessoas = [] } = usePessoas();
+  const { data: contas = [] } = useContas();
   const upsert = useUpsertLancamento();
   const del = useDeleteLancamento();
 
@@ -100,26 +113,97 @@ export default function FinKanban({ tipo }: Props) {
     return "aberto";
   };
 
+  const matchVencimento = (l: LancamentoCard): boolean => {
+    if (filtroVenc === "todos") return true;
+    const ref = parseISO(dataReferenciaVenc(l));
+    if (filtroVenc === "hoje") return isToday(ref);
+    if (filtroVenc === "semana") return isThisWeek(ref, { weekStartsOn: 1 });
+    if (filtroVenc === "mes") return isThisMonth(ref);
+    if (filtroVenc === "atrasados") {
+      return l.status !== "realizado" && l.status !== "conciliado" && differenceInDays(ref, new Date()) < 0;
+    }
+    return true;
+  };
+
   const lancamentosFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
+    const vMin = valorMin ? Number(valorMin) : null;
+    const vMax = valorMax ? Number(valorMax) : null;
     return lancamentos.filter((l) => {
       if (pendingDeleteIds.has(l.id)) return false;
-      if (filtroVendedor !== "todos" && (l as any).vendedor_responsavel_id !== filtroVendedor) {
-        return false;
-      }
+      if (filtroVendedor !== "todos" && (l as any).vendedor_responsavel_id !== filtroVendedor) return false;
+      if (filtroCategoria !== "todos" && l.categoria_id !== filtroCategoria) return false;
+      if (filtroPessoa !== "todos" && l.pessoa_id !== filtroPessoa) return false;
+      if (filtroConta !== "todos" && l.conta_id !== filtroConta) return false;
+      if (!matchVencimento(l)) return false;
+      const valor = Number(l.valor);
+      if (vMin !== null && valor < vMin) return false;
+      if (vMax !== null && valor > vMax) return false;
       if (!termo) return true;
       return (
         l.descricao.toLowerCase().includes(termo) ||
         (l.numero_documento ?? "").toLowerCase().includes(termo) ||
-        (l.pessoa?.nome ?? "").toLowerCase().includes(termo)
+        (l.pessoa?.nome ?? "").toLowerCase().includes(termo) ||
+        (l.categoria?.nome ?? "").toLowerCase().includes(termo)
       );
     });
-  }, [lancamentos, busca, filtroVendedor, pendingDeleteIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lancamentos, busca, filtroVendedor, filtroCategoria, filtroPessoa, filtroConta, filtroVenc, valorMin, valorMax, pendingDeleteIds]);
+
+  const filtrosAtivos =
+    (filtroVendedor !== "todos" ? 1 : 0) +
+    (filtroCategoria !== "todos" ? 1 : 0) +
+    (filtroPessoa !== "todos" ? 1 : 0) +
+    (filtroConta !== "todos" ? 1 : 0) +
+    (filtroVenc !== "todos" ? 1 : 0) +
+    (valorMin ? 1 : 0) +
+    (valorMax ? 1 : 0);
+
+  const limparFiltros = () => {
+    setFiltroVendedor("todos");
+    setFiltroCategoria("todos");
+    setFiltroPessoa("todos");
+    setFiltroConta("todos");
+    setFiltroVenc("todos");
+    setValorMin("");
+    setValorMax("");
+    setBusca("");
+  };
 
   const total = lancamentosFiltrados.reduce(
     (s, l) => (classificar(l) !== "pago" ? s + Number(l.valor) : s),
     0,
   );
+
+  // ===== Seleção em lote =====
+  const idsSelecionaveis = lancamentosFiltrados.filter((l) => classificar(l) !== "pago").map((l) => l.id);
+  const totalSelecionado = lancamentosFiltrados
+    .filter((l) => selecionados.has(l.id))
+    .reduce((s, l) => s + Number(l.valor), 0);
+
+  const toggleSelecionado = (id: string) => {
+    setSelecionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const selecionarTodosVisiveis = () => setSelecionados(new Set(idsSelecionaveis));
+  const limparSelecao = () => setSelecionados(new Set());
+  const marcarSelecionadosPagos = async () => {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const ids = Array.from(selecionados);
+    try {
+      await Promise.all(
+        ids.map((id) => upsert.mutateAsync({ id, status: "realizado", data_realizado: hoje } as any)),
+      );
+      toast.success(`${ids.length} lançamento(s) marcados como ${tipo === "a_pagar" ? "pagos" : "recebidos"}.`);
+      limparSelecao();
+    } catch {
+      toast.error("Falha ao atualizar alguns lançamentos.");
+    }
+  };
 
   const marcarPago = async (l: LancamentoCard) => {
     await upsert.mutateAsync({
