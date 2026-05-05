@@ -16,7 +16,11 @@ import {
   Clock,
   FileText,
   Layers,
+  Download,
+  FileSpreadsheet,
 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { downloadCSV, downloadPDF } from "@/lib/download-utils";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -142,6 +146,55 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
     return m?.nome_completo || m?.email || null;
   };
 
+  const buildExportRows = () => {
+    const headers = [
+      "Vencimento",
+      "Descrição",
+      "Categoria",
+      tipo === "a_pagar" ? "Fornecedor" : "Cliente",
+      "Documento",
+      "Parcela",
+      "Responsável",
+      "Status",
+      "Valor (R$)",
+    ];
+    const rows = filtrados.map((l) => {
+      const st = statusEfetivo(l);
+      const meta = STATUS_LABEL[st] ?? STATUS_LABEL.previsto;
+      const total = Number(l.parcela_total ?? 1);
+      const num = Number(l.parcela_numero ?? 1);
+      const venc = dataRefVenc(l);
+      return [
+        format(parseISO(venc), "dd/MM/yyyy", { locale: ptBR }),
+        l.descricao ?? "",
+        l.categoria?.nome ?? "",
+        l.pessoa?.nome ?? "",
+        l.numero_documento
+          ? `${l.numero_documento}${l.serie_documento ? ` / ${l.serie_documento}` : ""}`
+          : "",
+        total > 1 ? `${num}/${total}` : "",
+        nomeVendedor((l as any).vendedor_responsavel_id) ?? "",
+        meta.label,
+        Number(l.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      ];
+    });
+    return { headers, rows };
+  };
+
+  const exportarCSV = () => {
+    const { headers, rows } = buildExportRows();
+    const nome = `financeiro-${tipo}-${new Date().toISOString().slice(0, 10)}`;
+    downloadCSV(nome, headers, rows);
+  };
+
+  const exportarPDF = () => {
+    const { headers, rows } = buildExportRows();
+    const titulo = `Financeiro · ${tipo === "a_pagar" ? "Contas a Pagar" : "Contas a Receber"}`;
+    const subtitulo = `${filtrados.length} lançamento(s) · Total em aberto: ${totalAberto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} · Total pago: ${totalPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
+    const nome = `financeiro-${tipo}-${new Date().toISOString().slice(0, 10)}`;
+    downloadPDF(nome, `${titulo} — ${subtitulo}`, headers, rows);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -204,6 +257,24 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
               </SelectContent>
             </Select>
             <Badge variant="outline">{filtrados.length} lançamentos</Badge>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" disabled={filtrados.length === 0}>
+                  <Download className="w-4 h-4 mr-1" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={exportarCSV}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Exportar CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarPDF}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Exportar PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button size="sm" onClick={abrirNovo}>
               <Plus className="w-4 h-4 mr-1" />
               Novo {tipo === "a_pagar" ? "pagamento" : "recebimento"}
