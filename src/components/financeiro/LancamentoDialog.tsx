@@ -240,7 +240,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
         datas_customizadas: simulacao.length === qtdParcelas ? simulacao : undefined,
       });
     } else {
-      await upsert.mutateAsync({ id: initial?.id, ...baseBody });
+      const saved = await upsert.mutateAsync({ id: initial?.id, ...baseBody });
+      if (saved && onSaved) onSaved(saved as unknown as Lancamento);
     }
     onOpenChange(false);
   };
