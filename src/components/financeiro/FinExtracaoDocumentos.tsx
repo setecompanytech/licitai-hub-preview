@@ -370,6 +370,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         setDocs((prev) =>
           prev.map((x) => (x.id === item.id ? { ...x, lancamentoId: lancId ?? "ok" } : x)),
         );
+        invalidarFinanceiro();
         toast.success(
           itemIds.length > 1
             ? `Documento rateado entre ${itemIds.length} itens e vinculado ao contrato.`
@@ -389,13 +390,14 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
           item.file.name,
         valor: Number(d.valor_total),
         data_competencia: d.data_emissao ?? new Date().toISOString().slice(0, 10),
-        data_vencimento: d.data_vencimento ?? null,
+        data_vencimento: d.data_vencimento ?? d.data_emissao ?? null,
         data_emissao: d.data_emissao ?? null,
         tipo_documento: (d.tipo_documento as any) ?? "outro",
         numero_documento: d.numero_documento ?? null,
         chave_acesso_nfe: d.chave_nfe ? String(d.chave_nfe).replace(/\D/g, "") : null,
       } as any);
       setDocs((prev) => prev.map((x) => (x.id === item.id ? { ...x, lancamentoId: (r as any)?.id ?? "ok" } : x)));
+      invalidarFinanceiro();
     } catch {
       /* toast já exibido pelo hook */
     }
