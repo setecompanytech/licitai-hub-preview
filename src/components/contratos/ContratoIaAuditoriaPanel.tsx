@@ -188,9 +188,24 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
             </Badge>
           )}
         </div>
-        <Button variant="ghost" size="sm" onClick={load} disabled={loading} className="shrink-0">
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleReprocessarTodos}
+              disabled={reprocessando}
+              className="gap-1 shrink-0"
+              title="Reprocessar todos os contratos: limpa alertas indevidos de aditivos de prazo/vigência e recalcula conforme Lei 14.133/21"
+            >
+              {reprocessando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+              <span className="hidden sm:inline whitespace-nowrap">Reprocessar aditivos</span>
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={load} disabled={loading} className="shrink-0">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          </Button>
+        </div>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
