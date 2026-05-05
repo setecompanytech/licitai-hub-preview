@@ -1088,7 +1088,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
 
           {aditivos.map((a: any) => {
             const Icon = ADITIVO_ICON[a.tipo] || FilePlus2;
-            const tipoLabel = { valor: 'Valor', quantidade: 'Quantidade', valor_quantidade: 'Valor e Qtde', prazo: 'Prazo', escopo: 'Escopo' }[a.tipo as string] || a.tipo;
+            const tipoLabel = { valor: 'Valor', quantidade: 'Quantidade', valor_quantidade: 'Quantidade e Valor', prazo: 'Prazo', prazo_valor: 'Prazo e Valor', prazo_quantidade: 'Prazo e Quantidade', escopo: 'Escopo' }[a.tipo as string] || a.tipo;
             const saldoValor = (a.valor_acrescimo || 0) - (a.valor_supressao || 0);
             const saldoQtyItem = (a.quantidade_acrescimo || 0) - (a.quantidade_supressao || 0);
             return (
