@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -243,9 +243,28 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     onOpenChange(false);
   };
 
-  const categoriasFiltradas = categorias.filter((c) =>
-    natureza === "movimentacao" ? true : c.natureza === natureza,
-  );
+  // Em "A pagar" mostra despesa + movimentacao (transferências, tarifas).
+  // Em "A receber" mostra receita + movimentacao.
+  // Em "movimentacao" mostra todas (caso especial: aporte, transferência, etc.).
+  const categoriasFiltradas = categorias.filter((c) => {
+    if (tipo === "a_pagar") return c.natureza === "despesa" || c.natureza === "movimentacao";
+    if (tipo === "a_receber") return c.natureza === "receita" || c.natureza === "movimentacao";
+    return true;
+  });
+
+  // Agrupa por natureza para exibição organizada no Select
+  const categoriasAgrupadas = categoriasFiltradas.reduce<Record<string, typeof categoriasFiltradas>>((acc, c) => {
+    const key = c.natureza || "movimentacao";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(c);
+    return acc;
+  }, {});
+
+  const ordemGrupos: Array<{ key: string; label: string }> = [
+    { key: "despesa", label: "Despesas" },
+    { key: "receita", label: "Receitas" },
+    { key: "movimentacao", label: "Movimentações" },
+  ];
 
   const pessoasFiltradas = pessoas.filter((p) => {
     if (tipo === "a_pagar") return p.pessoa_tipo !== "cliente";
@@ -344,11 +363,27 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                 <Label>Categoria</Label>
                 <Select value={categoriaId || "none"} onValueChange={(v) => setCategoriaId(v === "none" ? "" : v)}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[400px]">
                     <SelectItem value="none">— Sem categoria —</SelectItem>
-                    {categoriasFiltradas.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.codigo} · {c.nome}</SelectItem>
-                    ))}
+                    {ordemGrupos.map(({ key, label }) => {
+                      const itens = categoriasAgrupadas[key];
+                      if (!itens || itens.length === 0) return null;
+                      return (
+                        <SelectGroup key={key}>
+                          <SelectLabel className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {label}
+                          </SelectLabel>
+                          {itens
+                            .slice()
+                            .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || "", "pt-BR", { numeric: true }))
+                            .map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.codigo} · {c.nome}
+                              </SelectItem>
+                            ))}
+                        </SelectGroup>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
