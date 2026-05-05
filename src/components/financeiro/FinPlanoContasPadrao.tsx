@@ -30,6 +30,7 @@ export default function FinPlanoContasPadrao() {
   const [contas, setContas] = useState<PC[]>([]);
   const [loading, setLoading] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const syncCategorias = useSyncPlanoContasCategorias();
 
   const carregar = async () => {
     if (!empresaAtiva) return;
