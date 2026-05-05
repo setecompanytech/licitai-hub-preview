@@ -299,7 +299,21 @@ export default function FinKanban({ tipo }: Props) {
           const subtotal = items.reduce((s, l) => s + Number(l.valor), 0);
           const Icone = col.icone;
           return (
-            <Card key={col.id} className={`${col.cor} border-2 kanban-col`}>
+            <Card
+              key={col.id}
+              className={cn(
+                col.cor,
+                "border-2 kanban-col transition-shadow",
+                dragOverCol === col.id && "ring-2 ring-primary/40 shadow-lg",
+              )}
+              onDragOver={handleColDragOver(col.id)}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                  setDragOverCol((cur) => (cur === col.id ? null : cur));
+                }
+              }}
+              onDrop={handleColDrop(col.id)}
+            >
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Icone className="w-4 h-4" />
@@ -311,10 +325,14 @@ export default function FinKanban({ tipo }: Props) {
                 </p>
               </CardHeader>
               <CardContent className="p-2 kanban-col">
-                <ScrollArea className="h-[min(65vh,520px)] kanban-col-scroll pr-3">
+                <div className="h-[min(65vh,520px)] overflow-y-auto overflow-x-hidden pr-1 kanban-col-scroll">
                   <div className="kanban-col-body">
                     {items.length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-6">Nenhum item</p>
+                      <div className="border-2 border-dashed border-border/40 rounded-md py-8 text-center">
+                        <p className="text-xs text-muted-foreground">
+                          {dragOverCol === col.id ? "Solte aqui" : "Nenhum item"}
+                        </p>
+                      </div>
                     ) : (
                       items.map((l) => {
                         const venc = dataReferenciaVenc(l);
@@ -322,10 +340,21 @@ export default function FinKanban({ tipo }: Props) {
                         const total = Number(l.parcela_total ?? 1);
                         const num = Number(l.parcela_numero ?? 1);
                         const isParcelado = total > 1;
+                        const isDragging = dragItemId === l.id;
                         return (
-                          <Card key={l.id} className="bg-card border shadow-sm kanban-card">
+                          <Card
+                            key={l.id}
+                            className={cn(
+                              "bg-card border shadow-sm kanban-card cursor-grab active:cursor-grabbing transition-all",
+                              isDragging && "opacity-40 scale-[0.98]",
+                            )}
+                            draggable
+                            onDragStart={handleDragStart(l.id)}
+                            onDragEnd={handleDragEnd}
+                          >
                             <CardContent className="p-3 space-y-1.5 kanban-card-body">
-                              <div className="flex items-start justify-between gap-2 min-w-0 max-w-full">
+                              <div className="flex items-start gap-1.5 min-w-0 max-w-full">
+                                <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 mt-0.5 shrink-0" />
                                 <p className="kanban-card-title flex-1" title={l.descricao}>
                                   {l.descricao}
                                 </p>
@@ -334,7 +363,7 @@ export default function FinKanban({ tipo }: Props) {
                                     size="icon"
                                     variant="ghost"
                                     className="h-6 w-6"
-                                    onClick={() => abrirEditar(l)}
+                                    onClick={(e) => { e.stopPropagation(); abrirEditar(l); }}
                                     title="Editar"
                                   >
                                     <Pencil className="w-3.5 h-3.5" />
@@ -343,7 +372,7 @@ export default function FinKanban({ tipo }: Props) {
                                     size="icon"
                                     variant="ghost"
                                     className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => setConfirmDel(l)}
+                                    onClick={(e) => { e.stopPropagation(); setConfirmDel(l); }}
                                     title="Excluir"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -374,18 +403,18 @@ export default function FinKanban({ tipo }: Props) {
                                   </Badge>
                                 )}
                                 {vendedor && (
-                                  <Badge variant="outline" className="text-[10px] gap-1">
-                                    <User2 className="w-3 h-3" />
-                                    {vendedor}
+                                  <Badge variant="outline" className="text-[10px] gap-1 max-w-full truncate">
+                                    <User2 className="w-3 h-3 shrink-0" />
+                                    <span className="truncate">{vendedor}</span>
                                   </Badge>
                                 )}
                               </div>
 
-                              <div className="flex items-center justify-between pt-1">
-                                <span className="text-xs text-muted-foreground">
+                              <div className="flex items-center justify-between gap-2 pt-1">
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
                                   Venc: {format(parseISO(venc), "dd/MM/yy", { locale: ptBR })}
                                 </span>
-                                <span className="text-sm font-semibold tabular-nums">
+                                <span className="text-sm font-semibold tabular-nums whitespace-nowrap">
                                   {Number(l.valor).toLocaleString("pt-BR", {
                                     style: "currency",
                                     currency: "BRL",
@@ -398,7 +427,7 @@ export default function FinKanban({ tipo }: Props) {
                                   size="sm"
                                   variant="outline"
                                   className="w-full h-7 text-xs"
-                                  onClick={() => marcarPago(l)}
+                                  onClick={(e) => { e.stopPropagation(); marcarPago(l); }}
                                   disabled={upsert.isPending}
                                 >
                                   {tipo === "a_pagar" ? "Marcar pago" : "Marcar recebido"}
@@ -410,7 +439,7 @@ export default function FinKanban({ tipo }: Props) {
                       })
                     )}
                   </div>
-                </ScrollArea>
+                </div>
               </CardContent>
             </Card>
           );
