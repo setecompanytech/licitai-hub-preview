@@ -248,7 +248,7 @@ export default function FinKanban({ tipo }: Props) {
           const subtotal = items.reduce((s, l) => s + Number(l.valor), 0);
           const Icone = col.icone;
           return (
-            <Card key={col.id} className={`${col.cor} border-2`}>
+            <Card key={col.id} className={`${col.cor} border-2 min-w-0 flex flex-col`}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Icone className="w-4 h-4" />
@@ -259,9 +259,9 @@ export default function FinKanban({ tipo }: Props) {
                   {subtotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                 </p>
               </CardHeader>
-              <CardContent className="p-2">
-                <ScrollArea className="h-[460px]">
-                  <div className="space-y-2">
+              <CardContent className="p-2 min-w-0">
+                <ScrollArea className="h-[min(65vh,520px)] pr-3 overscroll-contain">
+                  <div className="space-y-2 min-w-0">
                     {items.length === 0 ? (
                       <p className="text-xs text-muted-foreground text-center py-6">Nenhum item</p>
                     ) : (
@@ -272,10 +272,10 @@ export default function FinKanban({ tipo }: Props) {
                         const num = Number(l.parcela_numero ?? 1);
                         const isParcelado = total > 1;
                         return (
-                          <Card key={l.id} className="bg-card border shadow-sm">
-                            <CardContent className="p-3 space-y-1.5">
-                              <div className="flex items-start justify-between gap-2">
-                                <p className="text-sm font-medium line-clamp-2 flex-1">
+                          <Card key={l.id} className="bg-card border shadow-sm min-w-0">
+                            <CardContent className="p-3 space-y-1.5 min-w-0">
+                              <div className="flex items-start justify-between gap-2 min-w-0">
+                                <p className="text-sm font-medium line-clamp-2 flex-1 min-w-0 break-words">
                                   {l.descricao}
                                 </p>
                                 <div className="flex items-center gap-0.5 shrink-0">
