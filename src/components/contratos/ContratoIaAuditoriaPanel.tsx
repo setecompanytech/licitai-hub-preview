@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
-import { Sparkles, FileText, RefreshCw, Loader2, AlertTriangle, Calculator, ScrollText, Eye } from 'lucide-react';
+import { Sparkles, FileText, RefreshCw, Loader2, AlertTriangle, Calculator, ScrollText, Eye, Wand2 } from 'lucide-react';
 import EventoAuditoriaDetalheDialog from './EventoAuditoriaDetalheDialog';
+import { toast } from 'sonner';
+import { useUserRole } from '@/hooks/useUserRole';
 
 const CAMPO_LABELS: Record<string, string> = {
   numero_contrato: 'Nº do Contrato',
