@@ -132,9 +132,60 @@
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    overflow-wrap: break-word;
-    word-break: break-word;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    hyphens: auto;
   }
+
+  /* ============================================================
+     Normalização GLOBAL de quebra de texto
+     Previne overflow horizontal e textos cortados em todo o sistema
+     (cards, tabelas, badges, listas, dialogs, formulários)
+     ============================================================ */
+
+  /* Parágrafos, spans, divs com texto longo quebram corretamente */
+  p, span, div, li, td, th, dd, dt, label, figcaption, blockquote {
+    overflow-wrap: anywhere;
+  }
+
+  /* Cabeçalhos: quebra suave preservando legibilidade */
+  h1, h2, h3, h4, h5, h6 {
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: auto;
+  }
+
+  /* Conteúdo monoespaçado/código mantém integridade visual mas quebra se necessário */
+  code, pre, kbd, samp {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  /* Botões: nunca quebram texto, evitam estourar layout via shrink */
+  button {
+    overflow-wrap: normal;
+  }
+
+  /* Tabelas: contêineres com overflow horizontal automático */
+  table {
+    table-layout: auto;
+    max-width: 100%;
+  }
+  td, th {
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  /* Inputs e textareas mantêm comportamento nativo */
+  input, textarea, select {
+    overflow-wrap: normal;
+  }
+
+  /* Links longos (URLs) quebram em qualquer ponto */
+  a {
+    overflow-wrap: anywhere;
+  }
+
   /* Improve tap targets on mobile */
   @media (max-width: 640px) {
     button, a, [role="button"] {
@@ -143,6 +194,36 @@
     h1 { font-size: 1.25rem; }
     h2 { font-size: 1.1rem; }
     h3 { font-size: 0.95rem; }
+  }
+}
+
+@layer utilities {
+  /* ===== Utilitários de truncamento e quebra de texto ===== */
+
+  /* Texto que quebra em qualquer ponto (CNPJs, e-mails, URLs longas) */
+  .text-anywhere {
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  /* Limita texto a N linhas com reticências */
+  .text-clamp-1 { @apply truncate; }
+  .text-clamp-2 { @apply line-clamp-2 [overflow-wrap:anywhere]; }
+  .text-clamp-3 { @apply line-clamp-3 [overflow-wrap:anywhere]; }
+
+  /* Container que nunca expande além do pai (corrige flex overflow comum) */
+  .contain-text {
+    @apply min-w-0 max-w-full overflow-hidden;
+  }
+
+  /* Célula de tabela com ellipsis quando estoura */
+  .cell-truncate {
+    @apply truncate max-w-[240px];
+  }
+
+  /* Badge ou chip que precisa truncar conteúdo longo */
+  .badge-truncate {
+    @apply max-w-full truncate inline-flex items-center;
   }
 }
 
