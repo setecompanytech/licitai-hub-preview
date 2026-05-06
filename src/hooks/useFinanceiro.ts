@@ -121,7 +121,8 @@ export function useUpsertConta() {
         const code = (error as { code?: string }).code;
         if (code === "23505" || /duplicate key|unique constraint/i.test(msg)) {
           throw new Error(
-            "Já existe uma conta cadastrada com este banco, agência e número para esta empresa. Edite a conta existente ou utilize dados diferentes.",
+            "Já existe uma conta com exatamente os mesmos dados (banco, agência, número, tipo e nome). " +
+              "Para cadastrar outra aplicação financeira no mesmo banco, diferencie pelo nome (ex.: \"CDB 30d\", \"LCI 90d\", \"Fundo DI\") ou pelo tipo.",
           );
         }
         throw error;
