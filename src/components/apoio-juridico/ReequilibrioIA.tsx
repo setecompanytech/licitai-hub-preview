@@ -139,6 +139,23 @@ export default function ReequilibrioIA() {
   const [generatingPedido, setGeneratingPedido] = useState(false);
   const [pedidoGerado, setPedidoGerado] = useState('');
 
+  // Tipo de instrumento contratual (Edital / ATA SRP / Contrato / Aditivo)
+  const [instrumento, setInstrumento] = useState<Instrumento>('contrato');
+  // Identificação do processo
+  const [processoAdm, setProcessoAdm] = useState('');
+  const [pregaoNum, setPregaoNum] = useState('');
+  const [aditivoNum, setAditivoNum] = useState('');
+  const [ataNum, setAtaNum] = useState('');
+  // Tabela comparativa de preços (NF antes / NF depois / cotações)
+  const [itensComp, setItensComp] = useState<ItemComparativo[]>([novoItemComp()]);
+  // Anexos probatórios (descrição livre — uploads ficam no DocumentosManager do processo)
+  const [anexos, setAnexos] = useState('');
+  // Empresa atual (para timbrado e dados)
+  const { empresas, empresaAtual } = useEmpresa();
+  const empresaSel = empresaAtual || empresas[0]?.empresa || null;
+  // Export
+  const [exporting, setExporting] = useState<'pdf' | 'word' | null>(null);
+
   // Revisão-specific fields
   const [fatoGerador, setFatoGerador] = useState('');
   const [tipoFato, setTipoFato] = useState<'caso_fortuito' | 'forca_maior' | 'fato_principe' | 'fato_superveniente'>('fato_superveniente');
