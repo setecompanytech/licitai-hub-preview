@@ -1250,8 +1250,33 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
             />
           )}
 
+          {/* ── Pré-visualização da estrutura antes da geração final ── */}
+          <PreviewEstruturaDocumento
+            modeloTitulo={activeModelo.titulo}
+            fundamentacao={activeModelo.fundamentacao}
+            contextoCompleto={[
+              `Documento: ${activeModelo.titulo}`,
+              `Categoria: ${activeModelo.categoria}`,
+              `Fundamentação: ${activeModelo.fundamentacao}`,
+              modalidade ? `Modalidade: ${modalidade.nome}` : '',
+              etapaFiltro ? `Etapa: ${etapaFiltro}` : '',
+              editalNum ? `Edital/Contrato: ${editalNum}` : '',
+              selectedEmpresa ? `Empresa: ${selectedEmpresa.razao_social} (CNPJ ${selectedEmpresa.cnpj})` : '',
+              processo?.orgao ? `Órgão: ${processo.orgao}` : '',
+              extractedEditalContext ? `\nDados extraídos do edital:\n${extractedEditalContext}` : '',
+              fatosPeticao.length > 0
+                ? `\nFatos extraídos (${fatosPeticao.length}):\n` + fatosPeticao.map((f, i) => `${i + 1}. [${f.gravidade}] ${f.descricao}`).join('\n')
+                : '',
+              `\nContexto do usuário:\n${contexto}`,
+            ].filter(Boolean).join('\n')}
+            gerandoFinal={gerando}
+            onConfirmar={handleGerar}
+            disabledConfirmar={!contexto.trim() && fatosPeticao.length === 0}
+          />
+
                   </div>
                 </div>
+
 
                 {/* Coluna direita: preview live ABNT */}
                 <div className="flex flex-col overflow-hidden bg-background">
