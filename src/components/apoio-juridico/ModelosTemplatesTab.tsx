@@ -725,6 +725,10 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
 
   return (
     <div className="space-y-3">
+      {/* Cabeçalho condensado, KPIs, filtros e lista de modelos
+          ficam OCULTOS quando aberto via deep-link (/apoio-juridico/redigir/:id),
+          para que a nova aba mostre apenas a redação do modelo escolhido. */}
+      {!inlineMode && (<>
       {/* ── Cabeçalho condensado: KPIs + ações rápidas (1 linha) ── */}
       <div className="bg-card rounded-lg border border-border/60 shadow-sm p-3 flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-0">
