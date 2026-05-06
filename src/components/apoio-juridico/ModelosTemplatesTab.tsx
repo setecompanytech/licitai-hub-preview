@@ -1346,45 +1346,47 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           </Button>
         </div>
       ) : (
-        categorias.map(cat => {
-          const items = filteredModelos.filter(m => m.categoria === cat);
-          if (items.length === 0) return null;
-          const catCount = pedidos.filter(p => p.categoria === cat).length;
-          return (
-            <div key={cat}>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
-                  <BookOpen className="w-4 h-4" /> {cat}
-                  <Badge variant="outline" className="text-[10px] ml-1">{items.length}</Badge>
-                </h3>
-                {catCount > 0 && (
-                  <Badge className="text-[10px] gap-1 bg-accent/10 text-accent border-accent/30 shrink-0">
-                    <FileText className="w-2.5 h-2.5" /> {catCount} gerado{catCount === 1 ? '' : 's'}
-                  </Badge>
-                )}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                {items.map(m => (
-                  <ModeloCard
-                    key={m.id}
-                    modelo={m}
-                    pedidosCount={pedidosPorModelo[m.id] || 0}
-                    onAbrir={() => {
-                      setActiveModeloId(m.id);
-                      setPedidoAtivo(null);
-                      setResultado('');
-                      setContexto('');
-                      setEditalNum(processo?.numero || '');
-                      setSelectedIndices([]);
-                      setSelectedCCTs([]);
-                      setSelectedDocs([]);
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          );
-        })
+        <div className="space-y-4">
+          {categorias.map(cat => {
+            const items = filteredModelos.filter(m => m.categoria === cat);
+            if (items.length === 0) return null;
+            const catCount = pedidos.filter(p => p.categoria === cat).length;
+            return (
+              <section key={cat}>
+                <div className="flex items-center justify-between mb-2 sticky top-0 z-10 bg-background/80 backdrop-blur py-1">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <BookOpen className="w-3 h-3" /> {cat}
+                    <span className="text-muted-foreground/60 font-normal normal-case tracking-normal">· {items.length}</span>
+                  </h3>
+                  {catCount > 0 && (
+                    <Badge className="text-[10px] gap-1 bg-accent/10 text-accent border-accent/30 shrink-0 h-5">
+                      <FileText className="w-2.5 h-2.5" /> {catCount} gerado{catCount === 1 ? '' : 's'}
+                    </Badge>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
+                  {items.map(m => (
+                    <ModeloCard
+                      key={m.id}
+                      modelo={m}
+                      pedidosCount={pedidosPorModelo[m.id] || 0}
+                      onAbrir={() => {
+                        setActiveModeloId(m.id);
+                        setPedidoAtivo(null);
+                        setResultado('');
+                        setContexto('');
+                        setEditalNum(processo?.numero || '');
+                        setSelectedIndices([]);
+                        setSelectedCCTs([]);
+                        setSelectedDocs([]);
+                      }}
+                    />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </div>
       )}
     </div>
   );
