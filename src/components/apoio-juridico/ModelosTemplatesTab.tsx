@@ -1026,24 +1026,14 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
            Em modo inline (deep-link via ?modelo=…), neutralizamos o overlay
            e ancoramos o SheetContent dentro do conteúdo da página, para
            preservar sidebar/header e parecer uma página completa. ── */}
+      {/* ── Active Generation Sheet (Drawer dedicado com preview live)
+           Em modo inline (deep-link via ?modelo=…), removemos o overlay
+           escuro e o foco-trap (modal=false), para que sidebar e header
+           da página continuem visíveis e interagíveis — dando a sensação
+           de uma página completa, ao invés de um modal-atalho. ── */}
       {inlineMode && activeModelo && (
         <style>{`
-          body.aj-inline-active [data-radix-dialog-overlay] { display: none !important; }
-          body.aj-inline-active [role="dialog"][data-state="open"] {
-            position: static !important;
-            transform: none !important;
-            inset: auto !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            height: auto !important;
-            min-height: calc(100vh - 16rem);
-            box-shadow: 0 1px 2px hsl(var(--foreground) / 0.05) !important;
-            border: 1px solid hsl(var(--border) / 0.5) !important;
-            border-radius: 0.75rem !important;
-            animation: none !important;
-            z-index: auto !important;
-          }
-          body.aj-inline-active [role="dialog"] > button[aria-label="Close"] { display: none; }
+          body.aj-inline-active [data-radix-dialog-overlay] { background: transparent !important; backdrop-filter: none !important; }
         `}</style>
       )}
       <div ref={(el) => {
