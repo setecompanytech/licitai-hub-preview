@@ -30,6 +30,7 @@ import { useJuridicoPedidos, type JuridicoPedido } from '@/hooks/useJuridicoPedi
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 import PedidosJuridicosList from './PedidosJuridicosList';
 import ModeloCard from './ModeloCard';
+import PreviewEstruturaDocumento from './PreviewEstruturaDocumento';
 
 /* ── Types ── */
 type Modelo = {
