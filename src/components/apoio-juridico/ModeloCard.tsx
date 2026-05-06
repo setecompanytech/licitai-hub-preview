@@ -145,19 +145,17 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
           className="h-8 px-2.5 text-[11.5px] uppercase tracking-wider font-semibold text-accent hover:text-accent hover:bg-accent/10 gap-1 shrink-0"
         >
           <a
+            ref={cardLinkRef}
             href={href}
             target="_blank"
             rel="noopener noreferrer"
             title="Redigir (abre em nova aba)"
-            onClick={(e) => {
-              e.stopPropagation();
-              // Sempre abre em nova aba/janela COMPLETA (top-level), independente de modificadores
-              e.preventDefault();
-              abrirNovaAba();
-            }}
-            onAuxClick={(e) => {
-              e.stopPropagation();
-            }}
+            // Apenas impede a propagação para o handler do <article>;
+            // a navegação em nova aba acontece pelo target="_blank" nativo,
+            // que é universalmente suportado e nunca bloqueado por popup-blocker
+            // em Chrome, Safari e Firefox (desktop e mobile).
+            onClick={(e) => { e.stopPropagation(); }}
+            onAuxClick={(e) => { e.stopPropagation(); }}
           >
             Redigir <ChevronRight className="w-3 h-3" />
           </a>
