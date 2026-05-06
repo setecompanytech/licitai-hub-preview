@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Copy, FileText, ChevronRight } from 'lucide-react';
