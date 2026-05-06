@@ -30,7 +30,9 @@ export default function ApoioJuridico() {
   // institucional e as abas (Modelos, Gerador, Reequilíbrio, Base, Legislação),
   // exibindo apenas o gerador do modelo escolhido.
   const { modeloId } = useParams<{ modeloId?: string }>();
-  const dedicatedMode = !!modeloId;
+  const location = useLocation();
+  const legacyModelo = new URLSearchParams(location.search).get('modelo');
+  const dedicatedMode = !!modeloId || !!legacyModelo;
 
   if (dedicatedMode) {
     return (
