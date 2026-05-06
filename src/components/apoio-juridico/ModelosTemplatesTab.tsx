@@ -641,6 +641,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
     setShowPeticaoUploader(false);
     setFatosPeticao([]);
     setPeticaoDocsTexto('');
+    setPedidoAtivo(null);
   };
 
   const handlePeticaoFinish = (fatos: FatoPeticao[], documentosTexto: string, numEdital: string) => {
