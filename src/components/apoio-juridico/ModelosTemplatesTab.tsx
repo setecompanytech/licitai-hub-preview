@@ -821,10 +821,10 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
         </div>
 
         {/* Chips de categoria (substituem o painel de filtros pesado) */}
-        <div className="flex flex-wrap gap-1.5 items-center pt-2 border-t border-border/40">
+        <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-border/40">
           <Badge
             variant={catFilter === null ? 'default' : 'outline'}
-            className="cursor-pointer text-[10px] h-5 px-2"
+            className="cursor-pointer text-[13px] h-7 px-3 font-medium"
             onClick={() => setCatFilter(null)}
           >
             Todos · {modelos.length}
@@ -836,31 +836,31 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
               <Badge
                 key={cat}
                 variant={catFilter === cat ? 'default' : 'outline'}
-                className="cursor-pointer text-[10px] h-5 px-2 gap-1"
+                className="cursor-pointer text-[13px] h-7 px-3 gap-1.5 font-medium"
                 onClick={() => setCatFilter(catFilter === cat ? null : cat)}
               >
                 {cat} · {count}
                 {docCount > 0 && (
-                  <span className={`inline-block px-1 rounded text-[9px] font-semibold ${catFilter === cat ? 'bg-primary-foreground/20' : 'bg-accent/15 text-accent'}`}>{docCount}</span>
+                  <span className={`inline-block px-1.5 rounded text-[11px] font-semibold ${catFilter === cat ? 'bg-primary-foreground/20' : 'bg-accent/15 text-accent'}`}>{docCount}</span>
                 )}
               </Badge>
             );
           })}
           {(search || catFilter) && (
             <Button
-              variant="ghost" size="sm" className="h-5 px-1.5 text-[10px] text-muted-foreground ml-auto"
+              variant="ghost" size="sm" className="h-7 px-2 text-[12px] text-muted-foreground ml-auto"
               onClick={() => { setSearch(''); setCatFilter(null); }}
             >
-              <X className="w-2.5 h-2.5 mr-0.5" /> Limpar ({filteredModelos.length})
+              <X className="w-3 h-3 mr-1" /> Limpar ({filteredModelos.length})
             </Button>
           )}
           {modalidade && (
             <Button
               variant="ghost" size="sm"
-              className="h-5 px-1.5 text-[10px] text-muted-foreground"
+              className="h-7 px-2 text-[12px] text-muted-foreground"
               onClick={() => setShowModalidadeInfo(!showModalidadeInfo)}
             >
-              <Info className="w-2.5 h-2.5 mr-0.5" />
+              <Info className="w-3 h-3 mr-1" />
               {showModalidadeInfo ? 'Ocultar detalhes' : 'Detalhes da modalidade'}
             </Button>
           )}
