@@ -45,7 +45,7 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
     >
       {/* Numeração forense */}
       <div className="flex flex-col items-center pt-0.5 shrink-0">
-        <span className="font-serif text-[13px] font-semibold text-muted-foreground tabular-nums leading-none">
+        <span className="text-[13px] font-semibold text-muted-foreground tabular-nums leading-none">
           {numero}
         </span>
         <span className="block w-4 h-px bg-border/60 mt-1" />
@@ -58,7 +58,7 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
 
       {/* Caput + descrição + fundamentação */}
       <div className="min-w-0">
-        <h4 className="font-serif text-[13.5px] font-semibold text-foreground leading-snug">
+        <h4 className="text-[13.5px] font-semibold text-foreground leading-snug tracking-tight">
           {m.titulo}
         </h4>
         <p className="text-[11.5px] text-muted-foreground mt-0.5 leading-snug line-clamp-2">
