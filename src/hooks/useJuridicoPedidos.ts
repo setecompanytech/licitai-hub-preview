@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 
-export type JuridicoPedidoTipo = 'reajuste' | 'repactuacao' | 'revisao';
+export type JuridicoPedidoTipo = 'reajuste' | 'repactuacao' | 'revisao' | 'outros';
 export type JuridicoPedidoStatus =
   | 'rascunho'
   | 'em_revisao'
@@ -36,6 +36,7 @@ export const TIPO_LABELS: Record<JuridicoPedidoTipo, string> = {
   reajuste: 'Reajuste',
   repactuacao: 'Repactuação',
   revisao: 'Revisão / Reequilíbrio',
+  outros: 'Documento Jurídico',
 };
 
 export interface JuridicoPedido {
@@ -54,6 +55,10 @@ export interface JuridicoPedido {
   aditivo_numero: string | null;
   aditivo_numero_legacy?: string | null;
   orgao_contratante: string | null;
+  modelo_id: string | null;
+  modelo_titulo: string | null;
+  categoria: string | null;
+  prefixo_numero: string | null;
   dados_caso: Record<string, unknown> | null;
   data_protocolo: string | null;
   numero_protocolo: string | null;
@@ -124,6 +129,10 @@ export function useJuridicoPedidos(filtroTipo?: JuridicoPedidoTipo) {
     aditivo_numero?: string;
     orgao_contratante?: string;
     dados_caso?: Record<string, unknown>;
+    modelo_id?: string;
+    modelo_titulo?: string;
+    categoria?: string;
+    prefixo_numero?: string;
   }) => {
     if (!empresaAtiva?.id || !user) {
       toast.error('Selecione uma empresa ativa para criar o pedido');
@@ -143,6 +152,10 @@ export function useJuridicoPedidos(filtroTipo?: JuridicoPedidoTipo) {
       aditivo_numero: input.aditivo_numero ?? null,
       orgao_contratante: input.orgao_contratante ?? null,
       dados_caso: input.dados_caso ?? {},
+      modelo_id: input.modelo_id ?? null,
+      modelo_titulo: input.modelo_titulo ?? null,
+      categoria: input.categoria ?? null,
+      prefixo_numero: input.prefixo_numero ?? null,
     };
     const { data, error } = await supabase
       .from('juridico_pedidos' as any)

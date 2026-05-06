@@ -19,9 +19,12 @@ import {
   MessageSquare, FileWarning, Gavel, ArrowUpDown, ShieldQuestion,
   Calculator, Filter, X, TrendingUp, Users, ChevronDown, ChevronUp,
   Scale, SlidersHorizontal, ListChecks, Target, Shield, Info,
-  Landmark, Award, Upload, CheckCircle, Building2, User
+  Landmark, Award, Upload, CheckCircle, Building2, User, FolderOpen, Hash
 } from 'lucide-react';
 import { MODALIDADES, type ModalidadeLicitacao } from '@/data/modalidades-licitacao';
+import { useJuridicoPedidos, type JuridicoPedido } from '@/hooks/useJuridicoPedidos';
+import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
+import PedidosJuridicosList from './PedidosJuridicosList';
 
 /* ── Types ── */
 type Modelo = {
@@ -119,6 +122,28 @@ export default function ModelosTemplatesTab() {
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
   const [resultado, setResultado] = useState('');
   const [gerando, setGerando] = useState(false);
+
+  // Pedidos jurídicos (persistência)
+  const { pedidos, criarPedido, salvarVersao } = useJuridicoPedidos();
+  const { processo } = useProcessoAtivo();
+  const [pedidoAtivo, setPedidoAtivo] = useState<JuridicoPedido | null>(null);
+  const [showPedidos, setShowPedidos] = useState(true);
+
+  // Pré-preenchimento a partir do processo ativo (vinculação automática)
+  useEffect(() => {
+    if (!processo) return;
+    if (!editalNum && processo.numero) setEditalNum(processo.numero);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [processo?.id]);
+
+  // Contagem de pedidos por modelo (para badge)
+  const pedidosPorModelo = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const p of pedidos) {
+      if (p.modelo_id) map[p.modelo_id] = (map[p.modelo_id] || 0) + 1;
+    }
+    return map;
+  }, [pedidos]);
 
   // Petition upload state
   const [showPeticaoUploader, setShowPeticaoUploader] = useState(false);
@@ -547,12 +572,55 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
 
     const prompt = `Tipo de Documento: ${activeModelo.titulo}\nCategoria: ${activeModelo.categoria}\nFundamentação Legal: ${activeModelo.fundamentacao}${modalidade ? `\nModalidade: ${modalidade.nome}` : ''}${etapaFiltro ? `\nEtapa do Processo: ${etapaFiltro}` : ''}${criterioFiltro ? `\nCritério de Julgamento: ${modalidade?.criteriosJulgamento.find(c => c.id === criterioFiltro)?.nome || ''}` : ''}\nEdital/Contrato: ${editalNum || 'Não informado'}\n\nContexto do Usuário:\n${contexto}`;
 
+    // Mapeia categoria → tipo/prefixo de numeração
+    const cat = activeModelo.categoria.toLowerCase();
+    let tipoPedido: 'reajuste' | 'repactuacao' | 'revisao' | 'outros' = 'outros';
+    let prefixo = 'DOC';
+    if (cat === 'reequilíbrio' || cat === 'reequilibrio') {
+      if (activeModelo.titulo.toLowerCase().includes('reajuste')) { tipoPedido = 'reajuste'; prefixo = 'REQ'; }
+      else if (activeModelo.titulo.toLowerCase().includes('repactua')) { tipoPedido = 'repactuacao'; prefixo = 'REP'; }
+      else { tipoPedido = 'revisao'; prefixo = 'REV'; }
+    } else {
+      const prefMap: Record<string, string> = {
+        'esclarecimentos': 'ESC', 'impugnações': 'IMP', 'impugnacoes': 'IMP',
+        'recursos': 'REC', 'declarações': 'DCL', 'declaracoes': 'DCL',
+        'defesas': 'DEF', 'representações': 'RTC', 'representacoes': 'RTC',
+        'contratos': 'ADT', 'judicial': 'JUD', 'pareceres': 'PAR', 'propostas': 'PRP',
+      };
+      prefixo = prefMap[cat] || 'DOC';
+    }
+
+    let acumulado = '';
     await streamAIChat({
       messages: [{ role: 'user', content: prompt }],
       action: 'gerador_juridico',
       context: fullContext,
-      onDelta: (text) => setResultado(prev => prev + text),
-      onDone: () => setGerando(false),
+      onDelta: (text) => { acumulado += text; setResultado(prev => prev + text); },
+      onDone: async () => {
+        setGerando(false);
+        // Persiste como pedido (cria novo ou nova versão do ativo)
+        try {
+          let pedidoRef = pedidoAtivo;
+          if (!pedidoRef || pedidoRef.modelo_id !== activeModelo.id) {
+            pedidoRef = await criarPedido({
+              tipo: tipoPedido,
+              modelo_id: activeModelo.id,
+              modelo_titulo: activeModelo.titulo,
+              categoria: activeModelo.categoria,
+              prefixo_numero: prefixo,
+              pregao_numero: editalNum || undefined,
+              orgao_contratante: processo?.orgao || undefined,
+              dados_caso: { contexto, modalidade: modalidade?.nome, etapa: etapaFiltro, criterio: criterioFiltro },
+            });
+            if (pedidoRef) setPedidoAtivo(pedidoRef);
+          }
+          if (pedidoRef && acumulado.trim()) {
+            await salvarVersao(pedidoRef, acumulado, `Geração IA — ${activeModelo.titulo}`, 'gerador_juridico');
+          }
+        } catch (e) {
+          console.error('[ModelosTemplates] persist pedido falhou', e);
+        }
+      },
       onError: (err) => { toast.error(err); setGerando(false); },
     });
   };
@@ -573,6 +641,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
     setShowPeticaoUploader(false);
     setFatosPeticao([]);
     setPeticaoDocsTexto('');
+    setPedidoAtivo(null);
   };
 
   const handlePeticaoFinish = (fatos: FatoPeticao[], documentosTexto: string, numEdital: string) => {
@@ -585,6 +654,43 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
 
   return (
     <div className="space-y-4">
+      {/* ── Painel "Meus Documentos" (Pedidos Jurídicos) ── */}
+      <div className="bg-card rounded-xl border border-border/50 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setShowPedidos(s => !s)}
+          className="w-full flex items-center justify-between p-4 hover:bg-muted/30 transition-colors rounded-xl"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <FolderOpen className="w-4 h-4 text-accent shrink-0" />
+            <h3 className="text-sm font-semibold whitespace-nowrap">Meus Documentos Jurídicos</h3>
+            <Badge variant="outline" className="text-[10px] gap-1 shrink-0">
+              <Hash className="w-2.5 h-2.5" /> {pedidos.length}
+            </Badge>
+            {processo?.numero && (
+              <Badge variant="outline" className="text-[10px] gap-1 shrink-0 hidden sm:inline-flex">
+                <FileText className="w-2.5 h-2.5" /> Processo: {processo.numero}
+              </Badge>
+            )}
+          </div>
+          {showPedidos ? <ChevronUp className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
+        </button>
+        {showPedidos && (
+          <div className="px-4 pb-4 border-t border-border/50">
+            <p className="text-[11px] text-muted-foreground py-2">
+              Numeração híbrida (PRAEFECTUS/PREFIXO/ANO/SEQ-SUFIXO), versionamento automático e workflow de 7 status. Selecione um pedido para retomá-lo na geração.
+            </p>
+            <PedidosJuridicosList
+              onSelecionar={(p) => {
+                setPedidoAtivo(p);
+                if (p.modelo_id) setActiveModeloId(p.modelo_id);
+                if (p.pregao_numero) setEditalNum(p.pregao_numero);
+              }}
+            />
+          </div>
+        )}
+      </div>
+
       {/* ── Modality Selector ── */}
       <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm space-y-3">
         <div className="flex items-center justify-between mb-2">
@@ -881,6 +987,11 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
               {etapaFiltro && <Badge variant="secondary" className="text-[10px]">{etapaFiltro}</Badge>}
               {criterioFiltro && <Badge variant="secondary" className="text-[10px]">{modalidade?.criteriosJulgamento.find(c => c.id === criterioFiltro)?.nome}</Badge>}
               {selectedEmpresa && <Badge variant="secondary" className="text-[10px]">{selectedEmpresa.razao_social.slice(0, 30)}</Badge>}
+              {pedidoAtivo && (
+                <Badge variant="default" className="text-[10px] gap-1 bg-accent/15 text-accent border-accent/30 hover:bg-accent/20">
+                  <Hash className="w-2.5 h-2.5" /> {pedidoAtivo.numero_formatado} · v{pedidoAtivo.versoes_count}
+                </Badge>
+              )}
             </div>
             <Button variant="ghost" size="sm" onClick={resetGeneration}>
               <X className="w-4 h-4" />
@@ -1180,7 +1291,14 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       <m.icon className="w-4 h-4 text-accent" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm">{m.titulo}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-sm">{m.titulo}</p>
+                        {pedidosPorModelo[m.id] > 0 && (
+                          <Badge variant="default" className="text-[10px] gap-1 bg-accent/15 text-accent border-accent/30 hover:bg-accent/20">
+                            <FileText className="w-2.5 h-2.5" /> {pedidosPorModelo[m.id]} {pedidosPorModelo[m.id] === 1 ? 'doc' : 'docs'}
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground mt-0.5">{m.descricao}</p>
                       <div className="flex flex-wrap gap-1 mt-2">
                         <Badge variant="outline" className="text-[10px]">{m.fundamentacao}</Badge>
@@ -1208,9 +1326,10 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       className="bg-accent hover:bg-accent/90 text-accent-foreground flex-1"
                       onClick={() => {
                         setActiveModeloId(m.id);
+                        setPedidoAtivo(null);
                         setResultado('');
                         setContexto('');
-                        setEditalNum('');
+                        setEditalNum(processo?.numero || '');
                         setSelectedIndices([]);
                         setSelectedCCTs([]);
                         setSelectedDocs([]);

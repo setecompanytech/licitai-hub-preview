@@ -9567,6 +9567,7 @@ export type Database = {
           aditivo_numero: string | null
           ano: number
           ata_numero: string | null
+          categoria: string | null
           contrato_numero: string | null
           created_at: string
           created_by: string
@@ -9576,9 +9577,12 @@ export type Database = {
           id: string
           instrumento: string | null
           licitacao_id: string | null
+          modelo_id: string | null
+          modelo_titulo: string | null
           numero_formatado: string | null
           numero_protocolo: string | null
           orgao_contratante: string | null
+          prefixo_numero: string | null
           pregao_numero: string | null
           processo_administrativo: string | null
           retorno_orgao: string | null
@@ -9593,6 +9597,7 @@ export type Database = {
           aditivo_numero?: string | null
           ano?: number
           ata_numero?: string | null
+          categoria?: string | null
           contrato_numero?: string | null
           created_at?: string
           created_by: string
@@ -9602,9 +9607,12 @@ export type Database = {
           id?: string
           instrumento?: string | null
           licitacao_id?: string | null
+          modelo_id?: string | null
+          modelo_titulo?: string | null
           numero_formatado?: string | null
           numero_protocolo?: string | null
           orgao_contratante?: string | null
+          prefixo_numero?: string | null
           pregao_numero?: string | null
           processo_administrativo?: string | null
           retorno_orgao?: string | null
@@ -9619,6 +9627,7 @@ export type Database = {
           aditivo_numero?: string | null
           ano?: number
           ata_numero?: string | null
+          categoria?: string | null
           contrato_numero?: string | null
           created_at?: string
           created_by?: string
@@ -9628,9 +9637,12 @@ export type Database = {
           id?: string
           instrumento?: string | null
           licitacao_id?: string | null
+          modelo_id?: string | null
+          modelo_titulo?: string | null
           numero_formatado?: string | null
           numero_protocolo?: string | null
           orgao_contratante?: string | null
+          prefixo_numero?: string | null
           pregao_numero?: string | null
           processo_administrativo?: string | null
           retorno_orgao?: string | null
@@ -15454,7 +15466,7 @@ export type Database = {
         | "deferido"
         | "indeferido"
         | "parcialmente_deferido"
-      juridico_pedido_tipo: "reajuste" | "repactuacao" | "revisao"
+      juridico_pedido_tipo: "reajuste" | "repactuacao" | "revisao" | "outros"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -15655,7 +15667,7 @@ export const Constants = {
         "indeferido",
         "parcialmente_deferido",
       ],
-      juridico_pedido_tipo: ["reajuste", "repactuacao", "revisao"],
+      juridico_pedido_tipo: ["reajuste", "repactuacao", "revisao", "outros"],
     },
   },
 } as const
