@@ -121,12 +121,18 @@ export default function ModelosTemplatesTab() {
 
   // Generation state
   const [activeModeloId, setActiveModeloId] = useState<string | null>(null);
+  // Quando aberto via deep-link (?modelo=...), renderiza inline (página completa)
+  // ao invés do Sheet/Drawer modal — para parecer uma página própria.
+  const [inlineMode, setInlineMode] = useState<boolean>(false);
 
   // Deep-link: abrir modelo automaticamente via ?modelo=<id> (suporta nova aba)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const mid = params.get('modelo');
-    if (mid) setActiveModeloId(mid);
+    if (mid) {
+      setActiveModeloId(mid);
+      setInlineMode(true);
+    }
   }, []);
   const [contexto, setContexto] = useState('');
   const [editalNum, setEditalNum] = useState('');
@@ -684,6 +690,15 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
     setFatosPeticao([]);
     setPeticaoDocsTexto('');
     setPedidoAtivo(null);
+    // Se estiver no modo inline (deep-link), limpa o ?modelo= da URL ao fechar
+    if (inlineMode) {
+      setInlineMode(false);
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('modelo');
+        window.history.replaceState({}, '', url.toString());
+      } catch {}
+    }
   };
 
   const handlePeticaoFinish = (fatos: FatoPeticao[], documentosTexto: string, numEdital: string) => {
@@ -1007,8 +1022,26 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
         )}
       </div>
 
-      {/* ── Active Generation Sheet (Drawer dedicado com preview live) ── */}
-      <Sheet open={!!activeModelo} onOpenChange={(open) => { if (!open) resetGeneration(); }}>
+      {/* ── Active Generation Sheet (Drawer dedicado com preview live)
+           Em modo inline (deep-link via ?modelo=…), neutralizamos o overlay
+           e ancoramos o SheetContent dentro do conteúdo da página, para
+           preservar sidebar/header e parecer uma página completa. ── */}
+      {/* ── Active Generation Sheet (Drawer dedicado com preview live)
+           Em modo inline (deep-link via ?modelo=…), removemos o overlay
+           escuro e o foco-trap (modal=false), para que sidebar e header
+           da página continuem visíveis e interagíveis — dando a sensação
+           de uma página completa, ao invés de um modal-atalho. ── */}
+      {inlineMode && activeModelo && (
+        <style>{`
+          body.aj-inline-active [data-radix-dialog-overlay] { background: transparent !important; backdrop-filter: none !important; }
+        `}</style>
+      )}
+      <div ref={(el) => {
+        if (typeof document === 'undefined') return;
+        if (inlineMode && activeModelo) document.body.classList.add('aj-inline-active');
+        else document.body.classList.remove('aj-inline-active');
+      }}>
+      <Sheet open={!!activeModelo} onOpenChange={(open) => { if (!open) resetGeneration(); }} modal={!inlineMode}>
         <SheetContent
           side="right"
           className="w-full sm:max-w-none sm:w-[95vw] lg:w-[90vw] xl:w-[1400px] p-0 overflow-hidden flex flex-col"
@@ -1426,6 +1459,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           )}
         </SheetContent>
       </Sheet>
+      </div>
 
       {/* ── Acervo de Modelos – Layout Forense (estilo Vade Mecum) ── */}
       {filteredModelos.length === 0 ? (
