@@ -14,8 +14,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   FileText, Clock, History, Trash2, ArrowRight, Eye, CheckCircle2,
-  XCircle, AlertCircle, Loader2, Hash,
+  XCircle, AlertCircle, Loader2, Hash, FileEdit, Send, ShieldAlert,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import {
   useJuridicoPedidos, listarVersoes, listarHistorico,
@@ -52,6 +53,45 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
   const [retornoTipo, setRetornoTipo] = useState<JuridicoPedidoStatus>('deferido');
   const [retornoTexto, setRetornoTexto] = useState('');
   const [loadingDetail, setLoadingDetail] = useState(false);
+  // Pedido alvo das ações rápidas (cards). Quando preenchido, modais salvam neste.
+  const [acaoAlvo, setAcaoAlvo] = useState<JuridicoPedido | null>(null);
+
+  // ── Validações de transição de status ──
+  const podeMarcarRascunho = (p: JuridicoPedido) =>
+    p.status !== 'rascunho' && !['protocolado', 'em_analise', 'deferido', 'indeferido', 'parcialmente_deferido'].includes(p.status);
+  const podeEnviar = (p: JuridicoPedido) =>
+    (p.versoes_count ?? 0) > 0 && ['rascunho', 'em_revisao', 'gerado', 'assinado'].includes(p.status);
+  const podeRegistrarResultado = (p: JuridicoPedido) =>
+    ['protocolado', 'em_analise'].includes(p.status);
+
+  const acaoRascunho = async (p: JuridicoPedido) => {
+    if (!podeMarcarRascunho(p)) {
+      toast.error('Pedido já protocolado/decidido — não pode voltar para Rascunho.');
+      return;
+    }
+    await atualizarStatus(p, 'rascunho', 'Retornado a Rascunho via ação rápida');
+  };
+
+  const acaoEnviar = (p: JuridicoPedido) => {
+    if ((p.versoes_count ?? 0) === 0) {
+      toast.error('Gere ao menos uma versão do documento antes de protocolar.');
+      return;
+    }
+    if (!podeEnviar(p)) {
+      toast.error(`Status "${STATUS_LABELS[p.status]}" não permite envio/protocolo.`);
+      return;
+    }
+    setAcaoAlvo(p); setProtocoloOpen(true);
+  };
+
+  const acaoResultado = (p: JuridicoPedido, tipo: JuridicoPedidoStatus) => {
+    if (!podeRegistrarResultado(p)) {
+      toast.error('Só é possível registrar resultado após o protocolo.');
+      return;
+    }
+    setAcaoAlvo(p); setRetornoTipo(tipo); setRetornoOpen(true);
+  };
+
 
   useEffect(() => {
     if (!detalhe) { setVersoes([]); setHistorico([]); setVersaoSel(null); return; }
@@ -111,7 +151,53 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
             <Badge variant="outline" className="text-[10px] gap-1 whitespace-nowrap">
               <History className="w-3 h-3" /> v{p.versoes_count || 0}
             </Badge>
-            <div className="flex gap-1 flex-shrink-0">
+            <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end">
+              <Button
+                size="sm" variant="ghost"
+                className="h-7 px-2 text-muted-foreground hover:text-foreground"
+                disabled={!podeMarcarRascunho(p)}
+                title={podeMarcarRascunho(p) ? 'Voltar para Rascunho' : 'Indisponível para este status'}
+                onClick={() => acaoRascunho(p)}
+              >
+                <FileEdit className="w-3 h-3 mr-1" /> Rascunho
+              </Button>
+              <Button
+                size="sm" variant="ghost"
+                className="h-7 px-2 text-purple-600 hover:bg-purple-500/10 disabled:text-muted-foreground"
+                disabled={!podeEnviar(p)}
+                title={podeEnviar(p) ? 'Registrar protocolo / envio ao órgão' : 'Gere uma versão e avance o status para enviar'}
+                onClick={() => acaoEnviar(p)}
+              >
+                <Send className="w-3 h-3 mr-1" /> Enviar
+              </Button>
+              <Button
+                size="sm" variant="ghost"
+                className="h-7 px-2 text-emerald-600 hover:bg-emerald-500/10 disabled:text-muted-foreground"
+                disabled={!podeRegistrarResultado(p)}
+                title={podeRegistrarResultado(p) ? 'Registrar deferimento' : 'Disponível após protocolo'}
+                onClick={() => acaoResultado(p, 'deferido')}
+              >
+                <CheckCircle2 className="w-3 h-3 mr-1" /> Deferido
+              </Button>
+              <Button
+                size="sm" variant="ghost"
+                className="h-7 px-2 text-destructive hover:bg-destructive/10 disabled:text-muted-foreground"
+                disabled={!podeRegistrarResultado(p)}
+                title={podeRegistrarResultado(p) ? 'Registrar indeferimento' : 'Disponível após protocolo'}
+                onClick={() => acaoResultado(p, 'indeferido')}
+              >
+                <XCircle className="w-3 h-3 mr-1" /> Indeferido
+              </Button>
+              <Button
+                size="sm" variant="ghost"
+                className="h-7 px-2 text-yellow-600 hover:bg-yellow-500/10 disabled:text-muted-foreground"
+                disabled={!podeRegistrarResultado(p)}
+                title={podeRegistrarResultado(p) ? 'Deferimento parcial' : 'Disponível após protocolo'}
+                onClick={() => acaoResultado(p, 'parcialmente_deferido')}
+              >
+                <ShieldAlert className="w-3 h-3 mr-1" /> Parcial
+              </Button>
+
               <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setDetalhe(p)}>
                 <Eye className="w-3 h-3 mr-1" /> Abrir
               </Button>
@@ -265,11 +351,15 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
       </Dialog>
 
       {/* Modal de Protocolo */}
-      <Dialog open={protocoloOpen} onOpenChange={setProtocoloOpen}>
+      <Dialog open={protocoloOpen} onOpenChange={(o) => { setProtocoloOpen(o); if (!o) setAcaoAlvo(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Registrar Protocolo</DialogTitle>
-            <DialogDescription>Informe os dados do protocolo no órgão.</DialogDescription>
+            <DialogDescription>
+              {(acaoAlvo ?? detalhe)?.numero_formatado
+                ? `Pedido ${(acaoAlvo ?? detalhe)?.numero_formatado} — informe os dados do protocolo no órgão.`
+                : 'Informe os dados do protocolo no órgão.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -282,19 +372,27 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
             </div>
             <Button
               className="w-full"
+              disabled={!protocoloNum.trim() || !protocoloData}
               onClick={async () => {
-                if (!detalhe) return;
+                const alvo = acaoAlvo ?? detalhe;
+                if (!alvo) return;
+                if (!protocoloNum.trim() || !protocoloData) {
+                  toast.error('Preencha nº e data do protocolo para registrar.');
+                  return;
+                }
                 const { supabase } = await import('@/integrations/supabase/client');
                 await supabase.from('juridico_pedidos' as any)
                   .update({
-                    numero_protocolo: protocoloNum || null,
-                    data_protocolo: protocoloData || null,
+                    numero_protocolo: protocoloNum,
+                    data_protocolo: protocoloData,
                   })
-                  .eq('id', detalhe.id);
-                await atualizarStatus(detalhe, 'protocolado',
-                  `Protocolado sob nº ${protocoloNum || 'sem número'} em ${protocoloData || 'data não informada'}`);
-                setDetalhe({ ...detalhe, status: 'protocolado', numero_protocolo: protocoloNum || null, data_protocolo: protocoloData || null });
-                setProtocoloOpen(false); setProtocoloNum(''); setProtocoloData('');
+                  .eq('id', alvo.id);
+                await atualizarStatus(alvo, 'protocolado',
+                  `Protocolado sob nº ${protocoloNum} em ${protocoloData}`);
+                if (detalhe?.id === alvo.id) {
+                  setDetalhe({ ...detalhe, status: 'protocolado', numero_protocolo: protocoloNum, data_protocolo: protocoloData });
+                }
+                setProtocoloOpen(false); setProtocoloNum(''); setProtocoloData(''); setAcaoAlvo(null);
               }}
             >
               <CheckCircle2 className="w-3 h-3 mr-1" /> Confirmar protocolo
@@ -304,7 +402,7 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
       </Dialog>
 
       {/* Modal de Retorno do Órgão */}
-      <Dialog open={retornoOpen} onOpenChange={setRetornoOpen}>
+      <Dialog open={retornoOpen} onOpenChange={(o) => { setRetornoOpen(o); if (!o) setAcaoAlvo(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -313,7 +411,11 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
               {retornoTipo === 'parcialmente_deferido' && <AlertCircle className="w-4 h-4 text-yellow-600" />}
               Resultado do órgão
             </DialogTitle>
-            <DialogDescription>{STATUS_LABELS[retornoTipo]} — descreva a decisão para histórico.</DialogDescription>
+            <DialogDescription>
+              {(acaoAlvo ?? detalhe)?.numero_formatado
+                ? `Pedido ${(acaoAlvo ?? detalhe)?.numero_formatado} — ${STATUS_LABELS[retornoTipo]}. Descreva a decisão para histórico.`
+                : `${STATUS_LABELS[retornoTipo]} — descreva a decisão para histórico.`}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <Textarea
@@ -323,15 +425,23 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
             />
             <Button
               className="w-full"
+              disabled={retornoTexto.trim().length < 10}
               onClick={async () => {
-                if (!detalhe) return;
+                const alvo = acaoAlvo ?? detalhe;
+                if (!alvo) return;
+                if (retornoTexto.trim().length < 10) {
+                  toast.error('Informe ao menos 10 caracteres descrevendo a decisão (auditoria).');
+                  return;
+                }
                 const { supabase } = await import('@/integrations/supabase/client');
                 await supabase.from('juridico_pedidos' as any)
-                  .update({ retorno_orgao: retornoTexto || null })
-                  .eq('id', detalhe.id);
-                await atualizarStatus(detalhe, retornoTipo, retornoTexto || `Resultado: ${STATUS_LABELS[retornoTipo]}`);
-                setDetalhe({ ...detalhe, status: retornoTipo, retorno_orgao: retornoTexto || null });
-                setRetornoOpen(false); setRetornoTexto('');
+                  .update({ retorno_orgao: retornoTexto })
+                  .eq('id', alvo.id);
+                await atualizarStatus(alvo, retornoTipo, retornoTexto);
+                if (detalhe?.id === alvo.id) {
+                  setDetalhe({ ...detalhe, status: retornoTipo, retorno_orgao: retornoTexto });
+                }
+                setRetornoOpen(false); setRetornoTexto(''); setAcaoAlvo(null);
               }}
             >
               Registrar resultado
