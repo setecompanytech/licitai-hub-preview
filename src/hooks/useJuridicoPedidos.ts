@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 
-export type JuridicoPedidoTipo = 'reajuste' | 'repactuacao' | 'revisao';
+export type JuridicoPedidoTipo = 'reajuste' | 'repactuacao' | 'revisao' | 'outros';
 export type JuridicoPedidoStatus =
   | 'rascunho'
   | 'em_revisao'
