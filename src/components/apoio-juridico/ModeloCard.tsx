@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Copy, FileText, Sparkles, ChevronRight } from 'lucide-react';
+import { Copy, FileText, ChevronRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -17,63 +17,92 @@ export type ModeloCardData = {
 interface Props {
   modelo: ModeloCardData;
   pedidosCount?: number;
+  index: number;
   onAbrir: () => void;
 }
 
 /**
- * Compact, equilibrium-balanced model card.
- * - Single-row action: small icon button + ghost copy
- * - Hover reveals primary CTA accent border
- * - Badge for generated documents on top-right
+ * Linha forense estilo Vade Mecum / Diário Oficial.
+ * Tipografia serif para o caput, sans para metadados.
+ * Numeração arábica à esquerda, fundamentação centralizada, ações à direita.
  */
-export default function ModeloCard({ modelo: m, pedidosCount = 0, onAbrir }: Props) {
-  const Icon = m.icon;
-
+export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir }: Props) {
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
     navigator.clipboard.writeText(`${m.titulo}\n${m.descricao}\nFundamentação: ${m.fundamentacao}`);
     toast.success('Modelo copiado!');
   };
 
+  const numero = String(index + 1).padStart(2, '0');
+
   return (
-    <button
-      type="button"
+    <article
       onClick={onAbrir}
-      className="group relative bg-card text-left rounded-lg border border-border/60 p-3 hover:border-accent/60 hover:shadow-md transition-all flex flex-col gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAbrir(); } }}
+      className="group relative grid grid-cols-[2.25rem_1fr_auto] items-start gap-3 px-3 py-2.5 border-b border-border/40 last:border-b-0 hover:bg-accent/5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:bg-accent/10 focus-visible:ring-1 focus-visible:ring-accent/40"
     >
-      {pedidosCount > 0 && (
-        <Badge className="absolute top-2 right-2 text-[9px] gap-0.5 bg-accent/15 text-accent border-accent/30 h-4 px-1.5 shrink-0">
-          <FileText className="w-2 h-2" /> {pedidosCount}
-        </Badge>
-      )}
-
-      <div className="flex items-start gap-2.5 min-w-0">
-        <div className="w-8 h-8 rounded-md bg-accent/10 flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 transition-colors">
-          <Icon className="w-3.5 h-3.5 text-accent" />
-        </div>
-        <div className="flex-1 min-w-0 pr-6">
-          <p className="font-semibold text-[13px] leading-tight line-clamp-2">{m.titulo}</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 leading-snug">{m.descricao}</p>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-1 mt-auto">
-        <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4 font-normal whitespace-nowrap">
-          {m.fundamentacao}
-        </Badge>
-        {m.requisitosFiltro.includes('indices') && <Badge variant="secondary" className="text-[9px] py-0 px-1.5 h-4 whitespace-nowrap">Índices</Badge>}
-        {m.requisitosFiltro.includes('ccts') && <Badge variant="secondary" className="text-[9px] py-0 px-1.5 h-4 whitespace-nowrap">CCTs</Badge>}
-        {m.requisitosFiltro.includes('base_juridica') && <Badge variant="secondary" className="text-[9px] py-0 px-1.5 h-4 whitespace-nowrap">Base</Badge>}
-      </div>
-
-      <div className="flex items-center justify-between gap-1 pt-2 mt-1 border-t border-border/30">
-        <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-foreground" onClick={handleCopy}>
-          <Copy className="w-3 h-3 mr-1" /> Copiar
-        </Button>
-        <span className="text-[11px] font-medium text-accent flex items-center gap-0.5 shrink-0 group-hover:translate-x-0.5 transition-transform">
-          <Sparkles className="w-3 h-3" /> Gerar com IA <ChevronRight className="w-3 h-3" />
+      {/* Numeração forense */}
+      <div className="flex flex-col items-center pt-0.5 shrink-0">
+        <span className="font-serif text-[13px] font-semibold text-muted-foreground tabular-nums leading-none">
+          {numero}
         </span>
+        <span className="block w-4 h-px bg-border/60 mt-1" />
+        {pedidosCount > 0 && (
+          <Badge className="mt-1 text-[8px] gap-0.5 bg-accent/15 text-accent border-accent/30 h-3.5 px-1 leading-none shrink-0">
+            <FileText className="w-2 h-2" /> {pedidosCount}
+          </Badge>
+        )}
       </div>
-    </button>
+
+      {/* Caput + descrição + fundamentação */}
+      <div className="min-w-0">
+        <h4 className="font-serif text-[13.5px] font-semibold text-foreground leading-snug">
+          {m.titulo}
+        </h4>
+        <p className="text-[11.5px] text-muted-foreground mt-0.5 leading-snug line-clamp-2">
+          {m.descricao}
+        </p>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary/90 font-mono whitespace-nowrap">
+            <span className="text-muted-foreground/70">§</span> {m.fundamentacao}
+          </span>
+          {m.requisitosFiltro.includes('indices') && (
+            <span className="text-[9px] uppercase tracking-wider text-muted-foreground/80 border-l border-border/60 pl-2 whitespace-nowrap">Índices</span>
+          )}
+          {m.requisitosFiltro.includes('ccts') && (
+            <span className="text-[9px] uppercase tracking-wider text-muted-foreground/80 border-l border-border/60 pl-2 whitespace-nowrap">CCT</span>
+          )}
+          {m.requisitosFiltro.includes('base_juridica') && (
+            <span className="text-[9px] uppercase tracking-wider text-muted-foreground/80 border-l border-border/60 pl-2 whitespace-nowrap">Base Jurídica</span>
+          )}
+          {m.requisitosFiltro.includes('contrato') && (
+            <span className="text-[9px] uppercase tracking-wider text-muted-foreground/80 border-l border-border/60 pl-2 whitespace-nowrap">Contrato</span>
+          )}
+        </div>
+      </div>
+
+      {/* Ações */}
+      <div className="flex items-center gap-1 shrink-0 self-center">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+          onClick={handleCopy}
+          title="Copiar"
+        >
+          <Copy className="w-3.5 h-3.5" />
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 px-2 text-[10px] uppercase tracking-wider font-semibold text-accent hover:text-accent hover:bg-accent/10 gap-1 shrink-0"
+          onClick={(e) => { e.stopPropagation(); onAbrir(); }}
+        >
+          Redigir <ChevronRight className="w-3 h-3" />
+        </Button>
+      </div>
+    </article>
   );
 }
