@@ -1050,29 +1050,27 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
         >
           {activeModelo && (
             <>
-              <SheetHeader className="px-6 pt-6 pb-4 border-b border-border/50 shrink-0">
-                {inlineMode && (
-                  <div className="flex items-center gap-2 mb-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 gap-1.5 text-xs"
-                      onClick={resetGeneration}
-                    >
-                      <ArrowLeft className="w-3.5 h-3.5" />
-                      Voltar para a lista de modelos
-                    </Button>
-                  </div>
-                )}
+              <header className="px-6 pt-6 pb-4 border-b border-border/50 shrink-0">
+                <div className="flex items-center gap-2 mb-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs"
+                    onClick={resetGeneration}
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Voltar para a lista de modelos
+                  </Button>
+                </div>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <SheetTitle className="flex items-center gap-2 text-base">
+                    <h2 className="flex items-center gap-2 text-base font-semibold">
                       <Sparkles className="w-5 h-5 text-accent shrink-0" />
                       <span className="truncate">{activeModelo.titulo}</span>
-                    </SheetTitle>
-                    <SheetDescription className="text-xs mt-1">
+                    </h2>
+                    <p className="text-xs mt-1 text-muted-foreground">
                       {activeModelo.descricao}
-                    </SheetDescription>
+                    </p>
                     <div className="flex items-center gap-1.5 flex-wrap mt-2">
                       <Badge variant="outline" className="text-[10px] shrink-0">{activeModelo.fundamentacao}</Badge>
                       {modalidade && <Badge variant="secondary" className="text-[10px] shrink-0">{modalidade.nome}</Badge>}
