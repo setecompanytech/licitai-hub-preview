@@ -15,10 +15,12 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { exportLegalPDF, exportLegalWord } from '@/lib/legal-document-export';
+import { useJuridicoPedidos, type JuridicoPedido } from '@/hooks/useJuridicoPedidos';
+import PedidosJuridicosList from './PedidosJuridicosList';
 import {
   TrendingUp, Search, Sparkles, RefreshCw, Scale, Loader2, ArrowRight,
   DollarSign, Users, Building2, FileText, AlertTriangle, CloudRain, Flame,
-  FileDown, Plus, Trash2, Receipt, Quote, Paperclip, BookOpen,
+  FileDown, Plus, Trash2, Receipt, Quote, Paperclip, BookOpen, FolderOpen, Hash,
 } from 'lucide-react';
 
 /* ── Tipo de instrumento contratual ── */
