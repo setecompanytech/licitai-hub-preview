@@ -117,12 +117,28 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
           <Copy className="w-3.5 h-3.5" />
         </Button>
         <Button
+          asChild
           size="sm"
           variant="ghost"
           className="h-8 px-2.5 text-[11.5px] uppercase tracking-wider font-semibold text-accent hover:text-accent hover:bg-accent/10 gap-1 shrink-0"
-          onClick={(e) => { e.stopPropagation(); onAbrir(); }}
         >
-          Redigir <ChevronRight className="w-3 h-3" />
+          <a
+            href={href}
+            title="Redigir (Cmd/Ctrl+clique para abrir em nova aba)"
+            onClick={(e) => {
+              e.stopPropagation();
+              // Cmd/Ctrl/Shift/middle: deixa o navegador abrir em nova aba nativamente
+              if (e.metaKey || e.ctrlKey || e.shiftKey || (e as React.MouseEvent).button === 1) return;
+              e.preventDefault();
+              onAbrir();
+            }}
+            onAuxClick={(e) => {
+              // Botão do meio do mouse → nova aba (comportamento nativo do <a>)
+              e.stopPropagation();
+            }}
+          >
+            Redigir <ChevronRight className="w-3 h-3" />
+          </a>
         </Button>
       </div>
     </article>
