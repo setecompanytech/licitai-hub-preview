@@ -1022,7 +1022,10 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
         )}
       </div>
 
-      {/* ── Active Generation Sheet (Drawer dedicado com preview live) ── */}
+      {/* ── Active Generation: inline (deep-link) ou Sheet (drawer) ── */}
+      {inlineMode && activeModelo ? (
+        <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden flex flex-col" style={{ minHeight: 'calc(100vh - 14rem)' }}>
+      ) : (
       <Sheet open={!!activeModelo} onOpenChange={(open) => { if (!open) resetGeneration(); }}>
         <SheetContent
           side="right"
