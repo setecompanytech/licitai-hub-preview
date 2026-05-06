@@ -121,6 +121,13 @@ export default function ModelosTemplatesTab() {
 
   // Generation state
   const [activeModeloId, setActiveModeloId] = useState<string | null>(null);
+
+  // Deep-link: abrir modelo automaticamente via ?modelo=<id> (suporta nova aba)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mid = params.get('modelo');
+    if (mid) setActiveModeloId(mid);
+  }, []);
   const [contexto, setContexto] = useState('');
   const [editalNum, setEditalNum] = useState('');
   const [selectedIndices, setSelectedIndices] = useState<string[]>([]);
