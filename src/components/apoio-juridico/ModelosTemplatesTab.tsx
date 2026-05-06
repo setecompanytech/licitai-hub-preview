@@ -1375,76 +1375,59 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
         </SheetContent>
       </Sheet>
 
-      {/* ── Template Cards Grid ── */}
-      {!activeModeloId && categorias.map(cat => {
-        const items = filteredModelos.filter(m => m.categoria === cat);
-        if (items.length === 0) return null;
-        return (
-          <div key={cat}>
-            <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-1">
-              <BookOpen className="w-4 h-4" /> {cat}
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {items.map(m => (
-                <div key={m.id} className="bg-card rounded-xl border border-border/50 p-4 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
-                      <m.icon className="w-4 h-4 text-accent" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-sm">{m.titulo}</p>
-                        {pedidosPorModelo[m.id] > 0 && (
-                          <Badge variant="default" className="text-[10px] gap-1 bg-accent/15 text-accent border-accent/30 hover:bg-accent/20">
-                            <FileText className="w-2.5 h-2.5" /> {pedidosPorModelo[m.id]} {pedidosPorModelo[m.id] === 1 ? 'doc' : 'docs'}
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{m.descricao}</p>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        <Badge variant="outline" className="text-[10px]">{m.fundamentacao}</Badge>
-                        {m.requisitosFiltro.includes('indices') && (
-                          <Badge variant="secondary" className="text-[10px]">📊 Índices</Badge>
-                        )}
-                        {m.requisitosFiltro.includes('ccts') && (
-                          <Badge variant="secondary" className="text-[10px]">👷 CCTs</Badge>
-                        )}
-                        {m.requisitosFiltro.includes('base_juridica') && (
-                          <Badge variant="secondary" className="text-[10px]">📚 Base Jurídica</Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 mt-3">
-                    <Button size="sm" variant="outline" onClick={() => {
-                      navigator.clipboard.writeText(`${m.titulo}\n${m.descricao}\nFundamentação: ${m.fundamentacao}`);
-                      toast.success('Modelo copiado!');
-                    }}>
-                      <Copy className="w-3 h-3 mr-1" /> Copiar
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="bg-accent hover:bg-accent/90 text-accent-foreground flex-1"
-                      onClick={() => {
-                        setActiveModeloId(m.id);
-                        setPedidoAtivo(null);
-                        setResultado('');
-                        setContexto('');
-                        setEditalNum(processo?.numero || '');
-                        setSelectedIndices([]);
-                        setSelectedCCTs([]);
-                        setSelectedDocs([]);
-                      }}
-                    >
-                      <FileText className="w-3 h-3 mr-1" /> Gerar Documento
-                    </Button>
-                  </div>
-                </div>
-              ))}
+      {/* ── Template Cards Grid (sempre visível; Sheet sobrepõe ao gerar) ── */}
+      {filteredModelos.length === 0 ? (
+        <div className="bg-card rounded-xl border border-dashed border-border/50 p-10 text-center">
+          <Filter className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">Nenhum modelo encontrado para os filtros aplicados.</p>
+          <Button variant="link" size="sm" onClick={() => { setSearch(''); setCatFilter(null); }}>
+            Limpar filtros
+          </Button>
+        </div>
+      ) : (
+        categorias.map(cat => {
+          const items = filteredModelos.filter(m => m.categoria === cat);
+          if (items.length === 0) return null;
+          const catCount = pedidos.filter(p => p.categoria === cat).length;
+          return (
+            <div key={cat}>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
+                  <BookOpen className="w-4 h-4" /> {cat}
+                  <Badge variant="outline" className="text-[10px] ml-1">{items.length}</Badge>
+                </h3>
+                {catCount > 0 && (
+                  <Badge className="text-[10px] gap-1 bg-accent/10 text-accent border-accent/30 shrink-0">
+                    <FileText className="w-2.5 h-2.5" /> {catCount} gerado{catCount === 1 ? '' : 's'}
+                  </Badge>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {items.map(m => (
+                  <ModeloCard
+                    key={m.id}
+                    modelo={m}
+                    pedidosCount={pedidosPorModelo[m.id] || 0}
+                    onAbrir={() => {
+                      setActiveModeloId(m.id);
+                      setPedidoAtivo(null);
+                      setResultado('');
+                      setContexto('');
+                      setEditalNum(processo?.numero || '');
+                      setSelectedIndices([]);
+                      setSelectedCCTs([]);
+                      setSelectedDocs([]);
+                    }}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })
+      )}
+    </div>
+  );
+}
     </div>
   );
 }
