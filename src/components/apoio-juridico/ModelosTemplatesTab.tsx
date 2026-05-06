@@ -133,7 +133,7 @@ export default function ModelosTemplatesTab() {
   const { pedidos, criarPedido, salvarVersao } = useJuridicoPedidos();
   const { processo } = useProcessoAtivo();
   const [pedidoAtivo, setPedidoAtivo] = useState<JuridicoPedido | null>(null);
-  const [showPedidos, setShowPedidos] = useState(true);
+  const [showPedidos, setShowPedidos] = useState(false);
 
   // Pré-preenchimento a partir do processo ativo (vinculação automática)
   useEffect(() => {
@@ -659,33 +659,95 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
   };
 
   return (
-    <div className="space-y-4">
-      {/* ── Painel "Meus Documentos" (Pedidos Jurídicos) ── */}
-      <div className="bg-card rounded-xl border border-border/50 shadow-sm">
-        <button
-          type="button"
-          onClick={() => setShowPedidos(s => !s)}
-          className="w-full flex items-center justify-between p-4 hover:bg-muted/30 transition-colors rounded-xl"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <FolderOpen className="w-4 h-4 text-accent shrink-0" />
-            <h3 className="text-sm font-semibold whitespace-nowrap">Meus Documentos Jurídicos</h3>
-            <Badge variant="outline" className="text-[10px] gap-1 shrink-0">
-              <Hash className="w-2.5 h-2.5" /> {pedidos.length}
-            </Badge>
-            {processo?.numero && (
-              <Badge variant="outline" className="text-[10px] gap-1 shrink-0 hidden sm:inline-flex">
-                <FileText className="w-2.5 h-2.5" /> Processo: {processo.numero}
-              </Badge>
-            )}
+    <div className="space-y-3">
+      {/* ── Cabeçalho condensado: KPIs + ações rápidas (1 linha) ── */}
+      <div className="bg-card rounded-lg border border-border/60 shadow-sm p-3 flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-8 h-8 rounded-md bg-accent/10 flex items-center justify-center shrink-0">
+            <FolderOpen className="w-4 h-4 text-accent" />
           </div>
-          {showPedidos ? <ChevronUp className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
-        </button>
-        {showPedidos && (
-          <div className="px-4 pb-4 border-t border-border/50">
-            <p className="text-[11px] text-muted-foreground py-2">
-              Numeração híbrida (PRAEFECTUS/PREFIXO/ANO/SEQ-SUFIXO), versionamento automático e workflow de 7 status. Selecione um pedido para retomá-lo na geração.
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold leading-tight">Apoio Jurídico</p>
+            <p className="text-[10px] text-muted-foreground leading-tight truncate">
+              {modelos.length} modelos · {pedidos.length} documentos · Lei 14.133/2021
             </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 ml-auto flex-wrap">
+          {processo?.numero && (
+            <Badge variant="outline" className="text-[10px] gap-1 shrink-0 h-6 px-2">
+              <FileText className="w-2.5 h-2.5" /> Processo {processo.numero}
+            </Badge>
+          )}
+          <Button
+            size="sm" variant="outline" className="h-7 text-xs gap-1.5"
+            onClick={() => editalFileRef.current?.click()}
+            disabled={extractingEdital}
+          >
+            <Upload className="w-3 h-3" /> Edital (IA)
+          </Button>
+          <input
+            ref={editalFileRef} type="file" accept=".pdf,.doc,.docx,.txt"
+            className="hidden" onChange={handleEditalUpload}
+          />
+          <Button
+            size="sm" variant={showPedidos ? 'default' : 'outline'}
+            className="h-7 text-xs gap-1.5"
+            onClick={() => setShowPedidos(s => !s)}
+          >
+            <Hash className="w-3 h-3" /> Documentos ({pedidos.length})
+            {showPedidos ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </Button>
+        </div>
+      </div>
+
+      {/* Edital Upload Status — barra slim */}
+      {editalUploadFile && (
+        <div className="bg-card rounded-lg border border-border/60 p-2.5 flex items-center gap-3 flex-wrap">
+          <div className="w-7 h-7 rounded bg-accent/10 flex items-center justify-center shrink-0">
+            <FileText className="w-3.5 h-3.5 text-accent" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold truncate">{editalUploadFile.name}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {(editalUploadFile.size / 1024).toFixed(0)} KB
+              {editalExtracted && (
+                <span className="ml-2 inline-flex items-center gap-0.5 text-accent">
+                  <CheckCircle className="w-2.5 h-2.5" /> Extraído
+                </span>
+              )}
+              {extractingEdital && (
+                <span className="ml-2 inline-flex items-center gap-0.5 text-accent animate-pulse">
+                  <Loader2 className="w-2.5 h-2.5 animate-spin" /> Analisando…
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="flex gap-1.5 shrink-0">
+            {!editalExtracted && (
+              <Button size="sm" onClick={handleExtractEdital} disabled={extractingEdital} className="h-7 text-xs bg-accent hover:bg-accent/90 text-accent-foreground">
+                <Sparkles className="w-3 h-3 mr-1" /> Extrair
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={removeEditalUpload}>
+              <X className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Meus Documentos (colapsável; só aparece o conteúdo quando ativado) ── */}
+      {showPedidos && (
+        <div className="bg-card rounded-lg border border-border/60 shadow-sm p-3 space-y-2">
+          {pedidos.length === 0 ? (
+            <div className="flex items-center gap-3 py-3 px-2">
+              <FileText className="w-4 h-4 text-muted-foreground/50 shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                Nenhum documento gerado ainda. Selecione um modelo abaixo para começar — cada documento recebe numeração híbrida e versionamento automático.
+              </p>
+            </div>
+          ) : (
             <PedidosJuridicosList
               onSelecionar={(p) => {
                 setPedidoAtivo(p);
@@ -693,290 +755,163 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                 if (p.pregao_numero) setEditalNum(p.pregao_numero);
               }}
             />
-          </div>
-        )}
-      </div>
-
-      {/* ── Modality Selector ── */}
-      <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm space-y-3">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <Landmark className="w-4 h-4 text-accent" />
-            <h3 className="text-sm font-semibold">Modalidade de Licitação</h3>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 text-xs"
-            onClick={() => editalFileRef.current?.click()}
-            disabled={extractingEdital}
-          >
-            <Upload className="w-3.5 h-3.5" />
-            Upload Edital (IA)
-          </Button>
-          <input
-            ref={editalFileRef}
-            type="file"
-            accept=".pdf,.doc,.docx,.txt"
-            className="hidden"
-            onChange={handleEditalUpload}
-          />
+          )}
         </div>
+      )}
 
-        {/* Edital Upload Status */}
-        {editalUploadFile && (
-          <div className="bg-muted/30 rounded-lg p-3 border border-border/50 space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
-                <FileText className="w-4 h-4 text-accent" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold truncate">{editalUploadFile.name}</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {(editalUploadFile.size / 1024).toFixed(0)} KB
-                  {editalExtracted && (
-                    <Badge className="ml-2 bg-accent/10 text-accent border-accent/20 text-[9px]">
-                      <CheckCircle className="w-2.5 h-2.5 mr-0.5" /> Extraído
-                    </Badge>
-                  )}
-                </p>
-              </div>
-              <div className="flex gap-1.5 shrink-0">
-                {!editalExtracted && (
-                  <Button size="sm" onClick={handleExtractEdital} disabled={extractingEdital} className="h-7 text-xs bg-accent hover:bg-accent/90 text-accent-foreground">
-                    {extractingEdital ? (
-                      <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Extraindo...</>
-                    ) : (
-                      <><Sparkles className="w-3 h-3 mr-1" /> Extrair</>
-                    )}
-                  </Button>
-                )}
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={removeEditalUpload}>
-                  <X className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            </div>
-            {extractingEdital && (
-              <div className="flex items-center gap-2 text-[10px] text-accent animate-pulse">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                Analisando edital com IA para identificar modalidade, critérios e etapas...
-              </div>
-            )}
-            {editalExtracted && (
-              <div className="flex items-center gap-2 p-2 bg-accent/5 border border-accent/20 rounded-md">
-                <CheckCircle className="w-3.5 h-3.5 text-accent shrink-0" />
-                <p className="text-[10px] text-accent">
-                  Modalidade, critério de julgamento e dados do edital identificados automaticamente!
-                </p>
-              </div>
-            )}
+      {/* ── Barra unificada: busca + modalidade + filtros (3 colunas, grid responsivo) ── */}
+      <div className="bg-card rounded-lg border border-border/60 shadow-sm p-3 space-y-2.5">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+          <div className="md:col-span-5 relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar modelo, categoria ou fundamentação..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-8 h-9 text-xs"
+            />
           </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Modalidade</label>
-            <Select value={modalidadeId || ''} onValueChange={v => { setModalidadeId(v || null); setEtapaFiltro(null); setCriterioFiltro(null); }}>
+          <div className="md:col-span-3">
+            <Select value={modalidadeId || '__none__'} onValueChange={v => { setModalidadeId(v === '__none__' ? null : v); setEtapaFiltro(null); setCriterioFiltro(null); }}>
               <SelectTrigger className="h-9 text-xs">
-                <SelectValue placeholder="Selecione a modalidade..." />
+                <Landmark className="w-3 h-3 mr-1 text-accent shrink-0" />
+                <SelectValue placeholder="Modalidade…" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="__none__" className="text-xs">Sem modalidade</SelectItem>
                 {MODALIDADES.map(m => (
                   <SelectItem key={m.id} value={m.id} className="text-xs">{m.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+          <div className="md:col-span-2">
+            <Select value={etapaFiltro || '__all__'} onValueChange={v => setEtapaFiltro(v === '__all__' ? null : v)} disabled={!modalidade}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Etapa" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__" className="text-xs">Todas as etapas</SelectItem>
+                {modalidade?.etapas.map(e => (
+                  <SelectItem key={e.nome} value={e.nome} className="text-xs">{e.ordem}. {e.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="md:col-span-2">
+            <Select value={criterioFiltro || '__all__'} onValueChange={v => setCriterioFiltro(v === '__all__' ? null : v)} disabled={!modalidade}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Critério" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__" className="text-xs">Todos critérios</SelectItem>
+                {modalidade?.criteriosJulgamento.map(c => (
+                  <SelectItem key={c.id} value={c.id} className="text-xs">{c.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
+        {/* Chips de categoria (substituem o painel de filtros pesado) */}
+        <div className="flex flex-wrap gap-1.5 items-center pt-2 border-t border-border/40">
+          <Badge
+            variant={catFilter === null ? 'default' : 'outline'}
+            className="cursor-pointer text-[10px] h-5 px-2"
+            onClick={() => setCatFilter(null)}
+          >
+            Todos · {modelos.length}
+          </Badge>
+          {categorias.map(cat => {
+            const count = modelos.filter(m => m.categoria === cat).length;
+            const docCount = pedidos.filter(p => p.categoria === cat).length;
+            return (
+              <Badge
+                key={cat}
+                variant={catFilter === cat ? 'default' : 'outline'}
+                className="cursor-pointer text-[10px] h-5 px-2 gap-1"
+                onClick={() => setCatFilter(catFilter === cat ? null : cat)}
+              >
+                {cat} · {count}
+                {docCount > 0 && (
+                  <span className={`inline-block px-1 rounded text-[9px] font-semibold ${catFilter === cat ? 'bg-primary-foreground/20' : 'bg-accent/15 text-accent'}`}>{docCount}</span>
+                )}
+              </Badge>
+            );
+          })}
+          {(search || catFilter) && (
+            <Button
+              variant="ghost" size="sm" className="h-5 px-1.5 text-[10px] text-muted-foreground ml-auto"
+              onClick={() => { setSearch(''); setCatFilter(null); }}
+            >
+              <X className="w-2.5 h-2.5 mr-0.5" /> Limpar ({filteredModelos.length})
+            </Button>
+          )}
           {modalidade && (
-            <>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Etapa do Processo</label>
-                <Select value={etapaFiltro || '__all__'} onValueChange={v => setEtapaFiltro(v === '__all__' ? null : v)}>
-                  <SelectTrigger className="h-9 text-xs">
-                    <SelectValue placeholder="Todas as etapas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__" className="text-xs">Todas as etapas</SelectItem>
-                    {modalidade.etapas.map(e => (
-                      <SelectItem key={e.nome} value={e.nome} className="text-xs">
-                        {e.ordem}. {e.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Critério de Julgamento</label>
-                <Select value={criterioFiltro || '__all__'} onValueChange={v => setCriterioFiltro(v === '__all__' ? null : v)}>
-                  <SelectTrigger className="h-9 text-xs">
-                    <SelectValue placeholder="Todos os critérios" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__" className="text-xs">Todos os critérios</SelectItem>
-                    {modalidade.criteriosJulgamento.map(c => (
-                      <SelectItem key={c.id} value={c.id} className="text-xs">
-                        {c.nome} {c.obrigatorio ? '(obrigatório)' : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </>
+            <Button
+              variant="ghost" size="sm"
+              className="h-5 px-1.5 text-[10px] text-muted-foreground"
+              onClick={() => setShowModalidadeInfo(!showModalidadeInfo)}
+            >
+              <Info className="w-2.5 h-2.5 mr-0.5" />
+              {showModalidadeInfo ? 'Ocultar detalhes' : 'Detalhes da modalidade'}
+            </Button>
           )}
         </div>
 
-        {modalidade && (
-          <div className="pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs gap-1 text-muted-foreground"
-              onClick={() => setShowModalidadeInfo(!showModalidadeInfo)}
-            >
-              <Info className="w-3 h-3" />
-              {showModalidadeInfo ? 'Ocultar detalhes' : 'Ver detalhes da modalidade'}
-              {showModalidadeInfo ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            </Button>
-
-            {showModalidadeInfo && (
-              <div className="mt-3 p-4 rounded-lg bg-muted/30 space-y-3 text-xs">
-                <div>
-                  <p className="font-semibold text-foreground">{modalidade.nome}</p>
-                  <p className="text-muted-foreground mt-1">{modalidade.descricao}</p>
-                  <Badge variant="outline" className="text-[10px] mt-1">{modalidade.fundamentacao}</Badge>
+        {/* Detalhes da modalidade (colapsável, opcional) */}
+        {modalidade && showModalidadeInfo && (
+          <div className="mt-2 p-3 rounded-md bg-muted/30 space-y-3 text-xs border border-border/40">
+            <div>
+              <p className="font-semibold text-foreground">{modalidade.nome}</p>
+              <p className="text-muted-foreground mt-1">{modalidade.descricao}</p>
+              <Badge variant="outline" className="text-[10px] mt-1">{modalidade.fundamentacao}</Badge>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <p className="font-semibold flex items-center gap-1"><ListChecks className="w-3 h-3 text-accent" /> Etapas do Processo</p>
+                <div className="space-y-1">
+                  {modalidade.etapas.map(e => (
+                    <div key={e.ordem} className={`flex items-start gap-2 p-1.5 rounded ${etapaFiltro === e.nome ? 'bg-accent/10 border border-accent/30' : ''}`}>
+                      <span className="w-4 h-4 rounded-full bg-accent/20 text-accent flex items-center justify-center flex-shrink-0 text-[9px] font-bold">{e.ordem}</span>
+                      <div>
+                        <p className="font-medium text-[11px]">{e.nome}</p>
+                        <p className="text-muted-foreground text-[10px]">{e.descricao}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {/* Etapas */}
-                  <div className="space-y-1.5">
-                    <p className="font-semibold flex items-center gap-1"><ListChecks className="w-3 h-3 text-accent" /> Etapas do Processo</p>
-                    <div className="space-y-1">
-                      {modalidade.etapas.map(e => (
-                        <div key={e.ordem} className={`flex items-start gap-2 p-1.5 rounded ${etapaFiltro === e.nome ? 'bg-accent/10 border border-accent/30' : ''}`}>
-                          <span className="w-5 h-5 rounded-full bg-accent/20 text-accent flex items-center justify-center flex-shrink-0 text-[10px] font-bold">{e.ordem}</span>
-                          <div>
-                            <p className="font-medium">{e.nome}</p>
-                            <p className="text-muted-foreground text-[10px]">{e.descricao}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {/* Critérios */}
-                    <div className="space-y-1.5">
-                      <p className="font-semibold flex items-center gap-1"><Target className="w-3 h-3 text-accent" /> Critérios de Julgamento</p>
-                      {modalidade.criteriosJulgamento.map(c => (
-                        <div key={c.id} className={`p-1.5 rounded ${criterioFiltro === c.id ? 'bg-accent/10 border border-accent/30' : ''}`}>
-                          <p className="font-medium">{c.nome} <span className="text-muted-foreground">({c.fundamentacao})</span></p>
-                          <p className="text-muted-foreground text-[10px]">{c.descricao}</p>
-                          {c.obrigatorio && <Badge variant="default" className="text-[9px] mt-0.5">Obrigatório</Badge>}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Modos de Disputa */}
-                    <div className="space-y-1.5">
-                      <p className="font-semibold flex items-center gap-1"><Award className="w-3 h-3 text-accent" /> Modos de Disputa</p>
-                      {modalidade.modosDisputa.map(m => (
-                        <div key={m.id} className="p-1.5 rounded">
-                          <p className="font-medium">{m.nome} <span className="text-muted-foreground">({m.fundamentacao})</span></p>
-                          <p className="text-muted-foreground text-[10px]">{m.descricao}</p>
-                          {m.padrao && <Badge variant="secondary" className="text-[9px] mt-0.5">Padrão</Badge>}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* ME/EPP */}
-                    <div className="space-y-1.5">
-                      <p className="font-semibold flex items-center gap-1"><Shield className="w-3 h-3 text-accent" /> Preferência ME/EPP</p>
-                      <Badge variant={modalidade.preferenciaMeEpp.aplicavel ? 'default' : 'secondary'} className="text-[10px]">
-                        {modalidade.preferenciaMeEpp.aplicavel ? 'Aplicável' : 'Não aplicável'}
-                      </Badge>
-                      <p className="text-muted-foreground">{modalidade.preferenciaMeEpp.descricao}</p>
-                      {modalidade.preferenciaMeEpp.beneficios.length > 0 && (
-                        <ul className="space-y-0.5 ml-2">
-                          {modalidade.preferenciaMeEpp.beneficios.map((b, i) => (
-                            <li key={i} className="text-muted-foreground text-[10px]">• {b}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-4 pt-1 border-t border-border/30">
-                  <span className="text-muted-foreground"><strong>Realização:</strong> {modalidade.formaRealizacao}</span>
-                  <span className="text-muted-foreground"><strong>Prazos mínimos:</strong> {modalidade.prazosMinimos}</span>
-                </div>
-                {modalidade.observacoes && (
-                  <p className="text-muted-foreground italic">{modalidade.observacoes}</p>
-                )}
               </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── Search & Category Filters ── */}
-      <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm space-y-3">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar modelo, categoria ou fundamentação..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Button
-            variant={showFilters ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-            className="gap-1"
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            Filtros
-            {showFilters ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </Button>
-        </div>
-
-        {showFilters && (
-          <div className="flex flex-wrap gap-2 pt-2 border-t border-border/30">
-            <Badge
-              variant={catFilter === null ? 'default' : 'outline'}
-              className="cursor-pointer text-xs"
-              onClick={() => setCatFilter(null)}
-            >
-              Todos ({modelos.length})
-            </Badge>
-            {categorias.map(cat => {
-              const count = modelos.filter(m => m.categoria === cat).length;
-              return (
-                <Badge
-                  key={cat}
-                  variant={catFilter === cat ? 'default' : 'outline'}
-                  className="cursor-pointer text-xs"
-                  onClick={() => setCatFilter(catFilter === cat ? null : cat)}
-                >
-                  {cat} ({count})
-                </Badge>
-              );
-            })}
-          </div>
-        )}
-
-        {(search || catFilter) && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Filter className="w-3 h-3" />
-            {filteredModelos.length} modelo(s) encontrado(s)
-            <Button variant="ghost" size="sm" className="h-5 px-1 text-xs" onClick={() => { setSearch(''); setCatFilter(null); }}>
-              <X className="w-3 h-3 mr-1" /> Limpar
-            </Button>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <p className="font-semibold flex items-center gap-1"><Target className="w-3 h-3 text-accent" /> Critérios de Julgamento</p>
+                  {modalidade.criteriosJulgamento.map(c => (
+                    <div key={c.id} className={`p-1.5 rounded ${criterioFiltro === c.id ? 'bg-accent/10 border border-accent/30' : ''}`}>
+                      <p className="font-medium text-[11px]">{c.nome} <span className="text-muted-foreground">({c.fundamentacao})</span></p>
+                      <p className="text-muted-foreground text-[10px]">{c.descricao}</p>
+                      {c.obrigatorio && <Badge variant="default" className="text-[9px] mt-0.5">Obrigatório</Badge>}
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-1.5">
+                  <p className="font-semibold flex items-center gap-1"><Award className="w-3 h-3 text-accent" /> Modos de Disputa</p>
+                  {modalidade.modosDisputa.map(m => (
+                    <div key={m.id} className="p-1.5 rounded">
+                      <p className="font-medium text-[11px]">{m.nome} <span className="text-muted-foreground">({m.fundamentacao})</span></p>
+                      <p className="text-muted-foreground text-[10px]">{m.descricao}</p>
+                      {m.padrao && <Badge variant="secondary" className="text-[9px] mt-0.5">Padrão</Badge>}
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-1.5">
+                  <p className="font-semibold flex items-center gap-1"><Shield className="w-3 h-3 text-accent" /> Preferência ME/EPP</p>
+                  <Badge variant={modalidade.preferenciaMeEpp.aplicavel ? 'default' : 'secondary'} className="text-[10px]">
+                    {modalidade.preferenciaMeEpp.aplicavel ? 'Aplicável' : 'Não aplicável'}
+                  </Badge>
+                  <p className="text-muted-foreground">{modalidade.preferenciaMeEpp.descricao}</p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -1411,45 +1346,47 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           </Button>
         </div>
       ) : (
-        categorias.map(cat => {
-          const items = filteredModelos.filter(m => m.categoria === cat);
-          if (items.length === 0) return null;
-          const catCount = pedidos.filter(p => p.categoria === cat).length;
-          return (
-            <div key={cat}>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
-                  <BookOpen className="w-4 h-4" /> {cat}
-                  <Badge variant="outline" className="text-[10px] ml-1">{items.length}</Badge>
-                </h3>
-                {catCount > 0 && (
-                  <Badge className="text-[10px] gap-1 bg-accent/10 text-accent border-accent/30 shrink-0">
-                    <FileText className="w-2.5 h-2.5" /> {catCount} gerado{catCount === 1 ? '' : 's'}
-                  </Badge>
-                )}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                {items.map(m => (
-                  <ModeloCard
-                    key={m.id}
-                    modelo={m}
-                    pedidosCount={pedidosPorModelo[m.id] || 0}
-                    onAbrir={() => {
-                      setActiveModeloId(m.id);
-                      setPedidoAtivo(null);
-                      setResultado('');
-                      setContexto('');
-                      setEditalNum(processo?.numero || '');
-                      setSelectedIndices([]);
-                      setSelectedCCTs([]);
-                      setSelectedDocs([]);
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          );
-        })
+        <div className="space-y-4">
+          {categorias.map(cat => {
+            const items = filteredModelos.filter(m => m.categoria === cat);
+            if (items.length === 0) return null;
+            const catCount = pedidos.filter(p => p.categoria === cat).length;
+            return (
+              <section key={cat}>
+                <div className="flex items-center justify-between mb-2 sticky top-0 z-10 bg-background/80 backdrop-blur py-1">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <BookOpen className="w-3 h-3" /> {cat}
+                    <span className="text-muted-foreground/60 font-normal normal-case tracking-normal">· {items.length}</span>
+                  </h3>
+                  {catCount > 0 && (
+                    <Badge className="text-[10px] gap-1 bg-accent/10 text-accent border-accent/30 shrink-0 h-5">
+                      <FileText className="w-2.5 h-2.5" /> {catCount} gerado{catCount === 1 ? '' : 's'}
+                    </Badge>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
+                  {items.map(m => (
+                    <ModeloCard
+                      key={m.id}
+                      modelo={m}
+                      pedidosCount={pedidosPorModelo[m.id] || 0}
+                      onAbrir={() => {
+                        setActiveModeloId(m.id);
+                        setPedidoAtivo(null);
+                        setResultado('');
+                        setContexto('');
+                        setEditalNum(processo?.numero || '');
+                        setSelectedIndices([]);
+                        setSelectedCCTs([]);
+                        setSelectedDocs([]);
+                      }}
+                    />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </div>
       )}
     </div>
   );

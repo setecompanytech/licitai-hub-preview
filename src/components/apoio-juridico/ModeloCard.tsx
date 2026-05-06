@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Copy, FileText, Sparkles } from 'lucide-react';
+import { Copy, FileText, Sparkles, ChevronRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -20,52 +20,60 @@ interface Props {
   onAbrir: () => void;
 }
 
+/**
+ * Compact, equilibrium-balanced model card.
+ * - Single-row action: small icon button + ghost copy
+ * - Hover reveals primary CTA accent border
+ * - Badge for generated documents on top-right
+ */
 export default function ModeloCard({ modelo: m, pedidosCount = 0, onAbrir }: Props) {
   const Icon = m.icon;
-  const handleCopy = () => {
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
     navigator.clipboard.writeText(`${m.titulo}\n${m.descricao}\nFundamentação: ${m.fundamentacao}`);
     toast.success('Modelo copiado!');
   };
+
   return (
-    <div
-      className="group bg-card rounded-xl border border-border/50 p-4 shadow-sm hover:shadow-lg hover:border-accent/40 transition-all cursor-pointer flex flex-col"
+    <button
+      type="button"
       onClick={onAbrir}
+      className="group relative bg-card text-left rounded-lg border border-border/60 p-3 hover:border-accent/60 hover:shadow-md transition-all flex flex-col gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
     >
-      <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 transition-colors">
-          <Icon className="w-4 h-4 text-accent" />
+      {pedidosCount > 0 && (
+        <Badge className="absolute top-2 right-2 text-[9px] gap-0.5 bg-accent/15 text-accent border-accent/30 h-4 px-1.5 shrink-0">
+          <FileText className="w-2 h-2" /> {pedidosCount}
+        </Badge>
+      )}
+
+      <div className="flex items-start gap-2.5 min-w-0">
+        <div className="w-8 h-8 rounded-md bg-accent/10 flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 transition-colors">
+          <Icon className="w-3.5 h-3.5 text-accent" />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-semibold text-sm">{m.titulo}</p>
-            {pedidosCount > 0 && (
-              <Badge variant="default" className="text-[10px] gap-1 bg-accent/15 text-accent border-accent/30 hover:bg-accent/20 shrink-0">
-                <FileText className="w-2.5 h-2.5" /> {pedidosCount} {pedidosCount === 1 ? 'doc' : 'docs'}
-              </Badge>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{m.descricao}</p>
-          <div className="flex flex-wrap gap-1 mt-2">
-            <Badge variant="outline" className="text-[10px]">{m.fundamentacao}</Badge>
-            {m.requisitosFiltro.includes('indices') && <Badge variant="secondary" className="text-[10px]">📊 Índices</Badge>}
-            {m.requisitosFiltro.includes('ccts') && <Badge variant="secondary" className="text-[10px]">👷 CCTs</Badge>}
-            {m.requisitosFiltro.includes('base_juridica') && <Badge variant="secondary" className="text-[10px]">📚 Base</Badge>}
-          </div>
+        <div className="flex-1 min-w-0 pr-6">
+          <p className="font-semibold text-[13px] leading-tight line-clamp-2">{m.titulo}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 leading-snug">{m.descricao}</p>
         </div>
       </div>
-      <div className="flex gap-2 mt-3 pt-3 border-t border-border/30">
-        <Button size="sm" variant="outline" className="shrink-0" onClick={(e) => { e.stopPropagation(); handleCopy(); }}>
+
+      <div className="flex flex-wrap gap-1 mt-auto">
+        <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4 font-normal whitespace-nowrap">
+          {m.fundamentacao}
+        </Badge>
+        {m.requisitosFiltro.includes('indices') && <Badge variant="secondary" className="text-[9px] py-0 px-1.5 h-4 whitespace-nowrap">Índices</Badge>}
+        {m.requisitosFiltro.includes('ccts') && <Badge variant="secondary" className="text-[9px] py-0 px-1.5 h-4 whitespace-nowrap">CCTs</Badge>}
+        {m.requisitosFiltro.includes('base_juridica') && <Badge variant="secondary" className="text-[9px] py-0 px-1.5 h-4 whitespace-nowrap">Base</Badge>}
+      </div>
+
+      <div className="flex items-center justify-between gap-1 pt-2 mt-1 border-t border-border/30">
+        <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-foreground" onClick={handleCopy}>
           <Copy className="w-3 h-3 mr-1" /> Copiar
         </Button>
-        <Button
-          size="sm"
-          className="bg-accent hover:bg-accent/90 text-accent-foreground flex-1"
-          onClick={(e) => { e.stopPropagation(); onAbrir(); }}
-        >
-          <Sparkles className="w-3 h-3 mr-1" />
-          Gerar com IA
-        </Button>
+        <span className="text-[11px] font-medium text-accent flex items-center gap-0.5 shrink-0 group-hover:translate-x-0.5 transition-transform">
+          <Sparkles className="w-3 h-3" /> Gerar com IA <ChevronRight className="w-3 h-3" />
+        </span>
       </div>
-    </div>
+    </button>
   );
 }
