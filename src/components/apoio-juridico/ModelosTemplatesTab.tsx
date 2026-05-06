@@ -1431,10 +1431,10 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
 
           {/* Rodapé institucional */}
           <div className="px-4 py-2 border-t border-border/60 bg-muted/20 flex items-center justify-between gap-2 flex-wrap">
-            <p className="text-[9.5px] text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground">
               Documento gerado em conformidade com a NBR 14.724 · ABNT
             </p>
-            <p className="text-[9.5px] text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground">
               Fundamentação: Lei 14.133/2021, LC 123/2006, CF/88 art. 37
             </p>
           </div>
