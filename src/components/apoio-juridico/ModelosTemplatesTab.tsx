@@ -1036,55 +1036,41 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
         )}
       </div>
 
-      {/* ── Active Generation Sheet (Drawer dedicado com preview live)
-           Em modo inline (deep-link via ?modelo=…), neutralizamos o overlay
-           e ancoramos o SheetContent dentro do conteúdo da página, para
-           preservar sidebar/header e parecer uma página completa. ── */}
-      {/* ── Active Generation Sheet (Drawer dedicado com preview live)
-           Em modo inline (deep-link via ?modelo=…), removemos o overlay
-           escuro e o foco-trap (modal=false), para que sidebar e header
-           da página continuem visíveis e interagíveis — dando a sensação
-           de uma página completa, ao invés de um modal-atalho. ── */}
-      {inlineMode && activeModelo && (
-        <style>{`
-          body.aj-inline-active [data-radix-dialog-overlay] { background: transparent !important; backdrop-filter: none !important; }
-        `}</style>
-      )}
-      <div ref={(el) => {
-        if (typeof document === 'undefined') return;
-        if (inlineMode && activeModelo) document.body.classList.add('aj-inline-active');
-        else document.body.classList.remove('aj-inline-active');
-      }}>
-      <Sheet open={!!activeModelo} onOpenChange={(open) => { if (!open) resetGeneration(); }} modal={!inlineMode}>
-        <SheetContent
-          side="right"
-          className="w-full sm:max-w-none sm:w-[95vw] lg:w-[90vw] xl:w-[1400px] p-0 overflow-hidden flex flex-col"
+      {/* ── Active Generation
+           - Modo padrão: Sheet/Drawer modal (Radix Dialog em portal).
+           - Modo inline (deep-link via /apoio-juridico/redigir/:id ou ?modelo=…):
+             renderiza inline, SEM portal/overlay/fixed, ocupando todo o
+             conteúdo do AppLayout. Isso elimina o "espelho quebrado" onde a
+             lista aparecia atrás do drawer. ── */}
+      {inlineMode && activeModelo ? (
+        <section
+          aria-label={`Redigir: ${activeModelo.titulo}`}
+          className="bg-background border border-border/50 rounded-lg shadow-sm overflow-hidden flex flex-col"
+          style={{ minHeight: 'calc(100vh - 180px)' }}
         >
           {activeModelo && (
             <>
-              <SheetHeader className="px-6 pt-6 pb-4 border-b border-border/50 shrink-0">
-                {inlineMode && (
-                  <div className="flex items-center gap-2 mb-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 gap-1.5 text-xs"
-                      onClick={resetGeneration}
-                    >
-                      <ArrowLeft className="w-3.5 h-3.5" />
-                      Voltar para a lista de modelos
-                    </Button>
-                  </div>
-                )}
+              <header className="px-6 pt-6 pb-4 border-b border-border/50 shrink-0">
+                <div className="flex items-center gap-2 mb-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs"
+                    onClick={resetGeneration}
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Voltar para a lista de modelos
+                  </Button>
+                </div>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <SheetTitle className="flex items-center gap-2 text-base">
+                    <h2 className="flex items-center gap-2 text-base font-semibold">
                       <Sparkles className="w-5 h-5 text-accent shrink-0" />
                       <span className="truncate">{activeModelo.titulo}</span>
-                    </SheetTitle>
-                    <SheetDescription className="text-xs mt-1">
+                    </h2>
+                    <p className="text-xs mt-1 text-muted-foreground">
                       {activeModelo.descricao}
-                    </SheetDescription>
+                    </p>
                     <div className="flex items-center gap-1.5 flex-wrap mt-2">
                       <Badge variant="outline" className="text-[10px] shrink-0">{activeModelo.fundamentacao}</Badge>
                       {modalidade && <Badge variant="secondary" className="text-[10px] shrink-0">{modalidade.nome}</Badge>}
@@ -1102,7 +1088,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                     </div>
                   </div>
                 </div>
-              </SheetHeader>
+              </header>
 
               {/* Layout 2 colunas: formulário + preview live */}
               <div className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(0,420px)_1fr] overflow-hidden">
@@ -1484,9 +1470,37 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
               </div>
             </>
           )}
-        </SheetContent>
-      </Sheet>
-      </div>
+        </section>
+      ) : (
+        <Sheet open={!!activeModelo} onOpenChange={(open) => { if (!open) resetGeneration(); }} modal>
+          <SheetContent
+            side="right"
+            className="w-full sm:max-w-none sm:w-[95vw] lg:w-[90vw] xl:w-[1400px] p-0 overflow-hidden flex flex-col"
+          >
+            {activeModelo && (
+              <SheetHeader className="px-6 pt-6 pb-4 border-b border-border/50 shrink-0">
+                <SheetTitle className="flex items-center gap-2 text-base">
+                  <Sparkles className="w-5 h-5 text-accent shrink-0" />
+                  <span className="truncate">{activeModelo.titulo}</span>
+                </SheetTitle>
+                <SheetDescription className="text-xs mt-1">
+                  Carregando editor de redação completo…
+                </SheetDescription>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Para a melhor experiência, abra este modelo em página dedicada:
+                </p>
+                <Button
+                  size="sm"
+                  className="mt-2 w-fit"
+                  onClick={() => { resetGeneration(); navigate(`/apoio-juridico/redigir/${activeModelo.id}`); }}
+                >
+                  Abrir página de redação
+                </Button>
+              </SheetHeader>
+            )}
+          </SheetContent>
+        </Sheet>
+      )}
 
       {/* ── Acervo de Modelos – Layout Forense (estilo Vade Mecum) ── */}
       {filteredModelos.length === 0 ? (
