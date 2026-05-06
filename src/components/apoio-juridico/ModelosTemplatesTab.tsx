@@ -1320,9 +1320,10 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       className="bg-accent hover:bg-accent/90 text-accent-foreground flex-1"
                       onClick={() => {
                         setActiveModeloId(m.id);
+                        setPedidoAtivo(null);
                         setResultado('');
                         setContexto('');
-                        setEditalNum('');
+                        setEditalNum(processo?.numero || '');
                         setSelectedIndices([]);
                         setSelectedCCTs([]);
                         setSelectedDocs([]);
