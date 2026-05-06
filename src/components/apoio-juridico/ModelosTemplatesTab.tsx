@@ -1428,9 +1428,6 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
     </div>
   );
 }
-    </div>
-  );
-}
 
 /* ── Reusable data selector component ── */
 function DataSelector<T>({
