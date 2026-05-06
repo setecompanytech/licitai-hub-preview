@@ -17,6 +17,7 @@ import ReactMarkdown from 'react-markdown';
 import { exportLegalPDF, exportLegalWord } from '@/lib/legal-document-export';
 import { useJuridicoPedidos, type JuridicoPedido } from '@/hooks/useJuridicoPedidos';
 import PedidosJuridicosList from './PedidosJuridicosList';
+import { ChecklistFatoGerador } from './ChecklistFatoGerador';
 import {
   TrendingUp, Search, Sparkles, RefreshCw, Scale, Loader2, ArrowRight,
   DollarSign, Users, Building2, FileText, AlertTriangle, CloudRain, Flame,
@@ -166,6 +167,8 @@ export default function ReequilibrioIA() {
   // Revisão-specific fields
   const [fatoGerador, setFatoGerador] = useState('');
   const [tipoFato, setTipoFato] = useState<'caso_fortuito' | 'forca_maior' | 'fato_principe' | 'fato_superveniente'>('fato_superveniente');
+  const [showChecklist, setShowChecklist] = useState(false);
+  const [enquadramentoValidado, setEnquadramentoValidado] = useState(false);
 
   useEffect(() => { fetchData(); }, []);
 
