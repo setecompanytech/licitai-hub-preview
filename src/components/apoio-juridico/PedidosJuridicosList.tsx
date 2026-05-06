@@ -351,11 +351,15 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
       </Dialog>
 
       {/* Modal de Protocolo */}
-      <Dialog open={protocoloOpen} onOpenChange={setProtocoloOpen}>
+      <Dialog open={protocoloOpen} onOpenChange={(o) => { setProtocoloOpen(o); if (!o) setAcaoAlvo(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Registrar Protocolo</DialogTitle>
-            <DialogDescription>Informe os dados do protocolo no órgão.</DialogDescription>
+            <DialogDescription>
+              {(acaoAlvo ?? detalhe)?.numero_formatado
+                ? `Pedido ${(acaoAlvo ?? detalhe)?.numero_formatado} — informe os dados do protocolo no órgão.`
+                : 'Informe os dados do protocolo no órgão.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -368,19 +372,27 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
             </div>
             <Button
               className="w-full"
+              disabled={!protocoloNum.trim() || !protocoloData}
               onClick={async () => {
-                if (!detalhe) return;
+                const alvo = acaoAlvo ?? detalhe;
+                if (!alvo) return;
+                if (!protocoloNum.trim() || !protocoloData) {
+                  toast.error('Preencha nº e data do protocolo para registrar.');
+                  return;
+                }
                 const { supabase } = await import('@/integrations/supabase/client');
                 await supabase.from('juridico_pedidos' as any)
                   .update({
-                    numero_protocolo: protocoloNum || null,
-                    data_protocolo: protocoloData || null,
+                    numero_protocolo: protocoloNum,
+                    data_protocolo: protocoloData,
                   })
-                  .eq('id', detalhe.id);
-                await atualizarStatus(detalhe, 'protocolado',
-                  `Protocolado sob nº ${protocoloNum || 'sem número'} em ${protocoloData || 'data não informada'}`);
-                setDetalhe({ ...detalhe, status: 'protocolado', numero_protocolo: protocoloNum || null, data_protocolo: protocoloData || null });
-                setProtocoloOpen(false); setProtocoloNum(''); setProtocoloData('');
+                  .eq('id', alvo.id);
+                await atualizarStatus(alvo, 'protocolado',
+                  `Protocolado sob nº ${protocoloNum} em ${protocoloData}`);
+                if (detalhe?.id === alvo.id) {
+                  setDetalhe({ ...detalhe, status: 'protocolado', numero_protocolo: protocoloNum, data_protocolo: protocoloData });
+                }
+                setProtocoloOpen(false); setProtocoloNum(''); setProtocoloData(''); setAcaoAlvo(null);
               }}
             >
               <CheckCircle2 className="w-3 h-3 mr-1" /> Confirmar protocolo
@@ -390,7 +402,7 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
       </Dialog>
 
       {/* Modal de Retorno do Órgão */}
-      <Dialog open={retornoOpen} onOpenChange={setRetornoOpen}>
+      <Dialog open={retornoOpen} onOpenChange={(o) => { setRetornoOpen(o); if (!o) setAcaoAlvo(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -399,7 +411,11 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
               {retornoTipo === 'parcialmente_deferido' && <AlertCircle className="w-4 h-4 text-yellow-600" />}
               Resultado do órgão
             </DialogTitle>
-            <DialogDescription>{STATUS_LABELS[retornoTipo]} — descreva a decisão para histórico.</DialogDescription>
+            <DialogDescription>
+              {(acaoAlvo ?? detalhe)?.numero_formatado
+                ? `Pedido ${(acaoAlvo ?? detalhe)?.numero_formatado} — ${STATUS_LABELS[retornoTipo]}. Descreva a decisão para histórico.`
+                : `${STATUS_LABELS[retornoTipo]} — descreva a decisão para histórico.`}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <Textarea
@@ -409,15 +425,23 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
             />
             <Button
               className="w-full"
+              disabled={retornoTexto.trim().length < 10}
               onClick={async () => {
-                if (!detalhe) return;
+                const alvo = acaoAlvo ?? detalhe;
+                if (!alvo) return;
+                if (retornoTexto.trim().length < 10) {
+                  toast.error('Informe ao menos 10 caracteres descrevendo a decisão (auditoria).');
+                  return;
+                }
                 const { supabase } = await import('@/integrations/supabase/client');
                 await supabase.from('juridico_pedidos' as any)
-                  .update({ retorno_orgao: retornoTexto || null })
-                  .eq('id', detalhe.id);
-                await atualizarStatus(detalhe, retornoTipo, retornoTexto || `Resultado: ${STATUS_LABELS[retornoTipo]}`);
-                setDetalhe({ ...detalhe, status: retornoTipo, retorno_orgao: retornoTexto || null });
-                setRetornoOpen(false); setRetornoTexto('');
+                  .update({ retorno_orgao: retornoTexto })
+                  .eq('id', alvo.id);
+                await atualizarStatus(alvo, retornoTipo, retornoTexto);
+                if (detalhe?.id === alvo.id) {
+                  setDetalhe({ ...detalhe, status: retornoTipo, retorno_orgao: retornoTexto });
+                }
+                setRetornoOpen(false); setRetornoTexto(''); setAcaoAlvo(null);
               }}
             >
               Registrar resultado
