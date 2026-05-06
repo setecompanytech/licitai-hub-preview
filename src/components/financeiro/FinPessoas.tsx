@@ -291,54 +291,72 @@ export default function FinPessoas() {
     }
   };
 
-  const handleBuscarCEP = async () => {
-    const cep = (form.endereco.cep || "").replace(/\D/g, "");
+  const handleBuscarCEP = async (cepArg?: string) => {
+    const cep = ((cepArg ?? form.endereco.cep) || "").replace(/\D/g, "");
     if (cep.length !== 8) {
       toast.error("Informe um CEP válido (8 dígitos).");
       return;
     }
     setBuscandoCEP(true);
-    try {
-      // ViaCEP — público, com CORS aberto
-      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      if (!res.ok) throw new Error(`ViaCEP ${res.status}`);
-      const data = await res.json();
-      if (data.erro) {
-        toast.error("CEP não localizado.");
-        return;
-      }
+    const aplicar = (
+      logradouro: string,
+      bairro: string,
+      municipio: string,
+      uf: string,
+      complemento?: string,
+      ibge?: string
+    ) => {
       setForm((f) => ({
         ...f,
         endereco: {
           ...f.endereco,
-          logradouro: data.logradouro || f.endereco.logradouro,
-          bairro: data.bairro || f.endereco.bairro,
-          municipio: data.localidade || f.endereco.municipio,
-          uf: data.uf || f.endereco.uf,
-          complemento: f.endereco.complemento || data.complemento || "",
-          cod_municipio_ibge: data.ibge || f.endereco.cod_municipio_ibge,
+          logradouro: logradouro || f.endereco.logradouro,
+          bairro: bairro || f.endereco.bairro,
+          municipio: municipio || f.endereco.municipio,
+          uf: uf || f.endereco.uf,
+          complemento: f.endereco.complemento || complemento || "",
+          cod_municipio_ibge: ibge || f.endereco.cod_municipio_ibge,
         },
       }));
       toast.success("Endereço preenchido a partir do CEP.");
-    } catch (e: any) {
-      // Fallback: BrasilAPI CEP v2
+    };
+    try {
+      // 1ª tentativa: edge function (sem CORS, com fallbacks server-side)
+      const { data: edge, error: edgeErr } = await supabase.functions.invoke("consulta-cep", {
+        body: { cep },
+      });
+      if (!edgeErr && edge && !edge.error && (edge.logradouro || edge.municipio)) {
+        aplicar(edge.logradouro, edge.bairro, edge.municipio, edge.uf, edge.complemento, edge.ibge);
+        return;
+      }
+      if (edge?.error) {
+        // 404 ou inválido — informar e parar (não tem por que tentar browser se servidor disse 'não localizado')
+        toast.error(edge.error);
+        return;
+      }
+      // Se a edge function retornou erro de rede/transporte, cai p/ fallback browser
+      throw edgeErr ?? new Error("Edge consulta-cep indisponível");
+    } catch (errEdge) {
+      // 2ª tentativa: ViaCEP direto no browser
       try {
-        const res2 = await fetch(`https://brasilapi.com.br/api/cep/v2/${cep}`);
-        if (!res2.ok) throw new Error(`BrasilAPI ${res2.status}`);
-        const d = await res2.json();
-        setForm((f) => ({
-          ...f,
-          endereco: {
-            ...f.endereco,
-            logradouro: d.street || f.endereco.logradouro,
-            bairro: d.neighborhood || f.endereco.bairro,
-            municipio: d.city || f.endereco.municipio,
-            uf: d.state || f.endereco.uf,
-          },
-        }));
-        toast.success("Endereço preenchido a partir do CEP.");
-      } catch (e2: any) {
-        toast.error(`Falha ao consultar CEP: ${e2?.message || e?.message || "erro"}`);
+        const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        if (!res.ok) throw new Error(`ViaCEP ${res.status}`);
+        const data = await res.json();
+        if (data.erro) {
+          toast.error("CEP não localizado.");
+          return;
+        }
+        aplicar(data.logradouro, data.bairro, data.localidade, data.uf, data.complemento, data.ibge);
+      } catch (e: any) {
+        // 3ª tentativa: BrasilAPI v2
+        try {
+          const res2 = await fetch(`https://brasilapi.com.br/api/cep/v2/${cep}`);
+          if (!res2.ok) throw new Error(`BrasilAPI ${res2.status}`);
+          const d = await res2.json();
+          aplicar(d.street, d.neighborhood, d.city, d.state);
+        } catch (e2: any) {
+          toast.error(`Falha ao consultar CEP: ${e2?.message || e?.message || "erro"}`);
+        }
       }
     } finally {
       setBuscandoCEP(false);
@@ -498,6 +516,15 @@ export default function FinPessoas() {
                             .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/, "$1.$2.$3/$4-$5");
                         }
                         set("documento", masked);
+                        // Auto-consulta ao completar CNPJ (14 dígitos), estilo Omie
+                        if (d.length === 14 && !buscandoCNPJ) {
+                          // pequeno timeout para garantir que o estado esteja atualizado
+                          setTimeout(() => handleBuscarCNPJ(), 0);
+                        }
+                      }}
+                      onBlur={() => {
+                        const d = form.documento.replace(/\D/g, "");
+                        if (d.length === 14 && !buscandoCNPJ) handleBuscarCNPJ();
                       }}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleBuscarCNPJ(); } }}
                       inputMode="numeric"
@@ -574,20 +601,34 @@ export default function FinPessoas() {
                   <div className="flex gap-2">
                     <Input
                       value={form.endereco.cep ?? ""}
-                      onChange={(e) => setEnd("cep", e.target.value)}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, "").slice(0, 8);
+                        const masked = raw.length > 5 ? `${raw.slice(0, 5)}-${raw.slice(5)}` : raw;
+                        setEnd("cep", masked);
+                        // Auto-busca quando completar 8 dígitos (estilo Omie)
+                        if (raw.length === 8 && !buscandoCEP) {
+                          handleBuscarCEP(raw);
+                        }
+                      }}
+                      onBlur={() => {
+                        const raw = (form.endereco.cep || "").replace(/\D/g, "");
+                        if (raw.length === 8 && !buscandoCEP) handleBuscarCEP(raw);
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
                           handleBuscarCEP();
                         }
                       }}
+                      inputMode="numeric"
+                      maxLength={9}
                       placeholder="00000-000"
                     />
                     <Button
                       type="button"
                       variant="default"
                       size="icon"
-                      onClick={handleBuscarCEP}
+                      onClick={() => handleBuscarCEP()}
                       disabled={buscandoCEP}
                       title="Buscar endereço pelo CEP"
                     >
