@@ -154,7 +154,22 @@ export default function ModelosTemplatesTab() {
   useEffect(() => {
     try { window.localStorage.setItem(FILTER_FONT_KEY, String(filterFontStep)); } catch {}
   }, [filterFontStep]);
-  const filterFontScale = FILTER_FONT_SCALES[filterFontStep];
+
+  // Cap responsivo: em telas pequenas, limita a escala máxima para evitar
+  // que a barra de filtros estoure a viewport ou sobreponha elementos.
+  // <480px: máx 1.0 (sem aumento); <640px: máx 1.15; <768px: máx 1.30
+  const [viewportWidth, setViewportWidth] = useState<number>(() =>
+    typeof window === 'undefined' ? 1280 : window.innerWidth
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener('resize', onResize, { passive: true });
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const maxScaleForViewport = viewportWidth < 480 ? 1 : viewportWidth < 640 ? 1.15 : viewportWidth < 768 ? 1.3 : 1.45;
+  const filterFontScale = Math.min(FILTER_FONT_SCALES[filterFontStep], maxScaleForViewport);
+  const isFontCapped = FILTER_FONT_SCALES[filterFontStep] > maxScaleForViewport;
 
   // Pré-preenchimento a partir do processo ativo (vinculação automática)
   useEffect(() => {
