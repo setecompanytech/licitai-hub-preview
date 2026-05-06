@@ -142,6 +142,20 @@ export default function ModelosTemplatesTab() {
   const [pedidoAtivo, setPedidoAtivo] = useState<JuridicoPedido | null>(null);
   const [showPedidos, setShowPedidos] = useState(false);
 
+  // Preferência de tamanho da fonte da área de filtros (persistente em localStorage)
+  // Escala em passos: 0=85%, 1=100% (padrão), 2=115%, 3=130%, 4=145%
+  const FILTER_FONT_KEY = 'apoio-juridico:filtros:fontStep';
+  const FILTER_FONT_SCALES = [0.85, 1, 1.15, 1.3, 1.45];
+  const [filterFontStep, setFilterFontStep] = useState<number>(() => {
+    if (typeof window === 'undefined') return 1;
+    const v = Number(window.localStorage.getItem(FILTER_FONT_KEY));
+    return Number.isFinite(v) && v >= 0 && v < FILTER_FONT_SCALES.length ? v : 1;
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem(FILTER_FONT_KEY, String(filterFontStep)); } catch {}
+  }, [filterFontStep]);
+  const filterFontScale = FILTER_FONT_SCALES[filterFontStep];
+
   // Pré-preenchimento a partir do processo ativo (vinculação automática)
   useEffect(() => {
     if (!processo) return;
