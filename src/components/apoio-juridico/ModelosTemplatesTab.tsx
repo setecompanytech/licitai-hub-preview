@@ -1346,45 +1346,57 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 auto-rows-fr">
-          {categorias.flatMap(cat => {
+        <div className="space-y-3">
+          {categorias.map(cat => {
             const items = filteredModelos.filter(m => m.categoria === cat);
-            if (items.length === 0) return [];
+            if (items.length === 0) return null;
             const catCount = pedidos.filter(p => p.categoria === cat).length;
-            return [
-              <div
-                key={`hdr-${cat}`}
-                className="col-span-full sticky top-0 z-10 -mx-1 px-1 py-1.5 bg-background/85 backdrop-blur flex items-center justify-between border-b border-border/40"
+            return (
+              <section
+                key={cat}
+                className="rounded-lg border border-border/50 bg-card/40 overflow-hidden"
               >
-                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                  <span className="inline-block w-1 h-3.5 bg-primary rounded-sm" />
-                  <BookOpen className="w-3 h-3 text-primary" /> {cat}
-                  <span className="text-muted-foreground/70 font-normal normal-case tracking-normal">· {items.length} modelo{items.length === 1 ? '' : 's'}</span>
-                </h3>
-                {catCount > 0 && (
-                  <Badge className="text-[10px] gap-1 bg-accent/10 text-accent border-accent/30 shrink-0 h-5">
-                    <FileText className="w-2.5 h-2.5" /> {catCount} gerado{catCount === 1 ? '' : 's'}
-                  </Badge>
-                )}
-              </div>,
-              ...items.map(m => (
-                <ModeloCard
-                  key={m.id}
-                  modelo={m}
-                  pedidosCount={pedidosPorModelo[m.id] || 0}
-                  onAbrir={() => {
-                    setActiveModeloId(m.id);
-                    setPedidoAtivo(null);
-                    setResultado('');
-                    setContexto('');
-                    setEditalNum(processo?.numero || '');
-                    setSelectedIndices([]);
-                    setSelectedCCTs([]);
-                    setSelectedDocs([]);
-                  }}
-                />
-              )),
-            ];
+                {/* Faixa-título destacada */}
+                <header className="flex items-center justify-between gap-2 px-3 py-2 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/40">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="inline-block w-1 h-4 bg-primary rounded-sm shrink-0" />
+                    <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <h3 className="text-[12px] font-bold uppercase tracking-wider text-foreground truncate">
+                      {cat}
+                    </h3>
+                    <Badge variant="outline" className="text-[10px] h-4 px-1.5 shrink-0 bg-background/60">
+                      {items.length}
+                    </Badge>
+                  </div>
+                  {catCount > 0 && (
+                    <Badge className="text-[10px] gap-1 bg-accent/15 text-accent border-accent/30 shrink-0 h-5">
+                      <FileText className="w-2.5 h-2.5" /> {catCount} gerado{catCount === 1 ? '' : 's'}
+                    </Badge>
+                  )}
+                </header>
+
+                {/* Grid de cards — sem auto-rows-fr para não esticar quando há poucos */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 p-2.5">
+                  {items.map(m => (
+                    <ModeloCard
+                      key={m.id}
+                      modelo={m}
+                      pedidosCount={pedidosPorModelo[m.id] || 0}
+                      onAbrir={() => {
+                        setActiveModeloId(m.id);
+                        setPedidoAtivo(null);
+                        setResultado('');
+                        setContexto('');
+                        setEditalNum(processo?.numero || '');
+                        setSelectedIndices([]);
+                        setSelectedCCTs([]);
+                        setSelectedDocs([]);
+                      }}
+                    />
+                  ))}
+                </div>
+              </section>
+            );
           })}
         </div>
       )}
