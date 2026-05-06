@@ -9562,6 +9562,196 @@ export type Database = {
         }
         Relationships: []
       }
+      juridico_pedidos: {
+        Row: {
+          aditivo_numero: string | null
+          ano: number
+          ata_numero: string | null
+          contrato_numero: string | null
+          created_at: string
+          created_by: string
+          dados_caso: Json | null
+          data_protocolo: string | null
+          empresa_id: string
+          id: string
+          instrumento: string | null
+          licitacao_id: string | null
+          numero_formatado: string | null
+          numero_protocolo: string | null
+          orgao_contratante: string | null
+          pregao_numero: string | null
+          processo_administrativo: string | null
+          retorno_orgao: string | null
+          sequencial: number
+          status: Database["public"]["Enums"]["juridico_pedido_status"]
+          tipo: Database["public"]["Enums"]["juridico_pedido_tipo"]
+          updated_at: string
+          versao_atual_id: string | null
+          versoes_count: number
+        }
+        Insert: {
+          aditivo_numero?: string | null
+          ano?: number
+          ata_numero?: string | null
+          contrato_numero?: string | null
+          created_at?: string
+          created_by: string
+          dados_caso?: Json | null
+          data_protocolo?: string | null
+          empresa_id: string
+          id?: string
+          instrumento?: string | null
+          licitacao_id?: string | null
+          numero_formatado?: string | null
+          numero_protocolo?: string | null
+          orgao_contratante?: string | null
+          pregao_numero?: string | null
+          processo_administrativo?: string | null
+          retorno_orgao?: string | null
+          sequencial?: number
+          status?: Database["public"]["Enums"]["juridico_pedido_status"]
+          tipo: Database["public"]["Enums"]["juridico_pedido_tipo"]
+          updated_at?: string
+          versao_atual_id?: string | null
+          versoes_count?: number
+        }
+        Update: {
+          aditivo_numero?: string | null
+          ano?: number
+          ata_numero?: string | null
+          contrato_numero?: string | null
+          created_at?: string
+          created_by?: string
+          dados_caso?: Json | null
+          data_protocolo?: string | null
+          empresa_id?: string
+          id?: string
+          instrumento?: string | null
+          licitacao_id?: string | null
+          numero_formatado?: string | null
+          numero_protocolo?: string | null
+          orgao_contratante?: string | null
+          pregao_numero?: string | null
+          processo_administrativo?: string | null
+          retorno_orgao?: string | null
+          sequencial?: number
+          status?: Database["public"]["Enums"]["juridico_pedido_status"]
+          tipo?: Database["public"]["Enums"]["juridico_pedido_tipo"]
+          updated_at?: string
+          versao_atual_id?: string | null
+          versoes_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "juridico_pedidos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "juridico_pedidos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      juridico_pedidos_historico: {
+        Row: {
+          autor: string | null
+          criado_em: string
+          descricao: string | null
+          evento: string
+          id: string
+          pedido_id: string
+          status_anterior:
+            | Database["public"]["Enums"]["juridico_pedido_status"]
+            | null
+          status_novo:
+            | Database["public"]["Enums"]["juridico_pedido_status"]
+            | null
+        }
+        Insert: {
+          autor?: string | null
+          criado_em?: string
+          descricao?: string | null
+          evento: string
+          id?: string
+          pedido_id: string
+          status_anterior?:
+            | Database["public"]["Enums"]["juridico_pedido_status"]
+            | null
+          status_novo?:
+            | Database["public"]["Enums"]["juridico_pedido_status"]
+            | null
+        }
+        Update: {
+          autor?: string | null
+          criado_em?: string
+          descricao?: string | null
+          evento?: string
+          id?: string
+          pedido_id?: string
+          status_anterior?:
+            | Database["public"]["Enums"]["juridico_pedido_status"]
+            | null
+          status_novo?:
+            | Database["public"]["Enums"]["juridico_pedido_status"]
+            | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "juridico_pedidos_historico_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "juridico_pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      juridico_pedidos_versoes: {
+        Row: {
+          conteudo: string
+          gerado_em: string
+          gerado_por: string
+          id: string
+          modelo_ia: string | null
+          pedido_id: string
+          resumo_alteracao: string | null
+          versao: number
+        }
+        Insert: {
+          conteudo: string
+          gerado_em?: string
+          gerado_por: string
+          id?: string
+          modelo_ia?: string | null
+          pedido_id: string
+          resumo_alteracao?: string | null
+          versao: number
+        }
+        Update: {
+          conteudo?: string
+          gerado_em?: string
+          gerado_por?: string
+          id?: string
+          modelo_ia?: string | null
+          pedido_id?: string
+          resumo_alteracao?: string | null
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "juridico_pedidos_versoes_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "juridico_pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kanban_tasks: {
         Row: {
           created_at: string
@@ -15074,6 +15264,7 @@ export type Database = {
         Args: { _empresa_id: string; _user_id: string }
         Returns: boolean
       }
+      is_member_of_empresa: { Args: { _empresa_id: string }; Returns: boolean }
       match_itens_ata: {
         Args: { p_ata_id: string; p_itens: Json }
         Returns: {
@@ -15253,6 +15444,17 @@ export type Database = {
         | "a_receber"
         | "movimento_bancario"
         | "transferencia"
+      juridico_pedido_status:
+        | "rascunho"
+        | "em_revisao"
+        | "gerado"
+        | "assinado"
+        | "protocolado"
+        | "em_analise"
+        | "deferido"
+        | "indeferido"
+        | "parcialmente_deferido"
+      juridico_pedido_tipo: "reajuste" | "repactuacao" | "revisao"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -15442,6 +15644,18 @@ export const Constants = {
         "movimento_bancario",
         "transferencia",
       ],
+      juridico_pedido_status: [
+        "rascunho",
+        "em_revisao",
+        "gerado",
+        "assinado",
+        "protocolado",
+        "em_analise",
+        "deferido",
+        "indeferido",
+        "parcialmente_deferido",
+      ],
+      juridico_pedido_tipo: ["reajuste", "repactuacao", "revisao"],
     },
   },
 } as const

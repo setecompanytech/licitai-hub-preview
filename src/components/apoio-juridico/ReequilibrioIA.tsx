@@ -15,10 +15,12 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { exportLegalPDF, exportLegalWord } from '@/lib/legal-document-export';
+import { useJuridicoPedidos, type JuridicoPedido } from '@/hooks/useJuridicoPedidos';
+import PedidosJuridicosList from './PedidosJuridicosList';
 import {
   TrendingUp, Search, Sparkles, RefreshCw, Scale, Loader2, ArrowRight,
   DollarSign, Users, Building2, FileText, AlertTriangle, CloudRain, Flame,
-  FileDown, Plus, Trash2, Receipt, Quote, Paperclip, BookOpen,
+  FileDown, Plus, Trash2, Receipt, Quote, Paperclip, BookOpen, FolderOpen, Hash,
 } from 'lucide-react';
 
 /* ── Tipo de instrumento contratual ── */
@@ -155,6 +157,11 @@ export default function ReequilibrioIA() {
   const empresaSel = empresaAtiva || empresas[0]?.empresa || null;
   // Export
   const [exporting, setExporting] = useState<'pdf' | 'word' | null>(null);
+
+  // Pedido jurídico ativo (cabeçalho persistido) e hook
+  const { criarPedido, salvarVersao } = useJuridicoPedidos();
+  const [pedidoAtivo, setPedidoAtivo] = useState<JuridicoPedido | null>(null);
+  const [showLista, setShowLista] = useState(true);
 
   // Revisão-specific fields
   const [fatoGerador, setFatoGerador] = useState('');
@@ -413,11 +420,53 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
     setGeneratingPedido(true);
     setPedidoGerado('');
 
+    // Garante existência de um pedido jurídico (cabeçalho persistido)
+    let pedido = pedidoAtivo;
+    const dadosCaso = {
+      indices: selectedIndices, ccts: selectedCCTs,
+      itensComp: itensCompValidos, itensAfetados, observacoes,
+      fatoGerador, tipoFato, anexos,
+    };
+    if (!pedido || pedido.tipo !== mecanismo) {
+      pedido = await criarPedido({
+        tipo: mecanismo,
+        instrumento,
+        processo_administrativo: processoAdm || undefined,
+        pregao_numero: pregaoNum || undefined,
+        ata_numero: ataNum || undefined,
+        contrato_numero: contrato || undefined,
+        aditivo_numero: aditivoNum || undefined,
+        orgao_contratante: orgao || undefined,
+        dados_caso: dadosCaso,
+      });
+      if (!pedido) { setGeneratingPedido(false); return; }
+      setPedidoAtivo(pedido);
+    }
+
+    let conteudoFinal = '';
     await streamAIChat({
       messages: [{ role: 'user', content: buildPrompt() }],
       action: 'reequilibrio',
-      onDelta: (chunk) => setPedidoGerado(prev => prev + chunk),
-      onDone: () => setGeneratingPedido(false),
+      onDelta: (chunk) => {
+        conteudoFinal += chunk;
+        setPedidoGerado(prev => prev + chunk);
+      },
+      onDone: async () => {
+        if (pedido && conteudoFinal.trim()) {
+          const proximaVersao = (pedido.versoes_count ?? 0) + 1;
+          const v = await salvarVersao(
+            pedido,
+            conteudoFinal,
+            `v${proximaVersao} — geração automática (${mecanismo})`,
+            'gemini-2.5-flash'
+          );
+          if (v) {
+            toast.success(`Versão v${v.versao} salva no pedido ${pedido.numero_formatado}`);
+            setPedidoAtivo({ ...pedido, versoes_count: v.versao, versao_atual_id: v.id, status: 'gerado' });
+          }
+        }
+        setGeneratingPedido(false);
+      },
       onError: (error) => { toast.error(error); setGeneratingPedido(false); },
     });
   };
@@ -530,7 +579,20 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
           <Scale className="w-5 h-5 text-accent" />
           <h3 className="text-sm font-semibold">Reajuste, Repactuação e Revisão com IA</h3>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant={showLista ? 'default' : 'outline'}
+            onClick={() => setShowLista(s => !s)}
+          >
+            <FolderOpen className="w-3 h-3 mr-1" /> Meus Pedidos
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => {
+            setPedidoAtivo(null); setPedidoGerado(''); setShowGenerator(false);
+            toast.info('Novo pedido em branco — preencha os dados e gere');
+          }}>
+            <Plus className="w-3 h-3 mr-1" /> Novo Pedido
+          </Button>
           <Button size="sm" variant="outline" onClick={() => navigate('/indices-repactuacao')}>
             <TrendingUp className="w-3 h-3 mr-1" /> Painel de Índices
             <ArrowRight className="w-3 h-3 ml-1" />
@@ -541,6 +603,48 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
           </Button>
         </div>
       </div>
+
+      {/* Indicador de pedido ativo */}
+      {pedidoAtivo && (
+        <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 flex items-center gap-3 flex-wrap">
+          <Hash className="w-4 h-4 text-accent flex-shrink-0" />
+          <span className="text-xs font-semibold whitespace-nowrap">{pedidoAtivo.numero_formatado}</span>
+          <Badge variant="outline" className="text-[10px] whitespace-nowrap">
+            v{pedidoAtivo.versoes_count} · {pedidoAtivo.status}
+          </Badge>
+          <span className="text-xs text-muted-foreground truncate flex-1 min-w-[120px]">
+            Cada nova geração cria automaticamente uma nova versão deste pedido.
+          </span>
+          <Button size="sm" variant="ghost" className="h-7" onClick={() => setPedidoAtivo(null)}>
+            Desvincular
+          </Button>
+        </div>
+      )}
+
+      {/* Lista de pedidos existentes */}
+      {showLista && (
+        <div className="bg-card border border-border/50 rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <FolderOpen className="w-4 h-4 text-accent" />
+            <h4 className="text-sm font-semibold">Pedidos Jurídicos da Empresa</h4>
+          </div>
+          <PedidosJuridicosList
+            onSelecionar={(p) => {
+              setPedidoAtivo(p);
+              setMecanismo(p.tipo);
+              if (p.instrumento) setInstrumento(p.instrumento as Instrumento);
+              if (p.processo_administrativo) setProcessoAdm(p.processo_administrativo);
+              if (p.pregao_numero) setPregaoNum(p.pregao_numero);
+              if (p.ata_numero) setAtaNum(p.ata_numero);
+              if (p.contrato_numero) setContrato(p.contrato_numero);
+              if (p.aditivo_numero) setAditivoNum(p.aditivo_numero);
+              if (p.orgao_contratante) setOrgao(p.orgao_contratante);
+              setShowGenerator(true);
+              toast.success(`Pedido ${p.numero_formatado} carregado`);
+            }}
+          />
+        </div>
+      )}
 
       {/* Tabs for 3 mechanisms */}
       <Tabs value={mecanismo} onValueChange={(v) => { setMecanismo(v as Mecanismo); setShowGenerator(false); setPedidoGerado(''); }}>
