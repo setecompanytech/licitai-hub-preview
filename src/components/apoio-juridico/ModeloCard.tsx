@@ -35,27 +35,45 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
 
   const numero = String(index + 1).padStart(2, '0');
 
-  // Deep-link para abrir o modelo (suporta nova aba via Cmd/Ctrl+click ou botão do meio)
+  // Deep-link para abrir o modelo em página completa (nova aba).
+  // IMPORTANTE: Para máxima compatibilidade (Chrome/Safari/Firefox – desktop e mobile),
+  // navegação em nova aba sempre acontece via <a target="_blank" rel="noopener noreferrer">.
+  // Esse caminho é tratado como ação confiável do usuário pelos navegadores e nunca é
+  // bloqueado por popup-blocker. Evitamos window.open() em onClick porque Safari/iOS e
+  // Firefox mobile podem bloqueá-lo quando combinado com preventDefault em um <a>.
   const href = `/apoio-juridico?modelo=${encodeURIComponent(m.id)}`;
 
-  const abrirNovaAba = () => {
-    // Abre nova aba/janela completa (top-level). Fallback: navega na própria aba.
-    const win = window.open(href, '_blank', 'noopener,noreferrer');
-    if (!win) {
-      window.location.href = href;
+  // Para o cartão (article), simulamos um clique no link real para herdar o comportamento
+  // nativo de abertura em nova aba — incluindo trusted user activation.
+  const cardLinkRef = useRef<HTMLAnchorElement | null>(null);
+  const triggerNativeNewTab = () => {
+    const a = cardLinkRef.current;
+    if (a) {
+      a.click(); // dispara navegação nativa do <a target="_blank">
+      return;
     }
+    // Fallback ultra-defensivo (não deve ocorrer): tenta window.open, depois same-tab.
+    const win = typeof window !== 'undefined'
+      ? window.open(href, '_blank', 'noopener,noreferrer')
+      : null;
+    if (!win && typeof window !== 'undefined') window.location.href = href;
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
+    // Se o clique foi em um <a> ou <button> interno, deixa o handler dele agir.
+    const target = e.target as HTMLElement;
+    if (target.closest('a, button')) return;
     if (e.defaultPrevented) return;
     e.preventDefault();
-    abrirNovaAba();
+    triggerNativeNewTab();
   };
 
   const handleAuxClick = (e: React.MouseEvent) => {
     if (e.button === 1) {
+      const target = e.target as HTMLElement;
+      if (target.closest('a, button')) return;
       e.preventDefault();
-      abrirNovaAba();
+      triggerNativeNewTab();
     }
   };
 
