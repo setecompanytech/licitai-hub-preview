@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Copy, FileText, ChevronRight } from 'lucide-react';
@@ -35,27 +36,45 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
 
   const numero = String(index + 1).padStart(2, '0');
 
-  // Deep-link para abrir o modelo (suporta nova aba via Cmd/Ctrl+click ou botão do meio)
+  // Deep-link para abrir o modelo em página completa (nova aba).
+  // IMPORTANTE: Para máxima compatibilidade (Chrome/Safari/Firefox – desktop e mobile),
+  // navegação em nova aba sempre acontece via <a target="_blank" rel="noopener noreferrer">.
+  // Esse caminho é tratado como ação confiável do usuário pelos navegadores e nunca é
+  // bloqueado por popup-blocker. Evitamos window.open() em onClick porque Safari/iOS e
+  // Firefox mobile podem bloqueá-lo quando combinado com preventDefault em um <a>.
   const href = `/apoio-juridico?modelo=${encodeURIComponent(m.id)}`;
 
-  const abrirNovaAba = () => {
-    // Abre nova aba/janela completa (top-level). Fallback: navega na própria aba.
-    const win = window.open(href, '_blank', 'noopener,noreferrer');
-    if (!win) {
-      window.location.href = href;
+  // Para o cartão (article), simulamos um clique no link real para herdar o comportamento
+  // nativo de abertura em nova aba — incluindo trusted user activation.
+  const cardLinkRef = useRef<HTMLAnchorElement | null>(null);
+  const triggerNativeNewTab = () => {
+    const a = cardLinkRef.current;
+    if (a) {
+      a.click(); // dispara navegação nativa do <a target="_blank">
+      return;
     }
+    // Fallback ultra-defensivo (não deve ocorrer): tenta window.open, depois same-tab.
+    const win = typeof window !== 'undefined'
+      ? window.open(href, '_blank', 'noopener,noreferrer')
+      : null;
+    if (!win && typeof window !== 'undefined') window.location.href = href;
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
+    // Se o clique foi em um <a> ou <button> interno, deixa o handler dele agir.
+    const target = e.target as HTMLElement;
+    if (target.closest('a, button')) return;
     if (e.defaultPrevented) return;
     e.preventDefault();
-    abrirNovaAba();
+    triggerNativeNewTab();
   };
 
   const handleAuxClick = (e: React.MouseEvent) => {
     if (e.button === 1) {
+      const target = e.target as HTMLElement;
+      if (target.closest('a, button')) return;
       e.preventDefault();
-      abrirNovaAba();
+      triggerNativeNewTab();
     }
   };
 
@@ -65,7 +84,7 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
       onAuxClick={handleAuxClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirNovaAba(); } }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); triggerNativeNewTab(); } }}
       className="group relative grid grid-cols-[2.25rem_1fr_auto] items-start gap-3 px-3 py-2.5 border-b border-border/40 last:border-b-0 hover:bg-accent/5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:bg-accent/10 focus-visible:ring-1 focus-visible:ring-accent/40"
     >
       {/* Numeração forense */}
@@ -126,19 +145,17 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
           className="h-8 px-2.5 text-[11.5px] uppercase tracking-wider font-semibold text-accent hover:text-accent hover:bg-accent/10 gap-1 shrink-0"
         >
           <a
+            ref={cardLinkRef}
             href={href}
             target="_blank"
             rel="noopener noreferrer"
             title="Redigir (abre em nova aba)"
-            onClick={(e) => {
-              e.stopPropagation();
-              // Sempre abre em nova aba/janela COMPLETA (top-level), independente de modificadores
-              e.preventDefault();
-              abrirNovaAba();
-            }}
-            onAuxClick={(e) => {
-              e.stopPropagation();
-            }}
+            // Apenas impede a propagação para o handler do <article>;
+            // a navegação em nova aba acontece pelo target="_blank" nativo,
+            // que é universalmente suportado e nunca bloqueado por popup-blocker
+            // em Chrome, Safari e Firefox (desktop e mobile).
+            onClick={(e) => { e.stopPropagation(); }}
+            onAuxClick={(e) => { e.stopPropagation(); }}
           >
             Redigir <ChevronRight className="w-3 h-3" />
           </a>
