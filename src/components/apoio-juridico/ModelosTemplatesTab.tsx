@@ -1036,25 +1036,25 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
         )}
       </div>
 
-      {/* ── Active Generation Sheet (Drawer dedicado com preview live)
-           Em modo inline (deep-link via ?modelo=…), neutralizamos o overlay
-           e ancoramos o SheetContent dentro do conteúdo da página, para
-           preservar sidebar/header e parecer uma página completa. ── */}
-      {/* ── Active Generation Sheet (Drawer dedicado com preview live)
-           Em modo inline (deep-link via ?modelo=…), removemos o overlay
-           escuro e o foco-trap (modal=false), para que sidebar e header
-           da página continuem visíveis e interagíveis — dando a sensação
-           de uma página completa, ao invés de um modal-atalho. ── */}
-      {inlineMode && activeModelo && (
-        <style>{`
-          body.aj-inline-active [data-radix-dialog-overlay] { background: transparent !important; backdrop-filter: none !important; }
-        `}</style>
-      )}
-      <div ref={(el) => {
-        if (typeof document === 'undefined') return;
-        if (inlineMode && activeModelo) document.body.classList.add('aj-inline-active');
-        else document.body.classList.remove('aj-inline-active');
-      }}>
+      {/* ── Active Generation
+           - Modo padrão: Sheet/Drawer modal sobreposto à lista.
+           - Modo inline (deep-link via /apoio-juridico/redigir/:id ou ?modelo=…):
+             renderiza como página completa inline, SEM portal/overlay/fixed,
+             ocupando todo o conteúdo do AppLayout (header e sidebar
+             permanecem da página hospedeira). Isso elimina o "espelho quebrado"
+             onde a lista aparecia atrás do drawer. ── */}
+      {inlineMode && activeModelo ? (
+        <section
+          aria-label={`Redigir: ${activeModelo.titulo}`}
+          className="bg-background border border-border/50 rounded-lg shadow-sm overflow-hidden flex flex-col"
+          style={{ minHeight: 'calc(100vh - 180px)' }}
+        >
+          {(() => {
+            // Wrapper "fake" para reaproveitar o JSX do Sheet sem alterar a indentação:
+            // exporta um componente que renderiza apenas children como container plano.
+            return null;
+          })()}
+          <InlineGeneratorContent>
       <Sheet open={!!activeModelo} onOpenChange={(open) => { if (!open) resetGeneration(); }} modal={!inlineMode}>
         <SheetContent
           side="right"
