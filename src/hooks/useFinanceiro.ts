@@ -87,20 +87,26 @@ export function useUpsertConta() {
         }
       }
 
-      // Pré-checagem amigável de duplicidade (empresa + banco + agência + conta)
-      if (body.banco_codigo && body.agencia && body.conta) {
+      // Pré-checagem amigável de duplicidade — alinhada à realidade contábil:
+      // Múltiplas APLICAÇÕES (CDB, LCI, LCA, Fundos, Poupança) podem coexistir
+      // no mesmo banco/agência/conta-corrente, desde que tenham TIPO ou NOME distintos.
+      // Só consideramos duplicado quando empresa + banco + agência + conta + tipo + nome coincidem.
+      if (body.banco_codigo && body.agencia && body.conta && body.tipo && body.nome) {
         const dupQuery = supabase
           .from("financeiro_contas")
-          .select("id, nome")
+          .select("id, nome, tipo")
           .eq("empresa_id", empresaId)
           .eq("banco_codigo", body.banco_codigo)
           .eq("agencia", body.agencia)
-          .eq("conta", body.conta);
+          .eq("conta", body.conta)
+          .eq("tipo", body.tipo)
+          .ilike("nome", body.nome);
         if (payload.id) dupQuery.neq("id", payload.id);
         const { data: dup } = await dupQuery.maybeSingle();
         if (dup) {
           throw new Error(
-            `Já existe uma conta cadastrada com este banco, agência e número (${dup.nome}). Edite a conta existente ou utilize uma agência/número diferente.`,
+            `Já existe uma conta com mesmo banco, agência, número, tipo e nome ("${dup.nome}"). ` +
+              `Para cadastrar outra aplicação no mesmo banco, altere o nome (ex.: "CDB Itaú 30 dias", "LCI Itaú 90 dias") ou o tipo da conta.`,
           );
         }
       }
