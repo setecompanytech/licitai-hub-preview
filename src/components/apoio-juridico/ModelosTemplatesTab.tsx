@@ -799,16 +799,24 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
            A propriedade `zoom` escala todo o conteúdo (texto, ícones, paddings) de
            forma proporcional, respeitando a preferência do usuário em localStorage. */}
       <div
-        className="bg-card rounded-lg border border-border/60 shadow-sm p-3 space-y-2.5"
+        className="bg-card rounded-lg border border-border/60 shadow-sm p-3 space-y-2.5 max-w-full overflow-x-hidden"
         style={{ zoom: filterFontScale }}
       >
         {/* Controle de tamanho da fonte dos filtros */}
-        <div className="flex items-center justify-end gap-1 -mb-1">
+        <div className="flex items-center justify-end gap-1 -mb-1 flex-wrap">
           <span className="text-[11px] text-muted-foreground mr-1 hidden sm:inline">Tamanho da fonte</span>
+          {isFontCapped && (
+            <span
+              className="text-[10px] text-amber-600 dark:text-amber-400 mr-1"
+              title="O tamanho foi limitado para caber na tela atual"
+            >
+              limitado p/ tela
+            </span>
+          )}
           <Button
             variant="outline"
             size="sm"
-            className="h-6 w-6 p-0"
+            className="h-6 w-6 p-0 shrink-0"
             disabled={filterFontStep <= 0}
             onClick={() => setFilterFontStep(s => Math.max(0, s - 1))}
             title="Diminuir tamanho da fonte dos filtros"
