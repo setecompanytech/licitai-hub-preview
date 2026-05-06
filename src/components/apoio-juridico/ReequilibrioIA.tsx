@@ -4,16 +4,71 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { streamAIChat } from '@/lib/ai-stream';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
+import { exportLegalPDF, exportLegalWord } from '@/lib/legal-document-export';
 import {
   TrendingUp, Search, Sparkles, RefreshCw, Scale, Loader2, ArrowRight,
-  DollarSign, Users, Building2, FileText, AlertTriangle, CloudRain, Flame
+  DollarSign, Users, Building2, FileText, AlertTriangle, CloudRain, Flame,
+  FileDown, Plus, Trash2, Receipt, Quote, Paperclip, BookOpen,
 } from 'lucide-react';
+
+/* ── Tipo de instrumento contratual ── */
+type Instrumento = 'edital' | 'ata_srp' | 'contrato' | 'aditivo';
+const INSTRUMENTOS: Record<Instrumento, { label: string; desc: string; fundamento: string }> = {
+  edital: {
+    label: 'Edital de Licitação',
+    desc: 'Pleito ainda na fase pré-contratual (ex.: pedido fundamentado de adequação de preços antes da homologação).',
+    fundamento: 'Art. 81 e Art. 164 da Lei 14.133/2021 (impugnação/esclarecimentos).',
+  },
+  ata_srp: {
+    label: 'Ata de Registro de Preços (SRP)',
+    desc: 'Reequilíbrio de preços registrados em ATA SRP. Requer comprovação de fato superveniente que rompa a equação econômico-financeira do registro.',
+    fundamento: 'Art. 26 do Decreto 11.462/2023 e Art. 124, II, "d" da Lei 14.133/2021. Súmula TCU 247.',
+  },
+  contrato: {
+    label: 'Contrato Administrativo',
+    desc: 'Pleito de reequilíbrio formulado durante a execução de contrato administrativo (objeto principal do pedido formal).',
+    fundamento: 'Art. 124, II, "d", Art. 134 e Art. 135 da Lei 14.133/2021.',
+  },
+  aditivo: {
+    label: 'Termo Aditivo Contratual',
+    desc: 'Reequilíbrio em razão de fatos surgidos após aditivo contratual (qualitativo, quantitativo ou de prazo).',
+    fundamento: 'Arts. 124-125 c/c Art. 134 da Lei 14.133/2021.',
+  },
+};
+
+/* ── Item comparativo NF/cotação (antes vs depois) ── */
+type ItemComparativo = {
+  id: string;
+  descricao: string;     // descrição do item/insumo
+  unidade: string;       // un, kg, m, sc, l...
+  quantidade: number;    // por mês/contrato
+  precoAntes: number;    // R$ unitário à época da proposta (NF de entrada)
+  precoAtual: number;    // R$ unitário atual (NF/cotação posterior)
+  fonteAntes: string;    // NF nº..., fornecedor, data
+  fonteAtual: string;    // NF nº..., fornecedor, data
+};
+
+const novoItemComp = (): ItemComparativo => ({
+  id: crypto.randomUUID(),
+  descricao: '', unidade: 'un', quantidade: 0,
+  precoAntes: 0, precoAtual: 0,
+  fonteAntes: '', fonteAtual: '',
+});
+
+const calcVariacao = (antes: number, atual: number): number => {
+  if (!antes) return 0;
+  return ((atual - antes) / antes) * 100;
+};
 
 type Indice = {
   id: string; nome: string; sigla: string; fonte: string; periodo: string;
