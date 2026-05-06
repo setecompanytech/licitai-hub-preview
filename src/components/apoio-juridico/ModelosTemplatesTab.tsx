@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -23,7 +24,7 @@ import {
   Calculator, Filter, X, TrendingUp, Users, ChevronDown, ChevronUp,
   Scale, SlidersHorizontal, ListChecks, Target, Shield, Info,
   Landmark, Award, Upload, CheckCircle, Building2, User, FolderOpen, Hash,
-  Eye, FileCode, AArrowDown, AArrowUp, RotateCcw,
+  Eye, FileCode, AArrowDown, AArrowUp, RotateCcw, ArrowLeft,
 } from 'lucide-react';
 import { MODALIDADES, type ModalidadeLicitacao } from '@/data/modalidades-licitacao';
 import { useJuridicoPedidos, type JuridicoPedido } from '@/hooks/useJuridicoPedidos';
@@ -125,15 +126,23 @@ export default function ModelosTemplatesTab() {
   // ao invés do Sheet/Drawer modal — para parecer uma página própria.
   const [inlineMode, setInlineMode] = useState<boolean>(false);
 
-  // Deep-link: abrir modelo automaticamente via ?modelo=<id> (suporta nova aba)
+  // Deep-link: abrir modelo automaticamente via /apoio-juridico/redigir/:modeloId
+  // ou (legacy) ?modelo=<id> — ambos suportam abertura em nova aba.
+  const { modeloId: routeModeloId } = useParams<{ modeloId?: string }>();
+  const navigate = useNavigate();
   useEffect(() => {
+    if (routeModeloId) {
+      setActiveModeloId(routeModeloId);
+      setInlineMode(true);
+      return;
+    }
     const params = new URLSearchParams(window.location.search);
     const mid = params.get('modelo');
     if (mid) {
       setActiveModeloId(mid);
       setInlineMode(true);
     }
-  }, []);
+  }, [routeModeloId]);
   const [contexto, setContexto] = useState('');
   const [editalNum, setEditalNum] = useState('');
   const [selectedIndices, setSelectedIndices] = useState<string[]>([]);
@@ -690,14 +699,19 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
     setFatosPeticao([]);
     setPeticaoDocsTexto('');
     setPedidoAtivo(null);
-    // Se estiver no modo inline (deep-link), limpa o ?modelo= da URL ao fechar
+    // Se estiver no modo inline (deep-link), volta para a lista de modelos
     if (inlineMode) {
       setInlineMode(false);
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('modelo');
-        window.history.replaceState({}, '', url.toString());
-      } catch {}
+      // Se viemos da rota dedicada, navega de volta para a lista
+      if (routeModeloId) {
+        navigate('/apoio-juridico', { replace: true });
+      } else {
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('modelo');
+          window.history.replaceState({}, '', url.toString());
+        } catch {}
+      }
     }
   };
 
@@ -1049,6 +1063,19 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           {activeModelo && (
             <>
               <SheetHeader className="px-6 pt-6 pb-4 border-b border-border/50 shrink-0">
+                {inlineMode && (
+                  <div className="flex items-center gap-2 mb-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 text-xs"
+                      onClick={resetGeneration}
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      Voltar para a lista de modelos
+                    </Button>
+                  </div>
+                )}
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <SheetTitle className="flex items-center gap-2 text-base">

@@ -42,7 +42,7 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
   // Esse caminho é tratado como ação confiável do usuário pelos navegadores e nunca é
   // bloqueado por popup-blocker. Evitamos window.open() em onClick porque Safari/iOS e
   // Firefox mobile podem bloqueá-lo quando combinado com preventDefault em um <a>.
-  const href = `/apoio-juridico?modelo=${encodeURIComponent(m.id)}`;
+  const href = `/apoio-juridico/redigir/${encodeURIComponent(m.id)}`;
 
   // Para o cartão (article), simulamos um clique no link real para herdar o comportamento
   // nativo de abertura em nova aba — incluindo trusted user activation.
