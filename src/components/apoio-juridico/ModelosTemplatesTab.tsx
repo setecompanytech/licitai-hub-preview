@@ -1472,9 +1472,37 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
               </div>
             </>
           )}
-        </SheetContent>
-      </Sheet>
-      </div>
+        </section>
+      ) : (
+        <Sheet open={!!activeModelo} onOpenChange={(open) => { if (!open) resetGeneration(); }} modal>
+          <SheetContent
+            side="right"
+            className="w-full sm:max-w-none sm:w-[95vw] lg:w-[90vw] xl:w-[1400px] p-0 overflow-hidden flex flex-col"
+          >
+            {activeModelo && (
+              <SheetHeader className="px-6 pt-6 pb-4 border-b border-border/50 shrink-0">
+                <SheetTitle className="flex items-center gap-2 text-base">
+                  <Sparkles className="w-5 h-5 text-accent shrink-0" />
+                  <span className="truncate">{activeModelo.titulo}</span>
+                </SheetTitle>
+                <SheetDescription className="text-xs mt-1">
+                  Carregando editor de redação completo…
+                </SheetDescription>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Para a melhor experiência, abra este modelo em página dedicada:
+                </p>
+                <Button
+                  size="sm"
+                  className="mt-2 w-fit"
+                  onClick={() => { resetGeneration(); navigate(`/apoio-juridico/redigir/${activeModelo.id}`); }}
+                >
+                  Abrir página de redação
+                </Button>
+              </SheetHeader>
+            )}
+          </SheetContent>
+        </Sheet>
+      )}
 
       {/* ── Acervo de Modelos – Layout Forense (estilo Vade Mecum) ── */}
       {filteredModelos.length === 0 ? (
