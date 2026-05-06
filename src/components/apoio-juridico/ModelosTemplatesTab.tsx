@@ -1347,8 +1347,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
         </div>
       ) : (
         <div
-          className="gap-3 [column-fill:_balance]"
-          style={{ columnWidth: '260px', columnGap: '0.75rem' }}
+          className="gap-3 [column-fill:_balance] [column-width:200px] sm:[column-width:220px] md:[column-width:240px] lg:[column-width:260px] [column-gap:0.75rem]"
         >
           {categorias.map(cat => {
             const items = filteredModelos.filter(m => m.categoria === cat);
