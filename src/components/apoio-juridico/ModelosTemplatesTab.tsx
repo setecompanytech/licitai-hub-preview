@@ -572,12 +572,55 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
 
     const prompt = `Tipo de Documento: ${activeModelo.titulo}\nCategoria: ${activeModelo.categoria}\nFundamentação Legal: ${activeModelo.fundamentacao}${modalidade ? `\nModalidade: ${modalidade.nome}` : ''}${etapaFiltro ? `\nEtapa do Processo: ${etapaFiltro}` : ''}${criterioFiltro ? `\nCritério de Julgamento: ${modalidade?.criteriosJulgamento.find(c => c.id === criterioFiltro)?.nome || ''}` : ''}\nEdital/Contrato: ${editalNum || 'Não informado'}\n\nContexto do Usuário:\n${contexto}`;
 
+    // Mapeia categoria → tipo/prefixo de numeração
+    const cat = activeModelo.categoria.toLowerCase();
+    let tipoPedido: 'reajuste' | 'repactuacao' | 'revisao' | 'outros' = 'outros';
+    let prefixo = 'DOC';
+    if (cat === 'reequilíbrio' || cat === 'reequilibrio') {
+      if (activeModelo.titulo.toLowerCase().includes('reajuste')) { tipoPedido = 'reajuste'; prefixo = 'REQ'; }
+      else if (activeModelo.titulo.toLowerCase().includes('repactua')) { tipoPedido = 'repactuacao'; prefixo = 'REP'; }
+      else { tipoPedido = 'revisao'; prefixo = 'REV'; }
+    } else {
+      const prefMap: Record<string, string> = {
+        'esclarecimentos': 'ESC', 'impugnações': 'IMP', 'impugnacoes': 'IMP',
+        'recursos': 'REC', 'declarações': 'DCL', 'declaracoes': 'DCL',
+        'defesas': 'DEF', 'representações': 'RTC', 'representacoes': 'RTC',
+        'contratos': 'ADT', 'judicial': 'JUD', 'pareceres': 'PAR', 'propostas': 'PRP',
+      };
+      prefixo = prefMap[cat] || 'DOC';
+    }
+
+    let acumulado = '';
     await streamAIChat({
       messages: [{ role: 'user', content: prompt }],
       action: 'gerador_juridico',
       context: fullContext,
-      onDelta: (text) => setResultado(prev => prev + text),
-      onDone: () => setGerando(false),
+      onDelta: (text) => { acumulado += text; setResultado(prev => prev + text); },
+      onDone: async () => {
+        setGerando(false);
+        // Persiste como pedido (cria novo ou nova versão do ativo)
+        try {
+          let pedidoRef = pedidoAtivo;
+          if (!pedidoRef || pedidoRef.modelo_id !== activeModelo.id) {
+            pedidoRef = await criarPedido({
+              tipo: tipoPedido,
+              modelo_id: activeModelo.id,
+              modelo_titulo: activeModelo.titulo,
+              categoria: activeModelo.categoria,
+              prefixo_numero: prefixo,
+              pregao_numero: editalNum || undefined,
+              orgao_contratante: processo?.orgao || undefined,
+              dados_caso: { contexto, modalidade: modalidade?.nome, etapa: etapaFiltro, criterio: criterioFiltro },
+            });
+            if (pedidoRef) setPedidoAtivo(pedidoRef);
+          }
+          if (pedidoRef && acumulado.trim()) {
+            await salvarVersao(pedidoRef, acumulado, `Geração IA — ${activeModelo.titulo}`, 'gerador_juridico');
+          }
+        } catch (e) {
+          console.error('[ModelosTemplates] persist pedido falhou', e);
+        }
+      },
       onError: (err) => { toast.error(err); setGerando(false); },
     });
   };
