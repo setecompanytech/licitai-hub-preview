@@ -1380,24 +1380,25 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
               return (
                 <section key={cat} className="bg-background">
                   {/* Cabeçalho do capítulo — faixa institucional
-                      Contraste: usa secondary (token semântico) com foreground sólido,
-                      garantindo AA em light/dark. Fallback de cor sólida via bg-secondary
-                      antes da camada translúcida primary, evitando texto sobre fundo fraco. */}
-                  <header className="sticky top-0 z-[1] flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 sm:py-3 bg-secondary supports-[backdrop-filter]:bg-secondary/95 backdrop-blur-sm border-y border-border text-secondary-foreground shadow-[inset_3px_0_0_0_hsl(var(--accent))]">
-                    <div className="flex items-baseline gap-2.5 sm:gap-3 min-w-0">
-                      <span className="text-[13px] sm:text-sm font-bold text-secondary-foreground tabular-nums tracking-wider shrink-0">
+                      Tipografia e espaçamento uniformes em todos os breakpoints.
+                      Contraste AA garantido: bg-secondary + text-secondary-foreground
+                      (par de tokens validado em light/dark). Fallback sólido antes
+                      do blur para navegadores sem backdrop-filter. */}
+                  <header className="sticky top-0 z-[1] flex items-center justify-between gap-3 px-4 py-2.5 bg-secondary supports-[backdrop-filter]:bg-secondary/95 backdrop-blur-sm border-y border-border text-secondary-foreground shadow-[inset_3px_0_0_0_hsl(var(--accent))]">
+                    <div className="flex items-baseline gap-2.5 min-w-0">
+                      <span className="text-[13px] font-bold text-secondary-foreground tabular-nums tracking-wider shrink-0">
                         CAP. {romano}
                       </span>
-                      <span className="w-px h-3.5 bg-border shrink-0" aria-hidden="true" />
-                      <h3 className="text-[13px] sm:text-[14px] font-bold uppercase tracking-[0.12em] text-secondary-foreground truncate">
+                      <span className="w-px h-3.5 bg-secondary-foreground/30 shrink-0" aria-hidden="true" />
+                      <h3 className="text-[13px] font-bold uppercase tracking-[0.12em] text-secondary-foreground truncate">
                         {cat}
                       </h3>
-                      <span className="text-[11px] sm:text-[12px] text-muted-foreground tabular-nums shrink-0">
+                      <span className="text-[12px] text-secondary-foreground/75 tabular-nums shrink-0">
                         ({items.length} {items.length === 1 ? 'peça' : 'peças'})
                       </span>
                     </div>
                     {catCount > 0 && (
-                      <Badge className="text-[10px] sm:text-[11px] gap-1 bg-background text-foreground border-border shrink-0 h-5 px-2 tabular-nums">
+                      <Badge className="text-[11px] gap-1 bg-background text-foreground border-border shrink-0 h-5 px-2 tabular-nums">
                         <FileText className="w-3 h-3" /> {catCount} emitida{catCount === 1 ? '' : 's'}
                       </Badge>
                     )}
