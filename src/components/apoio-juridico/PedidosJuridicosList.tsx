@@ -151,7 +151,53 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
             <Badge variant="outline" className="text-[10px] gap-1 whitespace-nowrap">
               <History className="w-3 h-3" /> v{p.versoes_count || 0}
             </Badge>
-            <div className="flex gap-1 flex-shrink-0">
+            <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end">
+              <Button
+                size="sm" variant="ghost"
+                className="h-7 px-2 text-muted-foreground hover:text-foreground"
+                disabled={!podeMarcarRascunho(p)}
+                title={podeMarcarRascunho(p) ? 'Voltar para Rascunho' : 'Indisponível para este status'}
+                onClick={() => acaoRascunho(p)}
+              >
+                <FileEdit className="w-3 h-3 mr-1" /> Rascunho
+              </Button>
+              <Button
+                size="sm" variant="ghost"
+                className="h-7 px-2 text-purple-600 hover:bg-purple-500/10 disabled:text-muted-foreground"
+                disabled={!podeEnviar(p)}
+                title={podeEnviar(p) ? 'Registrar protocolo / envio ao órgão' : 'Gere uma versão e avance o status para enviar'}
+                onClick={() => acaoEnviar(p)}
+              >
+                <Send className="w-3 h-3 mr-1" /> Enviar
+              </Button>
+              <Button
+                size="sm" variant="ghost"
+                className="h-7 px-2 text-emerald-600 hover:bg-emerald-500/10 disabled:text-muted-foreground"
+                disabled={!podeRegistrarResultado(p)}
+                title={podeRegistrarResultado(p) ? 'Registrar deferimento' : 'Disponível após protocolo'}
+                onClick={() => acaoResultado(p, 'deferido')}
+              >
+                <CheckCircle2 className="w-3 h-3 mr-1" /> Deferido
+              </Button>
+              <Button
+                size="sm" variant="ghost"
+                className="h-7 px-2 text-destructive hover:bg-destructive/10 disabled:text-muted-foreground"
+                disabled={!podeRegistrarResultado(p)}
+                title={podeRegistrarResultado(p) ? 'Registrar indeferimento' : 'Disponível após protocolo'}
+                onClick={() => acaoResultado(p, 'indeferido')}
+              >
+                <XCircle className="w-3 h-3 mr-1" /> Indeferido
+              </Button>
+              <Button
+                size="sm" variant="ghost"
+                className="h-7 px-2 text-yellow-600 hover:bg-yellow-500/10 disabled:text-muted-foreground"
+                disabled={!podeRegistrarResultado(p)}
+                title={podeRegistrarResultado(p) ? 'Deferimento parcial' : 'Disponível após protocolo'}
+                onClick={() => acaoResultado(p, 'parcialmente_deferido')}
+              >
+                <ShieldAlert className="w-3 h-3 mr-1" /> Parcial
+              </Button>
+
               <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setDetalhe(p)}>
                 <Eye className="w-3 h-3 mr-1" /> Abrir
               </Button>
