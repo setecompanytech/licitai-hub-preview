@@ -124,22 +124,23 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
         >
           <a
             href={href}
-            title="Redigir (Shift/Cmd/Ctrl+clique abre em nova aba)"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Redigir (abre em nova aba)"
             onClick={(e) => {
               e.stopPropagation();
-              // Shift → força nova aba (sobrescreve o default de "nova janela" do navegador)
-              if (e.shiftKey) {
-                e.preventDefault();
-                window.open(href, '_blank', 'noopener,noreferrer');
-                return;
-              }
-              // Cmd/Ctrl/middle: deixa o navegador abrir em nova aba nativamente
-              if (e.metaKey || e.ctrlKey || (e as React.MouseEvent).button === 1) return;
+              // Cmd/Ctrl/Shift/middle: deixa o navegador agir nativamente
+              if (e.metaKey || e.ctrlKey || e.shiftKey || (e as React.MouseEvent).button === 1) return;
+              // Clique simples → força nova aba/janela COMPLETA (top-level, sem iframe/embed)
               e.preventDefault();
-              onAbrir();
+              const win = window.open(href, '_blank', 'noopener,noreferrer');
+              // Fallback (popup-blocker): navega na própria aba para não travar o usuário
+              if (!win) {
+                window.location.href = href;
+              }
             }}
             onAuxClick={(e) => {
-              // Botão do meio do mouse → nova aba (comportamento nativo do <a>)
+              // Botão do meio do mouse → comportamento nativo do <a target="_blank">
               e.stopPropagation();
             }}
           >
