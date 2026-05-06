@@ -247,10 +247,10 @@ export default function ReequilibrioIA() {
     };
 
     const tipoFatoLabels: Record<string, string> = {
-      caso_fortuito: 'Caso Fortuito (evento natural imprevisível)',
-      forca_maior: 'Força Maior (evento humano irresistível)',
-      fato_principe: 'Fato do Príncipe (ação geral da Administração que repercute sobre o contrato)',
-      fato_superveniente: 'Fato Superveniente Imprevisível (alea extraordinária e extracontratual)',
+      caso_fortuito: 'Caso Fortuito (evento imprevisível, em regra de origem humana ou interna — ex.: greves, atos de terceiros, falhas operacionais — CC art. 393)',
+      forca_maior: 'Força Maior (evento irresistível, em regra de origem natural ou externa — ex.: enchentes, pandemias, desastres naturais — CC art. 393)',
+      fato_principe: 'Fato do Príncipe (ato geral e extracontratual do Poder Público que repercute indiretamente sobre o contrato — ex.: nova tributação, embargo geral)',
+      fato_superveniente: 'Álea Econômica Extraordinária / Fato Superveniente Imprevisível (Teoria da Imprevisão — Lei 14.133/2021, art. 124, II, "d")',
     };
 
     const instrumentoInfo = INSTRUMENTOS[instrumento];
@@ -765,10 +765,10 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                     onChange={e => setTipoFato(e.target.value as typeof tipoFato)}
                     className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
-                    <option value="caso_fortuito">☁️ Caso Fortuito (evento natural imprevisível)</option>
-                    <option value="forca_maior">🔥 Força Maior (evento humano irresistível)</option>
-                    <option value="fato_principe">🏛️ Fato do Príncipe (ação da Administração)</option>
-                    <option value="fato_superveniente">📋 Fato Superveniente Imprevisível</option>
+                    <option value="caso_fortuito">☁️ Caso Fortuito (evento imprevisível — origem humana/interna: greves, atos de terceiros)</option>
+                    <option value="forca_maior">🔥 Força Maior (evento irresistível — origem natural/externa: enchentes, pandemias)</option>
+                    <option value="fato_principe">🏛️ Fato do Príncipe (ato geral do Poder Público que onera indiretamente o contrato)</option>
+                    <option value="fato_superveniente">📋 Álea Econômica Extraordinária (Teoria da Imprevisão — art. 124, II, "d")</option>
                   </select>
                 </div>
                 <div>
