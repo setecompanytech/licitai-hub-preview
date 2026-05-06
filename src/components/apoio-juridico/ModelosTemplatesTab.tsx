@@ -123,6 +123,12 @@ export default function ModelosTemplatesTab() {
   const [resultado, setResultado] = useState('');
   const [gerando, setGerando] = useState(false);
 
+  // Pedidos jurídicos (persistência)
+  const { pedidos, criarPedido, salvarVersao } = useJuridicoPedidos();
+  const { processo } = useProcessoAtivo();
+  const [pedidoAtivo, setPedidoAtivo] = useState<JuridicoPedido | null>(null);
+  const [showPedidos, setShowPedidos] = useState(true);
+
   // Petition upload state
   const [showPeticaoUploader, setShowPeticaoUploader] = useState(false);
   const [fatosPeticao, setFatosPeticao] = useState<FatoPeticao[]>([]);
