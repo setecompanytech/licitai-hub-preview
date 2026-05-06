@@ -1249,74 +1249,131 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
             />
           )}
 
-          <div className="flex gap-2">
-            <Button onClick={handleGerar} disabled={gerando} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-              {gerando ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1" />}
-              Gerar Documento
-            </Button>
-            <Button variant="outline" onClick={resetGeneration}>Cancelar</Button>
-          </div>
-        </div>
-      )}
+                  </div>
+                </div>
 
-      {/* ── Result ── */}
-      {resultado && (
-        <div className="bg-card rounded-xl border border-border/50 p-6 shadow-sm space-y-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <h3 className="text-sm font-semibold">Documento Gerado — {activeModelo?.titulo}</h3>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={copyToClipboard}>
-                <Copy className="w-3 h-3 mr-1" /> Copiar
-              </Button>
-              <Button size="sm" variant="outline" className="gap-1" onClick={async () => {
-                const meta = {
-                  empresa: selectedEmpresa?.razao_social,
-                  cnpj: selectedEmpresa?.cnpj,
-                  edital: editalNum || undefined,
-                  modalidade: modalidade?.nome,
-                  fundamentacao: activeModelo?.fundamentacao,
-                  timbradoUrl: selectedEmpresa?.timbrado_url,
-                  certificado_nome: selectedEmpresa?.certificado_nome,
-                  certificado_tipo: selectedEmpresa?.certificado_tipo,
-                  rep_nome: selectedEmpresa?.rep_nome || undefined,
-                  rep_cpf: selectedEmpresa?.rep_cpf || undefined,
-                };
-                await exportLegalPDF(resultado, activeModelo?.titulo || 'Documento Jurídico', meta);
-                toast.success('PDF ABNT gerado com sucesso!');
-              }}>
-                <Download className="w-3 h-3" /> PDF (ABNT)
-              </Button>
-              <Button size="sm" variant="outline" className="gap-1" onClick={() => {
-                const meta = {
-                  empresa: selectedEmpresa?.razao_social,
-                  cnpj: selectedEmpresa?.cnpj,
-                  edital: editalNum || undefined,
-                  modalidade: modalidade?.nome,
-                  fundamentacao: activeModelo?.fundamentacao,
-                  timbradoUrl: selectedEmpresa?.timbrado_url,
-                  certificado_nome: selectedEmpresa?.certificado_nome,
-                  certificado_tipo: selectedEmpresa?.certificado_tipo,
-                  rep_nome: selectedEmpresa?.rep_nome || undefined,
-                  rep_cpf: selectedEmpresa?.rep_cpf || undefined,
-                };
-                exportLegalWord(resultado, activeModelo?.titulo || 'Documento Jurídico', meta);
-                toast.success('Word ABNT gerado com sucesso!');
-              }}>
-                <Download className="w-3 h-3" /> Word (ABNT)
-              </Button>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/30 border border-border/30">
-            <Info className="w-3.5 h-3.5 text-accent shrink-0" />
-            <p className="text-[10px] text-muted-foreground">
-              Formatação ABNT NBR 14724 · Times New Roman 12pt · Entrelinhas 1,5 · Citações 10pt recuadas 4cm · Margens 3cm/2cm
-            </p>
-          </div>
-          <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
-            <ReactMarkdown>{resultado}</ReactMarkdown>
-          </div>
-        </div>
-      )}
+                {/* Coluna direita: preview live ABNT */}
+                <div className="flex flex-col overflow-hidden bg-background">
+                  <div className="flex items-center justify-between gap-2 px-6 py-3 border-b border-border/50 shrink-0 flex-wrap">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Eye className="w-4 h-4 text-accent shrink-0" />
+                      <h4 className="text-xs font-semibold whitespace-nowrap">Preview ABNT em tempo real</h4>
+                      {gerando && (
+                        <Badge className="text-[10px] gap-1 bg-accent/10 text-accent border-accent/30 shrink-0">
+                          <Loader2 className="w-2.5 h-2.5 animate-spin" /> Gerando…
+                        </Badge>
+                      )}
+                      {!gerando && resultado && (
+                        <Badge className="text-[10px] gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/30 shrink-0">
+                          <CheckCircle className="w-2.5 h-2.5" /> Pronto
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 shrink-0">
+                      <Button
+                        size="sm"
+                        onClick={handleGerar}
+                        disabled={gerando}
+                        className="bg-accent hover:bg-accent/90 text-accent-foreground h-8 text-xs shrink-0"
+                      >
+                        {gerando ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                        {resultado && !gerando ? 'Regerar' : 'Gerar'}
+                      </Button>
+                      {resultado && !gerando && (
+                        <>
+                          <Button size="sm" variant="outline" onClick={copyToClipboard} className="h-8 text-xs shrink-0">
+                            <Copy className="w-3 h-3 mr-1" /> Copiar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1 h-8 text-xs shrink-0"
+                            onClick={async () => {
+                              const meta = {
+                                empresa: selectedEmpresa?.razao_social,
+                                cnpj: selectedEmpresa?.cnpj,
+                                edital: editalNum || undefined,
+                                modalidade: modalidade?.nome,
+                                fundamentacao: activeModelo?.fundamentacao,
+                                timbradoUrl: selectedEmpresa?.timbrado_url,
+                                certificado_nome: selectedEmpresa?.certificado_nome,
+                                certificado_tipo: selectedEmpresa?.certificado_tipo,
+                                rep_nome: selectedEmpresa?.rep_nome || undefined,
+                                rep_cpf: selectedEmpresa?.rep_cpf || undefined,
+                              };
+                              await exportLegalPDF(resultado, activeModelo?.titulo || 'Documento Jurídico', meta);
+                              toast.success('PDF ABNT gerado!');
+                            }}
+                          >
+                            <Download className="w-3 h-3" /> PDF
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1 h-8 text-xs shrink-0"
+                            onClick={() => {
+                              const meta = {
+                                empresa: selectedEmpresa?.razao_social,
+                                cnpj: selectedEmpresa?.cnpj,
+                                edital: editalNum || undefined,
+                                modalidade: modalidade?.nome,
+                                fundamentacao: activeModelo?.fundamentacao,
+                                timbradoUrl: selectedEmpresa?.timbrado_url,
+                                certificado_nome: selectedEmpresa?.certificado_nome,
+                                certificado_tipo: selectedEmpresa?.certificado_tipo,
+                                rep_nome: selectedEmpresa?.rep_nome || undefined,
+                                rep_cpf: selectedEmpresa?.rep_cpf || undefined,
+                              };
+                              exportLegalWord(resultado, activeModelo?.titulo || 'Documento Jurídico', meta);
+                              toast.success('Word ABNT gerado!');
+                            }}
+                          >
+                            <Download className="w-3 h-3" /> Word
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto bg-muted/20 p-6">
+                    {!resultado && !gerando && (
+                      <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground gap-3 max-w-md mx-auto">
+                        <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center">
+                          <FileCode className="w-6 h-6 text-accent" />
+                        </div>
+                        <p className="text-sm font-medium">Preview do documento aparecerá aqui</p>
+                        <p className="text-xs">
+                          Preencha o contexto à esquerda e clique em <strong>Gerar</strong>.
+                          O texto é renderizado em tempo real conforme a IA escreve, com formatação ABNT
+                          (margens 3cm/2cm, espaçamento 1,5, citações recuadas).
+                        </p>
+                      </div>
+                    )}
+
+                    {(resultado || gerando) && (
+                      <div className="bg-background mx-auto rounded-md shadow-md border border-border/40 max-w-[210mm] min-h-[297mm] p-12">
+                        <div className="prose prose-sm max-w-none dark:prose-invert text-sm font-serif leading-[1.6]">
+                          <ReactMarkdown>{resultado || ''}</ReactMarkdown>
+                          {gerando && (
+                            <span className="inline-block w-2 h-4 bg-accent animate-pulse align-middle ml-0.5" />
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 px-6 py-2 border-t border-border/50 bg-muted/10 shrink-0">
+                    <Info className="w-3 h-3 text-accent shrink-0" />
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      ABNT NBR 14724 · Times New Roman 12pt · Entrelinhas 1,5 · Citações recuadas 4cm · Margens 3cm/2cm
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* ── Template Cards Grid ── */}
       {!activeModeloId && categorias.map(cat => {
