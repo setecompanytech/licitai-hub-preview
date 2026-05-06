@@ -198,6 +198,28 @@ export default function ReequilibrioIA() {
     (c.sindicato_laboral || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  /* ─────────── Tabela comparativa helpers ─────────── */
+  const addItemComp = () => setItensComp(p => [...p, novoItemComp()]);
+  const rmItemComp = (id: string) => setItensComp(p => p.filter(i => i.id !== id));
+  const updItemComp = (id: string, patch: Partial<ItemComparativo>) =>
+    setItensComp(p => p.map(i => (i.id === id ? { ...i, ...patch } : i)));
+
+  const itensCompValidos = itensComp.filter(i => i.descricao && (i.precoAntes > 0 || i.precoAtual > 0));
+
+  const tabelaComparativaMd = () => {
+    if (itensCompValidos.length === 0) return '';
+    const linhas = itensCompValidos.map(i => {
+      const v = calcVariacao(i.precoAntes, i.precoAtual);
+      const dif = (i.precoAtual - i.precoAntes) * (i.quantidade || 1);
+      return `| ${i.descricao} | ${i.unidade} | ${i.quantidade || '—'} | ${fmtCur(i.precoAntes)} | ${fmtCur(i.precoAtual)} | ${v >= 0 ? '+' : ''}${v.toFixed(2)}% | ${fmtCur(dif)} | ${i.fonteAntes || '—'} | ${i.fonteAtual || '—'} |`;
+    });
+    return [
+      '| Item / Insumo | Un. | Qtd. | Preço à época | Preço atual | Var. % | Impacto financeiro | NF/Cotação à época | NF/Cotação atual |',
+      '|---|---|---|---|---|---|---|---|---|',
+      ...linhas,
+    ].join('\n');
+  };
+
   const buildPrompt = () => {
     const indicesTexto = selectedIndices.map(id => {
       const i = indices.find(x => x.id === id);
@@ -218,11 +240,26 @@ export default function ReequilibrioIA() {
     };
 
     const tipoFatoLabels: Record<string, string> = {
-      caso_fortuito: 'Caso Fortuito',
-      forca_maior: 'Força Maior',
-      fato_principe: 'Fato do Príncipe (ação da Administração)',
-      fato_superveniente: 'Fato Superveniente Imprevisível',
+      caso_fortuito: 'Caso Fortuito (evento natural imprevisível)',
+      forca_maior: 'Força Maior (evento humano irresistível)',
+      fato_principe: 'Fato do Príncipe (ação geral da Administração que repercute sobre o contrato)',
+      fato_superveniente: 'Fato Superveniente Imprevisível (alea extraordinária e extracontratual)',
     };
+
+    const instrumentoInfo = INSTRUMENTOS[instrumento];
+
+    const dadosInstrumento = (() => {
+      switch (instrumento) {
+        case 'edital':
+          return `Edital/Pregão: ${pregaoNum || 'Não informado'}\nProcesso Administrativo: ${processoAdm || 'Não informado'}`;
+        case 'ata_srp':
+          return `ATA SRP nº: ${ataNum || 'Não informado'}\nPregão: ${pregaoNum || 'Não informado'}\nProcesso Administrativo: ${processoAdm || 'Não informado'}`;
+        case 'contrato':
+          return `Contrato Administrativo nº: ${contrato || 'Não informado'}\nPregão: ${pregaoNum || 'Não informado'}\nProcesso Administrativo: ${processoAdm || 'Não informado'}`;
+        case 'aditivo':
+          return `Termo Aditivo nº: ${aditivoNum || 'Não informado'}\nContrato Administrativo originário nº: ${contrato || 'Não informado'}\nPregão: ${pregaoNum || 'Não informado'}\nProcesso Administrativo: ${processoAdm || 'Não informado'}`;
+      }
+    })();
 
     let instrucoes = '';
     if (mecanismo === 'reajuste') {
@@ -230,43 +267,41 @@ export default function ReequilibrioIA() {
 INSTRUÇÕES PARA REAJUSTE:
 - Tipo: Reajuste por índice contratual (sentido estrito).
 - Fundamente com Art. 92, §3º e Art. 135, I da Lei 14.133/2021.
-- O reajuste é automático, por apostilamento, após 12 meses da proposta ou último reajuste.
-- Demonstre a variação do índice contratual no período (utilize os índices selecionados).
-- Estruture: CABEÇALHO, DO OBJETO, DO ÍNDICE CONTRATUAL, DA DEMONSTRAÇÃO DO REAJUSTE (cálculo numérico), DO APOSTILAMENTO, CONCLUSÃO.
-- Linguagem técnica, objetiva, impessoal. Formato auditável.`;
+- O reajuste é automático, por apostilamento, após 12 meses da proposta ou último reajuste (anualidade).
+- Demonstre matematicamente a variação do índice contratual no período.
+- Cite, se cabível, Acórdãos do TCU sobre apostilamento (ex.: Acórdão 1.563/2004-Plenário).`;
     } else if (mecanismo === 'repactuacao') {
       instrucoes = `
 INSTRUÇÕES PARA REPACTUAÇÃO:
-- Tipo: Repactuação por variação de custos de mão de obra.
-- Fundamente com Art. 135, I da Lei 14.133/2021.
-- Exclusiva para serviços com dedicação exclusiva de MO.
-- Não é automática: requer demonstração da variação real dos custos via planilha.
-- Respeita anualidade vinculada à CCT/Dissídio Coletivo.
-- Utilize os dados das CCTs selecionadas como fundamentação.
-- Estruture: CABEÇALHO, DO OBJETO DO CONTRATO, DA CONVENÇÃO COLETIVA APLICÁVEL, DA DEMONSTRAÇÃO DA VARIAÇÃO DE CUSTOS (planilha antes/depois), DO CÁLCULO DA REPACTUAÇÃO, DO PEDIDO, CONCLUSÃO.
-- Inclua comparativo de planilha de custos (valores antigos x novos).`;
+- Tipo: Repactuação por variação de custos de mão de obra (Art. 135, I da Lei 14.133/2021).
+- Exclusiva para serviços com dedicação exclusiva de MO; demonstração analítica obrigatória (planilha antes/depois).
+- Vinculação à CCT/Dissídio Coletivo registrado no MTE.
+- Cite Súmula TCU 277 (limitação a custos efetivamente impactados) quando aplicável.`;
     } else {
       instrucoes = `
 INSTRUÇÕES PARA REVISÃO (REEQUILÍBRIO STRICTO SENSU):
-- Tipo: Revisão contratual por fato extraordinário.
-- Fato gerador: ${tipoFatoLabels[tipoFato]}.
-- Descrição do fato: ${fatoGerador || 'Não informado'}
-- Fundamente com Art. 124, II, "d" e Art. 134, §§2º e 4º da Lei 14.133/2021.
-- Aplique a Teoria da Imprevisão e cite jurisprudência do TCU quando cabível.
-- Pode ocorrer a qualquer tempo, sem periodicidade mínima, mesmo que já tenha havido reajuste no mesmo período (fatos geradores distintos).
-- Estruture: CABEÇALHO, DO OBJETO, DOS FATOS (narrativa detalhada com dados numéricos), DA FUNDAMENTAÇÃO LEGAL (imprevisibilidade/álea extraordinária), DA DEMONSTRAÇÃO DO IMPACTO ECONÔMICO, DO NEXO CAUSAL, DO PEDIDO, CONCLUSÃO.
-- Demonstre o nexo entre o fato e a onerosidade excessiva.`;
+- Tipo: Revisão por fato extraordinário e imprevisível.
+- Fato gerador qualificado: ${tipoFatoLabels[tipoFato]}.
+- Descrição: ${fatoGerador || 'Não informado'}
+- Fundamentação obrigatória: Art. 124, II, "d", Art. 134, §§ 2º e 4º, e Art. 135 da Lei 14.133/2021; arts. 317 e 478 do Código Civil (teoria da imprevisão e onerosidade excessiva).
+- Doutrina: Marçal Justen Filho ("Comentários à Lei de Licitações"); Maria Sylvia Z. Di Pietro ("Direito Administrativo"); Jessé Torres Pereira Junior.
+- Jurisprudência TCU: Acórdãos 1.595/2006-Plenário, 2.495/2018-Plenário, 1.431/2017-Plenário (necessidade de demonstração do nexo causal e da imprevisibilidade).
+- Demonstre nexo causal entre o fato e a onerosidade excessiva, com prova documental (NF antes/depois, cotações).`;
     }
 
-    return `Gere um pedido formal de ${mecanismoLabels[mecanismo]} com fundamentação técnica e jurídica conforme a Lei 14.133/2021.
+    return `Gere um PEDIDO FORMAL ESCRITO segundo o padrão jurídico-técnico brasileiro de petições administrativas em licitações, com a estrutura ABAIXO RIGOROSAMENTE OBSERVADA, em linguagem culta, formal, impessoal e auditável, conforme padrão da Lei 14.133/2021.
+
+INSTRUMENTO CONTRATUAL: ${instrumentoInfo.label.toUpperCase()}
+Fundamento do instrumento: ${instrumentoInfo.fundamento}
 
 MECANISMO JURÍDICO: ${mecanismoLabels[mecanismo]}
 
-DADOS DO CONTRATO:
-Contrato: ${contrato || 'Não informado'}
+DADOS DA EMPRESA REQUERENTE:
+${empresaSel ? `Razão Social: ${empresaSel.razao_social || empresaSel.nome_fantasia || ''}\nCNPJ: ${empresaSel.cnpj || 'N/I'}\nEndereço: ${empresaSel.endereco || 'N/I'}` : 'A preencher pelo usuário.'}
+
+DADOS DO INSTRUMENTO ATACADO:
+${dadosInstrumento}
 Órgão Contratante: ${orgao || 'Não informado'}
-Itens afetados: ${itensAfetados || 'Não informado'}
-Observações: ${observacoes || 'Nenhuma'}
 
 ÍNDICES ECONÔMICOS OFICIAIS SELECIONADOS:
 ${indicesTexto || 'Nenhum índice selecionado'}
@@ -274,9 +309,91 @@ ${indicesTexto || 'Nenhum índice selecionado'}
 CONVENÇÕES COLETIVAS / DISSÍDIOS SELECIONADOS:
 ${cctsTexto || 'Nenhuma CCT selecionada'}
 
+ITENS AFETADOS (descrição livre):
+${itensAfetados || 'Não informado'}
+
+DEMONSTRAÇÃO COMPARATIVA DE PREÇOS (NF/Cotações antes vs atual):
+${tabelaComparativaMd() || 'Não informado'}
+
+ANEXOS PROBATÓRIOS RELACIONADOS (descrição):
+${anexos || 'Não há descrição adicional de anexos.'}
+
+OBSERVAÇÕES ADICIONAIS:
+${observacoes || 'Nenhuma'}
+
 ${instrucoes}
 
-IMPORTANTE: Utilize linguagem técnica, objetiva e impessoal, conforme padrão auditável para processos licitatórios. Inclua demonstração numérica.`;
+ESTRUTURA OBRIGATÓRIA DO DOCUMENTO (siga RIGOROSAMENTE os títulos, na ordem):
+
+1. CABEÇALHO (com endereçamento ao órgão, identificação do instrumento, do processo administrativo e do interessado)
+2. SUMÁRIO (lista de seções com numeração romana)
+3. I — PRELIMINARMENTE (qualificação da requerente, eventuais alterações cadastrais/societárias se houver)
+4. II — SÍNTESE DOS FATOS (narrativa cronológica objetiva)
+5. III — DO DESEQUILÍBRIO ECONÔMICO-FINANCEIRO E SEUS EFEITOS PRÁTICOS
+   3.1. Da teoria da imprevisão e da garantia de exequibilidade dos contratos
+   3.2. Do caso fortuito, força maior e fato do príncipe (quando aplicável)
+   3.3. Das mudanças mercadológicas (quando aplicável)
+   3.4. Da recomposição do equilíbrio econômico-financeiro
+6. IV — DO DIREITO AO REEQUILÍBRIO (fundamentação legal, doutrinária e jurisprudencial — Lei 14.133/2021, CC/2002, TCU, doutrina)
+7. V — DO ITEM PRECIFICADO E SUA DESATUALIZAÇÃO (apresentar a tabela comparativa fornecida acima em formato de tabela markdown, com cabeçalho explicativo)
+8. VI — DO PEDIDO (deferimento expresso, com indicação do percentual de recomposição e/ou dos novos preços unitários requeridos)
+9. REFERÊNCIAS (legislação, doutrina e jurisprudência citadas)
+10. ANEXOS — relação dos atos probatórios (NFs, cotações, alterações contratuais, etc.)
+
+REGRAS DE REDAÇÃO ABSOLUTAS:
+- NÃO use emojis, ícones, figurinhas ou qualquer caractere decorativo.
+- Linguagem formal, impessoal, técnica, em conformidade com o padrão de petições administrativas brasileiras.
+- Numeração romana (I, II, III...) para seções principais; arábica para subitens.
+- Ao apresentar a tabela comparativa, reproduza-a em sintaxe markdown e logo após faça a análise quantitativa do impacto.
+- Cite expressamente os artigos da Lei 14.133/2021 e, quando cabível, do Código Civil (arts. 317, 393 e 478) e Acórdãos do TCU.
+- Conclua com pedido de deferimento, em forma de capítulo "VI — DO PEDIDO", e fórmula final "Nestes termos, pede deferimento."`;
+  };
+
+  /* ─────────── Export PDF/Word ─────────── */
+  const docTitle = () => {
+    const mecLabel = mecanismo === 'reajuste' ? 'Reajuste Contratual' :
+      mecanismo === 'repactuacao' ? 'Repactuação' : 'Reequilíbrio Econômico-Financeiro';
+    return `Pedido de ${mecLabel}`;
+  };
+
+  const exportarPDF = async () => {
+    if (!pedidoGerado) return;
+    setExporting('pdf');
+    try {
+      await exportLegalPDF(pedidoGerado, docTitle(), {
+        empresa: empresaSel?.razao_social || empresaSel?.nome_fantasia || undefined,
+        cnpj: empresaSel?.cnpj || undefined,
+        edital: instrumento === 'contrato' ? contrato : instrumento === 'ata_srp' ? ataNum : pregaoNum,
+        modalidade: INSTRUMENTOS[instrumento].label,
+        fundamentacao: info.fundamento,
+        timbradoUrl: (empresaSel as any)?.timbrado_url || null,
+      });
+      toast.success('PDF gerado com sucesso');
+    } catch (e: any) {
+      toast.error('Falha ao gerar PDF: ' + (e?.message || ''));
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const exportarWord = () => {
+    if (!pedidoGerado) return;
+    setExporting('word');
+    try {
+      exportLegalWord(pedidoGerado, docTitle(), {
+        empresa: empresaSel?.razao_social || empresaSel?.nome_fantasia || undefined,
+        cnpj: empresaSel?.cnpj || undefined,
+        edital: instrumento === 'contrato' ? contrato : instrumento === 'ata_srp' ? ataNum : pregaoNum,
+        modalidade: INSTRUMENTOS[instrumento].label,
+        fundamentacao: info.fundamento,
+        timbradoUrl: (empresaSel as any)?.timbrado_url || null,
+      });
+      toast.success('Word gerado com sucesso');
+    } catch (e: any) {
+      toast.error('Falha ao gerar Word: ' + (e?.message || ''));
+    } finally {
+      setExporting(null);
+    }
   };
 
   const handleGerarPedido = async () => {
