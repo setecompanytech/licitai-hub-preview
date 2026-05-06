@@ -129,6 +129,10 @@ export function useJuridicoPedidos(filtroTipo?: JuridicoPedidoTipo) {
     aditivo_numero?: string;
     orgao_contratante?: string;
     dados_caso?: Record<string, unknown>;
+    modelo_id?: string;
+    modelo_titulo?: string;
+    categoria?: string;
+    prefixo_numero?: string;
   }) => {
     if (!empresaAtiva?.id || !user) {
       toast.error('Selecione uma empresa ativa para criar o pedido');
@@ -148,6 +152,10 @@ export function useJuridicoPedidos(filtroTipo?: JuridicoPedidoTipo) {
       aditivo_numero: input.aditivo_numero ?? null,
       orgao_contratante: input.orgao_contratante ?? null,
       dados_caso: input.dados_caso ?? {},
+      modelo_id: input.modelo_id ?? null,
+      modelo_titulo: input.modelo_titulo ?? null,
+      categoria: input.categoria ?? null,
+      prefixo_numero: input.prefixo_numero ?? null,
     };
     const { data, error } = await supabase
       .from('juridico_pedidos' as any)
