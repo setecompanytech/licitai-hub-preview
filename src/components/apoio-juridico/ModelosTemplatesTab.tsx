@@ -1336,7 +1336,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
         </SheetContent>
       </Sheet>
 
-      {/* ── Template Cards Grid (sempre visível; Sheet sobrepõe ao gerar) ── */}
+      {/* ── Acervo de Modelos – Layout Forense (estilo Vade Mecum) ── */}
       {filteredModelos.length === 0 ? (
         <div className="bg-card rounded-xl border border-dashed border-border/50 p-10 text-center">
           <Filter className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
@@ -1346,60 +1346,95 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           </Button>
         </div>
       ) : (
-        <div
-          className="gap-3 [column-fill:_balance] [column-width:200px] sm:[column-width:220px] md:[column-width:240px] lg:[column-width:260px] [column-gap:0.75rem]"
-        >
-          {categorias.map(cat => {
-            const items = filteredModelos.filter(m => m.categoria === cat);
-            if (items.length === 0) return null;
-            const catCount = pedidos.filter(p => p.categoria === cat).length;
-            return (
-              <section
-                key={cat}
-                className="mb-3 break-inside-avoid rounded-lg border border-border/50 bg-card/40 overflow-hidden"
-              >
-                {/* Faixa-título destacada e compacta */}
-                <header className="flex items-center justify-between gap-2 px-2.5 py-1.5 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/40">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="inline-block w-0.5 h-3.5 bg-primary rounded-sm shrink-0" />
-                    <BookOpen className="w-3 h-3 text-primary shrink-0" />
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-foreground truncate">
-                      {cat}
-                    </h3>
-                    <Badge variant="outline" className="text-[9px] h-3.5 px-1 shrink-0 bg-background/60">
-                      {items.length}
-                    </Badge>
-                  </div>
-                  {catCount > 0 && (
-                    <Badge className="text-[9px] gap-0.5 bg-accent/15 text-accent border-accent/30 shrink-0 h-3.5 px-1">
-                      <FileText className="w-2 h-2" /> {catCount}
-                    </Badge>
-                  )}
-                </header>
+        <div className="bg-card border border-border/60 rounded-md overflow-hidden shadow-sm">
+          {/* Cabeçalho institucional */}
+          <div className="px-4 py-3 border-b-2 border-primary/30 bg-gradient-to-b from-primary/[0.04] to-transparent">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground font-semibold">
+                  Praefectus · Acervo Jurídico
+                </p>
+                <h2 className="font-serif text-base font-bold text-foreground leading-tight mt-0.5">
+                  Compêndio de Modelos Processuais e Administrativos
+                </h2>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono shrink-0">
+                <span className="px-1.5 py-0.5 border border-border/60 rounded-sm bg-background/60">
+                  Lei nº 14.133/2021
+                </span>
+                <span className="px-1.5 py-0.5 border border-border/60 rounded-sm bg-background/60">
+                  {filteredModelos.length} peças
+                </span>
+              </div>
+            </div>
+          </div>
 
-                {/* Lista vertical compacta dentro de cada categoria — masonry distribui as seções entre as colunas */}
-                <div className="flex flex-col gap-1.5 p-1.5">
-                  {items.map(m => (
-                    <ModeloCard
-                      key={m.id}
-                      modelo={m}
-                      pedidosCount={pedidosPorModelo[m.id] || 0}
-                      onAbrir={() => {
-                        setActiveModeloId(m.id);
-                        setPedidoAtivo(null);
-                        setResultado('');
-                        setContexto('');
-                        setEditalNum(processo?.numero || '');
-                        setSelectedIndices([]);
-                        setSelectedCCTs([]);
-                        setSelectedDocs([]);
-                      }}
-                    />
-                  ))}
-                </div>
-              </section>
-            );
-          })}
+          {/* Capítulos por categoria */}
+          <div className="divide-y divide-border/60">
+            {categorias.map((cat, catIdx) => {
+              const items = filteredModelos.filter(m => m.categoria === cat);
+              if (items.length === 0) return null;
+              const catCount = pedidos.filter(p => p.categoria === cat).length;
+              const romano = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV'][catIdx] || String(catIdx + 1);
+
+              return (
+                <section key={cat} className="bg-background">
+                  {/* Cabeçalho do capítulo — faixa institucional */}
+                  <header className="sticky top-0 z-[1] flex items-center justify-between gap-3 px-3 py-2 bg-muted/40 backdrop-blur-sm border-b border-border/60">
+                    <div className="flex items-baseline gap-2.5 min-w-0">
+                      <span className="font-serif text-[11px] font-bold text-primary tabular-nums tracking-wider shrink-0">
+                        CAP. {romano}
+                      </span>
+                      <span className="w-px h-3 bg-border/80 shrink-0" />
+                      <h3 className="font-serif text-[12px] font-semibold uppercase tracking-[0.12em] text-foreground truncate">
+                        {cat}
+                      </h3>
+                      <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                        ({items.length} {items.length === 1 ? 'peça' : 'peças'})
+                      </span>
+                    </div>
+                    {catCount > 0 && (
+                      <Badge className="text-[9px] gap-0.5 bg-accent/15 text-accent border-accent/30 shrink-0 h-4 px-1.5 font-mono">
+                        <FileText className="w-2.5 h-2.5" /> {catCount} emitida{catCount === 1 ? '' : 's'}
+                      </Badge>
+                    )}
+                  </header>
+
+                  {/* Lista enumerada de modelos */}
+                  <div>
+                    {items.map((m, idx) => (
+                      <ModeloCard
+                        key={m.id}
+                        modelo={m}
+                        index={idx}
+                        pedidosCount={pedidosPorModelo[m.id] || 0}
+                        onAbrir={() => {
+                          setActiveModeloId(m.id);
+                          setPedidoAtivo(null);
+                          setResultado('');
+                          setContexto('');
+                          setEditalNum(processo?.numero || '');
+                          setSelectedIndices([]);
+                          setSelectedCCTs([]);
+                          setSelectedDocs([]);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+
+          {/* Rodapé institucional */}
+          <div className="px-4 py-2 border-t border-border/60 bg-muted/20 flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-[9.5px] text-muted-foreground font-mono">
+              Documento gerado em conformidade com a NBR 14.724 · ABNT
+            </p>
+            <p className="text-[9.5px] text-muted-foreground font-mono">
+              Fundamentação: Lei 14.133/2021, LC 123/2006, CF/88 art. 37
+            </p>
+          </div>
         </div>
       )}
     </div>
