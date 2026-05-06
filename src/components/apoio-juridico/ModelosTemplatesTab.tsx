@@ -19,9 +19,12 @@ import {
   MessageSquare, FileWarning, Gavel, ArrowUpDown, ShieldQuestion,
   Calculator, Filter, X, TrendingUp, Users, ChevronDown, ChevronUp,
   Scale, SlidersHorizontal, ListChecks, Target, Shield, Info,
-  Landmark, Award, Upload, CheckCircle, Building2, User
+  Landmark, Award, Upload, CheckCircle, Building2, User, FolderOpen, Hash
 } from 'lucide-react';
 import { MODALIDADES, type ModalidadeLicitacao } from '@/data/modalidades-licitacao';
+import { useJuridicoPedidos, type JuridicoPedido } from '@/hooks/useJuridicoPedidos';
+import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
+import PedidosJuridicosList from './PedidosJuridicosList';
 
 /* ── Types ── */
 type Modelo = {
