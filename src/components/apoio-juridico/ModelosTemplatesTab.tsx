@@ -126,15 +126,23 @@ export default function ModelosTemplatesTab() {
   // ao invés do Sheet/Drawer modal — para parecer uma página própria.
   const [inlineMode, setInlineMode] = useState<boolean>(false);
 
-  // Deep-link: abrir modelo automaticamente via ?modelo=<id> (suporta nova aba)
+  // Deep-link: abrir modelo automaticamente via /apoio-juridico/redigir/:modeloId
+  // ou (legacy) ?modelo=<id> — ambos suportam abertura em nova aba.
+  const { modeloId: routeModeloId } = useParams<{ modeloId?: string }>();
+  const navigate = useNavigate();
   useEffect(() => {
+    if (routeModeloId) {
+      setActiveModeloId(routeModeloId);
+      setInlineMode(true);
+      return;
+    }
     const params = new URLSearchParams(window.location.search);
     const mid = params.get('modelo');
     if (mid) {
       setActiveModeloId(mid);
       setInlineMode(true);
     }
-  }, []);
+  }, [routeModeloId]);
   const [contexto, setContexto] = useState('');
   const [editalNum, setEditalNum] = useState('');
   const [selectedIndices, setSelectedIndices] = useState<string[]>([]);
