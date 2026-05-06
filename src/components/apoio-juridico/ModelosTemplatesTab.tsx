@@ -699,14 +699,19 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
     setFatosPeticao([]);
     setPeticaoDocsTexto('');
     setPedidoAtivo(null);
-    // Se estiver no modo inline (deep-link), limpa o ?modelo= da URL ao fechar
+    // Se estiver no modo inline (deep-link), volta para a lista de modelos
     if (inlineMode) {
       setInlineMode(false);
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('modelo');
-        window.history.replaceState({}, '', url.toString());
-      } catch {}
+      // Se viemos da rota dedicada, navega de volta para a lista
+      if (routeModeloId) {
+        navigate('/apoio-juridico', { replace: true });
+      } else {
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('modelo');
+          window.history.replaceState({}, '', url.toString());
+        } catch {}
+      }
     }
   };
 
