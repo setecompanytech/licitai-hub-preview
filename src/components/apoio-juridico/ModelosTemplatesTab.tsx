@@ -23,7 +23,7 @@ import {
   Calculator, Filter, X, TrendingUp, Users, ChevronDown, ChevronUp,
   Scale, SlidersHorizontal, ListChecks, Target, Shield, Info,
   Landmark, Award, Upload, CheckCircle, Building2, User, FolderOpen, Hash,
-  Eye, FileCode
+  Eye, FileCode, AArrowDown, AArrowUp, RotateCcw,
 } from 'lucide-react';
 import { MODALIDADES, type ModalidadeLicitacao } from '@/data/modalidades-licitacao';
 import { useJuridicoPedidos, type JuridicoPedido } from '@/hooks/useJuridicoPedidos';
