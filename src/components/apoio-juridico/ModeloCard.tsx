@@ -35,9 +35,31 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
 
   const numero = String(index + 1).padStart(2, '0');
 
+  // Deep-link para abrir o modelo (suporta nova aba via Cmd/Ctrl+click ou botão do meio)
+  const href = `/apoio-juridico?modelo=${encodeURIComponent(m.id)}`;
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Permite o navegador tratar Cmd/Ctrl/Shift/middle-click nativamente
+    if (e.defaultPrevented) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) {
+      window.open(href, '_blank', 'noopener,noreferrer');
+      e.preventDefault();
+      return;
+    }
+    onAbrir();
+  };
+
+  const handleAuxClick = (e: React.MouseEvent) => {
+    if (e.button === 1) {
+      e.preventDefault();
+      window.open(href, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   return (
     <article
-      onClick={onAbrir}
+      onClick={handleCardClick}
+      onAuxClick={handleAuxClick}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAbrir(); } }}
