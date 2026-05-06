@@ -780,8 +780,55 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
         </div>
       )}
 
-      {/* ── Barra unificada: busca + modalidade + filtros (3 colunas, grid responsivo) ── */}
-      <div className="bg-card rounded-lg border border-border/60 shadow-sm p-3 space-y-2.5">
+      {/* ── Barra unificada: busca + modalidade + filtros (3 colunas, grid responsivo) ──
+           A propriedade `zoom` escala todo o conteúdo (texto, ícones, paddings) de
+           forma proporcional, respeitando a preferência do usuário em localStorage. */}
+      <div
+        className="bg-card rounded-lg border border-border/60 shadow-sm p-3 space-y-2.5"
+        style={{ zoom: filterFontScale }}
+      >
+        {/* Controle de tamanho da fonte dos filtros */}
+        <div className="flex items-center justify-end gap-1 -mb-1">
+          <span className="text-[11px] text-muted-foreground mr-1 hidden sm:inline">Tamanho da fonte</span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 w-6 p-0"
+            disabled={filterFontStep <= 0}
+            onClick={() => setFilterFontStep(s => Math.max(0, s - 1))}
+            title="Diminuir tamanho da fonte dos filtros"
+            aria-label="Diminuir tamanho da fonte dos filtros"
+          >
+            <AArrowDown className="w-3.5 h-3.5" />
+          </Button>
+          <span className="text-[10px] tabular-nums text-muted-foreground w-9 text-center">
+            {Math.round(filterFontScale * 100)}%
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 w-6 p-0"
+            disabled={filterFontStep >= FILTER_FONT_SCALES.length - 1}
+            onClick={() => setFilterFontStep(s => Math.min(FILTER_FONT_SCALES.length - 1, s + 1))}
+            title="Aumentar tamanho da fonte dos filtros"
+            aria-label="Aumentar tamanho da fonte dos filtros"
+          >
+            <AArrowUp className="w-3.5 h-3.5" />
+          </Button>
+          {filterFontStep !== 1 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 text-muted-foreground"
+              onClick={() => setFilterFontStep(1)}
+              title="Restaurar tamanho padrão"
+              aria-label="Restaurar tamanho padrão"
+            >
+              <RotateCcw className="w-3 h-3" />
+            </Button>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-5 relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
