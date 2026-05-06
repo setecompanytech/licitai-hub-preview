@@ -151,8 +151,8 @@ export default function ReequilibrioIA() {
   // Anexos probatórios (descrição livre — uploads ficam no DocumentosManager do processo)
   const [anexos, setAnexos] = useState('');
   // Empresa atual (para timbrado e dados)
-  const { empresas, empresaAtual } = useEmpresa();
-  const empresaSel = empresaAtual || empresas[0]?.empresa || null;
+  const { empresas, empresaAtiva } = useEmpresa();
+  const empresaSel = empresaAtiva || empresas[0]?.empresa || null;
   // Export
   const [exporting, setExporting] = useState<'pdf' | 'word' | null>(null);
 
