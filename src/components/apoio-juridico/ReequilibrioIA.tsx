@@ -747,31 +747,156 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-muted-foreground">Nº do Contrato</label>
-              <Input placeholder="CT-001/2026" className="mt-1" value={contrato} onChange={e => setContrato(e.target.value)} />
+          {/* Tipo de instrumento contratual */}
+          <div className="bg-muted/30 rounded-lg p-3 space-y-3">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-accent" />
+              <span className="text-xs font-semibold">Instrumento atacado</span>
             </div>
-            <div>
-              <label className="text-xs text-muted-foreground">Órgão Contratante</label>
-              <Input placeholder="Prefeitura de Belém" className="mt-1" value={orgao} onChange={e => setOrgao(e.target.value)} />
-            </div>
+            <Select value={instrumento} onValueChange={(v) => setInstrumento(v as Instrumento)}>
+              <SelectTrigger className="bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(INSTRUMENTOS) as Instrumento[]).map(k => (
+                  <SelectItem key={k} value={k}>{INSTRUMENTOS[k].label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground">{INSTRUMENTOS[instrumento].desc}</p>
+            <p className="text-[10px] text-muted-foreground">
+              <strong>Fundamento:</strong> {INSTRUMENTOS[instrumento].fundamento}
+            </p>
           </div>
 
+          {/* Identificação do processo (campos dinâmicos por instrumento) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground">Órgão Contratante</label>
+              <Input placeholder="Ex.: SEDUC/PA — Núcleo de Contratações" className="mt-1" value={orgao} onChange={e => setOrgao(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Processo Administrativo nº</label>
+              <Input placeholder="Ex.: E-2025/2821674" className="mt-1" value={processoAdm} onChange={e => setProcessoAdm(e.target.value)} />
+            </div>
+            {(instrumento === 'edital' || instrumento === 'ata_srp' || instrumento === 'contrato' || instrumento === 'aditivo') && (
+              <div>
+                <label className="text-xs text-muted-foreground">
+                  {instrumento === 'edital' ? 'Edital/Pregão nº' : 'Pregão de origem nº'}
+                </label>
+                <Input placeholder="Ex.: 90003/2024/SEDUC" className="mt-1" value={pregaoNum} onChange={e => setPregaoNum(e.target.value)} />
+              </div>
+            )}
+            {instrumento === 'ata_srp' && (
+              <div>
+                <label className="text-xs text-muted-foreground">ATA SRP nº</label>
+                <Input placeholder="Ex.: ATA 045/2025" className="mt-1" value={ataNum} onChange={e => setAtaNum(e.target.value)} />
+              </div>
+            )}
+            {(instrumento === 'contrato' || instrumento === 'aditivo') && (
+              <div>
+                <label className="text-xs text-muted-foreground">Contrato Administrativo nº</label>
+                <Input placeholder="Ex.: 068/2025" className="mt-1" value={contrato} onChange={e => setContrato(e.target.value)} />
+              </div>
+            )}
+            {instrumento === 'aditivo' && (
+              <div>
+                <label className="text-xs text-muted-foreground">Termo Aditivo nº</label>
+                <Input placeholder="Ex.: 1º TA / 2026" className="mt-1" value={aditivoNum} onChange={e => setAditivoNum(e.target.value)} />
+              </div>
+            )}
+          </div>
+
+          {/* Itens afetados — narrativa */}
           <div>
             <label className="text-xs text-muted-foreground">
-              {mecanismo === 'repactuacao' ? 'Itens de MO afetados e valores da planilha' : 'Itens afetados e variação de preço'}
+              {mecanismo === 'repactuacao' ? 'Itens de MO afetados (narrativa)' : 'Itens afetados (narrativa)'}
             </label>
             <Textarea
               placeholder={
-                mecanismo === 'reajuste' ? 'Ex: Valor mensal do contrato: R$ 50.000,00. Índice contratual: IPCA...' :
-                mecanismo === 'repactuacao' ? 'Ex: Servente: de R$ 1.780,00 para R$ 1.920,00 (CCT 2026). Encarregado: ...' :
-                'Ex: Cimento CP-II: de R$ 32,00 para R$ 40,00/saco (+25%) devido a...'
+                mecanismo === 'reajuste' ? 'Ex.: Valor mensal do contrato R$ 50.000,00. Índice contratual: IPCA...' :
+                mecanismo === 'repactuacao' ? 'Ex.: Servente: de R$ 1.780 para R$ 1.920 (CCT 2026)...' :
+                'Ex.: Insumo X impactado por choque de oferta entre [data] e [data]...'
               }
-              className="mt-1 min-h-[80px]"
+              className="mt-1 min-h-[70px]"
               value={itensAfetados}
               onChange={e => setItensAfetados(e.target.value)}
             />
+          </div>
+
+          {/* Tabela comparativa de preços — NF/cotação antes vs atual */}
+          <div className="bg-muted/30 rounded-lg p-3 space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-accent" />
+                <span className="text-xs font-semibold">Demonstração comparativa de preços</span>
+                <Badge variant="outline" className="text-[10px]">{itensCompValidos.length} válidos</Badge>
+              </div>
+              <Button size="sm" variant="outline" onClick={addItemComp}>
+                <Plus className="w-3 h-3 mr-1" /> Adicionar item
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Informe NFs de entrada e/ou cotações para comprovar a variação de preço entre a época do certame e o momento atual. Esta tabela será reproduzida no pedido como prova documental do desequilíbrio.
+            </p>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px] border-collapse">
+                <thead>
+                  <tr className="border-b border-border/40 text-muted-foreground">
+                    <th className="text-left p-2 font-medium whitespace-nowrap">Descrição</th>
+                    <th className="text-left p-2 font-medium whitespace-nowrap">Un.</th>
+                    <th className="text-right p-2 font-medium whitespace-nowrap">Qtd.</th>
+                    <th className="text-right p-2 font-medium whitespace-nowrap">Preço à época</th>
+                    <th className="text-right p-2 font-medium whitespace-nowrap">Preço atual</th>
+                    <th className="text-right p-2 font-medium whitespace-nowrap">Var. %</th>
+                    <th className="text-left p-2 font-medium whitespace-nowrap">NF/Cotação à época</th>
+                    <th className="text-left p-2 font-medium whitespace-nowrap">NF/Cotação atual</th>
+                    <th className="p-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {itensComp.map(it => {
+                    const v = calcVariacao(it.precoAntes, it.precoAtual);
+                    return (
+                      <tr key={it.id} className="border-b border-border/20">
+                        <td className="p-1"><Input className="h-7 text-[11px]" value={it.descricao} onChange={e => updItemComp(it.id, { descricao: e.target.value })} placeholder="Ex.: Cimento CP-II" /></td>
+                        <td className="p-1"><Input className="h-7 text-[11px] w-16" value={it.unidade} onChange={e => updItemComp(it.id, { unidade: e.target.value })} /></td>
+                        <td className="p-1"><Input className="h-7 text-[11px] w-20 text-right" type="number" value={it.quantidade || ''} onChange={e => updItemComp(it.id, { quantidade: parseFloat(e.target.value) || 0 })} /></td>
+                        <td className="p-1"><Input className="h-7 text-[11px] w-24 text-right" type="number" step="0.01" value={it.precoAntes || ''} onChange={e => updItemComp(it.id, { precoAntes: parseFloat(e.target.value) || 0 })} /></td>
+                        <td className="p-1"><Input className="h-7 text-[11px] w-24 text-right" type="number" step="0.01" value={it.precoAtual || ''} onChange={e => updItemComp(it.id, { precoAtual: parseFloat(e.target.value) || 0 })} /></td>
+                        <td className={`p-1 text-right font-semibold whitespace-nowrap ${v >= 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+                          {it.precoAntes > 0 ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` : '—'}
+                        </td>
+                        <td className="p-1"><Input className="h-7 text-[11px]" value={it.fonteAntes} onChange={e => updItemComp(it.id, { fonteAntes: e.target.value })} placeholder="NF nº / Fornecedor / data" /></td>
+                        <td className="p-1"><Input className="h-7 text-[11px]" value={it.fonteAtual} onChange={e => updItemComp(it.id, { fonteAtual: e.target.value })} placeholder="NF nº / Fornecedor / data" /></td>
+                        <td className="p-1">
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => rmItemComp(it.id)} disabled={itensComp.length === 1}>
+                            <Trash2 className="w-3 h-3 text-destructive" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Anexos probatórios (descrição) */}
+          <div>
+            <label className="text-xs text-muted-foreground flex items-center gap-1">
+              <Paperclip className="w-3 h-3" /> Relação de anexos probatórios
+            </label>
+            <Textarea
+              placeholder="Ex.: NFs de entrada à época do certame (págs. 99-106); Cotações mercadológicas — duas propostas (págs. 107-111); NFs atuais (págs. 112-118); 5ª alteração contratual; Carteira de Identidade da representante legal."
+              className="mt-1 min-h-[70px]"
+              value={anexos}
+              onChange={e => setAnexos(e.target.value)}
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Os arquivos físicos podem ser anexados na aba "Anexos" da Pasta do Processo (workspace).
+            </p>
           </div>
 
           <div>
@@ -796,9 +921,19 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
 
           {pedidoGerado && (
             <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <h4 className="text-sm font-semibold">Pedido Gerado pela IA</h4>
-                <Button size="sm" variant="outline" onClick={copyToClipboard}>Copiar</Button>
+                <div className="flex gap-2 flex-wrap">
+                  <Button size="sm" variant="outline" onClick={copyToClipboard}>Copiar</Button>
+                  <Button size="sm" variant="outline" onClick={exportarWord} disabled={!!exporting}>
+                    {exporting === 'word' ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <FileDown className="w-3 h-3 mr-1" />}
+                    Word (.doc)
+                  </Button>
+                  <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={exportarPDF} disabled={!!exporting}>
+                    {exporting === 'pdf' ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <FileDown className="w-3 h-3 mr-1" />}
+                    PDF (ABNT)
+                  </Button>
+                </div>
               </div>
               <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
                 <ReactMarkdown>{pedidoGerado}</ReactMarkdown>
