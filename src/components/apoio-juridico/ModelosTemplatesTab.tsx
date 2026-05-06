@@ -1285,7 +1285,14 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       <m.icon className="w-4 h-4 text-accent" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm">{m.titulo}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-sm">{m.titulo}</p>
+                        {pedidosPorModelo[m.id] > 0 && (
+                          <Badge variant="default" className="text-[10px] gap-1 bg-accent/15 text-accent border-accent/30 hover:bg-accent/20">
+                            <FileText className="w-2.5 h-2.5" /> {pedidosPorModelo[m.id]} {pedidosPorModelo[m.id] === 1 ? 'doc' : 'docs'}
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground mt-0.5">{m.descricao}</p>
                       <div className="flex flex-wrap gap-1 mt-2">
                         <Badge variant="outline" className="text-[10px]">{m.fundamentacao}</Badge>
