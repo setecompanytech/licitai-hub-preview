@@ -36,6 +36,7 @@ export const TIPO_LABELS: Record<JuridicoPedidoTipo, string> = {
   reajuste: 'Reajuste',
   repactuacao: 'Repactuação',
   revisao: 'Revisão / Reequilíbrio',
+  outros: 'Documento Jurídico',
 };
 
 export interface JuridicoPedido {
