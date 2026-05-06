@@ -1088,7 +1088,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                     </div>
                   </div>
                 </div>
-              </SheetHeader>
+              </header>
 
               {/* Layout 2 colunas: formulário + preview live */}
               <div className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(0,420px)_1fr] overflow-hidden">
