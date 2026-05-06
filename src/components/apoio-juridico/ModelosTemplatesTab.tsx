@@ -121,12 +121,18 @@ export default function ModelosTemplatesTab() {
 
   // Generation state
   const [activeModeloId, setActiveModeloId] = useState<string | null>(null);
+  // Quando aberto via deep-link (?modelo=...), renderiza inline (página completa)
+  // ao invés do Sheet/Drawer modal — para parecer uma página própria.
+  const [inlineMode, setInlineMode] = useState<boolean>(false);
 
   // Deep-link: abrir modelo automaticamente via ?modelo=<id> (suporta nova aba)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const mid = params.get('modelo');
-    if (mid) setActiveModeloId(mid);
+    if (mid) {
+      setActiveModeloId(mid);
+      setInlineMode(true);
+    }
   }, []);
   const [contexto, setContexto] = useState('');
   const [editalNum, setEditalNum] = useState('');
