@@ -25,6 +25,8 @@ project_id = "sbnlovigyifvrkgsoalj"
     verify_jwt = false
   [functions.consulta-cnpj]
     verify_jwt = false
+  [functions.consulta-cep]
+    verify_jwt = false
   [functions.consulta-divida-ativa]
     verify_jwt = false
   [functions.consulta-ncm]
