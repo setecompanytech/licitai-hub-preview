@@ -987,6 +987,11 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
               {etapaFiltro && <Badge variant="secondary" className="text-[10px]">{etapaFiltro}</Badge>}
               {criterioFiltro && <Badge variant="secondary" className="text-[10px]">{modalidade?.criteriosJulgamento.find(c => c.id === criterioFiltro)?.nome}</Badge>}
               {selectedEmpresa && <Badge variant="secondary" className="text-[10px]">{selectedEmpresa.razao_social.slice(0, 30)}</Badge>}
+              {pedidoAtivo && (
+                <Badge variant="default" className="text-[10px] gap-1 bg-accent/15 text-accent border-accent/30 hover:bg-accent/20">
+                  <Hash className="w-2.5 h-2.5" /> {pedidoAtivo.numero_formatado} · v{pedidoAtivo.versoes_count}
+                </Badge>
+              )}
             </div>
             <Button variant="ghost" size="sm" onClick={resetGeneration}>
               <X className="w-4 h-4" />
