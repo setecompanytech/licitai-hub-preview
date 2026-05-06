@@ -53,6 +53,45 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
   const [retornoTipo, setRetornoTipo] = useState<JuridicoPedidoStatus>('deferido');
   const [retornoTexto, setRetornoTexto] = useState('');
   const [loadingDetail, setLoadingDetail] = useState(false);
+  // Pedido alvo das ações rápidas (cards). Quando preenchido, modais salvam neste.
+  const [acaoAlvo, setAcaoAlvo] = useState<JuridicoPedido | null>(null);
+
+  // ── Validações de transição de status ──
+  const podeMarcarRascunho = (p: JuridicoPedido) =>
+    p.status !== 'rascunho' && !['protocolado', 'em_analise', 'deferido', 'indeferido', 'parcialmente_deferido'].includes(p.status);
+  const podeEnviar = (p: JuridicoPedido) =>
+    (p.versoes_count ?? 0) > 0 && ['rascunho', 'em_revisao', 'gerado', 'assinado'].includes(p.status);
+  const podeRegistrarResultado = (p: JuridicoPedido) =>
+    ['protocolado', 'em_analise'].includes(p.status);
+
+  const acaoRascunho = async (p: JuridicoPedido) => {
+    if (!podeMarcarRascunho(p)) {
+      toast.error('Pedido já protocolado/decidido — não pode voltar para Rascunho.');
+      return;
+    }
+    await atualizarStatus(p, 'rascunho', 'Retornado a Rascunho via ação rápida');
+  };
+
+  const acaoEnviar = (p: JuridicoPedido) => {
+    if ((p.versoes_count ?? 0) === 0) {
+      toast.error('Gere ao menos uma versão do documento antes de protocolar.');
+      return;
+    }
+    if (!podeEnviar(p)) {
+      toast.error(`Status "${STATUS_LABELS[p.status]}" não permite envio/protocolo.`);
+      return;
+    }
+    setAcaoAlvo(p); setProtocoloOpen(true);
+  };
+
+  const acaoResultado = (p: JuridicoPedido, tipo: JuridicoPedidoStatus) => {
+    if (!podeRegistrarResultado(p)) {
+      toast.error('Só é possível registrar resultado após o protocolo.');
+      return;
+    }
+    setAcaoAlvo(p); setRetornoTipo(tipo); setRetornoOpen(true);
+  };
+
 
   useEffect(() => {
     if (!detalhe) { setVersoes([]); setHistorico([]); setVersaoSel(null); return; }
