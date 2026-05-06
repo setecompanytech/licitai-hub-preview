@@ -38,21 +38,24 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
   // Deep-link para abrir o modelo (suporta nova aba via Cmd/Ctrl+click ou botão do meio)
   const href = `/apoio-juridico?modelo=${encodeURIComponent(m.id)}`;
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    // Permite o navegador tratar Cmd/Ctrl/Shift/middle-click nativamente
-    if (e.defaultPrevented) return;
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) {
-      window.open(href, '_blank', 'noopener,noreferrer');
-      e.preventDefault();
-      return;
+  const abrirNovaAba = () => {
+    // Abre nova aba/janela completa (top-level). Fallback: navega na própria aba.
+    const win = window.open(href, '_blank', 'noopener,noreferrer');
+    if (!win) {
+      window.location.href = href;
     }
-    onAbrir();
+  };
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (e.defaultPrevented) return;
+    e.preventDefault();
+    abrirNovaAba();
   };
 
   const handleAuxClick = (e: React.MouseEvent) => {
     if (e.button === 1) {
       e.preventDefault();
-      window.open(href, '_blank', 'noopener,noreferrer');
+      abrirNovaAba();
     }
   };
 
@@ -62,7 +65,7 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
       onAuxClick={handleAuxClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAbrir(); } }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirNovaAba(); } }}
       className="group relative grid grid-cols-[2.25rem_1fr_auto] items-start gap-3 px-3 py-2.5 border-b border-border/40 last:border-b-0 hover:bg-accent/5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:bg-accent/10 focus-visible:ring-1 focus-visible:ring-accent/40"
     >
       {/* Numeração forense */}
@@ -129,18 +132,11 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
             title="Redigir (abre em nova aba)"
             onClick={(e) => {
               e.stopPropagation();
-              // Cmd/Ctrl/Shift/middle: deixa o navegador agir nativamente
-              if (e.metaKey || e.ctrlKey || e.shiftKey || (e as React.MouseEvent).button === 1) return;
-              // Clique simples → força nova aba/janela COMPLETA (top-level, sem iframe/embed)
+              // Sempre abre em nova aba/janela COMPLETA (top-level), independente de modificadores
               e.preventDefault();
-              const win = window.open(href, '_blank', 'noopener,noreferrer');
-              // Fallback (popup-blocker): navega na própria aba para não travar o usuário
-              if (!win) {
-                window.location.href = href;
-              }
+              abrirNovaAba();
             }}
             onAuxClick={(e) => {
-              // Botão do meio do mouse → comportamento nativo do <a target="_blank">
               e.stopPropagation();
             }}
           >
