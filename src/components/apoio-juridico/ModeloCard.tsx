@@ -97,7 +97,7 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
         <Button
           size="sm"
           variant="ghost"
-          className="h-7 px-2 text-[10px] uppercase tracking-wider font-semibold text-accent hover:text-accent hover:bg-accent/10 gap-1 shrink-0"
+          className="h-8 px-2.5 text-[11.5px] uppercase tracking-wider font-semibold text-accent hover:text-accent hover:bg-accent/10 gap-1 shrink-0"
           onClick={(e) => { e.stopPropagation(); onAbrir(); }}
         >
           Redigir <ChevronRight className="w-3 h-3" />
