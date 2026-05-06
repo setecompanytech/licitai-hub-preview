@@ -1028,9 +1028,8 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
            preservar sidebar/header e parecer uma página completa. ── */}
       {inlineMode && activeModelo && (
         <style>{`
-          [data-aj-inline-sheet] [data-radix-dialog-overlay],
-          [data-aj-inline-sheet] [data-state] + [data-radix-dialog-overlay] { display: none !important; }
-          [data-aj-inline-sheet] [role="dialog"] {
+          body.aj-inline-active [data-radix-dialog-overlay] { display: none !important; }
+          body.aj-inline-active [role="dialog"][data-state="open"] {
             position: static !important;
             transform: none !important;
             inset: auto !important;
@@ -1042,11 +1041,16 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
             border: 1px solid hsl(var(--border) / 0.5) !important;
             border-radius: 0.75rem !important;
             animation: none !important;
+            z-index: auto !important;
           }
-          [data-aj-inline-sheet] [role="dialog"] > button[aria-label="Close"] { display: none; }
+          body.aj-inline-active [role="dialog"] > button[aria-label="Close"] { display: none; }
         `}</style>
       )}
-      <div data-aj-inline-sheet={inlineMode ? 'true' : undefined}>
+      <div ref={(el) => {
+        if (typeof document === 'undefined') return;
+        if (inlineMode && activeModelo) document.body.classList.add('aj-inline-active');
+        else document.body.classList.remove('aj-inline-active');
+      }}>
       <Sheet open={!!activeModelo} onOpenChange={(open) => { if (!open) resetGeneration(); }} modal={!inlineMode}>
         <SheetContent
           side="right"
