@@ -420,11 +420,53 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
     setGeneratingPedido(true);
     setPedidoGerado('');
 
+    // Garante existência de um pedido jurídico (cabeçalho persistido)
+    let pedido = pedidoAtivo;
+    const dadosCaso = {
+      indices: selectedIndices, ccts: selectedCCTs,
+      itensComp: itensCompValidos, itensAfetados, observacoes,
+      fatoGerador, tipoFato, anexos,
+    };
+    if (!pedido || pedido.tipo !== mecanismo) {
+      pedido = await criarPedido({
+        tipo: mecanismo,
+        instrumento,
+        processo_administrativo: processoAdm || undefined,
+        pregao_numero: pregaoNum || undefined,
+        ata_numero: ataNum || undefined,
+        contrato_numero: contrato || undefined,
+        aditivo_numero: aditivoNum || undefined,
+        orgao_contratante: orgao || undefined,
+        dados_caso: dadosCaso,
+      });
+      if (!pedido) { setGeneratingPedido(false); return; }
+      setPedidoAtivo(pedido);
+    }
+
+    let conteudoFinal = '';
     await streamAIChat({
       messages: [{ role: 'user', content: buildPrompt() }],
       action: 'reequilibrio',
-      onDelta: (chunk) => setPedidoGerado(prev => prev + chunk),
-      onDone: () => setGeneratingPedido(false),
+      onDelta: (chunk) => {
+        conteudoFinal += chunk;
+        setPedidoGerado(prev => prev + chunk);
+      },
+      onDone: async () => {
+        if (pedido && conteudoFinal.trim()) {
+          const proximaVersao = (pedido.versoes_count ?? 0) + 1;
+          const v = await salvarVersao(
+            pedido,
+            conteudoFinal,
+            `v${proximaVersao} — geração automática (${mecanismo})`,
+            'gemini-2.5-flash'
+          );
+          if (v) {
+            toast.success(`Versão v${v.versao} salva no pedido ${pedido.numero_formatado}`);
+            setPedidoAtivo({ ...pedido, versoes_count: v.versao, versao_atual_id: v.id, status: 'gerado' });
+          }
+        }
+        setGeneratingPedido(false);
+      },
       onError: (error) => { toast.error(error); setGeneratingPedido(false); },
     });
   };
