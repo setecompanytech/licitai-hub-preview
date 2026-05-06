@@ -419,6 +419,11 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
       toast.error('Descreva o fato gerador da revisão');
       return;
     }
+    if (mecanismo === 'revisao' && !enquadramentoValidado) {
+      toast.error('Valide o enquadramento jurídico do fato gerador antes de gerar o pedido');
+      setShowChecklist(true);
+      return;
+    }
 
     setGeneratingPedido(true);
     setPedidoGerado('');
