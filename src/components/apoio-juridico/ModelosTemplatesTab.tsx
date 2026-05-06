@@ -1063,6 +1063,19 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           {activeModelo && (
             <>
               <SheetHeader className="px-6 pt-6 pb-4 border-b border-border/50 shrink-0">
+                {inlineMode && (
+                  <div className="flex items-center gap-2 mb-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 text-xs"
+                      onClick={resetGeneration}
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      Voltar para a lista de modelos
+                    </Button>
+                  </div>
+                )}
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <SheetTitle className="flex items-center gap-2 text-base">
