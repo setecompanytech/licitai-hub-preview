@@ -690,6 +690,15 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
     setFatosPeticao([]);
     setPeticaoDocsTexto('');
     setPedidoAtivo(null);
+    // Se estiver no modo inline (deep-link), limpa o ?modelo= da URL ao fechar
+    if (inlineMode) {
+      setInlineMode(false);
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('modelo');
+        window.history.replaceState({}, '', url.toString());
+      } catch {}
+    }
   };
 
   const handlePeticaoFinish = (fatos: FatoPeticao[], documentosTexto: string, numEdital: string) => {
