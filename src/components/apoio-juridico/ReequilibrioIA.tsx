@@ -4,16 +4,71 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { streamAIChat } from '@/lib/ai-stream';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
+import { exportLegalPDF, exportLegalWord } from '@/lib/legal-document-export';
 import {
   TrendingUp, Search, Sparkles, RefreshCw, Scale, Loader2, ArrowRight,
-  DollarSign, Users, Building2, FileText, AlertTriangle, CloudRain, Flame
+  DollarSign, Users, Building2, FileText, AlertTriangle, CloudRain, Flame,
+  FileDown, Plus, Trash2, Receipt, Quote, Paperclip, BookOpen,
 } from 'lucide-react';
+
+/* ── Tipo de instrumento contratual ── */
+type Instrumento = 'edital' | 'ata_srp' | 'contrato' | 'aditivo';
+const INSTRUMENTOS: Record<Instrumento, { label: string; desc: string; fundamento: string }> = {
+  edital: {
+    label: 'Edital de Licitação',
+    desc: 'Pleito ainda na fase pré-contratual (ex.: pedido fundamentado de adequação de preços antes da homologação).',
+    fundamento: 'Art. 81 e Art. 164 da Lei 14.133/2021 (impugnação/esclarecimentos).',
+  },
+  ata_srp: {
+    label: 'Ata de Registro de Preços (SRP)',
+    desc: 'Reequilíbrio de preços registrados em ATA SRP. Requer comprovação de fato superveniente que rompa a equação econômico-financeira do registro.',
+    fundamento: 'Art. 26 do Decreto 11.462/2023 e Art. 124, II, "d" da Lei 14.133/2021. Súmula TCU 247.',
+  },
+  contrato: {
+    label: 'Contrato Administrativo',
+    desc: 'Pleito de reequilíbrio formulado durante a execução de contrato administrativo (objeto principal do pedido formal).',
+    fundamento: 'Art. 124, II, "d", Art. 134 e Art. 135 da Lei 14.133/2021.',
+  },
+  aditivo: {
+    label: 'Termo Aditivo Contratual',
+    desc: 'Reequilíbrio em razão de fatos surgidos após aditivo contratual (qualitativo, quantitativo ou de prazo).',
+    fundamento: 'Arts. 124-125 c/c Art. 134 da Lei 14.133/2021.',
+  },
+};
+
+/* ── Item comparativo NF/cotação (antes vs depois) ── */
+type ItemComparativo = {
+  id: string;
+  descricao: string;     // descrição do item/insumo
+  unidade: string;       // un, kg, m, sc, l...
+  quantidade: number;    // por mês/contrato
+  precoAntes: number;    // R$ unitário à época da proposta (NF de entrada)
+  precoAtual: number;    // R$ unitário atual (NF/cotação posterior)
+  fonteAntes: string;    // NF nº..., fornecedor, data
+  fonteAtual: string;    // NF nº..., fornecedor, data
+};
+
+const novoItemComp = (): ItemComparativo => ({
+  id: crypto.randomUUID(),
+  descricao: '', unidade: 'un', quantidade: 0,
+  precoAntes: 0, precoAtual: 0,
+  fonteAntes: '', fonteAtual: '',
+});
+
+const calcVariacao = (antes: number, atual: number): number => {
+  if (!antes) return 0;
+  return ((atual - antes) / antes) * 100;
+};
 
 type Indice = {
   id: string; nome: string; sigla: string; fonte: string; periodo: string;
@@ -84,6 +139,23 @@ export default function ReequilibrioIA() {
   const [generatingPedido, setGeneratingPedido] = useState(false);
   const [pedidoGerado, setPedidoGerado] = useState('');
 
+  // Tipo de instrumento contratual (Edital / ATA SRP / Contrato / Aditivo)
+  const [instrumento, setInstrumento] = useState<Instrumento>('contrato');
+  // Identificação do processo
+  const [processoAdm, setProcessoAdm] = useState('');
+  const [pregaoNum, setPregaoNum] = useState('');
+  const [aditivoNum, setAditivoNum] = useState('');
+  const [ataNum, setAtaNum] = useState('');
+  // Tabela comparativa de preços (NF antes / NF depois / cotações)
+  const [itensComp, setItensComp] = useState<ItemComparativo[]>([novoItemComp()]);
+  // Anexos probatórios (descrição livre — uploads ficam no DocumentosManager do processo)
+  const [anexos, setAnexos] = useState('');
+  // Empresa atual (para timbrado e dados)
+  const { empresas, empresaAtiva } = useEmpresa();
+  const empresaSel = empresaAtiva || empresas[0]?.empresa || null;
+  // Export
+  const [exporting, setExporting] = useState<'pdf' | 'word' | null>(null);
+
   // Revisão-specific fields
   const [fatoGerador, setFatoGerador] = useState('');
   const [tipoFato, setTipoFato] = useState<'caso_fortuito' | 'forca_maior' | 'fato_principe' | 'fato_superveniente'>('fato_superveniente');
@@ -126,6 +198,28 @@ export default function ReequilibrioIA() {
     (c.sindicato_laboral || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  /* ─────────── Tabela comparativa helpers ─────────── */
+  const addItemComp = () => setItensComp(p => [...p, novoItemComp()]);
+  const rmItemComp = (id: string) => setItensComp(p => p.filter(i => i.id !== id));
+  const updItemComp = (id: string, patch: Partial<ItemComparativo>) =>
+    setItensComp(p => p.map(i => (i.id === id ? { ...i, ...patch } : i)));
+
+  const itensCompValidos = itensComp.filter(i => i.descricao && (i.precoAntes > 0 || i.precoAtual > 0));
+
+  const tabelaComparativaMd = () => {
+    if (itensCompValidos.length === 0) return '';
+    const linhas = itensCompValidos.map(i => {
+      const v = calcVariacao(i.precoAntes, i.precoAtual);
+      const dif = (i.precoAtual - i.precoAntes) * (i.quantidade || 1);
+      return `| ${i.descricao} | ${i.unidade} | ${i.quantidade || '—'} | ${fmtCur(i.precoAntes)} | ${fmtCur(i.precoAtual)} | ${v >= 0 ? '+' : ''}${v.toFixed(2)}% | ${fmtCur(dif)} | ${i.fonteAntes || '—'} | ${i.fonteAtual || '—'} |`;
+    });
+    return [
+      '| Item / Insumo | Un. | Qtd. | Preço à época | Preço atual | Var. % | Impacto financeiro | NF/Cotação à época | NF/Cotação atual |',
+      '|---|---|---|---|---|---|---|---|---|',
+      ...linhas,
+    ].join('\n');
+  };
+
   const buildPrompt = () => {
     const indicesTexto = selectedIndices.map(id => {
       const i = indices.find(x => x.id === id);
@@ -146,11 +240,26 @@ export default function ReequilibrioIA() {
     };
 
     const tipoFatoLabels: Record<string, string> = {
-      caso_fortuito: 'Caso Fortuito',
-      forca_maior: 'Força Maior',
-      fato_principe: 'Fato do Príncipe (ação da Administração)',
-      fato_superveniente: 'Fato Superveniente Imprevisível',
+      caso_fortuito: 'Caso Fortuito (evento natural imprevisível)',
+      forca_maior: 'Força Maior (evento humano irresistível)',
+      fato_principe: 'Fato do Príncipe (ação geral da Administração que repercute sobre o contrato)',
+      fato_superveniente: 'Fato Superveniente Imprevisível (alea extraordinária e extracontratual)',
     };
+
+    const instrumentoInfo = INSTRUMENTOS[instrumento];
+
+    const dadosInstrumento = (() => {
+      switch (instrumento) {
+        case 'edital':
+          return `Edital/Pregão: ${pregaoNum || 'Não informado'}\nProcesso Administrativo: ${processoAdm || 'Não informado'}`;
+        case 'ata_srp':
+          return `ATA SRP nº: ${ataNum || 'Não informado'}\nPregão: ${pregaoNum || 'Não informado'}\nProcesso Administrativo: ${processoAdm || 'Não informado'}`;
+        case 'contrato':
+          return `Contrato Administrativo nº: ${contrato || 'Não informado'}\nPregão: ${pregaoNum || 'Não informado'}\nProcesso Administrativo: ${processoAdm || 'Não informado'}`;
+        case 'aditivo':
+          return `Termo Aditivo nº: ${aditivoNum || 'Não informado'}\nContrato Administrativo originário nº: ${contrato || 'Não informado'}\nPregão: ${pregaoNum || 'Não informado'}\nProcesso Administrativo: ${processoAdm || 'Não informado'}`;
+      }
+    })();
 
     let instrucoes = '';
     if (mecanismo === 'reajuste') {
@@ -158,43 +267,41 @@ export default function ReequilibrioIA() {
 INSTRUÇÕES PARA REAJUSTE:
 - Tipo: Reajuste por índice contratual (sentido estrito).
 - Fundamente com Art. 92, §3º e Art. 135, I da Lei 14.133/2021.
-- O reajuste é automático, por apostilamento, após 12 meses da proposta ou último reajuste.
-- Demonstre a variação do índice contratual no período (utilize os índices selecionados).
-- Estruture: CABEÇALHO, DO OBJETO, DO ÍNDICE CONTRATUAL, DA DEMONSTRAÇÃO DO REAJUSTE (cálculo numérico), DO APOSTILAMENTO, CONCLUSÃO.
-- Linguagem técnica, objetiva, impessoal. Formato auditável.`;
+- O reajuste é automático, por apostilamento, após 12 meses da proposta ou último reajuste (anualidade).
+- Demonstre matematicamente a variação do índice contratual no período.
+- Cite, se cabível, Acórdãos do TCU sobre apostilamento (ex.: Acórdão 1.563/2004-Plenário).`;
     } else if (mecanismo === 'repactuacao') {
       instrucoes = `
 INSTRUÇÕES PARA REPACTUAÇÃO:
-- Tipo: Repactuação por variação de custos de mão de obra.
-- Fundamente com Art. 135, I da Lei 14.133/2021.
-- Exclusiva para serviços com dedicação exclusiva de MO.
-- Não é automática: requer demonstração da variação real dos custos via planilha.
-- Respeita anualidade vinculada à CCT/Dissídio Coletivo.
-- Utilize os dados das CCTs selecionadas como fundamentação.
-- Estruture: CABEÇALHO, DO OBJETO DO CONTRATO, DA CONVENÇÃO COLETIVA APLICÁVEL, DA DEMONSTRAÇÃO DA VARIAÇÃO DE CUSTOS (planilha antes/depois), DO CÁLCULO DA REPACTUAÇÃO, DO PEDIDO, CONCLUSÃO.
-- Inclua comparativo de planilha de custos (valores antigos x novos).`;
+- Tipo: Repactuação por variação de custos de mão de obra (Art. 135, I da Lei 14.133/2021).
+- Exclusiva para serviços com dedicação exclusiva de MO; demonstração analítica obrigatória (planilha antes/depois).
+- Vinculação à CCT/Dissídio Coletivo registrado no MTE.
+- Cite Súmula TCU 277 (limitação a custos efetivamente impactados) quando aplicável.`;
     } else {
       instrucoes = `
 INSTRUÇÕES PARA REVISÃO (REEQUILÍBRIO STRICTO SENSU):
-- Tipo: Revisão contratual por fato extraordinário.
-- Fato gerador: ${tipoFatoLabels[tipoFato]}.
-- Descrição do fato: ${fatoGerador || 'Não informado'}
-- Fundamente com Art. 124, II, "d" e Art. 134, §§2º e 4º da Lei 14.133/2021.
-- Aplique a Teoria da Imprevisão e cite jurisprudência do TCU quando cabível.
-- Pode ocorrer a qualquer tempo, sem periodicidade mínima, mesmo que já tenha havido reajuste no mesmo período (fatos geradores distintos).
-- Estruture: CABEÇALHO, DO OBJETO, DOS FATOS (narrativa detalhada com dados numéricos), DA FUNDAMENTAÇÃO LEGAL (imprevisibilidade/álea extraordinária), DA DEMONSTRAÇÃO DO IMPACTO ECONÔMICO, DO NEXO CAUSAL, DO PEDIDO, CONCLUSÃO.
-- Demonstre o nexo entre o fato e a onerosidade excessiva.`;
+- Tipo: Revisão por fato extraordinário e imprevisível.
+- Fato gerador qualificado: ${tipoFatoLabels[tipoFato]}.
+- Descrição: ${fatoGerador || 'Não informado'}
+- Fundamentação obrigatória: Art. 124, II, "d", Art. 134, §§ 2º e 4º, e Art. 135 da Lei 14.133/2021; arts. 317 e 478 do Código Civil (teoria da imprevisão e onerosidade excessiva).
+- Doutrina: Marçal Justen Filho ("Comentários à Lei de Licitações"); Maria Sylvia Z. Di Pietro ("Direito Administrativo"); Jessé Torres Pereira Junior.
+- Jurisprudência TCU: Acórdãos 1.595/2006-Plenário, 2.495/2018-Plenário, 1.431/2017-Plenário (necessidade de demonstração do nexo causal e da imprevisibilidade).
+- Demonstre nexo causal entre o fato e a onerosidade excessiva, com prova documental (NF antes/depois, cotações).`;
     }
 
-    return `Gere um pedido formal de ${mecanismoLabels[mecanismo]} com fundamentação técnica e jurídica conforme a Lei 14.133/2021.
+    return `Gere um PEDIDO FORMAL ESCRITO segundo o padrão jurídico-técnico brasileiro de petições administrativas em licitações, com a estrutura ABAIXO RIGOROSAMENTE OBSERVADA, em linguagem culta, formal, impessoal e auditável, conforme padrão da Lei 14.133/2021.
+
+INSTRUMENTO CONTRATUAL: ${instrumentoInfo.label.toUpperCase()}
+Fundamento do instrumento: ${instrumentoInfo.fundamento}
 
 MECANISMO JURÍDICO: ${mecanismoLabels[mecanismo]}
 
-DADOS DO CONTRATO:
-Contrato: ${contrato || 'Não informado'}
+DADOS DA EMPRESA REQUERENTE:
+${empresaSel ? `Razão Social: ${empresaSel.razao_social || empresaSel.nome_fantasia || ''}\nCNPJ: ${empresaSel.cnpj || 'N/I'}\nEndereço: ${empresaSel.endereco || 'N/I'}` : 'A preencher pelo usuário.'}
+
+DADOS DO INSTRUMENTO ATACADO:
+${dadosInstrumento}
 Órgão Contratante: ${orgao || 'Não informado'}
-Itens afetados: ${itensAfetados || 'Não informado'}
-Observações: ${observacoes || 'Nenhuma'}
 
 ÍNDICES ECONÔMICOS OFICIAIS SELECIONADOS:
 ${indicesTexto || 'Nenhum índice selecionado'}
@@ -202,9 +309,91 @@ ${indicesTexto || 'Nenhum índice selecionado'}
 CONVENÇÕES COLETIVAS / DISSÍDIOS SELECIONADOS:
 ${cctsTexto || 'Nenhuma CCT selecionada'}
 
+ITENS AFETADOS (descrição livre):
+${itensAfetados || 'Não informado'}
+
+DEMONSTRAÇÃO COMPARATIVA DE PREÇOS (NF/Cotações antes vs atual):
+${tabelaComparativaMd() || 'Não informado'}
+
+ANEXOS PROBATÓRIOS RELACIONADOS (descrição):
+${anexos || 'Não há descrição adicional de anexos.'}
+
+OBSERVAÇÕES ADICIONAIS:
+${observacoes || 'Nenhuma'}
+
 ${instrucoes}
 
-IMPORTANTE: Utilize linguagem técnica, objetiva e impessoal, conforme padrão auditável para processos licitatórios. Inclua demonstração numérica.`;
+ESTRUTURA OBRIGATÓRIA DO DOCUMENTO (siga RIGOROSAMENTE os títulos, na ordem):
+
+1. CABEÇALHO (com endereçamento ao órgão, identificação do instrumento, do processo administrativo e do interessado)
+2. SUMÁRIO (lista de seções com numeração romana)
+3. I — PRELIMINARMENTE (qualificação da requerente, eventuais alterações cadastrais/societárias se houver)
+4. II — SÍNTESE DOS FATOS (narrativa cronológica objetiva)
+5. III — DO DESEQUILÍBRIO ECONÔMICO-FINANCEIRO E SEUS EFEITOS PRÁTICOS
+   3.1. Da teoria da imprevisão e da garantia de exequibilidade dos contratos
+   3.2. Do caso fortuito, força maior e fato do príncipe (quando aplicável)
+   3.3. Das mudanças mercadológicas (quando aplicável)
+   3.4. Da recomposição do equilíbrio econômico-financeiro
+6. IV — DO DIREITO AO REEQUILÍBRIO (fundamentação legal, doutrinária e jurisprudencial — Lei 14.133/2021, CC/2002, TCU, doutrina)
+7. V — DO ITEM PRECIFICADO E SUA DESATUALIZAÇÃO (apresentar a tabela comparativa fornecida acima em formato de tabela markdown, com cabeçalho explicativo)
+8. VI — DO PEDIDO (deferimento expresso, com indicação do percentual de recomposição e/ou dos novos preços unitários requeridos)
+9. REFERÊNCIAS (legislação, doutrina e jurisprudência citadas)
+10. ANEXOS — relação dos atos probatórios (NFs, cotações, alterações contratuais, etc.)
+
+REGRAS DE REDAÇÃO ABSOLUTAS:
+- NÃO use emojis, ícones, figurinhas ou qualquer caractere decorativo.
+- Linguagem formal, impessoal, técnica, em conformidade com o padrão de petições administrativas brasileiras.
+- Numeração romana (I, II, III...) para seções principais; arábica para subitens.
+- Ao apresentar a tabela comparativa, reproduza-a em sintaxe markdown e logo após faça a análise quantitativa do impacto.
+- Cite expressamente os artigos da Lei 14.133/2021 e, quando cabível, do Código Civil (arts. 317, 393 e 478) e Acórdãos do TCU.
+- Conclua com pedido de deferimento, em forma de capítulo "VI — DO PEDIDO", e fórmula final "Nestes termos, pede deferimento."`;
+  };
+
+  /* ─────────── Export PDF/Word ─────────── */
+  const docTitle = () => {
+    const mecLabel = mecanismo === 'reajuste' ? 'Reajuste Contratual' :
+      mecanismo === 'repactuacao' ? 'Repactuação' : 'Reequilíbrio Econômico-Financeiro';
+    return `Pedido de ${mecLabel}`;
+  };
+
+  const exportarPDF = async () => {
+    if (!pedidoGerado) return;
+    setExporting('pdf');
+    try {
+      await exportLegalPDF(pedidoGerado, docTitle(), {
+        empresa: empresaSel?.razao_social || empresaSel?.nome_fantasia || undefined,
+        cnpj: empresaSel?.cnpj || undefined,
+        edital: instrumento === 'contrato' ? contrato : instrumento === 'ata_srp' ? ataNum : pregaoNum,
+        modalidade: INSTRUMENTOS[instrumento].label,
+        fundamentacao: info.fundamento,
+        timbradoUrl: (empresaSel as any)?.timbrado_url || null,
+      });
+      toast.success('PDF gerado com sucesso');
+    } catch (e: any) {
+      toast.error('Falha ao gerar PDF: ' + (e?.message || ''));
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const exportarWord = () => {
+    if (!pedidoGerado) return;
+    setExporting('word');
+    try {
+      exportLegalWord(pedidoGerado, docTitle(), {
+        empresa: empresaSel?.razao_social || empresaSel?.nome_fantasia || undefined,
+        cnpj: empresaSel?.cnpj || undefined,
+        edital: instrumento === 'contrato' ? contrato : instrumento === 'ata_srp' ? ataNum : pregaoNum,
+        modalidade: INSTRUMENTOS[instrumento].label,
+        fundamentacao: info.fundamento,
+        timbradoUrl: (empresaSel as any)?.timbrado_url || null,
+      });
+      toast.success('Word gerado com sucesso');
+    } catch (e: any) {
+      toast.error('Falha ao gerar Word: ' + (e?.message || ''));
+    } finally {
+      setExporting(null);
+    }
   };
 
   const handleGerarPedido = async () => {
@@ -558,31 +747,156 @@ IMPORTANTE: Utilize linguagem técnica, objetiva e impessoal, conforme padrão a
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-muted-foreground">Nº do Contrato</label>
-              <Input placeholder="CT-001/2026" className="mt-1" value={contrato} onChange={e => setContrato(e.target.value)} />
+          {/* Tipo de instrumento contratual */}
+          <div className="bg-muted/30 rounded-lg p-3 space-y-3">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-accent" />
+              <span className="text-xs font-semibold">Instrumento atacado</span>
             </div>
-            <div>
-              <label className="text-xs text-muted-foreground">Órgão Contratante</label>
-              <Input placeholder="Prefeitura de Belém" className="mt-1" value={orgao} onChange={e => setOrgao(e.target.value)} />
-            </div>
+            <Select value={instrumento} onValueChange={(v) => setInstrumento(v as Instrumento)}>
+              <SelectTrigger className="bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(INSTRUMENTOS) as Instrumento[]).map(k => (
+                  <SelectItem key={k} value={k}>{INSTRUMENTOS[k].label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground">{INSTRUMENTOS[instrumento].desc}</p>
+            <p className="text-[10px] text-muted-foreground">
+              <strong>Fundamento:</strong> {INSTRUMENTOS[instrumento].fundamento}
+            </p>
           </div>
 
+          {/* Identificação do processo (campos dinâmicos por instrumento) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground">Órgão Contratante</label>
+              <Input placeholder="Ex.: SEDUC/PA — Núcleo de Contratações" className="mt-1" value={orgao} onChange={e => setOrgao(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Processo Administrativo nº</label>
+              <Input placeholder="Ex.: E-2025/2821674" className="mt-1" value={processoAdm} onChange={e => setProcessoAdm(e.target.value)} />
+            </div>
+            {(instrumento === 'edital' || instrumento === 'ata_srp' || instrumento === 'contrato' || instrumento === 'aditivo') && (
+              <div>
+                <label className="text-xs text-muted-foreground">
+                  {instrumento === 'edital' ? 'Edital/Pregão nº' : 'Pregão de origem nº'}
+                </label>
+                <Input placeholder="Ex.: 90003/2024/SEDUC" className="mt-1" value={pregaoNum} onChange={e => setPregaoNum(e.target.value)} />
+              </div>
+            )}
+            {instrumento === 'ata_srp' && (
+              <div>
+                <label className="text-xs text-muted-foreground">ATA SRP nº</label>
+                <Input placeholder="Ex.: ATA 045/2025" className="mt-1" value={ataNum} onChange={e => setAtaNum(e.target.value)} />
+              </div>
+            )}
+            {(instrumento === 'contrato' || instrumento === 'aditivo') && (
+              <div>
+                <label className="text-xs text-muted-foreground">Contrato Administrativo nº</label>
+                <Input placeholder="Ex.: 068/2025" className="mt-1" value={contrato} onChange={e => setContrato(e.target.value)} />
+              </div>
+            )}
+            {instrumento === 'aditivo' && (
+              <div>
+                <label className="text-xs text-muted-foreground">Termo Aditivo nº</label>
+                <Input placeholder="Ex.: 1º TA / 2026" className="mt-1" value={aditivoNum} onChange={e => setAditivoNum(e.target.value)} />
+              </div>
+            )}
+          </div>
+
+          {/* Itens afetados — narrativa */}
           <div>
             <label className="text-xs text-muted-foreground">
-              {mecanismo === 'repactuacao' ? 'Itens de MO afetados e valores da planilha' : 'Itens afetados e variação de preço'}
+              {mecanismo === 'repactuacao' ? 'Itens de MO afetados (narrativa)' : 'Itens afetados (narrativa)'}
             </label>
             <Textarea
               placeholder={
-                mecanismo === 'reajuste' ? 'Ex: Valor mensal do contrato: R$ 50.000,00. Índice contratual: IPCA...' :
-                mecanismo === 'repactuacao' ? 'Ex: Servente: de R$ 1.780,00 para R$ 1.920,00 (CCT 2026). Encarregado: ...' :
-                'Ex: Cimento CP-II: de R$ 32,00 para R$ 40,00/saco (+25%) devido a...'
+                mecanismo === 'reajuste' ? 'Ex.: Valor mensal do contrato R$ 50.000,00. Índice contratual: IPCA...' :
+                mecanismo === 'repactuacao' ? 'Ex.: Servente: de R$ 1.780 para R$ 1.920 (CCT 2026)...' :
+                'Ex.: Insumo X impactado por choque de oferta entre [data] e [data]...'
               }
-              className="mt-1 min-h-[80px]"
+              className="mt-1 min-h-[70px]"
               value={itensAfetados}
               onChange={e => setItensAfetados(e.target.value)}
             />
+          </div>
+
+          {/* Tabela comparativa de preços — NF/cotação antes vs atual */}
+          <div className="bg-muted/30 rounded-lg p-3 space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-accent" />
+                <span className="text-xs font-semibold">Demonstração comparativa de preços</span>
+                <Badge variant="outline" className="text-[10px]">{itensCompValidos.length} válidos</Badge>
+              </div>
+              <Button size="sm" variant="outline" onClick={addItemComp}>
+                <Plus className="w-3 h-3 mr-1" /> Adicionar item
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Informe NFs de entrada e/ou cotações para comprovar a variação de preço entre a época do certame e o momento atual. Esta tabela será reproduzida no pedido como prova documental do desequilíbrio.
+            </p>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px] border-collapse">
+                <thead>
+                  <tr className="border-b border-border/40 text-muted-foreground">
+                    <th className="text-left p-2 font-medium whitespace-nowrap">Descrição</th>
+                    <th className="text-left p-2 font-medium whitespace-nowrap">Un.</th>
+                    <th className="text-right p-2 font-medium whitespace-nowrap">Qtd.</th>
+                    <th className="text-right p-2 font-medium whitespace-nowrap">Preço à época</th>
+                    <th className="text-right p-2 font-medium whitespace-nowrap">Preço atual</th>
+                    <th className="text-right p-2 font-medium whitespace-nowrap">Var. %</th>
+                    <th className="text-left p-2 font-medium whitespace-nowrap">NF/Cotação à época</th>
+                    <th className="text-left p-2 font-medium whitespace-nowrap">NF/Cotação atual</th>
+                    <th className="p-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {itensComp.map(it => {
+                    const v = calcVariacao(it.precoAntes, it.precoAtual);
+                    return (
+                      <tr key={it.id} className="border-b border-border/20">
+                        <td className="p-1"><Input className="h-7 text-[11px]" value={it.descricao} onChange={e => updItemComp(it.id, { descricao: e.target.value })} placeholder="Ex.: Cimento CP-II" /></td>
+                        <td className="p-1"><Input className="h-7 text-[11px] w-16" value={it.unidade} onChange={e => updItemComp(it.id, { unidade: e.target.value })} /></td>
+                        <td className="p-1"><Input className="h-7 text-[11px] w-20 text-right" type="number" value={it.quantidade || ''} onChange={e => updItemComp(it.id, { quantidade: parseFloat(e.target.value) || 0 })} /></td>
+                        <td className="p-1"><Input className="h-7 text-[11px] w-24 text-right" type="number" step="0.01" value={it.precoAntes || ''} onChange={e => updItemComp(it.id, { precoAntes: parseFloat(e.target.value) || 0 })} /></td>
+                        <td className="p-1"><Input className="h-7 text-[11px] w-24 text-right" type="number" step="0.01" value={it.precoAtual || ''} onChange={e => updItemComp(it.id, { precoAtual: parseFloat(e.target.value) || 0 })} /></td>
+                        <td className={`p-1 text-right font-semibold whitespace-nowrap ${v >= 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+                          {it.precoAntes > 0 ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` : '—'}
+                        </td>
+                        <td className="p-1"><Input className="h-7 text-[11px]" value={it.fonteAntes} onChange={e => updItemComp(it.id, { fonteAntes: e.target.value })} placeholder="NF nº / Fornecedor / data" /></td>
+                        <td className="p-1"><Input className="h-7 text-[11px]" value={it.fonteAtual} onChange={e => updItemComp(it.id, { fonteAtual: e.target.value })} placeholder="NF nº / Fornecedor / data" /></td>
+                        <td className="p-1">
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => rmItemComp(it.id)} disabled={itensComp.length === 1}>
+                            <Trash2 className="w-3 h-3 text-destructive" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Anexos probatórios (descrição) */}
+          <div>
+            <label className="text-xs text-muted-foreground flex items-center gap-1">
+              <Paperclip className="w-3 h-3" /> Relação de anexos probatórios
+            </label>
+            <Textarea
+              placeholder="Ex.: NFs de entrada à época do certame (págs. 99-106); Cotações mercadológicas — duas propostas (págs. 107-111); NFs atuais (págs. 112-118); 5ª alteração contratual; Carteira de Identidade da representante legal."
+              className="mt-1 min-h-[70px]"
+              value={anexos}
+              onChange={e => setAnexos(e.target.value)}
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Os arquivos físicos podem ser anexados na aba "Anexos" da Pasta do Processo (workspace).
+            </p>
           </div>
 
           <div>
@@ -607,9 +921,19 @@ IMPORTANTE: Utilize linguagem técnica, objetiva e impessoal, conforme padrão a
 
           {pedidoGerado && (
             <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <h4 className="text-sm font-semibold">Pedido Gerado pela IA</h4>
-                <Button size="sm" variant="outline" onClick={copyToClipboard}>Copiar</Button>
+                <div className="flex gap-2 flex-wrap">
+                  <Button size="sm" variant="outline" onClick={copyToClipboard}>Copiar</Button>
+                  <Button size="sm" variant="outline" onClick={exportarWord} disabled={!!exporting}>
+                    {exporting === 'word' ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <FileDown className="w-3 h-3 mr-1" />}
+                    Word (.doc)
+                  </Button>
+                  <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={exportarPDF} disabled={!!exporting}>
+                    {exporting === 'pdf' ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <FileDown className="w-3 h-3 mr-1" />}
+                    PDF (ABNT)
+                  </Button>
+                </div>
               </div>
               <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
                 <ReactMarkdown>{pedidoGerado}</ReactMarkdown>
