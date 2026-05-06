@@ -17,6 +17,7 @@ import ReactMarkdown from 'react-markdown';
 import { exportLegalPDF, exportLegalWord } from '@/lib/legal-document-export';
 import { useJuridicoPedidos, type JuridicoPedido } from '@/hooks/useJuridicoPedidos';
 import PedidosJuridicosList from './PedidosJuridicosList';
+import { ChecklistFatoGerador } from './ChecklistFatoGerador';
 import {
   TrendingUp, Search, Sparkles, RefreshCw, Scale, Loader2, ArrowRight,
   DollarSign, Users, Building2, FileText, AlertTriangle, CloudRain, Flame,
@@ -166,6 +167,8 @@ export default function ReequilibrioIA() {
   // Revisão-specific fields
   const [fatoGerador, setFatoGerador] = useState('');
   const [tipoFato, setTipoFato] = useState<'caso_fortuito' | 'forca_maior' | 'fato_principe' | 'fato_superveniente'>('fato_superveniente');
+  const [showChecklist, setShowChecklist] = useState(false);
+  const [enquadramentoValidado, setEnquadramentoValidado] = useState(false);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -414,6 +417,11 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
     }
     if (mecanismo === 'revisao' && !fatoGerador) {
       toast.error('Descreva o fato gerador da revisão');
+      return;
+    }
+    if (mecanismo === 'revisao' && !enquadramentoValidado) {
+      toast.error('Valide o enquadramento jurídico do fato gerador antes de gerar o pedido');
+      setShowChecklist(true);
       return;
     }
 
@@ -762,7 +770,11 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                   <label className="text-xs text-muted-foreground">Tipo do fato</label>
                   <select
                     value={tipoFato}
-                    onChange={e => setTipoFato(e.target.value as typeof tipoFato)}
+                    onChange={e => {
+                      setTipoFato(e.target.value as typeof tipoFato);
+                      setEnquadramentoValidado(false);
+                      setShowChecklist(false);
+                    }}
                     className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
                     <option value="caso_fortuito">☁️ Caso Fortuito (evento imprevisível — origem humana/interna: greves, atos de terceiros)</option>
@@ -771,6 +783,45 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                     <option value="fato_superveniente">📋 Álea Econômica Extraordinária (Teoria da Imprevisão — art. 124, II, "d")</option>
                   </select>
                 </div>
+
+                {/* Validação jurídica do enquadramento */}
+                <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background/40 px-3 py-2">
+                  <div className="flex items-center gap-2 text-xs">
+                    {enquadramentoValidado ? (
+                      <>
+                        <Scale className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">Enquadramento jurídico validado</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <span className="text-muted-foreground">Valide o enquadramento antes de aceitar a classificação</span>
+                      </>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={enquadramentoValidado ? 'ghost' : 'outline'}
+                    onClick={() => setShowChecklist(s => !s)}
+                    className="shrink-0"
+                  >
+                    {showChecklist ? 'Ocultar checklist' : enquadramentoValidado ? 'Revisar checklist' : 'Validar enquadramento'}
+                  </Button>
+                </div>
+
+                {showChecklist && (
+                  <ChecklistFatoGerador
+                    tipoFato={tipoFato}
+                    onConfirm={() => {
+                      setEnquadramentoValidado(true);
+                      setShowChecklist(false);
+                      toast.success('Enquadramento jurídico aceito.');
+                    }}
+                    onCancel={() => setShowChecklist(false)}
+                  />
+                )}
+
                 <div>
                   <label className="text-xs text-muted-foreground">Descrição detalhada do fato gerador</label>
                   <Textarea
