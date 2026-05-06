@@ -133,7 +133,7 @@ export default function ModelosTemplatesTab() {
   const { pedidos, criarPedido, salvarVersao } = useJuridicoPedidos();
   const { processo } = useProcessoAtivo();
   const [pedidoAtivo, setPedidoAtivo] = useState<JuridicoPedido | null>(null);
-  const [showPedidos, setShowPedidos] = useState(true);
+  const [showPedidos, setShowPedidos] = useState(false);
 
   // Pré-preenchimento a partir do processo ativo (vinculação automática)
   useEffect(() => {
