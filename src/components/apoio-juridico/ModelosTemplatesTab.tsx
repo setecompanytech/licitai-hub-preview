@@ -107,21 +107,6 @@ export default function ModelosTemplatesTab() {
     }
   }, [empresas, selectedEmpresaId]);
 
-  // Pré-preenchimento a partir do processo ativo (vinculação automática)
-  useEffect(() => {
-    if (!processo) return;
-    if (!editalNum && processo.numero) setEditalNum(processo.numero);
-  }, [processo]);
-
-  // Contagem de pedidos por modelo (para badge)
-  const pedidosPorModelo = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const p of pedidos) {
-      if (p.modelo_id) map[p.modelo_id] = (map[p.modelo_id] || 0) + 1;
-    }
-    return map;
-  }, [pedidos]);
-
   // Research data
   const [indices, setIndices] = useState<Indice[]>([]);
   const [ccts, setCcts] = useState<CCT[]>([]);
