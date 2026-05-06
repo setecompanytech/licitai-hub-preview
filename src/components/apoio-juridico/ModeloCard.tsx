@@ -45,40 +45,40 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
     >
       {/* Numeração forense */}
       <div className="flex flex-col items-center pt-0.5 shrink-0">
-        <span className="text-[13px] font-semibold text-muted-foreground tabular-nums leading-none">
+        <span className="text-[14px] font-semibold text-muted-foreground tabular-nums leading-none">
           {numero}
         </span>
         <span className="block w-4 h-px bg-border/60 mt-1" />
         {pedidosCount > 0 && (
-          <Badge className="mt-1 text-[8px] gap-0.5 bg-accent/15 text-accent border-accent/30 h-3.5 px-1 leading-none shrink-0">
-            <FileText className="w-2 h-2" /> {pedidosCount}
+          <Badge className="mt-1 text-[9px] gap-0.5 bg-accent/15 text-accent border-accent/30 h-4 px-1 leading-none shrink-0">
+            <FileText className="w-2.5 h-2.5" /> {pedidosCount}
           </Badge>
         )}
       </div>
 
       {/* Caput + descrição + fundamentação */}
       <div className="min-w-0">
-        <h4 className="text-[13.5px] font-semibold text-foreground leading-snug tracking-tight">
+        <h4 className="text-[15px] font-semibold text-foreground leading-snug tracking-tight">
           {m.titulo}
         </h4>
-        <p className="text-[11.5px] text-muted-foreground mt-0.5 leading-snug line-clamp-2">
+        <p className="text-[13px] text-muted-foreground mt-1 leading-snug line-clamp-2">
           {m.descricao}
         </p>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
-          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary/90 tabular-nums whitespace-nowrap">
+          <span className="inline-flex items-center gap-1 text-[11.5px] font-medium text-primary/90 tabular-nums whitespace-nowrap">
             <span className="text-muted-foreground/70">§</span> {m.fundamentacao}
           </span>
           {m.requisitosFiltro.includes('indices') && (
-            <span className="text-[9px] uppercase tracking-wider text-muted-foreground/80 border-l border-border/60 pl-2 whitespace-nowrap">Índices</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80 border-l border-border/60 pl-2 whitespace-nowrap">Índices</span>
           )}
           {m.requisitosFiltro.includes('ccts') && (
-            <span className="text-[9px] uppercase tracking-wider text-muted-foreground/80 border-l border-border/60 pl-2 whitespace-nowrap">CCT</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80 border-l border-border/60 pl-2 whitespace-nowrap">CCT</span>
           )}
           {m.requisitosFiltro.includes('base_juridica') && (
-            <span className="text-[9px] uppercase tracking-wider text-muted-foreground/80 border-l border-border/60 pl-2 whitespace-nowrap">Base Jurídica</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80 border-l border-border/60 pl-2 whitespace-nowrap">Base Jurídica</span>
           )}
           {m.requisitosFiltro.includes('contrato') && (
-            <span className="text-[9px] uppercase tracking-wider text-muted-foreground/80 border-l border-border/60 pl-2 whitespace-nowrap">Contrato</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80 border-l border-border/60 pl-2 whitespace-nowrap">Contrato</span>
           )}
         </div>
       </div>
@@ -97,7 +97,7 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
         <Button
           size="sm"
           variant="ghost"
-          className="h-7 px-2 text-[10px] uppercase tracking-wider font-semibold text-accent hover:text-accent hover:bg-accent/10 gap-1 shrink-0"
+          className="h-8 px-2.5 text-[11.5px] uppercase tracking-wider font-semibold text-accent hover:text-accent hover:bg-accent/10 gap-1 shrink-0"
           onClick={(e) => { e.stopPropagation(); onAbrir(); }}
         >
           Redigir <ChevronRight className="w-3 h-3" />
