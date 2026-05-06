@@ -87,11 +87,39 @@ export function useUpsertConta() {
         }
       }
 
+      // Pré-checagem amigável de duplicidade (empresa + banco + agência + conta)
+      if (body.banco_codigo && body.agencia && body.conta) {
+        const dupQuery = supabase
+          .from("financeiro_contas")
+          .select("id, nome")
+          .eq("empresa_id", empresaId)
+          .eq("banco_codigo", body.banco_codigo)
+          .eq("agencia", body.agencia)
+          .eq("conta", body.conta);
+        if (payload.id) dupQuery.neq("id", payload.id);
+        const { data: dup } = await dupQuery.maybeSingle();
+        if (dup) {
+          throw new Error(
+            `Já existe uma conta cadastrada com este banco, agência e número (${dup.nome}). Edite a conta existente ou utilize uma agência/número diferente.`,
+          );
+        }
+      }
+
       const q = payload.id
         ? supabase.from("financeiro_contas").update(body).eq("id", payload.id).select().single()
         : supabase.from("financeiro_contas").insert(body).select().single();
       const { data, error } = await q;
-      if (error) throw error;
+      if (error) {
+        // Tradução amigável de erros de constraint do Postgres
+        const msg = (error as { code?: string; message?: string }).message ?? "";
+        const code = (error as { code?: string }).code;
+        if (code === "23505" || /duplicate key|unique constraint/i.test(msg)) {
+          throw new Error(
+            "Já existe uma conta cadastrada com este banco, agência e número para esta empresa. Edite a conta existente ou utilize dados diferentes.",
+          );
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
