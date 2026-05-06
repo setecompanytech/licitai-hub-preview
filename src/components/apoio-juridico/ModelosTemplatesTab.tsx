@@ -1465,6 +1465,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           )}
         </SheetContent>
       </Sheet>
+      </div>
 
       {/* ── Acervo de Modelos – Layout Forense (estilo Vade Mecum) ── */}
       {filteredModelos.length === 0 ? (
