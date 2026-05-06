@@ -129,6 +129,22 @@ export default function ModelosTemplatesTab() {
   const [pedidoAtivo, setPedidoAtivo] = useState<JuridicoPedido | null>(null);
   const [showPedidos, setShowPedidos] = useState(true);
 
+  // Pré-preenchimento a partir do processo ativo (vinculação automática)
+  useEffect(() => {
+    if (!processo) return;
+    if (!editalNum && processo.numero) setEditalNum(processo.numero);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [processo?.id]);
+
+  // Contagem de pedidos por modelo (para badge)
+  const pedidosPorModelo = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const p of pedidos) {
+      if (p.modelo_id) map[p.modelo_id] = (map[p.modelo_id] || 0) + 1;
+    }
+    return map;
+  }, [pedidos]);
+
   // Petition upload state
   const [showPeticaoUploader, setShowPeticaoUploader] = useState(false);
   const [fatosPeticao, setFatosPeticao] = useState<FatoPeticao[]>([]);
