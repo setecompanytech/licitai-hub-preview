@@ -55,6 +55,10 @@ export interface JuridicoPedido {
   aditivo_numero: string | null;
   aditivo_numero_legacy?: string | null;
   orgao_contratante: string | null;
+  modelo_id: string | null;
+  modelo_titulo: string | null;
+  categoria: string | null;
+  prefixo_numero: string | null;
   dados_caso: Record<string, unknown> | null;
   data_protocolo: string | null;
   numero_protocolo: string | null;
