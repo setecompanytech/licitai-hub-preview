@@ -592,20 +592,34 @@ export default function FinPessoas() {
                   <div className="flex gap-2">
                     <Input
                       value={form.endereco.cep ?? ""}
-                      onChange={(e) => setEnd("cep", e.target.value)}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, "").slice(0, 8);
+                        const masked = raw.length > 5 ? `${raw.slice(0, 5)}-${raw.slice(5)}` : raw;
+                        setEnd("cep", masked);
+                        // Auto-busca quando completar 8 dígitos (estilo Omie)
+                        if (raw.length === 8 && !buscandoCEP) {
+                          handleBuscarCEP(raw);
+                        }
+                      }}
+                      onBlur={() => {
+                        const raw = (form.endereco.cep || "").replace(/\D/g, "");
+                        if (raw.length === 8 && !buscandoCEP) handleBuscarCEP(raw);
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
                           handleBuscarCEP();
                         }
                       }}
+                      inputMode="numeric"
+                      maxLength={9}
                       placeholder="00000-000"
                     />
                     <Button
                       type="button"
                       variant="default"
                       size="icon"
-                      onClick={handleBuscarCEP}
+                      onClick={() => handleBuscarCEP()}
                       disabled={buscandoCEP}
                       title="Buscar endereço pelo CEP"
                     >
