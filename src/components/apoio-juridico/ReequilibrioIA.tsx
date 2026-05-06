@@ -158,6 +158,11 @@ export default function ReequilibrioIA() {
   // Export
   const [exporting, setExporting] = useState<'pdf' | 'word' | null>(null);
 
+  // Pedido jurídico ativo (cabeçalho persistido) e hook
+  const { criarPedido, salvarVersao } = useJuridicoPedidos();
+  const [pedidoAtivo, setPedidoAtivo] = useState<JuridicoPedido | null>(null);
+  const [showLista, setShowLista] = useState(true);
+
   // Revisão-specific fields
   const [fatoGerador, setFatoGerador] = useState('');
   const [tipoFato, setTipoFato] = useState<'caso_fortuito' | 'forca_maior' | 'fato_principe' | 'fato_superveniente'>('fato_superveniente');
