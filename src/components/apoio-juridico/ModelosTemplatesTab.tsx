@@ -1358,7 +1358,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                   Compêndio de Modelos Processuais e Administrativos
                 </h2>
               </div>
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono shrink-0">
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground tabular-nums shrink-0">
                 <span className="px-1.5 py-0.5 border border-border/60 rounded-sm bg-background/60">
                   Lei nº 14.133/2021
                 </span>
@@ -1389,12 +1389,12 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       <h3 className="text-[12px] font-bold uppercase tracking-[0.12em] text-foreground truncate">
                         {cat}
                       </h3>
-                      <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                      <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
                         ({items.length} {items.length === 1 ? 'peça' : 'peças'})
                       </span>
                     </div>
                     {catCount > 0 && (
-                      <Badge className="text-[9px] gap-0.5 bg-accent/15 text-accent border-accent/30 shrink-0 h-4 px-1.5 font-mono">
+                      <Badge className="text-[9px] gap-0.5 bg-accent/15 text-accent border-accent/30 shrink-0 h-4 px-1.5 tabular-nums">
                         <FileText className="w-2.5 h-2.5" /> {catCount} emitida{catCount === 1 ? '' : 's'}
                       </Badge>
                     )}
@@ -1428,10 +1428,10 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
 
           {/* Rodapé institucional */}
           <div className="px-4 py-2 border-t border-border/60 bg-muted/20 flex items-center justify-between gap-2 flex-wrap">
-            <p className="text-[9.5px] text-muted-foreground font-mono">
+            <p className="text-[9.5px] text-muted-foreground">
               Documento gerado em conformidade com a NBR 14.724 · ABNT
             </p>
-            <p className="text-[9.5px] text-muted-foreground font-mono">
+            <p className="text-[9.5px] text-muted-foreground">
               Fundamentação: Lei 14.133/2021, LC 123/2006, CF/88 art. 37
             </p>
           </div>

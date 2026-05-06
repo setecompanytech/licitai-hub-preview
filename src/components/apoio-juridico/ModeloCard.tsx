@@ -65,7 +65,7 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
           {m.descricao}
         </p>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
-          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary/90 font-mono whitespace-nowrap">
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary/90 tabular-nums whitespace-nowrap">
             <span className="text-muted-foreground/70">§</span> {m.fundamentacao}
           </span>
           {m.requisitosFiltro.includes('indices') && (
