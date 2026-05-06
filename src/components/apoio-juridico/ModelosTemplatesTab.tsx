@@ -1022,8 +1022,32 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
         )}
       </div>
 
-      {/* ── Active Generation Sheet (Drawer dedicado com preview live) ── */}
-      <Sheet open={!!activeModelo && !inlineMode} onOpenChange={(open) => { if (!open) resetGeneration(); }}>
+      {/* ── Active Generation Sheet (Drawer dedicado com preview live)
+           Em modo inline (deep-link via ?modelo=…), neutralizamos o overlay
+           e ancoramos o SheetContent dentro do conteúdo da página, para
+           preservar sidebar/header e parecer uma página completa. ── */}
+      {inlineMode && activeModelo && (
+        <style>{`
+          [data-aj-inline-sheet] [data-radix-dialog-overlay],
+          [data-aj-inline-sheet] [data-state] + [data-radix-dialog-overlay] { display: none !important; }
+          [data-aj-inline-sheet] [role="dialog"] {
+            position: static !important;
+            transform: none !important;
+            inset: auto !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
+            min-height: calc(100vh - 16rem);
+            box-shadow: 0 1px 2px hsl(var(--foreground) / 0.05) !important;
+            border: 1px solid hsl(var(--border) / 0.5) !important;
+            border-radius: 0.75rem !important;
+            animation: none !important;
+          }
+          [data-aj-inline-sheet] [role="dialog"] > button[aria-label="Close"] { display: none; }
+        `}</style>
+      )}
+      <div data-aj-inline-sheet={inlineMode ? 'true' : undefined}>
+      <Sheet open={!!activeModelo} onOpenChange={(open) => { if (!open) resetGeneration(); }} modal={!inlineMode}>
         <SheetContent
           side="right"
           className="w-full sm:max-w-none sm:w-[95vw] lg:w-[90vw] xl:w-[1400px] p-0 overflow-hidden flex flex-col"
