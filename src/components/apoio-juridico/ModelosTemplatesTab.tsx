@@ -1346,7 +1346,10 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           </Button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div
+          className="gap-3 [column-fill:_balance]"
+          style={{ columnWidth: '260px', columnGap: '0.75rem' }}
+        >
           {categorias.map(cat => {
             const items = filteredModelos.filter(m => m.categoria === cat);
             if (items.length === 0) return null;
@@ -1354,32 +1357,29 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
             return (
               <section
                 key={cat}
-                className="rounded-lg border border-border/50 bg-card/40 overflow-hidden"
+                className="mb-3 break-inside-avoid rounded-lg border border-border/50 bg-card/40 overflow-hidden"
               >
-                {/* Faixa-título destacada */}
-                <header className="flex items-center justify-between gap-2 px-3 py-2 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/40">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="inline-block w-1 h-4 bg-primary rounded-sm shrink-0" />
-                    <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <h3 className="text-[12px] font-bold uppercase tracking-wider text-foreground truncate">
+                {/* Faixa-título destacada e compacta */}
+                <header className="flex items-center justify-between gap-2 px-2.5 py-1.5 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/40">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="inline-block w-0.5 h-3.5 bg-primary rounded-sm shrink-0" />
+                    <BookOpen className="w-3 h-3 text-primary shrink-0" />
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-foreground truncate">
                       {cat}
                     </h3>
-                    <Badge variant="outline" className="text-[10px] h-4 px-1.5 shrink-0 bg-background/60">
+                    <Badge variant="outline" className="text-[9px] h-3.5 px-1 shrink-0 bg-background/60">
                       {items.length}
                     </Badge>
                   </div>
                   {catCount > 0 && (
-                    <Badge className="text-[10px] gap-1 bg-accent/15 text-accent border-accent/30 shrink-0 h-5">
-                      <FileText className="w-2.5 h-2.5" /> {catCount} gerado{catCount === 1 ? '' : 's'}
+                    <Badge className="text-[9px] gap-0.5 bg-accent/15 text-accent border-accent/30 shrink-0 h-3.5 px-1">
+                      <FileText className="w-2 h-2" /> {catCount}
                     </Badge>
                   )}
                 </header>
 
-                {/* Grid auto-fill: cards fluem preenchendo o espaço sem deixar colunas vazias em nenhum breakpoint */}
-                <div
-                  className="grid gap-2.5 p-2.5"
-                  style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 240px), 1fr))' }}
-                >
+                {/* Lista vertical compacta dentro de cada categoria — masonry distribui as seções entre as colunas */}
+                <div className="flex flex-col gap-1.5 p-1.5">
                   {items.map(m => (
                     <ModeloCard
                       key={m.id}
