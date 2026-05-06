@@ -1037,28 +1037,16 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
       </div>
 
       {/* ── Active Generation
-           - Modo padrão: Sheet/Drawer modal sobreposto à lista.
+           - Modo padrão: Sheet/Drawer modal (Radix Dialog em portal).
            - Modo inline (deep-link via /apoio-juridico/redigir/:id ou ?modelo=…):
-             renderiza como página completa inline, SEM portal/overlay/fixed,
-             ocupando todo o conteúdo do AppLayout (header e sidebar
-             permanecem da página hospedeira). Isso elimina o "espelho quebrado"
-             onde a lista aparecia atrás do drawer. ── */}
+             renderiza inline, SEM portal/overlay/fixed, ocupando todo o
+             conteúdo do AppLayout. Isso elimina o "espelho quebrado" onde a
+             lista aparecia atrás do drawer. ── */}
       {inlineMode && activeModelo ? (
         <section
           aria-label={`Redigir: ${activeModelo.titulo}`}
           className="bg-background border border-border/50 rounded-lg shadow-sm overflow-hidden flex flex-col"
           style={{ minHeight: 'calc(100vh - 180px)' }}
-        >
-          {(() => {
-            // Wrapper "fake" para reaproveitar o JSX do Sheet sem alterar a indentação:
-            // exporta um componente que renderiza apenas children como container plano.
-            return null;
-          })()}
-          <InlineGeneratorContent>
-      <Sheet open={!!activeModelo} onOpenChange={(open) => { if (!open) resetGeneration(); }} modal={!inlineMode}>
-        <SheetContent
-          side="right"
-          className="w-full sm:max-w-none sm:w-[95vw] lg:w-[90vw] xl:w-[1400px] p-0 overflow-hidden flex flex-col"
         >
           {activeModelo && (
             <>
