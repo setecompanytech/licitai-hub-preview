@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +25,20 @@ const LEGISLACAO_REFS = [
 
 export default function ApoioJuridico() {
   const [activeTab, setActiveTab] = useState('modelos');
+  // Quando aberto via deep-link /apoio-juridico/redigir/:modeloId,
+  // a página opera em modo "redação dedicada": ocultamos o cabeçalho
+  // institucional e as abas (Modelos, Gerador, Reequilíbrio, Base, Legislação),
+  // exibindo apenas o gerador do modelo escolhido.
+  const { modeloId } = useParams<{ modeloId?: string }>();
+  const dedicatedMode = !!modeloId;
+
+  if (dedicatedMode) {
+    return (
+      <AppLayout>
+        <ModelosTemplatesTab />
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
