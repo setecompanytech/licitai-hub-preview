@@ -1375,8 +1375,11 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                   )}
                 </header>
 
-                {/* Grid de cards — sem auto-rows-fr para não esticar quando há poucos */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 p-2.5">
+                {/* Grid auto-fill: cards fluem preenchendo o espaço sem deixar colunas vazias em nenhum breakpoint */}
+                <div
+                  className="grid gap-2.5 p-2.5"
+                  style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 240px), 1fr))' }}
+                >
                   {items.map(m => (
                     <ModeloCard
                       key={m.id}
