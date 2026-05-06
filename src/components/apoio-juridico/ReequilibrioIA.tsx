@@ -631,7 +631,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
           <PedidosJuridicosList
             onSelecionar={(p) => {
               setPedidoAtivo(p);
-              setMecanismo(p.tipo);
+              if (p.tipo !== 'outros') setMecanismo(p.tipo);
               if (p.instrumento) setInstrumento(p.instrumento as Instrumento);
               if (p.processo_administrativo) setProcessoAdm(p.processo_administrativo);
               if (p.pregao_numero) setPregaoNum(p.pregao_numero);
