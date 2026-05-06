@@ -14,8 +14,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   FileText, Clock, History, Trash2, ArrowRight, Eye, CheckCircle2,
-  XCircle, AlertCircle, Loader2, Hash,
+  XCircle, AlertCircle, Loader2, Hash, FileEdit, Send, ShieldAlert,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import {
   useJuridicoPedidos, listarVersoes, listarHistorico,
