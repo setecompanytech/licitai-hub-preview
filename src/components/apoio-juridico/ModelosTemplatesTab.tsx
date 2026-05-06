@@ -1313,7 +1313,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
 
                     {(resultado || gerando) && (
                       <div className="bg-background mx-auto rounded-md shadow-md border border-border/40 max-w-[210mm] min-h-[297mm] p-12">
-                        <div className="prose prose-sm max-w-none dark:prose-invert text-sm font-serif leading-[1.6]">
+                        <div className="prose prose-sm max-w-none dark:prose-invert text-sm leading-[1.6]">
                           <ReactMarkdown>{resultado || ''}</ReactMarkdown>
                           {gerando && (
                             <span className="inline-block w-2 h-4 bg-accent animate-pulse align-middle ml-0.5" />
@@ -1380,12 +1380,12 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
               return (
                 <section key={cat} className="bg-background">
                   {/* Cabeçalho do capítulo — faixa institucional */}
-                  <header className="sticky top-0 z-[1] flex items-center justify-between gap-3 px-3 py-2.5 bg-primary/[0.08] border-y border-primary/20 shadow-[inset_3px_0_0_0_hsl(var(--accent))]">
+                  <header className="sticky top-0 z-[1] flex items-center justify-between gap-3 px-3 py-2 bg-primary/15 dark:bg-primary/20 border-y border-border/40">
                     <div className="flex items-baseline gap-2.5 min-w-0">
-                      <span className="text-[11px] font-bold text-primary tabular-nums tracking-wider shrink-0">
+                      <span className="text-[11px] font-bold text-foreground tabular-nums tracking-wider shrink-0">
                         CAP. {romano}
                       </span>
-                      <span className="w-px h-3 bg-primary/30 shrink-0" />
+                      <span className="w-px h-3 bg-border shrink-0" />
                       <h3 className="text-[12px] font-bold uppercase tracking-[0.12em] text-foreground truncate">
                         {cat}
                       </h3>
@@ -1394,7 +1394,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       </span>
                     </div>
                     {catCount > 0 && (
-                      <Badge className="text-[9px] gap-0.5 bg-accent/15 text-accent border-accent/30 shrink-0 h-4 px-1.5 tabular-nums">
+                      <Badge className="text-[9px] gap-0.5 bg-background/70 text-foreground border-border/50 shrink-0 h-4 px-1.5 tabular-nums">
                         <FileText className="w-2.5 h-2.5" /> {catCount} emitida{catCount === 1 ? '' : 's'}
                       </Badge>
                     )}

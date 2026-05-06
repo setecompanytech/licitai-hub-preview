@@ -23,7 +23,7 @@ interface Props {
 
 /**
  * Linha forense estilo Vade Mecum / Diário Oficial.
- * Tipografia serif para o caput, sans para metadados.
+ * Tipografia do sistema (Plus Jakarta Sans) em todos os textos.
  * Numeração arábica à esquerda, fundamentação centralizada, ações à direita.
  */
 export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir }: Props) {
