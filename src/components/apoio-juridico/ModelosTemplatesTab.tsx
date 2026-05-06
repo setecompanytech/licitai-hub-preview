@@ -653,6 +653,43 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
 
   return (
     <div className="space-y-4">
+      {/* ── Painel "Meus Documentos" (Pedidos Jurídicos) ── */}
+      <div className="bg-card rounded-xl border border-border/50 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setShowPedidos(s => !s)}
+          className="w-full flex items-center justify-between p-4 hover:bg-muted/30 transition-colors rounded-xl"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <FolderOpen className="w-4 h-4 text-accent shrink-0" />
+            <h3 className="text-sm font-semibold whitespace-nowrap">Meus Documentos Jurídicos</h3>
+            <Badge variant="outline" className="text-[10px] gap-1 shrink-0">
+              <Hash className="w-2.5 h-2.5" /> {pedidos.length}
+            </Badge>
+            {processo?.numero && (
+              <Badge variant="outline" className="text-[10px] gap-1 shrink-0 hidden sm:inline-flex">
+                <FileText className="w-2.5 h-2.5" /> Processo: {processo.numero}
+              </Badge>
+            )}
+          </div>
+          {showPedidos ? <ChevronUp className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
+        </button>
+        {showPedidos && (
+          <div className="px-4 pb-4 border-t border-border/50">
+            <p className="text-[11px] text-muted-foreground py-2">
+              Numeração híbrida (PRAEFECTUS/PREFIXO/ANO/SEQ-SUFIXO), versionamento automático e workflow de 7 status. Selecione um pedido para retomá-lo na geração.
+            </p>
+            <PedidosJuridicosList
+              onSelecionar={(p) => {
+                setPedidoAtivo(p);
+                if (p.modelo_id) setActiveModeloId(p.modelo_id);
+                if (p.pregao_numero) setEditalNum(p.pregao_numero);
+              }}
+            />
+          </div>
+        )}
+      </div>
+
       {/* ── Modality Selector ── */}
       <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm space-y-3">
         <div className="flex items-center justify-between mb-2">
