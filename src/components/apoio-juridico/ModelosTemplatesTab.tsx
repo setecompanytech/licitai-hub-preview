@@ -15,16 +15,21 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from '@/components/ui/sheet';
+import {
   Search, BookOpen, FileText, Download, Copy, Sparkles, Loader2,
   MessageSquare, FileWarning, Gavel, ArrowUpDown, ShieldQuestion,
   Calculator, Filter, X, TrendingUp, Users, ChevronDown, ChevronUp,
   Scale, SlidersHorizontal, ListChecks, Target, Shield, Info,
-  Landmark, Award, Upload, CheckCircle, Building2, User, FolderOpen, Hash
+  Landmark, Award, Upload, CheckCircle, Building2, User, FolderOpen, Hash,
+  Eye, FileCode
 } from 'lucide-react';
 import { MODALIDADES, type ModalidadeLicitacao } from '@/data/modalidades-licitacao';
 import { useJuridicoPedidos, type JuridicoPedido } from '@/hooks/useJuridicoPedidos';
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 import PedidosJuridicosList from './PedidosJuridicosList';
+import ModeloCard from './ModeloCard';
 
 /* ── Types ── */
 type Modelo = {
