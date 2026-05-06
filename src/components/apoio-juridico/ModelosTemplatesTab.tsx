@@ -980,9 +980,48 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
         )}
       </div>
 
-      {/* ── Active Generation Panel ── */}
-      {activeModelo && (
-        <div className="bg-card rounded-xl border-2 border-accent/30 p-6 shadow-sm space-y-4">
+      {/* ── Active Generation Sheet (Drawer dedicado com preview live) ── */}
+      <Sheet open={!!activeModelo} onOpenChange={(open) => { if (!open) resetGeneration(); }}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-none sm:w-[95vw] lg:w-[90vw] xl:w-[1400px] p-0 overflow-hidden flex flex-col"
+        >
+          {activeModelo && (
+            <>
+              <SheetHeader className="px-6 pt-6 pb-4 border-b border-border/50 shrink-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <SheetTitle className="flex items-center gap-2 text-base">
+                      <Sparkles className="w-5 h-5 text-accent shrink-0" />
+                      <span className="truncate">{activeModelo.titulo}</span>
+                    </SheetTitle>
+                    <SheetDescription className="text-xs mt-1">
+                      {activeModelo.descricao}
+                    </SheetDescription>
+                    <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                      <Badge variant="outline" className="text-[10px] shrink-0">{activeModelo.fundamentacao}</Badge>
+                      {modalidade && <Badge variant="secondary" className="text-[10px] shrink-0">{modalidade.nome}</Badge>}
+                      {etapaFiltro && <Badge variant="secondary" className="text-[10px] shrink-0">{etapaFiltro}</Badge>}
+                      {selectedEmpresa && (
+                        <Badge variant="secondary" className="text-[10px] shrink-0 max-w-[200px] truncate">
+                          {selectedEmpresa.razao_social}
+                        </Badge>
+                      )}
+                      {pedidoAtivo && (
+                        <Badge className="text-[10px] gap-1 bg-accent/15 text-accent border-accent/30 hover:bg-accent/20 shrink-0">
+                          <Hash className="w-2.5 h-2.5" /> {pedidoAtivo.numero_formatado} · v{pedidoAtivo.versoes_count}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </SheetHeader>
+
+              {/* Layout 2 colunas: formulário + preview live */}
+              <div className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(0,420px)_1fr] overflow-hidden">
+                {/* Coluna esquerda: formulário com scroll */}
+                <div className="overflow-y-auto px-6 py-4 space-y-4 border-r border-border/50 bg-muted/10">
+                  <div className="bg-card rounded-lg border border-border/50 p-4 space-y-4 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-wrap">
               <Sparkles className="w-5 h-5 text-accent" />
