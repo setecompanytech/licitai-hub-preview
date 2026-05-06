@@ -1354,7 +1354,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                 <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground font-semibold">
                   Praefectus · Acervo Jurídico
                 </p>
-                <h2 className="font-serif text-base font-bold text-foreground leading-tight mt-0.5">
+                <h2 className="text-base font-bold text-foreground leading-tight mt-0.5 tracking-tight">
                   Compêndio de Modelos Processuais e Administrativos
                 </h2>
               </div>
@@ -1380,13 +1380,13 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
               return (
                 <section key={cat} className="bg-background">
                   {/* Cabeçalho do capítulo — faixa institucional */}
-                  <header className="sticky top-0 z-[1] flex items-center justify-between gap-3 px-3 py-2 bg-muted/40 backdrop-blur-sm border-b border-border/60">
+                  <header className="sticky top-0 z-[1] flex items-center justify-between gap-3 px-3 py-2.5 bg-primary/[0.08] border-y border-primary/20 shadow-[inset_3px_0_0_0_hsl(var(--accent))]">
                     <div className="flex items-baseline gap-2.5 min-w-0">
-                      <span className="font-serif text-[11px] font-bold text-primary tabular-nums tracking-wider shrink-0">
+                      <span className="text-[11px] font-bold text-primary tabular-nums tracking-wider shrink-0">
                         CAP. {romano}
                       </span>
-                      <span className="w-px h-3 bg-border/80 shrink-0" />
-                      <h3 className="font-serif text-[12px] font-semibold uppercase tracking-[0.12em] text-foreground truncate">
+                      <span className="w-px h-3 bg-primary/30 shrink-0" />
+                      <h3 className="text-[12px] font-bold uppercase tracking-[0.12em] text-foreground truncate">
                         {cat}
                       </h3>
                       <span className="text-[10px] text-muted-foreground font-mono shrink-0">
