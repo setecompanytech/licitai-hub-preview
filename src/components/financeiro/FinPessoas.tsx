@@ -516,6 +516,15 @@ export default function FinPessoas() {
                             .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/, "$1.$2.$3/$4-$5");
                         }
                         set("documento", masked);
+                        // Auto-consulta ao completar CNPJ (14 dígitos), estilo Omie
+                        if (d.length === 14 && !buscandoCNPJ) {
+                          // pequeno timeout para garantir que o estado esteja atualizado
+                          setTimeout(() => handleBuscarCNPJ(), 0);
+                        }
+                      }}
+                      onBlur={() => {
+                        const d = form.documento.replace(/\D/g, "");
+                        if (d.length === 14 && !buscandoCNPJ) handleBuscarCNPJ();
                       }}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleBuscarCNPJ(); } }}
                       inputMode="numeric"
