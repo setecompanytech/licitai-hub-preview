@@ -85,6 +85,12 @@ export default function FinConciliacao() {
   const reprocFileRef = useRef<HTMLInputElement>(null);
   const [reprocessando, setReprocessando] = useState<string | null>(null);
   const reprocAlvo = useRef<{ extrato_id: string; conta_id: string; arquivo_nome: string } | null>(null);
+  const [confirmReproc, setConfirmReproc] = useState<{
+    extrato_id: string;
+    conta_id: string;
+    arquivo_nome: string;
+    total_movimentos: number;
+  } | null>(null);
   const qc = useQueryClient();
   
   const [contaSelecionada, setContaSelecionada] = useState<string>("");
