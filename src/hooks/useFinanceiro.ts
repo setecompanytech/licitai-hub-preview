@@ -824,7 +824,18 @@ export function useImportarOFX() {
       const { data, error } = await supabase.functions.invoke("import-ofx", {
         body: { empresa_id: empresaId, ...input },
       });
-      if (error) throw error;
+      if (error) {
+        // Tenta extrair a mensagem real do corpo da resposta (FunctionsHttpError)
+        let realMsg = error.message;
+        try {
+          const ctx = (error as { context?: { response?: Response } }).context;
+          if (ctx?.response) {
+            const body = await ctx.response.clone().json().catch(() => null);
+            if (body?.error) realMsg = String(body.error);
+          }
+        } catch { /* ignore */ }
+        throw new Error(realMsg);
+      }
       if (data?.error) throw new Error(data.error);
       return data;
     },
