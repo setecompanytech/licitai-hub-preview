@@ -15826,6 +15826,15 @@ export type Database = {
         Args: { p_limite?: number }
         Returns: number
       }
+      restaurar_lancamentos_completo: {
+        Args: { p_batch?: number; p_max_loops?: number }
+        Returns: {
+          duracao_segundos: number
+          lotes: number
+          restantes: number
+          total_restaurado: number
+        }[]
+      }
       restaurar_lancamentos_por_id: {
         Args: { p_limite?: number }
         Returns: number
