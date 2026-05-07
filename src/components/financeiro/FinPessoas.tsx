@@ -814,7 +814,7 @@ export default function FinPessoas() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={async () => { if (confirmDel) await del.mutateAsync(confirmDel); setConfirmDel(null); }}>Excluir</AlertDialogAction>
+            <AlertDialogAction onClick={async () => { if (confirmDel) await del.mutateAsync({ id: confirmDel }); setConfirmDel(null); }}>Excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
