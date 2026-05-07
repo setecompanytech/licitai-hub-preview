@@ -7910,6 +7910,51 @@ export type Database = {
           },
         ]
       }
+      financeiro_exclusao_log: {
+        Row: {
+          created_at: string
+          dependencias: Json
+          empresa_id: string
+          erro_mensagem: string | null
+          id: string
+          motivo: string | null
+          pessoa_documento: string | null
+          pessoa_id: string
+          pessoa_nome: string | null
+          pessoa_tipo: string | null
+          resultado: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          dependencias?: Json
+          empresa_id: string
+          erro_mensagem?: string | null
+          id?: string
+          motivo?: string | null
+          pessoa_documento?: string | null
+          pessoa_id: string
+          pessoa_nome?: string | null
+          pessoa_tipo?: string | null
+          resultado: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          dependencias?: Json
+          empresa_id?: string
+          erro_mensagem?: string | null
+          id?: string
+          motivo?: string | null
+          pessoa_documento?: string | null
+          pessoa_id?: string
+          pessoa_nome?: string | null
+          pessoa_tipo?: string | null
+          resultado?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       financeiro_extrato_movimentos: {
         Row: {
           conciliado: boolean
@@ -15368,6 +15413,10 @@ export type Database = {
       sincronizar_saldos_contas_sem_movimento: {
         Args: { p_empresa_id: string }
         Returns: number
+      }
+      try_delete_financeiro_pessoa: {
+        Args: { p_motivo?: string; p_pessoa_id: string }
+        Returns: Json
       }
       user_has_active_subscription: {
         Args: { _user_id: string }
