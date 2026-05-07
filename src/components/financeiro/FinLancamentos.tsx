@@ -27,7 +27,12 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function FinLancamentos() {
-  const [filtro, setFiltro] = useState<LancamentoFiltro>({ tipo: "todos", status: "todos" });
+  const [searchParams] = useSearchParams();
+  const loteParam = searchParams.get("lote") || undefined;
+  const [filtro, setFiltro] = useState<LancamentoFiltro>({ tipo: "todos", status: "todos", origemTipo: "todos", origemLoteId: loteParam });
+  useEffect(() => {
+    setFiltro((f) => ({ ...f, origemLoteId: loteParam }));
+  }, [loteParam]);
   const { data: lancs = [], isLoading } = useLancamentos(filtro);
   const del = useDeleteLancamento();
 
