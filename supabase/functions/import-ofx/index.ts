@@ -40,10 +40,15 @@ function mapType(raw: string, amount: number): string {
 }
 
 function parseOFX(content: string) {
-  if (!content || !content.includes("<OFX>")) {
-    throw new Error("Arquivo OFX inválido: tag <OFX> não encontrada");
+  // Remove BOM e normaliza
+  let raw = content.replace(/^\uFEFF/, "").replace(/\r/g, "");
+  // Case-insensitive: força tags em maiúsculas
+  raw = raw.replace(/<\/?[a-zA-Z0-9.]+>?/g, (m) => m.toUpperCase());
+
+  if (!raw.includes("<OFX>")) {
+    throw new Error("Arquivo OFX inválido: tag <OFX> não encontrada. Verifique se o arquivo é um OFX/QFX válido (não CSV/PDF).");
   }
-  const body = content.replace(/^.*?<OFX>/s, "<OFX>").replace(/\r/g, "").trim();
+  const body = raw.replace(/^[\s\S]*?<OFX>/, "<OFX>").trim();
   const xml = sgmlToXml(body);
 
   const get = (parent: string, tag: string): string | null => {
@@ -58,8 +63,9 @@ function parseOFX(content: string) {
     return m ? m[1].trim() : null;
   };
 
-  const accountId = get("BANKACCTFROM", "ACCTID");
-  if (!accountId) throw new Error("Conta não identificada (ACCTID ausente)");
+  // Aceita BANKACCTFROM ou CCACCTFROM (cartão)
+  const accountId = get("BANKACCTFROM", "ACCTID") ?? get("CCACCTFROM", "ACCTID");
+  if (!accountId) throw new Error("Conta não identificada no OFX (ACCTID ausente em BANKACCTFROM/CCACCTFROM).");
 
   const transactions: OFXTransaction[] = [];
   const trxBlocks = xml.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/g);
@@ -81,7 +87,9 @@ function parseOFX(content: string) {
       memo: memo !== name ? memo : undefined,
     });
   }
-  if (transactions.length === 0) throw new Error("Nenhuma transação encontrada");
+  if (transactions.length === 0) {
+    throw new Error("Nenhuma transação <STMTTRN> encontrada no arquivo OFX.");
+  }
 
   return {
     accountId,
