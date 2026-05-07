@@ -209,7 +209,23 @@ export default function FinConciliacao() {
   }
 
   function iniciarReprocesso(extrato_id: string, conta_id: string, arquivo_nome: string) {
-    reprocAlvo.current = { extrato_id, conta_id, arquivo_nome };
+    const ex = (extratos ?? []).find((e) => e.id === extrato_id);
+    setConfirmReproc({
+      extrato_id,
+      conta_id,
+      arquivo_nome,
+      total_movimentos: ex?.total_movimentos ?? 0,
+    });
+  }
+
+  function confirmarReprocesso() {
+    if (!confirmReproc) return;
+    reprocAlvo.current = {
+      extrato_id: confirmReproc.extrato_id,
+      conta_id: confirmReproc.conta_id,
+      arquivo_nome: confirmReproc.arquivo_nome,
+    };
+    setConfirmReproc(null);
     reprocFileRef.current?.click();
   }
 
