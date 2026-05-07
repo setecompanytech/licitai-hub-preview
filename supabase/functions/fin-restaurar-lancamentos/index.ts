@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     let iter = 0;
     while (Date.now() < deadline) {
       iter++;
-      const { data, error } = await supabase.rpc("restaurar_lancamentos_audit", { p_limite: 5000 });
+      const { data, error } = await supabase.rpc("restaurar_lancamentos_audit", { p_limite: 500 });
       if (error) throw error;
       const n = Number(data ?? 0);
       total += n;
