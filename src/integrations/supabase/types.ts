@@ -15644,6 +15644,10 @@ export type Database = {
         Returns: undefined
       }
       cleanup_rate_limit_log: { Args: never; Returns: undefined }
+      cleanup_seed_impostos_27042026: {
+        Args: { p_limite?: number }
+        Returns: Json
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
