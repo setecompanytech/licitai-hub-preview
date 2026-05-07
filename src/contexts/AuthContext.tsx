@@ -171,7 +171,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
+    const t0 = Date.now();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const dt = Date.now() - t0;
+    if (error) {
+      // Diagnóstico: distinguir backend indisponível (timeout/Load failed/522)
+      // de credenciais inválidas. Aparece no console do navegador.
+      const msg = (error as any)?.message ?? String(error);
+      const isNetwork = /load failed|fetch|timeout|network|522|503|gateway/i.test(msg);
+      console.error(`[Auth] signIn falhou em ${dt}ms — ${isNetwork ? 'BACKEND INDISPONÍVEL' : 'CREDENCIAL/AUTH'}: ${msg}`);
+    }
     return { error };
   };
 
