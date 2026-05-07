@@ -104,6 +104,28 @@ export default function FinImportarPlanilha() {
     if (validas.length === 0 || !empresaId) return;
     setImporting(true);
     try {
+      const { data: userData } = await supabase.auth.getUser();
+      const usuarioId = userData.user?.id ?? null;
+      const totalValor = validas.reduce((acc, l) => acc + l.valor, 0);
+
+      // Cria lote de origem para rastreabilidade
+      const { data: lote, error: loteErr } = await supabase
+        .from("financeiro_origem_lotes")
+        .insert({
+          empresa_id: empresaId,
+          origem_tipo: "importacao_csv",
+          job: "FinImportarPlanilha",
+          descricao: `Importação CSV (${tipo}) — ${validas.length} linha(s)`,
+          usuario_id: usuarioId,
+          total_registros: validas.length,
+          total_valor: totalValor,
+          metadata: { tipo, arquivo: fileRef.current?.files?.[0]?.name ?? null },
+        })
+        .select("id")
+        .single();
+      if (loteErr) throw loteErr;
+
+      const nowIso = new Date().toISOString();
       const payload = validas.map((l) => ({
         empresa_id: empresaId,
         tipo,
@@ -116,6 +138,12 @@ export default function FinImportarPlanilha() {
         numero_documento: l.numero_documento || null,
         observacoes: l.observacoes || null,
         origem: "manual" as const,
+        origem_tipo: "importacao_csv" as const,
+        origem_lote_id: lote.id,
+        origem_job: "FinImportarPlanilha",
+        origem_usuario_id: usuarioId,
+        origem_timestamp: nowIso,
+        origem_metadata: { arquivo: fileRef.current?.files?.[0]?.name ?? null },
       }));
       const { error } = await supabase.from("financeiro_lancamentos").insert(payload);
       if (error) throw error;
