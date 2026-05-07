@@ -9115,6 +9115,45 @@ export type Database = {
           },
         ]
       }
+      financeiro_origem_lotes: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          empresa_id: string
+          id: string
+          job: string | null
+          metadata: Json | null
+          origem_tipo: Database["public"]["Enums"]["financeiro_origem_tipo"]
+          total_registros: number | null
+          total_valor: number | null
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          empresa_id: string
+          id?: string
+          job?: string | null
+          metadata?: Json | null
+          origem_tipo: Database["public"]["Enums"]["financeiro_origem_tipo"]
+          total_registros?: number | null
+          total_valor?: number | null
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string
+          id?: string
+          job?: string | null
+          metadata?: Json | null
+          origem_tipo?: Database["public"]["Enums"]["financeiro_origem_tipo"]
+          total_registros?: number | null
+          total_valor?: number | null
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
       financeiro_pessoas: {
         Row: {
           ativo: boolean
@@ -15467,6 +15506,22 @@ export type Database = {
         | "ocr"
         | "recorrencia"
         | "folha_pagamento"
+      financeiro_origem_tipo:
+        | "manual"
+        | "importacao_csv"
+        | "importacao_ofx"
+        | "importacao_xml"
+        | "sefaz_nfe"
+        | "pluggy"
+        | "cnab"
+        | "dda"
+        | "ocr"
+        | "recorrencia"
+        | "folha_pagamento"
+        | "api"
+        | "seed"
+        | "demo"
+        | "migracao"
       financeiro_status_lancamento:
         | "previsto"
         | "realizado"
@@ -15662,6 +15717,23 @@ export const Constants = {
         "ocr",
         "recorrencia",
         "folha_pagamento",
+      ],
+      financeiro_origem_tipo: [
+        "manual",
+        "importacao_csv",
+        "importacao_ofx",
+        "importacao_xml",
+        "sefaz_nfe",
+        "pluggy",
+        "cnab",
+        "dda",
+        "ocr",
+        "recorrencia",
+        "folha_pagamento",
+        "api",
+        "seed",
+        "demo",
+        "migracao",
       ],
       financeiro_status_lancamento: [
         "previsto",
