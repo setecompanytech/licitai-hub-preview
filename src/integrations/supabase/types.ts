@@ -15804,6 +15804,10 @@ export type Database = {
         Args: never
         Returns: Json
       }
+      restaurar_lancamentos_audit: {
+        Args: { p_limite?: number }
+        Returns: number
+      }
       seed_plano_contas_padrao: {
         Args: { p_empresa_id: string }
         Returns: undefined
