@@ -68,9 +68,22 @@ function parseOFX(content: string) {
   if (!accountId) throw new Error("Conta não identificada no OFX (ACCTID ausente em BANKACCTFROM/CCACCTFROM).");
 
   const transactions: OFXTransaction[] = [];
-  const trxBlocks = xml.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/g);
-  for (const match of trxBlocks) {
-    const block = match[1];
+  // Suporta dois formatos:
+  //  (a) SGML com closing tag explícita: <STMTTRN>...</STMTTRN>
+  //  (b) SGML sem closing tag (vários bancos BR): <STMTTRN> ... <STMTTRN> ... </BANKTRANLIST>
+  let trxRawBlocks: string[] = [];
+  if (/<\/STMTTRN>/.test(xml)) {
+    trxRawBlocks = Array.from(xml.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/g)).map((m) => m[1]);
+  } else {
+    // Pega tudo entre <BANKTRANLIST> e </BANKTRANLIST> (ou até <LEDGERBAL>) e divide por <STMTTRN>
+    const listMatch = xml.match(/<BANKTRANLIST>([\s\S]*?)(?:<\/BANKTRANLIST>|<LEDGERBAL>)/);
+    const listContent = listMatch ? listMatch[1] : xml;
+    trxRawBlocks = listContent
+      .split(/<STMTTRN>/)
+      .slice(1)
+      .map((b) => b.split(/<\/STMTTRN>|<\/BANKTRANLIST>|<LEDGERBAL>/)[0]);
+  }
+  for (const block of trxRawBlocks) {
     const fitid = getInBlock(block, "FITID");
     if (!fitid) continue;
     const trnType = getInBlock(block, "TRNTYPE") ?? "OTHER";
