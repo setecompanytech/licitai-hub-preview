@@ -15490,6 +15490,10 @@ export type Database = {
         }
         Returns: Json
       }
+      backfill_origem_lancamentos: {
+        Args: { p_limite?: number }
+        Returns: number
+      }
       busca_diarios_instantanea: {
         Args: {
           p_data_fim?: string
