@@ -34,6 +34,8 @@ export default function FinTransferencia() {
     if (!podeSalvar) return;
     setSaving(true);
     try {
+      const { data: userData } = await supabase.auth.getUser();
+      const usuarioId = userData.user?.id ?? null;
       // Lançamento duplo: 1 transferência (saída) com conta_destino_id apontando para o destino
       const { error } = await supabase.from("financeiro_lancamentos").insert({
         empresa_id: empresaId!,
@@ -47,6 +49,11 @@ export default function FinTransferencia() {
         conta_id: origem,
         conta_destino_id: destino,
         origem: "manual",
+        origem_tipo: "manual",
+        origem_job: "FinTransferencia",
+        origem_usuario_id: usuarioId,
+        origem_timestamp: new Date().toISOString(),
+        origem_metadata: { conta_origem: origem, conta_destino: destino },
         observacoes: obs || null,
       });
       if (error) throw error;
