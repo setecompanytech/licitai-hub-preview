@@ -38,6 +38,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -85,6 +95,12 @@ export default function FinConciliacao() {
   const reprocFileRef = useRef<HTMLInputElement>(null);
   const [reprocessando, setReprocessando] = useState<string | null>(null);
   const reprocAlvo = useRef<{ extrato_id: string; conta_id: string; arquivo_nome: string } | null>(null);
+  const [confirmReproc, setConfirmReproc] = useState<{
+    extrato_id: string;
+    conta_id: string;
+    arquivo_nome: string;
+    total_movimentos: number;
+  } | null>(null);
   const qc = useQueryClient();
   
   const [contaSelecionada, setContaSelecionada] = useState<string>("");
@@ -209,7 +225,23 @@ export default function FinConciliacao() {
   }
 
   function iniciarReprocesso(extrato_id: string, conta_id: string, arquivo_nome: string) {
-    reprocAlvo.current = { extrato_id, conta_id, arquivo_nome };
+    const ex = (extratos ?? []).find((e) => e.id === extrato_id);
+    setConfirmReproc({
+      extrato_id,
+      conta_id,
+      arquivo_nome,
+      total_movimentos: ex?.total_movimentos ?? 0,
+    });
+  }
+
+  function confirmarReprocesso() {
+    if (!confirmReproc) return;
+    reprocAlvo.current = {
+      extrato_id: confirmReproc.extrato_id,
+      conta_id: confirmReproc.conta_id,
+      arquivo_nome: confirmReproc.arquivo_nome,
+    };
+    setConfirmReproc(null);
     reprocFileRef.current?.click();
   }
 
@@ -702,6 +734,39 @@ export default function FinConciliacao() {
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog open={!!confirmReproc} onOpenChange={(o) => !o && setConfirmReproc(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reprocessar extrato?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  Esta ação irá <strong>apagar permanentemente</strong> o extrato{" "}
+                  <span className="font-mono text-foreground">{confirmReproc?.arquivo_nome}</span> e
+                  os <strong>{confirmReproc?.total_movimentos ?? 0} movimentos</strong> associados,
+                  incluindo conciliações pendentes vinculadas.
+                </p>
+                <p>
+                  Em seguida, será solicitado o arquivo OFX para reimportar com o parser atualizado.
+                  Conciliações já efetivadas em lançamentos não serão revertidas, mas perderão o
+                  vínculo com o movimento.
+                </p>
+                <p className="text-muted-foreground">
+                  Tem certeza que deseja continuar?
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarReprocesso}>
+              Apagar e reprocessar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
 
       {/* Movimentos */}
       <Card>
