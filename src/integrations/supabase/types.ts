@@ -13230,6 +13230,21 @@ export type Database = {
         }
         Relationships: []
       }
+      restauracao_lancamentos_fila: {
+        Row: {
+          processado_em: string | null
+          registro_id: string
+        }
+        Insert: {
+          processado_em?: string | null
+          registro_id: string
+        }
+        Update: {
+          processado_em?: string | null
+          registro_id?: string
+        }
+        Relationships: []
+      }
       restauracao_lancamentos_progresso: {
         Row: {
           erro: string | null
@@ -15820,6 +15835,7 @@ export type Database = {
       pncp_status_embeddings: { Args: never; Returns: Json }
       pncp_status_embeddings_v2: { Args: never; Returns: Json }
       pncp_status_sincronizacao: { Args: never; Returns: Json }
+      popular_fila_restauracao: { Args: { p_batch?: number }; Returns: number }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
