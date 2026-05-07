@@ -1,0 +1,1 @@
+SELECT public.restaurar_lancamentos_audit(5000) AS restaurados;
