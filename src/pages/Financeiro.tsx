@@ -102,6 +102,7 @@ const VIEW_MAP: Record<string, () => JSX.Element> = {
   auditoria_conciliacao: () => <FinAuditoriaConciliacao />,
   plano_contas_padrao: () => <FinPlanoContasPadrao />,
   integracoes_fiscais: () => <FinIntegracoesFiscais />,
+  lotes_auditoria: () => <FinLotesAuditoria />,
 };
 
 const COMING_SOON: Record<string, { title: string; description: string }> = {
