@@ -7838,6 +7838,14 @@ export type Database = {
           numero: string | null
           ocr_data: Json | null
           origem: Database["public"]["Enums"]["financeiro_origem_movimento"]
+          origem_job: string | null
+          origem_lote_id: string | null
+          origem_metadata: Json | null
+          origem_timestamp: string | null
+          origem_tipo:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id: string | null
           serie: string | null
           tipo: Database["public"]["Enums"]["financeiro_tipo_documento"]
           valor_impostos: number | null
@@ -7856,6 +7864,14 @@ export type Database = {
           numero?: string | null
           ocr_data?: Json | null
           origem?: Database["public"]["Enums"]["financeiro_origem_movimento"]
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           serie?: string | null
           tipo: Database["public"]["Enums"]["financeiro_tipo_documento"]
           valor_impostos?: number | null
@@ -7874,6 +7890,14 @@ export type Database = {
           numero?: string | null
           ocr_data?: Json | null
           origem?: Database["public"]["Enums"]["financeiro_origem_movimento"]
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           serie?: string | null
           tipo?: Database["public"]["Enums"]["financeiro_tipo_documento"]
           valor_impostos?: number | null
@@ -8300,7 +8324,15 @@ export type Database = {
           numero_documento: string | null
           observacoes: string | null
           origem: Database["public"]["Enums"]["financeiro_origem_movimento"]
+          origem_job: string | null
+          origem_lote_id: string | null
+          origem_metadata: Json | null
           origem_ref: string | null
+          origem_timestamp: string | null
+          origem_tipo:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id: string | null
           parcela_numero: number | null
           parcela_pai_id: string | null
           parcela_total: number | null
@@ -8355,7 +8387,15 @@ export type Database = {
           numero_documento?: string | null
           observacoes?: string | null
           origem?: Database["public"]["Enums"]["financeiro_origem_movimento"]
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
           origem_ref?: string | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           parcela_numero?: number | null
           parcela_pai_id?: string | null
           parcela_total?: number | null
@@ -8410,7 +8450,15 @@ export type Database = {
           numero_documento?: string | null
           observacoes?: string | null
           origem?: Database["public"]["Enums"]["financeiro_origem_movimento"]
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
           origem_ref?: string | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           parcela_numero?: number | null
           parcela_pai_id?: string | null
           parcela_total?: number | null
@@ -9173,6 +9221,14 @@ export type Database = {
           nome: string
           nome_fantasia: string | null
           observacoes: string | null
+          origem_job: string | null
+          origem_lote_id: string | null
+          origem_metadata: Json | null
+          origem_timestamp: string | null
+          origem_tipo:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id: string | null
           pessoa_tipo: string
           prazo_padrao_dias: number | null
           regime_tributario: string | null
@@ -9200,6 +9256,14 @@ export type Database = {
           nome: string
           nome_fantasia?: string | null
           observacoes?: string | null
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           pessoa_tipo: string
           prazo_padrao_dias?: number | null
           regime_tributario?: string | null
@@ -9227,6 +9291,14 @@ export type Database = {
           nome?: string
           nome_fantasia?: string | null
           observacoes?: string | null
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           pessoa_tipo?: string
           prazo_padrao_dias?: number | null
           regime_tributario?: string | null
