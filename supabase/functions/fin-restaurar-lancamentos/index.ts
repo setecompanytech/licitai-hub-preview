@@ -34,8 +34,10 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: true, restaurados_nesta_chamada: total, iteracoes: iter, deletes_audit_total_48h: count }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e) {
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), {
+  } catch (e: any) {
+    console.error("[fin-restaurar] error:", e);
+    const msg = e?.message || e?.error_description || e?.hint || JSON.stringify(e);
+    return new Response(JSON.stringify({ error: msg, details: e }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
