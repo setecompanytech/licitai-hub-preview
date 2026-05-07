@@ -83,6 +83,9 @@ function parseOFX(content: string) {
       .slice(1)
       .map((b) => b.split(/<\/STMTTRN>|<\/BANKTRANLIST>|<LEDGERBAL>/)[0]);
   }
+  console.log("[import-ofx] xml head:", xml.slice(0, 800));
+  console.log("[import-ofx] hasCloseTag:", /<\/STMTTRN>/.test(xml), "blocks:", trxRawBlocks.length);
+  if (trxRawBlocks.length > 0) console.log("[import-ofx] firstBlock:", trxRawBlocks[0].slice(0, 400));
   for (const block of trxRawBlocks) {
     const fitid = getInBlock(block, "FITID");
     if (!fitid) continue;
