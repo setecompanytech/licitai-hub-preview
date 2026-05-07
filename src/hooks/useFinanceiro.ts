@@ -19,6 +19,8 @@ export type LancamentoFiltro = {
   dataInicio?: string;
   dataFim?: string;
   busca?: string;
+  origemTipo?: Database["public"]["Enums"]["financeiro_origem_tipo"] | "todos";
+  origemLoteId?: string;
   /**
    * Campo de data usado para o intervalo dataInicio/dataFim.
    * - "competencia" (padrão): filtra por data_competencia (retrocompatível).
