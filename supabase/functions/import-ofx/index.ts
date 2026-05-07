@@ -86,14 +86,21 @@ function parseOFX(content: string) {
   console.log("[import-ofx] xml head:", xml.slice(0, 800));
   console.log("[import-ofx] hasCloseTag:", /<\/STMTTRN>/.test(xml), "blocks:", trxRawBlocks.length);
   if (trxRawBlocks.length > 0) console.log("[import-ofx] firstBlock:", trxRawBlocks[0].slice(0, 400));
+  let idx = 0;
   for (const block of trxRawBlocks) {
-    const fitid = getInBlock(block, "FITID");
-    if (!fitid) continue;
     const trnType = getInBlock(block, "TRNTYPE") ?? "OTHER";
     const dtposted = parseOFXDate(getInBlock(block, "DTPOSTED") ?? "");
     const trnamt = parseFloat(getInBlock(block, "TRNAMT") ?? "0");
     const memo = getInBlock(block, "MEMO") ?? "";
     const name = getInBlock(block, "NAME") ?? "";
+    const checknum = getInBlock(block, "CHECKNUM") ?? "";
+    const refnum = getInBlock(block, "REFNUM") ?? "";
+    // FITID sintético quando o banco (ex.: Banpará) não envia
+    let fitid = getInBlock(block, "FITID");
+    if (!fitid) {
+      fitid = `SYN-${dtposted.replace(/-/g, "")}-${trnamt.toFixed(2)}-${(name || memo).replace(/\s+/g, "").slice(0, 20)}-${idx}`;
+    }
+    idx++;
     transactions.push({
       fitid,
       type: mapType(trnType, trnamt),
