@@ -356,6 +356,8 @@ export function useLancamentos(filtro: LancamentoFiltro = {}) {
         .limit(500);
       if (filtro.tipo && filtro.tipo !== "todos") q = q.eq("tipo", filtro.tipo);
       if (filtro.status && filtro.status !== "todos") q = q.eq("status", filtro.status);
+      if (filtro.origemTipo && filtro.origemTipo !== "todos") q = q.eq("origem_tipo", filtro.origemTipo);
+      if (filtro.origemLoteId) q = q.eq("origem_lote_id", filtro.origemLoteId);
       const campo = filtro.campoData ?? "competencia";
       if (campo === "ambos") {
         // Retorna registros cujo vencimento OU competência caia no intervalo.
