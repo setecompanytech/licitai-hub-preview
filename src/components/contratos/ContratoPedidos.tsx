@@ -297,6 +297,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         contrato_pedido_id: p.id,
         contrato_item_id: p.contrato_item_id ?? null,
         origem: 'manual' as const,
+        origem_tipo: 'manual' as const,
+        origem_job: 'ContratoPedidos.gerarLancamentosFinanceiros',
+        origem_usuario_id: user?.id ?? null,
+        origem_timestamp: new Date().toISOString(),
+        origem_metadata: { contrato_id: contratoId, pedido_id: p.id, numero_pedido: p.numero_pedido },
         observacoes: `Lançamento gerado automaticamente a partir do pedido ${p.numero_pedido} do contrato ${(contratoInfo as any)?.numero_contrato ?? ''}.`,
         created_by: user?.id ?? null,
       }));
