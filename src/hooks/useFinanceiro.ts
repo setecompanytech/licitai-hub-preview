@@ -390,6 +390,8 @@ export function useUpsertLancamento() {
   return useMutation({
     mutationFn: async (payload: Partial<LancamentoInsert> & { id?: string }) => {
       if (!empresaId) throw new Error("Selecione uma empresa ativa.");
+      const { data: userData } = await supabase.auth.getUser();
+      const usuarioId = userData.user?.id ?? null;
       const body: LancamentoInsert = {
         ...(payload as LancamentoInsert),
         empresa_id: empresaId,
@@ -399,6 +401,13 @@ export function useUpsertLancamento() {
         natureza: payload.natureza ?? "despesa",
         tipo: payload.tipo ?? "a_pagar",
       };
+      if (!payload.id) {
+        // Apenas em criação — preserva origem em updates posteriores
+        body.origem_tipo = (payload as any).origem_tipo ?? "manual";
+        body.origem_job = (payload as any).origem_job ?? "useUpsertLancamento";
+        body.origem_usuario_id = (payload as any).origem_usuario_id ?? usuarioId;
+        body.origem_timestamp = (payload as any).origem_timestamp ?? new Date().toISOString();
+      }
       const q = payload.id
         ? supabase.from("financeiro_lancamentos").update(body).eq("id", payload.id).select().single()
         : supabase.from("financeiro_lancamentos").insert(body).select().single();
