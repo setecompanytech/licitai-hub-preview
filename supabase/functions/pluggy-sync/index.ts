@@ -70,6 +70,7 @@ Deno.serve(async (req) => {
       const accountsResp = await fetch(`${PLUGGY_API}/accounts?itemId=${body.itemId}`, { headers });
       const accounts = (await accountsResp.json()).results ?? [];
 
+      const nowIso = new Date().toISOString();
       let importadas = 0;
       for (const acc of accounts) {
         const txResp = await fetch(`${PLUGGY_API}/transactions?accountId=${acc.id}&pageSize=500`, { headers });
@@ -85,6 +86,11 @@ Deno.serve(async (req) => {
             data_pagamento: tx.date.slice(0, 10),
             status: "pago",
             origem: `pluggy:${tx.id}`,
+            origem_tipo: "pluggy",
+            origem_job: "pluggy-sync",
+            origem_usuario_id: userId,
+            origem_timestamp: nowIso,
+            origem_metadata: { itemId: body.itemId, accountId: acc.id, pluggy_tx_id: tx.id },
           } as any, { onConflict: "origem" });
           if (!error) importadas++;
         }

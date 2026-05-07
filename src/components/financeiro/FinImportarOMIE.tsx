@@ -348,6 +348,26 @@ export default function FinImportarOMIE() {
       (ps || []).forEach((p: any) => { if (p.documento) pessoaPorDoc[p.documento] = p.id; });
     }
 
+    const { data: userData } = await supabase.auth.getUser();
+    const usuarioId = userData.user?.id ?? null;
+    const totalValor = validas.reduce((acc, { data: d }) => acc + Number(d.valor || 0), 0);
+    const { data: lote, error: loteErr } = await supabase
+      .from("financeiro_origem_lotes")
+      .insert({
+        empresa_id: empresaId!,
+        origem_tipo: "importacao_csv",
+        job: "FinImportarOMIE",
+        descricao: `Importação OMIE (${entidade}) — ${validas.length} linha(s)`,
+        usuario_id: usuarioId,
+        total_registros: validas.length,
+        total_valor: totalValor,
+        metadata: { entidade },
+      })
+      .select("id")
+      .single();
+    if (loteErr) throw loteErr;
+    const nowIso = new Date().toISOString();
+
     const payload = validas.map(({ data: d }) => ({
       empresa_id: empresaId,
       tipo: entidade,
@@ -366,6 +386,12 @@ export default function FinImportarOMIE() {
       valor_desconto: d.valor_desconto || null,
       observacoes: d.observacoes || null,
       origem: "importacao_omie",
+      origem_tipo: "importacao_csv",
+      origem_lote_id: lote.id,
+      origem_job: "FinImportarOMIE",
+      origem_usuario_id: usuarioId,
+      origem_timestamp: nowIso,
+      origem_metadata: { entidade },
     }));
     const { error } = await supabase.from("financeiro_lancamentos").insert(payload as any);
     if (error) throw error;
