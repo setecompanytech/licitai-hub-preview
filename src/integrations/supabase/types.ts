@@ -15830,6 +15830,10 @@ export type Database = {
         Args: { p_limite?: number }
         Returns: number
       }
+      restaurar_lancamentos_por_id_v2: {
+        Args: { p_batch?: number }
+        Returns: number
+      }
       seed_plano_contas_padrao: {
         Args: { p_empresa_id: string }
         Returns: undefined
