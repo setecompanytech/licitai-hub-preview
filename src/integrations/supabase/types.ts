@@ -7857,6 +7857,27 @@ export type Database = {
           },
         ]
       }
+      financeiro_delete_rate: {
+        Row: {
+          deleted_at: string
+          id: number
+          qtd: number
+          user_id: string | null
+        }
+        Insert: {
+          deleted_at?: string
+          id?: number
+          qtd?: number
+          user_id?: string | null
+        }
+        Update: {
+          deleted_at?: string
+          id?: number
+          qtd?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       financeiro_demonstracoes: {
         Row: {
           competencia_fim: string
@@ -15643,11 +15664,8 @@ export type Database = {
         Args: { _pedido_id: string }
         Returns: undefined
       }
+      cleanup_financeiro_delete_rate: { Args: never; Returns: undefined }
       cleanup_rate_limit_log: { Args: never; Returns: undefined }
-      cleanup_seed_impostos_27042026: {
-        Args: { p_limite?: number }
-        Returns: Json
-      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
