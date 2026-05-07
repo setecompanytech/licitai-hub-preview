@@ -82,6 +82,9 @@ type MatchSugestao = {
 export default function FinConciliacao() {
   const fileRef = useRef<HTMLInputElement>(null);
   const csvRef = useRef<HTMLInputElement>(null);
+  const reprocFileRef = useRef<HTMLInputElement>(null);
+  const [reprocessando, setReprocessando] = useState<string | null>(null);
+  const reprocAlvo = useRef<{ extrato_id: string; conta_id: string; arquivo_nome: string } | null>(null);
   const qc = useQueryClient();
   
   const [contaSelecionada, setContaSelecionada] = useState<string>("");
@@ -202,6 +205,51 @@ export default function FinConciliacao() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha ao processar CSV.");
       e.target.value = "";
+    }
+  }
+
+  function iniciarReprocesso(extrato_id: string, conta_id: string, arquivo_nome: string) {
+    reprocAlvo.current = { extrato_id, conta_id, arquivo_nome };
+    reprocFileRef.current?.click();
+  }
+
+  async function onReprocessarFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    const alvo = reprocAlvo.current;
+    e.target.value = "";
+    if (!file || !alvo) return;
+    setReprocessando(alvo.extrato_id);
+    try {
+      // Apaga movimentos e extrato antigo (cascade já remove conciliações pendentes)
+      const { error: errMov } = await supabase
+        .from("financeiro_extrato_movimentos")
+        .delete()
+        .eq("extrato_id", alvo.extrato_id);
+      if (errMov) throw errMov;
+      const { error: errExt } = await supabase
+        .from("financeiro_extratos_importados")
+        .delete()
+        .eq("id", alvo.extrato_id);
+      if (errExt) throw errExt;
+
+      const conteudo = await file.text();
+      importar.mutate(
+        { conta_id: alvo.conta_id, arquivo_nome: file.name, conteudo_ofx: conteudo },
+        {
+          onSuccess: () => {
+            toast.success("Extrato reprocessado com sucesso.");
+            qc.invalidateQueries({ queryKey: ["fin-extratos-importados"] });
+            qc.invalidateQueries({ queryKey: ["fin-movimentos-extrato"] });
+          },
+          onError: (err) => toast.error(err instanceof Error ? err.message : "Falha no reprocesso."),
+          onSettled: () => setReprocessando(null),
+        }
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao remover extrato antigo.");
+      setReprocessando(null);
+    } finally {
+      reprocAlvo.current = null;
     }
   }
 
@@ -606,12 +654,12 @@ export default function FinConciliacao() {
               {(extratos ?? []).slice(0, 6).map((ex) => (
                 <div
                   key={ex.id}
-                  className="border rounded-md p-3 text-sm flex items-start justify-between"
+                  className="border rounded-md p-3 text-sm flex items-start justify-between gap-2"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <div className="font-medium flex items-center gap-1.5">
-                      <FileCheck2 className="w-4 h-4 text-primary" />
-                      {ex.arquivo_nome}
+                      <FileCheck2 className="w-4 h-4 text-primary shrink-0" />
+                      <span className="truncate">{ex.arquivo_nome}</span>
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {ex.conta?.nome ?? "—"} • {ex.total_movimentos ?? 0} mov.
@@ -621,12 +669,36 @@ export default function FinConciliacao() {
                       {ex.data_fim ? formatDate(ex.data_fim) : "?"}
                     </div>
                   </div>
-                  <Badge variant={ex.status === "concluido" ? "default" : "secondary"}>
-                    {ex.status}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <Badge variant={ex.status === "concluido" ? "default" : "secondary"}>
+                      {ex.status}
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => iniciarReprocesso(ex.id, ex.conta_id, ex.arquivo_nome)}
+                      disabled={reprocessando === ex.id}
+                      title="Selecione novamente o arquivo OFX para reprocessar com o parser atualizado"
+                    >
+                      {reprocessando === ex.id ? (
+                        <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                      ) : (
+                        <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                      )}
+                      Reprocessar
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
+            <input
+              ref={reprocFileRef}
+              type="file"
+              accept=".ofx,.OFX"
+              className="hidden"
+              onChange={onReprocessarFile}
+            />
           </CardContent>
         </Card>
       )}
