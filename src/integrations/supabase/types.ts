@@ -7083,6 +7083,14 @@ export type Database = {
           id: string
           natureza: Database["public"]["Enums"]["financeiro_natureza"]
           nome: string
+          origem_job: string | null
+          origem_lote_id: string | null
+          origem_metadata: Json | null
+          origem_timestamp: string | null
+          origem_tipo:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id: string | null
           parent_id: string | null
           permite_lancamento: boolean
           tipo_servico: string | null
@@ -7100,6 +7108,14 @@ export type Database = {
           id?: string
           natureza: Database["public"]["Enums"]["financeiro_natureza"]
           nome: string
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           parent_id?: string | null
           permite_lancamento?: boolean
           tipo_servico?: string | null
@@ -7117,6 +7133,14 @@ export type Database = {
           id?: string
           natureza?: Database["public"]["Enums"]["financeiro_natureza"]
           nome?: string
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           parent_id?: string | null
           permite_lancamento?: boolean
           tipo_servico?: string | null
@@ -7135,6 +7159,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_categorias_origem_lote_id_fkey"
+            columns: ["origem_lote_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_origem_lotes"
             referencedColumns: ["id"]
           },
           {
@@ -7164,6 +7195,14 @@ export type Database = {
           empresa_id: string
           id: string
           nome: string
+          origem_job: string | null
+          origem_lote_id: string | null
+          origem_metadata: Json | null
+          origem_timestamp: string | null
+          origem_tipo:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id: string | null
         }
         Insert: {
           ativo?: boolean
@@ -7175,6 +7214,14 @@ export type Database = {
           empresa_id: string
           id?: string
           nome: string
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
         }
         Update: {
           ativo?: boolean
@@ -7186,6 +7233,14 @@ export type Database = {
           empresa_id?: string
           id?: string
           nome?: string
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
         }
         Relationships: [
           {
@@ -7200,6 +7255,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_centros_custo_origem_lote_id_fkey"
+            columns: ["origem_lote_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_origem_lotes"
             referencedColumns: ["id"]
           },
         ]
@@ -7656,6 +7718,14 @@ export type Database = {
           nome: string
           observacao: string | null
           ordem: number | null
+          origem_job: string | null
+          origem_lote_id: string | null
+          origem_metadata: Json | null
+          origem_timestamp: string | null
+          origem_tipo:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id: string | null
           pluggy_account_id: string | null
           pluggy_item_id: string | null
           pluggy_last_sync: string | null
@@ -7694,6 +7764,14 @@ export type Database = {
           nome: string
           observacao?: string | null
           ordem?: number | null
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           pluggy_account_id?: string | null
           pluggy_item_id?: string | null
           pluggy_last_sync?: string | null
@@ -7732,6 +7810,14 @@ export type Database = {
           nome?: string
           observacao?: string | null
           ordem?: number | null
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           pluggy_account_id?: string | null
           pluggy_item_id?: string | null
           pluggy_last_sync?: string | null
@@ -7760,6 +7846,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_contas_origem_lote_id_fkey"
+            columns: ["origem_lote_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_origem_lotes"
             referencedColumns: ["id"]
           },
         ]
@@ -7995,6 +8088,14 @@ export type Database = {
           ignorado_em: string | null
           ignorado_motivo: string | null
           lancamento_id: string | null
+          origem_job: string | null
+          origem_lote_id: string | null
+          origem_metadata: Json | null
+          origem_timestamp: string | null
+          origem_tipo:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id: string | null
           saldo_apos: number | null
           tipo: string
           valor: number
@@ -8014,6 +8115,14 @@ export type Database = {
           ignorado_em?: string | null
           ignorado_motivo?: string | null
           lancamento_id?: string | null
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           saldo_apos?: number | null
           tipo: string
           valor: number
@@ -8033,6 +8142,14 @@ export type Database = {
           ignorado_em?: string | null
           ignorado_motivo?: string | null
           lancamento_id?: string | null
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           saldo_apos?: number | null
           tipo?: string
           valor?: number
@@ -8073,6 +8190,13 @@ export type Database = {
             referencedRelation: "financeiro_lancamentos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "financeiro_extrato_movimentos_origem_lote_id_fkey"
+            columns: ["origem_lote_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_origem_lotes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       financeiro_extratos_importados: {
@@ -8089,6 +8213,14 @@ export type Database = {
           formato: string
           id: string
           importado_por: string | null
+          origem_job: string | null
+          origem_lote_id: string | null
+          origem_metadata: Json | null
+          origem_timestamp: string | null
+          origem_tipo:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id: string | null
           status: string
           total_conciliados: number | null
           total_movimentos: number | null
@@ -8106,6 +8238,14 @@ export type Database = {
           formato: string
           id?: string
           importado_por?: string | null
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           status?: string
           total_conciliados?: number | null
           total_movimentos?: number | null
@@ -8123,6 +8263,14 @@ export type Database = {
           formato?: string
           id?: string
           importado_por?: string | null
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           status?: string
           total_conciliados?: number | null
           total_movimentos?: number | null
@@ -8149,6 +8297,13 @@ export type Database = {
             referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "financeiro_extratos_importados_origem_lote_id_fkey"
+            columns: ["origem_lote_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_origem_lotes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       financeiro_folha_itens: {
@@ -8162,6 +8317,14 @@ export type Database = {
           inss: number | null
           irrf: number | null
           lancamento_id: string | null
+          origem_job: string | null
+          origem_lote_id: string | null
+          origem_metadata: Json | null
+          origem_timestamp: string | null
+          origem_tipo:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id: string | null
           proventos: Json | null
           salario_base: number
           total_liquido: number
@@ -8176,6 +8339,14 @@ export type Database = {
           inss?: number | null
           irrf?: number | null
           lancamento_id?: string | null
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           proventos?: Json | null
           salario_base: number
           total_liquido: number
@@ -8190,6 +8361,14 @@ export type Database = {
           inss?: number | null
           irrf?: number | null
           lancamento_id?: string | null
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           proventos?: Json | null
           salario_base?: number
           total_liquido?: number
@@ -8230,6 +8409,13 @@ export type Database = {
             referencedRelation: "financeiro_lancamentos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "financeiro_folha_itens_origem_lote_id_fkey"
+            columns: ["origem_lote_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_origem_lotes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       financeiro_folha_pagamento: {
@@ -8240,6 +8426,14 @@ export type Database = {
           data_pagamento: string | null
           empresa_id: string
           id: string
+          origem_job: string | null
+          origem_lote_id: string | null
+          origem_metadata: Json | null
+          origem_timestamp: string | null
+          origem_tipo:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id: string | null
           status: string
           total_descontos: number | null
           total_fgts: number | null
@@ -8254,6 +8448,14 @@ export type Database = {
           data_pagamento?: string | null
           empresa_id: string
           id?: string
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           status?: string
           total_descontos?: number | null
           total_fgts?: number | null
@@ -8268,6 +8470,14 @@ export type Database = {
           data_pagamento?: string | null
           empresa_id?: string
           id?: string
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           status?: string
           total_descontos?: number | null
           total_fgts?: number | null
@@ -8288,6 +8498,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_folha_pagamento_origem_lote_id_fkey"
+            columns: ["origem_lote_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_origem_lotes"
             referencedColumns: ["id"]
           },
         ]
@@ -8772,6 +8989,14 @@ export type Database = {
           nfse_municipio: string | null
           numero: number | null
           observacoes: string | null
+          origem_job: string | null
+          origem_lote_id: string | null
+          origem_metadata: Json | null
+          origem_timestamp: string | null
+          origem_tipo:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id: string | null
           presenca: string | null
           protocolo: string | null
           provedor: string
@@ -8822,6 +9047,14 @@ export type Database = {
           nfse_municipio?: string | null
           numero?: number | null
           observacoes?: string | null
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           presenca?: string | null
           protocolo?: string | null
           provedor?: string
@@ -8872,6 +9105,14 @@ export type Database = {
           nfse_municipio?: string | null
           numero?: number | null
           observacoes?: string | null
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           presenca?: string | null
           protocolo?: string | null
           provedor?: string
@@ -8918,6 +9159,13 @@ export type Database = {
             referencedRelation: "empresas_safe"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "financeiro_nfes_emitidas_origem_lote_id_fkey"
+            columns: ["origem_lote_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_origem_lotes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       financeiro_notas_importadas: {
@@ -8938,6 +9186,14 @@ export type Database = {
           nome_destinatario: string | null
           nome_emitente: string | null
           numero: string | null
+          origem_job: string | null
+          origem_lote_id: string | null
+          origem_metadata: Json | null
+          origem_timestamp: string | null
+          origem_tipo:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id: string | null
           serie: string | null
           status: string
           tipo: string
@@ -8965,6 +9221,14 @@ export type Database = {
           nome_destinatario?: string | null
           nome_emitente?: string | null
           numero?: string | null
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           serie?: string | null
           status?: string
           tipo: string
@@ -8992,6 +9256,14 @@ export type Database = {
           nome_destinatario?: string | null
           nome_emitente?: string | null
           numero?: string | null
+          origem_job?: string | null
+          origem_lote_id?: string | null
+          origem_metadata?: Json | null
+          origem_timestamp?: string | null
+          origem_tipo?:
+            | Database["public"]["Enums"]["financeiro_origem_tipo"]
+            | null
+          origem_usuario_id?: string | null
           serie?: string | null
           status?: string
           tipo?: string
@@ -9022,6 +9294,13 @@ export type Database = {
             columns: ["lancamento_id"]
             isOneToOne: false
             referencedRelation: "financeiro_lancamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_notas_importadas_origem_lote_id_fkey"
+            columns: ["origem_lote_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_origem_lotes"
             referencedColumns: ["id"]
           },
         ]

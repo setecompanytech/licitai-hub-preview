@@ -1,0 +1,1 @@
+UPDATE public.financeiro_pessoas SET origem_tipo='migracao' WHERE origem_tipo IS NULL;
