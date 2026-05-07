@@ -82,6 +82,9 @@ type MatchSugestao = {
 export default function FinConciliacao() {
   const fileRef = useRef<HTMLInputElement>(null);
   const csvRef = useRef<HTMLInputElement>(null);
+  const reprocFileRef = useRef<HTMLInputElement>(null);
+  const [reprocessando, setReprocessando] = useState<string | null>(null);
+  const reprocAlvo = useRef<{ extrato_id: string; conta_id: string; arquivo_nome: string } | null>(null);
   const qc = useQueryClient();
   
   const [contaSelecionada, setContaSelecionada] = useState<string>("");
