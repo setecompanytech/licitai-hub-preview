@@ -606,12 +606,12 @@ export default function FinConciliacao() {
               {(extratos ?? []).slice(0, 6).map((ex) => (
                 <div
                   key={ex.id}
-                  className="border rounded-md p-3 text-sm flex items-start justify-between"
+                  className="border rounded-md p-3 text-sm flex items-start justify-between gap-2"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <div className="font-medium flex items-center gap-1.5">
-                      <FileCheck2 className="w-4 h-4 text-primary" />
-                      {ex.arquivo_nome}
+                      <FileCheck2 className="w-4 h-4 text-primary shrink-0" />
+                      <span className="truncate">{ex.arquivo_nome}</span>
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {ex.conta?.nome ?? "—"} • {ex.total_movimentos ?? 0} mov.
@@ -621,12 +621,36 @@ export default function FinConciliacao() {
                       {ex.data_fim ? formatDate(ex.data_fim) : "?"}
                     </div>
                   </div>
-                  <Badge variant={ex.status === "concluido" ? "default" : "secondary"}>
-                    {ex.status}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <Badge variant={ex.status === "concluido" ? "default" : "secondary"}>
+                      {ex.status}
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => iniciarReprocesso(ex.id, ex.conta_id, ex.arquivo_nome)}
+                      disabled={reprocessando === ex.id}
+                      title="Selecione novamente o arquivo OFX para reprocessar com o parser atualizado"
+                    >
+                      {reprocessando === ex.id ? (
+                        <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                      ) : (
+                        <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                      )}
+                      Reprocessar
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
+            <input
+              ref={reprocFileRef}
+              type="file"
+              accept=".ofx,.OFX"
+              className="hidden"
+              onChange={onReprocessarFile}
+            />
           </CardContent>
         </Card>
       )}
