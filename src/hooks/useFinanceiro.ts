@@ -312,13 +312,26 @@ export function useUpsertPessoa() {
 export function useDeletePessoa() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("financeiro_pessoas").delete().eq("id", id);
+    mutationFn: async (params: { id: string; motivo?: string }) => {
+      const { data, error } = await supabase.rpc("try_delete_financeiro_pessoa" as any, {
+        p_pessoa_id: params.id,
+        p_motivo: params.motivo ?? null,
+      });
       if (error) throw error;
+      return data as { ok: boolean; bloqueado?: boolean; dependencias?: Record<string, number> };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["fin-pessoas"] });
-      toast.success("Pessoa removida.");
+      if (data?.bloqueado) {
+        const deps = data.dependencias || {};
+        const partes = Object.entries(deps)
+          .filter(([k, v]) => k !== "total" && Number(v) > 0)
+          .map(([k, v]) => `${v} ${k.replace(/_/g, " ")}`)
+          .join(", ");
+        toast.error(`Exclusão bloqueada por integridade. Vínculos: ${partes || "histórico financeiro"}. Desative o cadastro em vez de excluir.`);
+      } else {
+        toast.success("Pessoa removida.");
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
