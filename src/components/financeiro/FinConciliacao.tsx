@@ -735,6 +735,39 @@ export default function FinConciliacao() {
         </Card>
       )}
 
+      <AlertDialog open={!!confirmReproc} onOpenChange={(o) => !o && setConfirmReproc(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reprocessar extrato?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  Esta ação irá <strong>apagar permanentemente</strong> o extrato{" "}
+                  <span className="font-mono text-foreground">{confirmReproc?.arquivo_nome}</span> e
+                  os <strong>{confirmReproc?.total_movimentos ?? 0} movimentos</strong> associados,
+                  incluindo conciliações pendentes vinculadas.
+                </p>
+                <p>
+                  Em seguida, será solicitado o arquivo OFX para reimportar com o parser atualizado.
+                  Conciliações já efetivadas em lançamentos não serão revertidas, mas perderão o
+                  vínculo com o movimento.
+                </p>
+                <p className="text-muted-foreground">
+                  Tem certeza que deseja continuar?
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarReprocesso}>
+              Apagar e reprocessar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
       {/* Movimentos */}
       <Card>
         <CardHeader className="pb-2">
