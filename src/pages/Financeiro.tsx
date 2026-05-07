@@ -51,6 +51,7 @@ import FinPixCobranca from "@/components/financeiro/FinPixCobranca";
 import FinAuditoriaConciliacao from "@/components/financeiro/FinAuditoriaConciliacao";
 import FinPlanoContasPadrao from "@/components/financeiro/FinPlanoContasPadrao";
 import FinIntegracoesFiscais from "@/components/financeiro/FinIntegracoesFiscais";
+import FinLotesAuditoria from "@/components/financeiro/FinLotesAuditoria";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 
 const VIEW_MAP: Record<string, () => JSX.Element> = {
