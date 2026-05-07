@@ -13230,6 +13230,36 @@ export type Database = {
         }
         Relationships: []
       }
+      restauracao_lancamentos_progresso: {
+        Row: {
+          erro: string | null
+          finalizado_em: string | null
+          id: number
+          lotes: number
+          total_restaurado: number
+          ultima_execucao: string | null
+          ultimo_lote: number
+        }
+        Insert: {
+          erro?: string | null
+          finalizado_em?: string | null
+          id?: number
+          lotes?: number
+          total_restaurado?: number
+          ultima_execucao?: string | null
+          ultimo_lote?: number
+        }
+        Update: {
+          erro?: string | null
+          finalizado_em?: string | null
+          id?: number
+          lotes?: number
+          total_restaurado?: number
+          ultima_execucao?: string | null
+          ultimo_lote?: number
+        }
+        Relationships: []
+      }
       robo_aceite_termos: {
         Row: {
           aceite_politica_uso: boolean
@@ -15847,6 +15877,7 @@ export type Database = {
         Args: { p_batch?: number }
         Returns: number
       }
+      restaurar_lancamentos_tick: { Args: never; Returns: undefined }
       seed_plano_contas_padrao: {
         Args: { p_empresa_id: string }
         Returns: undefined
