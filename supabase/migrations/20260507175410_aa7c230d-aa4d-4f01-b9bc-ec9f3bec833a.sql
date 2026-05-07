@@ -1,0 +1,1 @@
+ALTER FUNCTION public.restaurar_lancamentos_audit(integer) SET statement_timeout = '120s';
