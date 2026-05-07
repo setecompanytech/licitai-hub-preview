@@ -74,6 +74,30 @@ export default function FinLancamentos() {
               <SelectItem value="cancelado">Cancelado</SelectItem>
             </SelectContent>
           </Select>
+          <Select
+            value={filtro.origemTipo ?? "todos"}
+            onValueChange={(v) => setFiltro((f) => ({ ...f, origemTipo: v as LancamentoFiltro["origemTipo"] }))}
+          >
+            <SelectTrigger className="w-[170px]"><SelectValue placeholder="Origem" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas as origens</SelectItem>
+              <SelectItem value="manual">Manual</SelectItem>
+              <SelectItem value="importacao_csv">Importação CSV</SelectItem>
+              <SelectItem value="importacao_ofx">Importação OFX</SelectItem>
+              <SelectItem value="importacao_xml">Importação XML</SelectItem>
+              <SelectItem value="sefaz_nfe">SEFAZ NF-e</SelectItem>
+              <SelectItem value="pluggy">Open Finance</SelectItem>
+              <SelectItem value="cnab">CNAB</SelectItem>
+              <SelectItem value="dda">DDA</SelectItem>
+              <SelectItem value="ocr">OCR</SelectItem>
+              <SelectItem value="recorrencia">Recorrência</SelectItem>
+              <SelectItem value="folha_pagamento">Folha</SelectItem>
+              <SelectItem value="api">API</SelectItem>
+              <SelectItem value="seed">Seed</SelectItem>
+              <SelectItem value="demo">Demo</SelectItem>
+              <SelectItem value="migracao">Migração</SelectItem>
+            </SelectContent>
+          </Select>
           <Input
             type="date"
             className="w-[160px]"
