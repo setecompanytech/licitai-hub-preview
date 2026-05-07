@@ -208,6 +208,51 @@ export default function FinConciliacao() {
     }
   }
 
+  function iniciarReprocesso(extrato_id: string, conta_id: string, arquivo_nome: string) {
+    reprocAlvo.current = { extrato_id, conta_id, arquivo_nome };
+    reprocFileRef.current?.click();
+  }
+
+  async function onReprocessarFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    const alvo = reprocAlvo.current;
+    e.target.value = "";
+    if (!file || !alvo) return;
+    setReprocessando(alvo.extrato_id);
+    try {
+      // Apaga movimentos e extrato antigo (cascade já remove conciliações pendentes)
+      const { error: errMov } = await supabase
+        .from("financeiro_extrato_movimentos")
+        .delete()
+        .eq("extrato_id", alvo.extrato_id);
+      if (errMov) throw errMov;
+      const { error: errExt } = await supabase
+        .from("financeiro_extratos_importados")
+        .delete()
+        .eq("id", alvo.extrato_id);
+      if (errExt) throw errExt;
+
+      const conteudo = await file.text();
+      importar.mutate(
+        { conta_id: alvo.conta_id, arquivo_nome: file.name, conteudo_ofx: conteudo },
+        {
+          onSuccess: () => {
+            toast.success("Extrato reprocessado com sucesso.");
+            qc.invalidateQueries({ queryKey: ["fin-extratos-importados"] });
+            qc.invalidateQueries({ queryKey: ["fin-movimentos-extrato"] });
+          },
+          onError: (err) => toast.error(err instanceof Error ? err.message : "Falha no reprocesso."),
+          onSettled: () => setReprocessando(null),
+        }
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao remover extrato antigo.");
+      setReprocessando(null);
+    } finally {
+      reprocAlvo.current = null;
+    }
+  }
+
   function buscarSugestoes(usar_ia = false) {
     conciliarAuto.mutate(
       {
