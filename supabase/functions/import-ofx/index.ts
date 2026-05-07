@@ -18,108 +18,184 @@ interface OFXTransaction {
   memo?: string;
 }
 
-function sgmlToXml(sgml: string): string {
-  return sgml.replace(
-    /<([A-Z0-9.]+)>([^<\n]*)(?=<|$)/g,
-    (_m, tag, val) => (val.trim() === "" ? `<${tag}>` : `<${tag}>${val}</${tag}>`)
-  );
+// ---------------------------------------------------------------------------
+// Parser OFX/SGML robusto baseado em tokenização + árvore.
+// Funciona para OFX 1.x (SGML, sem fechamentos) e OFX 2.x (XML estrito).
+// Não depende de heurísticas de split/regex frágeis: respeita o aninhamento
+// real das tags container do padrão OFX.
+// ---------------------------------------------------------------------------
+
+// Tags container conhecidas do OFX (precisam de fechamento lógico).
+// Qualquer outra tag é tratada como folha (carrega valor textual).
+const OFX_CONTAINERS = new Set<string>([
+  "OFX",
+  "SIGNONMSGSRSV1", "SONRS", "FI", "STATUS",
+  "BANKMSGSRSV1", "STMTTRNRS", "STMTRS",
+  "BANKACCTFROM", "CCACCTFROM", "BANKTRANLIST",
+  "STMTTRN", "LEDGERBAL", "AVAILBAL",
+  "CREDITCARDMSGSRSV1", "CCSTMTTRNRS", "CCSTMTRS",
+  "INVSTMTMSGSRSV1", "INVSTMTTRNRS", "INVSTMTRS",
+  "BALLIST", "BAL",
+]);
+
+interface OFXNode {
+  tag: string;
+  value?: string;          // valor (somente folhas)
+  children: OFXNode[];     // filhos (somente containers)
+  parent?: OFXNode;
 }
 
-function parseOFXDate(s: string): string {
-  const clean = s.replace(/[^\d]/g, "").substring(0, 8);
-  if (clean.length !== 8) return "";
-  return `${clean.substring(0, 4)}-${clean.substring(4, 6)}-${clean.substring(6, 8)}`;
+function tokenizeOFX(raw: string): OFXNode {
+  // Limpeza: BOM, CR, normaliza tags para uppercase preservando texto.
+  let body = raw.replace(/^\uFEFF/, "").replace(/\r/g, "");
+  // Descarta cabeçalho SGML/XML antes de <OFX>
+  const ofxIdx = body.search(/<OFX[\s>]/i);
+  if (ofxIdx === -1) {
+    throw new Error("Arquivo OFX inválido: tag <OFX> não encontrada.");
+  }
+  body = body.slice(ofxIdx);
+  // Uppercase apenas em nomes de tag
+  body = body.replace(/<\/?[a-zA-Z0-9._-]+\s*\/?>/g, (m) => m.toUpperCase());
+
+  const root: OFXNode = { tag: "__ROOT__", children: [] };
+  let current: OFXNode = root;
+
+  // Regex que captura tags e texto entre elas.
+  const tagRe = /<\s*\/?\s*([A-Z0-9._-]+)\s*\/?\s*>/g;
+  let lastIndex = 0;
+  let m: RegExpExecArray | null;
+
+  // Helper: adiciona texto entre tags como valor da folha "current".
+  // Apenas relevante quando current é uma folha pendente.
+  let pendingLeaf: OFXNode | null = null;
+
+  const flushTextTo = (text: string) => {
+    if (!pendingLeaf) return;
+    const trimmed = text.trim();
+    if (trimmed.length > 0) {
+      pendingLeaf.value = (pendingLeaf.value ?? "") + trimmed;
+    }
+  };
+
+  while ((m = tagRe.exec(body)) !== null) {
+    const between = body.slice(lastIndex, m.index);
+    if (between.length > 0) flushTextTo(between);
+    lastIndex = tagRe.lastIndex;
+
+    const fullTag = m[0];
+    const tagName = m[1];
+    const isClose = /^<\s*\//.test(fullTag);
+    const isSelfClose = /\/\s*>$/.test(fullTag);
+
+    // Qualquer nova tag (open/close/self) finaliza folha pendente.
+    pendingLeaf = null;
+
+    if (isClose) {
+      // Fechamento explícito: sobe até encontrar a tag correspondente.
+      let node: OFXNode | undefined = current;
+      while (node && node.tag !== tagName) node = node.parent;
+      if (node && node.parent) current = node.parent;
+      // Se não achou, ignora silenciosamente (OFX malformado tolerado).
+      continue;
+    }
+
+    const isContainer = OFX_CONTAINERS.has(tagName);
+
+    if (isContainer) {
+      const node: OFXNode = { tag: tagName, children: [], parent: current };
+      current.children.push(node);
+      if (!isSelfClose) current = node;
+    } else {
+      // Folha: cria nó vazio, marca como pendente p/ receber texto.
+      const leaf: OFXNode = { tag: tagName, children: [], parent: current };
+      current.children.push(leaf);
+      if (!isSelfClose) pendingLeaf = leaf;
+    }
+  }
+  return root;
 }
 
-function mapType(raw: string, amount: number): string {
-  const t = raw.toUpperCase();
-  if (t === "FEE" || t === "SRVCHG") return "FEE";
-  if (t === "INT") return "INT";
-  if (t === "DIV") return "DIV";
-  return amount > 0 ? "CREDIT" : "DEBIT";
+function findFirst(node: OFXNode, tag: string): OFXNode | null {
+  if (node.tag === tag) return node;
+  for (const c of node.children) {
+    const r = findFirst(c, tag);
+    if (r) return r;
+  }
+  return null;
+}
+function findAll(node: OFXNode, tag: string, acc: OFXNode[] = []): OFXNode[] {
+  if (node.tag === tag) acc.push(node);
+  for (const c of node.children) findAll(c, tag, acc);
+  return acc;
+}
+function leafValue(parent: OFXNode | null, tag: string): string | null {
+  if (!parent) return null;
+  for (const c of parent.children) {
+    if (c.tag === tag) return (c.value ?? "").trim() || null;
+  }
+  return null;
 }
 
 function parseOFX(content: string) {
-  // Remove BOM e normaliza
-  let raw = content.replace(/^\uFEFF/, "").replace(/\r/g, "");
-  // Case-insensitive: força tags em maiúsculas
-  raw = raw.replace(/<\/?[a-zA-Z0-9.]+>?/g, (m) => m.toUpperCase());
+  const root = tokenizeOFX(content);
 
-  if (!raw.includes("<OFX>")) {
-    throw new Error("Arquivo OFX inválido: tag <OFX> não encontrada. Verifique se o arquivo é um OFX/QFX válido (não CSV/PDF).");
+  // Conta: BANKACCTFROM ou CCACCTFROM
+  const acctNode = findFirst(root, "BANKACCTFROM") ?? findFirst(root, "CCACCTFROM");
+  const accountId = leafValue(acctNode, "ACCTID");
+  if (!accountId) {
+    throw new Error("Conta não identificada no OFX (ACCTID ausente em BANKACCTFROM/CCACCTFROM).");
   }
-  const body = raw.replace(/^[\s\S]*?<OFX>/, "<OFX>").trim();
-  const xml = sgmlToXml(body);
 
-  const get = (parent: string, tag: string): string | null => {
-    const re = new RegExp(`<${parent}>([\\s\\S]*?)</${parent}>`);
-    const block = xml.match(re)?.[1];
-    if (!block) return null;
-    const m = block.match(new RegExp(`<${tag}>([^<]*)`));
-    return m ? m[1].trim() : null;
-  };
-  const getInBlock = (block: string, tag: string): string | null => {
-    const m = block.match(new RegExp(`<${tag}>([^<]*)`));
-    return m ? m[1].trim() : null;
-  };
+  const tranList = findFirst(root, "BANKTRANLIST");
+  const startDate = parseOFXDate(leafValue(tranList, "DTSTART") ?? "");
+  const endDate = parseOFXDate(leafValue(tranList, "DTEND") ?? "");
 
-  // Aceita BANKACCTFROM ou CCACCTFROM (cartão)
-  const accountId = get("BANKACCTFROM", "ACCTID") ?? get("CCACCTFROM", "ACCTID");
-  if (!accountId) throw new Error("Conta não identificada no OFX (ACCTID ausente em BANKACCTFROM/CCACCTFROM).");
+  const trxNodes = findAll(root, "STMTTRN");
+  console.log("[import-ofx] STMTTRN encontradas:", trxNodes.length);
+  if (trxNodes.length > 0) {
+    console.log("[import-ofx] primeira:", JSON.stringify({
+      type: leafValue(trxNodes[0], "TRNTYPE"),
+      dt: leafValue(trxNodes[0], "DTPOSTED"),
+      amt: leafValue(trxNodes[0], "TRNAMT"),
+      memo: leafValue(trxNodes[0], "MEMO"),
+      fitid: leafValue(trxNodes[0], "FITID"),
+    }));
+  }
 
   const transactions: OFXTransaction[] = [];
-  // Suporta dois formatos:
-  //  (a) SGML com closing tag explícita: <STMTTRN>...</STMTTRN>
-  //  (b) SGML sem closing tag (vários bancos BR): <STMTTRN> ... <STMTTRN> ... </BANKTRANLIST>
-  let trxRawBlocks: string[] = [];
-  if (/<\/STMTTRN>/.test(xml)) {
-    trxRawBlocks = Array.from(xml.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/g)).map((m) => m[1]);
-  } else {
-    // Pega tudo entre <BANKTRANLIST> e </BANKTRANLIST> (ou até <LEDGERBAL>) e divide por <STMTTRN>
-    const listMatch = xml.match(/<BANKTRANLIST>([\s\S]*?)(?:<\/BANKTRANLIST>|<LEDGERBAL>)/);
-    const listContent = listMatch ? listMatch[1] : xml;
-    trxRawBlocks = listContent
-      .split(/<STMTTRN>/)
-      .slice(1)
-      .map((b) => b.split(/<\/STMTTRN>|<\/BANKTRANLIST>|<LEDGERBAL>/)[0]);
-  }
-  console.log("[import-ofx] xml head:", xml.slice(0, 800));
-  console.log("[import-ofx] hasCloseTag:", /<\/STMTTRN>/.test(xml), "blocks:", trxRawBlocks.length);
-  if (trxRawBlocks.length > 0) console.log("[import-ofx] firstBlock:", trxRawBlocks[0].slice(0, 400));
   let idx = 0;
-  for (const block of trxRawBlocks) {
-    const trnType = getInBlock(block, "TRNTYPE") ?? "OTHER";
-    const dtposted = parseOFXDate(getInBlock(block, "DTPOSTED") ?? "");
-    const trnamt = parseFloat(getInBlock(block, "TRNAMT") ?? "0");
-    const memo = getInBlock(block, "MEMO") ?? "";
-    const name = getInBlock(block, "NAME") ?? "";
-    const checknum = getInBlock(block, "CHECKNUM") ?? "";
-    const refnum = getInBlock(block, "REFNUM") ?? "";
-    // FITID sintético quando o banco (ex.: Banpará) não envia
-    let fitid = getInBlock(block, "FITID");
+  for (const node of trxNodes) {
+    const trnType = leafValue(node, "TRNTYPE") ?? "OTHER";
+    const dtposted = parseOFXDate(leafValue(node, "DTPOSTED") ?? "");
+    const trnamt = parseFloat(leafValue(node, "TRNAMT") ?? "0");
+    const memo = leafValue(node, "MEMO") ?? "";
+    const name = leafValue(node, "NAME") ?? "";
+    const checknum = leafValue(node, "CHECKNUM") ?? "";
+    const refnum = leafValue(node, "REFNUM") ?? "";
+
+    // FITID determinístico quando o banco omite (Banpará e outros)
+    let fitid = leafValue(node, "FITID");
     if (!fitid) {
-      fitid = `SYN-${dtposted.replace(/-/g, "")}-${trnamt.toFixed(2)}-${(name || memo).replace(/\s+/g, "").slice(0, 20)}-${idx}`;
+      const sig = `${dtposted}|${trnamt.toFixed(2)}|${(name || memo).replace(/\s+/g, " ").trim()}|${checknum}|${refnum}|${idx}`;
+      fitid = `SYN-${sig.replace(/[^A-Za-z0-9.|-]/g, "_").slice(0, 80)}`;
     }
     idx++;
+
     transactions.push({
       fitid,
       type: mapType(trnType, trnamt),
       amount: trnamt,
       date: dtposted,
-      description: (name || memo).trim(),
-      memo: memo !== name ? memo : undefined,
+      description: (name || memo).trim() || "(sem descrição)",
+      memo: memo && memo !== name ? memo : undefined,
     });
   }
+
   if (transactions.length === 0) {
     throw new Error("Nenhuma transação <STMTTRN> encontrada no arquivo OFX.");
   }
 
-  return {
-    accountId,
-    startDate: parseOFXDate(get("BANKTRANLIST", "DTSTART") ?? ""),
-    endDate: parseOFXDate(get("BANKTRANLIST", "DTEND") ?? ""),
-    transactions,
-  };
+  return { accountId, startDate, endDate, transactions };
 }
 
 async function sha256Hex(text: string): Promise<string> {
