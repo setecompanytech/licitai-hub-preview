@@ -5,10 +5,16 @@ import { useAuth } from '@/contexts/AuthContext';
 type Role = 'admin' | 'user' | 'viewer';
 
 async function fetchUserRole(userId: string, signal?: AbortSignal): Promise<Role> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 6000);
+  signal?.addEventListener('abort', () => controller.abort(), { once: true });
+
   const [{ data: rolesData, error: rolesError }, { data: empresaAdminData, error: empresaAdminError }] = await Promise.all([
-    supabase.from('user_roles').select('role').eq('user_id', userId).abortSignal(signal),
-    supabase.from('empresa_membros').select('id').eq('user_id', userId).eq('papel', 'admin').limit(1).abortSignal(signal),
+    supabase.from('user_roles').select('role').eq('user_id', userId).abortSignal(controller.signal),
+    supabase.from('empresa_membros').select('id').eq('user_id', userId).eq('papel', 'admin').limit(1).abortSignal(controller.signal),
   ]);
+
+  window.clearTimeout(timeoutId);
 
   if (rolesError) throw rolesError;
   if (empresaAdminError) throw empresaAdminError;
