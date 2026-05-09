@@ -5,6 +5,12 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { isSectorAllowedForRoute } from '@/lib/route-permissions';
 
+const withTimeoutSignal = (ms = 6000) => {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), ms);
+  return { signal: controller.signal, clear: () => window.clearTimeout(timeoutId) };
+};
+
 export type Setor = 'geral' | 'financeiro' | 'comercial' | 'logistica' | 'juridico' | 'contabil' | 'licitacoes' | 'documentos';
 
 export const MODULOS_SISTEMA: { value: string; label: string; setores: string[] }[] = [
@@ -66,30 +72,43 @@ export function useMembroPermissoes() {
 
     const load = async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from('empresa_membros')
-        .select('papel, equipe, permissoes')
-        .eq('empresa_id', empresaAtiva.id)
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const request = withTimeoutSignal();
 
-      if (data) {
-        const setor = ((data as any).equipe || 'geral') as Setor;
-        const papel = (data as any).papel || 'operador';
-        const permissoes = Array.isArray((data as any).permissoes) ? (data as any).permissoes : [];
-        setMembro({
-          setor,
-          papel,
-          permissoes,
-          isEmpresaAdmin: papel === 'admin' || isEmpresaAdminFromContext,
-        });
-      } else {
+      try {
+        const { data } = await supabase
+          .from('empresa_membros')
+          .select('papel, equipe, permissoes')
+          .eq('empresa_id', empresaAtiva.id)
+          .eq('user_id', user.id)
+          .abortSignal(request.signal)
+          .maybeSingle();
+
+        if (data) {
+          const setor = ((data as any).equipe || 'geral') as Setor;
+          const papel = (data as any).papel || 'operador';
+          const permissoes = Array.isArray((data as any).permissoes) ? (data as any).permissoes : [];
+          setMembro({
+            setor,
+            papel,
+            permissoes,
+            isEmpresaAdmin: papel === 'admin' || isEmpresaAdminFromContext,
+          });
+        } else {
+          setMembro(isEmpresaAdminFromContext
+            ? { setor: 'geral', papel: 'admin', permissoes: [], isEmpresaAdmin: true }
+            : null
+          );
+        }
+      } catch (error) {
+        console.warn('[Permissões] Falha ao carregar membro; liberando interface com permissões padrão.', error);
         setMembro(isEmpresaAdminFromContext
           ? { setor: 'geral', papel: 'admin', permissoes: [], isEmpresaAdmin: true }
           : null
         );
+      } finally {
+        request.clear();
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     load();
