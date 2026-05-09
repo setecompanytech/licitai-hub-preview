@@ -68,13 +68,26 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
         schema: 'public',
         table: 'notificacoes',
         filter: `user_id=eq.${user.id}`,
-      }, () => {
-        supabase
+      }, async (payload: any) => {
+        const { count } = await supabase
           .from('notificacoes')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', user.id)
-          .eq('lida', false)
-          .then(({ count }) => setUnreadCount(count || 0));
+          .eq('lida', false);
+        setUnreadCount(count || 0);
+
+        if (payload.eventType === 'INSERT' && payload.new) {
+          const { playNotificationSound, isSoundEnabled } = await import('@/lib/notification-sound');
+          const { toast } = await import('sonner');
+          const tipo = payload.new.tipo || 'info';
+          if (isSoundEnabled()) {
+            playNotificationSound(tipo === 'alerta' ? 'alert' : tipo === 'sucesso' ? 'success' : 'message');
+          }
+          toast(payload.new.titulo || 'Nova notificação', {
+            description: payload.new.mensagem || undefined,
+            action: payload.new.link ? { label: 'Ver', onClick: () => navigate(payload.new.link) } : undefined,
+          });
+        }
       })
       .subscribe();
 
