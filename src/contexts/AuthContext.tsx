@@ -56,9 +56,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 6000);
+
       const { data, error } = await supabase.functions.invoke('check-subscription', {
         headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
       });
+
+      window.clearTimeout(timeoutId);
 
       if (!error && data) {
         setSubscription({
