@@ -55,12 +55,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    try {
-      const { data, error } = await supabase.functions.invoke('check-subscription', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 6000);
 
-      if (!error && data) {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-subscription`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      });
+      const data = response.ok ? await response.json() : null;
+
+      if (response.ok && data) {
         setSubscription({
           subscribed: data.subscribed ?? false,
           planSlug: productIdToPlanSlug(data.product_id ?? null),
@@ -73,6 +83,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error('Error checking subscription:', err);
       setSubscription(prev => ({ ...prev, loading: false }));
+    } finally {
+      window.clearTimeout(timeoutId);
     }
   }, []);
 

@@ -2,6 +2,12 @@ import { createContext, useContext, useEffect, useState, type ReactNode, useCall
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+const withTimeoutSignal = (ms = 6000) => {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), ms);
+  return { signal: controller.signal, clear: () => window.clearTimeout(timeoutId) };
+};
+
 type Empresa = {
   id: string;
   cnpj: string;
@@ -126,17 +132,21 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
   const loadEmpresas = useCallback(async () => {
     if (!user) { setEmpresas([]); setEmpresaAtivaState(null); setLoading(false); return; }
 
-    const { data: membros } = await supabase
-      .from('empresa_membros')
-      .select('empresa_id, papel, empresas(*)')
-      .eq('user_id', user.id);
+    const request = withTimeoutSignal();
 
-    if (!membros || membros.length === 0) {
-      setEmpresas([]);
-      setEmpresaAtivaState(null);
-      setLoading(false);
-      return;
-    }
+    try {
+      const { data: membros } = await supabase
+        .from('empresa_membros')
+        .select('empresa_id, papel, empresas(*)')
+        .eq('user_id', user.id)
+        .abortSignal(request.signal);
+
+      if (!membros || membros.length === 0) {
+        setEmpresas([]);
+        setEmpresaAtivaState(null);
+        setLoading(false);
+        return;
+      }
 
     const mapped: EmpresaMembro[] = membros.map((m: any) => ({
       empresa_id: m.empresa_id,
@@ -148,11 +158,12 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
     setEmpresas(deduped);
 
     // Load active empresa from profile
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('empresa_ativa_id')
-      .eq('user_id', user.id)
-      .single();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('empresa_ativa_id')
+        .eq('user_id', user.id)
+        .abortSignal(request.signal)
+        .single();
 
     if (profile?.empresa_ativa_id) {
       const active = deduped.find(m => m.empresa_id === profile.empresa_ativa_id);
@@ -180,7 +191,15 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    setLoading(false);
+      setLoading(false);
+    } catch (error) {
+      console.warn('[Empresa] Falha ao carregar empresas; liberando interface com estado vazio.', error);
+      setEmpresas([]);
+      setEmpresaAtivaState(null);
+      setLoading(false);
+    } finally {
+      request.clear();
+    }
   }, [user]);
 
   useEffect(() => { loadEmpresas(); }, [loadEmpresas]);
