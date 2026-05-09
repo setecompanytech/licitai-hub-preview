@@ -15,6 +15,19 @@ const logStep = (step: string, details?: any) => {
 
 const ENTERPRISE_PRODUCT_ID = "prod_UFFzoFGvapTwRU";
 
+const withTimeout = async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+  let timeoutId: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${label} timeout`)), ms);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+};
+
 const extractSubscriptionInfo = (subscriptions: Stripe.ApiList<Stripe.Subscription>) => {
   const hasActiveSub = subscriptions.data.length > 0;
   let productId = null;
@@ -46,7 +59,7 @@ const extractSubscriptionInfo = (subscriptions: Stripe.ApiList<Stripe.Subscripti
 };
 
 const getActiveSubscriptionByEmail = async (stripe: Stripe, email: string) => {
-  const customers = await stripe.customers.list({ email, limit: 1 });
+  const customers = await withTimeout(stripe.customers.list({ email, limit: 1 }), 5000, "Stripe customers.list");
   if (customers.data.length === 0) {
     logStep("No Stripe customer found for email", { email });
     return { customers, hasActiveSub: false, productId: null, subscriptionEnd: null };
@@ -55,11 +68,15 @@ const getActiveSubscriptionByEmail = async (stripe: Stripe, email: string) => {
   const customerId = customers.data[0].id;
   logStep("Found customer", { customerId, billingEmail: email });
 
-  const subscriptions = await stripe.subscriptions.list({
-    customer: customerId,
-    status: "active",
-    limit: 1,
-  });
+  const subscriptions = await withTimeout(
+    stripe.subscriptions.list({
+      customer: customerId,
+      status: "active",
+      limit: 1,
+    }),
+    5000,
+    "Stripe subscriptions.list",
+  );
 
   const info = extractSubscriptionInfo(subscriptions);
   if (!info.hasActiveSub) logStep("No active subscription for customer", { customerId, billingEmail: email });
