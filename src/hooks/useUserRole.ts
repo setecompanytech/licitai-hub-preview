@@ -12,9 +12,7 @@ async function fetchUserRole(userId: string, signal?: AbortSignal): Promise<Role
   const [{ data: rolesData, error: rolesError }, { data: empresaAdminData, error: empresaAdminError }] = await Promise.all([
     supabase.from('user_roles').select('role').eq('user_id', userId).abortSignal(controller.signal),
     supabase.from('empresa_membros').select('id').eq('user_id', userId).eq('papel', 'admin').limit(1).abortSignal(controller.signal),
-  ]);
-
-  window.clearTimeout(timeoutId);
+  ]).finally(() => window.clearTimeout(timeoutId));
 
   if (rolesError) throw rolesError;
   if (empresaAdminError) throw empresaAdminError;
