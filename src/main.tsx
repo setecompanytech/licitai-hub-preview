@@ -9,6 +9,7 @@ import {
   validateAndCleanAuthStorage,
   installAuthFetchInterceptor,
 } from "./lib/auth-bootstrap";
+import { installRestRetryInterceptor } from "./lib/rest-retry";
 
 installChunkErrorRecovery();
 clearChunkReloadState();
@@ -18,6 +19,8 @@ clearChunkReloadState();
 // "Failed to fetch" / "refresh_token_not_found" no boot do SDK.
 validateAndCleanAuthStorage();
 installAuthFetchInterceptor(import.meta.env.VITE_SUPABASE_URL ?? "");
+// Auto-retry com backoff exponencial para GETs do PostgREST instável.
+installRestRetryInterceptor(import.meta.env.VITE_SUPABASE_URL ?? "");
 
 // Build version banner — usado para confirmar qual bundle o usuário está executando
 try {
