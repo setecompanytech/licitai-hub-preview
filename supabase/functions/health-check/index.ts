@@ -30,6 +30,16 @@ serve(async (req) => {
         const { error } = await supabase.from("planos").select("id").limit(1);
         return !error;
       }),
+      checkService("API REST (PostgREST)", async () => {
+        // Verificação direta da rota REST 443 (canal usado pelo app no browser).
+        // Detecta janelas de indisponibilidade do PostgREST durante resize de instância,
+        // que o pooler 6543 (usado pelo SDK admin) não consegue capturar.
+        const res = await fetch(`${supabaseUrl}/rest/v1/planos?select=id&limit=1`, {
+          headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+          signal: AbortSignal.timeout(8000),
+        });
+        return res.ok;
+      }),
       checkService("Autenticação", async () => {
         const { error } = await supabase.auth.getSession();
         return !error;
