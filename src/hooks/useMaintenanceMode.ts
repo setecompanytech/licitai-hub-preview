@@ -9,11 +9,15 @@ export function useMaintenanceMode() {
     let isMounted = true;
 
     const loadMaintenanceMode = async () => {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 3000);
+
       try {
         const { data, error } = await supabase
           .from('site_config')
           .select('valor')
           .eq('chave', 'maintenance_mode')
+          .abortSignal(controller.signal)
           .maybeSingle();
 
         if (error) throw error;
@@ -28,6 +32,7 @@ export function useMaintenanceMode() {
           setIsMaintenanceMode(false);
         }
       } finally {
+        window.clearTimeout(timeoutId);
         if (isMounted) {
           setLoading(false);
         }
