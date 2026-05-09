@@ -13,7 +13,7 @@ export default function MaintenanceGuard({ children }: MaintenanceGuardProps) {
   const { isAdmin, loading: roleLoading } = useUserRole();
   const { user, loading: authLoading } = useAuth();
 
-  const loading = maintLoading || authLoading || (user && roleLoading);
+  const loading = maintLoading || authLoading || (isMaintenanceMode && user && roleLoading);
 
   if (loading) {
     return (
