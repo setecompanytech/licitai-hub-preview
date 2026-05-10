@@ -13,7 +13,14 @@
  * - Respeita AbortSignal do chamador — se abortado, propaga sem novo retry.
  */
 
-const RETRY_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+import {
+  withCircuitBreaker,
+  reportHttpResult,
+  CircuitOpenError,
+  getCircuitState,
+} from './rest-circuit-breaker';
+
+const RETRY_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504, 544]);
 const BASE_DELAYS_MS = [300, 900, 2000];
 
 const sleep = (ms: number, signal?: AbortSignal | null) =>
