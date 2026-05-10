@@ -73,44 +73,51 @@ export function installRestRetryInterceptor(supabaseUrl: string): void {
       (init?.signal as AbortSignal | null | undefined) ??
       (input instanceof Request ? input.signal : null);
 
-    let lastError: unknown;
+    // Envelopa toda a sequência de retries no circuit breaker.
+    // Quando OPEN, falha imediatamente — evita martelar backend instável.
+    return withCircuitBreaker(async () => {
+      let lastError: unknown;
 
-    for (let attempt = 0; attempt <= BASE_DELAYS_MS.length; attempt++) {
-      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+      for (let attempt = 0; attempt <= BASE_DELAYS_MS.length; attempt++) {
+        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 
-      try {
-        const response = await originalFetch(input, init);
+        try {
+          const response = await originalFetch(input, init);
 
-        if (response.ok || !RETRY_STATUSES.has(response.status)) {
-          return response;
+          // Reporta status ao circuit (5xx/544 = falha; 2xx/4xx = sucesso/cliente).
+          reportHttpResult(response.status);
+
+          if (response.ok || !RETRY_STATUSES.has(response.status)) {
+            return response;
+          }
+
+          try { await response.body?.cancel(); } catch { /* ignore */ }
+
+          if (attempt === BASE_DELAYS_MS.length) {
+            return response;
+          }
+
+          lastError = new Error(`HTTP ${response.status}`);
+        } catch (err) {
+          if ((err as any)?.name === 'AbortError') throw err;
+          // Se o circuit abriu durante o retry, propaga sem nova tentativa.
+          if (err instanceof CircuitOpenError) throw err;
+          if (getCircuitState() === 'OPEN') throw new CircuitOpenError();
+          lastError = err;
+          if (attempt === BASE_DELAYS_MS.length) throw err;
         }
 
-        // Status retryable — descarta corpo para liberar conexão.
-        try { await response.body?.cancel(); } catch { /* ignore */ }
-
-        if (attempt === BASE_DELAYS_MS.length) {
-          return response; // sem mais tentativas — devolve o último erro real
-        }
-
-        lastError = new Error(`HTTP ${response.status}`);
-      } catch (err) {
-        // AbortError não deve ser retentado.
-        if ((err as any)?.name === 'AbortError') throw err;
-        lastError = err;
-        if (attempt === BASE_DELAYS_MS.length) throw err;
+        const delay = BASE_DELAYS_MS[attempt] + Math.floor(Math.random() * 200);
+        try {
+          console.warn(
+            `[REST Retry] ${method} ${url.split('?')[0]} — tentativa ${attempt + 2}/${BASE_DELAYS_MS.length + 1} em ${delay}ms`,
+            lastError,
+          );
+        } catch { /* ignore */ }
+        await sleep(delay, signal);
       }
 
-      const delay = BASE_DELAYS_MS[attempt] + Math.floor(Math.random() * 200);
-      try {
-        console.warn(
-          `[REST Retry] ${method} ${url.split('?')[0]} — tentativa ${attempt + 2}/${BASE_DELAYS_MS.length + 1} em ${delay}ms`,
-          lastError,
-        );
-      } catch { /* ignore */ }
-      await sleep(delay, signal);
-    }
-
-    // Inalcançável — laço sempre retorna ou lança.
-    throw lastError ?? new Error('REST retry esgotado');
+      throw lastError ?? new Error('REST retry esgotado');
+    });
   };
 }
