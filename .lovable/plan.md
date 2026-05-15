@@ -1,110 +1,46 @@
+## Objetivo
+Gerar um snapshot de backup completo do banco do projeto `sbnlovigyifvrkgsoalj` (PRAEFECTUS) e disponibilizar como arquivo para download em `/mnt/documents/`. Sem aplicar migrations ou alterar dados.
 
+## Restrição descoberta
+- O sandbox tem acesso `psql` válido (`aws-1-us-east-1.pooler.supabase.com:6543`, user `sandbox_exec.*`).
+- `pg_dump` não autentica no pooler com esse usuário (erro `EAUTHQUERY`), tanto na 6543 quanto na 5432.
+- Logo, faremos o snapshot manualmente via `psql` + `COPY ... TO STDOUT`, que funcionam com o usuário disponível.
 
-## Plano: Centralização da Extração IA de Itens do Edital
+## Plano de execução
 
-### Problema Atual
-A extração IA de itens do edital acontece em **3 pontos independentes**:
-1. **Proposta Comercial** (`EditalUploader.tsx`) — extrai itens, órgão, prazos
-2. **Robô de Lances** (`ConfigurarLanceDialog.tsx`) — extrai itens/lotes com valores de referência
-3. **Precificação** — importa manualmente ou via catálogo
+1. **Inventário do banco**
+   - Listar todas as tabelas em `public` (e opcionalmente `auth`, `storage` apenas como referência).
+   - Listar funções, triggers, policies RLS, enums, índices, sequences, views.
 
-Cada módulo faz sua própria chamada à IA e os dados não são persistidos de forma estruturada. O mesmo edital pode ser processado 3 vezes.
+2. **Exportar DDL (schema)**
+   - Para cada objeto, montar SQL `CREATE` a partir de `pg_catalog` / `information_schema` / `pg_get_functiondef` / `pg_get_triggerdef` / `pg_get_viewdef` / `pg_get_indexdef`.
+   - Gerar `01_schema.sql` com: extensions, enums, tables, sequences, defaults, PKs/FKs/uniques, índices, views, functions, triggers, policies RLS, grants básicos.
 
-### Solução
+3. **Exportar dados**
+   - Para cada tabela do `public`, gerar `data/<tabela>.csv` via `COPY (SELECT * FROM <tabela>) TO STDOUT WITH CSV HEADER`.
+   - Gerar também `02_data.sql` com `COPY <tabela> FROM STDIN` apontando para os CSVs (formato restaurável).
+   - Tabelas grandes (>50MB) ficam só em CSV comprimido para economizar espaço.
 
-Criar uma tabela `licitacao_itens` que persiste os itens extraídos do edital, vinculados à `licitacao_id`. A extração ocorre **uma única vez** (ao "Iniciar Processo" ou na primeira análise) e todos os módulos consomem os mesmos dados.
+4. **Empacotar**
+   - Comprimir tudo em `/mnt/documents/backup_sbn_YYYYMMDD_HHMM.tar.gz` contendo:
+     - `01_schema.sql`
+     - `02_data.sql`
+     - `data/*.csv.gz`
+     - `MANIFEST.txt` (lista de tabelas + contagem de linhas + tamanho + timestamp + hash SHA-256 de cada arquivo).
+   - Publicar via `<presentation-artifact>` para download.
 
-### 1. Nova tabela `licitacao_itens`
+5. **Validação**
+   - Conferir contagem de linhas por tabela contra o banco vivo.
+   - Listar tabelas vazias e tabelas que falharam (se houver) no `MANIFEST.txt`.
 
-```sql
-CREATE TABLE public.licitacao_itens (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  licitacao_id uuid NOT NULL REFERENCES public.licitacoes(id) ON DELETE CASCADE,
-  user_id uuid NOT NULL,
-  numero integer NOT NULL DEFAULT 1,
-  descricao text NOT NULL,
-  quantidade numeric NOT NULL DEFAULT 1,
-  unidade text NOT NULL DEFAULT 'UN',
-  valor_unitario numeric NOT NULL DEFAULT 0,
-  valor_total numeric NOT NULL DEFAULT 0,
-  lote text DEFAULT 'Único',
-  marca text,
-  fabricante text,
-  modelo text,
-  origem text DEFAULT 'manual', -- 'ia', 'manual', 'importado'
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
+## Limitações que vou comunicar no MANIFEST
+- Não inclui dados de `auth.users` sensíveis (apenas schema), pois o usuário sandbox não tem permissão de leitura no schema `auth` em algumas tabelas — vou tentar e marcar o que falhar.
+- Não inclui objetos do schema `storage` do Supabase (arquivos em buckets) — apenas os metadados se acessíveis. O conteúdo binário dos buckets exige API separada e não é incluso.
+- Não inclui secrets, configurações de Auth, edge functions (essas vivem fora do Postgres).
 
-ALTER TABLE public.licitacao_itens ENABLE ROW LEVEL SECURITY;
+## Saída final
+- Arquivo único: `/mnt/documents/backup_sbn_YYYYMMDD_HHMM.tar.gz`
+- Tag `<presentation-artifact>` para download direto.
+- Resumo no chat com tamanho, número de tabelas e linhas exportadas.
 
-CREATE POLICY "Users can CRUD own licitacao_itens"
-  ON public.licitacao_itens FOR ALL TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
-```
-
-### 2. Novo hook centralizado `useEditalExtraction`
-
-Arquivo: `src/hooks/useEditalExtraction.ts`
-
-Responsabilidades:
-- **`extrairItensIA(licitacaoId, fileText)`** — chama a IA, parseia o JSON, persiste na tabela `licitacao_itens` e retorna os itens
-- **`fetchItens(licitacaoId)`** — busca itens já extraídos da base
-- **`saveItensManual(licitacaoId, itens)`** — salva itens editados manualmente
-- **`deleteItem(itemId)`** / **`deleteLote(licitacaoId, lote)`** — remoção individual ou por lote
-
-O hook verifica se já existem itens antes de chamar a IA, evitando duplicação.
-
-### 3. Atualizar os consumidores
-
-**a) `ConfigurarLanceDialog.tsx` (Robô de Lances)**
-- No Step 0, ao importar do Kanban: chamar `fetchItens(licitacaoId)` em vez de buscar em `precificacao` e `catalogo_itens_precificados`
-- Na extração IA: chamar `extrairItensIA()` do hook, que persiste e retorna
-- Os itens retornados são mapeados para `DisputeItem[]` localmente
-
-**b) `EditalUploader.tsx` (Proposta Comercial)**
-- Após extração IA: persistir itens via `saveItensManual()` quando há `licitacaoId` disponível
-- Se já existem itens persistidos, oferecer "Importar itens já extraídos" antes de re-extrair
-
-**c) `useLicitacaoIntegration.ts` (Iniciar Processo)**
-- Sem alteração no fluxo principal; os itens serão extraídos sob demanda na primeira vez que qualquer módulo precisar
-
-### 4. Componente compartilhado `EditalItensTable`
-
-Arquivo: `src/components/shared/EditalItensTable.tsx`
-
-Tabela reutilizável que exibe os itens extraídos com:
-- Edição inline de valores
-- Remoção individual e por lote
-- Badge de origem (IA / Manual / Importado)
-- Alerta de inexequibilidade (>50%)
-
-Usado tanto no Robô de Lances quanto na Proposta.
-
-### 5. Fluxo final
-
-```text
-Monitoramento → "Iniciar Processo" → Kanban (licitacao criada)
-                                          │
-                                    1ª vez que qualquer módulo
-                                    precisa dos itens:
-                                          │
-                                    Upload Edital → IA extrai
-                                          │
-                                    Persiste em licitacao_itens
-                                          │
-                            ┌─────────────┼─────────────┐
-                            ▼             ▼             ▼
-                      Precificação    Proposta    Robô de Lances
-                      (consome)       (consome)     (consome)
-```
-
-### Arquivos a criar/modificar
-- **Criar**: migration SQL para `licitacao_itens`
-- **Criar**: `src/hooks/useEditalExtraction.ts`
-- **Criar**: `src/components/shared/EditalItensTable.tsx`
-- **Modificar**: `src/components/robo-lances/ConfigurarLanceDialog.tsx` — usar hook centralizado
-- **Modificar**: `src/components/proposta/EditalUploader.tsx` — persistir e reutilizar itens
-- **Modificar**: `src/hooks/useLicitacaoIntegration.ts` — sem mudanças estruturais (itens sob demanda)
-
+Confirma para eu executar?
