@@ -13,7 +13,8 @@ export default function MaintenanceGuard({ children }: MaintenanceGuardProps) {
   const { isAdmin, loading: roleLoading } = useUserRole();
   const { user, loading: authLoading } = useAuth();
 
-  const loading = maintLoading || authLoading || (isMaintenanceMode && user && roleLoading);
+  // authLoading só importa quando o modo manutenção está ativo (para decidir se o admin bypass)
+  const loading = maintLoading || (isMaintenanceMode && (authLoading || (user && roleLoading)));
 
   if (loading) {
     return (

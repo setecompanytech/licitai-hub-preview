@@ -91,6 +91,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let initialLoad = true;
 
+    // Safety timeout: se o SDK do Supabase travar (ex: renovação de token com rede offline),
+    // força loading=false após 8s para o usuário ver a tela de login.
+    const safetyTimer = window.setTimeout(() => {
+      if (initialLoad) {
+        console.warn('[Auth] safety timeout disparado — forçando loading=false');
+        purgeSupabaseAuthStorage();
+        setLoading(false);
+        setUser(null);
+        setSession(null);
+        setSubscription({ subscribed: false, planSlug: null, subscriptionEnd: null, loading: false });
+        initialLoad = false;
+      }
+    }, 8000);
+
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event, session) => {
       // Token refresh falhou — purga storage para próxima tentativa nascer limpa
       if (event === 'TOKEN_REFRESHED' && !session) {
@@ -140,7 +154,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => authSub.unsubscribe();
+    return () => {
+      window.clearTimeout(safetyTimer);
+      authSub.unsubscribe();
+    };
   }, [checkSubscription]);
 
   // Refresh por visibilidade de aba — só atualiza ao focar e se dado > 5 min
