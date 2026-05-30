@@ -1,4 +1,4 @@
-// Sprint 6 — OCR Multi-IA para documentos financeiros (NF-e, boletos, recibos)
+﻿// Sprint 6 — OCR Multi-IA para documentos financeiros (NF-e, boletos, recibos)
 // Usa Lovable AI Gateway (Gemini Vision) como motor primário, com fallback para Claude e OpenAI.
 // Extrai estruturadamente: emitente, valor, vencimento, código de barras, chave NF-e.
 
@@ -57,12 +57,12 @@ const TOOL_SCHEMA = {
 };
 
 async function callLovableAI(imageDataUrl: string, model: string) {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY ausente");
+  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+  if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY ausente");
 
-  const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const r = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
-    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model,
       temperature: 0.1,
@@ -95,7 +95,7 @@ async function callClaude(imageDataUrl: string) {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "gpt-4o",
       max_tokens: 2000,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: [
@@ -125,8 +125,8 @@ Deno.serve(async (req) => {
     if (preferredModel === "claude" && Deno.env.get("ANTHROPIC_API_KEY")) {
       intentos.push({ motor: "claude_sonnet_4", fn: () => callClaude(imageDataUrl) });
     }
-    intentos.push({ motor: "gemini_2.5_pro", fn: () => callLovableAI(imageDataUrl, "google/gemini-2.5-pro") });
-    intentos.push({ motor: "gemini_3_flash", fn: () => callLovableAI(imageDataUrl, "google/gemini-3-flash-preview") });
+    intentos.push({ motor: "gemini_2.5_pro", fn: () => callLovableAI(imageDataUrl, "gpt-4o") });
+    intentos.push({ motor: "gemini_3_flash", fn: () => callLovableAI(imageDataUrl, "gpt-4o-mini") });
     intentos.push({ motor: "gpt_5_mini", fn: () => callLovableAI(imageDataUrl, "openai/gpt-5-mini") });
     if (Deno.env.get("ANTHROPIC_API_KEY") && preferredModel !== "claude") {
       intentos.push({ motor: "claude_sonnet_4", fn: () => callClaude(imageDataUrl) });

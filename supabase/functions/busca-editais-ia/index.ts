@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+﻿import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -653,14 +653,14 @@ async function analisarComIA(
   ).join("\n");
 
   try {
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
@@ -701,7 +701,7 @@ Deno.serve(async (req) => {
 
   try {
     const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
@@ -877,8 +877,8 @@ Deno.serve(async (req) => {
 
     // ── AI Analysis ───────────────────────────────────────────────────
     let analise = "";
-    if (com_analise_ia && LOVABLE_API_KEY && allItems.length > 0) {
-      const resultado = await analisarComIA(allItems, query, LOVABLE_API_KEY);
+    if (com_analise_ia && OPENAI_API_KEY && allItems.length > 0) {
+      const resultado = await analisarComIA(allItems, query, OPENAI_API_KEY);
       analise = resultado.analise;
     }
 

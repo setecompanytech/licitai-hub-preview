@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+﻿import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -177,8 +177,8 @@ async function coletorLeroyMerlin(termos: string[]): Promise<PriceResult[]> {
 
 // Coletor via IA com conhecimento de preços de mercado (fallback inteligente)
 async function coletorIA(descricao: string, unidade?: string): Promise<PriceResult[]> {
-  const lovableKey = Deno.env.get('LOVABLE_API_KEY');
-  if (!lovableKey) return [];
+  const openaiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openaiKey) return [];
 
   try {
     const prompt = `Você é um especialista em preços de mercado brasileiro. 
@@ -205,14 +205,14 @@ Responda APENAS com JSON:
 Se não souber o preço com confiança razoável, retorne {"produtos": []}.
 Forneça de 1 a 3 opções de produtos compatíveis.`;
 
-    const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const aiResp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${lovableKey}`,
+        'Authorization': `Bearer ${openaiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 500,
       }),

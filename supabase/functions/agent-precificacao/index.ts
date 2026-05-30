@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+﻿import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -126,8 +126,8 @@ async function consultarMercado(supabase: any, descricao: string): Promise<numbe
 
 // Fonte 6 — Estimativa AURÉLIA (LLM)
 async function estimarComAurelia(descricao: string, unidade: string, quantidade: number, valorEstimado: number | null): Promise<number> {
-  const lovableKey = Deno.env.get('LOVABLE_API_KEY');
-  if (!lovableKey) return 0;
+  const openaiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openaiKey) return 0;
 
   try {
     const prompt = `Você é um especialista em precificação de licitações públicas brasileiras.
@@ -143,14 +143,14 @@ Considere preços praticados em licitações recentes (2024-2026) e margem típi
 
 RESPONDA APENAS COM O NÚMERO (ex: 45.90), sem R$, sem texto.`;
 
-    const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const aiResp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${lovableKey}`,
+        'Authorization': `Bearer ${openaiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 15,
       }),
@@ -296,8 +296,8 @@ async function selecionarMarcaModelo(supabase: any, item: any, precoOtimo: numbe
   }
 
   // CASO 3: AURÉLIA sugere
-  const lovableKey = Deno.env.get('LOVABLE_API_KEY');
-  if (lovableKey) {
+  const openaiKey = Deno.env.get('OPENAI_API_KEY');
+  if (openaiKey) {
     try {
       const prompt = `Você é especialista em compras públicas. Sugira a MELHOR MARCA e MODELO para:
 ITEM: ${item.descricao}
@@ -306,10 +306,10 @@ MARCA REFERÊNCIA: ${item.marca_referencia ?? 'não especificada'}
 Responda em JSON: {"marca":"...","modelo":"...","justificativa":"..."}
 RESPONDA APENAS COM O JSON VÁLIDO.`;
 
-      const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      const aiResp = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${lovableKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'google/gemini-2.5-flash', messages: [{ role: 'user', content: prompt }], max_tokens: 200 }),
+        headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: prompt }], max_tokens: 200 }),
       });
 
       if (aiResp.ok) {

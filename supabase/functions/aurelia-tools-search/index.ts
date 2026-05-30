@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 // AURÉLIA com Tool Calling — RAG simples sobre cache PNCP, Diários Oficiais e Histórico de Preços
 // Implementa o loop: chamada → tool_calls → execução → resposta final, retornando SSE para o cliente.
 
@@ -11,8 +11,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const MODEL = "google/gemini-2.5-flash";
+const GATEWAY_URL = "https://api.openai.com/v1/chat/completions";
+const MODEL = "gpt-4o-mini";
 
 // ── System prompt da AURÉLIA com instruções de uso de ferramentas ──
 const AURELIA_SYSTEM = `
@@ -310,8 +310,8 @@ serve(async (req) => {
     }
 
     const { messages, context } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
     const db = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -334,7 +334,7 @@ serve(async (req) => {
             const planResp = await fetch(GATEWAY_URL, {
               method: "POST",
               headers: {
-                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                Authorization: `Bearer ${OPENAI_API_KEY}`,
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({

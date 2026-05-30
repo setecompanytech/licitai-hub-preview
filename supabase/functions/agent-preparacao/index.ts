@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+﻿import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableKey = Deno.env.get('LOVABLE_API_KEY');
+    const openaiKey = Deno.env.get('OPENAI_API_KEY');
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const { licitacao_id, empresa_id } = await req.json();
@@ -41,16 +41,16 @@ Deno.serve(async (req) => {
 
     // 2. Análise do edital via IA
     let analiseEdital = null;
-    if (lovableKey && edital) {
+    if (openaiKey && edital) {
       try {
-        const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const aiResp = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${lovableKey}`,
+            'Authorization': `Bearer ${openaiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'gpt-4o-mini',
             messages: [{
               role: 'system',
               content: 'Você é um analista de licitações. Analise o edital e retorne um JSON com: {resumo, criterio_julgamento, documentos_habilitacao: string[], prazos_criticos: {proposta, habilitacao, recurso}, riscos: [{descricao, severidade}], recomendacao: "PARTICIPAR"|"CAUTELA"|"DESCARTAR"}'

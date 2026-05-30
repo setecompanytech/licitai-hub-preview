@@ -1,4 +1,4 @@
-import { chamarClaude, parsearJson, arrayParaBase64 } from "../_shared/claude-client.ts";
+﻿import { chamarClaude, parsearJson, arrayParaBase64 } from "../_shared/claude-client.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -48,11 +48,11 @@ function getGatewayErrorMessage(data: any) {
   return data?.error?.metadata?.raw || data?.error?.message || data?.error || 'Falha ao extrair texto da imagem.';
 }
 
-async function callGateway(lovableKey: string, body: Record<string, unknown>) {
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+async function callGateway(openaiKey: string, body: Record<string, unknown>) {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${lovableKey}`,
+      Authorization: `Bearer ${openaiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const lovableKey = Deno.env.get('LOVABLE_API_KEY');
+    const openaiKey = Deno.env.get('OPENAI_API_KEY');
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
 
     const { fileName = 'documento', images = [], text = '', mode = 'ocr', pdf_base64, pdf_url } = await req.json();
@@ -183,7 +183,7 @@ Deno.serve(async (req) => {
             "anthropic-version": "2023-06-01",
           },
           body: JSON.stringify({
-            model: "claude-sonnet-4-20250514",
+            model: "gpt-4o",
             max_tokens: 6000,
             system: sistema,
             messages: [{ role: "user", content: blocos }],
@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
     // ══════════════════════════════════════════════
     // ROTA 3: Gemini (fallback para texto ou imagens com 4 limite)
     // ══════════════════════════════════════════════
-    if (!lovableKey) {
+    if (!openaiKey) {
       return new Response(JSON.stringify({ error: 'Nenhuma chave de IA configurada.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -262,7 +262,7 @@ Deno.serve(async (req) => {
     ];
 
     const requestBody: Record<string, unknown> = {
-      model: isValidityMode ? 'google/gemini-2.5-pro' : 'google/gemini-3-flash-preview',
+      model: isValidityMode ? 'gpt-4o' : 'gpt-4o-mini',
       temperature: 0.1,
       messages: [
         { role: 'system', content: isValidityMode ? VALIDITY_SYSTEM_PROMPT : SYSTEM_PROMPT },
@@ -293,12 +293,12 @@ Deno.serve(async (req) => {
       requestBody.tool_choice = { type: 'function', function: { name: 'extract_document_validity' } };
     }
 
-    let { response, data } = await callGateway(lovableKey, requestBody);
+    let { response, data } = await callGateway(openaiKey, requestBody);
 
     if (!response.ok && geminiImages.length > 0 && supportText) {
       const rawMessage = getGatewayErrorMessage(data);
       if (rawMessage.includes('Unable to process input image')) {
-        ({ response, data } = await callGateway(lovableKey, {
+        ({ response, data } = await callGateway(openaiKey, {
           ...requestBody,
           messages: [
             { role: 'system', content: isValidityMode ? VALIDITY_SYSTEM_PROMPT : SYSTEM_PROMPT },

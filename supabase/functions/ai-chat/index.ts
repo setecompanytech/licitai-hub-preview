@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+﻿import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
@@ -648,35 +648,35 @@ INSTRUÇÕES FINAIS:
 // Modelo rápido (gemini-3-flash-preview) para chat geral e respostas rápidas (default)
 const ACTION_MODELS: Record<string, string> = {
   // Análises jurídicas complexas → modelo top-tier
-  analise_documental_concorrente: "google/gemini-2.5-pro",
-  analise_edital: "google/gemini-2.5-pro",
-  analise_peticao: "google/gemini-2.5-pro",
-  gerador_juridico: "google/gemini-2.5-pro",
+  analise_documental_concorrente: "gpt-4o",
+  analise_edital: "gpt-4o",
+  analise_peticao: "gpt-4o",
+  gerador_juridico: "gpt-4o",
   
   // AURÉLIA análises profundas → modelo top-tier
-  aurelia_riscos: "google/gemini-2.5-pro",
-  aurelia_habilitacao: "google/gemini-2.5-pro",
-  aurelia_recomendacao: "google/gemini-2.5-pro",
+  aurelia_riscos: "gpt-4o",
+  aurelia_habilitacao: "gpt-4o",
+  aurelia_recomendacao: "gpt-4o",
   
   // AURÉLIA chat e resumo → modelo equilibrado
-  aurelia: "google/gemini-2.5-flash",
-  aurelia_resumo: "google/gemini-2.5-flash",
+  aurelia: "gpt-4o-mini",
+  aurelia_resumo: "gpt-4o-mini",
   
   // Composição e contabilidade → modelo equilibrado
-  composicao_custo: "google/gemini-2.5-flash",
-  contabilidade_tributaria: "google/gemini-2.5-flash",
-  precificacao: "google/gemini-2.5-flash",
+  composicao_custo: "gpt-4o-mini",
+  contabilidade_tributaria: "gpt-4o-mini",
+  precificacao: "gpt-4o-mini",
   
   // Extração de dados → modelo equilibrado com temperatura baixa
-  extracao_representante: "google/gemini-2.5-flash",
+  extracao_representante: "gpt-4o-mini",
   
   // Pesquisa e proposta → modelo equilibrado
-  pesquisa_mercado: "google/gemini-2.5-flash",
-  proposta_tecnica: "google/gemini-2.5-flash",
+  pesquisa_mercado: "gpt-4o-mini",
+  proposta_tecnica: "gpt-4o-mini",
   
   // Reequilíbrio e impugnação → modelo top-tier (peças jurídicas)
-  reequilibrio: "google/gemini-2.5-pro",
-  impugnacao: "google/gemini-2.5-pro",
+  reequilibrio: "gpt-4o",
+  impugnacao: "gpt-4o",
 };
 
 serve(async (req) => {
@@ -711,8 +711,8 @@ serve(async (req) => {
       }
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
 
     const systemPrompt = SYSTEM_PROMPTS[action] || SYSTEM_PROMPTS.assistente;
 
@@ -784,7 +784,7 @@ serve(async (req) => {
     ];
 
     const requestBody: Record<string, unknown> = {
-      model: ACTION_MODELS[action] || "google/gemini-3-flash-preview",
+      model: ACTION_MODELS[action] || "gpt-4o-mini",
       messages: allMessages,
       stream: true,
     };
@@ -810,10 +810,10 @@ serve(async (req) => {
       requestBody.temperature = 0.1;
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(requestBody),
@@ -842,7 +842,7 @@ serve(async (req) => {
       const cacheKey = generateCacheKey(action, truncatedContext);
       const reader = response.body.getReader();
       let fullContent = "";
-      const modelUsed = ACTION_MODELS[action] || "google/gemini-3-flash-preview";
+      const modelUsed = ACTION_MODELS[action] || "gpt-4o-mini";
 
       const stream = new ReadableStream({
         async pull(controller) {

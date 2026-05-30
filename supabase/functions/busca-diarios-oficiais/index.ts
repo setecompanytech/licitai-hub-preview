@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+﻿import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -445,11 +445,11 @@ async function classificarComIA(resultados: any[], apiKey: string): Promise<any[
 
   const resumos = paraClassificar.map((r, i) => `${i}: "${r.titulo}" - ${r.orgao}`).join("\n");
   try {
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: "Você classifica atos licitatórios. Para cada item, retorne o tipo e score de relevância (0-100). Retorne APENAS JSON." },
           { role: "user", content: `Classifique cada ato. Tipos: aviso_licitacao, edital, suspensao, cancelamento, adiamento, revogacao, homologacao, adjudicacao, aditivamento, errata, resultado, contrato, ata_registro_precos.\n\n${resumos}\n\nRetorne JSON: [{"i": 0, "tipo": "aviso_licitacao", "rel": 85}, ...]` },
@@ -509,7 +509,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -552,8 +552,8 @@ Deno.serve(async (req) => {
     console.log(`Total: ${todosResultados.length} (PNCP:${pncpResults.length} ComprasGov:${comprasGovResults.length} DOU:${douResults.length} DOE:${doeResults.length} Gov.br:${govBrResults.length})`);
 
     // Classify with AI
-    if (LOVABLE_API_KEY && todosResultados.length > 0) {
-      todosResultados = await classificarComIA(todosResultados, LOVABLE_API_KEY);
+    if (OPENAI_API_KEY && todosResultados.length > 0) {
+      todosResultados = await classificarComIA(todosResultados, OPENAI_API_KEY);
     }
 
     // Deduplicate

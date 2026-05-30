@@ -1,4 +1,4 @@
-/**
+﻿/**
  * aurelia-proxy — Proxy seguro para Anthropic Claude API
  * 
  * A API key Anthropic é mantida exclusivamente no servidor (Supabase Vault).
@@ -50,9 +50,9 @@ function checkRateLimit(tenantId: string): { allowed: boolean; remaining: number
 }
 
 const ALLOWED_MODELS: Record<string, string> = {
-  'claude-sonnet-4': 'claude-sonnet-4-20250514',
+  'claude-sonnet-4': 'gpt-4o',
   'claude-haiku-4': 'claude-haiku-4-20250514',
-  'claude-sonnet': 'claude-sonnet-4-20250514',
+  'claude-sonnet': 'gpt-4o',
   'claude-haiku': 'claude-haiku-4-20250514',
 };
 

@@ -1,6 +1,6 @@
-// Fase 4 — Geração de embeddings via Lovable AI Gateway (Gemini 768d)
-// Modelo: google/text-embedding-004 (768 dimensões)
-// Convive com o pipeline OpenAI (1536d) — usa coluna embedding_lovable.
+﻿// Fase 4 — Geração de embeddings via OpenAI API
+// Modelo: text-embedding-3-small (768 dimensões, compatível com coluna embedding_lovable)
+// Usa coluna embedding_lovable para compatibilidade com schema existente.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
@@ -11,8 +11,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/embeddings";
-const MODEL = "google/text-embedding-004";
+const GATEWAY_URL = "https://api.openai.com/v1/embeddings";
+const MODEL = "text-embedding-3-small";
 const DIMS = 768;
 const LOTE_PADRAO = 100;
 const LOTE_MAX = 500;
@@ -27,12 +27,13 @@ async function gerarEmbedding(texto: string, apiKey: string): Promise<number[] |
     body: JSON.stringify({
       model: MODEL,
       input: texto.slice(0, 8000),
+      dimensions: DIMS,
     }),
   });
 
   if (!resp.ok) {
     const err = await resp.text();
-    console.error(`Lovable embed ${resp.status}: ${err.slice(0, 200)}`);
+    console.error(`OpenAI embed ${resp.status}: ${err.slice(0, 200)}`);
     if (resp.status === 429) throw new Error("RATE_LIMIT");
     if (resp.status === 402) throw new Error("CREDITS_EXHAUSTED");
     return null;
@@ -63,8 +64,8 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY ausente");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY ausente");
 
     const db = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -114,7 +115,7 @@ serve(async (req) => {
         continue;
       }
       try {
-        const vec = await gerarEmbedding(item.texto_para_embedding, LOVABLE_API_KEY);
+        const vec = await gerarEmbedding(item.texto_para_embedding, OPENAI_API_KEY);
         if (!vec) {
           falhas++;
           continue;

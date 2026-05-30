@@ -1,7 +1,6 @@
 // @ts-nocheck
 // Fase 5 — Chat AURÉLIA com RAG sobre editais
-// Fluxo: última pergunta do usuário -> embedding (opcional, via LOVABLE_API_KEY)
-// -> top-N editais via RPC -> contexto injetado -> resposta streaming via OpenAI
+// Usa OpenAI API para embeddings (text-embedding-3-small, dim=768) e chat (gpt-4o-mini).
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
@@ -12,12 +11,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-async function embedLovable(texto: string, key: string): Promise<number[] | null> {
+async function gerarEmbedding(texto: string, key: string): Promise<number[] | null> {
   try {
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+    const r = await fetch("https://api.openai.com/v1/embeddings", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "google/text-embedding-004", input: texto.slice(0, 8000) }),
+      body: JSON.stringify({ model: "text-embedding-3-small", input: texto.slice(0, 8000), dimensions: 768 }),
     });
     if (!r.ok) return null;
     const d = await r.json();
@@ -112,9 +111,6 @@ serve(async (req) => {
       });
     }
 
-    // LOVABLE_API_KEY é opcional — usado apenas para embeddings semânticos
-    const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY") || null;
-
     const db = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -134,52 +130,48 @@ serve(async (req) => {
     let fonteRag = "nenhuma";
 
     if (queryRag.length >= 3) {
-      // Tenta embedding semântico só se LOVABLE_KEY estiver disponível
-      if (LOVABLE_KEY) {
-        const vec = await embedLovable(queryRag, LOVABLE_KEY);
-        if (vec) {
-          const tentativaVetorial = async (uf: string | null, simMin: number) => {
-            const { data, error } = await (db as any).rpc("busca_editais_semantica_lovable", {
-              p_embedding: JSON.stringify(vec),
-              p_limite: 8,
-              p_similaridade_min: simMin,
-              p_uf: uf,
-              p_apenas_abertos: filtros.apenas_abertos !== false,
-              p_modalidade_id: filtros.modalidade_id || null,
-            });
-            if (error) console.error("RPC vetorial erro:", error.message);
-            return data || [];
-          };
+      // Tenta busca semântica via embeddings OpenAI
+      const vec = await gerarEmbedding(queryRag, OPENAI_KEY);
+      if (vec) {
+        const tentativaVetorial = async (uf: string | null, simMin: number) => {
+          const { data, error } = await (db as any).rpc("busca_editais_semantica_lovable", {
+            p_embedding: JSON.stringify(vec),
+            p_limite: 8,
+            p_similaridade_min: simMin,
+            p_uf: uf,
+            p_apenas_abertos: filtros.apenas_abertos !== false,
+            p_modalidade_id: filtros.modalidade_id || null,
+          });
+          if (error) console.error("RPC vetorial erro:", error.message);
+          return data || [];
+        };
 
-          let resultados = await tentativaVetorial(ufInferida, 0.2);
-          if (resultados.length) fonteRag = "vetorial";
+        let resultados = await tentativaVetorial(ufInferida, 0.2);
+        if (resultados.length) fonteRag = "vetorial";
 
-          if (!resultados.length && ufInferida) {
-            resultados = await tentativaVetorial(null, 0.18);
-            if (resultados.length) fonteRag = "vetorial_sem_uf";
-          }
-
-          if (!resultados.length) {
-            resultados = await fallbackTextual(db, queryRag, ufInferida, filtros.modalidade_id || null, 8);
-            if (resultados.length) fonteRag = "textual";
-          }
-
-          if (!resultados.length && ufInferida) {
-            resultados = await fallbackTextual(db, queryRag, null, filtros.modalidade_id || null, 8);
-            if (resultados.length) fonteRag = "textual_sem_uf";
-          }
-
-          editaisCitados = resultados;
+        if (!resultados.length && ufInferida) {
+          resultados = await tentativaVetorial(null, 0.18);
+          if (resultados.length) fonteRag = "vetorial_sem_uf";
         }
-      }
 
-      // Se não tem embedding ou não retornou resultados, vai direto para textual
-      if (!editaisCitados.length) {
+        if (!resultados.length) {
+          resultados = await fallbackTextual(db, queryRag, ufInferida, filtros.modalidade_id || null, 8);
+          if (resultados.length) fonteRag = "textual";
+        }
+
+        if (!resultados.length && ufInferida) {
+          resultados = await fallbackTextual(db, queryRag, null, filtros.modalidade_id || null, 8);
+          if (resultados.length) fonteRag = "textual_sem_uf";
+        }
+
+        editaisCitados = resultados;
+      } else {
+        // Fallback textual quando embedding falha
         editaisCitados = await fallbackTextual(db, queryRag, ufInferida, filtros.modalidade_id || null, 8);
         if (!editaisCitados.length && ufInferida) {
           editaisCitados = await fallbackTextual(db, queryRag, null, filtros.modalidade_id || null, 8);
         }
-        if (editaisCitados.length) fonteRag = fonteRag === "nenhuma" ? "textual" : fonteRag;
+        if (editaisCitados.length) fonteRag = "textual";
       }
 
       if (editaisCitados.length) {

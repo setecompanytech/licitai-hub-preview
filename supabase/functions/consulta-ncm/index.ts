@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+﻿import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { requireAuth } from "../_shared/auth-rate-limit.ts";
 
 const corsHeaders = {
@@ -111,8 +111,8 @@ serve(async (req) => {
     });
 
     // ── 4. IA Tributária com Lovable AI para análise profunda ──
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (LOVABLE_API_KEY) {
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (OPENAI_API_KEY) {
       try {
         const prompt = `Você é um auditor tributário federal, contador CRC ativo e advogado tributarista OAB. 
 Analise o NCM ${ncmClean} ${descricao ? `(${descricao})` : ""} para o estado ${uf || "BR"}, regime ${regime || "Lucro Presumido"}.
@@ -153,14 +153,14 @@ RETORNE EXCLUSIVAMENTE em JSON válido (sem markdown):
   "ultima_atualizacao_legislacao": "Data aproximada"
 }`;
 
-        const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const aiResp = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
+            model: "gpt-4o-mini",
             messages: [
               { role: "system", content: "Você é um especialista tributário brasileiro. Responda APENAS em JSON válido, sem blocos de código markdown." },
               { role: "user", content: prompt },

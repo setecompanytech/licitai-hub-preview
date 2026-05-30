@@ -1,4 +1,4 @@
-// Edge function: coletar-diario-belem
+﻿// Edge function: coletar-diario-belem
 // Extrai diariamente o Diário Oficial de Belém (https://sistemas.belem.pa.gov.br/diario/painel)
 // via Firecrawl, classifica cada publicação com IA (Lovable AI - Gemini Flash),
 // e grava em `alertas_gerados` (que alimenta Mural + boletim e-mail/WhatsApp).
@@ -14,7 +14,7 @@ const corsHeaders = {
 
 const PORTAL_URL = "https://sistemas.belem.pa.gov.br/diario/painel";
 const FIRECRAWL_URL = "https://api.firecrawl.dev/v2/scrape";
-const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_GATEWAY_URL = "https://api.openai.com/v1/chat/completions";
 
 interface PublicacaoExtraida {
   titulo: string;
@@ -67,7 +67,7 @@ async function extrairViaFirecrawl(apiKey: string): Promise<string> {
 
 async function classificarComIA(
   markdown: string,
-  lovableKey: string,
+  openaiKey: string,
 ): Promise<PublicacaoExtraida[]> {
   // Limita o tamanho enviado à IA (~80k chars)
   const conteudo = markdown.slice(0, 80000);
@@ -101,11 +101,11 @@ ${conteudo}
   const resp = await fetch(AI_GATEWAY_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${lovableKey}`,
+      Authorization: `Bearer ${openaiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -243,12 +243,12 @@ Deno.serve(async (req) => {
   const inicio = Date.now();
   try {
     const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!FIRECRAWL_API_KEY) throw new Error("FIRECRAWL_API_KEY não configurada");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY não configurada");
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY)
       throw new Error("Credenciais do Supabase ausentes");
 
@@ -263,7 +263,7 @@ Deno.serve(async (req) => {
     console.log(`[coletar-diario-belem] Markdown extraído: ${markdown.length} chars`);
 
     // 2) Classifica via IA
-    const publicacoes = await classificarComIA(markdown, LOVABLE_API_KEY);
+    const publicacoes = await classificarComIA(markdown, OPENAI_API_KEY);
     console.log(`[coletar-diario-belem] IA extraiu ${publicacoes.length} publicações`);
 
     const hoje = new Date().toISOString().slice(0, 10);

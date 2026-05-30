@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+﻿import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -90,7 +90,7 @@ async function searchTCU(apiKey: string): Promise<any[]> {
 }
 
 async function generateArticle(
-  lovableKey: string,
+  openaiKey: string,
   newsData: any[],
   tcuData: any[],
   categoria: { query: string; categoria: string; tags: string[] }
@@ -194,14 +194,14 @@ tags (array de strings), destaque (boolean), caso_fortuito (boolean), forca_maio
 fonte_url (URL da notícia principal), fonte_nome (nome do jornal).`;
   }
 
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${lovableKey}`,
+      'Authorization': `Bearer ${openaiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -238,12 +238,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const lovableKey = Deno.env.get('LOVABLE_API_KEY');
+    const openaiKey = Deno.env.get('OPENAI_API_KEY');
     const firecrawlKey = Deno.env.get('FIRECRAWL_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!lovableKey || !firecrawlKey || !supabaseUrl || !serviceRoleKey) {
+    if (!openaiKey || !firecrawlKey || !supabaseUrl || !serviceRoleKey) {
       return new Response(
         JSON.stringify({ success: false, error: 'Chaves não configuradas' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -270,7 +270,7 @@ Deno.serve(async (req) => {
       if (newsResults.length === 0) continue;
 
       // Gerar artigos com IA
-      const artigos = await generateArticle(lovableKey, newsResults, tcuData, cat);
+      const artigos = await generateArticle(openaiKey, newsResults, tcuData, cat);
       console.log(`${cat.categoria}: ${artigos.length} artigos gerados`);
 
       // Salvar no banco

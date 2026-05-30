@@ -1,4 +1,4 @@
-// Boletim Diário (modo Comprasnet) — sem curadoria por "relevância".
+﻿// Boletim Diário (modo Comprasnet) — sem curadoria por "relevância".
 // Lista TODOS os editais publicados nas últimas 24h que batem com as preferências
 // (UF da sede + UFs de interesse + segmentos), priorizando a UF sede no topo.
 // IA é usada apenas para escrever um resumo executivo curto (contagens), não para escolher.
@@ -13,7 +13,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 const CRON_SECRET = Deno.env.get("CRON_SECRET");
 
 const SEGMENTO_KEYWORDS: Record<string, string[]> = {
@@ -93,11 +93,11 @@ async function gerarResumoExecutivo(
   const userMsg = `ESTATÍSTICAS:\n${JSON.stringify(stats, null, 2)}\n\nGere o resumo executivo agora.`;
 
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
         messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userMsg }],
       }),
     });

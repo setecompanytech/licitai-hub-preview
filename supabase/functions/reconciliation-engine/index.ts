@@ -1,4 +1,4 @@
-// Edge Function: reconciliation-engine
+﻿// Edge Function: reconciliation-engine
 // Faz matching automático entre movimentos do extrato e lançamentos previstos.
 // Heurística: mesmo valor (sinal correto), data ±5 dias, descrição similar.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -195,9 +195,9 @@ Deno.serve(async (req) => {
     let ia_consultados = 0;
     let ia_sugeridos = 0;
     if (usar_ia) {
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-      if (!LOVABLE_API_KEY) {
-        console.warn("LOVABLE_API_KEY ausente — pulando camada IA");
+      const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+      if (!OPENAI_API_KEY) {
+        console.warn("OPENAI_API_KEY ausente — pulando camada IA");
       } else {
         const movsSemMatch = ((movimentos || []) as Movimento[]).filter(
           (m) => !matches.find((x) => x.movimento_id === m.id)
@@ -233,14 +233,14 @@ ${candidatos.map((c: Lancamento, i: number) => `${i}. ID=${c.id} | data=${c.data
 
 Responda em JSON estrito: {"escolha": <índice numérico do candidato ou null>, "confianca": <0-100>, "justificativa": "<frase curta em PT-BR explicando o match ou a recusa>"}`;
 
-            const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            const resp = await fetch("https://api.openai.com/v1/chat/completions", {
               method: "POST",
               headers: {
-                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                Authorization: `Bearer ${OPENAI_API_KEY}`,
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                model: "google/gemini-2.5-flash-lite",
+                model: "gpt-4o-mini",
                 messages: [{ role: "user", content: prompt }],
                 response_format: { type: "json_object" },
               }),

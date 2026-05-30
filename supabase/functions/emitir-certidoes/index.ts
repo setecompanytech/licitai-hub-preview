@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { requireAuth } from "../_shared/auth-rate-limit.ts";
 
@@ -26,7 +26,7 @@ function formatCnpj(cnpj: string) {
 // ══════════════════════════════════════════════════════════════
 // CNDT – Tribunal Superior do Trabalho
 // ══════════════════════════════════════════════════════════════
-async function emitirCNDT(cnpj: string, FIRECRAWL_API_KEY: string, LOVABLE_API_KEY: string): Promise<EmissaoResult> {
+async function emitirCNDT(cnpj: string, FIRECRAWL_API_KEY: string, OPENAI_API_KEY: string): Promise<EmissaoResult> {
   const cnpjFmt = formatCnpj(cnpj);
   const url = "https://cndt-certidao.tst.jus.br/inicio.faces";
 
@@ -80,7 +80,7 @@ async function emitirCNDT(cnpj: string, FIRECRAWL_API_KEY: string, LOVABLE_API_K
 
     // Use AI to extract certificate data from the scraped content
     if (markdown.length > 100) {
-      const aiResult = await extractCertidaoIA(markdown, "CNDT", cnpjFmt, LOVABLE_API_KEY);
+      const aiResult = await extractCertidaoIA(markdown, "CNDT", cnpjFmt, OPENAI_API_KEY);
       if (aiResult) {
         return { ...aiResult, certidao: "CNDT/TST", url, screenshot };
       }
@@ -102,7 +102,7 @@ async function emitirCNDT(cnpj: string, FIRECRAWL_API_KEY: string, LOVABLE_API_K
 // ══════════════════════════════════════════════════════════════
 // CRF/FGTS – Caixa Econômica Federal
 // ══════════════════════════════════════════════════════════════
-async function emitirCRF(cnpj: string, FIRECRAWL_API_KEY: string, LOVABLE_API_KEY: string): Promise<EmissaoResult> {
+async function emitirCRF(cnpj: string, FIRECRAWL_API_KEY: string, OPENAI_API_KEY: string): Promise<EmissaoResult> {
   const url = "https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf";
 
   try {
@@ -151,7 +151,7 @@ async function emitirCRF(cnpj: string, FIRECRAWL_API_KEY: string, LOVABLE_API_KE
     }
 
     if (markdown.length > 100) {
-      const aiResult = await extractCertidaoIA(markdown, "CRF/FGTS", formatCnpj(cnpj), LOVABLE_API_KEY);
+      const aiResult = await extractCertidaoIA(markdown, "CRF/FGTS", formatCnpj(cnpj), OPENAI_API_KEY);
       if (aiResult) {
         return { ...aiResult, certidao: "CRF/FGTS", url, screenshot };
       }
@@ -173,7 +173,7 @@ async function emitirCRF(cnpj: string, FIRECRAWL_API_KEY: string, LOVABLE_API_KE
 // ══════════════════════════════════════════════════════════════
 // CND Conjunta de Débitos Relativos a Tributos Federais e à Dívida Ativa da União
 // ══════════════════════════════════════════════════════════════
-async function emitirCNDConjunta(cnpj: string, FIRECRAWL_API_KEY: string, LOVABLE_API_KEY: string): Promise<EmissaoResult> {
+async function emitirCNDConjunta(cnpj: string, FIRECRAWL_API_KEY: string, OPENAI_API_KEY: string): Promise<EmissaoResult> {
   const certidaoNome = "CND Conjunta (Tributos Federais e Dívida Ativa da União)";
   const url = "https://servicos.receitafederal.gov.br/servico/certidoes/#/home";
 
@@ -250,7 +250,7 @@ async function emitirCNDConjunta(cnpj: string, FIRECRAWL_API_KEY: string, LOVABL
     }
 
     if (markdown.length > 100) {
-      const aiResult = await extractCertidaoIA(markdown, "CND Conjunta (Tributos Federais e Dívida Ativa)", formatCnpj(cnpj), LOVABLE_API_KEY);
+      const aiResult = await extractCertidaoIA(markdown, "CND Conjunta (Tributos Federais e Dívida Ativa)", formatCnpj(cnpj), OPENAI_API_KEY);
       if (aiResult) {
         return { ...aiResult, certidao: certidaoNome, url, screenshot, detalhes: `${situacaoDetalhes}${aiResult.detalhes || ""}` };
       }
@@ -272,7 +272,7 @@ async function emitirCNDConjunta(cnpj: string, FIRECRAWL_API_KEY: string, LOVABL
 // ══════════════════════════════════════════════════════════════
 // CEIS/CNEP/CEPIM – Portal da Transparência (consulta direta)
 // ══════════════════════════════════════════════════════════════
-async function consultarTransparencia(cnpj: string, FIRECRAWL_API_KEY: string, LOVABLE_API_KEY: string): Promise<EmissaoResult[]> {
+async function consultarTransparencia(cnpj: string, FIRECRAWL_API_KEY: string, OPENAI_API_KEY: string): Promise<EmissaoResult[]> {
   const cnpjFmt = formatCnpj(cnpj);
   const results: EmissaoResult[] = [];
 
@@ -344,17 +344,17 @@ async function extractCertidaoIA(
   markdown: string,
   tipoCertidao: string,
   cnpj: string,
-  LOVABLE_API_KEY: string
+  OPENAI_API_KEY: string
 ): Promise<Partial<EmissaoResult> | null> {
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
@@ -429,7 +429,7 @@ async function emitirCertidoesRegionais(
   portais: PortalInfo[],
   cnpj: string,
   FIRECRAWL_API_KEY: string,
-  LOVABLE_API_KEY: string
+  OPENAI_API_KEY: string
 ): Promise<EmissaoResult[]> {
   const results: EmissaoResult[] = [];
 
@@ -493,7 +493,7 @@ async function emitirCertidoesRegionais(
       }
 
       if (markdown.length > 100) {
-        const aiResult = await extractCertidaoIA(markdown, portal.nome, formatCnpj(cnpj), LOVABLE_API_KEY);
+        const aiResult = await extractCertidaoIA(markdown, portal.nome, formatCnpj(cnpj), OPENAI_API_KEY);
         if (aiResult) {
           results.push({ ...aiResult, certidao: portal.nome, url: portal.url, screenshot } as EmissaoResult);
           continue;
@@ -542,15 +542,15 @@ serve(async (req) => {
 
     const cnpjLimpo = cnpj.replace(/\D/g, "");
     const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
     if (!FIRECRAWL_API_KEY) {
       return new Response(JSON.stringify({ error: "Firecrawl não configurado" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY não configurada" }), {
+    if (!OPENAI_API_KEY) {
+      return new Response(JSON.stringify({ error: "OPENAI_API_KEY não configurada" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -559,15 +559,15 @@ serve(async (req) => {
 
     // Execute federal emissions in parallel
     const federalPromises = [
-      emitirCNDT(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
-      emitirCRF(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
-      emitirCNDConjunta(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
-      consultarTransparencia(cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY),
+      emitirCNDT(cnpjLimpo, FIRECRAWL_API_KEY, OPENAI_API_KEY),
+      emitirCRF(cnpjLimpo, FIRECRAWL_API_KEY, OPENAI_API_KEY),
+      emitirCNDConjunta(cnpjLimpo, FIRECRAWL_API_KEY, OPENAI_API_KEY),
+      consultarTransparencia(cnpjLimpo, FIRECRAWL_API_KEY, OPENAI_API_KEY),
     ];
 
     // Add regional certificates if portals provided
     const regionalPromise = portaisRegionais && portaisRegionais.length > 0
-      ? emitirCertidoesRegionais(portaisRegionais, cnpjLimpo, FIRECRAWL_API_KEY, LOVABLE_API_KEY)
+      ? emitirCertidoesRegionais(portaisRegionais, cnpjLimpo, FIRECRAWL_API_KEY, OPENAI_API_KEY)
       : Promise.resolve([]);
 
     const [cndt, crf, cndConjunta, transparencia, regionais] = await Promise.all([

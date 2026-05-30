@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { requireAuth } from "../_shared/auth-rate-limit.ts";
 
@@ -60,9 +60,9 @@ serve(async (req) => {
     // ── Source 2: Firecrawl Search + AI Extraction ──
     if (!inscricaoEstadual) {
       const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
       
-      if (FIRECRAWL_API_KEY && LOVABLE_API_KEY) {
+      if (FIRECRAWL_API_KEY && OPENAI_API_KEY) {
         try {
           const searchQuery = `"${cnpjFormatado}" "inscrição estadual" ${ufUpper}`;
           console.log("Firecrawl search:", searchQuery);
@@ -95,14 +95,14 @@ serve(async (req) => {
               .slice(0, 6000);
 
             if (combinedContent.length > 100) {
-              const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              const aiResp = await fetch("https://api.openai.com/v1/chat/completions", {
                 method: "POST",
                 headers: {
-                  "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+                  "Authorization": `Bearer ${OPENAI_API_KEY}`,
                   "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                  model: "google/gemini-2.5-flash-lite",
+                  model: "gpt-4o-mini",
                   tools: [{
                     type: "function",
                     function: {

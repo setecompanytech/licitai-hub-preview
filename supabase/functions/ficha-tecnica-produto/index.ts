@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+﻿import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { requireAuth } from "../_shared/auth-rate-limit.ts";
 
 const corsHeaders = {
@@ -91,7 +91,7 @@ serve(async (req) => {
       );
     }
 
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
 
     // ─── STEP 1: Determine the best URL to scrape ───
     let targetUrl = url;
@@ -169,7 +169,7 @@ serve(async (req) => {
     let precoAI: number | null = null;
     let precoOriginalAI: number | null = null;
 
-    if (lovableApiKey && markdown.length > 50) {
+    if (openaiApiKey && markdown.length > 50) {
       try {
         const aiPrompt = `Analise o conteúdo da página de produto abaixo e extraia as informações em formato JSON EXATO.
 Retorne APENAS o JSON, sem markdown, sem \`\`\`, sem explicações.
@@ -200,14 +200,14 @@ Regras:
 Conteúdo da página:
 ${markdown.substring(0, 6000)}`;
 
-        const aiResponse = await fetch("https://api.lovable.dev/v1/chat/completions", {
+        const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${lovableApiKey}`,
+            Authorization: `Bearer ${openaiApiKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
+            model: "gpt-4o-mini",
             messages: [{ role: "user", content: aiPrompt }],
             temperature: 0.1,
           }),

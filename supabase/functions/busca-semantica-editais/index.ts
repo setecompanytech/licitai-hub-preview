@@ -1,4 +1,4 @@
-// Fase 4 — Busca Semântica AURÉLIA
+﻿// Fase 4 — Busca Semântica AURÉLIA
 // Gera embedding da query do usuário e retorna editais por similaridade vetorial.
 // Estratégia híbrida (3 provedores):
 //   1) Lovable AI (Gemini 768d) → preferencial, sempre disponível
@@ -17,7 +17,7 @@ const corsHeaders = {
 
 async function embedLovable(texto: string, key: string): Promise<number[] | null> {
   try {
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+    const r = await fetch("https://api.openai.com/v1/embeddings", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({ model: "google/text-embedding-004", input: texto.slice(0, 8000) }),
@@ -71,7 +71,7 @@ ${lista}`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-3-5-haiku-20241022",
+        model: "gpt-4o-mini",
         max_tokens: 200,
         messages: [{ role: "user", content: prompt }],
       }),
@@ -119,7 +119,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY");
     const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY");
     const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 
@@ -127,8 +127,8 @@ serve(async (req) => {
     let resultados: any[] = [];
 
     // 1) Tenta Lovable (Gemini 768d)
-    if (LOVABLE_KEY) {
-      const vec = await embedLovable(query, LOVABLE_KEY);
+    if (OPENAI_KEY) {
+      const vec = await embedLovable(query, OPENAI_KEY);
       if (vec) {
         const { data, error } = await (db as any).rpc("busca_editais_semantica_lovable", {
           p_embedding: JSON.stringify(vec),

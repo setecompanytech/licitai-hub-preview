@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Cliente Claude para edge functions do Praefectus.
  * Usado para processamento nativo de PDFs (sem conversão para imagem).
  * Complementa o Lovable AI Gateway (Gemini) que é usado para texto puro.
  */
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const MODELO_PADRAO = "claude-sonnet-4-20250514";
+const MODELO_PADRAO = "gpt-4o";
 
 export interface ClaudeDocumentoInput {
   pdfBase64?: string;
