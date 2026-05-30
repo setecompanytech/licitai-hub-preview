@@ -10,6 +10,9 @@ export default defineConfig(({ mode }) => ({
   define: {
     __BUILD_ID__: JSON.stringify(BUILD_ID),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    'import.meta.env.VITE_SUPABASE_URL': JSON.stringify('https://uwtyuwktxalnpgrcbbgk.supabase.co'),
+    'import.meta.env.VITE_SUPABASE_PROJECT_ID': JSON.stringify('uwtyuwktxalnpgrcbbgk'),
+    'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3dHl1d2t0eGFsbnBncmNiYmdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MTI5NjEsImV4cCI6MjA5NTQ4ODk2MX0.czjUoTkYoy0jxJcmaBGmiNposNrtcvL_wjUo-rMrqk8'),
   },
   server: {
     host: "::",
