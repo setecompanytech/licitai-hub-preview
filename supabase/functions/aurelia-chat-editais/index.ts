@@ -1,8 +1,7 @@
 // @ts-nocheck
 // Fase 5 — Chat AURÉLIA com RAG sobre editais
-// Fluxo: última pergunta do usuário -> embedding (Lovable Gemini 768d)
-// -> top-N editais via RPC busca_editais_semantica_lovable
-// -> contexto injetado no prompt -> resposta streaming via Lovable AI Gateway.
+// Fluxo: última pergunta do usuário -> embedding (opcional, via LOVABLE_API_KEY)
+// -> top-N editais via RPC -> contexto injetado -> resposta streaming via OpenAI
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
@@ -44,7 +43,6 @@ function fmtData(d: any): string {
   }
 }
 
-// Mapa de UFs e capitais/municípios mais citados → para inferir filtro geográfico do contexto
 const UF_NOMES: Record<string, string> = {
   AC: "acre", AL: "alagoas", AP: "amapá|amapa", AM: "amazonas",
   BA: "bahia", CE: "ceará|ceara", DF: "distrito federal|brasília|brasilia",
@@ -59,7 +57,6 @@ const UF_NOMES: Record<string, string> = {
 
 function inferirUF(textoCompleto: string): string | null {
   const t = textoCompleto.toLowerCase();
-  // Padrão "/UF" ou " UF " explícito (ex: Belém/PA, em PA, do PA)
   const explicit = t.match(/(?:\/|\s|^)([a-z]{2})(?:\s|\/|$|\.|,|;)/g);
   if (explicit) {
     for (const m of explicit) {
@@ -67,7 +64,6 @@ function inferirUF(textoCompleto: string): string | null {
       if (UF_NOMES[code]) return code;
     }
   }
-  // Por nome (estado/cidade)
   for (const [uf, regex] of Object.entries(UF_NOMES)) {
     if (new RegExp(`\\b(${regex})\\b`, "i").test(t)) return uf;
   }
@@ -109,23 +105,24 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY não configurada" }), {
+    const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_KEY) {
+      return new Response(JSON.stringify({ error: "OPENAI_API_KEY não configurada" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // LOVABLE_API_KEY é opcional — usado apenas para embeddings semânticos
+    const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY") || null;
 
     const db = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Última pergunta do usuário = query semântica
     const ultima = [...messages].reverse().find((m) => m.role === "user")?.content || "";
     const queryRag = ultima.trim().slice(0, 1000);
 
-    // Inferir UF do contexto completo da conversa (últimas 6 mensagens)
     const contextoTexto = messages.slice(-6).map((m) => m.content).join(" \n ");
     const ufInferida = filtros.uf || inferirUF(contextoTexto);
     if (ufInferida && !filtros.uf) {
@@ -137,54 +134,63 @@ serve(async (req) => {
     let fonteRag = "nenhuma";
 
     if (queryRag.length >= 3) {
-      const vec = await embedLovable(queryRag, LOVABLE_KEY);
-      if (vec) {
-        // 1ª tentativa: vetorial com UF inferida
-        const tentativaVetorial = async (uf: string | null, simMin: number) => {
-          const { data, error } = await (db as any).rpc("busca_editais_semantica_lovable", {
-            p_embedding: JSON.stringify(vec),
-            p_limite: 8,
-            p_similaridade_min: simMin,
-            p_uf: uf,
-            p_apenas_abertos: filtros.apenas_abertos !== false,
-            p_modalidade_id: filtros.modalidade_id || null,
-          });
-          if (error) console.error("RPC vetorial erro:", error.message);
-          return data || [];
-        };
+      // Tenta embedding semântico só se LOVABLE_KEY estiver disponível
+      if (LOVABLE_KEY) {
+        const vec = await embedLovable(queryRag, LOVABLE_KEY);
+        if (vec) {
+          const tentativaVetorial = async (uf: string | null, simMin: number) => {
+            const { data, error } = await (db as any).rpc("busca_editais_semantica_lovable", {
+              p_embedding: JSON.stringify(vec),
+              p_limite: 8,
+              p_similaridade_min: simMin,
+              p_uf: uf,
+              p_apenas_abertos: filtros.apenas_abertos !== false,
+              p_modalidade_id: filtros.modalidade_id || null,
+            });
+            if (error) console.error("RPC vetorial erro:", error.message);
+            return data || [];
+          };
 
-        let resultados = await tentativaVetorial(ufInferida, 0.2);
-        if (resultados.length) fonteRag = "vetorial";
+          let resultados = await tentativaVetorial(ufInferida, 0.2);
+          if (resultados.length) fonteRag = "vetorial";
 
-        // 2ª tentativa: vetorial sem UF (talvez não exista no estado mas exista em outro)
-        if (!resultados.length && ufInferida) {
-          resultados = await tentativaVetorial(null, 0.18);
-          if (resultados.length) fonteRag = "vetorial_sem_uf";
+          if (!resultados.length && ufInferida) {
+            resultados = await tentativaVetorial(null, 0.18);
+            if (resultados.length) fonteRag = "vetorial_sem_uf";
+          }
+
+          if (!resultados.length) {
+            resultados = await fallbackTextual(db, queryRag, ufInferida, filtros.modalidade_id || null, 8);
+            if (resultados.length) fonteRag = "textual";
+          }
+
+          if (!resultados.length && ufInferida) {
+            resultados = await fallbackTextual(db, queryRag, null, filtros.modalidade_id || null, 8);
+            if (resultados.length) fonteRag = "textual_sem_uf";
+          }
+
+          editaisCitados = resultados;
         }
+      }
 
-        // 3ª tentativa: textual com UF inferida
-        if (!resultados.length) {
-          resultados = await fallbackTextual(db, queryRag, ufInferida, filtros.modalidade_id || null, 8);
-          if (resultados.length) fonteRag = "textual";
+      // Se não tem embedding ou não retornou resultados, vai direto para textual
+      if (!editaisCitados.length) {
+        editaisCitados = await fallbackTextual(db, queryRag, ufInferida, filtros.modalidade_id || null, 8);
+        if (!editaisCitados.length && ufInferida) {
+          editaisCitados = await fallbackTextual(db, queryRag, null, filtros.modalidade_id || null, 8);
         }
+        if (editaisCitados.length) fonteRag = fonteRag === "nenhuma" ? "textual" : fonteRag;
+      }
 
-        // 4ª tentativa: textual sem UF
-        if (!resultados.length && ufInferida) {
-          resultados = await fallbackTextual(db, queryRag, null, filtros.modalidade_id || null, 8);
-          if (resultados.length) fonteRag = "textual_sem_uf";
-        }
-
-        editaisCitados = resultados;
-        if (resultados.length) {
-          contexto = resultados.map((e: any, i: number) =>
-            `[${i + 1}] ${e.objeto?.slice(0, 280) || "Sem objeto"}
+      if (editaisCitados.length) {
+        contexto = editaisCitados.map((e: any, i: number) =>
+          `[${i + 1}] ${e.objeto?.slice(0, 280) || "Sem objeto"}
    • Órgão: ${e.orgao || "—"} (${e.municipio || "—"}/${e.uf || "—"})
    • Modalidade: ${e.modalidade_nome || "—"} | Valor estimado: ${fmtMoeda(e.valor_total_estimado)}
    • Publicação: ${fmtData(e.data_publicacao_pncp)} | Encerramento: ${fmtData(e.data_encerramento_proposta)}
    • Similaridade: ${(Number(e.similaridade) * 100).toFixed(1)}%
    • PNCP: ${e.pncp_id || e.numero_controle_pncp || "—"}`
-          ).join("\n\n");
-        }
+        ).join("\n\n");
       }
     }
 
@@ -207,24 +213,11 @@ REGRAS:
 CONTEXTO (editais semanticamente relevantes à pergunta atual):
 ${contexto || "(nenhum edital encontrado para esta pergunta — responda apenas se for conceitual ou peça reformulação/ampliação de termos)"}`;
 
-    const systemPrompt = `Você é AURÉLIA, assistente especialista em licitações públicas brasileiras (Lei 14.133/2021, IN 65/2021, jurisprudência TCU).
-
-REGRAS:
-- Responda em português, tom técnico-jurídico, claro e objetivo.
-- Use APENAS os editais do CONTEXTO abaixo para responder perguntas factuais sobre o acervo. Se a informação não estiver no contexto, diga que não há edital correspondente no acervo atual.
-- Sempre cite os editais usados no formato [1], [2], etc., correspondendo aos números do CONTEXTO.
-- Formate em markdown com listas, negritos e tabelas quando útil.
-- Para perguntas conceituais (legislação, prazos, recursos), responda com base no seu conhecimento jurídico, sem inventar editais.
-- Nunca invente CNPJ, valores, datas ou números de processo.
-
-CONTEXTO (editais semanticamente relevantes à pergunta atual):
-${contexto || "(nenhum edital encontrado para esta pergunta — responda apenas se for conceitual ou peça reformulação)"}`;
-
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${OPENAI_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
         stream: true,
         messages: [
           { role: "system", content: systemPrompt },
@@ -240,12 +233,12 @@ ${contexto || "(nenhum edital encontrado para esta pergunta — responda apenas 
         });
       }
       if (aiResp.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos da IA esgotados. Adicione créditos no workspace." }), {
+        return new Response(JSON.stringify({ error: "Créditos da IA esgotados." }), {
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const t = await aiResp.text();
-      console.error("AI gateway error:", aiResp.status, t.slice(0, 300));
+      console.error("OpenAI error:", aiResp.status, t.slice(0, 300));
       return new Response(JSON.stringify({ error: "Falha no gateway de IA" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

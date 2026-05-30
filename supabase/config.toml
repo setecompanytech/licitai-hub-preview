@@ -76,6 +76,13 @@ project_id = "uwtyuwktxalnpgrcbbgk"
   [functions.coletar-diario-belem]
     verify_jwt = false
 
+  [functions.aurelia-chat-editais]
+    verify_jwt = false
+  [functions.aurelia-proxy]
+    verify_jwt = false
+  [functions.aurelia-tools-search]
+    verify_jwt = false
+
   [functions.pncp-gerar-embeddings]
     verify_jwt = false
   [functions.pncp-embeddings-lovable]
