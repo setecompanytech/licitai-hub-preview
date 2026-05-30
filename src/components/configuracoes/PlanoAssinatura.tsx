@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -24,6 +25,7 @@ interface Plano {
 }
 
 export default function PlanoAssinatura() {
+  const { refreshSubscription } = useAuth();
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [cycle, setCycle] = useState<BillingCycle>('mensal');
   const [loading, setLoading] = useState(true);
@@ -42,6 +44,7 @@ export default function PlanoAssinatura() {
       searchParams.delete('checkout');
       setSearchParams(searchParams, { replace: true });
       checkSubscription();
+      refreshSubscription();
     } else if (checkout === 'cancel') {
       toast.info('Checkout cancelado.');
       searchParams.delete('checkout');
