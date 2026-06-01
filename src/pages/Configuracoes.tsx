@@ -482,13 +482,13 @@ export default function Configuracoes() {
 
               <RepresentanteUploader
                 onExtracted={(data: ExtractedRepresentanteData) => {
-                  if (data.repNome) setRepNome(data.repNome);
-                  if (data.repCpf) setRepCpf(data.repCpf);
-                  if (data.repRg) setRepRg(data.repRg);
-                  if (data.repOrgaoExp) setRepOrgaoExp(data.repOrgaoExp);
-                  if (data.repCargo) setRepCargo(data.repCargo);
-                  if (data.repNaturalidade) setRepNaturalidade(data.repNaturalidade);
-                  if (data.repNacionalidade) setRepNacionalidade(data.repNacionalidade);
+                  if (data.repNome !== undefined) setRepNome(data.repNome ?? '');
+                  if (data.repCpf !== undefined) setRepCpf(data.repCpf ?? '');
+                  if (data.repRg !== undefined) setRepRg(data.repRg ?? '');
+                  if (data.repOrgaoExp !== undefined) setRepOrgaoExp(data.repOrgaoExp ?? '');
+                  if (data.repCargo !== undefined) setRepCargo(data.repCargo ?? '');
+                  if (data.repNaturalidade !== undefined) setRepNaturalidade(data.repNaturalidade ?? '');
+                  if (data.repNacionalidade !== undefined) setRepNacionalidade(data.repNacionalidade ?? '');
                 }}
               />
 
