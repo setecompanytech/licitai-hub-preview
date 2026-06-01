@@ -370,7 +370,15 @@ export default function Configuracoes() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-xs">CNPJ</Label>
-                    <Input value={cnpjInput} onChange={e => setCnpjInput(e.target.value)} className="mt-1" placeholder="00.000.000/0001-00" />
+                    <Input
+                      value={cnpjInput}
+                      onChange={e => setCnpjInput(e.target.value)}
+                      onBlur={() => {
+                        if (cnpjInput.replace(/\D/g, '').length === 14) handleConsultaCNPJ();
+                      }}
+                      className="mt-1"
+                      placeholder="00.000.000/0001-00"
+                    />
                   </div>
                   <div>
                     <Label className="text-xs">CNAE Principal</Label>
