@@ -96,7 +96,9 @@ export default function EquipeColaboradores() {
       });
 
       if (error) {
-        toast.error(`Erro ao convidar colaborador: ${error.message}`);
+        // data may contain the actual error body from the function even on non-2xx
+        const msg = (data as any)?.error || error.message;
+        toast.error(`Erro ao convidar colaborador: ${msg}`);
       } else if (data?.error) {
         toast.error(data.error);
       } else {
