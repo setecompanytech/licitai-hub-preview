@@ -800,11 +800,8 @@ serve(async (req) => {
       'contabilidade_tributaria', 'proposta_tecnica',
     ];
 
-    if (HIGH_REASONING_ACTIONS.includes(action)) {
-      requestBody.reasoning = { effort: "high" };
-    } else if (MEDIUM_REASONING_ACTIONS.includes(action)) {
-      requestBody.reasoning = { effort: "medium" };
-    }
+    // reasoning parameter is NOT supported by OpenAI gpt-4o/gpt-4o-mini
+    // Removed to prevent silent API errors on analise_edital and similar actions
 
     if (action === "extracao_representante") {
       requestBody.temperature = 0.1;
