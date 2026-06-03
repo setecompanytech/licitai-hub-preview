@@ -9,9 +9,13 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { texto_pdf, tipo_documento } = await req.json();
-    if (!texto_pdf || texto_pdf.trim().length < 30) {
-      return new Response(JSON.stringify({ error: "Texto do documento muito curto ou vazio" }), {
+    const { texto_pdf, tipo_documento, images } = await req.json();
+
+    const hasText = texto_pdf && texto_pdf.trim().length >= 30;
+    const hasImages = Array.isArray(images) && images.length > 0;
+
+    if (!hasText && !hasImages) {
+      return new Response(JSON.stringify({ error: "Texto do documento muito curto ou vazio. Se o PDF for escaneado, o sistema tentará via visão automáticamente." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -19,8 +23,26 @@ serve(async (req) => {
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
-    const truncated = texto_pdf.slice(0, 60000);
     const tipoLabel = tipo_documento || "Ordem de Fornecimento / Empenho / PRD";
+    const systemContent = `Você é um especialista em documentos de licitações e contratos públicos brasileiros. Extraia TODAS as informações de pedidos/ordens de fornecimento, notas de empenho (global, ordinário, estimativo), PRDs e documentos similares. Identifique o tipo de documento, número, data, itens com descrição completa, quantidades, unidades, valores unitários e totais. Se houver múltiplos itens numa tabela, extraia CADA linha. Se uma informação não estiver disponível, retorne null.`;
+
+    // Build user message — text or vision
+    let userContent: any;
+    if (hasImages) {
+      // PDF escaneado: usa visão (gpt-4o)
+      userContent = [
+        { type: "text", text: `Extraia TODAS as informações deste documento (${tipoLabel}). Retorne os dados via tool call 'extrair_pedido'.` },
+        ...images.slice(0, 5).map((img: any) => ({
+          type: "image_url",
+          image_url: { url: img.dataUrl ?? img, detail: "high" },
+        })),
+      ];
+    } else {
+      const truncated = texto_pdf.slice(0, 60000);
+      userContent = `Extraia TODAS as informações deste documento (${tipoLabel}):\n\n${truncated}`;
+    }
+
+    const model = hasImages ? "gpt-4o" : "gpt-4o-mini";
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -29,16 +51,10 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model,
         messages: [
-          {
-            role: "system",
-            content: `Você é um especialista em documentos de licitações e contratos públicos brasileiros. Extraia TODAS as informações de pedidos/ordens de fornecimento, notas de empenho (global, ordinário, estimativo), PRDs e documentos similares. Identifique o tipo de documento, número, data, itens com descrição completa, quantidades, unidades, valores unitários e totais. Se houver múltiplos itens numa tabela, extraia CADA linha. Se uma informação não estiver disponível, retorne null.`
-          },
-          {
-            role: "user",
-            content: `Extraia TODAS as informações deste documento (${tipoLabel}):\n\n${truncated}`
-          }
+          { role: "system", content: systemContent },
+          { role: "user", content: userContent },
         ],
         tools: [
           {

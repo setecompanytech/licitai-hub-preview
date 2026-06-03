@@ -221,10 +221,30 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         const content = await page.getTextContent();
         fullText += content.items.map((item: any) => item.str).join(' ') + '\n';
       }
-      if (fullText.trim().length < 30) { toast.error('Não foi possível extrair texto do PDF'); setUploading(false); return; }
+
+      // PDF escaneado: fallback para visão (imagens)
+      let images: { dataUrl: string }[] = [];
+      if (fullText.trim().length < 30) {
+        toast.info('PDF escaneado detectado — usando visão por IA...');
+        const canvas = document.createElement('canvas');
+        for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) {
+          const page = await pdf.getPage(i);
+          const viewport = page.getViewport({ scale: 2 });
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d')!;
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          images.push({ dataUrl: canvas.toDataURL('image/jpeg', 0.85) });
+        }
+        if (images.length === 0) { toast.error('Não foi possível processar o PDF'); setUploading(false); return; }
+      }
 
       const { data: result, error } = await supabase.functions.invoke('extrair-pedido-pdf', {
-        body: { texto_pdf: fullText, tipo_documento: form.tipo_documento },
+        body: {
+          texto_pdf: fullText.trim().length >= 30 ? fullText : '',
+          tipo_documento: form.tipo_documento,
+          images: images.length > 0 ? images : undefined,
+        },
       });
       if (error) throw error;
       if (result?.error) throw new Error(result.error);
