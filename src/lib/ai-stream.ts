@@ -39,7 +39,12 @@ export async function streamAIChat({
     // Use user's JWT token if available, fallback to anon key for public actions
     let authToken = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      let { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // Session expired — try to refresh before giving up
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        session = refreshed.session;
+      }
       if (session?.access_token) {
         authToken = session.access_token;
       }
