@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, FolderOpen, FileText, Calculator, Sparkles, Scale, Briefcase,
-  ClipboardList, History, ExternalLink, Building2, Calendar, DollarSign, MapPin, Loader2, Archive
+  ClipboardList, History, ExternalLink, Building2, Calendar, DollarSign, MapPin, Loader2, Archive,
+  TrendingUp, Clock, Package
 } from 'lucide-react';
 import AnexosManager from '@/components/workspace/AnexosManager';
 import DocumentosManager from '@/components/workspace/DocumentosManager';
@@ -32,6 +33,19 @@ const ATALHOS = [
   { label: 'Gestão Kanban', path: '/kanban', icon: ClipboardList, descricao: 'Status do processo no funil' },
 ];
 
+type PrecificacaoItem = {
+  id: string; descricao: string; quantidade: number | null; unidade: string | null;
+  custo_unitario: number | null; preco_unitario: number | null; preco_total: number | null;
+  margem_lucro: number | null; created_at: string;
+};
+
+type RascunhoPlanilha = {
+  id: string; updated_at: string;
+  dados: { itens: Array<{ descricao: string; quantidade: number; unidade: string; valorUnitario: number | null; valorTotal: number | null }> };
+};
+
+const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
 export default function ProcessoWorkspace() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
@@ -40,6 +54,9 @@ export default function ProcessoWorkspace() {
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
   const { anexos, documentos } = useProcessoWorkspace(id || null);
+  const [precItems, setPrecItems] = useState<PrecificacaoItem[]>([]);
+  const [rascunhoPlanilha, setRascunhoPlanilha] = useState<RascunhoPlanilha | null>(null);
+  const [loadingPrec, setLoadingPrec] = useState(false);
 
   const handleExportarZip = async () => {
     if (!lic) return;
@@ -61,6 +78,24 @@ export default function ProcessoWorkspace() {
       .eq('id', id).eq('user_id', user.id).maybeSingle()
       .then(({ data }) => { setLic(data as Licitacao); setLoading(false); });
   }, [id, user]);
+
+  const loadPrecificacao = async () => {
+    if (!id || !user) return;
+    setLoadingPrec(true);
+    const [catRes, rascRes] = await Promise.all([
+      supabase.from('catalogo_itens_precificados')
+        .select('id, descricao, quantidade, unidade, custo_unitario, preco_unitario, preco_total, margem_lucro, created_at')
+        .eq('licitacao_id', id).eq('user_id', user.id)
+        .order('created_at', { ascending: false }),
+      supabase.from('rascunhos')
+        .select('id, updated_at, dados')
+        .eq('licitacao_id', id).eq('user_id', user.id).eq('modulo', 'precificacao_planilha')
+        .maybeSingle(),
+    ]);
+    setPrecItems((catRes.data as PrecificacaoItem[]) || []);
+    setRascunhoPlanilha(rascRes.data as RascunhoPlanilha | null);
+    setLoadingPrec(false);
+  };
 
   if (loading) return <div className="flex items-center justify-center h-screen"><Loader2 className="w-6 h-6 animate-spin" /></div>;
   if (!lic) return (
@@ -98,11 +133,12 @@ export default function ProcessoWorkspace() {
       </div>
 
       <div className="max-w-[1440px] mx-auto px-4 py-6">
-        <Tabs defaultValue="visao" className="w-full">
-          <TabsList className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-6 mb-6 h-auto">
+        <Tabs defaultValue="visao" className="w-full" onValueChange={v => { if (v === 'precificacao') loadPrecificacao(); }}>
+          <TabsList className="grid grid-cols-3 sm:grid-cols-7 lg:grid-cols-7 mb-6 h-auto">
             <TabsTrigger value="visao">Visão Geral</TabsTrigger>
             <TabsTrigger value="documentos">Documentos</TabsTrigger>
             <TabsTrigger value="anexos">Anexos</TabsTrigger>
+            <TabsTrigger value="precificacao">Precificação</TabsTrigger>
             <TabsTrigger value="modulos">Módulos</TabsTrigger>
             <TabsTrigger value="historico">Histórico</TabsTrigger>
             <TabsTrigger value="info">Informações</TabsTrigger>
@@ -146,6 +182,120 @@ export default function ProcessoWorkspace() {
           {/* Anexos */}
           <TabsContent value="anexos">
             <AnexosManager licitacaoId={lic.id} />
+          </TabsContent>
+
+          {/* Precificação */}
+          <TabsContent value="precificacao" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold">Histórico de Precificação</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Planilha de custos e itens precificados para este processo</p>
+              </div>
+              <Button size="sm" asChild>
+                <Link to={`/precificacao?lid=${lic.id}`}>
+                  <Calculator className="w-4 h-4 mr-2" /> Abrir Precificação
+                </Link>
+              </Button>
+            </div>
+
+            {loadingPrec ? (
+              <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            ) : (
+              <>
+                {/* Rascunho da planilha de custos */}
+                {rascunhoPlanilha ? (() => {
+                  const itens = rascunhoPlanilha.dados?.itens?.filter(i => i.valorUnitario && i.valorUnitario > 0) || [];
+                  const total = itens.reduce((s, i) => s + ((i.valorTotal ?? 0) || (i.valorUnitario ?? 0) * (i.quantidade ?? 1)), 0);
+                  const updated = new Date(rascunhoPlanilha.updated_at);
+                  return (
+                    <Card className="p-4 border-primary/20 bg-primary/5">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                          <TrendingUp className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold">Planilha de Custos</p>
+                          <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1"><Package className="w-3 h-3" /> {itens.length} {itens.length === 1 ? 'item' : 'itens'} preenchidos</span>
+                            {total > 0 && <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> Total: <strong className="text-foreground">{fmt(total)}</strong></span>}
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Atualizado em {updated.toLocaleDateString('pt-BR')} às {updated.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          {itens.length > 0 && (
+                            <div className="mt-3 border rounded-md overflow-hidden">
+                              <table className="w-full text-xs">
+                                <thead className="bg-muted/50">
+                                  <tr>
+                                    <th className="text-left px-3 py-1.5 font-medium">Descrição</th>
+                                    <th className="text-right px-3 py-1.5 font-medium w-16">Qtde</th>
+                                    <th className="text-right px-3 py-1.5 font-medium w-24">Vl. Unit.</th>
+                                    <th className="text-right px-3 py-1.5 font-medium w-24">Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                  {itens.slice(0, 10).map((it, i) => (
+                                    <tr key={i} className="hover:bg-muted/30">
+                                      <td className="px-3 py-1.5 truncate max-w-[200px]">{it.descricao}</td>
+                                      <td className="px-3 py-1.5 text-right">{it.quantidade}</td>
+                                      <td className="px-3 py-1.5 text-right">{it.valorUnitario ? fmt(it.valorUnitario) : '—'}</td>
+                                      <td className="px-3 py-1.5 text-right font-medium">{it.valorTotal ? fmt(it.valorTotal) : '—'}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                              {itens.length > 10 && (
+                                <p className="text-[10px] text-muted-foreground px-3 py-1.5 border-t">
+                                  + {itens.length - 10} itens adicionais — abra a Precificação para ver todos
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })() : (
+                  <Card className="p-5 border-dashed text-center">
+                    <TrendingUp className="w-8 h-8 mx-auto text-muted-foreground/30 mb-2" />
+                    <p className="text-sm text-muted-foreground">Nenhuma planilha de custos salva ainda.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Acesse a Precificação e preencha os valores para que apareçam aqui.</p>
+                  </Card>
+                )}
+
+                {/* Itens do catálogo */}
+                {precItems.length > 0 && (
+                  <div>
+                    <p className="text-sm font-semibold mb-2">Itens precificados no catálogo ({precItems.length})</p>
+                    <div className="border rounded-md overflow-hidden">
+                      <table className="w-full text-xs">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left px-3 py-1.5 font-medium">Descrição</th>
+                            <th className="text-right px-3 py-1.5 font-medium w-20">Custo</th>
+                            <th className="text-right px-3 py-1.5 font-medium w-20">Preço</th>
+                            <th className="text-right px-3 py-1.5 font-medium w-16">Margem</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {precItems.slice(0, 15).map(it => (
+                            <tr key={it.id} className="hover:bg-muted/30">
+                              <td className="px-3 py-1.5 truncate max-w-[220px]">{it.descricao}</td>
+                              <td className="px-3 py-1.5 text-right text-muted-foreground">{it.custo_unitario ? fmt(it.custo_unitario) : '—'}</td>
+                              <td className="px-3 py-1.5 text-right font-medium">{it.preco_unitario ? fmt(it.preco_unitario) : '—'}</td>
+                              <td className="px-3 py-1.5 text-right">{it.margem_lucro != null ? `${it.margem_lucro}%` : '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {precItems.length > 15 && (
+                        <p className="text-[10px] text-muted-foreground px-3 py-1.5 border-t">
+                          + {precItems.length - 15} itens adicionais
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </TabsContent>
 
           {/* Módulos */}
