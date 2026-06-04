@@ -5,7 +5,7 @@
  */
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const MODELO_PADRAO = "gpt-4o";
+const MODELO_PADRAO = "claude-haiku-4-5-20251001";
 
 export interface ClaudeDocumentoInput {
   pdfBase64?: string;
