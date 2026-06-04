@@ -11,19 +11,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
-  Plus, Pencil, Trash2, Loader2, FilePlus2, DollarSign, Calendar, Package, Layers
+  Plus, Pencil, Trash2, Loader2, FilePlus2, DollarSign, Calendar, Package, Layers, TrendingUp
 } from 'lucide-react';
 import { MoneyInput } from '@/components/ui/money-input';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
 
-const TIPOS_ADITIVO: Record<string, { label: string; icon: typeof DollarSign; color: string }> = {
+const TIPOS_ADITIVO: Record<string, { label: string; icon: typeof DollarSign; color: string; semLimite?: boolean }> = {
   valor: { label: 'Valor', icon: DollarSign, color: 'bg-success/10 text-success' },
   quantidade: { label: 'Quantidade', icon: Package, color: 'bg-accent/10 text-accent' },
   valor_quantidade: { label: 'Valor e Qtde', icon: Layers, color: 'bg-blue-500/10 text-blue-600' },
   prazo: { label: 'Prazo', icon: Calendar, color: 'bg-warning/10 text-warning' },
   escopo: { label: 'Escopo', icon: FilePlus2, color: 'bg-primary/10 text-primary' },
+  reequilibrio: { label: 'Reequilíbrio Econômico-Financeiro', icon: TrendingUp, color: 'bg-orange-500/10 text-orange-600', semLimite: true },
+  revisao: { label: 'Revisão Contratual', icon: TrendingUp, color: 'bg-orange-500/10 text-orange-600', semLimite: true },
+  repactuacao: { label: 'Repactuação', icon: TrendingUp, color: 'bg-orange-500/10 text-orange-600', semLimite: true },
+  reajuste: { label: 'Reajuste', icon: TrendingUp, color: 'bg-orange-500/10 text-orange-600', semLimite: true },
 };
 
 type Aditivo = {
@@ -68,7 +72,8 @@ const emptyForm = {
   observacoes: '',
 };
 
-const showValueFields = (tipo: string) => ['valor', 'valor_quantidade', 'escopo', 'prazo'].includes(tipo);
+const TIPOS_SEM_LIMITE = ['reequilibrio', 'revisao', 'repactuacao', 'reajuste'];
+const showValueFields = (tipo: string) => ['valor', 'valor_quantidade', 'escopo', 'prazo', ...TIPOS_SEM_LIMITE].includes(tipo);
 const showQtyFields = (tipo: string) => ['quantidade', 'valor_quantidade', 'prazo'].includes(tipo);
 
 export default function ContratoAditivos({ contratoId }: { contratoId: string }) {
@@ -383,11 +388,23 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
               <Select value={form.tipo} onValueChange={(v) => setForm(f => ({ ...f, tipo: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(TIPOS_ADITIVO).map(([k, { label }]) => (
-                    <SelectItem key={k} value={k}>{label}</SelectItem>
-                  ))}
+                  <SelectItem value="valor">Valor</SelectItem>
+                  <SelectItem value="quantidade">Quantidade</SelectItem>
+                  <SelectItem value="valor_quantidade">Valor e Qtde</SelectItem>
+                  <SelectItem value="prazo">Prazo</SelectItem>
+                  <SelectItem value="escopo">Escopo</SelectItem>
+                  <SelectItem value="reequilibrio">Reequilíbrio Econômico-Financeiro</SelectItem>
+                  <SelectItem value="revisao">Revisão Contratual</SelectItem>
+                  <SelectItem value="repactuacao">Repactuação</SelectItem>
+                  <SelectItem value="reajuste">Reajuste</SelectItem>
                 </SelectContent>
               </Select>
+              {TIPOS_SEM_LIMITE.includes(form.tipo) && (
+                <p className="text-[10px] text-orange-600 mt-1 flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3" />
+                  Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
+                </p>
+              )}
             </div>
 
 

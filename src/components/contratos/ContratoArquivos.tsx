@@ -46,7 +46,7 @@ const REJECTION_REASONS: Record<string, string> = {
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
 
-const TIPOS_ARQUIVO: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string }> = {
+const TIPOS_ARQUIVO: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string; semLimite?: boolean }> = {
   ata_srp: { label: 'ATA SRP', color: 'bg-amber-500/10 text-amber-600' },
   contrato_original: { label: 'Contrato Original', color: 'bg-primary/10 text-primary' },
   aditivo_prazo: { label: 'Termo Aditivo de Prazo', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo' },
@@ -56,10 +56,15 @@ const TIPOS_ARQUIVO: Record<string, { label: string; color: string; isAditivo?: 
   aditivo_prazo_quantidade: { label: 'Termo Aditivo de Prazo e Quantidade', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_quantidade' },
   aditivo_valor_quantidade: { label: 'Termo Aditivo de Quantidade e Valor', color: 'bg-blue-500/10 text-blue-600', isAditivo: true, tipoAditivo: 'valor_quantidade' },
   aditivo_escopo: { label: 'Termo Aditivo de Escopo', color: 'bg-primary/10 text-primary', isAditivo: true, tipoAditivo: 'escopo' },
+  aditivo_reequilibrio: { label: 'Reequilíbrio Econômico-Financeiro', color: 'bg-orange-500/10 text-orange-600', isAditivo: true, tipoAditivo: 'reequilibrio', semLimite: true },
+  aditivo_revisao: { label: 'Revisão Contratual', color: 'bg-orange-500/10 text-orange-600', isAditivo: true, tipoAditivo: 'revisao', semLimite: true },
+  aditivo_repactuacao: { label: 'Repactuação', color: 'bg-orange-500/10 text-orange-600', isAditivo: true, tipoAditivo: 'repactuacao', semLimite: true },
+  aditivo_reajuste: { label: 'Reajuste', color: 'bg-orange-500/10 text-orange-600', isAditivo: true, tipoAditivo: 'reajuste', semLimite: true },
   outro: { label: 'Outro Documento', color: 'bg-muted text-muted-foreground' },
 };
 
-const showValueFields = (tipo: string) => ['aditivo_valor', 'aditivo_valor_quantidade', 'aditivo_prazo_valor', 'aditivo_escopo'].includes(tipo);
+const TIPOS_ARQUIVO_SEM_LIMITE = ['aditivo_reequilibrio', 'aditivo_revisao', 'aditivo_repactuacao', 'aditivo_reajuste'];
+const showValueFields = (tipo: string) => ['aditivo_valor', 'aditivo_valor_quantidade', 'aditivo_prazo_valor', 'aditivo_escopo', ...TIPOS_ARQUIVO_SEM_LIMITE].includes(tipo);
 const showQtyFields = (tipo: string) => ['aditivo_quantidade', 'aditivo_valor_quantidade', 'aditivo_prazo_quantidade'].includes(tipo);
 const showDateField = (tipo: string) => ['aditivo_prazo', 'aditivo_prazo_valor', 'aditivo_prazo_quantidade'].includes(tipo);
 const isAditivoType = (tipo: string) => TIPOS_ARQUIVO[tipo]?.isAditivo === true;
@@ -883,6 +888,12 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                 ))}
               </SelectContent>
             </Select>
+            {TIPOS_ARQUIVO[uploadTipo]?.semLimite && (
+              <p className="text-[10px] text-orange-600 mt-1 flex items-center gap-1">
+                <RefreshCw className="w-3 h-3" />
+                Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
+              </p>
+            )}
           </div>
           <div>
             <input
@@ -1160,6 +1171,12 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                   ))}
                 </SelectContent>
               </Select>
+              {TIPOS_ARQUIVO[editTipo]?.semLimite && (
+                <p className="text-[10px] text-orange-600 mt-1 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" />
+                  Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
+                </p>
+              )}
             </div>
             <div>
               <Label className="text-xs">Descrição (opcional)</Label>
