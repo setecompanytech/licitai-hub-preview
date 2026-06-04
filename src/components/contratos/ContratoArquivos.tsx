@@ -114,13 +114,16 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
   const [detectionOpen, setDetectionOpen] = useState(false);
   const [detection, setDetection] = useState<DetectionResult | null>(null);
   const [detectionFileName, setDetectionFileName] = useState('');
+  const [precificacaoMargem, setPrecificacaoMargem] = useState<number | null>(null);
+  const [calcCustoNovo, setCalcCustoNovo] = useState('');
+  const [calcCustoAtual, setCalcCustoAtual] = useState('');
 
   const loadData = async () => {
     setLoading(true);
     const [arqRes, adtRes, contratoRes] = await Promise.all([
       supabase.from('contrato_arquivos').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
       supabase.from('contrato_aditivos').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
-      supabase.from('contratos').select('id, tipo_documento, ata_srp_id, numero_contrato, numero_ata, objeto, orgao_contratante, modalidade, valor_global, valor_global_original, data_assinatura, data_inicio, data_fim, vigencia_meses, validade_ata_meses, empresa_id').eq('id', contratoId).maybeSingle(),
+      supabase.from('contratos').select('id, tipo_documento, ata_srp_id, numero_contrato, numero_ata, objeto, orgao_contratante, modalidade, valor_global, valor_global_original, data_assinatura, data_inicio, data_fim, vigencia_meses, validade_ata_meses, empresa_id, licitacao_id').eq('id', contratoId).maybeSingle(),
     ]);
     setArquivos((arqRes.data as any[]) || []);
     setAditivos((adtRes.data as any[]) || []);
@@ -144,6 +147,28 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
       setAditivoForm(f => ({ ...f, numero_aditivo: f.numero_aditivo || `${count}º Aditivo` }));
     }
   }, [uploadTipo, aditivos.length]);
+
+  // Load pricing margin from catalog when semLimite type selected and contract has a licitação linked
+  useEffect(() => {
+    const licitacaoId = parentContrato?.licitacao_id;
+    if (!TIPOS_ARQUIVO_SEM_LIMITE.includes(uploadTipo) || !licitacaoId) {
+      setPrecificacaoMargem(null);
+      return;
+    }
+    supabase
+      .from('catalogo_itens_precificados')
+      .select('margem_lucro, bdi_percentual')
+      .eq('licitacao_id', licitacaoId)
+      .not('margem_lucro', 'is', null)
+      .limit(20)
+      .then(({ data }) => {
+        if (!data || data.length === 0) { setPrecificacaoMargem(null); return; }
+        const margens = data.map((r: any) => r.margem_lucro ?? r.bdi_percentual ?? 0).filter((v: number) => v > 0);
+        if (margens.length === 0) { setPrecificacaoMargem(null); return; }
+        const media = margens.reduce((s: number, v: number) => s + v, 0) / margens.length;
+        setPrecificacaoMargem(Math.round(media * 100) / 100);
+      });
+  }, [uploadTipo, parentContrato?.licitacao_id]);
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -930,6 +955,54 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
 
               {showValueFields(uploadTipo) && (
                 <>
+                  {/* Calculator for reequilíbrio types */}
+                  {TIPOS_ARQUIVO_SEM_LIMITE.includes(uploadTipo) && (
+                    <div className="sm:col-span-2 rounded-lg border border-orange-200 bg-orange-50/50 dark:bg-orange-950/20 p-3 space-y-2">
+                      <p className="text-[10px] font-semibold text-orange-700 dark:text-orange-400 flex items-center gap-1">
+                        <RefreshCw className="w-3 h-3" /> Calculadora de Reequilíbrio
+                      </p>
+                      {precificacaoMargem !== null && (
+                        <p className="text-[10px] text-orange-600 dark:text-orange-400">
+                          Margem média da precificação vinculada: <strong>{precificacaoMargem}%</strong>
+                        </p>
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-[10px] text-muted-foreground">Custo atual (R$/un)</Label>
+                          <MoneyInput value={parseFloat(calcCustoAtual) || 0} onValueChange={v => setCalcCustoAtual(String(v))} placeholder="R$ 0,00" />
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-muted-foreground">Novo custo (R$/un)</Label>
+                          <MoneyInput value={parseFloat(calcCustoNovo) || 0} onValueChange={v => setCalcCustoNovo(String(v))} placeholder="R$ 0,00" />
+                        </div>
+                      </div>
+                      {calcCustoAtual && calcCustoNovo && (() => {
+                        const margem = precificacaoMargem ?? 0;
+                        const markup = 1 + margem / 100;
+                        const precoAtual = (parseFloat(calcCustoAtual) || 0) * markup;
+                        const precoNovo = (parseFloat(calcCustoNovo) || 0) * markup;
+                        const diferenca = precoNovo - precoAtual;
+                        return (
+                          <div className="flex items-center gap-3 text-[10px] flex-wrap">
+                            <span className="text-muted-foreground">Preço atual: <strong>{fmt(precoAtual)}</strong></span>
+                            <span className="text-muted-foreground">Novo preço: <strong>{fmt(precoNovo)}</strong></span>
+                            <span className={diferenca >= 0 ? 'text-success font-semibold' : 'text-destructive font-semibold'}>
+                              Diferença unitária: {diferenca >= 0 ? '+' : ''}{fmt(diferenca)}
+                            </span>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="text-[10px] h-6 px-2 border-orange-300 text-orange-700"
+                              onClick={() => setAditivoForm(f => ({ ...f, valor_acrescimo: diferenca > 0 ? String(diferenca) : '0', valor_supressao: diferenca < 0 ? String(Math.abs(diferenca)) : '0' }))}
+                            >
+                              Aplicar
+                            </Button>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                   <div>
                     <Label className="text-xs">Valor Acréscimo (R$)</Label>
                     <MoneyInput value={parseFloat(aditivoForm.valor_acrescimo) || 0} onValueChange={v => setAditivoForm(f => ({ ...f, valor_acrescimo: String(v) }))} placeholder="R$ 0,00" />

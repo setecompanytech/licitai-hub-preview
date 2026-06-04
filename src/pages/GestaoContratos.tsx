@@ -29,7 +29,7 @@ const parseBRLInput = (value: string): string => {
 import {
   FileText, Plus, Search, Calendar, DollarSign, AlertTriangle,
   CheckCircle2, Clock, TrendingUp, Building2, Loader2, Trash2,
-  ArrowLeft, Package, ShoppingCart, BarChart3, FilePlus2, Paperclip, ScrollText
+  ArrowLeft, Package, ShoppingCart, BarChart3, FilePlus2, Paperclip, ScrollText, Link2
 } from 'lucide-react';
 import ContratoItens from '@/components/contratos/ContratoItens';
 import ContratoPedidos from '@/components/contratos/ContratoPedidos';
@@ -60,13 +60,18 @@ type Contrato = {
   numero_ata: string | null;
   validade_ata_meses: number | null;
   permite_carona: boolean | null;
+  licitacao_id: string | null;
 };
+
+type Licitacao = { id: string; numero: string; orgao: string; objeto: string; modalidade: string | null };
 
 export default function GestaoContratos() {
   const { user } = useAuth();
   const [contratos, setContratos] = useState<Contrato[]>([]);
+  const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [licitacaoSearch, setLicitacaoSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [tipoFilter, setTipoFilter] = useState<'all' | 'contrato' | 'ata_srp'>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -79,6 +84,7 @@ export default function GestaoContratos() {
     numero_ata: '',
     validade_ata_meses: '',
     permite_carona: true,
+    licitacao_id: '',
     numero_contrato: '', objeto: '', orgao_contratante: '',
     valor_global: '', valor_consumido: '0', data_assinatura: '',
     data_inicio: '', data_fim: '', vigencia_meses: '',
@@ -91,6 +97,9 @@ export default function GestaoContratos() {
   useEffect(() => {
     if (!user) return;
     loadContratos();
+    supabase.from('licitacoes').select('id, numero, orgao, objeto, modalidade')
+      .eq('user_id', user.id).order('created_at', { ascending: false })
+      .then(({ data }) => setLicitacoes((data as Licitacao[]) || []));
     const channel = supabase
       .channel('contratos-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'contratos', filter: `user_id=eq.${user.id}` }, () => loadContratos())
@@ -112,13 +121,14 @@ export default function GestaoContratos() {
 
   const atasDisponiveis = contratos.filter(c => c.tipo_documento === 'ata_srp');
 
-  const resetForm = () => setForm({
+  const resetForm = () => { setLicitacaoSearch(''); setForm({
     tipo_documento: 'contrato', tipo_estrutura: 'itens', ata_srp_id: '', numero_ata: '', validade_ata_meses: '', permite_carona: true,
+    licitacao_id: '',
     numero_contrato: '', objeto: '', orgao_contratante: '', valor_global: '', valor_consumido: '0',
     data_assinatura: '', data_inicio: '', data_fim: '', vigencia_meses: '',
     status: 'vigente', modalidade: '', uf: '', municipio: '',
     fiscal_nome: '', fiscal_email: '', fiscal_telefone: '', observacoes: '',
-  });
+  }); };
 
   const handleSave = async () => {
     if (!form.numero_contrato || !form.objeto || !form.orgao_contratante) {
@@ -143,6 +153,7 @@ export default function GestaoContratos() {
       municipio: form.municipio || null, fiscal_nome: form.fiscal_nome || null,
       fiscal_email: form.fiscal_email || null, fiscal_telefone: form.fiscal_telefone || null,
       observacoes: form.observacoes || null,
+      licitacao_id: form.licitacao_id || null,
     } as any).select('id').single();
     setSaving(false);
     if (error) { console.error('Erro ao salvar:', error); toast.error('Erro ao salvar', { description: error.message }); return; }
@@ -276,6 +287,15 @@ export default function GestaoContratos() {
                     Oriundo da ATA {ataOrigem.numero_ata || ataOrigem.numero_contrato}
                   </button>
                 )}
+                {c.licitacao_id && (() => {
+                  const l = licitacoes.find(x => x.id === c.licitacao_id);
+                  return l ? (
+                    <span className="flex items-center gap-1 text-primary">
+                      <Link2 className="w-3 h-3" />
+                      Processo: {l.numero}
+                    </span>
+                  ) : null;
+                })()}
               </div>
             </div>
             <div className="text-right">
@@ -408,6 +428,53 @@ export default function GestaoContratos() {
                   <p className="text-[11px] text-muted-foreground mt-1">Os itens deste contrato poderão consumir o saldo da ATA selecionada.</p>
                 </div>
               )}
+
+              {/* Licitação vinculada */}
+              <div className="md:col-span-2">
+                <Label>Processo Licitatório de origem (opcional)</Label>
+                <div className="space-y-1">
+                  <Input
+                    placeholder="Buscar por número ou órgão..."
+                    value={licitacaoSearch}
+                    onChange={e => setLicitacaoSearch(e.target.value)}
+                    className="text-xs"
+                  />
+                  {licitacaoSearch && (
+                    <div className="border rounded-md max-h-40 overflow-y-auto divide-y">
+                      {licitacoes
+                        .filter(l => `${l.numero} ${l.orgao} ${l.objeto}`.toLowerCase().includes(licitacaoSearch.toLowerCase()))
+                        .slice(0, 6)
+                        .map(l => (
+                          <button
+                            key={l.id}
+                            type="button"
+                            className={`w-full text-left px-3 py-2 text-xs hover:bg-muted/50 ${form.licitacao_id === l.id ? 'bg-primary/10 font-semibold' : ''}`}
+                            onClick={() => { setForm(f => ({ ...f, licitacao_id: l.id })); setLicitacaoSearch(''); }}
+                          >
+                            <span className="font-medium">{l.numero}</span>
+                            <span className="text-muted-foreground ml-1">— {l.orgao}</span>
+                            <span className="block text-muted-foreground line-clamp-1">{l.objeto}</span>
+                          </button>
+                        ))}
+                      {licitacoes.filter(l => `${l.numero} ${l.orgao} ${l.objeto}`.toLowerCase().includes(licitacaoSearch.toLowerCase())).length === 0 && (
+                        <p className="px-3 py-2 text-xs text-muted-foreground">Nenhum processo encontrado</p>
+                      )}
+                    </div>
+                  )}
+                  {form.licitacao_id && !licitacaoSearch && (() => {
+                    const l = licitacoes.find(x => x.id === form.licitacao_id);
+                    return l ? (
+                      <div className="flex items-center gap-2 text-xs bg-primary/5 border border-primary/20 rounded px-3 py-1.5">
+                        <Link2 className="w-3 h-3 text-primary shrink-0" />
+                        <span className="font-medium text-primary">{l.numero}</span>
+                        <span className="text-muted-foreground">— {l.orgao}</span>
+                        <button type="button" className="ml-auto text-muted-foreground hover:text-destructive" onClick={() => setForm(f => ({ ...f, licitacao_id: '' }))}>✕</button>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">Vincula este contrato ao processo licitatório original para rastreabilidade e sincronização com a precificação.</p>
+              </div>
 
               <div><Label>Valor Global (R$)</Label><Input inputMode="decimal" value={form.valor_global ? formatInputBRL(form.valor_global) : ''} onChange={e => setForm(f => ({ ...f, valor_global: parseBRLInput(e.target.value) }))} placeholder="0,00" /></div>
               <div><Label>Valor Consumido (R$)</Label><Input inputMode="decimal" value={form.valor_consumido ? formatInputBRL(form.valor_consumido) : ''} onChange={e => setForm(f => ({ ...f, valor_consumido: parseBRLInput(e.target.value) }))} placeholder="0,00" /></div>

@@ -70,7 +70,7 @@ export default function PlanilhaCustosEdital({
   const { extrairItensDoTexto, fetchItens, saveItensManual, deleteAllItens } = useEditalExtraction();
   const { resolveLinkedEditalText } = useLinkedEditalSource();
   const { addItem, pendingItems } = usePropostaCart();
-  const { loadRascunho, autoSave, saving, lastSaved, markLoaded } = useRascunho<{ itens: PlanilhaItem[]; sourceLabel?: string | null }>({
+  const { loadRascunho, autoSave, flush, saving, lastSaved, markLoaded } = useRascunho<{ itens: PlanilhaItem[]; sourceLabel?: string | null }>({
     modulo: 'precificacao_planilha',
     licitacaoId: licitacaoId || null,
     debounceMs: 2500,
@@ -475,6 +475,7 @@ export default function PlanilhaCustosEdital({
       toast.error('Preencha os valores unitários antes de adicionar à proposta.');
       return;
     }
+    await flush();
     validItens.forEach(it => {
       addItem({
         item: String(pendingItems.length + 1),
