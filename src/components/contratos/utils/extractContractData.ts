@@ -10,17 +10,8 @@ export async function extractContractDataFromFile(
   tipoArquivoHint?: string,
 ): Promise<any | null> {
   try {
-    const fileBuffer = await file.arrayBuffer();
-    const pdfjsLib: any = await import('pdfjs-dist');
-    const workerModule: any = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
-    const pdf = await pdfjsLib.getDocument({ data: fileBuffer }).promise;
-    let texto = '';
-    for (let i = 1; i <= Math.min(pdf.numPages, 50); i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      texto += content.items.map((it: any) => it.str).join(' ') + '\n';
-    }
+    const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
+    const texto = await extractTextFromFile(file, 50);
 
     if (texto.trim().length < 80) return null;
 
