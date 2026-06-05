@@ -570,17 +570,25 @@ export default function GestaoContratos() {
               <Card key={c.id} className={`p-4 hover:shadow-md transition-shadow cursor-pointer ${isAta ? 'border-accent/40 bg-accent/[0.03]' : ''}`} onClick={() => setSelectedContrato(c)}>
                 <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                   <div className="flex-1 min-w-0">
+                    {/* 1º — Órgão/cliente */}
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-sm font-semibold truncate">{c.orgao_contratante}</span>
+                    </div>
+                    {/* 2º — Número + tipo + badges de status */}
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      {isAta && <Badge className="bg-accent/15 text-accent border-accent/30 text-[10px]"><ScrollText className="w-3 h-3 mr-1" />ATA SRP</Badge>}
-                      <span className="text-sm font-bold text-accent">{c.numero_contrato}</span>
+                      {isAta
+                        ? <span className="text-xs font-medium text-accent">ATA SRP n. {c.numero_ata || c.numero_contrato}</span>
+                        : <span className="text-xs font-medium text-accent">Contrato n. {c.numero_contrato}</span>}
                       <Badge className={`${cfg.color} text-[10px]`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
                       {dias !== null && dias <= 60 && dias > 0 && <Badge variant="outline" className="text-[10px] text-warning border-warning/30"><Clock className="w-3 h-3 mr-1" />{dias}d</Badge>}
                       {!isAta && pct >= 80 && <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30">Saldo baixo</Badge>}
                       {c.ata_srp_id && <Badge variant="outline" className="text-[10px] text-accent border-accent/30">Origem: ATA</Badge>}
                     </div>
-                    <p className="text-sm font-medium line-clamp-1">{c.objeto}</p>
+                    {/* 3º — Objeto */}
+                    <p className="text-xs text-muted-foreground line-clamp-1">{c.objeto}</p>
+                    {/* 4º — Data fim */}
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{c.orgao_contratante}</span>
                       {c.data_fim && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Até {new Date(c.data_fim).toLocaleDateString('pt-BR')}</span>}
                     </div>
                     <div className="mt-2">
