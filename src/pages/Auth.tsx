@@ -156,8 +156,20 @@ export default function Auth() {
     // Resolve "Failed to fetch" causado por instabilidade momentânea
     // (Cloudflare cold-start, ISP regional, 4G oscilante) sem que o usuário
     // precise saber o que fazer.
+    // Resolve username → email se o campo não contiver @
+    let loginEmail = email.trim();
+    if (!loginEmail.includes('@')) {
+      const { data: emailFound } = await supabase.rpc('buscar_email_por_username', { p_username: loginEmail });
+      if (!emailFound) {
+        setLoading(false);
+        toast.error('Usuário não encontrado. Verifique o usuário ou use seu e-mail.');
+        return;
+      }
+      loginEmail = emailFound as string;
+    }
+
     const attemptLogin = async (attempt: number): Promise<{ error: any }> => {
-      const result = await signIn(email, password);
+      const result = await signIn(loginEmail, password);
       if (!result.error) return result;
       const msg = (result.error.message || '').toLowerCase();
       const isTransient =
@@ -626,8 +638,16 @@ export default function Auth() {
 
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input type="email" placeholder="Seu e-mail" value={email} onChange={e => setEmail(e.target.value)} className="pl-10" required />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Usuário ou e-mail"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                    autoComplete="username"
+                  />
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

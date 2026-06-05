@@ -81,9 +81,33 @@ export default function Configuracoes() {
   const [loadingSintegra, setLoadingSintegra] = useState(false);
   const [loadingSalvar, setLoadingSalvar] = useState(false);
   const [erroCnpj, setErroCnpj] = useState('');
+  const [username, setUsername] = useState('');
+  const [savingUsername, setSavingUsername] = useState(false);
 
   // Load saved notification/portal config
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('username').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => { if ((data as any)?.username) setUsername((data as any).username); });
+  }, [user]);
+
+  const handleSalvarUsername = async () => {
+    if (!user) return;
+    const u = username.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '');
+    if (!u) { toast.error('Informe um nome de usuário válido'); return; }
+    setSavingUsername(true);
+    const { error } = await supabase.from('profiles').update({ username: u } as any).eq('user_id', user.id);
+    setSavingUsername(false);
+    if (error) {
+      toast.error(error.message.includes('unique') ? 'Este usuário já está em uso. Escolha outro.' : error.message);
+    } else {
+      setUsername(u);
+      toast.success('Usuário de acesso atualizado!');
+    }
+  };
+
   useEffect(() => {
     if (!user) return;
     Promise.all([
@@ -722,6 +746,35 @@ export default function Configuracoes() {
 
           {/* ── Tab: Segurança ── */}
           <TabsContent value="seguranca" className="space-y-6">
+            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-1">
+                <User className="w-5 h-5 text-accent" />
+                <h2 className="text-sm font-semibold">Usuário de Acesso</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                Defina um nome de usuário para fazer login sem precisar digitar o e-mail. Use apenas letras minúsculas, números, ponto, hífen ou underscore.
+              </p>
+              <div className="flex items-end gap-3 max-w-sm">
+                <div className="flex-1">
+                  <Label className="text-xs">Nome de usuário</Label>
+                  <Input
+                    value={username}
+                    onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.-]/g, ''))}
+                    placeholder="ex: joao.silva"
+                    className="mt-1 font-mono"
+                  />
+                </div>
+                <Button size="sm" onClick={handleSalvarUsername} disabled={savingUsername || !username.trim()}>
+                  {savingUsername ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                  Salvar
+                </Button>
+              </div>
+              {username && (
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  Você pode fazer login com <span className="font-mono font-medium text-foreground">{username}</span> ou com seu e-mail.
+                </p>
+              )}
+            </section>
             <SegurancaConta />
           </TabsContent>
 
