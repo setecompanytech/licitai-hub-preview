@@ -191,6 +191,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     });
   };
 
+  const gerarNumeroPedido = async (): Promise<string> => {
+    const { count } = await supabase
+      .from('contrato_pedidos')
+      .select('id', { count: 'exact', head: true })
+      .eq('contrato_id', contratoId);
+    const seq = ((count ?? 0) + 1).toString().padStart(3, '0');
+    const ano = new Date().getFullYear();
+    return `P-${ano}-${seq}`;
+  };
+
   const resetForm = () => {
     setForm({
       numero_pedido: '', descricao: '', contrato_item_id: '',
@@ -200,6 +210,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     });
     setExtractedData(null);
     setExtractedItens([]);
+  };
+
+  const openNewDialog = async () => {
+    resetForm();
+    const numero = await gerarNumeroPedido();
+    setForm(f => ({ ...f, numero_pedido: numero }));
+    setDialogOpen(true);
   };
 
   // PDF Upload
@@ -363,31 +380,35 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
   const handleSaveBatch = async () => {
     if (!form.numero_pedido) { toast.error('Informe o número do pedido'); return; }
-    const validItens = extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0);
-    if (validItens.length === 0) { toast.error('Nenhum item válido'); return; }
+    if (!extractedData) { toast.error('Nenhum documento extraído'); return; }
 
     setSaving(true);
-    const inserts = validItens.map(ei => {
-      const qty = parseFloat(ei.quantidade) || 0;
-      const unit = parseFloat(ei.valor_unitario) || 0;
-      return {
-        contrato_id: contratoId, user_id: user!.id,
-        numero_pedido: form.numero_pedido, descricao: ei.descricao,
-        contrato_item_id: ei.contrato_item_id || null,
-        quantidade: qty, valor_unitario: unit, valor_total: qty * unit,
-        data_pedido: form.data_pedido || null, data_entrega: form.data_entrega || null,
-        status: form.status, nota_fiscal: form.nota_fiscal || null,
-        observacoes: form.observacoes || null,
-      };
-    });
-    const { data: novosPedidos, error } = await supabase
+    const valorTotal = parseFloat(extractedData.valor_total) || 0;
+    const tipoLabel = tiposDocumento.find(t => t.value === (extractedData.tipo_documento || form.tipo_documento))?.label || form.tipo_documento;
+    const descricao = `${tipoLabel}${extractedData.numero_documento ? ' — ' + extractedData.numero_documento : ''}`;
+
+    const { data: novoPedido, error } = await supabase
       .from('contrato_pedidos')
-      .insert(inserts as any)
-      .select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id');
-    if (error) { console.error('Erro ao salvar pedidos:', error.message, error.details, error.code); toast.error('Erro ao salvar pedidos: ' + error.message); setSaving(false); return; }
-    await gerarLancamentosFinanceiros((novosPedidos ?? []) as any);
+      .insert({
+        contrato_id: contratoId, user_id: user!.id,
+        numero_pedido: form.numero_pedido,
+        descricao,
+        quantidade: 1,
+        valor_unitario: valorTotal,
+        valor_total: valorTotal,
+        data_pedido: form.data_pedido || extractedData.data_documento || null,
+        data_entrega: form.data_entrega || extractedData.data_entrega || null,
+        status: form.status,
+        nota_fiscal: form.nota_fiscal || extractedData.nota_fiscal || null,
+        observacoes: form.observacoes || extractedData.observacoes || null,
+        origem_aditivo_id: form.origem_aditivo_id || null,
+      } as any)
+      .select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id')
+      .single();
+    if (error) { console.error('Erro ao salvar pedido:', error.message); toast.error('Erro ao salvar pedido: ' + error.message); setSaving(false); return; }
+    await gerarLancamentosFinanceiros([novoPedido as any]);
     setSaving(false);
-    toast.success(`${inserts.length} itens registrados.`);
+    toast.success('Pedido registrado.');
     setDialogOpen(false);
     resetForm();
     load();
@@ -571,7 +592,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           </Button>
           <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-3.5 h-3.5 mr-1" /> Novo Pedido</Button>
+            <Button size="sm" onClick={openNewDialog}><Plus className="w-3.5 h-3.5 mr-1" /> Novo Pedido</Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
@@ -871,7 +892,15 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 const linkedNfs = nfsSync.filter(nf => nf.contrato_pedido_id === p.id);
                 return (
                   <TableRow key={p.id}>
-                    <TableCell className="text-xs font-mono font-medium whitespace-nowrap">{p.numero_pedido}</TableCell>
+                    <TableCell className="text-xs font-mono font-medium whitespace-nowrap">
+                      <button
+                        className="hover:underline text-primary cursor-pointer"
+                        onClick={() => openEditDialog(p)}
+                        title="Abrir detalhes do pedido"
+                      >
+                        {p.numero_pedido}
+                      </button>
+                    </TableCell>
                     <TableCell className="text-xs max-w-[200px] truncate">{p.descricao || '—'}</TableCell>
                     <TableCell className="text-xs text-right whitespace-nowrap">{p.quantidade}</TableCell>
                     <TableCell className="text-xs text-right whitespace-nowrap">{fmt(p.valor_unitario)}</TableCell>
@@ -917,23 +946,38 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       </TableCell>
                     )}
                     <TableCell>
-                      <div className="flex gap-1">
-                        {!p.nf_quitada && p.status === 'entregue' && (isFinanceiro || isAdmin) && (
-                          <Button
-                            size="sm" variant="outline"
-                            className="h-7 px-2 text-[10px] text-success border-success/30 hover:bg-success/5"
-                            onClick={() => openNfDialog(p)}
-                            title="Registrar pagamento da NF-e e gerar comissão"
-                          >
-                            <DollarSign className="w-3 h-3 mr-1" /> NF Quitada
+                      <div className="flex items-center gap-1">
+                        {p.nf_quitada ? (
+                          <Badge className="text-[10px] bg-success/10 text-success border border-success/30 whitespace-nowrap">
+                            <CheckCircle2 className="w-3 h-3 mr-1" /> NF Quitada
+                          </Badge>
+                        ) : (
+                          p.status === 'entregue' && (isFinanceiro || isAdmin) && (
+                            <Button
+                              size="sm" variant="outline"
+                              className="h-7 px-2 text-[10px] text-success border-success/30 hover:bg-success/5"
+                              onClick={() => openNfDialog(p)}
+                              title="Registrar pagamento da NF-e e gerar comissão"
+                            >
+                              <DollarSign className="w-3 h-3 mr-1" /> NF Quitada
+                            </Button>
+                          )
+                        )}
+                        {(isFinanceiro || isAdmin) && (
+                          <>
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditDialog(p)} title="Editar pedido">
+                              <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(p.id)}>
+                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            </Button>
+                          </>
+                        )}
+                        {!(isFinanceiro || isAdmin) && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditDialog(p)} title="Ver detalhes">
+                            <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                           </Button>
                         )}
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditDialog(p)} title="Editar pedido">
-                          <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(p.id)}>
-                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
