@@ -317,7 +317,7 @@ export default function GestaoContratos() {
                 <FilePlus2 className="w-3.5 h-3.5 mr-1" /> Contratos derivados
               </TabsTrigger>
             )}
-            <TabsTrigger value="contratos-aditivos"><FilePlus2 className="w-3.5 h-3.5 mr-1" /> {isAta ? 'Apostilamentos / Arquivos' : 'ATA SRP, Contratos e Aditivos'}</TabsTrigger>
+            <TabsTrigger value="contratos-aditivos"><FilePlus2 className="w-3.5 h-3.5 mr-1" /> {isAta ? 'Apostilamentos / Arquivos' : 'Arquivos e Aditivos'}</TabsTrigger>
           </TabsList>
           <TabsContent value="dashboard"><ContratoDashboard contratoId={c.id} /></TabsContent>
           <TabsContent value="itens"><ContratoItens contratoId={c.id} key={activeTab === 'itens' ? 'itens-active' : 'itens'} /></TabsContent>

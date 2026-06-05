@@ -46,9 +46,10 @@ const REJECTION_REASONS: Record<string, string> = {
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
 
-const TIPOS_ARQUIVO: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string; semLimite?: boolean }> = {
-  ata_srp: { label: 'ATA SRP', color: 'bg-amber-500/10 text-amber-600' },
+// Tipos disponíveis para CONTRATOS ADMINISTRATIVOS
+const TIPOS_ARQUIVO_CONTRATO: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string; semLimite?: boolean }> = {
   contrato_original: { label: 'Contrato Original', color: 'bg-primary/10 text-primary' },
+  ata_srp: { label: 'ATA SRP (referência)', color: 'bg-amber-500/10 text-amber-600' },
   aditivo_prazo: { label: 'Termo Aditivo de Prazo', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo' },
   aditivo_valor: { label: 'Termo Aditivo de Valor', color: 'bg-success/10 text-success', isAditivo: true, tipoAditivo: 'valor' },
   aditivo_quantidade: { label: 'Termo Aditivo de Quantidade', color: 'bg-accent/10 text-accent', isAditivo: true, tipoAditivo: 'quantidade' },
@@ -62,6 +63,16 @@ const TIPOS_ARQUIVO: Record<string, { label: string; color: string; isAditivo?: 
   aditivo_reajuste: { label: 'Reajuste', color: 'bg-orange-500/10 text-orange-600', isAditivo: true, tipoAditivo: 'reajuste', semLimite: true },
   outro: { label: 'Outro Documento', color: 'bg-muted text-muted-foreground' },
 };
+
+// Tipos disponíveis para ATAs SRP — sem aditivos (ATA não gera aditivo, gera apostilamento ou contrato derivado)
+const TIPOS_ARQUIVO_ATA: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string; semLimite?: boolean }> = {
+  ata_srp: { label: 'ATA SRP Original', color: 'bg-amber-500/10 text-amber-600' },
+  apostilamento: { label: 'Apostilamento', color: 'bg-amber-500/10 text-amber-600' },
+  outro: { label: 'Outro Documento', color: 'bg-muted text-muted-foreground' },
+};
+
+// Dicionário completo (para lookup de tipos já salvos no banco)
+const TIPOS_ARQUIVO = { ...TIPOS_ARQUIVO_CONTRATO, ...TIPOS_ARQUIVO_ATA };
 
 const TIPOS_ARQUIVO_SEM_LIMITE = ['aditivo_reequilibrio', 'aditivo_revisao', 'aditivo_repactuacao', 'aditivo_reajuste'];
 const showValueFields = (tipo: string) => ['aditivo_valor', 'aditivo_valor_quantidade', 'aditivo_prazo_valor', 'aditivo_escopo', ...TIPOS_ARQUIVO_SEM_LIMITE].includes(tipo);
@@ -137,6 +148,9 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
     parentContrato?.tipo_documento === 'ata_srp' ? 'ata_srp'
     : parentContrato?.tipo_documento === 'contrato' ? 'contrato'
     : null;
+
+  // Tipos disponíveis no dropdown de acordo com o tipo do documento pai
+  const tiposDisponiveis = parentTipoDocumento === 'ata_srp' ? TIPOS_ARQUIVO_ATA : TIPOS_ARQUIVO_CONTRATO;
 
   // When upload type changes, show/hide aditivo fields
   useEffect(() => {
@@ -908,7 +922,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(TIPOS_ARQUIVO).map(([key, { label }]) => (
+                {Object.entries(tiposDisponiveis).map(([key, { label }]) => (
                   <SelectItem key={key} value={key}>{label}</SelectItem>
                 ))}
               </SelectContent>
@@ -1239,7 +1253,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
               }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(TIPOS_ARQUIVO).map(([key, { label }]) => (
+                  {Object.entries(tiposDisponiveis).map(([key, { label }]) => (
                     <SelectItem key={key} value={key}>{label}</SelectItem>
                   ))}
                 </SelectContent>
