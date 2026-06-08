@@ -13,6 +13,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import CountdownTimer from '@/components/licitacoes/CountdownTimer';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 
 type Licitacao = {
   id: string;
@@ -51,6 +52,7 @@ const formatCurrency = (v: number) =>
 
 export default function Licitacoes() {
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -63,16 +65,22 @@ export default function Licitacoes() {
 
   useEffect(() => {
     if (!user) return;
-    supabase
+    let query = supabase
       .from('licitacoes')
       .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, uf, municipio, data_encerramento')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setLicitacoes(data || []);
-        setLoading(false);
-      });
-  }, [user]);
+      .order('created_at', { ascending: false });
+
+    if (empresaAtiva?.id) {
+      query = query.eq('empresa_id', empresaAtiva.id);
+    } else {
+      query = query.eq('user_id', user.id);
+    }
+
+    query.then(({ data }) => {
+      setLicitacoes(data || []);
+      setLoading(false);
+    });
+  }, [user, empresaAtiva]);
 
   const ufsDisponiveis = regiaoFilter === 'all'
     ? Object.values(regioes).flat()

@@ -292,7 +292,6 @@ Deno.serve(async (req) => {
         model: 'gpt-4o',
         messages: aiMessages,
         stream: true,
-        reasoning: { effort: 'high' },
       }),
     });
 
