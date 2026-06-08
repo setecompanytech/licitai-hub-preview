@@ -71,7 +71,7 @@ export default function Licitacoes() {
       .order('created_at', { ascending: false });
 
     if (empresaAtiva?.id) {
-      query = query.eq('empresa_id', empresaAtiva.id);
+      query = query.or(`empresa_id.eq.${empresaAtiva.id},and(empresa_id.is.null,user_id.eq.${user.id})`);
     } else {
       query = query.eq('user_id', user.id);
     }
