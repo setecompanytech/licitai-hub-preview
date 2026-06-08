@@ -319,10 +319,55 @@ Deno.serve(async (req) => {
     };
 
     if (!modalidadeFiltro || modalidadeFiltro === 'all' || modalidadeFiltro === '0') {
+      // Busca ao vivo no PNCP para as modalidades mais comuns em paralelo
+      const MODALIDADES_COMUNS = [6, 4, 8, 9, 5, 7]; // Pregão Eletrônico, Concorrência Eletrônica, Dispensa, Inexigibilidade, Concorrência Presencial, Pregão Presencial
+
+      const fetchModalidade = async (modId: number): Promise<ReturnType<typeof mapearItem>[]> => {
+        const p = new URLSearchParams({
+          pagina: '1',
+          tamanhoPagina: String(Math.min(50, pageSize * 3)),
+        });
+        if (termo) p.set('q', termo);
+        if (uf) p.set('uf', uf.toUpperCase());
+        if (esferaFiltro) p.set('codigoEsfera', esferaFiltro);
+        p.set('codigoModalidadeContratacao', String(modId));
+        p.set('dataInicial', dataInicialFiltro.replace(/-/g, ''));
+        p.set('dataFinal', dataFinalFiltro.replace(/-/g, ''));
+        const resp = await fetch(`${PNCP_BASE}/contratacoes/publicacao?${p}`, {
+          headers: { 'Accept': 'application/json', 'User-Agent': 'Praefectus/1.0 (licitacoes@praefectus.com.br)' },
+          signal: AbortSignal.timeout(25_000),
+        });
+        if (!resp.ok) return [];
+        const json = await resp.json();
+        return ((json.data || []) as Record<string, unknown>[]).map(mapearItem);
+      };
+
+      try {
+        const settled = await Promise.allSettled(MODALIDADES_COMUNS.map(fetchModalidade));
+        const allItems: ReturnType<typeof mapearItem>[] = [];
+        for (const r of settled) {
+          if (r.status === 'fulfilled') allItems.push(...r.value);
+        }
+
+        if (allItems.length > 0) {
+          const filtrados = aplicarFiltroSituacao(allItems, situacao);
+          filtrados.sort((a, b) => new Date(b.dataPublicacao || '').getTime() - new Date(a.dataPublicacao || '').getTime());
+          const inicio = (paginaAtual - 1) * pageSize;
+          return new Response(JSON.stringify({
+            data: filtrados.slice(inicio, inicio + pageSize),
+            total: filtrados.length,
+            paginas: Math.max(1, Math.ceil(filtrados.length / pageSize)),
+            pagina: paginaAtual,
+          }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+        }
+      } catch (e) {
+        console.error('Multi-modalidade PNCP error:', e);
+      }
+
       return await buscarNoCache(
         buscaParams,
         cors,
-        'Pesquisa em todas as modalidades atendida pelo cache sincronizado do PNCP para garantir estabilidade.',
+        'Pesquisa em todas as modalidades via cache sincronizado do PNCP.',
       );
     }
 
