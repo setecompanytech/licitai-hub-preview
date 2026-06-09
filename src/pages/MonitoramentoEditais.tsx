@@ -456,7 +456,13 @@ export default function MonitoramentoEditais() {
       let liveErr = 0;
       let usouCache = false;
 
-      if (dataIni && dataFim) {
+      // Default: last 30 days when no date range specified — always search live
+      const hojeStr = new Date().toISOString().slice(0, 10);
+      const trintaDiasStr = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+      const dataIniEfetiva = dataIni || trintaDiasStr;
+      const dataFimEfetiva = dataFim || hojeStr;
+
+      {
         const modalidadesAoVivo = modalidadesEfetivas.length > 0 ? modalidadesEfetivas : ALL_MODALIDADE_IDS;
         // Página > 1: pede mais itens para garantir que a página solicitada esteja no resultado
         // (a fonte live é por UF×modalidade, não global; agregamos no client)
@@ -469,10 +475,10 @@ export default function MonitoramentoEditais() {
               body: {
                 termo: termo || '',
                 uf: uf || '',
-                pagina: pag, // respeita a página solicitada
+                pagina: pag,
                 tamanhoPagina: livePageSize,
-                dataInicial: dataIni,
-                dataFinal: dataFim,
+                dataInicial: dataIniEfetiva,
+                dataFinal: dataFimEfetiva,
                 modalidade: String(modalidade),
                 situacao: 'todas',
               },
