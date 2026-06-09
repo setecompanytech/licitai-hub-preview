@@ -112,6 +112,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   });
   const [savingEdit, setSavingEdit] = useState(false);
 
+  // Delete audit dialog
+  const [deleteDialog, setDeleteDialog] = useState<{ id: string; numero: string } | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
   const [uploading, setUploading] = useState(false);
   const [extractedData, setExtractedData] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -414,21 +419,46 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     load();
   };
 
-  const handleDelete = async (id: string) => {
-    // Remove/unlink ALL dependent records to avoid FK constraint errors
+  const openDeleteDialog = (id: string, numero: string) => {
+    setDeleteDialog({ id, numero });
+    setDeleteReason('');
+  };
+
+  const handleDeleteConfirmed = async () => {
+    if (!deleteDialog || !deleteReason.trim()) return;
+    const { id, numero } = deleteDialog;
+    const pedidoSnap = pedidos.find(p => p.id === id);
+    setDeleting(true);
+
+    await supabase.from('pedidos_exclusoes' as any).insert({
+      contrato_id: contratoId,
+      pedido_id: id,
+      numero_pedido: numero,
+      descricao: pedidoSnap?.descricao || null,
+      valor_total: pedidoSnap?.valor_total || 0,
+      data_pedido: pedidoSnap?.data_pedido || null,
+      status: pedidoSnap?.status || null,
+      deletado_por_user_id: user?.id,
+      deletado_por_email: user?.email,
+      motivo: deleteReason.trim(),
+      pedido_snapshot: pedidoSnap ? pedidoSnap : null,
+    });
+
     await supabase.from('comissoes_lancamentos' as any).delete().eq('contrato_pedido_id', id);
     await supabase.from('contrato_custos').delete().eq('contrato_pedido_id', id);
     await supabase.from('notas_fiscais').update({ contrato_pedido_id: null } as any).eq('contrato_pedido_id', id);
     await supabase.from('contas_receber' as any).update({ contrato_pedido_id: null } as any).eq('contrato_pedido_id', id);
     await supabase.from('pre_nota_itens' as any).update({ contrato_pedido_id: null } as any).eq('contrato_pedido_id', id);
-    
+
     const { error } = await supabase.from('contrato_pedidos').delete().eq('id', id);
+    setDeleting(false);
     if (error) {
-      console.error('Erro ao excluir pedido:', error);
       toast.error('Erro ao excluir pedido: ' + error.message);
+      setDeleteDialog(null);
       return;
     }
-    toast.success('Pedido excluído.');
+    toast.success('Pedido excluído. Motivo registrado.');
+    setDeleteDialog(null);
     load();
   };
 
@@ -451,6 +481,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
   const handleSaveEdit = async () => {
     if (!editingPedido) return;
+    if (editingPedido.nf_quitada) { toast.error('Pedido com NF quitada não pode ser editado.'); return; }
     const qty = parseFloat(editForm.quantidade) || 0;
     const unit = parseFloat(editForm.valor_unitario) || 0;
     setSavingEdit(true);
@@ -869,13 +900,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 </TableHead>
                 <TableHead className="text-xs whitespace-nowrap">Descrição</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Qtd</TableHead>
-                <TableHead className="text-xs text-right whitespace-nowrap">Vlr Unit</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Vlr Total</TableHead>
                 <TableHead className="text-xs text-center whitespace-nowrap">Data</TableHead>
                 <TableHead className="text-xs text-center whitespace-nowrap">Status</TableHead>
                 <TableHead className="text-xs whitespace-nowrap">NF-e Financeiro</TableHead>
-                {podeVerCustos && <TableHead className="text-xs text-right whitespace-nowrap">Custo Unit</TableHead>}
-                {podeVerCustos && <TableHead className="text-xs text-right whitespace-nowrap">Custo Total</TableHead>}
                 <TableHead className="text-xs w-20"></TableHead>
               </TableRow>
             </TableHeader>
@@ -893,58 +921,51 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 return (
                   <TableRow key={p.id}>
                     <TableCell className="text-xs font-mono font-medium whitespace-nowrap">
-                      <button
-                        className="hover:underline text-primary cursor-pointer"
-                        onClick={() => openEditDialog(p)}
-                        title="Abrir detalhes do pedido"
-                      >
-                        {p.numero_pedido}
-                      </button>
+                      {p.nf_quitada ? (
+                        <span className="text-muted-foreground" title="NF quitada — edição bloqueada">{p.numero_pedido}</span>
+                      ) : (
+                        <button
+                          className="hover:underline text-primary cursor-pointer"
+                          onClick={() => openEditDialog(p)}
+                          title="Abrir detalhes do pedido"
+                        >
+                          {p.numero_pedido}
+                        </button>
+                      )}
                     </TableCell>
                     <TableCell className="text-xs max-w-[200px] truncate">{p.descricao || '—'}</TableCell>
                     <TableCell className="text-xs text-right whitespace-nowrap">{p.quantidade}</TableCell>
-                    <TableCell className="text-xs text-right whitespace-nowrap">{fmt(p.valor_unitario)}</TableCell>
                     <TableCell className="text-xs text-right font-medium whitespace-nowrap">{fmt(p.valor_total)}</TableCell>
                     <TableCell className="text-xs text-center whitespace-nowrap">{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
                     <TableCell className="text-center whitespace-nowrap">
                       <Badge className={`text-[10px] ${cfg.color}`}>{cfg.label}</Badge>
                     </TableCell>
                     <TableCell className="text-xs">
-                      {linkedNfs.length > 0 ? (
-                        <div className="space-y-1">
-                          {linkedNfs.map(nf => (
-                            <Badge key={nf.id} variant="outline" className={`text-[10px] block w-fit ${
-                              nf.status === 'autorizada' ? 'border-success/30 text-success' :
-                              nf.status === 'rejeitada' ? 'border-destructive/30 text-destructive' :
-                              'border-muted-foreground/30 text-muted-foreground'
-                            }`}>
-                              <FileText className="w-3 h-3 mr-1" />
-                              {nf.numero_nf || 'Rascunho'} • {nf.tipo === 'saida' ? 'Saída' : 'Entrada'} {nf.valor_total ? `• ${fmt(nf.valor_total)}` : ''}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground/50">—</span>
-                      )}
+                      <div className="space-y-1">
+                        {p.nota_fiscal && (
+                          <Badge variant="outline" className="text-[10px] block w-fit border-primary/30 text-primary">
+                            <FileText className="w-3 h-3 mr-1 inline" />
+                            {p.nota_fiscal}
+                            {p.nf_quitada && p.data_quitacao && (
+                              <span className="ml-1 text-success">• Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                            )}
+                          </Badge>
+                        )}
+                        {linkedNfs.map(nf => (
+                          <Badge key={nf.id} variant="outline" className={`text-[10px] block w-fit ${
+                            nf.status === 'autorizada' ? 'border-success/30 text-success' :
+                            nf.status === 'rejeitada' ? 'border-destructive/30 text-destructive' :
+                            'border-muted-foreground/30 text-muted-foreground'
+                          }`}>
+                            <FileText className="w-3 h-3 mr-1 inline" />
+                            {nf.numero_nf || 'Rascunho'} • {nf.tipo === 'saida' ? 'Saída' : 'Entrada'} {nf.valor_total ? `• ${fmt(nf.valor_total)}` : ''}
+                          </Badge>
+                        ))}
+                        {!p.nota_fiscal && linkedNfs.length === 0 && (
+                          <span className="text-muted-foreground/50">—</span>
+                        )}
+                      </div>
                     </TableCell>
-                    {podeVerCustos && (
-                      <TableCell className="text-xs text-right">
-                        <CustoInlineEditor
-                          initialValue={(p as any).custo_unitario || 0}
-                          onSave={async (custo) => {
-                            if (custo !== ((p as any).custo_unitario || 0)) {
-                              await supabase.from('contrato_pedidos').update({ custo_unitario: custo } as any).eq('id', p.id);
-                              load();
-                            }
-                          }}
-                        />
-                      </TableCell>
-                    )}
-                    {podeVerCustos && (
-                      <TableCell className="text-xs text-right font-medium text-destructive">
-                        {fmt((p as any).custo_total || 0)}
-                      </TableCell>
-                    )}
                     <TableCell>
                       <div className="flex items-center gap-1">
                         {p.nf_quitada ? (
@@ -963,17 +984,17 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             </Button>
                           )
                         )}
-                        {(isFinanceiro || isAdmin) && (
-                          <>
-                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditDialog(p)} title="Editar pedido">
-                              <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(p.id)}>
-                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                            </Button>
-                          </>
+                        {(isFinanceiro || isAdmin) && !p.nf_quitada && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditDialog(p)} title="Editar pedido">
+                            <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                          </Button>
                         )}
-                        {!(isFinanceiro || isAdmin) && (
+                        {(isFinanceiro || isAdmin) && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openDeleteDialog(p.id, p.numero_pedido)}>
+                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                          </Button>
+                        )}
+                        {!(isFinanceiro || isAdmin) && !p.nf_quitada && (
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditDialog(p)} title="Ver detalhes">
                             <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                           </Button>
@@ -1123,6 +1144,52 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           </div>
         </Card>
       )}
+
+      {/* Delete Audit Dialog */}
+      <Dialog open={!!deleteDialog} onOpenChange={v => { if (!v && !deleting) { setDeleteDialog(null); setDeleteReason(''); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="w-5 h-5" /> Excluir Pedido
+            </DialogTitle>
+          </DialogHeader>
+          {deleteDialog && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20 text-xs space-y-1">
+                <p className="font-medium text-destructive">Atenção: esta ação não pode ser desfeita.</p>
+                <p className="text-muted-foreground">Pedido: <strong className="text-foreground">{deleteDialog.numero}</strong></p>
+              </div>
+              <div>
+                <Label className="text-xs">Motivo da exclusão *</Label>
+                <Textarea
+                  value={deleteReason}
+                  onChange={e => setDeleteReason(e.target.value)}
+                  placeholder="Informe o motivo da exclusão..."
+                  className="mt-1.5 text-xs"
+                  rows={3}
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Registrado por: <strong>{user?.email}</strong>
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" size="sm" onClick={() => { setDeleteDialog(null); setDeleteReason(''); }} disabled={deleting}>
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleDeleteConfirmed}
+                  disabled={!deleteReason.trim() || deleting}
+                >
+                  {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />}
+                  Confirmar Exclusão
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Gerar Pré-NF Dialog */}
       <GerarPreNotaDialog
