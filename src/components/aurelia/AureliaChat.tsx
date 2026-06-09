@@ -73,7 +73,10 @@ export default function AureliaChat() {
       },
       onDone: () => { setIsLoading(false); setActiveTool(null); },
       onError: (err) => {
-        setMessages(prev => [...prev, { role: 'assistant', content: `Não foi possível conectar com a AURÉLIA. ${err}` }]);
+        const msg = (err === 'Invalid token' || err === 'Unauthorized')
+          ? 'Sua sessão expirou. Recarregue a página (F5) e tente novamente.'
+          : `Não foi possível conectar com a AURÉLIA. ${err}`;
+        setMessages(prev => [...prev, { role: 'assistant', content: msg }]);
         setIsLoading(false);
         setActiveTool(null);
       },

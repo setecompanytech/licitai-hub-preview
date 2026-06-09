@@ -41,9 +41,15 @@ export async function streamAIChat({
     try {
       let { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        // Session expired — try to refresh before giving up
         const { data: refreshed } = await supabase.auth.refreshSession();
         session = refreshed.session;
+      } else {
+        // Token present but may be expired or expiring — refresh proactively
+        const nowSecs = Math.floor(Date.now() / 1000);
+        if (!session.expires_at || session.expires_at <= nowSecs + 30) {
+          const { data: refreshed } = await supabase.auth.refreshSession();
+          session = refreshed.session ?? session;
+        }
       }
       if (session?.access_token) {
         authToken = session.access_token;
