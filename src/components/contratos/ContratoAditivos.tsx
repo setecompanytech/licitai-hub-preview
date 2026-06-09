@@ -11,7 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
-  Plus, Pencil, Trash2, Loader2, FilePlus2, DollarSign, Calendar, Package, Layers, TrendingUp
+  Plus, Pencil, Trash2, Loader2, FilePlus2, DollarSign, Calendar, Package, Layers, TrendingUp,
+  AlertTriangle, CheckCircle2, ShieldAlert
 } from 'lucide-react';
 import { MoneyInput } from '@/components/ui/money-input';
 
@@ -81,6 +82,8 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
   const [aditivos, setAditivos] = useState<Aditivo[]>([]);
   const [docAtual, setDocAtual] = useState<DocAlvo | null>(null);
   const [alvosDisponiveis, setAlvosDisponiveis] = useState<DocAlvo[]>([]);
+  const [valorOriginal, setValorOriginal] = useState<number>(0);
+  const [objetoContrato, setObjetoContrato] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Aditivo | null>(null);
@@ -91,11 +94,13 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
     setLoading(true);
     const [adtRes, docRes] = await Promise.all([
       supabase.from('contrato_aditivos').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
-      supabase.from('contratos').select('id, numero_contrato, numero_ata, tipo_documento, ata_srp_id').eq('id', contratoId).maybeSingle(),
+      supabase.from('contratos').select('id, numero_contrato, numero_ata, tipo_documento, ata_srp_id, valor_global_original, objeto').eq('id', contratoId).maybeSingle(),
     ]);
     setAditivos((adtRes.data as any[]) || []);
-    const doc = docRes.data as DocAlvo | null;
-    setDocAtual(doc);
+    const doc = docRes.data as any;
+    setValorOriginal(doc?.valor_global_original || 0);
+    setObjetoContrato(doc?.objeto || '');
+    setDocAtual(doc as DocAlvo | null);
 
     const alvos: DocAlvo[] = doc ? [doc] : [];
     if (doc?.tipo_documento === 'ata_srp') {
@@ -216,7 +221,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
     loadAditivos();
   };
 
-  // Summaries
+  // Totals (all types)
   const totalAcrescimo = aditivos.reduce((s, a) => s + (a.valor_acrescimo || 0), 0);
   const totalSupressao = aditivos.reduce((s, a) => s + (a.valor_supressao || 0), 0);
   const saldoAditivos = totalAcrescimo - totalSupressao;
@@ -224,12 +229,35 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
   const totalQtySupressao = aditivos.reduce((s, a) => s + (a.quantidade_supressao || 0), 0);
   const saldoQty = totalQtyAcrescimo - totalQtySupressao;
 
+  // Compliance (art. 125 Lei 14.133/21) — excludes reequilibrio/revisao/repactuacao/reajuste
+  const isObra = /reforma|engenharia|obra/i.test(objetoContrato);
+  const limiteArt125 = isObra ? 50 : 25;
+  const aditivosSujeitos = aditivos.filter(a => !TIPOS_SEM_LIMITE.includes(a.tipo));
+  const totalAcrescimoSujeito = aditivosSujeitos.reduce((s, a) => s + (a.valor_acrescimo || 0), 0);
+  const totalSupressaoSujeita = aditivosSujeitos.reduce((s, a) => s + (a.valor_supressao || 0), 0);
+  const pctAcrescimo = valorOriginal > 0 ? (totalAcrescimoSujeito / valorOriginal) * 100 : 0;
+  const pctSupressao = valorOriginal > 0 ? (totalSupressaoSujeita / valorOriginal) * 100 : 0;
+  const excedeuAcrescimo = pctAcrescimo >= limiteArt125;
+  const proximoAcrescimo = !excedeuAcrescimo && pctAcrescimo >= limiteArt125 * 0.8;
+
+  // Running cumulative per aditivo (for compliance badge per card)
+  const aditivosComPct = (() => {
+    let acc = 0;
+    return aditivos.map(a => {
+      const isSujeito = !TIPOS_SEM_LIMITE.includes(a.tipo);
+      if (isSujeito) acc += (a.valor_acrescimo || 0);
+      const pctAcc = valorOriginal > 0 ? (acc / valorOriginal) * 100 : 0;
+      return { ...a, pctCumulativo: isSujeito ? parseFloat(pctAcc.toFixed(2)) : null, isSujeito };
+    });
+  })();
+
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
 
   return (
     <div className="space-y-4">
       {/* Summary cards */}
       {aditivos.length > 0 && (
+        <>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <Card className="p-3">
             <div className="text-[10px] text-muted-foreground mb-1">Acréscimos (R$)</div>
@@ -256,6 +284,52 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
             <p className={`text-sm font-bold ${saldoQty >= 0 ? 'text-success' : 'text-destructive'}`}>{fmtQty(saldoQty)}</p>
           </Card>
         </div>
+
+        {/* Compliance panel — art. 125 Lei 14.133/21 */}
+        {aditivosSujeitos.length > 0 && valorOriginal > 0 && (
+          <Card className={`p-4 border ${excedeuAcrescimo ? 'border-destructive/50 bg-destructive/5' : proximoAcrescimo ? 'border-warning/50 bg-warning/5' : 'border-success/30 bg-success/5'}`}>
+            <div className="flex items-center gap-2 mb-3">
+              {excedeuAcrescimo
+                ? <ShieldAlert className="w-4 h-4 text-destructive" />
+                : proximoAcrescimo
+                  ? <AlertTriangle className="w-4 h-4 text-warning" />
+                  : <CheckCircle2 className="w-4 h-4 text-success" />
+              }
+              <span className="text-xs font-semibold">
+                Limite Legal — Art. 125 Lei 14.133/21{isObra ? ' §1º (obra/reforma)' : ''}
+              </span>
+              <Badge className={`text-[9px] ml-auto ${excedeuAcrescimo ? 'bg-destructive/10 text-destructive border-destructive/30' : proximoAcrescimo ? 'bg-warning/10 text-warning border-warning/30' : 'bg-success/10 text-success border-success/30'}`} variant="outline">
+                {excedeuAcrescimo ? `EXCEDIDO ${pctAcrescimo.toFixed(2)}%` : proximoAcrescimo ? `ATENÇÃO ${pctAcrescimo.toFixed(2)}%` : `OK ${pctAcrescimo.toFixed(2)}%`}
+              </Badge>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Acréscimos sujeitos ao limite</span>
+                <span className="font-medium">{fmt(totalAcrescimoSujeito)} / {fmt(valorOriginal)} ({pctAcrescimo.toFixed(2)}% de {limiteArt125}%)</span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${excedeuAcrescimo ? 'bg-destructive' : proximoAcrescimo ? 'bg-warning' : 'bg-success'}`}
+                  style={{ width: `${Math.min((pctAcrescimo / limiteArt125) * 100, 100)}%` }}
+                />
+              </div>
+              {pctSupressao > 0 && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Supressões sujeitas ao limite</span>
+                  <span className={`font-medium ${pctSupressao >= limiteArt125 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    {fmt(totalSupressaoSujeita)} ({pctSupressao.toFixed(2)}% de {limiteArt125}%)
+                  </span>
+                </div>
+              )}
+              {aditivos.some(a => TIPOS_SEM_LIMITE.includes(a.tipo)) && (
+                <p className="text-[10px] text-muted-foreground pt-1 border-t border-muted/30">
+                  Aditivos de reequilíbrio/revisão/repactuação/reajuste são isentos do limite e não entram neste cálculo.
+                </p>
+              )}
+            </div>
+          </Card>
+        )}
+        </>
       )}
 
       {/* Add button */}
@@ -274,22 +348,36 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
         </Card>
       ) : (
         <div className="space-y-4">
-          {aditivos.map((a) => {
+          {aditivosComPct.map((a) => {
             const tipoConfig = TIPOS_ADITIVO[a.tipo] || TIPOS_ADITIVO.valor;
             const Icon = tipoConfig.icon;
             const saldoValor = (a.valor_acrescimo || 0) - (a.valor_supressao || 0);
             const saldoQtyItem = (a.quantidade_acrescimo || 0) - (a.quantidade_supressao || 0);
+            const pctThisItem = a.pctCumulativo;
+            const itemExcedeu = pctThisItem !== null && pctThisItem >= limiteArt125;
+            const itemProximo = pctThisItem !== null && !itemExcedeu && pctThisItem >= limiteArt125 * 0.8;
             return (
-              <Card key={a.id} className="p-4 space-y-3">
+              <Card key={a.id} className={`p-4 space-y-3 ${itemExcedeu ? 'border-destructive/40' : ''}`}>
                 {/* Header */}
                 <div className="flex items-start gap-3">
                   <div className={`p-2 rounded-lg ${tipoConfig.color}`}>
                     <Icon className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="text-sm font-semibold">{a.numero_aditivo}</span>
                       <Badge className={`text-[9px] ${tipoConfig.color}`}>{tipoConfig.label}</Badge>
+                      {a.isSujeito && pctThisItem !== null && (
+                        <Badge variant="outline" className={`text-[9px] ${itemExcedeu ? 'border-destructive/40 text-destructive' : itemProximo ? 'border-warning/40 text-warning' : 'border-muted-foreground/30 text-muted-foreground'}`}>
+                          {itemExcedeu ? <ShieldAlert className="w-2.5 h-2.5 mr-1 inline" /> : itemProximo ? <AlertTriangle className="w-2.5 h-2.5 mr-1 inline" /> : null}
+                          {pctThisItem.toFixed(2)}% acum. / {limiteArt125}%
+                        </Badge>
+                      )}
+                      {!a.isSujeito && (
+                        <Badge variant="outline" className="text-[9px] border-orange-400/40 text-orange-500">
+                          Isento art. 125
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       {(a.valor_acrescimo || 0) > 0 && (
