@@ -303,7 +303,7 @@ serve(async (req) => {
       error: authError,
     } = await supabaseAuth.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
+      return new Response(JSON.stringify({ error: authError ? `Sessão inválida (401): ${authError.message}` : "Sessão expirada (401) — recarregue a página." }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -432,8 +432,9 @@ serve(async (req) => {
           controller.close();
         } catch (e) {
           console.error("aurelia-tools-search error:", e);
+          const errDetail = e instanceof Error ? e.message : String(e);
           sseEvent(controller, {
-            error: e instanceof Error ? e.message : "Erro interno",
+            error: `Erro interno na AURÉLIA — ${errDetail}`,
           });
           controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
           controller.close();
@@ -447,7 +448,7 @@ serve(async (req) => {
   } catch (e) {
     console.error("aurelia-tools-search fatal:", e);
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }),
+      JSON.stringify({ error: `Falha crítica na AURÉLIA (500) — ${e instanceof Error ? e.message : String(e)}` }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

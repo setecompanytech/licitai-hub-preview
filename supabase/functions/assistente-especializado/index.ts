@@ -307,7 +307,7 @@ Deno.serve(async (req) => {
       }
       const errorText = await aiResp.text();
       console.error('AI Gateway error:', status, errorText);
-      return new Response(JSON.stringify({ error: 'Erro na IA' }),
+      return new Response(JSON.stringify({ error: `Erro na API de IA (HTTP ${status}) — tente novamente em instantes.` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -321,7 +321,8 @@ Deno.serve(async (req) => {
     return new Response(aiResp.body, { headers });
   } catch (error) {
     console.error('Error:', error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Erro interno' }),
+    const msg = error instanceof Error ? error.message : 'Erro interno inesperado no Assistente Especializado.';
+    return new Response(JSON.stringify({ error: msg }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });

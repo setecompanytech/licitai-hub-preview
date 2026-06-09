@@ -71,14 +71,25 @@ export async function streamAIChat({
     });
 
     if (!resp.ok) {
-      const err = await resp.json().catch(() => ({ error: "Erro desconhecido" }));
-      onError?.(err.error || `Erro ${resp.status}`);
+      const err = await resp.json().catch(() => ({}));
+      const httpMsg: Record<number, string> = {
+        401: `Sessão expirada (401) — recarregue a página.`,
+        402: `Créditos de IA insuficientes (402) — verifique o plano da conta.`,
+        403: `Acesso negado (403) — verifique suas permissões.`,
+        429: `Muitas requisições (429) — aguarde alguns segundos e tente novamente.`,
+        500: `Erro interno no servidor de IA (500) — tente novamente em instantes.`,
+        502: `Serviço de IA inacessível (502) — tente novamente.`,
+        503: `Serviço de IA indisponível (503) — tente novamente em instantes.`,
+        504: `Tempo de resposta excedido (504) — tente novamente.`,
+      };
+      const errMsg = err.error || httpMsg[resp.status] || `Erro HTTP ${resp.status} ao comunicar com o servidor.`;
+      onError?.(errMsg);
       onDone();
       return;
     }
 
     if (!resp.body) {
-      onError?.("Sem resposta do servidor");
+      onError?.("Resposta vazia do servidor — tente novamente.");
       onDone();
       return;
     }
@@ -136,7 +147,15 @@ export async function streamAIChat({
     onDone();
   } catch (e) {
     console.error("Stream error:", e);
-    onError?.(e instanceof Error ? e.message : "Erro de conexão");
+    let errMsg = "Erro de conexão desconhecido.";
+    if (e instanceof TypeError && e.message.toLowerCase().includes("fetch")) {
+      errMsg = "Falha de rede — verifique sua conexão com a internet.";
+    } else if (e instanceof Error && /timeout|timed out/i.test(e.message)) {
+      errMsg = "Tempo de resposta excedido — tente novamente.";
+    } else if (e instanceof Error) {
+      errMsg = e.message;
+    }
+    onError?.(errMsg);
     onDone();
   }
 }
