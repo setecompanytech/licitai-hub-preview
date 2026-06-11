@@ -10,7 +10,7 @@ import {
   Download, LogOut, Building2, ShieldCheck, HeadphonesIcon, MessageSquare,
   TrendingUp, Target, ClipboardCheck, BookOpen, Bell, Archive, CalendarDays,
   GraduationCap, FileText, ListChecks, Menu, X, FileBarChart, Workflow,
-  Plug, Truck, Send,
+  Plug, Truck, Send, ShoppingCart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -54,7 +54,8 @@ const navGroups: NavGroup[] = [
       { icon: Kanban, label: 'Kanban', path: '/kanban' },
       { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
       { icon: Archive, label: 'Histórico', path: '/historico-licitacoes' },
-      { icon: FileText, label: 'Contratos', path: '/gestao-contratos' },
+      { icon: FileText,     label: 'Contratos', path: '/gestao-contratos' },
+      { icon: ShoppingCart, label: 'Compras',   path: '/gestao-compras' },
     ],
   },
   {

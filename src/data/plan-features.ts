@@ -31,6 +31,9 @@ export const routeMinPlan: Record<string, PlanSlug> = {
   '/indices-repactuacao': 'profissional',
   '/analytics': 'profissional',
 
+  // Básico+
+  '/gestao-compras': 'basico',
+
   // Enterprise only
   '/precificacao': 'enterprise',
   '/api-integracao': 'enterprise',

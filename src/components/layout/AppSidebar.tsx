@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Search,
   Kanban,
+  ShoppingCart,
   Users,
   Bot,
   BarChart3,
@@ -83,7 +84,8 @@ const navGroups: NavGroup[] = [
       { icon: Kanban, label: 'Kanban', path: '/kanban' },
       { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
       { icon: Archive, label: 'Histórico', path: '/historico-licitacoes' },
-      { icon: FileText, label: 'Contratos', path: '/gestao-contratos' },
+      { icon: FileText,     label: 'Contratos', path: '/gestao-contratos' },
+      { icon: ShoppingCart, label: 'Compras',   path: '/gestao-compras' },
     ],
   },
   {
