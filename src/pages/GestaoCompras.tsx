@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,22 +15,26 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
+import { parseNFeXML, type NFeData, type NFeItemData } from '@/lib/parseNFe';
 import {
   ShoppingCart, Plus, Search, Trash2, ArrowLeft, Loader2,
   Building2, Calendar, DollarSign, AlertTriangle, CheckCircle2,
-  Clock, Package, Truck, Users, X, Pencil, BarChart3, FileText,
+  Clock, Package, Truck, Users, X, Pencil, FileText,
+  Warehouse, TrendingUp, TrendingDown, Upload, RotateCcw, AlertCircle,
 } from 'lucide-react';
 
-// ── Helpers ──────────────────────────────────────────────────────
-const formatCurrency = (v: number) =>
+// ── Formatters ────────────────────────────────────────────────
+const fmtCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-const formatDate = (d: string | null) =>
+const fmtDate = (d: string | null) =>
   d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
 
 const parseNum = (v: string) => parseFloat(v.replace(',', '.')) || 0;
 
-// ── Types ─────────────────────────────────────────────────────────
+const today = () => new Date().toISOString().split('T')[0];
+
+// ── Types ─────────────────────────────────────────────────────
 type Fornecedor = {
   id: string; empresa_id: string; razao_social: string; cnpj: string | null;
   categoria: string | null; prazo_entrega_dias: number | null; contato_nome: string | null;
@@ -51,178 +56,207 @@ type ItemPedido = {
 
 type Contrato = { id: string; numero_contrato: string; orgao_contratante: string; objeto: string };
 
-// ── Status config ─────────────────────────────────────────────────
-const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
-  rascunho:  { label: 'Rascunho',   color: 'bg-muted text-muted-foreground',          icon: Clock },
-  aguardando:{ label: 'Aguardando', color: 'bg-warning/10 text-warning',              icon: Truck },
-  entregue:  { label: 'Entregue',   color: 'bg-success/10 text-success',              icon: CheckCircle2 },
-  cancelado: { label: 'Cancelado',  color: 'bg-destructive/10 text-destructive',      icon: X },
+type Produto = {
+  id: string; empresa_id: string; codigo: string | null; descricao: string;
+  unidade: string; categoria: string | null; saldo_atual: number;
+  saldo_minimo: number; preco_custo_medio: number; ativo: boolean;
+  created_at: string; updated_at: string;
 };
 
-// ── Form defaults ─────────────────────────────────────────────────
-const today = () => new Date().toISOString().split('T')[0];
+type EstoqueMovimento = {
+  id: string; empresa_id: string; produto_id: string; pedido_id: string | null;
+  nfe_id: string | null; tipo: 'entrada' | 'saida' | 'ajuste'; origem: string;
+  quantidade: number; preco_unitario: number | null; observacoes: string | null;
+  created_by: string | null; created_at: string;
+};
 
-const defaultPedidoForm = () => ({
-  contrato_id: '', fornecedor_id: '',
-  data_pedido: today(), data_entrega_prevista: '', observacoes: '',
-});
+type NfeRecebida = {
+  id: string; empresa_id: string; pedido_id: string | null; numero: string;
+  serie: string; chave_acesso: string | null; data_emissao: string | null;
+  cnpj_emitente: string | null; nome_emitente: string | null;
+  valor_total: number; xml_content: string | null; itens: NFeItemData[] | null;
+  created_at: string;
+};
+
+// ── Config ────────────────────────────────────────────────────
+const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
+  rascunho:   { label: 'Rascunho',   color: 'bg-muted text-muted-foreground',          icon: Clock },
+  aguardando: { label: 'Aguardando', color: 'bg-warning/10 text-warning',              icon: Truck },
+  entregue:   { label: 'Entregue',   color: 'bg-success/10 text-success',              icon: CheckCircle2 },
+  cancelado:  { label: 'Cancelado',  color: 'bg-destructive/10 text-destructive',      icon: X },
+};
+
+const movConfig = {
+  entrada: { label: 'Entrada', color: 'text-green-600',  bg: 'bg-green-50  dark:bg-green-950',  icon: TrendingUp,   sign: '+' },
+  saida:   { label: 'Saída',   color: 'text-red-600',    bg: 'bg-red-50    dark:bg-red-950',    icon: TrendingDown, sign: '-' },
+  ajuste:  { label: 'Ajuste',  color: 'text-blue-600',   bg: 'bg-blue-50   dark:bg-blue-950',   icon: RotateCcw,    sign: '±' },
+};
+
+// ── Form defaults ─────────────────────────────────────────────
+const defaultPedidoForm  = () => ({ contrato_id: '', fornecedor_id: '', data_pedido: today(), data_entrega_prevista: '', observacoes: '' });
+const defaultFornForm    = () => ({ razao_social: '', cnpj: '', categoria: '', prazo_entrega_dias: '', contato_nome: '', contato_email: '', contato_telefone: '', observacoes: '', ativo: true });
+const defaultProdutoForm = () => ({ codigo: '', descricao: '', unidade: 'UN', categoria: '', saldo_minimo: '0', ativo: true });
+const defaultMovForm     = () => ({ produto_id: '', tipo: 'entrada' as const, ajuste_dir: 'mais' as 'mais' | 'menos', quantidade: '', preco_unitario: '', observacoes: '' });
+const defaultNfeForm     = () => ({ numero: '', serie: '1', chave_acesso: '', data_emissao: today(), cnpj_emitente: '', nome_emitente: '', valor_total: '', pedido_id: '' });
 
 type FormItem = { descricao: string; unidade: string; quantidade: string; preco_unitario: string };
 const blankItem = (): FormItem => ({ descricao: '', unidade: 'UN', quantidade: '1', preco_unitario: '0' });
 
-const defaultFornForm = () => ({
-  razao_social: '', cnpj: '', categoria: '', prazo_entrega_dias: '',
-  contato_nome: '', contato_email: '', contato_telefone: '', observacoes: '', ativo: true,
-});
-
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 export default function GestaoCompras() {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
 
+  // ── State: listas ─────────────────────────────────────────────
   const [pedidos,      setPedidos]      = useState<PedidoCompra[]>([]);
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [contratos,    setContratos]    = useState<Contrato[]>([]);
-  const [itensPedido,  setItensPedido]  = useState<ItemPedido[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [saving,   setSaving]   = useState(false);
+  const [produtos,     setProdutos]     = useState<Produto[]>([]);
+  const [nfes,         setNfes]         = useState<NfeRecebida[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [saving,       setSaving]       = useState(false);
 
-  const [selectedPedido, setSelectedPedido] = useState<PedidoCompra | null>(null);
-  const [mainTab,        setMainTab]        = useState('pedidos');
-  const [search,         setSearch]         = useState('');
-  const [statusFilter,   setStatusFilter]   = useState('all');
-  const [fornSearch,     setFornSearch]     = useState('');
+  // ── State: navegação ──────────────────────────────────────────
+  const [mainTab,         setMainTab]         = useState('pedidos');
+  const [selectedPedido,  setSelectedPedido]  = useState<PedidoCompra | null>(null);
+  const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
+  const [itensPedido,     setItensPedido]     = useState<ItemPedido[]>([]);
+  const [movimentos,      setMovimentos]      = useState<EstoqueMovimento[]>([]);
 
-  const [pedidoDialogOpen, setPedidoDialogOpen] = useState(false);
-  const [pedidoForm,       setPedidoForm]       = useState(defaultPedidoForm);
-  const [formItens,        setFormItens]        = useState<FormItem[]>([blankItem()]);
+  // ── State: filtros ────────────────────────────────────────────
+  const [search,        setSearch]       = useState('');
+  const [statusFilter,  setStatusFilter] = useState('all');
+  const [fornSearch,    setFornSearch]   = useState('');
+  const [estoqSearch,   setEstoqSearch]  = useState('');
 
-  const [fornDialogOpen, setFornDialogOpen] = useState(false);
-  const [editingForn,    setEditingForn]    = useState<Fornecedor | null>(null);
-  const [fornForm,       setFornForm]       = useState(defaultFornForm);
+  // ── State: dialogs Pedido ────────────────────────────────────
+  const [pedidoOpen, setPedidoOpen] = useState(false);
+  const [pedidoForm, setPedidoForm] = useState(defaultPedidoForm);
+  const [formItens,  setFormItens]  = useState<FormItem[]>([blankItem()]);
 
-  // ── Efeito principal ─────────────────────────────────────────
+  // ── State: dialog Fornecedor ──────────────────────────────────
+  const [fornOpen,    setFornOpen]    = useState(false);
+  const [editingForn, setEditingForn] = useState<Fornecedor | null>(null);
+  const [fornForm,    setFornForm]    = useState(defaultFornForm);
+
+  // ── State: dialogs Estoque ────────────────────────────────────
+  const [produtoOpen,    setProdutoOpen]    = useState(false);
+  const [editingProduto, setEditingProduto] = useState<Produto | null>(null);
+  const [produtoForm,    setProdutoForm]    = useState(defaultProdutoForm);
+
+  const [movOpen, setMovOpen] = useState(false);
+  const [movForm, setMovForm] = useState(defaultMovForm);
+
+  // dialog pós-entrega: mapear itens do pedido para produtos
+  const [entregaOpen,     setEntregaOpen]     = useState(false);
+  const [entregaPedido,   setEntregaPedido]   = useState<PedidoCompra | null>(null);
+  const [entregaMappings, setEntregaMappings] = useState<{ item: ItemPedido; produtoId: string; novaNome: string }[]>([]);
+  const [savingEntrega,   setSavingEntrega]   = useState(false);
+
+  // ── State: NF-e ───────────────────────────────────────────────
+  const [nfeOpen,        setNfeOpen]        = useState(false);
+  const [nfeMode,        setNfeMode]        = useState<'xml' | 'manual'>('xml');
+  const [nfeParsed,      setNfeParsed]      = useState<NFeData | null>(null);
+  const [nfeXmlStr,      setNfeXmlStr]      = useState('');
+  const [nfeForm,        setNfeForm]        = useState(defaultNfeForm);
+  const [nfeRegEstoque,  setNfeRegEstoque]  = useState(false);
+  const [nfeItemMaps,    setNfeItemMaps]    = useState<{ item: NFeItemData; produtoId: string; novaNome: string; incluir: boolean }[]>([]);
+  const [nfeDragging,    setNfeDragging]    = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // ── Effects ───────────────────────────────────────────────────
   useEffect(() => {
     if (!empresaAtiva || !user) return;
     loadAll();
     loadContratos();
   }, [empresaAtiva?.id, user?.id]);
 
-  // ── Itens do pedido selecionado ──────────────────────────────
   useEffect(() => {
     if (!selectedPedido) { setItensPedido([]); return; }
-    supabase
-      .from('itens_pedido_compra')
-      .select('*')
-      .eq('pedido_id', selectedPedido.id)
+    supabase.from('itens_pedido_compra').select('*').eq('pedido_id', selectedPedido.id)
       .then(({ data }) => setItensPedido((data as ItemPedido[]) || []));
   }, [selectedPedido?.id]);
 
-  // ── Loaders ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!selectedProduto) { setMovimentos([]); return; }
+    supabase.from('estoque_movimentos').select('*').eq('produto_id', selectedProduto.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setMovimentos((data as EstoqueMovimento[]) || []));
+  }, [selectedProduto?.id]);
+
+  // ── Loaders ───────────────────────────────────────────────────
   const loadAll = async () => {
     if (!empresaAtiva) return;
     setLoading(true);
-    const [{ data: p }, { data: f }] = await Promise.all([
+    const [{ data: p }, { data: f }, { data: pr }, { data: n }] = await Promise.all([
       supabase.from('pedidos_compra').select('*').eq('empresa_id', empresaAtiva.id).order('created_at', { ascending: false }),
       supabase.from('fornecedores').select('*').eq('empresa_id', empresaAtiva.id).order('razao_social'),
+      supabase.from('produtos').select('*').eq('empresa_id', empresaAtiva.id).order('descricao'),
+      supabase.from('nfe_recebidas').select('*').eq('empresa_id', empresaAtiva.id).order('created_at', { ascending: false }),
     ]);
     setPedidos((p as PedidoCompra[]) || []);
     setFornecedores((f as Fornecedor[]) || []);
+    setProdutos((pr as Produto[]) || []);
+    setNfes((n as NfeRecebida[]) || []);
     if (selectedPedido) {
-      const updated = ((p as PedidoCompra[]) || []).find(x => x.id === selectedPedido.id);
-      if (updated) setSelectedPedido(updated);
+      const upd = ((p as PedidoCompra[]) || []).find(x => x.id === selectedPedido.id);
+      if (upd) setSelectedPedido(upd);
+    }
+    if (selectedProduto) {
+      const upd = ((pr as Produto[]) || []).find(x => x.id === selectedProduto.id);
+      if (upd) setSelectedProduto(upd);
     }
     setLoading(false);
   };
 
   const loadContratos = async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from('contratos')
-      .select('id, numero_contrato, orgao_contratante, objeto')
-      .eq('user_id', user.id)
-      .neq('status', 'encerrado')
-      .order('created_at', { ascending: false });
+    const { data } = await supabase.from('contratos').select('id, numero_contrato, orgao_contratante, objeto')
+      .eq('user_id', user.id).neq('status', 'encerrado').order('created_at', { ascending: false });
     setContratos((data as Contrato[]) || []);
+  };
+
+  const reloadMovimentos = async (prodId: string) => {
+    const { data } = await supabase.from('estoque_movimentos').select('*').eq('produto_id', prodId)
+      .order('created_at', { ascending: false });
+    setMovimentos((data as EstoqueMovimento[]) || []);
   };
 
   // ── Save pedido ───────────────────────────────────────────────
   const handleSavePedido = async () => {
     if (!empresaAtiva) return;
     if (!pedidoForm.fornecedor_id) { toast.error('Selecione um fornecedor'); return; }
-    const validItens = formItens.filter(i => i.descricao.trim());
-    if (validItens.length === 0) { toast.error('Adicione ao menos um item'); return; }
-
+    const valid = formItens.filter(i => i.descricao.trim());
+    if (!valid.length) { toast.error('Adicione ao menos um item'); return; }
     setSaving(true);
-    const valorTotal = validItens.reduce(
-      (s, i) => s + parseNum(i.quantidade) * parseNum(i.preco_unitario), 0
-    );
-
-    const { data: pedido, error } = await supabase
-      .from('pedidos_compra')
-      .insert({
-        empresa_id:            empresaAtiva.id,
-        contrato_id:           pedidoForm.contrato_id || null,
-        fornecedor_id:         pedidoForm.fornecedor_id,
-        status:                'rascunho',
-        data_pedido:           pedidoForm.data_pedido || null,
-        data_entrega_prevista: pedidoForm.data_entrega_prevista || null,
-        valor_total:           valorTotal,
-        observacoes:           pedidoForm.observacoes || null,
-      } as any)
-      .select('id')
-      .single();
-
-    if (error) {
-      toast.error('Erro ao salvar pedido', { description: error.message });
-      setSaving(false);
-      return;
-    }
-
+    const total = valid.reduce((s, i) => s + parseNum(i.quantidade) * parseNum(i.preco_unitario), 0);
+    const { data: pedido, error } = await supabase.from('pedidos_compra').insert({
+      empresa_id: empresaAtiva.id,
+      contrato_id: pedidoForm.contrato_id || null,
+      fornecedor_id: pedidoForm.fornecedor_id,
+      status: 'rascunho',
+      data_pedido: pedidoForm.data_pedido || null,
+      data_entrega_prevista: pedidoForm.data_entrega_prevista || null,
+      valor_total: total,
+      observacoes: pedidoForm.observacoes || null,
+    } as any).select('id').single();
+    if (error) { toast.error('Erro ao salvar', { description: error.message }); setSaving(false); return; }
     if (pedido) {
-      const rows = validItens.map(i => {
-        const qty  = parseNum(i.quantidade);
-        const unit = parseNum(i.preco_unitario);
-        return {
-          pedido_id: pedido.id,
-          descricao: i.descricao.trim(),
-          unidade:   i.unidade || 'UN',
-          quantidade:     qty,
-          preco_unitario: unit,
-          preco_total:    qty * unit,
-        };
-      });
-      const { error: itErr } = await supabase.from('itens_pedido_compra').insert(rows as any);
-      if (itErr) toast.error('Pedido salvo, mas erro nos itens', { description: itErr.message });
-      else        toast.success(`Pedido cadastrado com ${rows.length} ${rows.length === 1 ? 'item' : 'itens'}!`);
+      const rows = valid.map(i => ({ pedido_id: pedido.id, descricao: i.descricao.trim(), unidade: i.unidade || 'UN', quantidade: parseNum(i.quantidade), preco_unitario: parseNum(i.preco_unitario), preco_total: parseNum(i.quantidade) * parseNum(i.preco_unitario) }));
+      const { error: ie } = await supabase.from('itens_pedido_compra').insert(rows as any);
+      if (ie) toast.error('Pedido salvo, erro nos itens', { description: ie.message });
+      else toast.success(`Pedido criado com ${rows.length} item(ns)!`);
     }
-
-    setSaving(false);
-    setPedidoDialogOpen(false);
-    resetPedidoForm();
-    loadAll();
+    setSaving(false); setPedidoOpen(false); resetPedidoForm(); loadAll();
   };
 
   // ── Save fornecedor ───────────────────────────────────────────
   const handleSaveFornecedor = async () => {
     if (!empresaAtiva) return;
     if (!fornForm.razao_social.trim()) { toast.error('Razão social obrigatória'); return; }
-
     setSaving(true);
-    const payload = {
-      empresa_id:         empresaAtiva.id,
-      razao_social:       fornForm.razao_social.trim(),
-      cnpj:               fornForm.cnpj         || null,
-      categoria:          fornForm.categoria    || null,
-      prazo_entrega_dias: fornForm.prazo_entrega_dias ? parseInt(fornForm.prazo_entrega_dias) : null,
-      contato_nome:       fornForm.contato_nome    || null,
-      contato_email:      fornForm.contato_email   || null,
-      contato_telefone:   fornForm.contato_telefone || null,
-      observacoes:        fornForm.observacoes      || null,
-      ativo:              fornForm.ativo,
-    };
-
-    let error;
+    const payload = { empresa_id: empresaAtiva.id, razao_social: fornForm.razao_social.trim(), cnpj: fornForm.cnpj || null, categoria: fornForm.categoria || null, prazo_entrega_dias: fornForm.prazo_entrega_dias ? parseInt(fornForm.prazo_entrega_dias) : null, contato_nome: fornForm.contato_nome || null, contato_email: fornForm.contato_email || null, contato_telefone: fornForm.contato_telefone || null, observacoes: fornForm.observacoes || null, ativo: fornForm.ativo };
+    let error: any;
     if (editingForn) {
       ({ error } = await supabase.from('fornecedores').update(payload as any).eq('id', editingForn.id));
       if (!error) toast.success('Fornecedor atualizado!');
@@ -230,16 +264,29 @@ export default function GestaoCompras() {
       ({ error } = await supabase.from('fornecedores').insert(payload as any));
       if (!error) toast.success('Fornecedor cadastrado!');
     }
-
-    if (error) toast.error('Erro ao salvar', { description: error.message });
-    setSaving(false);
-    setFornDialogOpen(false);
-    setEditingForn(null);
-    setFornForm(defaultFornForm);
-    loadAll();
+    if (error) toast.error('Erro', { description: error.message });
+    setSaving(false); setFornOpen(false); setEditingForn(null); setFornForm(defaultFornForm()); loadAll();
   };
 
-  // ── Delete ────────────────────────────────────────────────────
+  // ── Update status + hook entrega ──────────────────────────────
+  const handleUpdateStatus = async (status: PedidoCompra['status']) => {
+    if (!selectedPedido) return;
+    const updates: Record<string, any> = { status };
+    if (status === 'entregue') updates.data_entrega_real = today();
+    const { error } = await supabase.from('pedidos_compra').update(updates).eq('id', selectedPedido.id);
+    if (error) { toast.error('Erro ao atualizar status'); return; }
+    toast.success('Status atualizado');
+    const updated = { ...selectedPedido, ...updates };
+    setSelectedPedido(updated);
+    loadAll();
+    if (status === 'entregue' && itensPedido.length > 0) {
+      setEntregaPedido(updated);
+      setEntregaMappings(itensPedido.map(item => ({ item, produtoId: '', novaNome: item.descricao })));
+      setEntregaOpen(true);
+    }
+  };
+
+  // ── Delete pedido / fornecedor ────────────────────────────────
   const handleDeletePedido = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     await supabase.from('pedidos_compra').delete().eq('id', id);
@@ -252,69 +299,281 @@ export default function GestaoCompras() {
     e.stopPropagation();
     const { error } = await supabase.from('fornecedores').delete().eq('id', id);
     if (error) { toast.error('Não foi possível excluir', { description: error.message }); return; }
-    toast.success('Fornecedor excluído');
+    toast.success('Fornecedor excluído'); loadAll();
+  };
+
+  // ── Produto CRUD ──────────────────────────────────────────────
+  const handleSaveProduto = async () => {
+    if (!empresaAtiva) return;
+    if (!produtoForm.descricao.trim()) { toast.error('Descrição obrigatória'); return; }
+    setSaving(true);
+    const payload = { empresa_id: empresaAtiva.id, codigo: produtoForm.codigo || null, descricao: produtoForm.descricao.trim(), unidade: produtoForm.unidade || 'UN', categoria: produtoForm.categoria || null, saldo_minimo: parseNum(produtoForm.saldo_minimo), ativo: produtoForm.ativo };
+    let error: any;
+    if (editingProduto) {
+      ({ error } = await supabase.from('produtos').update(payload as any).eq('id', editingProduto.id));
+      if (!error) toast.success('Produto atualizado!');
+    } else {
+      ({ error } = await supabase.from('produtos').insert(payload as any));
+      if (!error) toast.success('Produto cadastrado!');
+    }
+    if (error) toast.error('Erro', { description: error.message });
+    setSaving(false); setProdutoOpen(false); setEditingProduto(null); setProdutoForm(defaultProdutoForm()); loadAll();
+  };
+
+  const handleDeleteProduto = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { error } = await supabase.from('produtos').delete().eq('id', id);
+    if (error) { toast.error('Não foi possível excluir. Há movimentações?', { description: error.message }); return; }
+    toast.success('Produto excluído');
+    if (selectedProduto?.id === id) setSelectedProduto(null);
     loadAll();
   };
 
-  // ── Update status (detalhe) ───────────────────────────────────
-  const handleUpdateStatus = async (status: PedidoCompra['status']) => {
-    if (!selectedPedido) return;
-    const updates: Record<string, any> = { status };
-    if (status === 'entregue') updates.data_entrega_real = today();
-
-    const { error } = await supabase.from('pedidos_compra').update(updates).eq('id', selectedPedido.id);
-    if (error) { toast.error('Erro ao atualizar status'); return; }
-    toast.success('Status atualizado');
-    setSelectedPedido(p => p ? { ...p, ...updates } : null);
-    loadAll();
+  // ── Movimentação manual ───────────────────────────────────────
+  const handleSaveMovimento = async () => {
+    if (!empresaAtiva || !user) return;
+    if (!movForm.produto_id) { toast.error('Selecione um produto'); return; }
+    const qty = parseNum(movForm.quantidade);
+    if (qty <= 0) { toast.error('Quantidade deve ser maior que zero'); return; }
+    let storedQty = Math.abs(qty);
+    if (movForm.tipo === 'ajuste' && movForm.ajuste_dir === 'menos') storedQty = -storedQty;
+    setSaving(true);
+    const { error } = await supabase.from('estoque_movimentos').insert({
+      empresa_id: empresaAtiva.id,
+      produto_id: movForm.produto_id,
+      tipo: movForm.tipo,
+      origem: 'manual',
+      quantidade: storedQty,
+      preco_unitario: parseNum(movForm.preco_unitario) || null,
+      observacoes: movForm.observacoes || null,
+      created_by: user.id,
+    } as any);
+    if (error) toast.error('Erro ao registrar', { description: error.message });
+    else toast.success('Movimentação registrada!');
+    setSaving(false); setMovOpen(false); setMovForm(defaultMovForm()); loadAll();
+    if (selectedProduto?.id === movForm.produto_id) reloadMovimentos(movForm.produto_id);
   };
 
-  const resetPedidoForm = () => {
-    setPedidoForm(defaultPedidoForm);
-    setFormItens([blankItem()]);
+  // ── Entrega → estoque ─────────────────────────────────────────
+  const criarProdutoSeNovo = async (produtoId: string, nome: string, unidade: string): Promise<string | null> => {
+    if (produtoId !== '__new__') return produtoId;
+    if (!empresaAtiva || !nome.trim()) return null;
+    const { data, error } = await supabase.from('produtos').insert({
+      empresa_id: empresaAtiva.id, descricao: nome.trim(), unidade: unidade || 'UN', ativo: true,
+    } as any).select('id').single();
+    if (error || !data) { toast.error('Erro ao criar produto', { description: error?.message }); return null; }
+    return (data as any).id;
   };
 
-  // ── Métricas ──────────────────────────────────────────────────
-  const abertos           = pedidos.filter(p => p.status === 'rascunho' || p.status === 'aguardando');
-  const valorComprometido = abertos.reduce((s, p) => s + p.valor_total, 0);
-  const contratosVinculados = new Set(pedidos.map(p => p.contrato_id).filter(Boolean)).size;
-  const todayStr = today();
-  const atrasados = abertos.filter(
-    p => p.data_entrega_prevista && p.data_entrega_prevista < todayStr
-  ).length;
+  const handleConfirmarEntrega = async () => {
+    if (!entregaPedido || !empresaAtiva || !user) return;
+    const validos = entregaMappings.filter(m => m.produtoId && m.produtoId !== '');
+    if (!validos.length) { setEntregaOpen(false); return; }
+    setSavingEntrega(true);
+    const rows: any[] = [];
+    for (const m of validos) {
+      const pid = await criarProdutoSeNovo(m.produtoId, m.novaNome, m.item.unidade);
+      if (!pid) continue;
+      rows.push({ empresa_id: empresaAtiva.id, produto_id: pid, pedido_id: entregaPedido.id, tipo: 'entrada', origem: 'pedido_entregue', quantidade: Math.abs(m.item.quantidade), preco_unitario: m.item.preco_unitario || null, created_by: user.id });
+    }
+    if (rows.length) {
+      const { error } = await supabase.from('estoque_movimentos').insert(rows as any);
+      if (error) toast.error('Erro nas entradas de estoque', { description: error.message });
+      else toast.success(`${rows.length} entrada(s) registrada(s) no estoque!`);
+    }
+    setSavingEntrega(false); setEntregaOpen(false); loadAll();
+    if (selectedProduto) reloadMovimentos(selectedProduto.id);
+  };
 
-  // ── Filtros ───────────────────────────────────────────────────
-  const filteredPedidos = pedidos.filter(p => {
-    const forn = fornecedores.find(f => f.id === p.fornecedor_id);
-    const cont = contratos.find(c => c.id === p.contrato_id);
-    const txt  = `${p.observacoes ?? ''} ${forn?.razao_social ?? ''} ${cont?.numero_contrato ?? ''}`.toLowerCase();
+  // ── NF-e: XML parsing ─────────────────────────────────────────
+  const handleNfeFile = (file: File) => {
+    if (!file.name.toLowerCase().endsWith('.xml')) { toast.error('Selecione um arquivo .xml'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const text = e.target?.result as string;
+      try {
+        const parsed = parseNFeXML(text);
+        setNfeParsed(parsed);
+        setNfeXmlStr(text);
+        const dataEmissao = parsed.data_emissao?.split('T')[0] ?? today();
+        setNfeForm(f => ({ ...f, numero: String(parsed.numero_nf), serie: String(parsed.serie), chave_acesso: parsed.chave_acesso, data_emissao: dataEmissao, cnpj_emitente: parsed.cnpj_emitente, nome_emitente: parsed.nome_emitente, valor_total: String(parsed.v_nf) }));
+        setNfeItemMaps(parsed.itens.map(item => ({ item, produtoId: '', novaNome: item.x_prod, incluir: true })));
+        toast.success(`NF-e lida: nº ${parsed.numero_nf} — ${parsed.nome_emitente || parsed.cnpj_emitente}`);
+      } catch {
+        toast.error('Não foi possível ler o XML. Verifique se é uma NF-e válida.');
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
+
+  const handleSaveNfe = async () => {
+    if (!empresaAtiva || !user) return;
+    const num = nfeParsed ? String(nfeParsed.numero_nf) : nfeForm.numero;
+    if (!num) { toast.error('Número da NF-e obrigatório'); return; }
+    setSaving(true);
+    const payload: any = {
+      empresa_id: empresaAtiva.id,
+      pedido_id: nfeForm.pedido_id || null,
+      numero: num,
+      serie: nfeParsed ? String(nfeParsed.serie) : (nfeForm.serie || '1'),
+      chave_acesso: (nfeParsed?.chave_acesso || nfeForm.chave_acesso) || null,
+      data_emissao: (nfeParsed ? nfeParsed.data_emissao?.split('T')[0] : nfeForm.data_emissao) || null,
+      cnpj_emitente: (nfeParsed?.cnpj_emitente || nfeForm.cnpj_emitente) || null,
+      nome_emitente: (nfeParsed?.nome_emitente || nfeForm.nome_emitente) || null,
+      valor_total: nfeParsed ? nfeParsed.v_nf : parseNum(nfeForm.valor_total),
+      xml_content: nfeMode === 'xml' ? nfeXmlStr : null,
+      itens: nfeParsed ? nfeParsed.itens : null,
+    };
+    const { data: nfeRow, error } = await supabase.from('nfe_recebidas').insert(payload).select('id').single();
+    if (error) { toast.error('Erro ao importar NF-e', { description: error.message }); setSaving(false); return; }
+
+    if (nfeRegEstoque && nfeParsed && nfeRow) {
+      const toCreate = nfeItemMaps.filter(m => m.incluir && m.produtoId);
+      const rows: any[] = [];
+      for (const m of toCreate) {
+        const pid = await criarProdutoSeNovo(m.produtoId, m.novaNome, m.item.u_com);
+        if (!pid) continue;
+        rows.push({ empresa_id: empresaAtiva.id, produto_id: pid, nfe_id: (nfeRow as any).id, pedido_id: nfeForm.pedido_id || null, tipo: 'entrada', origem: 'nfe', quantidade: Math.abs(m.item.q_com), preco_unitario: m.item.v_un_com || null, created_by: user.id });
+      }
+      if (rows.length) {
+        const { error: me } = await supabase.from('estoque_movimentos').insert(rows as any);
+        if (me) toast.error('NF-e salva, erro no estoque', { description: me.message });
+        else toast.success(`NF-e importada + ${rows.length} entrada(s) no estoque!`);
+      } else {
+        toast.success('NF-e importada!');
+      }
+    } else {
+      toast.success('NF-e importada!');
+    }
+    setSaving(false); setNfeOpen(false); resetNfeDialog(); loadAll();
+    if (selectedProduto) reloadMovimentos(selectedProduto.id);
+  };
+
+  const handleDeleteNfe = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { error } = await supabase.from('nfe_recebidas').delete().eq('id', id);
+    if (error) { toast.error('Não foi possível excluir', { description: error.message }); return; }
+    toast.success('NF-e excluída. Movimentações de estoque vinculadas foram mantidas.'); loadAll();
+  };
+
+  const resetNfeDialog = () => { setNfeParsed(null); setNfeXmlStr(''); setNfeForm(defaultNfeForm()); setNfeMode('xml'); setNfeRegEstoque(false); setNfeItemMaps([]); };
+  const resetPedidoForm = () => { setPedidoForm(defaultPedidoForm()); setFormItens([blankItem()]); };
+
+  // ── Computed ──────────────────────────────────────────────────
+  const todayStr       = today();
+  const abertos        = pedidos.filter(p => p.status === 'rascunho' || p.status === 'aguardando');
+  const valorComp      = abertos.reduce((s, p) => s + p.valor_total, 0);
+  const contrVinc      = new Set(pedidos.map(p => p.contrato_id).filter(Boolean)).size;
+  const atrasados      = abertos.filter(p => p.data_entrega_prevista && p.data_entrega_prevista < todayStr).length;
+  const filtPedidos    = pedidos.filter(p => { const forn = fornecedores.find(f => f.id === p.fornecedor_id); const cont = contratos.find(c => c.id === p.contrato_id); const txt = `${p.observacoes ?? ''} ${forn?.razao_social ?? ''} ${cont?.numero_contrato ?? ''}`.toLowerCase(); return (!search || txt.includes(search.toLowerCase())) && (statusFilter === 'all' || p.status === statusFilter); });
+  const filtForn       = fornecedores.filter(f => !fornSearch || f.razao_social.toLowerCase().includes(fornSearch.toLowerCase()) || (f.categoria ?? '').toLowerCase().includes(fornSearch.toLowerCase()));
+  const filtProdutos   = produtos.filter(p => !estoqSearch || p.descricao.toLowerCase().includes(estoqSearch.toLowerCase()) || (p.codigo ?? '').toLowerCase().includes(estoqSearch.toLowerCase()) || (p.categoria ?? '').toLowerCase().includes(estoqSearch.toLowerCase()));
+  const prodAlerta     = produtos.filter(p => p.ativo && p.saldo_atual <= p.saldo_minimo).length;
+  const valorEstoque   = produtos.filter(p => p.ativo).reduce((s, p) => s + p.saldo_atual * p.preco_custo_medio, 0);
+  const isOnboarding   = !loading && !pedidos.length && !fornecedores.length && !produtos.length && !nfes.length;
+
+  const produtosAtivosParaSelect = produtos.filter(p => p.ativo);
+
+  // ══ DETAIL: PRODUTO ══════════════════════════════════════════
+  if (selectedProduto) {
+    const p = selectedProduto;
+    const emAlerta = p.saldo_atual <= p.saldo_minimo;
     return (
-      (!search || txt.includes(search.toLowerCase())) &&
-      (statusFilter === 'all' || p.status === statusFilter)
+      <AppLayout>
+        <div className="mb-4">
+          <Button variant="ghost" size="sm" onClick={() => setSelectedProduto(null)} className="mb-2">
+            <ArrowLeft className="w-4 h-4 mr-1" /> Voltar ao Estoque
+          </Button>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl font-bold">{p.descricao}</h1>
+                {p.codigo && <Badge variant="outline" className="text-[10px]">{p.codigo}</Badge>}
+                {!p.ativo && <Badge className="text-[10px] bg-muted text-muted-foreground">Inativo</Badge>}
+                {emAlerta && <Badge variant="outline" className="text-[10px] text-destructive border-destructive/40"><AlertCircle className="w-3 h-3 mr-1" />Estoque baixo</Badge>}
+              </div>
+              <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                {p.categoria && <span>{p.categoria}</span>}
+                <span>Unidade: {p.unidade}</span>
+                <span>Mínimo: {p.saldo_minimo} {p.unidade}</span>
+                {p.preco_custo_medio > 0 && <span>Custo médio: {fmtCurrency(p.preco_custo_medio)}</span>}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+              <div className={`text-right px-4 py-2 rounded-lg ${emAlerta ? 'bg-destructive/10' : 'bg-success/10'}`}>
+                <p className="text-xs text-muted-foreground">Saldo Atual</p>
+                <p className={`text-2xl font-bold ${emAlerta ? 'text-destructive' : 'text-success'}`}>
+                  {p.saldo_atual.toLocaleString('pt-BR')} <span className="text-sm font-normal">{p.unidade}</span>
+                </p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => { setEditingProduto(p); setProdutoForm({ codigo: p.codigo ?? '', descricao: p.descricao, unidade: p.unidade, categoria: p.categoria ?? '', saldo_minimo: String(p.saldo_minimo), ativo: p.ativo }); setProdutoOpen(true); }}>
+                <Pencil className="w-4 h-4" />
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => { setMovForm(f => ({ ...f, produto_id: p.id })); setMovOpen(true); }}>
+                <Plus className="w-4 h-4 mr-1" /> Movimentação
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <Card className="p-4">
+          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <RotateCcw className="w-4 h-4" /> Histórico de Movimentações
+          </h2>
+          {movimentos.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Nenhuma movimentação registrada.</p>
+          ) : (
+            <div className="divide-y divide-border">
+              {movimentos.map(m => {
+                const cfg = movConfig[m.tipo];
+                const Icon = cfg.icon;
+                const absQty = Math.abs(m.quantidade);
+                const sign = m.tipo === 'entrada' ? '+' : m.tipo === 'saida' ? '-' : (m.quantidade >= 0 ? '+' : '');
+                return (
+                  <div key={m.id} className="flex items-center gap-3 py-3">
+                    <div className={`flex items-center justify-center w-8 h-8 rounded-full ${cfg.bg} flex-shrink-0`}>
+                      <Icon className={`w-4 h-4 ${cfg.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-sm font-semibold ${cfg.color}`}>
+                          {sign}{absQty.toLocaleString('pt-BR')} {p.unidade}
+                        </span>
+                        <Badge variant="outline" className="text-[10px]">{cfg.label}</Badge>
+                        {m.origem && m.origem !== 'manual' && (
+                          <Badge variant="outline" className="text-[10px] text-muted-foreground capitalize">{m.origem.replace(/_/g, ' ')}</Badge>
+                        )}
+                      </div>
+                      {m.observacoes && <p className="text-xs text-muted-foreground mt-0.5">{m.observacoes}</p>}
+                      {m.preco_unitario != null && m.preco_unitario > 0 && (
+                        <p className="text-xs text-muted-foreground">{fmtCurrency(m.preco_unitario)}/un · Total: {fmtCurrency(m.preco_unitario * absQty)}</p>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground flex-shrink-0">
+                      {new Date(m.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+
+        {/* dialogs disponíveis na tela de detalhe */}
+        <ProdutoDialog open={produtoOpen} onOpenChange={setProdutoOpen} editing={editingProduto} form={produtoForm} setForm={setProdutoForm} saving={saving} onSave={handleSaveProduto} onClose={() => { setEditingProduto(null); setProdutoForm(defaultProdutoForm()); }} />
+        <MovDialog open={movOpen} onOpenChange={setMovOpen} form={movForm} setForm={setMovForm} saving={saving} onSave={handleSaveMovimento} produtos={produtosAtivosParaSelect} />
+      </AppLayout>
     );
-  });
+  }
 
-  const isOnboarding = !loading && pedidos.length === 0 && fornecedores.length === 0;
-
-  const filteredForn = fornecedores.filter(f =>
-    !fornSearch ||
-    f.razao_social.toLowerCase().includes(fornSearch.toLowerCase()) ||
-    (f.categoria ?? '').toLowerCase().includes(fornSearch.toLowerCase())
-  );
-
-  // ══ DETAIL VIEW ══════════════════════════════════════════════
+  // ══ DETAIL: PEDIDO ═══════════════════════════════════════════
   if (selectedPedido) {
     const p    = selectedPedido;
     const forn = fornecedores.find(f => f.id === p.fornecedor_id);
     const cont = contratos.find(c => c.id === p.contrato_id);
     const cfg  = statusConfig[p.status];
     const Icon = cfg.icon;
-    const isAtrasado =
-      p.data_entrega_prevista &&
-      p.status !== 'entregue' &&
-      p.status !== 'cancelado' &&
-      p.data_entrega_prevista < todayStr;
-
+    const isAtrasado = p.data_entrega_prevista && p.status !== 'entregue' && p.status !== 'cancelado' && p.data_entrega_prevista < todayStr;
     return (
       <AppLayout>
         <div className="mb-4">
@@ -325,39 +584,21 @@ export default function GestaoCompras() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-bold">{p.observacoes || 'Pedido de Compra'}</h1>
-                <Badge className={`${cfg.color} text-[10px]`}>
-                  <Icon className="w-3 h-3 mr-1" />{cfg.label}
-                </Badge>
-                {isAtrasado && (
-                  <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30">
-                    <AlertTriangle className="w-3 h-3 mr-1" />Atrasado
-                  </Badge>
-                )}
+                <Badge className={`${cfg.color} text-[10px]`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
+                {isAtrasado && <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30"><AlertTriangle className="w-3 h-3 mr-1" />Atrasado</Badge>}
               </div>
               <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                {forn && (
-                  <span className="flex items-center gap-1"><Truck className="w-3 h-3" />{forn.razao_social}</span>
-                )}
-                {cont && (
-                  <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />Contrato {cont.numero_contrato}</span>
-                )}
-                {p.data_pedido && (
-                  <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Pedido: {formatDate(p.data_pedido)}</span>
-                )}
-                {p.data_entrega_prevista && (
-                  <span className="flex items-center gap-1"><Truck className="w-3 h-3" />Previsto: {formatDate(p.data_entrega_prevista)}</span>
-                )}
-                {p.data_entrega_real && (
-                  <span className="flex items-center gap-1 text-success">
-                    <CheckCircle2 className="w-3 h-3" />Entregue: {formatDate(p.data_entrega_real)}
-                  </span>
-                )}
+                {forn && <span className="flex items-center gap-1"><Truck className="w-3 h-3" />{forn.razao_social}</span>}
+                {cont && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />Contrato {cont.numero_contrato}</span>}
+                {p.data_pedido && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Pedido: {fmtDate(p.data_pedido)}</span>}
+                {p.data_entrega_prevista && <span className="flex items-center gap-1"><Truck className="w-3 h-3" />Previsto: {fmtDate(p.data_entrega_prevista)}</span>}
+                {p.data_entrega_real && <span className="flex items-center gap-1 text-success"><CheckCircle2 className="w-3 h-3" />Entregue: {fmtDate(p.data_entrega_real)}</span>}
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <div className="text-right mr-1">
                 <p className="text-xs text-muted-foreground">Valor Total</p>
-                <p className="text-lg font-bold">{formatCurrency(p.valor_total)}</p>
+                <p className="text-lg font-bold">{fmtCurrency(p.valor_total)}</p>
               </div>
               <Select value={p.status} onValueChange={(v: any) => handleUpdateStatus(v)}>
                 <SelectTrigger className="w-[150px] text-xs"><SelectValue /></SelectTrigger>
@@ -368,17 +609,13 @@ export default function GestaoCompras() {
                   <SelectItem value="cancelado">Cancelado</SelectItem>
                 </SelectContent>
               </Select>
-              <Button size="sm" variant="ghost" onClick={e => handleDeletePedido(p.id, e)}>
-                <Trash2 className="w-4 h-4 text-destructive" />
-              </Button>
+              <Button size="sm" variant="ghost" onClick={e => handleDeletePedido(p.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
             </div>
           </div>
         </div>
 
         <Card className="p-4">
-          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <Package className="w-4 h-4" /> Itens do Pedido
-          </h2>
+          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Package className="w-4 h-4" /> Itens do Pedido</h2>
           {itensPedido.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">Nenhum item cadastrado.</p>
           ) : (
@@ -399,25 +636,58 @@ export default function GestaoCompras() {
                       <td className="py-2 pr-4">{item.descricao}</td>
                       <td className="py-2 px-2 text-center text-muted-foreground">{item.unidade}</td>
                       <td className="py-2 px-2 text-right">{item.quantidade.toLocaleString('pt-BR')}</td>
-                      <td className="py-2 px-2 text-right">{formatCurrency(item.preco_unitario)}</td>
-                      <td className="py-2 pl-2 text-right font-medium">{formatCurrency(item.preco_total)}</td>
+                      <td className="py-2 px-2 text-right">{fmtCurrency(item.preco_unitario)}</td>
+                      <td className="py-2 pl-2 text-right font-medium">{fmtCurrency(item.preco_total)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="border-t">
-                    <td colSpan={4} className="py-2 text-right text-xs text-muted-foreground pr-2 font-medium">
-                      Total do Pedido
-                    </td>
-                    <td className="py-2 pl-2 text-right font-bold text-primary">
-                      {formatCurrency(p.valor_total)}
-                    </td>
+                    <td colSpan={4} className="py-2 text-right text-xs text-muted-foreground pr-2 font-medium">Total do Pedido</td>
+                    <td className="py-2 pl-2 text-right font-bold text-primary">{fmtCurrency(p.valor_total)}</td>
                   </tr>
                 </tfoot>
               </table>
             </div>
           )}
         </Card>
+
+        {/* Dialog: entrega → estoque */}
+        <Dialog open={entregaOpen} onOpenChange={o => { if (!o) setEntregaOpen(false); }}>
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Registrar recebimento no estoque</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground mb-3">Vincule cada item do pedido a um produto do catálogo para registrar a entrada no estoque. Itens sem vínculo serão ignorados.</p>
+            <div className="space-y-3">
+              {entregaMappings.map((m, idx) => (
+                <div key={m.item.id} className="border rounded-lg p-3 space-y-2">
+                  <p className="text-sm font-medium">{m.item.descricao}</p>
+                  <p className="text-xs text-muted-foreground">{m.item.quantidade} {m.item.unidade} · {fmtCurrency(m.item.preco_unitario)}/un</p>
+                  <Select value={m.produtoId} onValueChange={v => setEntregaMappings(arr => arr.map((x, i) => i === idx ? { ...x, produtoId: v } : x))}>
+                    <SelectTrigger className="text-xs"><SelectValue placeholder="— Não registrar —" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">— Não registrar —</SelectItem>
+                      {produtosAtivosParaSelect.map(pr => (
+                        <SelectItem key={pr.id} value={pr.id}>{pr.descricao}{pr.codigo ? ` (${pr.codigo})` : ''}</SelectItem>
+                      ))}
+                      <SelectItem value="__new__">+ Criar novo produto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {m.produtoId === '__new__' && (
+                    <Input className="text-xs" placeholder="Nome do novo produto" value={m.novaNome} onChange={e => setEntregaMappings(arr => arr.map((x, i) => i === idx ? { ...x, novaNome: e.target.value } : x))} />
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setEntregaOpen(false)}>Pular</Button>
+              <Button onClick={handleConfirmarEntrega} disabled={savingEntrega}>
+                {savingEntrega && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Registrar no Estoque
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </AppLayout>
     );
   }
@@ -429,107 +699,55 @@ export default function GestaoCompras() {
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Compras</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Pedidos de compra, fornecedores e vínculos com contratos administrativos
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">Pedidos, fornecedores, estoque e notas fiscais</p>
         </div>
         {!isOnboarding && (
           <div className="flex gap-2">
             {mainTab === 'fornecedores' ? (
-              <Button onClick={() => { setEditingForn(null); setFornForm(defaultFornForm); setFornDialogOpen(true); }}>
-                <Plus className="w-4 h-4 mr-2" /> Novo Fornecedor
-              </Button>
+              <Button onClick={() => { setEditingForn(null); setFornForm(defaultFornForm()); setFornOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Fornecedor</Button>
+            ) : mainTab === 'estoque' ? (
+              <Button onClick={() => { setEditingProduto(null); setProdutoForm(defaultProdutoForm()); setProdutoOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Produto</Button>
+            ) : mainTab === 'nfe' ? (
+              <Button onClick={() => { resetNfeDialog(); setNfeOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Importar NF-e</Button>
             ) : (
-              <Button onClick={() => { resetPedidoForm(); setPedidoDialogOpen(true); }}>
-                <Plus className="w-4 h-4 mr-2" /> Novo Pedido
-              </Button>
+              <Button onClick={() => { resetPedidoForm(); setPedidoOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Pedido</Button>
             )}
           </div>
         )}
       </div>
 
-      {/* Guard sem empresa */}
       {!empresaAtiva ? (
-        <Card className="p-12 text-center">
-          <Building2 className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-muted-foreground">
-            Selecione uma empresa ativa para acessar o módulo de compras.
-          </p>
-        </Card>
+        <Card className="p-12 text-center"><Building2 className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">Selecione uma empresa ativa para acessar o módulo de compras.</p></Card>
       ) : loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-        </div>
+        <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
       ) : isOnboarding ? (
         <div className="min-h-[60vh] flex flex-col justify-center">
           <OnboardingCompras
-            onCadastrarFornecedor={() => {
-              setEditingForn(null);
-              setFornForm(defaultFornForm);
-              setFornDialogOpen(true);
-            }}
-            onNovoPedido={() => {
-              resetPedidoForm();
-              setPedidoDialogOpen(true);
-            }}
-            onProdutos={() => {
-              setMainTab('fornecedores');
-              toast.info('Em breve: catálogo de produtos');
-            }}
+            onCadastrarFornecedor={() => { setEditingForn(null); setFornForm(defaultFornForm()); setFornOpen(true); }}
+            onNovoPedido={() => { resetPedidoForm(); setPedidoOpen(true); }}
+            onEstoque={() => { setMainTab('estoque'); }}
+            onImportarNfe={() => { resetNfeDialog(); setNfeOpen(true); }}
           />
         </div>
       ) : (
         <Tabs value={mainTab} onValueChange={setMainTab}>
           <TabsList className="mb-4">
-            <TabsTrigger value="pedidos">
-              <ShoppingCart className="w-3.5 h-3.5 mr-1.5" /> Pedidos
-            </TabsTrigger>
-            <TabsTrigger value="fornecedores">
-              <Users className="w-3.5 h-3.5 mr-1.5" /> Fornecedores
-            </TabsTrigger>
+            <TabsTrigger value="pedidos"><ShoppingCart className="w-3.5 h-3.5 mr-1.5" /> Pedidos</TabsTrigger>
+            <TabsTrigger value="fornecedores"><Users className="w-3.5 h-3.5 mr-1.5" /> Fornecedores</TabsTrigger>
+            <TabsTrigger value="estoque"><Warehouse className="w-3.5 h-3.5 mr-1.5" /> Estoque</TabsTrigger>
+            <TabsTrigger value="nfe"><FileText className="w-3.5 h-3.5 mr-1.5" /> NF-e</TabsTrigger>
           </TabsList>
 
           {/* ══ ABA PEDIDOS ══ */}
           <TabsContent value="pedidos" className="space-y-4">
-            {/* Métricas */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Card className="p-4">
-                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                  <ShoppingCart className="w-4 h-4" /> Em Aberto
-                </div>
-                <p className="text-2xl font-bold">{abertos.length}</p>
-              </Card>
-              <Card className="p-4">
-                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                  <DollarSign className="w-4 h-4" /> Comprometido
-                </div>
-                <p className="text-lg font-bold leading-tight">{formatCurrency(valorComprometido)}</p>
-              </Card>
-              <Card className="p-4">
-                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                  <Building2 className="w-4 h-4" /> Contratos
-                </div>
-                <p className="text-2xl font-bold">{contratosVinculados}</p>
-              </Card>
-              <Card className="p-4">
-                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                  <AlertTriangle className="w-4 h-4" /> Atrasados
-                </div>
-                <p className="text-2xl font-bold text-destructive">{atrasados}</p>
-              </Card>
+              <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><ShoppingCart className="w-4 h-4" /> Em Aberto</div><p className="text-2xl font-bold">{abertos.length}</p></Card>
+              <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><DollarSign className="w-4 h-4" /> Comprometido</div><p className="text-lg font-bold leading-tight">{fmtCurrency(valorComp)}</p></Card>
+              <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><Building2 className="w-4 h-4" /> Contratos</div><p className="text-2xl font-bold">{contrVinc}</p></Card>
+              <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><AlertTriangle className="w-4 h-4" /> Atrasados</div><p className="text-2xl font-bold text-destructive">{atrasados}</p></Card>
             </div>
-
-            {/* Filtros */}
             <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por descrição, fornecedor ou contrato..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
+              <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar por descrição, fornecedor ou contrato..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" /></div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[180px]"><SelectValue placeholder="Status" /></SelectTrigger>
                 <SelectContent>
@@ -541,82 +759,35 @@ export default function GestaoCompras() {
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Lista de pedidos */}
-            {filteredPedidos.length === 0 ? (
-              <Card className="p-12 text-center">
-                <ShoppingCart className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-muted-foreground">Nenhum pedido encontrado</p>
-              </Card>
+            {filtPedidos.length === 0 ? (
+              <Card className="p-12 text-center"><ShoppingCart className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">Nenhum pedido encontrado</p></Card>
             ) : (
               <div className="space-y-2">
-                {filteredPedidos.map(p => {
-                  const forn      = fornecedores.find(f => f.id === p.fornecedor_id);
-                  const cont      = contratos.find(c => c.id === p.contrato_id);
-                  const cfg       = statusConfig[p.status];
-                  const Icon      = cfg.icon;
-                  const isAtrasado =
-                    p.data_entrega_prevista &&
-                    p.status !== 'entregue' &&
-                    p.status !== 'cancelado' &&
-                    p.data_entrega_prevista < todayStr;
-
+                {filtPedidos.map(p => {
+                  const forn = fornecedores.find(f => f.id === p.fornecedor_id);
+                  const cont = contratos.find(c => c.id === p.contrato_id);
+                  const cfg  = statusConfig[p.status];
+                  const Icon = cfg.icon;
+                  const isAtrasado = p.data_entrega_prevista && p.status !== 'entregue' && p.status !== 'cancelado' && p.data_entrega_prevista < todayStr;
                   return (
-                    <Card
-                      key={p.id}
-                      className="p-4 hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => setSelectedPedido(p)}
-                    >
+                    <Card key={p.id} className="p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedPedido(p)}>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <span className="text-sm font-semibold truncate">
-                              {p.observacoes || 'Pedido de Compra'}
-                            </span>
-                            <Badge className={`${cfg.color} text-[10px]`}>
-                              <Icon className="w-3 h-3 mr-1" />{cfg.label}
-                            </Badge>
-                            {isAtrasado && (
-                              <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30">
-                                Atrasado
-                              </Badge>
-                            )}
+                            <span className="text-sm font-semibold truncate">{p.observacoes || 'Pedido de Compra'}</span>
+                            <Badge className={`${cfg.color} text-[10px]`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
+                            {isAtrasado && <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30">Atrasado</Badge>}
                           </div>
                           <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-                            {forn && (
-                              <span className="flex items-center gap-1">
-                                <Truck className="w-3 h-3" />{forn.razao_social}
-                              </span>
-                            )}
-                            {cont && (
-                              <span className="flex items-center gap-1">
-                                <Building2 className="w-3 h-3" />Ct. {cont.numero_contrato}
-                              </span>
-                            )}
-                            {p.data_pedido && (
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3" />Pedido: {formatDate(p.data_pedido)}
-                              </span>
-                            )}
-                            {p.data_entrega_prevista && (
-                              <span className="flex items-center gap-1">
-                                <Truck className="w-3 h-3" />Prev: {formatDate(p.data_entrega_prevista)}
-                              </span>
-                            )}
+                            {forn && <span className="flex items-center gap-1"><Truck className="w-3 h-3" />{forn.razao_social}</span>}
+                            {cont && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />Ct. {cont.numero_contrato}</span>}
+                            {p.data_pedido && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Pedido: {fmtDate(p.data_pedido)}</span>}
+                            {p.data_entrega_prevista && <span className="flex items-center gap-1"><Truck className="w-3 h-3" />Prev: {fmtDate(p.data_entrega_prevista)}</span>}
                           </div>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
-                          <div className="text-right">
-                            <p className="text-xs text-muted-foreground">Valor Total</p>
-                            <p className="text-sm font-bold">{formatCurrency(p.valor_total)}</p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={e => handleDeletePedido(p.id, e)}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
+                          <div className="text-right"><p className="text-xs text-muted-foreground">Valor Total</p><p className="text-sm font-bold">{fmtCurrency(p.valor_total)}</p></div>
+                          <Button size="sm" variant="ghost" onClick={e => handleDeletePedido(p.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                         </div>
                       </div>
                     </Card>
@@ -628,82 +799,30 @@ export default function GestaoCompras() {
 
           {/* ══ ABA FORNECEDORES ══ */}
           <TabsContent value="fornecedores" className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar fornecedor ou categoria..."
-                value={fornSearch}
-                onChange={e => setFornSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-
-            {filteredForn.length === 0 ? (
-              <Card className="p-12 text-center">
-                <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-muted-foreground">Nenhum fornecedor cadastrado</p>
-              </Card>
+            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar fornecedor ou categoria..." value={fornSearch} onChange={e => setFornSearch(e.target.value)} className="pl-9" /></div>
+            {filtForn.length === 0 ? (
+              <Card className="p-12 text-center"><Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">Nenhum fornecedor cadastrado</p></Card>
             ) : (
               <div className="space-y-2">
-                {filteredForn.map(f => (
+                {filtForn.map(f => (
                   <Card key={f.id} className={`p-4 ${!f.ativo ? 'opacity-60' : ''}`}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold">{f.razao_social}</span>
-                          {f.categoria && (
-                            <Badge variant="outline" className="text-[10px]">{f.categoria}</Badge>
-                          )}
-                          {!f.ativo && (
-                            <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                              Inativo
-                            </Badge>
-                          )}
+                          {f.categoria && <Badge variant="outline" className="text-[10px]">{f.categoria}</Badge>}
+                          {!f.ativo && <Badge variant="outline" className="text-[10px] text-muted-foreground">Inativo</Badge>}
                         </div>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                           {f.cnpj && <span>{f.cnpj}</span>}
-                          {f.contato_nome && (
-                            <span className="flex items-center gap-1">
-                              <Users className="w-3 h-3" />{f.contato_nome}
-                            </span>
-                          )}
+                          {f.contato_nome && <span className="flex items-center gap-1"><Users className="w-3 h-3" />{f.contato_nome}</span>}
                           {f.contato_email && <span>{f.contato_email}</span>}
-                          {f.prazo_entrega_dias != null && (
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />{f.prazo_entrega_dias}d prazo
-                            </span>
-                          )}
+                          {f.prazo_entrega_dias != null && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{f.prazo_entrega_dias}d prazo</span>}
                         </div>
                       </div>
                       <div className="flex gap-1 shrink-0">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setEditingForn(f);
-                            setFornForm({
-                              razao_social:       f.razao_social,
-                              cnpj:               f.cnpj               ?? '',
-                              categoria:          f.categoria          ?? '',
-                              prazo_entrega_dias: f.prazo_entrega_dias != null ? String(f.prazo_entrega_dias) : '',
-                              contato_nome:       f.contato_nome       ?? '',
-                              contato_email:      f.contato_email      ?? '',
-                              contato_telefone:   f.contato_telefone   ?? '',
-                              observacoes:        f.observacoes        ?? '',
-                              ativo:              f.ativo,
-                            });
-                            setFornDialogOpen(true);
-                          }}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={e => handleDeleteFornecedor(f.id, e)}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setEditingForn(f); setFornForm({ razao_social: f.razao_social, cnpj: f.cnpj ?? '', categoria: f.categoria ?? '', prazo_entrega_dias: f.prazo_entrega_dias != null ? String(f.prazo_entrega_dias) : '', contato_nome: f.contato_nome ?? '', contato_email: f.contato_email ?? '', contato_telefone: f.contato_telefone ?? '', observacoes: f.observacoes ?? '', ativo: f.ativo }); setFornOpen(true); }}><Pencil className="w-4 h-4" /></Button>
+                        <Button size="sm" variant="ghost" onClick={e => handleDeleteFornecedor(f.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                       </div>
                     </div>
                   </Card>
@@ -711,309 +830,315 @@ export default function GestaoCompras() {
               </div>
             )}
           </TabsContent>
+
+          {/* ══ ABA ESTOQUE ══ */}
+          <TabsContent value="estoque" className="space-y-4">
+            {/* Métricas */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><Package className="w-4 h-4" /> Produtos Ativos</div><p className="text-2xl font-bold">{produtos.filter(p => p.ativo).length}</p></Card>
+              <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><AlertCircle className="w-4 h-4" /> Em Alerta</div><p className={`text-2xl font-bold ${prodAlerta > 0 ? 'text-destructive' : ''}`}>{prodAlerta}</p></Card>
+              <Card className="p-4 col-span-2 sm:col-span-1"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><DollarSign className="w-4 h-4" /> Valor em Estoque</div><p className="text-lg font-bold leading-tight">{fmtCurrency(valorEstoque)}</p></Card>
+            </div>
+
+            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar produto, código ou categoria..." value={estoqSearch} onChange={e => setEstoqSearch(e.target.value)} className="pl-9" /></div>
+
+            {filtProdutos.length === 0 ? (
+              <Card className="p-12 text-center"><Warehouse className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground mb-3">Nenhum produto cadastrado</p><Button onClick={() => { setEditingProduto(null); setProdutoForm(defaultProdutoForm()); setProdutoOpen(true); }}><Plus className="w-4 h-4 mr-2" />Novo Produto</Button></Card>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filtProdutos.map(p => {
+                  const emAlerta = p.ativo && p.saldo_atual <= p.saldo_minimo;
+                  return (
+                    <Card key={p.id} className={`p-4 cursor-pointer hover:shadow-md transition-shadow ${!p.ativo ? 'opacity-60' : ''}`} onClick={() => setSelectedProduto(p)}>
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold truncate">{p.descricao}</p>
+                          <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                            {p.codigo && <span className="text-[10px] text-muted-foreground">{p.codigo}</span>}
+                            {p.categoria && <Badge variant="outline" className="text-[10px]">{p.categoria}</Badge>}
+                            {!p.ativo && <Badge variant="outline" className="text-[10px] text-muted-foreground">Inativo</Badge>}
+                          </div>
+                        </div>
+                        <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditingProduto(p); setProdutoForm({ codigo: p.codigo ?? '', descricao: p.descricao, unidade: p.unidade, categoria: p.categoria ?? '', saldo_minimo: String(p.saldo_minimo), ativo: p.ativo }); setProdutoOpen(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={e => handleDeleteProduto(p.id, e)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                        </div>
+                      </div>
+                      <div className={`flex items-end justify-between p-3 rounded-lg ${emAlerta ? 'bg-destructive/10' : 'bg-success/10'}`}>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Saldo</p>
+                          <p className={`text-2xl font-bold ${emAlerta ? 'text-destructive' : 'text-success'}`}>{p.saldo_atual.toLocaleString('pt-BR')}</p>
+                          <p className="text-xs text-muted-foreground">{p.unidade}</p>
+                        </div>
+                        <div className="text-right">
+                          {emAlerta && <div className="flex items-center gap-1 text-destructive text-xs mb-1"><AlertCircle className="w-3 h-3" />Estoque baixo</div>}
+                          <p className="text-xs text-muted-foreground">Mín: {p.saldo_minimo} {p.unidade}</p>
+                          {p.preco_custo_medio > 0 && <p className="text-xs text-muted-foreground">Custo: {fmtCurrency(p.preco_custo_medio)}/un</p>}
+                        </div>
+                      </div>
+                      {p.saldo_atual > 0 && p.preco_custo_medio > 0 && (
+                        <p className="text-xs text-muted-foreground text-right mt-1">Valor: {fmtCurrency(p.saldo_atual * p.preco_custo_medio)}</p>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* ══ ABA NF-e ══ */}
+          <TabsContent value="nfe" className="space-y-4">
+            {nfes.length === 0 ? (
+              <Card className="p-12 text-center"><FileText className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground mb-3">Nenhuma NF-e importada</p><Button onClick={() => { resetNfeDialog(); setNfeOpen(true); }}><Plus className="w-4 h-4 mr-2" />Importar NF-e</Button></Card>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-xs text-muted-foreground">
+                      <th className="text-left py-2 pr-4 font-medium">Número / Série</th>
+                      <th className="text-left py-2 px-2 font-medium">Emitente</th>
+                      <th className="text-right py-2 px-2 font-medium">Valor</th>
+                      <th className="text-left py-2 px-2 font-medium hidden sm:table-cell">Pedido</th>
+                      <th className="text-left py-2 px-2 font-medium hidden sm:table-cell">Data Emissão</th>
+                      <th className="py-2 pl-2 w-10" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {nfes.map(n => {
+                      const ped = pedidos.find(p => p.id === n.pedido_id);
+                      return (
+                        <tr key={n.id} className="hover:bg-muted/30">
+                          <td className="py-3 pr-4">
+                            <p className="font-medium">Nº {n.numero}</p>
+                            <p className="text-xs text-muted-foreground">Série {n.serie}</p>
+                          </td>
+                          <td className="py-3 px-2">
+                            <p className="font-medium truncate max-w-[180px]">{n.nome_emitente || '—'}</p>
+                            {n.cnpj_emitente && <p className="text-xs text-muted-foreground">{n.cnpj_emitente}</p>}
+                          </td>
+                          <td className="py-3 px-2 text-right font-medium">{fmtCurrency(n.valor_total)}</td>
+                          <td className="py-3 px-2 hidden sm:table-cell">
+                            {ped ? <Badge variant="outline" className="text-[10px]">{ped.observacoes || 'Pedido'}</Badge> : <span className="text-muted-foreground text-xs">—</span>}
+                          </td>
+                          <td className="py-3 px-2 hidden sm:table-cell text-muted-foreground text-xs">{fmtDate(n.data_emissao)}</td>
+                          <td className="py-3 pl-2">
+                            <Button size="sm" variant="ghost" onClick={e => handleDeleteNfe(n.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       )}
 
-      {/* ══ DIALOG NOVO PEDIDO ══ */}
-      <Dialog
-        open={pedidoDialogOpen}
-        onOpenChange={o => { setPedidoDialogOpen(o); if (!o) resetPedidoForm(); }}
-      >
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Novo Pedido de Compra</DialogTitle>
-          </DialogHeader>
+      {/* ══ DIALOGS GLOBAIS ══════════════════════════════════════ */}
 
+      {/* Dialog: Novo Pedido */}
+      <Dialog open={pedidoOpen} onOpenChange={o => { setPedidoOpen(o); if (!o) resetPedidoForm(); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Novo Pedido de Compra</DialogTitle></DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
             <div className="md:col-span-2">
               <Label>Fornecedor *</Label>
-              <Select
-                value={pedidoForm.fornecedor_id}
-                onValueChange={v => setPedidoForm(f => ({ ...f, fornecedor_id: v }))}
-              >
+              <Select value={pedidoForm.fornecedor_id} onValueChange={v => setPedidoForm(f => ({ ...f, fornecedor_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Selecione o fornecedor" /></SelectTrigger>
-                <SelectContent>
-                  {fornecedores.filter(f => f.ativo).map(f => (
-                    <SelectItem key={f.id} value={f.id}>
-                      {f.razao_social}{f.categoria ? ` — ${f.categoria}` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectContent>{fornecedores.filter(f => f.ativo).map(f => <SelectItem key={f.id} value={f.id}>{f.razao_social}{f.categoria ? ` — ${f.categoria}` : ''}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-
             <div className="md:col-span-2">
               <Label>Contrato vinculado (opcional)</Label>
-              <Select
-                value={pedidoForm.contrato_id || 'none'}
-                onValueChange={v => setPedidoForm(f => ({ ...f, contrato_id: v === 'none' ? '' : v }))}
-              >
+              <Select value={pedidoForm.contrato_id || 'none'} onValueChange={v => setPedidoForm(f => ({ ...f, contrato_id: v === 'none' ? '' : v }))}>
                 <SelectTrigger><SelectValue placeholder="Nenhum contrato" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— Sem contrato —</SelectItem>
-                  {contratos.map(c => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.numero_contrato} — {c.orgao_contratante}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectContent><SelectItem value="none">— Sem contrato —</SelectItem>{contratos.map(c => <SelectItem key={c.id} value={c.id}>{c.numero_contrato} — {c.orgao_contratante}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-
-            <div>
-              <Label>Data do Pedido</Label>
-              <Input
-                type="date"
-                value={pedidoForm.data_pedido}
-                onChange={e => setPedidoForm(f => ({ ...f, data_pedido: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label>Entrega Prevista</Label>
-              <Input
-                type="date"
-                value={pedidoForm.data_entrega_prevista}
-                onChange={e => setPedidoForm(f => ({ ...f, data_entrega_prevista: e.target.value }))}
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <Label>Descrição / Observações</Label>
-              <Textarea
-                value={pedidoForm.observacoes}
-                onChange={e => setPedidoForm(f => ({ ...f, observacoes: e.target.value }))}
-                rows={2}
-                placeholder="Descreva o objeto deste pedido..."
-              />
-            </div>
+            <div><Label>Data do Pedido</Label><Input type="date" value={pedidoForm.data_pedido} onChange={e => setPedidoForm(f => ({ ...f, data_pedido: e.target.value }))} /></div>
+            <div><Label>Entrega Prevista</Label><Input type="date" value={pedidoForm.data_entrega_prevista} onChange={e => setPedidoForm(f => ({ ...f, data_entrega_prevista: e.target.value }))} /></div>
+            <div className="md:col-span-2"><Label>Descrição / Observações</Label><Textarea value={pedidoForm.observacoes} onChange={e => setPedidoForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} placeholder="Descreva o objeto deste pedido..." /></div>
           </div>
-
-          {/* Itens dinâmicos */}
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
               <Label className="text-sm font-semibold">Itens do Pedido *</Label>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setFormItens(i => [...i, blankItem()])}
-              >
-                <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Item
-              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setFormItens(i => [...i, blankItem()])}><Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Item</Button>
             </div>
-
-            {/* Cabeçalho da grid */}
             <div className="hidden sm:grid grid-cols-12 gap-2 mb-1 text-xs text-muted-foreground px-1">
-              <span className="col-span-5">Descrição</span>
-              <span className="col-span-2">Unidade</span>
-              <span className="col-span-2 text-right">Quantidade</span>
-              <span className="col-span-2 text-right">Preço unit.</span>
-              <span className="col-span-1" />
+              <span className="col-span-5">Descrição</span><span className="col-span-2">Unidade</span><span className="col-span-2 text-right">Quantidade</span><span className="col-span-2 text-right">Preço unit.</span><span className="col-span-1" />
             </div>
-
             <div className="space-y-2">
               {formItens.map((item, idx) => {
-                const subtotal = parseNum(item.quantidade) * parseNum(item.preco_unitario);
+                const sub = parseNum(item.quantidade) * parseNum(item.preco_unitario);
                 return (
                   <div key={idx} className="space-y-1">
                     <div className="grid grid-cols-12 gap-2 items-center">
-                      <div className="col-span-12 sm:col-span-5">
-                        <Input
-                          placeholder="Descrição do item"
-                          value={item.descricao}
-                          onChange={e =>
-                            setFormItens(arr =>
-                              arr.map((x, i) => i === idx ? { ...x, descricao: e.target.value } : x)
-                            )
-                          }
-                          className="text-xs"
-                        />
-                      </div>
-                      <div className="col-span-4 sm:col-span-2">
-                        <Input
-                          placeholder="UN"
-                          value={item.unidade}
-                          onChange={e =>
-                            setFormItens(arr =>
-                              arr.map((x, i) => i === idx ? { ...x, unidade: e.target.value } : x)
-                            )
-                          }
-                          className="text-xs"
-                        />
-                      </div>
-                      <div className="col-span-3 sm:col-span-2">
-                        <Input
-                          type="number"
-                          min="0"
-                          step="1"
-                          placeholder="Qtd."
-                          value={item.quantidade}
-                          onChange={e =>
-                            setFormItens(arr =>
-                              arr.map((x, i) => i === idx ? { ...x, quantidade: e.target.value } : x)
-                            )
-                          }
-                          className="text-xs"
-                        />
-                      </div>
-                      <div className="col-span-4 sm:col-span-2">
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="R$ unit."
-                          value={item.preco_unitario}
-                          onChange={e =>
-                            setFormItens(arr =>
-                              arr.map((x, i) => i === idx ? { ...x, preco_unitario: e.target.value } : x)
-                            )
-                          }
-                          className="text-xs"
-                        />
-                      </div>
-                      <div className="col-span-1 flex justify-center">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0"
-                          disabled={formItens.length === 1}
-                          onClick={() => setFormItens(arr => arr.filter((_, i) => i !== idx))}
-                        >
-                          <X className="w-3.5 h-3.5 text-destructive" />
-                        </Button>
-                      </div>
+                      <div className="col-span-12 sm:col-span-5"><Input placeholder="Descrição do item" value={item.descricao} onChange={e => setFormItens(arr => arr.map((x, i) => i === idx ? { ...x, descricao: e.target.value } : x))} className="text-xs" /></div>
+                      <div className="col-span-4 sm:col-span-2"><Input placeholder="UN" value={item.unidade} onChange={e => setFormItens(arr => arr.map((x, i) => i === idx ? { ...x, unidade: e.target.value } : x))} className="text-xs" /></div>
+                      <div className="col-span-3 sm:col-span-2"><Input type="number" min="0" step="1" placeholder="Qtd." value={item.quantidade} onChange={e => setFormItens(arr => arr.map((x, i) => i === idx ? { ...x, quantidade: e.target.value } : x))} className="text-xs" /></div>
+                      <div className="col-span-4 sm:col-span-2"><Input type="number" min="0" step="0.01" placeholder="R$ unit." value={item.preco_unitario} onChange={e => setFormItens(arr => arr.map((x, i) => i === idx ? { ...x, preco_unitario: e.target.value } : x))} className="text-xs" /></div>
+                      <div className="col-span-1 flex justify-center"><Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0" disabled={formItens.length === 1} onClick={() => setFormItens(arr => arr.filter((_, i) => i !== idx))}><X className="w-3.5 h-3.5 text-destructive" /></Button></div>
                     </div>
-                    {subtotal > 0 && (
-                      <p className="text-right text-xs text-muted-foreground pr-10">
-                        = {formatCurrency(subtotal)}
-                      </p>
-                    )}
+                    {sub > 0 && <p className="text-right text-xs text-muted-foreground pr-10">= {fmtCurrency(sub)}</p>}
                   </div>
                 );
               })}
             </div>
-
             {formItens.some(i => i.descricao.trim()) && (
-              <div className="mt-3 p-2 rounded bg-muted/40 text-sm font-semibold text-right">
-                Total: {formatCurrency(
-                  formItens.reduce((s, i) => s + parseNum(i.quantidade) * parseNum(i.preco_unitario), 0)
+              <div className="mt-3 p-2 rounded bg-muted/40 text-sm font-semibold text-right">Total: {fmtCurrency(formItens.reduce((s, i) => s + parseNum(i.quantidade) * parseNum(i.preco_unitario), 0))}</div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => { setPedidoOpen(false); resetPedidoForm(); }}>Cancelar</Button>
+            <Button onClick={handleSavePedido} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Salvar Pedido</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Fornecedor */}
+      <Dialog open={fornOpen} onOpenChange={o => { setFornOpen(o); if (!o) { setEditingForn(null); setFornForm(defaultFornForm()); } }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{editingForn ? 'Editar Fornecedor' : 'Novo Fornecedor'}</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+            <div className="md:col-span-2"><Label>Razão Social *</Label><Input value={fornForm.razao_social} onChange={e => setFornForm(f => ({ ...f, razao_social: e.target.value }))} /></div>
+            <div><Label>CNPJ</Label><Input value={fornForm.cnpj} onChange={e => setFornForm(f => ({ ...f, cnpj: e.target.value }))} placeholder="00.000.000/0001-00" /></div>
+            <div><Label>Categoria</Label><Input value={fornForm.categoria} onChange={e => setFornForm(f => ({ ...f, categoria: e.target.value }))} placeholder="Materiais, TI, Serviços..." /></div>
+            <div><Label>Prazo de Entrega (dias)</Label><Input type="number" min="0" value={fornForm.prazo_entrega_dias} onChange={e => setFornForm(f => ({ ...f, prazo_entrega_dias: e.target.value }))} /></div>
+            <div className="flex items-center gap-3 mt-5"><Switch id="forn-ativo" checked={fornForm.ativo} onCheckedChange={v => setFornForm(f => ({ ...f, ativo: v }))} /><Label htmlFor="forn-ativo" className="cursor-pointer">Fornecedor ativo</Label></div>
+            <div><Label>Contato — Nome</Label><Input value={fornForm.contato_nome} onChange={e => setFornForm(f => ({ ...f, contato_nome: e.target.value }))} /></div>
+            <div><Label>Contato — E-mail</Label><Input type="email" value={fornForm.contato_email} onChange={e => setFornForm(f => ({ ...f, contato_email: e.target.value }))} /></div>
+            <div className="md:col-span-2"><Label>Contato — Telefone</Label><Input value={fornForm.contato_telefone} onChange={e => setFornForm(f => ({ ...f, contato_telefone: e.target.value }))} /></div>
+            <div className="md:col-span-2"><Label>Observações</Label><Textarea value={fornForm.observacoes} onChange={e => setFornForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} /></div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => { setFornOpen(false); setEditingForn(null); setFornForm(defaultFornForm()); }}>Cancelar</Button>
+            <Button onClick={handleSaveFornecedor} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Salvar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Produto */}
+      <ProdutoDialog open={produtoOpen} onOpenChange={setProdutoOpen} editing={editingProduto} form={produtoForm} setForm={setProdutoForm} saving={saving} onSave={handleSaveProduto} onClose={() => { setEditingProduto(null); setProdutoForm(defaultProdutoForm()); }} />
+
+      {/* Dialog: Movimentação */}
+      <MovDialog open={movOpen} onOpenChange={setMovOpen} form={movForm} setForm={setMovForm} saving={saving} onSave={handleSaveMovimento} produtos={produtosAtivosParaSelect} />
+
+      {/* Dialog: NF-e */}
+      <Dialog open={nfeOpen} onOpenChange={o => { setNfeOpen(o); if (!o) resetNfeDialog(); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Importar NF-e Recebida</DialogTitle></DialogHeader>
+
+          {/* Seletor de modo */}
+          <div className="flex gap-2 mt-2 mb-4">
+            <Button size="sm" variant={nfeMode === 'xml' ? 'default' : 'outline'} onClick={() => setNfeMode('xml')}><Upload className="w-3.5 h-3.5 mr-1.5" />Arquivo XML</Button>
+            <Button size="sm" variant={nfeMode === 'manual' ? 'default' : 'outline'} onClick={() => setNfeMode('manual')}><Pencil className="w-3.5 h-3.5 mr-1.5" />Preencher manualmente</Button>
+          </div>
+
+          {/* Modo XML */}
+          {nfeMode === 'xml' && (
+            <div className="space-y-4">
+              <div
+                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${nfeDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/30 hover:border-primary/50'}`}
+                onClick={() => fileRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); setNfeDragging(true); }}
+                onDragLeave={() => setNfeDragging(false)}
+                onDrop={e => { e.preventDefault(); setNfeDragging(false); const f = e.dataTransfer.files[0]; if (f) handleNfeFile(f); }}
+              >
+                <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm font-medium">Clique ou arraste o arquivo XML aqui</p>
+                <p className="text-xs text-muted-foreground mt-1">Formato NF-e 4.0 (.xml)</p>
+                <input ref={fileRef} type="file" accept=".xml" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleNfeFile(f); e.target.value = ''; }} />
+              </div>
+
+              {nfeParsed && (
+                <Card className="p-4 bg-success/5 border-success/30">
+                  <p className="text-xs font-semibold text-success mb-2 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" />NF-e lida com sucesso</p>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+                    <div><span className="text-muted-foreground">Número:</span> {nfeParsed.numero_nf} / Série {nfeParsed.serie}</div>
+                    <div><span className="text-muted-foreground">Emitente:</span> {nfeParsed.nome_emitente}</div>
+                    <div><span className="text-muted-foreground">CNPJ:</span> {nfeParsed.cnpj_emitente}</div>
+                    <div><span className="text-muted-foreground">Valor total:</span> <span className="font-semibold">{fmtCurrency(nfeParsed.v_nf)}</span></div>
+                    <div><span className="text-muted-foreground">Emissão:</span> {nfeParsed.data_emissao ? fmtDate(nfeParsed.data_emissao.split('T')[0]) : '—'}</div>
+                    <div><span className="text-muted-foreground">Itens:</span> {nfeParsed.itens.length}</div>
+                  </div>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* Modo manual */}
+          {nfeMode === 'manual' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><Label>Número *</Label><Input value={nfeForm.numero} onChange={e => setNfeForm(f => ({ ...f, numero: e.target.value }))} placeholder="000001" /></div>
+              <div><Label>Série</Label><Input value={nfeForm.serie} onChange={e => setNfeForm(f => ({ ...f, serie: e.target.value }))} /></div>
+              <div className="sm:col-span-2"><Label>Chave de Acesso (44 dígitos)</Label><Input value={nfeForm.chave_acesso} onChange={e => setNfeForm(f => ({ ...f, chave_acesso: e.target.value }))} placeholder="00000000000000000000000000000000000000000000" maxLength={44} /></div>
+              <div><Label>Data de Emissão</Label><Input type="date" value={nfeForm.data_emissao} onChange={e => setNfeForm(f => ({ ...f, data_emissao: e.target.value }))} /></div>
+              <div><Label>Valor Total *</Label><Input type="number" min="0" step="0.01" value={nfeForm.valor_total} onChange={e => setNfeForm(f => ({ ...f, valor_total: e.target.value }))} /></div>
+              <div><Label>CNPJ Emitente</Label><Input value={nfeForm.cnpj_emitente} onChange={e => setNfeForm(f => ({ ...f, cnpj_emitente: e.target.value }))} placeholder="00.000.000/0001-00" /></div>
+              <div><Label>Razão Social Emitente</Label><Input value={nfeForm.nome_emitente} onChange={e => setNfeForm(f => ({ ...f, nome_emitente: e.target.value }))} /></div>
+            </div>
+          )}
+
+          {/* Seção comum: vincular pedido + estoque */}
+          <div className="mt-4 space-y-4 border-t pt-4">
+            <div>
+              <Label>Vincular a pedido (opcional)</Label>
+              <Select value={nfeForm.pedido_id || 'none'} onValueChange={v => setNfeForm(f => ({ ...f, pedido_id: v === 'none' ? '' : v }))}>
+                <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Sem pedido —</SelectItem>
+                  {pedidos.filter(p => p.status !== 'cancelado').map(p => {
+                    const forn = fornecedores.find(f => f.id === p.fornecedor_id);
+                    return <SelectItem key={p.id} value={p.id}>{p.observacoes || 'Pedido'}{forn ? ` — ${forn.razao_social}` : ''} ({fmtCurrency(p.valor_total)})</SelectItem>;
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Registrar no estoque (só para XML com itens) */}
+            {nfeMode === 'xml' && nfeParsed && nfeParsed.itens.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox id="nfe-estoque" checked={nfeRegEstoque} onCheckedChange={v => { const val = !!v; setNfeRegEstoque(val); if (val && !nfeItemMaps.length) setNfeItemMaps(nfeParsed.itens.map(item => ({ item, produtoId: '', novaNome: item.x_prod, incluir: true }))); }} />
+                  <Label htmlFor="nfe-estoque" className="cursor-pointer">Registrar itens no estoque</Label>
+                </div>
+                {nfeRegEstoque && (
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {nfeItemMaps.map((m, idx) => (
+                      <div key={idx} className={`border rounded-lg p-3 space-y-2 ${!m.incluir ? 'opacity-50' : ''}`}>
+                        <div className="flex items-start gap-2">
+                          <Checkbox checked={m.incluir} onCheckedChange={v => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, incluir: !!v } : x))} className="mt-0.5" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium truncate">{m.item.x_prod}</p>
+                            <p className="text-[10px] text-muted-foreground">{m.item.q_com} {m.item.u_com} · {fmtCurrency(m.item.v_un_com)}/un</p>
+                          </div>
+                        </div>
+                        {m.incluir && (
+                          <Select value={m.produtoId} onValueChange={v => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, produtoId: v } : x))}>
+                            <SelectTrigger className="text-xs h-8"><SelectValue placeholder="Selecione o produto do catálogo" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">— Não vincular a produto —</SelectItem>
+                              {produtosAtivosParaSelect.map(pr => <SelectItem key={pr.id} value={pr.id}>{pr.descricao}{pr.codigo ? ` (${pr.codigo})` : ''}</SelectItem>)}
+                              <SelectItem value="__new__">+ Criar novo produto</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {m.incluir && m.produtoId === '__new__' && (
+                          <Input className="text-xs h-8" placeholder="Nome do novo produto" value={m.novaNome} onChange={e => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, novaNome: e.target.value } : x))} />
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
           </div>
 
           <div className="flex justify-end gap-2 mt-4">
-            <Button
-              variant="outline"
-              onClick={() => { setPedidoDialogOpen(false); resetPedidoForm(); }}
-            >
-              Cancelar
-            </Button>
-            <Button onClick={handleSavePedido} disabled={saving}>
-              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              Salvar Pedido
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ══ DIALOG FORNECEDOR ══ */}
-      <Dialog
-        open={fornDialogOpen}
-        onOpenChange={o => {
-          setFornDialogOpen(o);
-          if (!o) { setEditingForn(null); setFornForm(defaultFornForm); }
-        }}
-      >
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingForn ? 'Editar Fornecedor' : 'Novo Fornecedor'}</DialogTitle>
-          </DialogHeader>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-            <div className="md:col-span-2">
-              <Label>Razão Social *</Label>
-              <Input
-                value={fornForm.razao_social}
-                onChange={e => setFornForm(f => ({ ...f, razao_social: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label>CNPJ</Label>
-              <Input
-                value={fornForm.cnpj}
-                onChange={e => setFornForm(f => ({ ...f, cnpj: e.target.value }))}
-                placeholder="00.000.000/0001-00"
-              />
-            </div>
-            <div>
-              <Label>Categoria</Label>
-              <Input
-                value={fornForm.categoria}
-                onChange={e => setFornForm(f => ({ ...f, categoria: e.target.value }))}
-                placeholder="ex: Materiais, TI, Serviços"
-              />
-            </div>
-            <div>
-              <Label>Prazo de Entrega (dias)</Label>
-              <Input
-                type="number"
-                min="0"
-                value={fornForm.prazo_entrega_dias}
-                onChange={e => setFornForm(f => ({ ...f, prazo_entrega_dias: e.target.value }))}
-              />
-            </div>
-            <div className="flex items-center gap-3 mt-5">
-              <Switch
-                id="forn-ativo"
-                checked={fornForm.ativo}
-                onCheckedChange={v => setFornForm(f => ({ ...f, ativo: v }))}
-              />
-              <Label htmlFor="forn-ativo" className="cursor-pointer">Fornecedor ativo</Label>
-            </div>
-            <div>
-              <Label>Contato — Nome</Label>
-              <Input
-                value={fornForm.contato_nome}
-                onChange={e => setFornForm(f => ({ ...f, contato_nome: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label>Contato — E-mail</Label>
-              <Input
-                type="email"
-                value={fornForm.contato_email}
-                onChange={e => setFornForm(f => ({ ...f, contato_email: e.target.value }))}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Label>Contato — Telefone</Label>
-              <Input
-                value={fornForm.contato_telefone}
-                onChange={e => setFornForm(f => ({ ...f, contato_telefone: e.target.value }))}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Label>Observações</Label>
-              <Textarea
-                value={fornForm.observacoes}
-                onChange={e => setFornForm(f => ({ ...f, observacoes: e.target.value }))}
-                rows={2}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 mt-4">
-            <Button
-              variant="outline"
-              onClick={() => { setFornDialogOpen(false); setEditingForn(null); setFornForm(defaultFornForm); }}
-            >
-              Cancelar
-            </Button>
-            <Button onClick={handleSaveFornecedor} disabled={saving}>
-              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              Salvar
+            <Button variant="outline" onClick={() => { setNfeOpen(false); resetNfeDialog(); }}>Cancelar</Button>
+            <Button onClick={handleSaveNfe} disabled={saving || (nfeMode === 'xml' && !nfeParsed && !nfeForm.numero)}>
+              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Salvar NF-e
             </Button>
           </div>
         </DialogContent>
@@ -1022,97 +1147,141 @@ export default function GestaoCompras() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// Onboarding — exibido quando não há nenhum pedido nem fornecedor
-// ═══════════════════════════════════════════════════════════════════
+// ── Sub-componente: Dialog Produto ────────────────────────────
+type ProdutoDialogProps = {
+  open: boolean; onOpenChange: (v: boolean) => void;
+  editing: Produto | null;
+  form: ReturnType<typeof defaultProdutoForm>;
+  setForm: React.Dispatch<React.SetStateAction<ReturnType<typeof defaultProdutoForm>>>;
+  saving: boolean; onSave: () => void; onClose: () => void;
+};
+function ProdutoDialog({ open, onOpenChange, editing, form, setForm, saving, onSave, onClose }: ProdutoDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={o => { onOpenChange(o); if (!o) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>{editing ? 'Editar Produto' : 'Novo Produto'}</DialogTitle></DialogHeader>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+          <div className="sm:col-span-2"><Label>Descrição *</Label><Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} /></div>
+          <div><Label>Código</Label><Input value={form.codigo} onChange={e => setForm(f => ({ ...f, codigo: e.target.value }))} placeholder="ex: MAT-001" /></div>
+          <div><Label>Unidade</Label><Input value={form.unidade} onChange={e => setForm(f => ({ ...f, unidade: e.target.value }))} placeholder="UN, KG, M², L..." /></div>
+          <div><Label>Categoria</Label><Input value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} placeholder="ex: Material, EPI..." /></div>
+          <div><Label>Saldo Mínimo</Label><Input type="number" min="0" step="0.01" value={form.saldo_minimo} onChange={e => setForm(f => ({ ...f, saldo_minimo: e.target.value }))} /></div>
+          <div className="flex items-center gap-3 sm:col-span-2 mt-1"><Switch id="prod-ativo" checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label htmlFor="prod-ativo" className="cursor-pointer">Produto ativo</Label></div>
+        </div>
+        <div className="flex justify-end gap-2 mt-4">
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button onClick={onSave} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Salvar</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Sub-componente: Dialog Movimentação ───────────────────────
+type MovDialogProps = {
+  open: boolean; onOpenChange: (v: boolean) => void;
+  form: ReturnType<typeof defaultMovForm>;
+  setForm: React.Dispatch<React.SetStateAction<ReturnType<typeof defaultMovForm>>>;
+  saving: boolean; onSave: () => void; produtos: Produto[];
+};
+function MovDialog({ open, onOpenChange, form, setForm, saving, onSave, produtos }: MovDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={o => { onOpenChange(o); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Nova Movimentação de Estoque</DialogTitle></DialogHeader>
+        <div className="space-y-4 mt-3">
+          <div>
+            <Label>Produto *</Label>
+            <Select value={form.produto_id} onValueChange={v => setForm(f => ({ ...f, produto_id: v }))}>
+              <SelectTrigger><SelectValue placeholder="Selecione o produto" /></SelectTrigger>
+              <SelectContent>{produtos.map(p => <SelectItem key={p.id} value={p.id}>{p.descricao}{p.codigo ? ` (${p.codigo})` : ''}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Tipo *</Label>
+            <Select value={form.tipo} onValueChange={(v: any) => setForm(f => ({ ...f, tipo: v }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="entrada"><span className="flex items-center gap-2"><TrendingUp className="w-3.5 h-3.5 text-green-600" />Entrada</span></SelectItem>
+                <SelectItem value="saida"><span className="flex items-center gap-2"><TrendingDown className="w-3.5 h-3.5 text-red-600" />Saída</span></SelectItem>
+                <SelectItem value="ajuste"><span className="flex items-center gap-2"><RotateCcw className="w-3.5 h-3.5 text-blue-600" />Ajuste</span></SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {form.tipo === 'ajuste' && (
+            <div>
+              <Label>Tipo de Ajuste</Label>
+              <Select value={form.ajuste_dir} onValueChange={(v: any) => setForm(f => ({ ...f, ajuste_dir: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mais">Adicionar ao saldo (+)</SelectItem>
+                  <SelectItem value="menos">Reduzir o saldo (−)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div>
+            <Label>Quantidade *</Label>
+            <Input type="number" min="0.001" step="0.001" value={form.quantidade} onChange={e => setForm(f => ({ ...f, quantidade: e.target.value }))} placeholder="0" />
+          </div>
+          {(form.tipo === 'entrada' || form.tipo === 'ajuste') && (
+            <div>
+              <Label>Preço Unitário (opcional)</Label>
+              <Input type="number" min="0" step="0.01" value={form.preco_unitario} onChange={e => setForm(f => ({ ...f, preco_unitario: e.target.value }))} placeholder="R$ 0,00" />
+            </div>
+          )}
+          <div>
+            <Label>Observações</Label>
+            <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} placeholder="Motivo, referência, etc." />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={onSave} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Registrar</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Onboarding — exibido quando não há nenhum dado cadastrado
+// ═══════════════════════════════════════════════════════════════
 type OnboardingProps = {
   onCadastrarFornecedor: () => void;
-  onNovoPedido:          () => void;
-  onProdutos:            () => void;
+  onNovoPedido: () => void;
+  onEstoque: () => void;
+  onImportarNfe: () => void;
 };
 
-function OnboardingCompras({ onCadastrarFornecedor, onNovoPedido, onProdutos }: OnboardingProps) {
-  const steps: {
-    icon: React.ElementType;
-    title: string;
-    desc: string;
-    btn: string;
-    onClick: () => void;
-  }[] = [
-    {
-      icon:    Building2,
-      title:   'Cadastre Fornecedores',
-      desc:    'Adicione os fornecedores com quem você vai trabalhar.',
-      btn:     'Cadastrar Fornecedor',
-      onClick: onCadastrarFornecedor,
-    },
-    {
-      icon:    Package,
-      title:   'Cadastre Produtos',
-      desc:    'Monte seu catálogo de produtos e serviços.',
-      btn:     'Cadastrar Produto',
-      onClick: onProdutos,
-    },
-    {
-      icon:    ShoppingCart,
-      title:   'Registre uma Compra',
-      desc:    'Crie seu primeiro pedido de compra.',
-      btn:     'Nova Compra',
-      onClick: onNovoPedido,
-    },
-    {
-      icon:    BarChart3,
-      title:   'Movimente o Estoque',
-      desc:    'Controle entradas e saídas do seu estoque.',
-      btn:     'Ver Estoque',
-      onClick: () => toast.info('Em breve: módulo de estoque'),
-    },
-    {
-      icon:    FileText,
-      title:   'Importe NF-e Recebida',
-      desc:    'Vincule notas fiscais recebidas às suas compras.',
-      btn:     'Importar NF-e',
-      onClick: () => toast.info('Em breve: importação de NF-e'),
-    },
+function OnboardingCompras({ onCadastrarFornecedor, onNovoPedido, onEstoque, onImportarNfe }: OnboardingProps) {
+  const steps: { icon: React.ElementType; title: string; desc: string; btn: string; onClick: () => void }[] = [
+    { icon: Building2, title: 'Cadastre Fornecedores', desc: 'Adicione os fornecedores com quem você vai trabalhar.', btn: 'Cadastrar Fornecedor', onClick: onCadastrarFornecedor },
+    { icon: Package,   title: 'Monte o Catálogo',      desc: 'Cadastre os produtos e materiais que gerencia.', btn: 'Novo Produto', onClick: onEstoque },
+    { icon: ShoppingCart, title: 'Registre uma Compra', desc: 'Crie seu primeiro pedido de compra.', btn: 'Nova Compra', onClick: onNovoPedido },
+    { icon: Warehouse, title: 'Movimente o Estoque',   desc: 'Controle entradas e saídas do seu estoque.', btn: 'Ver Estoque', onClick: onEstoque },
+    { icon: FileText,  title: 'Importe NF-e Recebida', desc: 'Vincule notas fiscais recebidas às suas compras.', btn: 'Importar NF-e', onClick: onImportarNfe },
   ];
 
   return (
     <div className="max-w-2xl mx-auto px-4">
-      <p className="text-base text-muted-foreground text-center mb-12">
-        Siga as etapas abaixo para configurar seu fluxo de compras.
-      </p>
-
+      <p className="text-base text-muted-foreground text-center mb-12">Siga as etapas abaixo para configurar seu fluxo de compras.</p>
       <ol>
         {steps.map((step, idx) => {
           const StepIcon = step.icon;
           const isLast   = idx === steps.length - 1;
           return (
             <li key={idx} className="flex gap-5">
-              {/* Trilha vertical */}
               <div className="flex flex-col items-center pt-0.5">
-                <div className="flex items-center justify-center w-11 h-11 rounded-full border-2 border-primary/40 bg-primary/10 text-primary text-sm font-bold flex-shrink-0">
-                  {idx + 1}
-                </div>
+                <div className="flex items-center justify-center w-11 h-11 rounded-full border-2 border-primary/40 bg-primary/10 text-primary text-sm font-bold flex-shrink-0">{idx + 1}</div>
                 {!isLast && <div className="w-px flex-1 bg-border mt-2 mb-2 min-h-[32px]" />}
               </div>
-
-              {/* Conteúdo */}
               <div className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 flex-1 ${isLast ? 'pb-0' : 'pb-10'}`}>
                 <div className="flex items-start gap-3 flex-1">
                   <StepIcon className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-base font-semibold leading-tight">{step.title}</p>
-                    <p className="text-sm text-muted-foreground mt-1">{step.desc}</p>
-                  </div>
+                  <div><p className="text-base font-semibold leading-tight">{step.title}</p><p className="text-sm text-muted-foreground mt-1">{step.desc}</p></div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={step.onClick}
-                  className="shrink-0 self-start sm:self-auto"
-                >
-                  {step.btn}
-                </Button>
+                <Button size="sm" variant="outline" onClick={step.onClick} className="shrink-0 self-start sm:self-auto">{step.btn}</Button>
               </div>
             </li>
           );
