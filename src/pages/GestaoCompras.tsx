@@ -95,7 +95,7 @@ const movConfig = {
 // ── Form defaults ─────────────────────────────────────────────
 const defaultPedidoForm  = () => ({ contrato_id: '', fornecedor_id: '', data_pedido: today(), data_entrega_prevista: '', observacoes: '' });
 const defaultFornForm    = () => ({ razao_social: '', cnpj: '', categoria: '', prazo_entrega_dias: '', contato_nome: '', contato_email: '', contato_telefone: '', observacoes: '', ativo: true });
-const defaultProdutoForm = () => ({ codigo: '', descricao: '', unidade: 'UN', categoria: '', saldo_minimo: '0', ativo: true });
+const defaultProdutoForm = () => ({ codigo: '', descricao: '', unidade: 'UN', categoria: '', saldo_minimo: '0', preco_custo_medio: '0', ativo: true });
 const defaultMovForm     = () => ({ produto_id: '', tipo: 'entrada' as const, ajuste_dir: 'mais' as 'mais' | 'menos', quantidade: '', preco_unitario: '', observacoes: '' });
 const defaultNfeForm     = () => ({ numero: '', serie: '1', chave_acesso: '', data_emissao: today(), cnpj_emitente: '', nome_emitente: '', valor_total: '', pedido_id: '' });
 
@@ -307,7 +307,7 @@ export default function GestaoCompras() {
     if (!empresaAtiva) return;
     if (!produtoForm.descricao.trim()) { toast.error('Descrição obrigatória'); return; }
     setSaving(true);
-    const payload = { empresa_id: empresaAtiva.id, codigo: produtoForm.codigo || null, descricao: produtoForm.descricao.trim(), unidade: produtoForm.unidade || 'UN', categoria: produtoForm.categoria || null, saldo_minimo: parseNum(produtoForm.saldo_minimo), ativo: produtoForm.ativo };
+    const payload = { empresa_id: empresaAtiva.id, codigo: produtoForm.codigo || null, descricao: produtoForm.descricao.trim(), unidade: produtoForm.unidade || 'UN', categoria: produtoForm.categoria || null, saldo_minimo: parseNum(produtoForm.saldo_minimo), preco_custo_medio: parseNum(produtoForm.preco_custo_medio), ativo: produtoForm.ativo };
     let error: any;
     if (editingProduto) {
       ({ error } = await supabase.from('produtos').update(payload as any).eq('id', editingProduto.id));
@@ -392,7 +392,18 @@ export default function GestaoCompras() {
     reader.onload = e => {
       const text = e.target?.result as string;
       try {
+        // Verifica se o XML é válido antes de processar
+        const testDoc = new DOMParser().parseFromString(text, 'application/xml');
+        if (testDoc.querySelector('parsererror')) {
+          toast.error('Arquivo XML inválido ou corrompido.');
+          return;
+        }
         const parsed = parseNFeXML(text);
+        // Verifica se é realmente uma NF-e (número e valor devem existir)
+        if (!parsed.numero_nf && !parsed.v_nf) {
+          toast.error('O arquivo não parece ser uma NF-e válida (nenhum dado encontrado).');
+          return;
+        }
         setNfeParsed(parsed);
         setNfeXmlStr(text);
         const dataEmissao = parsed.data_emissao?.split('T')[0] ?? today();
@@ -409,7 +420,7 @@ export default function GestaoCompras() {
   const handleSaveNfe = async () => {
     if (!empresaAtiva || !user) return;
     const num = nfeParsed ? String(nfeParsed.numero_nf) : nfeForm.numero;
-    if (!num) { toast.error('Número da NF-e obrigatório'); return; }
+    if (!num || num === '0') { toast.error('Número da NF-e obrigatório'); return; }
     setSaving(true);
     const payload: any = {
       empresa_id: empresaAtiva.id,
@@ -468,7 +479,7 @@ export default function GestaoCompras() {
   const filtPedidos    = pedidos.filter(p => { const forn = fornecedores.find(f => f.id === p.fornecedor_id); const cont = contratos.find(c => c.id === p.contrato_id); const txt = `${p.observacoes ?? ''} ${forn?.razao_social ?? ''} ${cont?.numero_contrato ?? ''}`.toLowerCase(); return (!search || txt.includes(search.toLowerCase())) && (statusFilter === 'all' || p.status === statusFilter); });
   const filtForn       = fornecedores.filter(f => !fornSearch || f.razao_social.toLowerCase().includes(fornSearch.toLowerCase()) || (f.categoria ?? '').toLowerCase().includes(fornSearch.toLowerCase()));
   const filtProdutos   = produtos.filter(p => !estoqSearch || p.descricao.toLowerCase().includes(estoqSearch.toLowerCase()) || (p.codigo ?? '').toLowerCase().includes(estoqSearch.toLowerCase()) || (p.categoria ?? '').toLowerCase().includes(estoqSearch.toLowerCase()));
-  const prodAlerta     = produtos.filter(p => p.ativo && p.saldo_atual <= p.saldo_minimo).length;
+  const prodAlerta     = produtos.filter(p => p.ativo && p.saldo_minimo > 0 && p.saldo_atual <= p.saldo_minimo).length;
   const valorEstoque   = produtos.filter(p => p.ativo).reduce((s, p) => s + p.saldo_atual * p.preco_custo_medio, 0);
   const isOnboarding   = !loading && !pedidos.length && !fornecedores.length && !produtos.length && !nfes.length;
 
@@ -477,7 +488,7 @@ export default function GestaoCompras() {
   // ══ DETAIL: PRODUTO ══════════════════════════════════════════
   if (selectedProduto) {
     const p = selectedProduto;
-    const emAlerta = p.saldo_atual <= p.saldo_minimo;
+    const emAlerta = p.saldo_minimo > 0 && p.saldo_atual <= p.saldo_minimo;
     return (
       <AppLayout>
         <div className="mb-4">
@@ -506,7 +517,7 @@ export default function GestaoCompras() {
                   {p.saldo_atual.toLocaleString('pt-BR')} <span className="text-sm font-normal">{p.unidade}</span>
                 </p>
               </div>
-              <Button size="sm" variant="outline" onClick={() => { setEditingProduto(p); setProdutoForm({ codigo: p.codigo ?? '', descricao: p.descricao, unidade: p.unidade, categoria: p.categoria ?? '', saldo_minimo: String(p.saldo_minimo), ativo: p.ativo }); setProdutoOpen(true); }}>
+              <Button size="sm" variant="outline" onClick={() => { setEditingProduto(p); setProdutoForm({ codigo: p.codigo ?? '', descricao: p.descricao, unidade: p.unidade, categoria: p.categoria ?? '', saldo_minimo: String(p.saldo_minimo), preco_custo_medio: String(p.preco_custo_medio), ativo: p.ativo }); setProdutoOpen(true); }}>
                 <Pencil className="w-4 h-4" />
               </Button>
               <Button size="sm" variant="outline" onClick={() => { setMovForm(f => ({ ...f, produto_id: p.id })); setMovOpen(true); }}>
@@ -847,7 +858,7 @@ export default function GestaoCompras() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filtProdutos.map(p => {
-                  const emAlerta = p.ativo && p.saldo_atual <= p.saldo_minimo;
+                  const emAlerta = p.ativo && p.saldo_minimo > 0 && p.saldo_atual <= p.saldo_minimo;
                   return (
                     <Card key={p.id} className={`p-4 cursor-pointer hover:shadow-md transition-shadow ${!p.ativo ? 'opacity-60' : ''}`} onClick={() => setSelectedProduto(p)}>
                       <div className="flex items-start justify-between gap-2 mb-3">
@@ -860,7 +871,7 @@ export default function GestaoCompras() {
                           </div>
                         </div>
                         <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditingProduto(p); setProdutoForm({ codigo: p.codigo ?? '', descricao: p.descricao, unidade: p.unidade, categoria: p.categoria ?? '', saldo_minimo: String(p.saldo_minimo), ativo: p.ativo }); setProdutoOpen(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditingProduto(p); setProdutoForm({ codigo: p.codigo ?? '', descricao: p.descricao, unidade: p.unidade, categoria: p.categoria ?? '', saldo_minimo: String(p.saldo_minimo), preco_custo_medio: String(p.preco_custo_medio), ativo: p.ativo }); setProdutoOpen(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
                           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={e => handleDeleteProduto(p.id, e)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
                         </div>
                       </div>
@@ -1166,6 +1177,7 @@ function ProdutoDialog({ open, onOpenChange, editing, form, setForm, saving, onS
           <div><Label>Unidade</Label><Input value={form.unidade} onChange={e => setForm(f => ({ ...f, unidade: e.target.value }))} placeholder="UN, KG, M², L..." /></div>
           <div><Label>Categoria</Label><Input value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} placeholder="ex: Material, EPI..." /></div>
           <div><Label>Saldo Mínimo</Label><Input type="number" min="0" step="0.01" value={form.saldo_minimo} onChange={e => setForm(f => ({ ...f, saldo_minimo: e.target.value }))} /></div>
+          <div className="sm:col-span-2"><Label>Preço de Custo unitário (R$)</Label><Input type="number" min="0" step="0.01" value={form.preco_custo_medio} onChange={e => setForm(f => ({ ...f, preco_custo_medio: e.target.value }))} placeholder="0,00" /></div>
           <div className="flex items-center gap-3 sm:col-span-2 mt-1"><Switch id="prod-ativo" checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label htmlFor="prod-ativo" className="cursor-pointer">Produto ativo</Label></div>
         </div>
         <div className="flex justify-end gap-2 mt-4">
