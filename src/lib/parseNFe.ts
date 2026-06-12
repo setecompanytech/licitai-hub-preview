@@ -17,6 +17,9 @@ export interface NFeItemData {
   csosn: string;
   cst_pis: string;
   cst_cofins: string;
+  p_icms: number;
+  p_pis: number;
+  p_cofins: number;
   v_pis: number;
   v_cofins: number;
   cst_ibs_cbs: string;
@@ -39,6 +42,12 @@ export interface NFeData {
   nome_emitente: string;
   ie_emitente: string;
   uf_emitente: string;
+  logradouro_emitente: string;
+  numero_emitente: string;
+  bairro_emitente: string;
+  cep_emitente: string;
+  municipio_emitente: string;
+  fone_emitente: string;
   cnpj_dest: string;
   cpf_dest: string;
   nome_dest: string;
@@ -98,6 +107,12 @@ export function parseNFeXML(xmlString: string): NFeData {
     nome_emitente: doc.querySelector('emit xNome')?.textContent ?? '',
     ie_emitente: doc.querySelector('emit IE')?.textContent ?? '',
     uf_emitente: doc.querySelector('emit enderEmit UF')?.textContent ?? '',
+    logradouro_emitente: doc.querySelector('emit enderEmit xLgr')?.textContent ?? '',
+    numero_emitente: doc.querySelector('emit enderEmit nro')?.textContent ?? '',
+    bairro_emitente: doc.querySelector('emit enderEmit xBairro')?.textContent ?? '',
+    cep_emitente: doc.querySelector('emit enderEmit CEP')?.textContent ?? '',
+    municipio_emitente: doc.querySelector('emit enderEmit xMun')?.textContent ?? '',
+    fone_emitente: doc.querySelector('emit fone')?.textContent ?? '',
 
     cnpj_dest: doc.querySelector('dest CNPJ')?.textContent ?? '',
     cpf_dest: doc.querySelector('dest CPF')?.textContent ?? '',
@@ -147,10 +162,13 @@ export function parseNFeXML(xmlString: string): NFeData {
       v_un_com: parseFloat(det.querySelector('prod vUnCom')?.textContent || '0'),
       v_prod: parseFloat(det.querySelector('prod vProd')?.textContent || '0'),
       v_desc: parseFloat(det.querySelector('prod vDesc')?.textContent || '0'),
-      cst_icms: det.querySelector('[cst]')?.textContent ?? '',
+      cst_icms: det.querySelector('ICMS CST')?.textContent ?? '',
       csosn: det.querySelector('CSOSN')?.textContent ?? '',
       cst_pis: det.querySelector('PIS CST')?.textContent ?? '07',
       cst_cofins: det.querySelector('COFINS CST')?.textContent ?? '07',
+      p_icms: parseFloat(det.querySelector('pICMS')?.textContent || '0'),
+      p_pis: parseFloat(det.querySelector('pPIS')?.textContent || '0'),
+      p_cofins: parseFloat(det.querySelector('pCOFINS')?.textContent || '0'),
       v_pis: parseFloat(det.querySelector('PIS vPIS')?.textContent || '0'),
       v_cofins: parseFloat(det.querySelector('COFINS vCOFINS')?.textContent || '0'),
       cst_ibs_cbs: det.querySelector('IBSCBS CST')?.textContent ?? '',

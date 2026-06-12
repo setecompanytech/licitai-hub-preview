@@ -41,6 +41,9 @@ type Fornecedor = {
   categoria: string | null; prazo_entrega_dias: number | null; contato_nome: string | null;
   contato_email: string | null; contato_telefone: string | null; observacoes: string | null;
   ativo: boolean; created_at: string; updated_at: string;
+  inscricao_estadual: string | null; regime_tributario: string | null;
+  uf: string | null; municipio: string | null; cep: string | null;
+  logradouro: string | null; numero_endereco: string | null; bairro: string | null;
 };
 
 type PedidoCompra = {
@@ -62,6 +65,9 @@ type Produto = {
   unidade: string; categoria: string | null; saldo_atual: number;
   saldo_minimo: number; preco_custo_medio: number; ativo: boolean;
   created_at: string; updated_at: string;
+  ncm: string | null; cfop: string | null; cst_icms: string | null;
+  csosn: string | null; cst_pis: string | null; cst_cofins: string | null;
+  p_icms: number | null; p_pis: number | null; p_cofins: number | null;
 };
 
 type EstoqueMovimento = {
@@ -95,8 +101,8 @@ const movConfig = {
 
 // ── Form defaults ─────────────────────────────────────────────
 const defaultPedidoForm  = () => ({ contrato_id: '', fornecedor_id: '', data_pedido: today(), data_entrega_prevista: '', observacoes: '' });
-const defaultFornForm    = () => ({ razao_social: '', cnpj: '', categoria: '', prazo_entrega_dias: '', contato_nome: '', contato_email: '', contato_telefone: '', observacoes: '', ativo: true });
-const defaultProdutoForm = () => ({ codigo: '', descricao: '', unidade: 'UN', categoria: '', saldo_minimo: '0', preco_custo_medio: '0', ativo: true });
+const defaultFornForm    = () => ({ razao_social: '', cnpj: '', categoria: '', prazo_entrega_dias: '', contato_nome: '', contato_email: '', contato_telefone: '', observacoes: '', ativo: true, inscricao_estadual: '', regime_tributario: '', uf: '', municipio: '', cep: '', logradouro: '', numero_endereco: '', bairro: '' });
+const defaultProdutoForm = () => ({ codigo: '', descricao: '', unidade: 'UN', categoria: '', saldo_minimo: '0', preco_custo_medio: '0', ativo: true, ncm: '', cfop: '', cst_icms: '', csosn: '', cst_pis: '', cst_cofins: '', p_icms: '', p_pis: '', p_cofins: '' });
 const defaultMovForm     = () => ({ produto_id: '', tipo: 'entrada' as const, ajuste_dir: 'mais' as 'mais' | 'menos', quantidade: '', preco_unitario: '', observacoes: '' });
 const defaultNfeForm     = () => ({ numero: '', serie: '1', chave_acesso: '', data_emissao: today(), cnpj_emitente: '', nome_emitente: '', valor_total: '', pedido_id: '' });
 
@@ -259,7 +265,7 @@ export default function GestaoCompras() {
     if (!empresaAtiva) return;
     if (!fornForm.razao_social.trim()) { toast.error('Razão social obrigatória'); return; }
     setSaving(true);
-    const payload = { empresa_id: empresaAtiva.id, razao_social: fornForm.razao_social.trim(), cnpj: fornForm.cnpj || null, categoria: fornForm.categoria || null, prazo_entrega_dias: fornForm.prazo_entrega_dias ? parseInt(fornForm.prazo_entrega_dias) : null, contato_nome: fornForm.contato_nome || null, contato_email: fornForm.contato_email || null, contato_telefone: fornForm.contato_telefone || null, observacoes: fornForm.observacoes || null, ativo: fornForm.ativo };
+    const payload = { empresa_id: empresaAtiva.id, razao_social: fornForm.razao_social.trim(), cnpj: fornForm.cnpj || null, categoria: fornForm.categoria || null, prazo_entrega_dias: fornForm.prazo_entrega_dias ? parseInt(fornForm.prazo_entrega_dias) : null, contato_nome: fornForm.contato_nome || null, contato_email: fornForm.contato_email || null, contato_telefone: fornForm.contato_telefone || null, observacoes: fornForm.observacoes || null, ativo: fornForm.ativo, inscricao_estadual: fornForm.inscricao_estadual || null, regime_tributario: fornForm.regime_tributario || null, uf: fornForm.uf || null, municipio: fornForm.municipio || null, cep: fornForm.cep || null, logradouro: fornForm.logradouro || null, numero_endereco: fornForm.numero_endereco || null, bairro: fornForm.bairro || null };
     let error: any;
     if (editingForn) {
       ({ error } = await supabase.from('fornecedores').update(payload as any).eq('id', editingForn.id));
@@ -311,7 +317,7 @@ export default function GestaoCompras() {
     if (!empresaAtiva) return;
     if (!produtoForm.descricao.trim()) { toast.error('Descrição obrigatória'); return; }
     setSaving(true);
-    const payload = { empresa_id: empresaAtiva.id, codigo: produtoForm.codigo || null, descricao: produtoForm.descricao.trim(), unidade: produtoForm.unidade || 'UN', categoria: produtoForm.categoria || null, saldo_minimo: parseNum(produtoForm.saldo_minimo), preco_custo_medio: parseNum(produtoForm.preco_custo_medio), ativo: produtoForm.ativo };
+    const payload = { empresa_id: empresaAtiva.id, codigo: produtoForm.codigo || null, descricao: produtoForm.descricao.trim(), unidade: produtoForm.unidade || 'UN', categoria: produtoForm.categoria || null, saldo_minimo: parseNum(produtoForm.saldo_minimo), preco_custo_medio: parseNum(produtoForm.preco_custo_medio), ativo: produtoForm.ativo, ncm: produtoForm.ncm || null, cfop: produtoForm.cfop || null, cst_icms: produtoForm.cst_icms || null, csosn: produtoForm.csosn || null, cst_pis: produtoForm.cst_pis || null, cst_cofins: produtoForm.cst_cofins || null, p_icms: parseNum(produtoForm.p_icms) || null, p_pis: parseNum(produtoForm.p_pis) || null, p_cofins: parseNum(produtoForm.p_cofins) || null };
     let error: any;
     if (editingProduto) {
       ({ error } = await supabase.from('produtos').update(payload as any).eq('id', editingProduto.id));
@@ -359,11 +365,15 @@ export default function GestaoCompras() {
   };
 
   // ── Entrega → estoque ─────────────────────────────────────────
-  const criarProdutoSeNovo = async (produtoId: string, nome: string, unidade: string): Promise<string | null> => {
+  const criarProdutoSeNovo = async (
+    produtoId: string, nome: string, unidade: string,
+    fiscal?: { ncm?: string; cfop?: string; cst_icms?: string; csosn?: string; cst_pis?: string; cst_cofins?: string; p_icms?: number; p_pis?: number; p_cofins?: number; codigo?: string; }
+  ): Promise<string | null> => {
     if (produtoId !== '__new__') return produtoId;
     if (!empresaAtiva || !nome.trim()) return null;
     const { data, error } = await supabase.from('produtos').insert({
       empresa_id: empresaAtiva.id, descricao: nome.trim(), unidade: unidade || 'UN', ativo: true,
+      ...(fiscal || {}),
     } as any).select('id').single();
     if (error || !data) { toast.error('Erro ao criar produto', { description: error?.message }); return null; }
     return (data as any).id;
@@ -433,7 +443,19 @@ export default function GestaoCompras() {
     if (!nfeFornMatch && nfeCriarForn && nfeParsed?.cnpj_emitente) {
       const { data: fd, error: fe } = await supabase
         .from('fornecedores')
-        .insert({ empresa_id: empresaAtiva.id, razao_social: nfeParsed.nome_emitente || nfeParsed.cnpj_emitente, cnpj: nfeParsed.cnpj_emitente, ativo: true } as any)
+        .insert({
+          empresa_id: empresaAtiva.id,
+          razao_social: nfeParsed.nome_emitente || nfeParsed.cnpj_emitente,
+          cnpj: nfeParsed.cnpj_emitente, ativo: true,
+          inscricao_estadual: nfeParsed.ie_emitente || null,
+          regime_tributario: nfeParsed.crt_emitente ? String(nfeParsed.crt_emitente) : null,
+          uf: nfeParsed.uf_emitente || null,
+          municipio: nfeParsed.municipio_emitente || null,
+          cep: nfeParsed.cep_emitente || null,
+          logradouro: nfeParsed.logradouro_emitente || null,
+          numero_endereco: nfeParsed.numero_emitente || null,
+          bairro: nfeParsed.bairro_emitente || null,
+        } as any)
         .select('id').single();
       if (!fe && fd) fornecedorId = (fd as any).id;
     }
@@ -460,7 +482,18 @@ export default function GestaoCompras() {
       const toCreate = nfeItemMaps.filter(m => m.incluir && m.produtoId);
       const rows: any[] = [];
       for (const m of toCreate) {
-        const pid = await criarProdutoSeNovo(m.produtoId, m.novaNome, m.item.u_com);
+        const pid = await criarProdutoSeNovo(m.produtoId, m.novaNome, m.item.u_com, {
+          ncm: m.item.ncm || undefined,
+          cfop: m.item.cfop || undefined,
+          cst_icms: m.item.cst_icms || undefined,
+          csosn: m.item.csosn || undefined,
+          cst_pis: m.item.cst_pis || undefined,
+          cst_cofins: m.item.cst_cofins || undefined,
+          p_icms: m.item.p_icms || undefined,
+          p_pis: m.item.p_pis || undefined,
+          p_cofins: m.item.p_cofins || undefined,
+          codigo: m.item.c_prod || undefined,
+        });
         if (!pid) continue;
         rows.push({ empresa_id: empresaAtiva.id, produto_id: pid, nfe_id: (nfeRow as any).id, pedido_id: nfeForm.pedido_id || null, tipo: 'entrada', origem: 'nfe', quantidade: Math.abs(m.item.q_com), preco_unitario: m.item.v_un_com || null, created_by: user.id });
       }
@@ -538,7 +571,7 @@ export default function GestaoCompras() {
                   {p.saldo_atual.toLocaleString('pt-BR')} <span className="text-sm font-normal">{p.unidade}</span>
                 </p>
               </div>
-              <Button size="sm" variant="outline" onClick={() => { setEditingProduto(p); setProdutoForm({ codigo: p.codigo ?? '', descricao: p.descricao, unidade: p.unidade, categoria: p.categoria ?? '', saldo_minimo: String(p.saldo_minimo), preco_custo_medio: String(p.preco_custo_medio), ativo: p.ativo }); setProdutoOpen(true); }}>
+              <Button size="sm" variant="outline" onClick={() => { setEditingProduto(p); setProdutoForm({ codigo: p.codigo ?? '', descricao: p.descricao, unidade: p.unidade, categoria: p.categoria ?? '', saldo_minimo: String(p.saldo_minimo), preco_custo_medio: String(p.preco_custo_medio), ativo: p.ativo, ncm: p.ncm ?? '', cfop: p.cfop ?? '', cst_icms: p.cst_icms ?? '', csosn: p.csosn ?? '', cst_pis: p.cst_pis ?? '', cst_cofins: p.cst_cofins ?? '', p_icms: p.p_icms != null ? String(p.p_icms) : '', p_pis: p.p_pis != null ? String(p.p_pis) : '', p_cofins: p.p_cofins != null ? String(p.p_cofins) : '' }); setProdutoOpen(true); }}>
                 <Pencil className="w-4 h-4" />
               </Button>
               <Button size="sm" variant="outline" onClick={() => { setMovForm(f => ({ ...f, produto_id: p.id })); setMovOpen(true); }}>
@@ -853,7 +886,7 @@ export default function GestaoCompras() {
                         </div>
                       </div>
                       <div className="flex gap-1 shrink-0">
-                        <Button size="sm" variant="ghost" onClick={() => { setEditingForn(f); setFornForm({ razao_social: f.razao_social, cnpj: f.cnpj ?? '', categoria: f.categoria ?? '', prazo_entrega_dias: f.prazo_entrega_dias != null ? String(f.prazo_entrega_dias) : '', contato_nome: f.contato_nome ?? '', contato_email: f.contato_email ?? '', contato_telefone: f.contato_telefone ?? '', observacoes: f.observacoes ?? '', ativo: f.ativo }); setFornOpen(true); }}><Pencil className="w-4 h-4" /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setEditingForn(f); setFornForm({ razao_social: f.razao_social, cnpj: f.cnpj ?? '', categoria: f.categoria ?? '', prazo_entrega_dias: f.prazo_entrega_dias != null ? String(f.prazo_entrega_dias) : '', contato_nome: f.contato_nome ?? '', contato_email: f.contato_email ?? '', contato_telefone: f.contato_telefone ?? '', observacoes: f.observacoes ?? '', ativo: f.ativo, inscricao_estadual: f.inscricao_estadual ?? '', regime_tributario: f.regime_tributario ?? '', uf: f.uf ?? '', municipio: f.municipio ?? '', cep: f.cep ?? '', logradouro: f.logradouro ?? '', numero_endereco: f.numero_endereco ?? '', bairro: f.bairro ?? '' }); setFornOpen(true); }}><Pencil className="w-4 h-4" /></Button>
                         <Button size="sm" variant="ghost" onClick={e => handleDeleteFornecedor(f.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                       </div>
                     </div>
@@ -892,7 +925,7 @@ export default function GestaoCompras() {
                           </div>
                         </div>
                         <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditingProduto(p); setProdutoForm({ codigo: p.codigo ?? '', descricao: p.descricao, unidade: p.unidade, categoria: p.categoria ?? '', saldo_minimo: String(p.saldo_minimo), preco_custo_medio: String(p.preco_custo_medio), ativo: p.ativo }); setProdutoOpen(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditingProduto(p); setProdutoForm({ codigo: p.codigo ?? '', descricao: p.descricao, unidade: p.unidade, categoria: p.categoria ?? '', saldo_minimo: String(p.saldo_minimo), preco_custo_medio: String(p.preco_custo_medio), ativo: p.ativo, ncm: p.ncm ?? '', cfop: p.cfop ?? '', cst_icms: p.cst_icms ?? '', csosn: p.csosn ?? '', cst_pis: p.cst_pis ?? '', cst_cofins: p.cst_cofins ?? '', p_icms: p.p_icms != null ? String(p.p_icms) : '', p_pis: p.p_pis != null ? String(p.p_pis) : '', p_cofins: p.p_cofins != null ? String(p.p_cofins) : '' }); setProdutoOpen(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
                           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={e => handleDeleteProduto(p.id, e)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
                         </div>
                       </div>
@@ -1042,6 +1075,27 @@ export default function GestaoCompras() {
             <div><Label>Contato — E-mail</Label><Input type="email" value={fornForm.contato_email} onChange={e => setFornForm(f => ({ ...f, contato_email: e.target.value }))} /></div>
             <div className="md:col-span-2"><Label>Contato — Telefone</Label><Input value={fornForm.contato_telefone} onChange={e => setFornForm(f => ({ ...f, contato_telefone: e.target.value }))} /></div>
             <div className="md:col-span-2"><Label>Observações</Label><Textarea value={fornForm.observacoes} onChange={e => setFornForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} /></div>
+            <div className="md:col-span-2 border-t pt-3 mt-1">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Dados Fiscais (preenchidos automaticamente via NF-e)</p>
+            </div>
+            <div><Label>Inscrição Estadual</Label><Input value={fornForm.inscricao_estadual} onChange={e => setFornForm(f => ({ ...f, inscricao_estadual: e.target.value }))} /></div>
+            <div><Label>Regime Tributário</Label>
+              <Select value={fornForm.regime_tributario || 'none'} onValueChange={v => setFornForm(f => ({ ...f, regime_tributario: v === 'none' ? '' : v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Não informado —</SelectItem>
+                  <SelectItem value="1">1 — Simples Nacional</SelectItem>
+                  <SelectItem value="2">2 — Simples Nacional — Excesso</SelectItem>
+                  <SelectItem value="3">3 — Regime Normal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>UF</Label><Input value={fornForm.uf} onChange={e => setFornForm(f => ({ ...f, uf: e.target.value }))} placeholder="SP" maxLength={2} /></div>
+            <div><Label>Município</Label><Input value={fornForm.municipio} onChange={e => setFornForm(f => ({ ...f, municipio: e.target.value }))} /></div>
+            <div><Label>CEP</Label><Input value={fornForm.cep} onChange={e => setFornForm(f => ({ ...f, cep: e.target.value }))} placeholder="00000-000" /></div>
+            <div className="md:col-span-2"><Label>Logradouro</Label><Input value={fornForm.logradouro} onChange={e => setFornForm(f => ({ ...f, logradouro: e.target.value }))} /></div>
+            <div><Label>Número</Label><Input value={fornForm.numero_endereco} onChange={e => setFornForm(f => ({ ...f, numero_endereco: e.target.value }))} /></div>
+            <div><Label>Bairro</Label><Input value={fornForm.bairro} onChange={e => setFornForm(f => ({ ...f, bairro: e.target.value }))} /></div>
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => { setFornOpen(false); setEditingForn(null); setFornForm(defaultFornForm()); }}>Cancelar</Button>
@@ -1176,6 +1230,11 @@ export default function GestaoCompras() {
                     <p className="text-sm font-medium">Novo fornecedor detectado</p>
                   </div>
                   <p className="text-xs text-muted-foreground">{nfeParsed.nome_emitente || '—'}{nfeParsed.cnpj_emitente ? ` — CNPJ ${nfeParsed.cnpj_emitente}` : ''}</p>
+                  {(nfeParsed.ie_emitente || nfeParsed.uf_emitente) && (
+                    <p className="text-xs text-muted-foreground">
+                      {[nfeParsed.uf_emitente && `UF: ${nfeParsed.uf_emitente}`, nfeParsed.ie_emitente && `IE: ${nfeParsed.ie_emitente}`, nfeParsed.crt_emitente === 1 ? 'Simples Nacional' : nfeParsed.crt_emitente === 3 ? 'Regime Normal' : null].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
                   <div className="flex items-center gap-2 pt-1">
                     <Switch id="criar-forn" checked={nfeCriarForn} onCheckedChange={setNfeCriarForn} />
                     <Label htmlFor="criar-forn" className="text-sm cursor-pointer">Cadastrar automaticamente como fornecedor</Label>
@@ -1233,6 +1292,11 @@ export default function GestaoCompras() {
                           {m.item.c_prod ? ` · Cód: ${m.item.c_prod}` : ''}
                           {m.produtoId && m.produtoId !== '__new__' && <span className="text-success ml-1">· Auto-vinculado</span>}
                         </p>
+                        {(m.item.ncm || m.item.cfop || m.item.cst_icms || m.item.csosn) && (
+                          <p className="text-[10px] text-muted-foreground/70">
+                            {[m.item.ncm && `NCM ${m.item.ncm}`, m.item.cfop && `CFOP ${m.item.cfop}`, (m.item.cst_icms || m.item.csosn) && `CST ${m.item.cst_icms || m.item.csosn}`].filter(Boolean).join(' · ')}
+                          </p>
+                        )}
                       </div>
                     </div>
                     {m.incluir && (
@@ -1282,7 +1346,7 @@ type ProdutoDialogProps = {
 function ProdutoDialog({ open, onOpenChange, editing, form, setForm, saving, onSave, onClose }: ProdutoDialogProps) {
   return (
     <Dialog open={open} onOpenChange={o => { onOpenChange(o); if (!o) onClose(); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{editing ? 'Editar Produto' : 'Novo Produto'}</DialogTitle></DialogHeader>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
           <div className="sm:col-span-2"><Label>Descrição *</Label><Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} /></div>
@@ -1292,6 +1356,20 @@ function ProdutoDialog({ open, onOpenChange, editing, form, setForm, saving, onS
           <div><Label>Saldo Mínimo</Label><Input type="number" min="0" step="0.01" value={form.saldo_minimo} onChange={e => setForm(f => ({ ...f, saldo_minimo: e.target.value }))} /></div>
           <div className="sm:col-span-2"><Label>Preço de Custo unitário (R$)</Label><Input type="number" min="0" step="0.01" value={form.preco_custo_medio} onChange={e => setForm(f => ({ ...f, preco_custo_medio: e.target.value }))} placeholder="0,00" /></div>
           <div className="flex items-center gap-3 sm:col-span-2 mt-1"><Switch id="prod-ativo" checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label htmlFor="prod-ativo" className="cursor-pointer">Produto ativo</Label></div>
+          <div className="sm:col-span-2 border-t pt-3 mt-1">
+            <p className="text-xs font-semibold text-muted-foreground mb-2">Dados Fiscais (preenchidos automaticamente via NF-e)</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div><Label className="text-xs">NCM</Label><Input className="text-xs h-8" value={form.ncm} onChange={e => setForm(f => ({ ...f, ncm: e.target.value }))} placeholder="00000000" /></div>
+              <div><Label className="text-xs">CFOP</Label><Input className="text-xs h-8" value={form.cfop} onChange={e => setForm(f => ({ ...f, cfop: e.target.value }))} placeholder="0000" /></div>
+              <div><Label className="text-xs">CST ICMS</Label><Input className="text-xs h-8" value={form.cst_icms} onChange={e => setForm(f => ({ ...f, cst_icms: e.target.value }))} placeholder="00" /></div>
+              <div><Label className="text-xs">CSOSN</Label><Input className="text-xs h-8" value={form.csosn} onChange={e => setForm(f => ({ ...f, csosn: e.target.value }))} placeholder="102" /></div>
+              <div><Label className="text-xs">Alíq. ICMS %</Label><Input type="number" className="text-xs h-8" value={form.p_icms} onChange={e => setForm(f => ({ ...f, p_icms: e.target.value }))} placeholder="12" /></div>
+              <div><Label className="text-xs">Alíq. PIS %</Label><Input type="number" className="text-xs h-8" value={form.p_pis} onChange={e => setForm(f => ({ ...f, p_pis: e.target.value }))} placeholder="0.65" /></div>
+              <div><Label className="text-xs">Alíq. COFINS %</Label><Input type="number" className="text-xs h-8" value={form.p_cofins} onChange={e => setForm(f => ({ ...f, p_cofins: e.target.value }))} placeholder="3.00" /></div>
+              <div><Label className="text-xs">CST PIS</Label><Input className="text-xs h-8" value={form.cst_pis} onChange={e => setForm(f => ({ ...f, cst_pis: e.target.value }))} placeholder="07" /></div>
+              <div><Label className="text-xs">CST COFINS</Label><Input className="text-xs h-8" value={form.cst_cofins} onChange={e => setForm(f => ({ ...f, cst_cofins: e.target.value }))} placeholder="07" /></div>
+            </div>
+          </div>
         </div>
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
