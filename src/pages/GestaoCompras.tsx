@@ -33,6 +33,7 @@ const fmtDate = (d: string | null) =>
 const parseNum = (v: string) => parseFloat(v.replace(',', '.')) || 0;
 
 const today = () => new Date().toISOString().split('T')[0];
+const normCnpj = (v: string) => v.replace(/\D/g, '');
 
 // ── Types ─────────────────────────────────────────────────────
 type Fornecedor = {
@@ -71,8 +72,8 @@ type EstoqueMovimento = {
 };
 
 type NfeRecebida = {
-  id: string; empresa_id: string; pedido_id: string | null; numero: string;
-  serie: string; chave_acesso: string | null; data_emissao: string | null;
+  id: string; empresa_id: string; pedido_id: string | null; fornecedor_id: string | null;
+  numero: string; serie: string; chave_acesso: string | null; data_emissao: string | null;
   cnpj_emitente: string | null; nome_emitente: string | null;
   valor_total: number; xml_content: string | null; itens: NFeItemData[] | null;
   created_at: string;
@@ -162,6 +163,9 @@ export default function GestaoCompras() {
   const [nfeRegEstoque,  setNfeRegEstoque]  = useState(false);
   const [nfeItemMaps,    setNfeItemMaps]    = useState<{ item: NFeItemData; produtoId: string; novaNome: string; incluir: boolean }[]>([]);
   const [nfeDragging,    setNfeDragging]    = useState(false);
+  const [nfeStep,        setNfeStep]        = useState<1|2|3>(1);
+  const [nfeFornMatch,   setNfeFornMatch]   = useState<Fornecedor | null>(null);
+  const [nfeCriarForn,   setNfeCriarForn]   = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // ── Effects ───────────────────────────────────────────────────
@@ -392,24 +396,25 @@ export default function GestaoCompras() {
     reader.onload = e => {
       const text = e.target?.result as string;
       try {
-        // Verifica se o XML é válido antes de processar
         const testDoc = new DOMParser().parseFromString(text, 'application/xml');
-        if (testDoc.querySelector('parsererror')) {
-          toast.error('Arquivo XML inválido ou corrompido.');
-          return;
-        }
+        if (testDoc.querySelector('parsererror')) { toast.error('Arquivo XML inválido ou corrompido.'); return; }
         const parsed = parseNFeXML(text);
-        // Verifica se é realmente uma NF-e (número e valor devem existir)
-        if (!parsed.numero_nf && !parsed.v_nf) {
-          toast.error('O arquivo não parece ser uma NF-e válida (nenhum dado encontrado).');
-          return;
-        }
+        if (!parsed.numero_nf && !parsed.v_nf) { toast.error('O arquivo não parece ser uma NF-e válida (nenhum dado encontrado).'); return; }
         setNfeParsed(parsed);
         setNfeXmlStr(text);
         const dataEmissao = parsed.data_emissao?.split('T')[0] ?? today();
         setNfeForm(f => ({ ...f, numero: String(parsed.numero_nf), serie: String(parsed.serie), chave_acesso: parsed.chave_acesso, data_emissao: dataEmissao, cnpj_emitente: parsed.cnpj_emitente, nome_emitente: parsed.nome_emitente, valor_total: String(parsed.v_nf) }));
-        setNfeItemMaps(parsed.itens.map(item => ({ item, produtoId: '', novaNome: item.x_prod, incluir: true })));
-        toast.success(`NF-e lida: nº ${parsed.numero_nf} — ${parsed.nome_emitente || parsed.cnpj_emitente}`);
+        // Detecta fornecedor pelo CNPJ
+        const cnpjNorm = normCnpj(parsed.cnpj_emitente || '');
+        const fornFound = cnpjNorm ? (fornecedores.find(f => normCnpj(f.cnpj || '') === cnpjNorm) ?? null) : null;
+        setNfeFornMatch(fornFound);
+        setNfeCriarForn(!fornFound && !!cnpjNorm);
+        // Auto-vincula itens da NF-e a produtos pelo código
+        setNfeItemMaps(parsed.itens.map(item => {
+          const matched = item.c_prod ? produtos.find(p => p.ativo && p.codigo === item.c_prod) : undefined;
+          return { item, produtoId: matched?.id ?? '', novaNome: item.x_prod, incluir: true };
+        }));
+        setNfeStep(2);
       } catch {
         toast.error('Não foi possível ler o XML. Verifique se é uma NF-e válida.');
       }
@@ -422,9 +427,21 @@ export default function GestaoCompras() {
     const num = nfeParsed ? String(nfeParsed.numero_nf) : nfeForm.numero;
     if (!num || num === '0') { toast.error('Número da NF-e obrigatório'); return; }
     setSaving(true);
+
+    // Cria fornecedor automaticamente se solicitado
+    let fornecedorId: string | null = nfeFornMatch?.id ?? null;
+    if (!nfeFornMatch && nfeCriarForn && nfeParsed?.cnpj_emitente) {
+      const { data: fd, error: fe } = await supabase
+        .from('fornecedores')
+        .insert({ empresa_id: empresaAtiva.id, razao_social: nfeParsed.nome_emitente || nfeParsed.cnpj_emitente, cnpj: nfeParsed.cnpj_emitente, ativo: true } as any)
+        .select('id').single();
+      if (!fe && fd) fornecedorId = (fd as any).id;
+    }
+
     const payload: any = {
       empresa_id: empresaAtiva.id,
       pedido_id: nfeForm.pedido_id || null,
+      fornecedor_id: fornecedorId,
       numero: num,
       serie: nfeParsed ? String(nfeParsed.serie) : (nfeForm.serie || '1'),
       chave_acesso: (nfeParsed?.chave_acesso || nfeForm.chave_acesso) || null,
@@ -438,7 +455,8 @@ export default function GestaoCompras() {
     const { data: nfeRow, error } = await supabase.from('nfe_recebidas').insert(payload).select('id').single();
     if (error) { toast.error('Erro ao importar NF-e', { description: error.message }); setSaving(false); return; }
 
-    if (nfeRegEstoque && nfeParsed && nfeRow) {
+    const fornCriado = !!fornecedorId && !nfeFornMatch;
+    if (nfeParsed && nfeRow) {
       const toCreate = nfeItemMaps.filter(m => m.incluir && m.produtoId);
       const rows: any[] = [];
       for (const m of toCreate) {
@@ -449,9 +467,12 @@ export default function GestaoCompras() {
       if (rows.length) {
         const { error: me } = await supabase.from('estoque_movimentos').insert(rows as any);
         if (me) toast.error('NF-e salva, erro no estoque', { description: me.message });
-        else toast.success(`NF-e importada + ${rows.length} entrada(s) no estoque!`);
+        else {
+          const parts = [fornCriado ? 'Fornecedor cadastrado' : null, `${rows.length} entrada(s) no estoque`].filter(Boolean).join(' · ');
+          toast.success(`NF-e importada! · ${parts}`);
+        }
       } else {
-        toast.success('NF-e importada!');
+        toast.success(`NF-e importada!${fornCriado ? ' · Fornecedor cadastrado' : ''}`);
       }
     } else {
       toast.success('NF-e importada!');
@@ -467,7 +488,7 @@ export default function GestaoCompras() {
     toast.success('NF-e excluída. Movimentações de estoque vinculadas foram mantidas.'); loadAll();
   };
 
-  const resetNfeDialog = () => { setNfeParsed(null); setNfeXmlStr(''); setNfeForm(defaultNfeForm()); setNfeMode('xml'); setNfeRegEstoque(false); setNfeItemMaps([]); };
+  const resetNfeDialog = () => { setNfeParsed(null); setNfeXmlStr(''); setNfeForm(defaultNfeForm()); setNfeMode('xml'); setNfeRegEstoque(false); setNfeItemMaps([]); setNfeStep(1); setNfeFornMatch(null); setNfeCriarForn(false); };
   const resetPedidoForm = () => { setPedidoForm(defaultPedidoForm()); setFormItens([blankItem()]); };
 
   // ── Computed ──────────────────────────────────────────────────
@@ -1035,123 +1056,215 @@ export default function GestaoCompras() {
       {/* Dialog: Movimentação */}
       <MovDialog open={movOpen} onOpenChange={setMovOpen} form={movForm} setForm={setMovForm} saving={saving} onSave={handleSaveMovimento} produtos={produtosAtivosParaSelect} />
 
-      {/* Dialog: NF-e */}
+      {/* Dialog: NF-e — wizard 3 etapas para XML, form flat para manual */}
       <Dialog open={nfeOpen} onOpenChange={o => { setNfeOpen(o); if (!o) resetNfeDialog(); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Importar NF-e Recebida</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>
+              {nfeMode === 'manual' ? 'Importar NF-e Recebida' :
+               nfeStep === 1 ? 'Importar NF-e — Arquivo XML' :
+               nfeStep === 2 ? 'Importar NF-e — Revisar dados' :
+               'Importar NF-e — Vincular produtos ao estoque'}
+            </DialogTitle>
+          </DialogHeader>
 
-          {/* Seletor de modo */}
-          <div className="flex gap-2 mt-2 mb-4">
-            <Button size="sm" variant={nfeMode === 'xml' ? 'default' : 'outline'} onClick={() => setNfeMode('xml')}><Upload className="w-3.5 h-3.5 mr-1.5" />Arquivo XML</Button>
-            <Button size="sm" variant={nfeMode === 'manual' ? 'default' : 'outline'} onClick={() => setNfeMode('manual')}><Pencil className="w-3.5 h-3.5 mr-1.5" />Preencher manualmente</Button>
-          </div>
-
-          {/* Modo XML */}
+          {/* Barra de progresso para modo XML */}
           {nfeMode === 'xml' && (
+            <div className="flex items-center gap-2 mt-1 mb-3">
+              <div className="flex gap-1 flex-1">
+                {([1, 2, 3] as const).map(s => (
+                  <div key={s} className={`h-1.5 flex-1 rounded-full transition-colors ${nfeStep >= s ? 'bg-primary' : 'bg-muted'}`} />
+                ))}
+              </div>
+              <span className="text-xs text-muted-foreground shrink-0">Etapa {nfeStep} / 3</span>
+            </div>
+          )}
+
+          {/* ── ETAPA 1: Upload ── */}
+          {(nfeMode === 'manual' || (nfeMode === 'xml' && nfeStep === 1)) && (
             <div className="space-y-4">
-              <div
-                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${nfeDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/30 hover:border-primary/50'}`}
-                onClick={() => fileRef.current?.click()}
-                onDragOver={e => { e.preventDefault(); setNfeDragging(true); }}
-                onDragLeave={() => setNfeDragging(false)}
-                onDrop={e => { e.preventDefault(); setNfeDragging(false); const f = e.dataTransfer.files[0]; if (f) handleNfeFile(f); }}
-              >
-                <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm font-medium">Clique ou arraste o arquivo XML aqui</p>
-                <p className="text-xs text-muted-foreground mt-1">Formato NF-e 4.0 (.xml)</p>
-                <input ref={fileRef} type="file" accept=".xml" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleNfeFile(f); e.target.value = ''; }} />
+              <div className="flex gap-2">
+                <Button size="sm" variant={nfeMode === 'xml' ? 'default' : 'outline'} onClick={() => { setNfeMode('xml'); setNfeParsed(null); }}>
+                  <Upload className="w-3.5 h-3.5 mr-1.5" />Arquivo XML
+                </Button>
+                <Button size="sm" variant={nfeMode === 'manual' ? 'default' : 'outline'} onClick={() => setNfeMode('manual')}>
+                  <Pencil className="w-3.5 h-3.5 mr-1.5" />Preencher manualmente
+                </Button>
               </div>
 
-              {nfeParsed && (
-                <Card className="p-4 bg-success/5 border-success/30">
-                  <p className="text-xs font-semibold text-success mb-2 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" />NF-e lida com sucesso</p>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
-                    <div><span className="text-muted-foreground">Número:</span> {nfeParsed.numero_nf} / Série {nfeParsed.serie}</div>
-                    <div><span className="text-muted-foreground">Emitente:</span> {nfeParsed.nome_emitente}</div>
-                    <div><span className="text-muted-foreground">CNPJ:</span> {nfeParsed.cnpj_emitente}</div>
-                    <div><span className="text-muted-foreground">Valor total:</span> <span className="font-semibold">{fmtCurrency(nfeParsed.v_nf)}</span></div>
-                    <div><span className="text-muted-foreground">Emissão:</span> {nfeParsed.data_emissao ? fmtDate(nfeParsed.data_emissao.split('T')[0]) : '—'}</div>
-                    <div><span className="text-muted-foreground">Itens:</span> {nfeParsed.itens.length}</div>
+              {nfeMode === 'xml' && (
+                <div
+                  className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors ${nfeDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/30 hover:border-primary/50'}`}
+                  onClick={() => fileRef.current?.click()}
+                  onDragOver={e => { e.preventDefault(); setNfeDragging(true); }}
+                  onDragLeave={() => setNfeDragging(false)}
+                  onDrop={e => { e.preventDefault(); setNfeDragging(false); const f = e.dataTransfer.files[0]; if (f) handleNfeFile(f); }}
+                >
+                  <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm font-medium">Clique ou arraste o arquivo XML aqui</p>
+                  <p className="text-xs text-muted-foreground mt-1">O sistema detecta o fornecedor e os produtos automaticamente</p>
+                  <p className="text-xs text-muted-foreground">Formato NF-e 4.0 (.xml)</p>
+                  <input ref={fileRef} type="file" accept=".xml" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleNfeFile(f); e.target.value = ''; }} />
+                </div>
+              )}
+
+              {nfeMode === 'manual' && (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div><Label>Número *</Label><Input value={nfeForm.numero} onChange={e => setNfeForm(f => ({ ...f, numero: e.target.value }))} placeholder="000001" /></div>
+                    <div><Label>Série</Label><Input value={nfeForm.serie} onChange={e => setNfeForm(f => ({ ...f, serie: e.target.value }))} /></div>
+                    <div className="sm:col-span-2"><Label>Chave de Acesso (44 dígitos)</Label><Input value={nfeForm.chave_acesso} onChange={e => setNfeForm(f => ({ ...f, chave_acesso: e.target.value }))} placeholder="00000000000000000000000000000000000000000000" maxLength={44} /></div>
+                    <div><Label>Data de Emissão</Label><Input type="date" value={nfeForm.data_emissao} onChange={e => setNfeForm(f => ({ ...f, data_emissao: e.target.value }))} /></div>
+                    <div><Label>Valor Total *</Label><Input type="number" min="0" step="0.01" value={nfeForm.valor_total} onChange={e => setNfeForm(f => ({ ...f, valor_total: e.target.value }))} /></div>
+                    <div><Label>CNPJ Emitente</Label><Input value={nfeForm.cnpj_emitente} onChange={e => setNfeForm(f => ({ ...f, cnpj_emitente: e.target.value }))} placeholder="00.000.000/0001-00" /></div>
+                    <div><Label>Razão Social Emitente</Label><Input value={nfeForm.nome_emitente} onChange={e => setNfeForm(f => ({ ...f, nome_emitente: e.target.value }))} /></div>
                   </div>
-                </Card>
+                  <div className="border-t pt-4 space-y-4">
+                    <div>
+                      <Label>Vincular a pedido (opcional)</Label>
+                      <Select value={nfeForm.pedido_id || 'none'} onValueChange={v => setNfeForm(f => ({ ...f, pedido_id: v === 'none' ? '' : v }))}>
+                        <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">— Sem pedido —</SelectItem>
+                          {pedidos.filter(p => p.status !== 'cancelado').map(p => {
+                            const forn = fornecedores.find(f => f.id === p.fornecedor_id);
+                            return <SelectItem key={p.id} value={p.id}>{p.observacoes || 'Pedido'}{forn ? ` — ${forn.razao_social}` : ''} ({fmtCurrency(p.valor_total)})</SelectItem>;
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => { setNfeOpen(false); resetNfeDialog(); }}>Cancelar</Button>
+                      <Button onClick={handleSaveNfe} disabled={saving}>
+                        {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Salvar NF-e
+                      </Button>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}
 
-          {/* Modo manual */}
-          {nfeMode === 'manual' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div><Label>Número *</Label><Input value={nfeForm.numero} onChange={e => setNfeForm(f => ({ ...f, numero: e.target.value }))} placeholder="000001" /></div>
-              <div><Label>Série</Label><Input value={nfeForm.serie} onChange={e => setNfeForm(f => ({ ...f, serie: e.target.value }))} /></div>
-              <div className="sm:col-span-2"><Label>Chave de Acesso (44 dígitos)</Label><Input value={nfeForm.chave_acesso} onChange={e => setNfeForm(f => ({ ...f, chave_acesso: e.target.value }))} placeholder="00000000000000000000000000000000000000000000" maxLength={44} /></div>
-              <div><Label>Data de Emissão</Label><Input type="date" value={nfeForm.data_emissao} onChange={e => setNfeForm(f => ({ ...f, data_emissao: e.target.value }))} /></div>
-              <div><Label>Valor Total *</Label><Input type="number" min="0" step="0.01" value={nfeForm.valor_total} onChange={e => setNfeForm(f => ({ ...f, valor_total: e.target.value }))} /></div>
-              <div><Label>CNPJ Emitente</Label><Input value={nfeForm.cnpj_emitente} onChange={e => setNfeForm(f => ({ ...f, cnpj_emitente: e.target.value }))} placeholder="00.000.000/0001-00" /></div>
-              <div><Label>Razão Social Emitente</Label><Input value={nfeForm.nome_emitente} onChange={e => setNfeForm(f => ({ ...f, nome_emitente: e.target.value }))} /></div>
+          {/* ── ETAPA 2: Resumo NF-e + Fornecedor ── */}
+          {nfeMode === 'xml' && nfeStep === 2 && nfeParsed && (
+            <div className="space-y-4">
+              <Card className="p-4 bg-success/5 border-success/30">
+                <p className="text-xs font-semibold text-success mb-2 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />NF-e lida com sucesso
+                </p>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+                  <div><span className="text-muted-foreground">Número:</span> {nfeParsed.numero_nf} / Série {nfeParsed.serie}</div>
+                  <div><span className="text-muted-foreground">Valor total:</span> <span className="font-semibold">{fmtCurrency(nfeParsed.v_nf)}</span></div>
+                  <div className="col-span-2"><span className="text-muted-foreground">Emitente:</span> {nfeParsed.nome_emitente}{nfeParsed.cnpj_emitente ? ` — CNPJ ${nfeParsed.cnpj_emitente}` : ''}</div>
+                  <div><span className="text-muted-foreground">Emissão:</span> {nfeParsed.data_emissao ? fmtDate(nfeParsed.data_emissao.split('T')[0]) : '—'}</div>
+                  <div><span className="text-muted-foreground">Itens:</span> {nfeParsed.itens.length}</div>
+                </div>
+              </Card>
+
+              {nfeFornMatch ? (
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-success/30 bg-success/5">
+                  <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Fornecedor já cadastrado</p>
+                    <p className="text-xs text-muted-foreground">{nfeFornMatch.razao_social}{nfeFornMatch.cnpj ? ` — CNPJ ${nfeFornMatch.cnpj}` : ''}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-lg border border-warning/30 bg-warning/5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
+                    <p className="text-sm font-medium">Novo fornecedor detectado</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{nfeParsed.nome_emitente || '—'}{nfeParsed.cnpj_emitente ? ` — CNPJ ${nfeParsed.cnpj_emitente}` : ''}</p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <Switch id="criar-forn" checked={nfeCriarForn} onCheckedChange={setNfeCriarForn} />
+                    <Label htmlFor="criar-forn" className="text-sm cursor-pointer">Cadastrar automaticamente como fornecedor</Label>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <Label>Vincular a pedido (opcional)</Label>
+                <Select value={nfeForm.pedido_id || 'none'} onValueChange={v => setNfeForm(f => ({ ...f, pedido_id: v === 'none' ? '' : v }))}>
+                  <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Sem pedido —</SelectItem>
+                    {pedidos.filter(p => p.status !== 'cancelado').map(p => {
+                      const forn = fornecedores.find(f => f.id === p.fornecedor_id);
+                      return <SelectItem key={p.id} value={p.id}>{p.observacoes || 'Pedido'}{forn ? ` — ${forn.razao_social}` : ''} ({fmtCurrency(p.valor_total)})</SelectItem>;
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex justify-between pt-2 border-t">
+                <Button variant="ghost" size="sm" onClick={() => { setNfeParsed(null); setNfeXmlStr(''); setNfeStep(1); setNfeFornMatch(null); setNfeCriarForn(false); setNfeItemMaps([]); }}>
+                  ← Trocar arquivo
+                </Button>
+                {nfeParsed.itens.length > 0 ? (
+                  <Button onClick={() => setNfeStep(3)}>Próximo: Produtos →</Button>
+                ) : (
+                  <Button onClick={handleSaveNfe} disabled={saving}>
+                    {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Salvar NF-e
+                  </Button>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Seção comum: vincular pedido + estoque */}
-          <div className="mt-4 space-y-4 border-t pt-4">
-            <div>
-              <Label>Vincular a pedido (opcional)</Label>
-              <Select value={nfeForm.pedido_id || 'none'} onValueChange={v => setNfeForm(f => ({ ...f, pedido_id: v === 'none' ? '' : v }))}>
-                <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— Sem pedido —</SelectItem>
-                  {pedidos.filter(p => p.status !== 'cancelado').map(p => {
-                    const forn = fornecedores.find(f => f.id === p.fornecedor_id);
-                    return <SelectItem key={p.id} value={p.id}>{p.observacoes || 'Pedido'}{forn ? ` — ${forn.razao_social}` : ''} ({fmtCurrency(p.valor_total)})</SelectItem>;
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Registrar no estoque (só para XML com itens) */}
-            {nfeMode === 'xml' && nfeParsed && nfeParsed.itens.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Checkbox id="nfe-estoque" checked={nfeRegEstoque} onCheckedChange={v => { const val = !!v; setNfeRegEstoque(val); if (val && !nfeItemMaps.length) setNfeItemMaps(nfeParsed.itens.map(item => ({ item, produtoId: '', novaNome: item.x_prod, incluir: true }))); }} />
-                  <Label htmlFor="nfe-estoque" className="cursor-pointer">Registrar itens no estoque</Label>
-                </div>
-                {nfeRegEstoque && (
-                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                    {nfeItemMaps.map((m, idx) => (
-                      <div key={idx} className={`border rounded-lg p-3 space-y-2 ${!m.incluir ? 'opacity-50' : ''}`}>
-                        <div className="flex items-start gap-2">
-                          <Checkbox checked={m.incluir} onCheckedChange={v => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, incluir: !!v } : x))} className="mt-0.5" />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-medium truncate">{m.item.x_prod}</p>
-                            <p className="text-[10px] text-muted-foreground">{m.item.q_com} {m.item.u_com} · {fmtCurrency(m.item.v_un_com)}/un</p>
-                          </div>
-                        </div>
-                        {m.incluir && (
-                          <Select value={m.produtoId} onValueChange={v => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, produtoId: v } : x))}>
-                            <SelectTrigger className="text-xs h-8"><SelectValue placeholder="Selecione o produto do catálogo" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="">— Não vincular a produto —</SelectItem>
-                              {produtosAtivosParaSelect.map(pr => <SelectItem key={pr.id} value={pr.id}>{pr.descricao}{pr.codigo ? ` (${pr.codigo})` : ''}</SelectItem>)}
-                              <SelectItem value="__new__">+ Criar novo produto</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
-                        {m.incluir && m.produtoId === '__new__' && (
-                          <Input className="text-xs h-8" placeholder="Nome do novo produto" value={m.novaNome} onChange={e => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, novaNome: e.target.value } : x))} />
-                        )}
+          {/* ── ETAPA 3: Mapear itens → produtos ── */}
+          {nfeMode === 'xml' && nfeStep === 3 && nfeParsed && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Vincule cada item da NF-e a um produto do catálogo. Itens com produto selecionado serão
+                registrados como entrada no estoque. Itens sem produto serão ignorados.
+              </p>
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+                {nfeItemMaps.map((m, idx) => (
+                  <div key={idx} className={`border rounded-lg p-3 space-y-2 transition-opacity ${!m.incluir ? 'opacity-50' : ''}`}>
+                    <div className="flex items-start gap-2">
+                      <Checkbox checked={m.incluir}
+                        onCheckedChange={v => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, incluir: !!v } : x))}
+                        className="mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{m.item.x_prod}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {m.item.q_com} {m.item.u_com} · {fmtCurrency(m.item.v_un_com)}/un
+                          {m.item.c_prod ? ` · Cód: ${m.item.c_prod}` : ''}
+                          {m.produtoId && m.produtoId !== '__new__' && <span className="text-success ml-1">· Auto-vinculado</span>}
+                        </p>
                       </div>
-                    ))}
+                    </div>
+                    {m.incluir && (
+                      <>
+                        <Select value={m.produtoId} onValueChange={v => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, produtoId: v } : x))}>
+                          <SelectTrigger className="text-xs h-8"><SelectValue placeholder="— Não registrar no estoque —" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">— Não registrar no estoque —</SelectItem>
+                            {produtosAtivosParaSelect.map(pr => (
+                              <SelectItem key={pr.id} value={pr.id}>{pr.descricao}{pr.codigo ? ` (${pr.codigo})` : ''}</SelectItem>
+                            ))}
+                            <SelectItem value="__new__">+ Criar novo produto</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {m.produtoId === '__new__' && (
+                          <Input className="text-xs h-8" placeholder="Nome do novo produto"
+                            value={m.novaNome}
+                            onChange={e => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, novaNome: e.target.value } : x))} />
+                        )}
+                      </>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={() => { setNfeOpen(false); resetNfeDialog(); }}>Cancelar</Button>
-            <Button onClick={handleSaveNfe} disabled={saving || (nfeMode === 'xml' && !nfeParsed && !nfeForm.numero)}>
-              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Salvar NF-e
-            </Button>
-          </div>
+              <div className="flex justify-between pt-2 border-t">
+                <Button variant="ghost" size="sm" onClick={() => setNfeStep(2)}>← Voltar</Button>
+                <Button onClick={handleSaveNfe} disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Salvar NF-e
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </AppLayout>
