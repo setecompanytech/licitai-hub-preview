@@ -736,7 +736,7 @@ export default function GestaoCompras() {
           <OnboardingCompras
             onCadastrarFornecedor={() => { setEditingForn(null); setFornForm(defaultFornForm()); setFornOpen(true); }}
             onNovoPedido={() => { resetPedidoForm(); setPedidoOpen(true); }}
-            onEstoque={() => { setMainTab('estoque'); }}
+            onEstoque={() => { setMainTab('estoque'); setEditingProduto(null); setProdutoForm(defaultProdutoForm()); setProdutoOpen(true); }}
             onImportarNfe={() => { resetNfeDialog(); setNfeOpen(true); }}
           />
         </div>
