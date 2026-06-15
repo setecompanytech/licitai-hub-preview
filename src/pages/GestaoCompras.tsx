@@ -198,25 +198,30 @@ export default function GestaoCompras() {
   const loadAll = async () => {
     if (!empresaAtiva) return;
     setLoading(true);
-    const [{ data: p }, { data: f }, { data: pr }, { data: n }] = await Promise.all([
-      supabase.from('pedidos_compra').select('*').eq('empresa_id', empresaAtiva.id).order('created_at', { ascending: false }),
-      supabase.from('fornecedores').select('*').eq('empresa_id', empresaAtiva.id).order('razao_social'),
-      supabase.from('produtos').select('*').eq('empresa_id', empresaAtiva.id).order('descricao'),
-      supabase.from('nfe_recebidas').select('*').eq('empresa_id', empresaAtiva.id).order('created_at', { ascending: false }),
-    ]);
-    setPedidos((p as PedidoCompra[]) || []);
-    setFornecedores((f as Fornecedor[]) || []);
-    setProdutos((pr as Produto[]) || []);
-    setNfes((n as NfeRecebida[]) || []);
-    if (selectedPedido) {
-      const upd = ((p as PedidoCompra[]) || []).find(x => x.id === selectedPedido.id);
-      if (upd) setSelectedPedido(upd);
+    try {
+      const [{ data: p }, { data: f }, { data: pr }, { data: n }] = await Promise.all([
+        supabase.from('pedidos_compra').select('*').eq('empresa_id', empresaAtiva.id).order('created_at', { ascending: false }),
+        supabase.from('fornecedores').select('*').eq('empresa_id', empresaAtiva.id).order('razao_social'),
+        supabase.from('produtos').select('*').eq('empresa_id', empresaAtiva.id).order('descricao'),
+        supabase.from('nfe_recebidas').select('*').eq('empresa_id', empresaAtiva.id).order('created_at', { ascending: false }),
+      ]);
+      setPedidos((p as PedidoCompra[]) || []);
+      setFornecedores((f as Fornecedor[]) || []);
+      setProdutos((pr as Produto[]) || []);
+      setNfes((n as NfeRecebida[]) || []);
+      if (selectedPedido) {
+        const upd = ((p as PedidoCompra[]) || []).find(x => x.id === selectedPedido.id);
+        if (upd) setSelectedPedido(upd);
+      }
+      if (selectedProduto) {
+        const upd = ((pr as Produto[]) || []).find(x => x.id === selectedProduto.id);
+        if (upd) setSelectedProduto(upd);
+      }
+    } catch {
+      toast.error('Erro ao carregar dados. Verifique sua conexão.');
+    } finally {
+      setLoading(false);
     }
-    if (selectedProduto) {
-      const upd = ((pr as Produto[]) || []).find(x => x.id === selectedProduto.id);
-      if (upd) setSelectedProduto(upd);
-    }
-    setLoading(false);
   };
 
   const loadContratos = async () => {
