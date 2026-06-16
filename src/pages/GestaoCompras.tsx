@@ -142,9 +142,10 @@ export default function GestaoCompras() {
   const [formItens,  setFormItens]  = useState<FormItem[]>([blankItem()]);
 
   // ── State: dialog Fornecedor ──────────────────────────────────
-  const [fornOpen,    setFornOpen]    = useState(false);
-  const [editingForn, setEditingForn] = useState<Fornecedor | null>(null);
-  const [fornForm,    setFornForm]    = useState(defaultFornForm);
+  const [fornOpen,      setFornOpen]      = useState(false);
+  const [editingForn,   setEditingForn]   = useState<Fornecedor | null>(null);
+  const [fornForm,      setFornForm]      = useState(defaultFornForm);
+  const [fetchingCnpj,  setFetchingCnpj]  = useState(false);
 
   // ── State: dialogs Estoque ────────────────────────────────────
   const [produtoOpen,    setProdutoOpen]    = useState(false);
@@ -317,6 +318,40 @@ export default function GestaoCompras() {
     toast.success('Fornecedor excluído'); loadAll();
   };
 
+  // ── Busca CNPJ (BrasilAPI) ────────────────────────────────────
+  const buscarCnpj = async (raw: string) => {
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length !== 14) return;
+    setFetchingCnpj(true);
+    try {
+      const { data: d, error } = await supabase.functions.invoke('consulta-cnpj', {
+        body: { cnpj: digits },
+      });
+      if (error || !d || d.error) throw new Error(d?.error || 'not_found');
+
+      const regime = d.simples ? '1' : '3';
+
+      setFornForm(f => ({
+        ...f,
+        razao_social:      d.razaoSocial      || f.razao_social,
+        contato_telefone:  d.telefone         || f.contato_telefone,
+        cep:               d.cep              || f.cep,
+        logradouro:        d.logradouro       || f.logradouro,
+        numero_endereco:   d.numero           || f.numero_endereco,
+        bairro:            d.bairro           || f.bairro,
+        municipio:         d.municipio        || f.municipio,
+        uf:                d.uf               || f.uf,
+        regime_tributario: regime             || f.regime_tributario,
+        inscricao_estadual: d.inscricaoEstadual || f.inscricao_estadual,
+      }));
+      toast.success('Dados preenchidos automaticamente');
+    } catch {
+      toast.error('CNPJ não encontrado ou inválido');
+    } finally {
+      setFetchingCnpj(false);
+    }
+  };
+
   // ── Produto CRUD ──────────────────────────────────────────────
   const handleSaveProduto = async () => {
     if (!empresaAtiva) return;
@@ -342,6 +377,30 @@ export default function GestaoCompras() {
     toast.success('Produto excluído');
     if (selectedProduto?.id === id) setSelectedProduto(null);
     loadAll();
+  };
+
+  // ── Auto-código produto ───────────────────────────────────────
+  const generateNextCodigo = async (): Promise<string> => {
+    if (!empresaAtiva) return 'PRD00001';
+    const { data } = await supabase
+      .from('produtos')
+      .select('codigo')
+      .eq('empresa_id', empresaAtiva.id)
+      .like('codigo', 'PRD%')
+      .order('codigo', { ascending: false })
+      .limit(1);
+    const last = data?.[0]?.codigo as string | undefined;
+    if (!last) return 'PRD00001';
+    const num = parseInt(last.replace('PRD', ''), 10);
+    if (isNaN(num)) return 'PRD00001';
+    return `PRD${String(num + 1).padStart(5, '0')}`;
+  };
+
+  const openNovoProduto = async () => {
+    const codigo = await generateNextCodigo();
+    setEditingProduto(null);
+    setProdutoForm({ ...defaultProdutoForm(), codigo });
+    setProdutoOpen(true);
   };
 
   // ── Movimentação manual ───────────────────────────────────────
@@ -776,7 +835,7 @@ export default function GestaoCompras() {
             {mainTab === 'fornecedores' ? (
               <Button onClick={() => { setEditingForn(null); setFornForm(defaultFornForm()); setFornOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Fornecedor</Button>
             ) : mainTab === 'estoque' ? (
-              <Button onClick={() => { setEditingProduto(null); setProdutoForm(defaultProdutoForm()); setProdutoOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Produto</Button>
+              <Button onClick={openNovoProduto}><Plus className="w-4 h-4 mr-2" /> Novo Produto</Button>
             ) : mainTab === 'nfe' ? (
               <Button onClick={() => { resetNfeDialog(); setNfeOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Importar NF-e</Button>
             ) : (
@@ -795,7 +854,7 @@ export default function GestaoCompras() {
           <OnboardingCompras
             onCadastrarFornecedor={() => { setEditingForn(null); setFornForm(defaultFornForm()); setFornOpen(true); }}
             onNovoPedido={() => { resetPedidoForm(); setPedidoOpen(true); }}
-            onEstoque={() => { setMainTab('estoque'); setEditingProduto(null); setProdutoForm(defaultProdutoForm()); setProdutoOpen(true); }}
+            onEstoque={() => { setMainTab('estoque'); openNovoProduto(); }}
             onImportarNfe={() => { resetNfeDialog(); setNfeOpen(true); }}
           />
         </div>
@@ -913,7 +972,7 @@ export default function GestaoCompras() {
             <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar produto, código ou categoria..." value={estoqSearch} onChange={e => setEstoqSearch(e.target.value)} className="pl-9" /></div>
 
             {filtProdutos.length === 0 ? (
-              <Card className="p-12 text-center"><Warehouse className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground mb-3">Nenhum produto cadastrado</p><Button onClick={() => { setEditingProduto(null); setProdutoForm(defaultProdutoForm()); setProdutoOpen(true); }}><Plus className="w-4 h-4 mr-2" />Novo Produto</Button></Card>
+              <Card className="p-12 text-center"><Warehouse className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground mb-3">Nenhum produto cadastrado</p><Button onClick={openNovoProduto}><Plus className="w-4 h-4 mr-2" />Novo Produto</Button></Card>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filtProdutos.map(p => {
@@ -1072,7 +1131,26 @@ export default function GestaoCompras() {
           <DialogHeader><DialogTitle>{editingForn ? 'Editar Fornecedor' : 'Novo Fornecedor'}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
             <div className="md:col-span-2"><Label>Razão Social *</Label><Input value={fornForm.razao_social} onChange={e => setFornForm(f => ({ ...f, razao_social: e.target.value }))} /></div>
-            <div><Label>CNPJ</Label><Input value={fornForm.cnpj} onChange={e => setFornForm(f => ({ ...f, cnpj: e.target.value }))} placeholder="00.000.000/0001-00" /></div>
+            <div>
+              <Label>CNPJ</Label>
+              <div className="relative">
+                <Input
+                  value={fornForm.cnpj}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setFornForm(f => ({ ...f, cnpj: val }));
+                    buscarCnpj(val);
+                  }}
+                  placeholder="00.000.000/0001-00"
+                  className={fetchingCnpj ? 'pr-9' : ''}
+                />
+                {fetchingCnpj && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+            </div>
             <div><Label>Categoria</Label><Input value={fornForm.categoria} onChange={e => setFornForm(f => ({ ...f, categoria: e.target.value }))} placeholder="Materiais, TI, Serviços..." /></div>
             <div><Label>Prazo de Entrega (dias)</Label><Input type="number" min="0" value={fornForm.prazo_entrega_dias} onChange={e => setFornForm(f => ({ ...f, prazo_entrega_dias: e.target.value }))} /></div>
             <div className="flex items-center gap-3 mt-5"><Switch id="forn-ativo" checked={fornForm.ativo} onCheckedChange={v => setFornForm(f => ({ ...f, ativo: v }))} /><Label htmlFor="forn-ativo" className="cursor-pointer">Fornecedor ativo</Label></div>
@@ -1355,7 +1433,16 @@ function ProdutoDialog({ open, onOpenChange, editing, form, setForm, saving, onS
         <DialogHeader><DialogTitle>{editing ? 'Editar Produto' : 'Novo Produto'}</DialogTitle></DialogHeader>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
           <div className="sm:col-span-2"><Label>Descrição *</Label><Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} /></div>
-          <div><Label>Código</Label><Input value={form.codigo} onChange={e => setForm(f => ({ ...f, codigo: e.target.value }))} placeholder="ex: MAT-001" /></div>
+          <div>
+            <Label>Código</Label>
+            <Input
+              value={form.codigo}
+              readOnly={!editing}
+              onChange={e => { if (editing) setForm(f => ({ ...f, codigo: e.target.value })); }}
+              className={!editing ? 'bg-muted/50 cursor-default select-none' : ''}
+            />
+            {!editing && <p className="text-[11px] text-muted-foreground mt-1">Gerado automaticamente pelo sistema</p>}
+          </div>
           <div><Label>Unidade</Label><Input value={form.unidade} onChange={e => setForm(f => ({ ...f, unidade: e.target.value }))} placeholder="UN, KG, M², L..." /></div>
           <div><Label>Categoria</Label><Input value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} placeholder="ex: Material, EPI..." /></div>
           <div><Label>Saldo Mínimo</Label><Input type="number" min="0" step="0.01" value={form.saldo_minimo} onChange={e => setForm(f => ({ ...f, saldo_minimo: e.target.value }))} /></div>

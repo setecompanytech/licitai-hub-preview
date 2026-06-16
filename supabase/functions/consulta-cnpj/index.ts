@@ -302,6 +302,8 @@ serve(async (req) => {
         (c: any) => `${c.codigo} - ${c.descricao}`
       ),
       endereco: enderecoPartes,
+      logradouro: data.logradouro || "",
+      numero: data.numero || "",
       complemento: data.complemento || "",
       bairro: data.bairro || "",
       cep: cepFormatado,
