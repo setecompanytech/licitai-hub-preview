@@ -170,6 +170,7 @@ export default function GestaoCompras() {
   const [nfeRegEstoque,  setNfeRegEstoque]  = useState(false);
   const [nfeItemMaps,    setNfeItemMaps]    = useState<{ item: NFeItemData; produtoId: string; novaNome: string; incluir: boolean }[]>([]);
   const [nfeDragging,    setNfeDragging]    = useState(false);
+  const [nfePdfLoading,  setNfePdfLoading]  = useState(false);
   const [nfeStep,        setNfeStep]        = useState<1|2|3>(1);
   const [nfeFornMatch,   setNfeFornMatch]   = useState<Fornecedor | null>(null);
   const [nfeCriarForn,   setNfeCriarForn]   = useState(false);
@@ -465,7 +466,9 @@ export default function GestaoCompras() {
 
   // ── NF-e: XML parsing ─────────────────────────────────────────
   const handleNfeFile = (file: File) => {
-    if (!file.name.toLowerCase().endsWith('.xml')) { toast.error('Selecione um arquivo .xml'); return; }
+    const lower = file.name.toLowerCase();
+    if (lower.endsWith('.pdf')) { handleNfePdf(file); return; }
+    if (!lower.endsWith('.xml')) { toast.error('Selecione um arquivo .xml ou .pdf'); return; }
     const reader = new FileReader();
     reader.onload = e => {
       const text = e.target?.result as string;
@@ -494,6 +497,62 @@ export default function GestaoCompras() {
       }
     };
     reader.readAsText(file, 'UTF-8');
+  };
+
+  const handleNfePdf = async (file: File) => {
+    setNfePdfLoading(true);
+    try {
+      const ab = await file.arrayBuffer();
+      const bytes = new Uint8Array(ab);
+      const chunks: string[] = [];
+      for (let i = 0; i < bytes.length; i += 8192) {
+        chunks.push(String.fromCharCode(...bytes.subarray(i, i + 8192)));
+      }
+      const pdf_base64 = btoa(chunks.join(''));
+
+      const { data: d, error } = await supabase.functions.invoke('extrair-dados-nfe-pdf', {
+        body: { pdf_base64 },
+      });
+      console.log('[handleNfePdf] base64 length:', pdf_base64.length);
+      console.log('[handleNfePdf] invoke error:', error);
+      console.log('[handleNfePdf] invoke data:', d);
+      if (error || !d) throw new Error(error?.message || 'falha na invoke');
+      if (d.error) throw new Error(d.error);
+
+      const parsed = d as NFeData;
+      if (!parsed.numero_nf && !parsed.v_nf) {
+        toast.error('Chave de acesso não encontrada no PDF. Use o arquivo XML para melhores resultados.');
+        return;
+      }
+      setNfeParsed(parsed);
+      setNfeXmlStr('');
+      const dataEmissao = parsed.data_emissao?.split('T')[0] ?? today();
+      setNfeForm(f => ({
+        ...f,
+        numero:         String(parsed.numero_nf || ''),
+        serie:          String(parsed.serie || '1'),
+        chave_acesso:   parsed.chave_acesso || '',
+        data_emissao:   dataEmissao,
+        cnpj_emitente:  parsed.cnpj_emitente || '',
+        nome_emitente:  parsed.nome_emitente || '',
+        valor_total:    String(parsed.v_nf || ''),
+      }));
+      const cnpjNorm = normCnpj(parsed.cnpj_emitente || '');
+      const fornFound = cnpjNorm ? (fornecedores.find(f => normCnpj(f.cnpj || '') === cnpjNorm) ?? null) : null;
+      setNfeFornMatch(fornFound);
+      setNfeCriarForn(!fornFound && !!cnpjNorm);
+      setNfeItemMaps((parsed.itens || []).map(item => {
+        const matched = item.c_prod ? produtos.find(p => p.ativo && p.codigo === item.c_prod) : undefined;
+        return { item, produtoId: matched?.id ?? '', novaNome: item.x_prod, incluir: true };
+      }));
+      setNfeStep(2);
+      toast.success('Dados extraídos do DANFE com sucesso');
+    } catch (err) {
+      console.error('[handleNfePdf] catch:', err);
+      toast.error('Não foi possível extrair dados do PDF. Use o arquivo XML para melhores resultados.');
+    } finally {
+      setNfePdfLoading(false);
+    }
   };
 
   const handleSaveNfe = async () => {
@@ -1221,8 +1280,8 @@ export default function GestaoCompras() {
           {(nfeMode === 'manual' || (nfeMode === 'xml' && nfeStep === 1)) && (
             <div className="space-y-4">
               <div className="flex gap-2">
-                <Button size="sm" variant={nfeMode === 'xml' ? 'default' : 'outline'} onClick={() => { setNfeMode('xml'); setNfeParsed(null); }}>
-                  <Upload className="w-3.5 h-3.5 mr-1.5" />Arquivo XML
+                <Button size="sm" variant={nfeMode === 'xml' ? 'default' : 'outline'} onClick={() => { setNfeMode('xml'); setNfeParsed(null); setTimeout(() => fileRef.current?.click(), 0); }}>
+                  <Upload className="w-3.5 h-3.5 mr-1.5" />Importar Arquivo
                 </Button>
                 <Button size="sm" variant={nfeMode === 'manual' ? 'default' : 'outline'} onClick={() => setNfeMode('manual')}>
                   <Pencil className="w-3.5 h-3.5 mr-1.5" />Preencher manualmente
@@ -1231,17 +1290,29 @@ export default function GestaoCompras() {
 
               {nfeMode === 'xml' && (
                 <div
-                  className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors ${nfeDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/30 hover:border-primary/50'}`}
-                  onClick={() => fileRef.current?.click()}
-                  onDragOver={e => { e.preventDefault(); setNfeDragging(true); }}
+                  className={`border-2 border-dashed rounded-lg p-10 text-center transition-colors ${nfePdfLoading ? 'border-primary/40 bg-primary/5 cursor-wait' : `cursor-pointer ${nfeDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/30 hover:border-primary/50'}`}`}
+                  onClick={() => { if (!nfePdfLoading) fileRef.current?.click(); }}
+                  onDragOver={e => { e.preventDefault(); if (!nfePdfLoading) setNfeDragging(true); }}
                   onDragLeave={() => setNfeDragging(false)}
-                  onDrop={e => { e.preventDefault(); setNfeDragging(false); const f = e.dataTransfer.files[0]; if (f) handleNfeFile(f); }}
+                  onDrop={e => { e.preventDefault(); setNfeDragging(false); if (!nfePdfLoading) { const f = e.dataTransfer.files[0]; if (f) handleNfeFile(f); } }}
                 >
-                  <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm font-medium">Clique ou arraste o arquivo XML aqui</p>
-                  <p className="text-xs text-muted-foreground mt-1">O sistema detecta o fornecedor e os produtos automaticamente</p>
-                  <p className="text-xs text-muted-foreground">Formato NF-e 4.0 (.xml)</p>
-                  <input ref={fileRef} type="file" accept=".xml" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleNfeFile(f); e.target.value = ''; }} />
+                  {nfePdfLoading ? (
+                    <>
+                      <div className="flex justify-center mb-3">
+                        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                      </div>
+                      <p className="text-sm font-medium">Extraindo dados do DANFE...</p>
+                      <p className="text-xs text-muted-foreground mt-1">Aguarde, isso pode levar alguns segundos</p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-sm font-medium">Clique ou arraste o arquivo aqui</p>
+                      <p className="text-xs text-muted-foreground mt-1">O sistema detecta o fornecedor e os produtos automaticamente</p>
+                      <p className="text-xs text-muted-foreground">Formatos aceitos: XML (NF-e 4.0) ou PDF (DANFE)</p>
+                    </>
+                  )}
+                  <input ref={fileRef} type="file" accept=".xml,.pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleNfeFile(f); e.target.value = ''; }} />
                 </div>
               )}
 
