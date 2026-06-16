@@ -8586,6 +8586,8 @@ export type Database = {
             | null
           updated_at: string
           updated_by: string | null
+          departamento: string | null
+          projeto_id: string | null
           valor: number
           valor_desconto: number | null
           valor_imposto: number | null
@@ -8649,6 +8651,8 @@ export type Database = {
             | null
           updated_at?: string
           updated_by?: string | null
+          departamento?: string | null
+          projeto_id?: string | null
           valor: number
           valor_desconto?: number | null
           valor_imposto?: number | null
@@ -8712,6 +8716,8 @@ export type Database = {
             | null
           updated_at?: string
           updated_by?: string | null
+          departamento?: string | null
+          projeto_id?: string | null
           valor?: number
           valor_desconto?: number | null
           valor_imposto?: number | null

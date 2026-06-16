@@ -17,6 +17,7 @@ import {
   useUpsertLancamento,
   useGerarParcelas,
   useMembrosEmpresa,
+  useFinProjetos,
   calcularSerieParcelas,
   type Lancamento,
   type Periodicidade,
@@ -81,6 +82,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   const { data: categorias = [] } = useCategorias();
   const { data: pessoas = [] } = usePessoas();
   const { data: membros = [] } = useMembrosEmpresa();
+  const { data: projetos = [] } = useFinProjetos();
   const upsert = useUpsertLancamento();
   const gerarParcelas = useGerarParcelas();
 
@@ -122,6 +124,10 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   // Edições manuais da tabela de simulação (override por índice da parcela)
   const [simulacaoEdits, setSimulacaoEdits] = useState<Record<number, { vencimento?: string; valor?: number }>>({});
 
+  // Departamento e projeto
+  const [departamento, setDepartamento] = useState<string>("");
+  const [projetoId, setProjetoId] = useState<string>("");
+
   // Vendedor responsável
   const [vendedorId, setVendedorId] = useState<string>("");
 
@@ -149,6 +155,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     setValorDesconto(Number((initial as any)?.valor_desconto ?? 0));
     setValorTarifa(Number((initial as any)?.valor_tarifa ?? 0));
     setFormaPagamento((initial as any)?.forma_pagamento ?? "");
+    setDepartamento((initial as any)?.departamento ?? "");
+    setProjetoId((initial as any)?.projeto_id ?? "");
     setVendedorId((initial as any)?.vendedor_responsavel_id ?? "");
     setParcelar(false);
     setQtdParcelas(2);
@@ -223,6 +231,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
       valor_desconto: valorDesconto || 0,
       valor_tarifa: valorTarifa || 0,
       forma_pagamento: formaPagamento || null,
+      departamento: departamento || null,
+      projeto_id: projetoId || null,
       vendedor_responsavel_id: vendedorId || null,
     };
 
@@ -387,6 +397,36 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                         </SelectGroup>
                       );
                     })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Departamento</Label>
+                <Select value={departamento || "none"} onValueChange={(v) => setDepartamento(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Não informado —</SelectItem>
+                    <SelectItem value="Administrativo">Administrativo</SelectItem>
+                    <SelectItem value="Comercial">Comercial</SelectItem>
+                    <SelectItem value="Financeiro">Financeiro</SelectItem>
+                    <SelectItem value="Jurídico">Jurídico</SelectItem>
+                    <SelectItem value="Operacional">Operacional</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Projeto</Label>
+                <Select value={projetoId || "none"} onValueChange={(v) => setProjetoId(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Sem projeto —</SelectItem>
+                    {projetos.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.codigo} · {p.nome}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

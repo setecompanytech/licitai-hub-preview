@@ -38,6 +38,27 @@ export function useEmpresaId() {
 }
 
 // ----------------------------------------------------------------------------
+// Projetos (fin_projetos)
+// ----------------------------------------------------------------------------
+export function useFinProjetos() {
+  const empresaId = useEmpresaId();
+  return useQuery({
+    queryKey: ["fin-projetos", empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fin_projetos")
+        .select("id, codigo, nome")
+        .eq("empresa_id", empresaId!)
+        .eq("ativo", true)
+        .order("codigo");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+// ----------------------------------------------------------------------------
 // Contas
 // ----------------------------------------------------------------------------
 export function useContas() {
