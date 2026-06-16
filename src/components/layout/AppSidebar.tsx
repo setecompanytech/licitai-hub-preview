@@ -85,7 +85,7 @@ const navGroups: NavGroup[] = [
       { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
       { icon: Archive, label: 'Histórico', path: '/historico-licitacoes' },
       { icon: FileText,     label: 'Contratos', path: '/gestao-contratos' },
-      { icon: ShoppingCart, label: 'Compras',   path: '/gestao-compras' },
+      { icon: ShoppingCart, label: 'Compras, Pedidos e Estoque', path: '/gestao-compras' },
     ],
   },
   {

@@ -55,7 +55,7 @@ const navGroups: NavGroup[] = [
       { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
       { icon: Archive, label: 'Histórico', path: '/historico-licitacoes' },
       { icon: FileText,     label: 'Contratos', path: '/gestao-contratos' },
-      { icon: ShoppingCart, label: 'Compras',   path: '/gestao-compras' },
+      { icon: ShoppingCart, label: 'Compras, Pedidos e Estoque', path: '/gestao-compras' },
     ],
   },
   {
@@ -230,7 +230,7 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 6 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute top-full left-0 mt-1.5 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden min-w-[220px]"
+                    className="absolute top-full left-0 mt-1.5 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden min-w-[220px] w-max"
                     style={{ boxShadow: 'var(--shadow-xl)' }}
                   >
                     {groups.map((group) => (
