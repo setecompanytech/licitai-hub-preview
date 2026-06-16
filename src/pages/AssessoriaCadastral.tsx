@@ -23,12 +23,12 @@ type CadastroPortal = {
 };
 
 const cadastros: CadastroPortal[] = [
-  { id: '1', nome: 'Sistema de Cadastramento Unificado de Fornecedores', sigla: 'SICAF', descricao: 'Cadastro federal obrigatório para licitações do Governo Federal', url: 'https://www.gov.br/compras/pt-br/sistemas/sicaf', status: 'ativo', validade: '2026-08-15', documentosPendentes: 0, progressoCadastro: 100 },
-  { id: '2', nome: 'Cadastro Unificado de Fornecedores do Estado de SP', sigla: 'CAUFESP', descricao: 'Cadastro para participar de licitações do Estado de São Paulo', url: 'https://www.bec.sp.gov.br', status: 'pendente', validade: '2026-03-01', documentosPendentes: 3, progressoCadastro: 65 },
-  { id: '3', nome: 'Sistema Integrado de Gestão Administrativa', sigla: 'SIGA/PA', descricao: 'Cadastro para fornecedores do Estado do Pará', url: '#', status: 'ativo', validade: '2026-12-31', documentosPendentes: 0, progressoCadastro: 100 },
-  { id: '4', nome: 'Certificado de Registro Cadastral', sigla: 'CRC Municipal', descricao: 'Cadastro para licitações municipais de Belém', url: '#', status: 'expirado', validade: '2026-01-15', documentosPendentes: 5, progressoCadastro: 40 },
-  { id: '5', nome: 'Cadastro Nacional de Empresas Inidôneas e Suspensas', sigla: 'CEIS', descricao: 'Consulta de impedimentos e penalidades', url: 'https://portaldatransparencia.gov.br/sancoes/ceis', status: 'ativo', documentosPendentes: 0, progressoCadastro: 100 },
-  { id: '6', nome: 'Portal de Compras Públicas', sigla: 'PCP', descricao: 'Plataforma eletrônica de compras públicas', url: 'https://www.portaldecompraspublicas.com.br', status: 'nao_cadastrado', documentosPendentes: 8, progressoCadastro: 0 },
+  { id: '1', nome: 'Sistema de Cadastramento Unificado de Fornecedores', sigla: 'SICAF', descricao: 'Cadastro federal obrigatório para licitações do Governo Federal', url: 'https://www.gov.br/compras/pt-br/sistemas/sicaf-digital', status: 'ativo', validade: '2026-08-15', documentosPendentes: 0, progressoCadastro: 100 },
+  { id: '2', nome: 'Cadastro Unificado de Fornecedores do Estado de SP', sigla: 'CAUFESP', descricao: 'Cadastro para participar de licitações do Estado de São Paulo', url: 'https://www.bec.sp.gov.br/BEC_Acesso_UI/Login/ui_login.aspx', status: 'pendente', validade: '2026-03-01', documentosPendentes: 3, progressoCadastro: 65 },
+  { id: '3', nome: 'Sistema Integrado de Gestão Administrativa', sigla: 'SIGA/PA', descricao: 'Cadastro para fornecedores do Estado do Pará', url: 'https://www.compraspara.pa.gov.br', status: 'ativo', validade: '2026-12-31', documentosPendentes: 0, progressoCadastro: 100 },
+  { id: '4', nome: 'Certificado de Registro Cadastral', sigla: 'CRC Municipal', descricao: 'Cadastro para licitações municipais de Belém', url: 'https://www.belem.pa.gov.br/licitacao/licitacao/consulta', status: 'expirado', validade: '2026-01-15', documentosPendentes: 5, progressoCadastro: 40 },
+  { id: '5', nome: 'Cadastro Nacional de Empresas Inidôneas e Suspensas', sigla: 'CEIS', descricao: 'Consulta de impedimentos e penalidades', url: 'https://portaldatransparencia.gov.br/entenda-a-gestao-publica/ceis', status: 'ativo', documentosPendentes: 0, progressoCadastro: 100 },
+  { id: '6', nome: 'Portal de Compras Públicas', sigla: 'PCP', descricao: 'Plataforma eletrônica de compras públicas', url: 'https://www.portaldecompraspublicas.com.br/fornecedor/cadastro', status: 'nao_cadastrado', documentosPendentes: 8, progressoCadastro: 0 },
 ];
 
 const documentosNecessarios = [
@@ -132,16 +132,22 @@ export default function AssessoriaCadastral() {
                     </div>
                     <div className="flex flex-col gap-1 ml-4">
                       {c.status === 'nao_cadastrado' ? (
-                        <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                          <ClipboardCheck className="w-3 h-3 mr-1" /> Iniciar Cadastro
+                        <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground" asChild>
+                          <a href={c.url} target="_blank" rel="noopener noreferrer">
+                            <ClipboardCheck className="w-3 h-3 mr-1" /> Iniciar Cadastro
+                          </a>
                         </Button>
                       ) : c.status === 'expirado' ? (
-                        <Button size="sm" className="bg-warning hover:bg-warning/90 text-warning-foreground">
-                          <RefreshCw className="w-3 h-3 mr-1" /> Renovar
+                        <Button size="sm" className="bg-warning hover:bg-warning/90 text-warning-foreground" asChild>
+                          <a href={c.url} target="_blank" rel="noopener noreferrer">
+                            <RefreshCw className="w-3 h-3 mr-1" /> Renovar
+                          </a>
                         </Button>
                       ) : (
-                        <Button size="sm" variant="outline">
-                          <ExternalLink className="w-3 h-3 mr-1" /> Acessar Portal
+                        <Button size="sm" variant="outline" asChild>
+                          <a href={c.url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="w-3 h-3 mr-1" /> Acessar Portal
+                          </a>
                         </Button>
                       )}
                       {c.documentosPendentes > 0 && (
