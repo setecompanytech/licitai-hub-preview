@@ -306,6 +306,14 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
 
         let lancId: string | null = null;
         let restante = valorTotal;
+        const tipoLabels: Record<string, string> = { nfe: "NF-e", nfse: "NFS-e", nfce: "NF-Ce" };
+        const tipoFormatado = tipoLabels[(d.tipo_documento as string)?.toLowerCase()] ?? (d.tipo_documento ?? "Doc").toString().toUpperCase();
+        // Quando numero_documento está presente (PDF/OCR), compõe "NF-e 718 · PRODUTO" para diferenciar visualmente
+        // pedidos do mesmo produto mas de notas distintas. Quando ausente (XML path, onde descricao já
+        // carrega a chave da NF-e), mantém o comportamento original.
+        const descricaoBase = d.numero_documento && d.descricao
+          ? `${tipoFormatado} ${d.numero_documento} · ${d.descricao}`
+          : (d.descricao || `${tipoFormatado} ${d.numero_documento ?? ""}`.trim() || item.file.name);
         for (let idx = 0; idx < itemIds.length; idx++) {
           const isUltimo = idx === itemIds.length - 1;
           const fatia = isUltimo
@@ -327,10 +335,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                   `DOC-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`) +
                 (itemIds.length > 1 ? `-${idx + 1}` : ""),
               p_descricao:
-                (d.descricao ||
-                  `${(d.tipo_documento ?? "Documento").toString().toUpperCase()} ${d.numero_documento ?? ""}`.trim() ||
-                  item.file.name) +
-                (itemIds.length > 1 ? ` (parte ${idx + 1}/${itemIds.length})` : ""),
+                descricaoBase + (itemIds.length > 1 ? ` (parte ${idx + 1}/${itemIds.length})` : ""),
               p_quantidade: qtd || 1,
               p_valor_unitario: vu,
               p_valor_total: fatia,

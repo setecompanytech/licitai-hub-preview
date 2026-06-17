@@ -387,33 +387,76 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     if (!form.numero_pedido) { toast.error('Informe o número do pedido'); return; }
     if (!extractedData) { toast.error('Nenhum documento extraído'); return; }
 
-    setSaving(true);
-    const valorTotal = parseFloat(extractedData.valor_total) || 0;
-    const tipoLabel = tiposDocumento.find(t => t.value === (extractedData.tipo_documento || form.tipo_documento))?.label || form.tipo_documento;
-    const descricao = `${tipoLabel}${extractedData.numero_documento ? ' — ' + extractedData.numero_documento : ''}`;
+    const itensSalvar = extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0);
 
-    const { data: novoPedido, error } = await supabase
+    // Fallback: nenhum item válido → cria um único pedido com o total do documento (comportamento original)
+    if (itensSalvar.length === 0) {
+      setSaving(true);
+      const valorTotal = parseFloat(extractedData.valor_total) || 0;
+      const tipoLabel = tiposDocumento.find(t => t.value === (extractedData.tipo_documento || form.tipo_documento))?.label || form.tipo_documento;
+      const descricao = `${tipoLabel}${extractedData.numero_documento ? ' — ' + extractedData.numero_documento : ''}`;
+      const { data: novoPedido, error } = await supabase
+        .from('contrato_pedidos')
+        .insert({
+          contrato_id: contratoId, user_id: user!.id,
+          numero_pedido: form.numero_pedido,
+          descricao,
+          quantidade: 1,
+          valor_unitario: valorTotal,
+          valor_total: valorTotal,
+          data_pedido: form.data_pedido || extractedData.data_documento || null,
+          data_entrega: form.data_entrega || extractedData.data_entrega || null,
+          status: form.status,
+          nota_fiscal: form.nota_fiscal || extractedData.nota_fiscal || null,
+          observacoes: form.observacoes || extractedData.observacoes || null,
+          origem_aditivo_id: form.origem_aditivo_id || null,
+        } as any)
+        .select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id')
+        .single();
+      if (error) { console.error('Erro ao salvar pedido:', error.message); toast.error('Erro ao salvar pedido: ' + error.message); setSaving(false); return; }
+      await gerarLancamentosFinanceiros([novoPedido as any]);
+      setSaving(false);
+      toast.success('Pedido registrado.');
+      setDialogOpen(false);
+      resetForm();
+      load();
+      return;
+    }
+
+    // Múltiplos itens: um registro individual por item extraído
+    // Itens sem contrato_item_id mapeado são salvos com contrato_item_id: null (fallback seguro por item)
+    setSaving(true);
+    const campos = {
+      data_pedido: form.data_pedido || extractedData.data_documento || null,
+      data_entrega: form.data_entrega || extractedData.data_entrega || null,
+      status: form.status,
+      nota_fiscal: form.nota_fiscal || extractedData.nota_fiscal || null,
+      observacoes: form.observacoes || extractedData.observacoes || null,
+      origem_aditivo_id: form.origem_aditivo_id || null,
+    };
+    const inserts = itensSalvar.map((ei, idx) => {
+      const qty = parseFloat(ei.quantidade) || 0;
+      const unit = parseFloat(ei.valor_unitario) || 0;
+      return {
+        contrato_id: contratoId,
+        user_id: user!.id,
+        numero_pedido: itensSalvar.length > 1 ? `${form.numero_pedido}-${idx + 1}` : form.numero_pedido,
+        descricao: ei.descricao,
+        contrato_item_id: ei.contrato_item_id || null,
+        quantidade: qty,
+        valor_unitario: unit,
+        valor_total: qty * unit,
+        ...campos,
+      };
+    });
+    const { data: novosPedidos, error } = await supabase
       .from('contrato_pedidos')
-      .insert({
-        contrato_id: contratoId, user_id: user!.id,
-        numero_pedido: form.numero_pedido,
-        descricao,
-        quantidade: 1,
-        valor_unitario: valorTotal,
-        valor_total: valorTotal,
-        data_pedido: form.data_pedido || extractedData.data_documento || null,
-        data_entrega: form.data_entrega || extractedData.data_entrega || null,
-        status: form.status,
-        nota_fiscal: form.nota_fiscal || extractedData.nota_fiscal || null,
-        observacoes: form.observacoes || extractedData.observacoes || null,
-        origem_aditivo_id: form.origem_aditivo_id || null,
-      } as any)
-      .select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id')
-      .single();
-    if (error) { console.error('Erro ao salvar pedido:', error.message); toast.error('Erro ao salvar pedido: ' + error.message); setSaving(false); return; }
-    await gerarLancamentosFinanceiros([novoPedido as any]);
+      .insert(inserts as any)
+      .select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id');
+    if (error) { console.error('Erro ao salvar pedidos:', error.message); toast.error('Erro ao salvar pedidos: ' + error.message); setSaving(false); return; }
+    await gerarLancamentosFinanceiros((novosPedidos ?? []) as any[]);
     setSaving(false);
-    toast.success('Pedido registrado.');
+    toast.success(`${inserts.length} pedido(s) registrado(s).`);
     setDialogOpen(false);
     resetForm();
     load();
