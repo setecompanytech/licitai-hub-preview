@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, FileText, Download, ClipboardList, DollarSign, Truck, ShoppingCart, Briefcase, Mail, Loader2 } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import RelatorioAtividades from '@/components/equipe/RelatorioAtividades';
 import TarefasColaborador from '@/components/equipe/TarefasColaborador';
 import ComissoesColaborador from '@/components/equipe/ComissoesColaborador';
@@ -56,6 +57,10 @@ export default function EquipeColaboradores() {
   const [invitePapel, setInvitePapel] = useState('operador');
   const [inviteEquipes, setInviteEquipes] = useState<string[]>(['geral']);
   const [saving, setSaving] = useState(false);
+  const [inviteMode, setInviteMode] = useState<'direto' | 'setor'>('direto');
+  const [sectorEmail, setSectorEmail] = useState('');
+  const [sectorEquipe, setSectorEquipe] = useState('financeiro');
+  const [sectorPapel, setSectorPapel] = useState('operador');
   const [permDialog, setPermDialog] = useState<Membro | null>(null);
   const [permissoesSel, setPermissoesSel] = useState<string[]>([]);
 
@@ -109,6 +114,36 @@ export default function EquipeColaboradores() {
         setInvitePapel('operador');
         setInviteEquipes(['geral']);
         loadMembros();
+      }
+    } catch (err: any) {
+      toast.error(`Erro inesperado: ${err.message}`);
+    }
+    setSaving(false);
+  };
+
+  const handleSectorInvite = async () => {
+    if (!empresaAtiva || !sectorEmail.trim() || !sectorEquipe) return;
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-sector-invite', {
+        body: {
+          empresa_id: empresaAtiva.id,
+          equipe: sectorEquipe,
+          papel: sectorPapel,
+          email_setor: sectorEmail.trim(),
+        },
+      });
+      if (error) {
+        const msg = (data as any)?.error || error.message;
+        toast.error(msg);
+      } else if (data?.error) {
+        toast.error(data.error);
+      } else {
+        toast.success(`Convite enviado para ${sectorEmail.trim()}`);
+        setShowInvite(false);
+        setSectorEmail('');
+        setSectorEquipe('financeiro');
+        setSectorPapel('operador');
       }
     } catch (err: any) {
       toast.error(`Erro inesperado: ${err.message}`);
@@ -361,7 +396,15 @@ export default function EquipeColaboradores() {
         )}
 
         {/* Invite Dialog */}
-        <Dialog open={showInvite} onOpenChange={setShowInvite}>
+        <Dialog open={showInvite} onOpenChange={(open) => {
+          setShowInvite(open);
+          if (!open) {
+            setInviteMode('direto');
+            setSectorEmail('');
+            setSectorEquipe('financeiro');
+            setSectorPapel('operador');
+          }
+        }}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -370,63 +413,147 @@ export default function EquipeColaboradores() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              {/* Escolha do modo de convite */}
               <div>
-                <Label>Nome completo</Label>
-                <Input value={inviteNome} onChange={e => setInviteNome(e.target.value)} placeholder="Nome do colaborador" />
+                <Label className="text-xs text-muted-foreground mb-2 block">Como deseja convidar?</Label>
+                <RadioGroup
+                  value={inviteMode}
+                  onValueChange={(v) => setInviteMode(v as 'direto' | 'setor')}
+                  className="grid grid-cols-2 gap-2"
+                >
+                  {([
+                    { value: 'direto', Icon: UserPlus, title: 'Convite direto', sub: 'Email pessoal' },
+                    { value: 'setor',  Icon: Mail,     title: 'Convite por setor', sub: 'Email do setor' },
+                  ] as const).map(({ value, Icon, title, sub }) => (
+                    <label
+                      key={value}
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors ${
+                        inviteMode === value ? 'border-accent bg-accent/10' : 'border-border hover:bg-muted/50'
+                      }`}
+                    >
+                      <RadioGroupItem value={value} className="sr-only" />
+                      <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium leading-none mb-0.5">{title}</p>
+                        <p className="text-[10px] text-muted-foreground">{sub}</p>
+                      </div>
+                    </label>
+                  ))}
+                </RadioGroup>
               </div>
-              <div>
-                <Label>E-mail</Label>
-                <Input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="email@empresa.com" type="email" />
-              </div>
-              <div>
-                <Label>Equipes / Departamentos</Label>
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  {EQUIPES.map(eq => {
-                    const checked = inviteEquipes.includes(eq.value);
-                    return (
-                      <label
-                        key={eq.value}
-                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
-                          checked ? 'border-accent bg-accent/10' : 'border-border hover:bg-muted/50'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => {
-                            setInviteEquipes(prev =>
-                              checked ? prev.filter(v => v !== eq.value) : [...prev, eq.value]
-                            );
-                          }}
-                          className="accent-[hsl(var(--accent))]"
-                        />
-                        <eq.icon className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm">{eq.label}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Selecione uma ou mais equipes. Define a área de responsabilidade: alimentar IA Jurídica, Contábil, etc.
-                </p>
-              </div>
-              <div>
-                <Label>Papel / Permissão</Label>
-                <Select value={invitePapel} onValueChange={setInvitePapel}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {PAPEIS.map(p => (
-                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+
+              {inviteMode === 'direto' ? (
+                <>
+                  <div>
+                    <Label>Nome completo</Label>
+                    <Input value={inviteNome} onChange={e => setInviteNome(e.target.value)} placeholder="Nome do colaborador" />
+                  </div>
+                  <div>
+                    <Label>E-mail</Label>
+                    <Input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="email@empresa.com" type="email" />
+                  </div>
+                  <div>
+                    <Label>Equipes / Departamentos</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {EQUIPES.map(eq => {
+                        const checked = inviteEquipes.includes(eq.value);
+                        return (
+                          <label
+                            key={eq.value}
+                            className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
+                              checked ? 'border-accent bg-accent/10' : 'border-border hover:bg-muted/50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                setInviteEquipes(prev =>
+                                  checked ? prev.filter(v => v !== eq.value) : [...prev, eq.value]
+                                );
+                              }}
+                              className="accent-[hsl(var(--accent))]"
+                            />
+                            <eq.icon className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm">{eq.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Selecione uma ou mais equipes. Define a área de responsabilidade: alimentar IA Jurídica, Contábil, etc.
+                    </p>
+                  </div>
+                  <div>
+                    <Label>Papel / Permissão</Label>
+                    <Select value={invitePapel} onValueChange={setInvitePapel}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {PAPEIS.map(p => (
+                          <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <Label>Email do setor</Label>
+                    <Input
+                      value={sectorEmail}
+                      onChange={e => setSectorEmail(e.target.value)}
+                      placeholder="financeiro@empresa.com.br"
+                      type="email"
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      O link de cadastro será enviado para este endereço. Qualquer colaborador que recebê-lo poderá criar um acesso para este setor.
+                    </p>
+                  </div>
+                  <div>
+                    <Label>Setor / Equipe</Label>
+                    <Select value={sectorEquipe} onValueChange={setSectorEquipe}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {EQUIPES.filter(eq => eq.value !== 'geral').map(eq => (
+                          <SelectItem key={eq.value} value={eq.value}>{eq.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Papel / Permissão</Label>
+                    <Select value={sectorPapel} onValueChange={setSectorPapel}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {PAPEIS.map(p => (
+                          <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowInvite(false)}>Cancelar</Button>
-              <Button onClick={handleInvite} disabled={saving || !inviteEmail.trim() || inviteEquipes.length === 0} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                {saving ? 'Adicionando...' : 'Adicionar'}
-              </Button>
+              {inviteMode === 'direto' ? (
+                <Button
+                  onClick={handleInvite}
+                  disabled={saving || !inviteEmail.trim() || inviteEquipes.length === 0}
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                >
+                  {saving ? 'Adicionando...' : 'Adicionar'}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSectorInvite}
+                  disabled={saving || !sectorEmail.trim()}
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                >
+                  {saving ? 'Enviando...' : 'Enviar convite'}
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
