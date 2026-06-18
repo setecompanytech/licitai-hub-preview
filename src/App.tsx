@@ -82,6 +82,7 @@ const EquipePermissoes = lazyPage(() => import("./pages/EquipePermissoes"));
 const AssistenteEspecializado = lazyPage(() => import("./pages/AssistenteEspecializado"));
 const Unsubscribe = lazyPage(() => import("./pages/Unsubscribe"));
 const CertificadoUpload = lazyPage(() => import("./pages/CertificadoUpload"));
+const AceitarConvite = lazyPage(() => import("./pages/AceitarConvite"));
 const PerfisAlerta = lazyPage(() => import("./pages/PerfisAlerta"));
 const SegurancaInformacao = lazyPage(() => import("./pages/SegurancaInformacao"));
 const ComplianceGovernanca = lazyPage(() => import("./pages/ComplianceGovernanca"));
@@ -143,6 +144,7 @@ const App = () => (
               <Route path="/cadastro" element={<Cadastro />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/aceitar-convite" element={<AceitarConvite />} />
               <Route path="/dashboard" element={<ProtectedPages><Index /></ProtectedPages>} />
               <Route path="/licitacoes" element={<Navigate to="/monitoramento-editais" replace />} />
               <Route path="/kanban" element={<ProtectedPages><KanbanPage /></ProtectedPages>} />
