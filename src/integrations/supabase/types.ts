@@ -3760,6 +3760,63 @@ export type Database = {
         }
         Relationships: []
       }
+      empresa_convites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by_email: string | null
+          created_at: string | null
+          created_by: string | null
+          email_setor: string
+          empresa_id: string
+          equipe: string
+          expires_at: string
+          id: string
+          papel: string
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by_email?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email_setor: string
+          empresa_id: string
+          equipe: string
+          expires_at?: string
+          id?: string
+          papel?: string
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by_email?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email_setor?: string
+          empresa_id?: string
+          equipe?: string
+          expires_at?: string
+          id?: string
+          papel?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empresa_convites_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "empresa_convites_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       empresa_membros: {
         Row: {
           created_at: string
