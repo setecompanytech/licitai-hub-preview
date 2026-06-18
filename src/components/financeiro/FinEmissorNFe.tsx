@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { useBuscaCNPJ } from "@/hooks/useBuscaCNPJ";
 import { useDanfeDownload } from "@/hooks/useDanfeDownload";
 import { toast } from "sonner";
 import {
@@ -123,7 +122,7 @@ const transporteVazio = (): Transporte => ({
 
 export default function FinEmissorNFe() {
   const { empresaAtiva } = useEmpresa();
-  const { buscarPorDocumento, loading: buscandoCNPJ } = useBuscaCNPJ();
+  const [buscandoCNPJ, setBuscandoCNPJ] = useState(false);
   const { baixarDanfe, aguardarAutorizacaoEBaixar, consultarStatus, downloading, polling } = useDanfeDownload();
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
 
@@ -202,32 +201,42 @@ export default function FinEmissorNFe() {
   useEffect(() => { carregar(); }, [empresaAtiva?.id]);
 
   const buscarDestinatario = async () => {
-    const doc = destinatario.documento.replace(/\D/g, "");
-    if (doc.length !== 14 && doc.length !== 11) {
+    const digits = destinatario.documento.replace(/\D/g, "");
+    if (digits.length !== 14 && digits.length !== 11) {
       toast.error("Informe um CNPJ válido (14 dígitos) para busca automática");
       return;
     }
-    if (doc.length === 11) {
+    if (digits.length === 11) {
       toast.info("CPF não permite consulta pública — preencha manualmente os dados");
       setDestinatario({ ...destinatario, indicador_ie: "9" });
       return;
     }
-    const dados = await buscarPorDocumento(doc);
-    if (!dados) { toast.error("Não foi possível obter os dados"); return; }
-    setDestinatario({
-      ...destinatario,
-      nome: dados.razao_social || destinatario.nome,
-      logradouro: dados.logradouro || "",
-      numero: dados.numero || "",
-      complemento: dados.complemento || "",
-      bairro: dados.bairro || "",
-      cep: dados.cep || "",
-      municipio: dados.municipio || "",
-      uf: dados.uf || "",
-      email: dados.email || destinatario.email,
-      telefone: dados.telefone || destinatario.telefone,
-    });
-    toast.success("Dados do destinatário preenchidos automaticamente");
+    setBuscandoCNPJ(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("consulta-cnpj", {
+        body: { cnpj: digits },
+      });
+      if (error || data?.error) {
+        toast.error("CNPJ não encontrado ou inválido");
+        return;
+      }
+      setDestinatario({
+        ...destinatario,
+        nome: data.razaoSocial || destinatario.nome,
+        logradouro: data.logradouro || "",
+        numero: data.numero || "",
+        complemento: data.complemento || "",
+        bairro: data.bairro || "",
+        cep: data.cep || "",
+        municipio: data.municipio || "",
+        uf: data.uf || "",
+        telefone: data.telefone || destinatario.telefone,
+        ie: data.inscricaoEstadual || destinatario.ie,
+      });
+      toast.success("Dados preenchidos automaticamente");
+    } finally {
+      setBuscandoCNPJ(false);
+    }
   };
 
   const adicionarItem = () => setItens([...itens, itemVazio()]);
