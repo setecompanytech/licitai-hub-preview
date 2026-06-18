@@ -98,7 +98,7 @@ export default function KanbanPage() {
 
     // Realtime: auto-sync when Robô de Lances, Monitoramento or any module updates a licitação
     const channel = supabase
-      .channel('kanban_realtime')
+      .channel(`kanban-licitacoes-${user.id}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'licitacoes', filter: `user_id=eq.${user.id}` },
