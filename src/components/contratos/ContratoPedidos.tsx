@@ -129,6 +129,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     tipo_documento: 'ordem_fornecimento', origem_aditivo_id: '',
   });
   const [origemFilter, setOrigemFilter] = useState<string>('__todos__');
+  const [ataSrpId, setAtaSrpId] = useState<string | null>(null);
+  const [itensAta, setItensAta] = useState<ContratoItem[]>([]);
+  const [fonteItens, setFonteItens] = useState<'contrato' | 'ata'>('contrato');
+  const [ataItemSelecionado, setAtaItemSelecionado] = useState('');
   /** Quando true, ao salvar pedido(s) o sistema também cria lançamento(s) "a receber" no Financeiro vinculados a este contrato. */
   const [gerarContaReceber, setGerarContaReceber] = useState(true);
 
@@ -140,22 +144,33 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
   const load = async () => {
     setLoading(true);
-    const [pedidosRes, itensRes, nfsRes, preNotasRes, aditivosRes] = await Promise.all([
+    const [pedidosRes, itensRes, nfsRes, preNotasRes, aditivosRes, contratoRes] = await Promise.all([
       supabase.from('contrato_pedidos').select('*').eq('contrato_id', contratoId).order('data_pedido', { ascending: false }),
       supabase.from('contrato_itens').select('id, descricao, unidade, valor_unitario, origem_aditivo_id').eq('contrato_id', contratoId),
       supabase.from('notas_fiscais').select('id, numero_nf, tipo, status, valor_total, data_emissao, chave_acesso, contrato_pedido_id, natureza_operacao, destinatario_razao_social').eq('contrato_id', contratoId),
       supabase.from('pre_notas_fiscais' as any).select('id, status, natureza_operacao, valor_total, created_at, motivo_rejeicao, motivo_devolucao').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
       supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
+      supabase.from('contratos').select('ata_srp_id').eq('id', contratoId).single(),
     ]);
     setPedidos((pedidosRes.data as any[]) || []);
     setItens((itensRes.data as any[]) || []);
     setNfsSync((nfsRes.data as any[]) || []);
     setPreNotas((preNotasRes.data as any[]) || []);
     setAditivos((aditivosRes.data as any[]) || []);
+    setAtaSrpId((contratoRes.data as any)?.ata_srp_id ?? null);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, [contratoId]);
+
+  useEffect(() => {
+    if (!ataSrpId) { setItensAta([]); return; }
+    supabase
+      .from('contrato_itens')
+      .select('id, descricao, unidade, valor_unitario, origem_aditivo_id')
+      .eq('contrato_id', ataSrpId)
+      .then(({ data }) => setItensAta((data as any[]) || []));
+  }, [ataSrpId]);
 
   // Realtime: reflete em tempo real exclusões/edições feitas no Financeiro
   // (cascata via trigger trg_cleanup_contrato_pedido_on_lancamento_delete) ou em outras abas.
@@ -196,6 +211,25 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     });
   };
 
+  const handleItemChangeAta = (ataItemId: string) => {
+    setAtaItemSelecionado(ataItemId);
+    const ataItem = itensAta.find(i => i.id === ataItemId);
+    if (!ataItem) return;
+    const normAta = ataItem.descricao.toLowerCase().trim();
+    const matched = itens.find(i => {
+      const normContrato = i.descricao.toLowerCase().trim();
+      return normContrato === normAta
+        || normContrato.includes(normAta.substring(0, 30))
+        || normAta.includes(normContrato.substring(0, 30));
+    });
+    if (!matched) {
+      toast.warning('Item não encontrado no contrato — vincule manualmente');
+      setForm(f => ({ ...f, valor_unitario: String(ataItem.valor_unitario), contrato_item_id: '' }));
+      return;
+    }
+    setForm(f => ({ ...f, contrato_item_id: matched.id, valor_unitario: String(ataItem.valor_unitario) }));
+  };
+
   const gerarNumeroPedido = async (): Promise<string> => {
     const { count } = await supabase
       .from('contrato_pedidos')
@@ -215,6 +249,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     });
     setExtractedData(null);
     setExtractedItens([]);
+    setFonteItens('contrato');
+    setAtaItemSelecionado('');
   };
 
   const openNewDialog = async () => {
@@ -852,38 +888,78 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 ) : (
                   <>
                     <Separator />
-                    <div>
-                      <Label className="text-xs">Origem do Pedido</Label>
-                      <Select value={origemFilter} onValueChange={v => { setOrigemFilter(v); setForm(f => ({ ...f, contrato_item_id: '', origem_aditivo_id: v === '__todos__' || v === '__contrato__' ? '' : v })); }}>
-                        <SelectTrigger><SelectValue placeholder="Filtrar por origem" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__todos__">Todos os Itens</SelectItem>
-                          <SelectItem value="__contrato__">Contrato Original</SelectItem>
-                          {aditivos.map((a, idx) => (
-                            <SelectItem key={a.id} value={a.id}>{`${idx + 1}º Termo Aditivo`} ({a.tipo})</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs">Item do Contrato</Label>
-                      <Select value={form.contrato_item_id} onValueChange={handleItemChange}>
-                        <SelectTrigger><SelectValue placeholder="Selecionar item" /></SelectTrigger>
-                        <SelectContent>
-                          {itens
-                            .filter(i => {
-                              if (origemFilter === '__todos__') return true;
-                              if (origemFilter === '__contrato__') return !i.origem_aditivo_id;
-                              return i.origem_aditivo_id === origemFilter;
-                            })
-                            .map(i => (
-                    <SelectItem key={i.id} value={i.id}>
-                      <span className="text-muted-foreground text-[10px] mr-1">[{getOrigemLabel(i, aditivos)}]</span>
-                      {i.descricao} ({i.unidade})
-                    </SelectItem>
+                    {ataSrpId && itensAta.length > 0 && (
+                      <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30 border">
+                        <span className="text-xs text-muted-foreground shrink-0">Fonte dos valores:</span>
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            variant={fonteItens === 'contrato' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => { setFonteItens('contrato'); setAtaItemSelecionado(''); setForm(f => ({ ...f, contrato_item_id: '' })); }}
+                          >
+                            Contrato
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={fonteItens === 'ata' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => { setFonteItens('ata'); setOrigemFilter('__todos__'); setAtaItemSelecionado(''); setForm(f => ({ ...f, contrato_item_id: '' })); }}
+                          >
+                            ATA pai
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {fonteItens === 'contrato' && (
+                      <div>
+                        <Label className="text-xs">Origem do Pedido</Label>
+                        <Select value={origemFilter} onValueChange={v => { setOrigemFilter(v); setForm(f => ({ ...f, contrato_item_id: '', origem_aditivo_id: v === '__todos__' || v === '__contrato__' ? '' : v })); }}>
+                          <SelectTrigger><SelectValue placeholder="Filtrar por origem" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__todos__">Todos os Itens</SelectItem>
+                            <SelectItem value="__contrato__">Contrato Original</SelectItem>
+                            {aditivos.map((a, idx) => (
+                              <SelectItem key={a.id} value={a.id}>{`${idx + 1}º Termo Aditivo`} ({a.tipo})</SelectItem>
                             ))}
-                        </SelectContent>
-                      </Select>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <div>
+                      <Label className="text-xs">{fonteItens === 'ata' ? 'Item da ATA (Fonte)' : 'Item do Contrato'}</Label>
+                      {fonteItens === 'ata' ? (
+                        <Select value={ataItemSelecionado} onValueChange={handleItemChangeAta}>
+                          <SelectTrigger><SelectValue placeholder="Selecionar item da ATA" /></SelectTrigger>
+                          <SelectContent>
+                            {itensAta.map(i => (
+                              <SelectItem key={i.id} value={i.id}>
+                                {i.descricao} ({i.unidade}) — {fmt(i.valor_unitario)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Select value={form.contrato_item_id} onValueChange={handleItemChange}>
+                          <SelectTrigger><SelectValue placeholder="Selecionar item" /></SelectTrigger>
+                          <SelectContent>
+                            {itens
+                              .filter(i => {
+                                if (origemFilter === '__todos__') return true;
+                                if (origemFilter === '__contrato__') return !i.origem_aditivo_id;
+                                return i.origem_aditivo_id === origemFilter;
+                              })
+                              .map(i => (
+                        <SelectItem key={i.id} value={i.id}>
+                          <span className="text-muted-foreground text-[10px] mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                          {i.descricao} ({i.unidade})
+                        </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                     <div className="col-span-2">
                       <Label className="text-xs">Descrição</Label>
