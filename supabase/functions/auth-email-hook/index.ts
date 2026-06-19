@@ -141,9 +141,9 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 
 // Configuration
 const SITE_NAME = "PRAEFECTUS"
-const SENDER_DOMAIN = "notify.app.praefectus.com.br"
+const SENDER_DOMAIN = "praefectus.com.br"
 const ROOT_DOMAIN = "app.praefectus.com.br"
-const FROM_DOMAIN = "notify.app.praefectus.com.br"
+const FROM_DOMAIN = "praefectus.com.br"
 
 // Sample data for preview mode ONLY (not used in actual email sending).
 // URLs are baked in at scaffold time from the project's real data.
@@ -233,52 +233,65 @@ async function handlePreview(req: Request): Promise<Response> {
   })
 }
 
+// Standard Webhooks verification (https://www.standardwebhooks.com/)
+// Supabase Auth Hook uses this format: secret stored as "v1,whsec_<base64>"
+// Signed content: "<webhook-id>.<webhook-timestamp>.<body>"
+// Signature header: "webhook-signature: v1,<base64-hmac-sha256>"
+async function verifyStandardWebhook(req: Request, rawBody: string, secret: string): Promise<boolean> {
+  try {
+    // Strip "v1,whsec_" prefix and base64-decode to get raw key bytes
+    const b64 = secret.replace(/^v1,whsec_/, '')
+    const keyBytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
+    const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['verify'])
+
+    const msgId = req.headers.get('webhook-id') ?? ''
+    const msgTs = req.headers.get('webhook-timestamp') ?? ''
+    const sigHeader = req.headers.get('webhook-signature') ?? ''
+
+    const signed = `${msgId}.${msgTs}.${rawBody}`
+
+    for (const part of sigHeader.split(' ')) {
+      const [version, b64sig] = part.split(',')
+      if (version !== 'v1') continue
+      const sig = Uint8Array.from(atob(b64sig), c => c.charCodeAt(0))
+      if (await crypto.subtle.verify('HMAC', key, sig, new TextEncoder().encode(signed))) return true
+    }
+    return false
+  } catch {
+    return false
+  }
+}
+
 // Webhook handler - verifies signature and sends email
 async function handleWebhook(req: Request): Promise<Response> {
-  const apiKey = Deno.env.get('CRON_SECRET')
+  const hookSecret = Deno.env.get('HOOK_SECRET')
 
-  if (!apiKey) {
-    console.error('CRON_SECRET not configured')
+  if (!hookSecret) {
+    console.error('HOOK_SECRET not configured')
     return new Response(
       JSON.stringify({ error: 'Server configuration error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 
-  // Verify signature + timestamp, then parse payload.
+  // Read body first (needed for signature verification)
+  const rawBody = await req.text()
+
+  if (!(await verifyStandardWebhook(req, rawBody, hookSecret))) {
+    console.error('Invalid Standard Webhooks signature')
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
+  // Parse the body payload sent by Supabase Auth
   let payload: any
   let run_id = ''
   try {
-    const verified = await verifyWebhookRequest({
-      req,
-      secret: apiKey,
-      parser: parseEmailWebhookPayload,
-    })
-    payload = verified.payload
+    payload = JSON.parse(rawBody)
     run_id = payload.run_id
-  } catch (error) {
-    if (error instanceof WebhookError) {
-      switch (error.code) {
-        case 'invalid_signature':
-        case 'missing_timestamp':
-        case 'invalid_timestamp':
-        case 'stale_timestamp':
-          console.error('Invalid webhook signature', { error: error.message })
-          return new Response(JSON.stringify({ error: 'Invalid signature' }), {
-            status: 401,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          })
-        case 'invalid_payload':
-        case 'invalid_json':
-          console.error('Invalid webhook payload', { error: error.message })
-          return new Response(
-            JSON.stringify({ error: 'Invalid webhook payload' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
-      }
-    }
-
-    console.error('Webhook verification failed', { error })
+  } catch {
     return new Response(
       JSON.stringify({ error: 'Invalid webhook payload' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
