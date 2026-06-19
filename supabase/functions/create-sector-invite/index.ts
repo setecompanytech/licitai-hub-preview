@@ -1,6 +1,11 @@
 // @ts-nocheck
 import { createClient } from 'npm:@supabase/supabase-js@2.57.2'
-import { getCorsHeaders } from '../_shared/security-headers.ts'
+
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 const SITE_URL = 'https://app.praefectus.com.br'
 const SITE_NAME = 'PRAEFECTUS'
@@ -19,7 +24,7 @@ const equipeLabels: Record<string, string> = {
 }
 
 Deno.serve(async (req) => {
-  const cors = getCorsHeaders(req)
+  const cors = CORS_HEADERS
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: cors })
   }
