@@ -684,12 +684,21 @@ module.exports = { sendCallback };
 };
 
 export async function generateAgentTemplate(): Promise<Blob> {
+  const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string) ?? 'https://uwtyuwktxalnpgrcbbgk.supabase.co';
+  const callbackUrl = `${supabaseUrl}/functions/v1/robo-lances-webhook/callback`;
+
   const zip = new JSZip();
   const root = zip.folder('agente-lances-externo')!;
 
-  // Core files
+  // Core files — inject active Supabase URL so .env.example has the correct CALLBACK_URL
   for (const [path, content] of Object.entries(CORE_FILES)) {
-    root.file(path, content);
+    root.file(
+      path,
+      content.replace(
+        'https://sbnlovigyifvrkgsoalj.supabase.co/functions/v1/robo-lances-webhook/callback',
+        callbackUrl
+      )
+    );
   }
 
   // Portal modules
