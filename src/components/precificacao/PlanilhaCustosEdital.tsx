@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   Upload, FileText, Loader2, X, Sparkles, Download, Trash2,
   Plus, CheckCircle, Edit3, Save, Package, FileSpreadsheet,
-  ShoppingCart, TrendingDown, TrendingUp, Minus, ExternalLink, Link2,
+  ShoppingCart, TrendingDown, TrendingUp, Minus, ExternalLink, Link2, AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { extractTextFromFile } from '@/lib/pdf-text-extractor';
@@ -33,7 +33,17 @@ export interface PlanilhaItem {
   valorTotal: number | null;
   marca: string;
   fontes?: { fonte: string; titulo: string; url: string; preco: number }[];
+  cotacaoFalhou?: boolean;
 }
+
+const FONTE_LABELS: Record<string, string> = {
+  mercadolivre: 'Mercado Livre',
+  pncp_ata: 'PNCP (Ata)',
+  pncp_contratacao: 'PNCP',
+  kabum: 'KaBuM!',
+  leroy_merlin: 'Leroy Merlin',
+  marketplace: 'Pesquisa Web',
+};
 
 const formatCurrency = (v: number | null) =>
   v != null ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—';
@@ -211,6 +221,7 @@ export default function PlanilhaCustosEdital({
 
         if (error || !data?.estatisticas) {
           setCotacaoMsgs(prev => [...prev, `❌ Item ${it.item}: sem resultados`]);
+          setItens(prev => prev.map((item, i) => i === idx ? { ...item, cotacaoFalhou: true } : item));
           continue;
         }
 
@@ -219,6 +230,7 @@ export default function PlanilhaCustosEdital({
 
         if (bestPrice <= 0) {
           setCotacaoMsgs(prev => [...prev, `❌ Item ${it.item}: preço não encontrado`]);
+          setItens(prev => prev.map((item, i) => i === idx ? { ...item, cotacaoFalhou: true } : item));
           continue;
         }
 
@@ -793,6 +805,25 @@ export default function PlanilhaCustosEdital({
                               </span>
                             );
                           })()}
+                          {it.fontes?.[0]?.url && (
+                            <a
+                              href={it.fontes[0].url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[9px] text-muted-foreground/60 hover:text-primary flex items-center gap-0.5"
+                            >
+                              <ExternalLink className="w-2.5 h-2.5" />
+                              {FONTE_LABELS[it.fontes[0].fonte] ?? it.fontes[0].fonte}
+                            </a>
+                          )}
+                        </div>
+                      ) : it.cotacaoFalhou ? (
+                        <div
+                          title="Não foi possível encontrar preço em fontes verificáveis. Para itens controlados, consulte CMED/ANVISA manualmente."
+                          className="text-[10px] text-amber-500/80 flex items-center gap-0.5 justify-end cursor-help"
+                        >
+                          <AlertCircle className="w-3 h-3" />
+                          Não encontrado
                         </div>
                       ) : '—'}
                     </td>
@@ -857,13 +888,7 @@ export default function PlanilhaCustosEdital({
                           <td className="px-3 py-1.5 text-center font-medium text-muted-foreground">{fi === 0 ? it.item : ''}</td>
                           <td className="px-3 py-1.5">
                             <Badge variant="outline" className="text-[9px] py-0">
-                              {f.fonte === 'mercadolivre' ? 'Mercado Livre' :
-                               f.fonte === 'pncp_ata' ? 'PNCP (Ata)' :
-                               f.fonte === 'pncp_contratacao' ? 'PNCP' :
-                               f.fonte === 'kabum' ? 'KaBuM!' :
-                               f.fonte === 'leroy_merlin' ? 'Leroy Merlin' :
-                               f.fonte === 'ia_estimativa' ? 'Estimativa IA' :
-                               f.fonte}
+                              {FONTE_LABELS[f.fonte] ?? f.fonte}
                             </Badge>
                           </td>
                           <td className="px-3 py-1.5 text-muted-foreground truncate max-w-[300px]" title={f.titulo}>

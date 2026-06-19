@@ -175,81 +175,6 @@ async function coletorLeroyMerlin(termos: string[]): Promise<PriceResult[]> {
   return resultados;
 }
 
-// Coletor via IA com conhecimento de preços de mercado (fallback inteligente)
-async function coletorIA(descricao: string, unidade?: string): Promise<PriceResult[]> {
-  const openaiKey = Deno.env.get('OPENAI_API_KEY');
-  if (!openaiKey) return [];
-
-  try {
-    const prompt = `Você é um especialista em preços de mercado brasileiro. 
-Preciso do preço UNITÁRIO atual de mercado para este item:
-
-"${descricao.slice(0, 300)}"
-Unidade: ${unidade || 'UN'}
-
-Pesquise mentalmente em lojas como Mercado Livre, Kalunga, Amazon, Magazine Luiza, Americanas e forneça uma estimativa realista.
-
-Responda APENAS com JSON:
-{
-  "produtos": [
-    {
-      "titulo": "nome comercial do produto encontrado",
-      "marca": "marca do produto",
-      "preco": 99.90,
-      "loja": "nome da loja",
-      "confianca": "alta|media|baixa"
-    }
-  ]
-}
-
-Se não souber o preço com confiança razoável, retorne {"produtos": []}.
-Forneça de 1 a 3 opções de produtos compatíveis.`;
-
-    const aiResp = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 500,
-      }),
-    });
-
-    if (!aiResp.ok) return [];
-
-    const aiData = await aiResp.json();
-    const content = aiData.choices?.[0]?.message?.content || '';
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return [];
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    const resultados: PriceResult[] = [];
-
-    for (const p of (parsed.produtos || [])) {
-      if (p.preco > 0) {
-        resultados.push({
-          fonte: 'ia_estimativa',
-          titulo: p.titulo || descricao.slice(0, 100),
-          preco_unitario: p.preco,
-          vendedor: p.loja || 'Estimativa IA',
-          condicao: `${p.confianca || 'media'} confiança`,
-          url: '',
-          ean: p.marca ? `Marca: ${p.marca}` : undefined,
-          coletado_em: new Date().toISOString(),
-        });
-      }
-    }
-
-    return resultados;
-  } catch (e) {
-    console.error('AI price estimator error:', e);
-    return [];
-  }
-}
-
 async function coletorPesquisaReal(supabase: any, termos: string[]): Promise<PriceResult[]> {
   const resultados: PriceResult[] = [];
   try {
@@ -396,13 +321,6 @@ Deno.serve(async (req) => {
       .filter((r): r is PromiseFulfilledResult<PriceResult[]> => r.status === 'fulfilled')
       .flatMap(r => r.value)
       .filter(r => r.preco_unitario > 0);
-
-    // PASSO 3.5: Se nenhum resultado real, usar estimativa IA como fallback
-    if (todosResultados.length === 0) {
-      console.log('Nenhum resultado de APIs, usando fallback IA...');
-      const iaResults = await coletorIA(descricao, queryNorm.unidade_padrao);
-      todosResultados = iaResults.filter(r => r.preco_unitario > 0);
-    }
 
     // Deduplicar por título similar
     const seen = new Set<string>();
