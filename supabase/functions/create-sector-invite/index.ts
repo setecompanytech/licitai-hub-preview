@@ -1,10 +1,6 @@
 // @ts-nocheck
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
 import { createClient } from 'npm:@supabase/supabase-js@2.57.2'
+import { getCorsHeaders } from '../_shared/security-headers.ts'
 
 const SITE_URL = 'https://app.praefectus.com.br'
 const SITE_NAME = 'PRAEFECTUS'
@@ -23,8 +19,9 @@ const equipeLabels: Record<string, string> = {
 }
 
 Deno.serve(async (req) => {
+  const cors = getCorsHeaders(req)
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { status: 204, headers: cors })
   }
 
   try {
@@ -33,7 +30,7 @@ Deno.serve(async (req) => {
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Token ausente' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 
@@ -47,7 +44,7 @@ Deno.serve(async (req) => {
     if (authError || !caller) {
       return new Response(JSON.stringify({ error: 'Não autorizado' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 
@@ -56,7 +53,7 @@ Deno.serve(async (req) => {
     if (!empresa_id || !equipe || !papel || !email_setor) {
       return new Response(JSON.stringify({ error: 'empresa_id, equipe, papel e email_setor são obrigatórios' }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 
@@ -73,7 +70,7 @@ Deno.serve(async (req) => {
     if (!callerMember || callerMember.papel !== 'admin') {
       return new Response(JSON.stringify({ error: 'Apenas administradores podem criar convites de setor' }), {
         status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 
@@ -93,7 +90,7 @@ Deno.serve(async (req) => {
         error: `Já existe um convite pendente para o setor ${equipeLabel}. Aguarde ele expirar ou cancele-o antes de criar um novo.`,
       }), {
         status: 409,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 
@@ -122,7 +119,7 @@ Deno.serve(async (req) => {
     if (insertError || !novoConvite) {
       return new Response(JSON.stringify({ error: `Erro ao criar convite: ${insertError?.message}` }), {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 
@@ -225,7 +222,7 @@ PRAEFECTUS — Inteligência em Licitações`
         warning: `Convite criado, mas o e-mail não pôde ser enfileirado: ${enqueueError.message}`,
       }), {
         status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 
@@ -234,12 +231,12 @@ PRAEFECTUS — Inteligência em Licitações`
       convite_id: novoConvite.id,
     }), {
       status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...cors, 'Content-Type': 'application/json' },
     })
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...cors, 'Content-Type': 'application/json' },
     })
   }
 })

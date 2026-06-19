@@ -30,7 +30,7 @@ export default function AlertaVencimentoBanner() {
         .eq('status', 'ativa')
         .order('data_fim', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (!data?.data_fim) return;
 
@@ -45,7 +45,7 @@ export default function AlertaVencimentoBanner() {
         .from('planos')
         .select('nome')
         .eq('id', data.plano_id)
-        .single();
+        .maybeSingle();
 
       setAssinatura({
         data_fim: data.data_fim,

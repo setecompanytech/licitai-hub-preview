@@ -133,10 +133,7 @@ export function useDashboardData() {
       licitacoesQuery().in('status', ['Vencida', 'vencida', 'Homologada']),
       licitacoesQuery().in('status', ['Perdida', 'perdida']),
       licitacoesDataQuery('valor_estimado, valor_adjudicado').in('status', ['Vencida', 'vencida', 'Homologada']).gte('created_at', sixMonthsAgo.toISOString()),
-      applyEmpresaFilter(
-        supabase.from('monitoramento_editais').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).gte('created_at', `${today}T00:00:00`),
-        empresaAtiva, todasSelecionadas
-      ),
+      supabase.from('monitoramento_editais').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).gte('created_at', `${today}T00:00:00`),
       // ROI: get all won bids that have both valor_estimado AND valor_adjudicado
       licitacoesDataQuery('valor_estimado, valor_adjudicado')
         .in('status', ['Vencida', 'vencida', 'Homologada'])

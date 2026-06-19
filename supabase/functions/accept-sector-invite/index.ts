@@ -1,10 +1,6 @@
 // @ts-nocheck
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
 import { createClient } from 'npm:@supabase/supabase-js@2.57.2'
+import { getCorsHeaders } from '../_shared/security-headers.ts'
 
 const equipeLabels: Record<string, string> = {
   geral: 'Geral',
@@ -22,8 +18,9 @@ function capitalizar(str: string): string {
 }
 
 Deno.serve(async (req) => {
+  const cors = getCorsHeaders(req)
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { status: 204, headers: cors })
   }
 
   try {
@@ -38,7 +35,7 @@ Deno.serve(async (req) => {
     if (!token || !user_id || !email || !nome) {
       return new Response(JSON.stringify({ error: 'token, user_id, email e nome são obrigatórios' }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 
@@ -52,21 +49,21 @@ Deno.serve(async (req) => {
     if (conviteError || !convite) {
       return new Response(JSON.stringify({ error: 'Convite não encontrado' }), {
         status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 
     if (convite.accepted_at) {
       return new Response(JSON.stringify({ error: 'Convite já utilizado' }), {
         status: 409,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 
     if (new Date(convite.expires_at) < new Date()) {
       return new Response(JSON.stringify({ error: 'Convite expirado' }), {
         status: 410,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 
@@ -81,7 +78,7 @@ Deno.serve(async (req) => {
     if (existingMember) {
       return new Response(JSON.stringify({ error: 'Este usuário já é membro desta empresa' }), {
         status: 409,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 
@@ -106,19 +103,19 @@ Deno.serve(async (req) => {
       if (memberError.code === '23505') {
         return new Response(JSON.stringify({ error: 'Este usuário já é membro desta empresa' }), {
           status: 409,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...cors, 'Content-Type': 'application/json' },
         })
       }
       // 22P02 = invalid_text_representation (papel inválido para o ENUM empresa_papel)
       if (memberError.code === '22P02') {
         return new Response(JSON.stringify({ error: `Papel inválido no convite: "${convite.papel}". Valores aceitos: admin, operador, viewer.` }), {
           status: 422,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...cors, 'Content-Type': 'application/json' },
         })
       }
       return new Response(JSON.stringify({ error: `Erro ao vincular membro: ${memberError.message}` }), {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 
@@ -144,12 +141,12 @@ Deno.serve(async (req) => {
       equipe: convite.equipe,
     }), {
       status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...cors, 'Content-Type': 'application/json' },
     })
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...cors, 'Content-Type': 'application/json' },
     })
   }
 })
