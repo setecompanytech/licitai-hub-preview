@@ -21,6 +21,9 @@ interface Licitacao {
   id: string; numero: string | null; orgao: string | null; objeto: string | null;
   modalidade: string | null; status: string | null; valor_estimado: number | null;
   data_encerramento: string | null; uf: string | null; municipio: string | null;
+  data_abertura: string | null; portal: string | null; url_edital: string | null;
+  observacoes: string | null; resultado: string | null; valor_adjudicado: number | null;
+  data_homologacao: string | null; vencedor: boolean | null;
 }
 
 const ATALHOS = [
@@ -74,7 +77,7 @@ export default function ProcessoWorkspace() {
   useEffect(() => {
     if (!id || !user) return;
     supabase.from('licitacoes')
-      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, data_encerramento, uf, municipio')
+      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, data_encerramento, uf, municipio, data_abertura, portal, url_edital, observacoes, resultado, valor_adjudicado, data_homologacao, vencedor')
       .eq('id', id).eq('user_id', user.id).maybeSingle()
       .then(({ data }) => { setLic(data as Licitacao); setLoading(false); });
   }, [id, user]);
@@ -134,18 +137,87 @@ export default function ProcessoWorkspace() {
 
       <div className="max-w-[1440px] mx-auto px-4 py-6">
         <Tabs defaultValue="visao" className="w-full" onValueChange={v => { if (v === 'precificacao') loadPrecificacao(); }}>
-          <TabsList className="grid grid-cols-3 sm:grid-cols-7 lg:grid-cols-7 mb-6 h-auto">
+          <TabsList className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-6 mb-6 h-auto">
             <TabsTrigger value="visao">Visão Geral</TabsTrigger>
             <TabsTrigger value="documentos">Documentos</TabsTrigger>
             <TabsTrigger value="anexos">Anexos</TabsTrigger>
             <TabsTrigger value="precificacao">Precificação</TabsTrigger>
             <TabsTrigger value="modulos">Módulos</TabsTrigger>
             <TabsTrigger value="historico">Histórico</TabsTrigger>
-            <TabsTrigger value="info">Informações</TabsTrigger>
           </TabsList>
 
           {/* Visão Geral */}
           <TabsContent value="visao" className="space-y-4">
+            <Card className="p-5 space-y-3 text-sm">
+              <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
+                <span><span className="text-xs text-muted-foreground">Local:</span> <span className="font-semibold">{lic.municipio && lic.uf ? `${lic.municipio}/${lic.uf}` : lic.municipio || lic.uf || '—'}</span></span>
+                <span className="text-border select-none">|</span>
+                <span><span className="text-xs text-muted-foreground">Órgão:</span> <span className="font-semibold">{lic.orgao || '—'}</span></span>
+                <span className="text-border select-none">|</span>
+                <span><span className="text-xs text-muted-foreground">Status:</span> <span className="font-semibold">{lic.status || '—'}</span></span>
+              </div>
+              <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
+                <span><span className="text-xs text-muted-foreground">Modalidade:</span> <span className="font-semibold">{lic.modalidade || '—'}</span></span>
+                <span className="text-border select-none">|</span>
+                <span><span className="text-xs text-muted-foreground">Valor estimado:</span> <span className="font-semibold">{lic.valor_estimado != null ? fmt(lic.valor_estimado) : '—'}</span></span>
+                {lic.data_abertura && (
+                  <>
+                    <span className="text-border select-none">|</span>
+                    <span><span className="text-xs text-muted-foreground">Abertura:</span> <span className="font-semibold">{new Date(lic.data_abertura).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></span>
+                  </>
+                )}
+              </div>
+              {(lic.data_encerramento || lic.portal) && (
+                <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
+                  {lic.data_encerramento && (
+                    <span><span className="text-xs text-muted-foreground">Encerramento:</span> <span className="font-semibold">{new Date(lic.data_encerramento).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></span>
+                  )}
+                  {lic.portal && (
+                    <>
+                      {lic.data_encerramento && <span className="text-border select-none">|</span>}
+                      <span>
+                        <span className="text-xs text-muted-foreground">Portal:</span>{' '}
+                        {lic.url_edital ? (
+                          <a href={lic.url_edital} target="_blank" rel="noopener noreferrer" className="font-semibold text-accent hover:underline inline-flex items-center gap-0.5">
+                            {lic.portal} <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <span className="font-semibold">{lic.portal}</span>
+                        )}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+              {lic.resultado && (
+                <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
+                  <span className="flex items-center gap-1.5">
+                    {lic.vencedor && <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" title="Empresa vencedora" />}
+                    <span className="text-xs text-muted-foreground">Resultado:</span>
+                    <span className={`font-semibold ${lic.vencedor ? 'text-green-600' : ''}`}>{lic.resultado}</span>
+                  </span>
+                  {lic.valor_adjudicado != null && (
+                    <>
+                      <span className="text-border select-none">|</span>
+                      <span><span className="text-xs text-muted-foreground">Valor adjudicado:</span> <span className="font-semibold">{fmt(lic.valor_adjudicado)}</span></span>
+                    </>
+                  )}
+                  {lic.data_homologacao && (
+                    <>
+                      <span className="text-border select-none">|</span>
+                      <span><span className="text-xs text-muted-foreground">Homologação:</span> <span className="font-semibold">{new Date(lic.data_homologacao).toLocaleDateString('pt-BR')}</span></span>
+                    </>
+                  )}
+                </div>
+              )}
+              <div>
+                <span className="text-xs text-muted-foreground font-medium">Objeto:</span>
+                <p className="mt-1 leading-relaxed">{lic.objeto || '—'}</p>
+              </div>
+              {lic.observacoes && (
+                <p className="pt-2 border-t border-border/40 text-xs text-muted-foreground italic">{lic.observacoes}</p>
+              )}
+            </Card>
             <EditalOriginalCard licitacaoId={lic.id} />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {ATALHOS.map(a => (
@@ -322,21 +394,6 @@ export default function ProcessoWorkspace() {
             </Card>
           </TabsContent>
 
-          {/* Informações */}
-          <TabsContent value="info">
-            <Card className="p-6 space-y-3">
-              <div><span className="text-xs text-muted-foreground">Número:</span> <span className="font-medium">{lic.numero || '-'}</span></div>
-              <div><span className="text-xs text-muted-foreground">Órgão:</span> <span className="font-medium">{lic.orgao || '-'}</span></div>
-              <div><span className="text-xs text-muted-foreground">Modalidade:</span> <span className="font-medium">{lic.modalidade || '-'}</span></div>
-              <div><span className="text-xs text-muted-foreground">Local:</span> <span className="font-medium">{lic.municipio}/{lic.uf}</span></div>
-              <div><span className="text-xs text-muted-foreground">Status:</span> <span className="font-medium">{lic.status || '-'}</span></div>
-              <div><span className="text-xs text-muted-foreground">Valor estimado:</span> <span className="font-medium">{lic.valor_estimado != null ? `R$ ${Number(lic.valor_estimado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}</span></div>
-              <div className="pt-3 border-t">
-                <span className="text-xs text-muted-foreground">Objeto:</span>
-                <p className="text-sm mt-1">{lic.objeto || '-'}</p>
-              </div>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
     </div>
