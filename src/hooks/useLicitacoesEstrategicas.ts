@@ -36,16 +36,46 @@ export function useLicitacoesEstrategicas() {
         body: { limit: 30, uf: uf || null },
       });
 
-      if (error) throw error;
+      if (error) {
+        // FunctionsHttpError: extrai o corpo real da resposta para obter a mensagem
+        let mensagemReal = error.message || 'Erro ao contactar o servidor';
+        try {
+          const corpo = await (error as any).context?.json?.();
+          if (corpo?.error) mensagemReal = corpo.error;
+        } catch { /* ignora se não conseguir ler o corpo */ }
+
+        if (/Rate limit|429/i.test(mensagemReal)) {
+          toast.error('Limite de requisições atingido', {
+            description: 'Aguarde alguns minutos e tente novamente.',
+            duration: 7000,
+          });
+        } else if (/Payment|402|crédito/i.test(mensagemReal)) {
+          toast.error('Créditos de IA esgotados', {
+            description: 'Verifique o plano da conta.',
+            duration: 7000,
+          });
+        } else if (/not deployed|FunctionsRelay|não encontrada/i.test(mensagemReal)) {
+          toast.error('Serviço de classificação indisponível', {
+            description: 'A função de análise estratégica ainda não foi implantada. Contate o suporte.',
+            duration: 9000,
+          });
+        } else {
+          toast.error('Falha ao carregar oportunidades estratégicas', {
+            description: mensagemReal,
+            duration: 8000,
+          });
+        }
+        return;
+      }
 
       if (data?.error) {
-        // Handle rate limit / payment errors
-        if (data.error.includes('Rate limit') || data.error.includes('429')) {
-          toast.error('Limite de requisições atingido. Tente novamente em alguns minutos.');
-        } else if (data.error.includes('Payment') || data.error.includes('402')) {
-          toast.error('Créditos de IA esgotados. Verifique seu plano.');
+        const msg: string = data.error;
+        if (/Rate limit|429/i.test(msg)) {
+          toast.error('Limite de requisições atingido', { description: 'Aguarde alguns minutos e tente novamente.', duration: 7000 });
+        } else if (/Payment|402/i.test(msg)) {
+          toast.error('Créditos de IA esgotados', { description: 'Verifique o plano da conta.', duration: 7000 });
         } else {
-          throw new Error(data.error);
+          toast.error('Falha ao classificar licitações', { description: msg, duration: 8000 });
         }
         return;
       }
@@ -54,11 +84,14 @@ export function useLicitacoesEstrategicas() {
       setFonteClassificacao(data?.fonte || null);
 
       if (data?.fonte === 'fallback') {
-        toast.warning('Classificação por IA indisponível. Exibindo dados sem pontuação inteligente.');
+        toast.info('Classificação por IA indisponível. Exibindo dados sem pontuação inteligente.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao carregar licitações estratégicas:', err);
-      toast.error('Erro ao carregar oportunidades estratégicas');
+      toast.error('Falha ao carregar oportunidades estratégicas', {
+        description: err?.message || 'Verifique sua conexão e tente novamente.',
+        duration: 7000,
+      });
     } finally {
       setLoading(false);
     }

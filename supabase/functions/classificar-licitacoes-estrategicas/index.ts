@@ -59,7 +59,34 @@ serve(async (req) => {
     )).join("\n");
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY não configurada");
+
+    // Se não tiver chave de IA, retorna fallback direto sem tentar chamar a API
+    if (!OPENAI_API_KEY) {
+      const fallbackSemIA = editais.map((e) => ({
+        id: e.id,
+        numero: e.pncp_id || e.id.slice(0, 12),
+        orgao: e.orgao || "N/I",
+        objeto: e.objeto || "",
+        valor: e.valor_total_estimado || 0,
+        uf: e.uf || "",
+        municipio: e.municipio || "",
+        modalidade: e.modalidade_nome || "",
+        dataAbertura: e.data_abertura_proposta || "",
+        linkOrigem: e.link_sistema_origem || e.url_pncp || "",
+        fonte: e.fonte || "",
+        scoreRelevancia: 50,
+        scoreViabilidade: 50,
+        scoreConcorrencia: 50,
+        scoreGeral: 50,
+        fatoresPositivos: ["Dados disponíveis no PNCP"],
+        fatoresRisco: ["Classificação por IA não disponível"],
+        recomendacao: "media" as const,
+        salva: false,
+      }));
+      return new Response(JSON.stringify({ licitacoes: fallbackSemIA, fonte: "fallback" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
