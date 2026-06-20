@@ -75,7 +75,7 @@ export default function PlanilhaCustosEdital({
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [isCotando, setIsCotando] = useState(false);
   const [cotacaoProgress, setCotacaoProgress] = useState(0);
-  const [cotacaoMsgs, setCotacaoMsgs] = useState<string[]>([]);
+  const [cotacaoMsgs, setCotacaoMsgs] = useState<{ text: string; fontes?: { fonte: string; titulo: string; url: string; preco: number }[] }[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const { extrairItensDoTexto, fetchItens, saveItensManual, deleteAllItens } = useEditalExtraction();
   const { resolveLinkedEditalText } = useLinkedEditalSource();
@@ -220,7 +220,7 @@ export default function PlanilhaCustosEdital({
         });
 
         if (error || !data?.estatisticas) {
-          setCotacaoMsgs(prev => [...prev, `❌ Item ${it.item}: sem resultados`]);
+          setCotacaoMsgs(prev => [...prev, { text: `❌ Item ${it.item}: sem resultados` }]);
           setItens(prev => prev.map((item, i) => i === idx ? { ...item, cotacaoFalhou: true } : item));
           continue;
         }
@@ -229,7 +229,7 @@ export default function PlanilhaCustosEdital({
         const bestPrice = stats.preco_sugerido > 0 ? stats.preco_sugerido : stats.mediana;
 
         if (bestPrice <= 0) {
-          setCotacaoMsgs(prev => [...prev, `❌ Item ${it.item}: preço não encontrado`]);
+          setCotacaoMsgs(prev => [...prev, { text: `❌ Item ${it.item}: preço não encontrado` }]);
           setItens(prev => prev.map((item, i) => i === idx ? { ...item, cotacaoFalhou: true } : item));
           continue;
         }
@@ -270,13 +270,14 @@ export default function PlanilhaCustosEdital({
           diffMsg = ` | ${sinal}${diff.toFixed(1)}% vs referência`;
         }
 
-        setCotacaoMsgs(prev => [...prev,
-          `✅ Item ${it.item}: ${formatCurrency(bestPrice)} (${stats.total_registros} fontes)${diffMsg}`
-        ]);
+        setCotacaoMsgs(prev => [...prev, {
+          text: `✅ Item ${it.item}: ${formatCurrency(bestPrice)} (${stats.total_registros} fontes)${diffMsg}`,
+          fontes: topFontes.length > 0 ? topFontes : undefined,
+        }]);
         cotados++;
       } catch (e) {
         console.error(`Cotação item ${it.item}:`, e);
-        setCotacaoMsgs(prev => [...prev, `❌ Item ${it.item}: erro na busca`]);
+        setCotacaoMsgs(prev => [...prev, { text: `❌ Item ${it.item}: erro na busca` }]);
       }
     }
 
@@ -703,7 +704,26 @@ export default function PlanilhaCustosEdital({
                 </Button>
               </div>
               {cotacaoMsgs.map((msg, i) => (
-                <p key={i} className="text-[11px] text-muted-foreground">{msg}</p>
+                <div key={i} className="space-y-0.5">
+                  <p className="text-[11px] text-muted-foreground">{msg.text}</p>
+                  {msg.fontes && msg.fontes.length > 0 && (
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 pl-3">
+                      {msg.fontes.map((f, fi) => (
+                        <a
+                          key={fi}
+                          href={f.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-primary/70 hover:text-primary flex items-center gap-0.5 underline-offset-2 hover:underline"
+                          title={f.titulo}
+                        >
+                          <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                          {FONTE_LABELS[f.fonte] ?? f.fonte} — {formatCurrency(f.preco)}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}
