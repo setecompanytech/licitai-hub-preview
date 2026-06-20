@@ -689,9 +689,9 @@ serve(async (req) => {
     const PUBLIC_ACTIONS = ["suporte_chat"];
 
     if (!PUBLIC_ACTIONS.includes(action)) {
-      // Auth check — reject unauthenticated requests for protected actions
-      const authHeader = req.headers.get("authorization");
-      if (!authHeader) {
+      const authHeader = req.headers.get("authorization") ?? "";
+      const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+      if (!token) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -699,15 +699,16 @@ serve(async (req) => {
       }
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-      const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-        global: { headers: { Authorization: authHeader } },
-      });
-      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+      // Pass token directly to getUser() — the correct pattern for Supabase Edge Functions
+      // createClient with global.headers only works for REST/Storage, not GoTrue auth calls
+      const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey);
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
       if (authError || !user) {
-        return new Response(JSON.stringify({ error: "Invalid token" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        // Provide a clear error so the client can distinguish auth failures from other errors
+        return new Response(
+          JSON.stringify({ error: "Sessão inválida ou expirada. Por favor, faça login novamente." }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
       }
     }
 

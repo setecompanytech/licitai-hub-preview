@@ -125,9 +125,11 @@ serve(async (req) => {
     // Dispara em paralelo: baixar-pdf-edital + edital-auto-ingest
     const tasks: Promise<{ kind: string; ok: boolean; data?: any; error?: string }>[] = [];
 
-    // Task 1: baixar PDF (se temos URL)
+    // Task 1: baixar PDF
     const urlPdf = editalRow?.url_pdf || editalRow?.url_edital || lic.url_edital;
+
     if (editalRow?.id && urlPdf) {
+      // Caminho normal: usa a Edge Function baixar-pdf-edital (que salva em documentos-publicos)
       tasks.push(
         fetch(`${SUPABASE_URL}/functions/v1/baixar-pdf-edital`, {
           method: "POST",
@@ -140,11 +142,68 @@ serve(async (req) => {
           .then(async (r) => ({ kind: "pdf", ok: r.ok, data: await r.json() }))
           .catch((e) => ({ kind: "pdf", ok: false, error: String(e) })),
       );
+    } else if (lic.url_edital) {
+      // Caminho PNCP: busca arquivos direto na API pública e faz upload para processo-arquivos
+      tasks.push(
+        (async () => {
+          try {
+            // Tenta extrair CNPJ/ano/seq da URL do PNCP
+            const m = lic.url_edital!.match(/editais\/(\d{14})\/(\d{4})\/(\d+)/);
+            if (!m) return { kind: "pdf", ok: false, error: "URL PNCP não reconhecida" };
+            const [, cnpj, ano, seq] = m;
+
+            const rArqs = await fetch(
+              `https://pncp.gov.br/api/consulta/v1/orgaos/${cnpj}/compras/${ano}/${seq}/arquivos?pagina=1&tamanhoPagina=100`,
+              {
+                headers: {
+                  Accept: "application/json",
+                  "User-Agent": "Mozilla/5.0 (compatible; LicitAI/1.0)",
+                },
+                signal: AbortSignal.timeout(20_000),
+              },
+            );
+            if (!rArqs.ok) return { kind: "pdf", ok: false, error: `PNCP arquivos HTTP ${rArqs.status}` };
+
+            const payload = await rArqs.json();
+            const arr: any[] = Array.isArray(payload) ? payload : (payload?.data ?? []);
+
+            // Prefere arquivo com "EDITAL" no título e extensão PDF
+            const arq = arr.find(
+              (a: any) => /edital/i.test(a.titulo ?? "") && /\.pdf($|\?)/i.test(a.url ?? ""),
+            ) ?? arr.find(
+              (a: any) => /\.pdf($|\?)/i.test(a.url ?? ""),
+            ) ?? arr[0];
+
+            if (!arq?.url) return { kind: "pdf", ok: false, error: "Nenhum arquivo PDF no PNCP" };
+
+            // Download direto do PDF (timeout conservador para caber dentro do limite da edge function)
+            const rPdf = await fetch(arq.url, {
+              redirect: "follow",
+              headers: { "User-Agent": "Mozilla/5.0 (compatible; LicitAI/1.0)" },
+              signal: AbortSignal.timeout(40_000),
+            });
+            if (!rPdf.ok) return { kind: "pdf", ok: false, error: `Download PDF HTTP ${rPdf.status}` };
+
+            const pdfBuf = new Uint8Array(await rPdf.arrayBuffer());
+            const destPath = `${userId}/${licitacaoId}/edital/edital-original.pdf`;
+            const { error: upErr } = await admin.storage
+              .from("processo-arquivos")
+              .upload(destPath, pdfBuf, { contentType: "application/pdf", upsert: true });
+
+            if (upErr) return { kind: "pdf", ok: false, error: `Upload: ${upErr.message}` };
+
+            // Retorna path direto (já salvo no destino, sem precisar de cópia)
+            return { kind: "pdf", ok: true, data: { path: destPath, direct: true } };
+          } catch (e) {
+            return { kind: "pdf", ok: false, error: String(e) };
+          }
+        })(),
+      );
     } else {
       tasks.push(Promise.resolve({ kind: "pdf", ok: false, error: "url_pdf indisponível" }));
     }
 
-    // Task 2: auto-ingest (extração de itens)
+    // Task 2: auto-ingest (extração de itens) — timeout de 50s para caber no budget total
     tasks.push(
       fetch(`${SUPABASE_URL}/functions/v1/edital-auto-ingest`, {
         method: "POST",
@@ -153,6 +212,7 @@ serve(async (req) => {
           Authorization: authHeader,
         },
         body: JSON.stringify({ licitacao_id: licitacaoId, replace: false }),
+        signal: AbortSignal.timeout(50_000),
       })
         .then(async (r) => ({ kind: "ingest", ok: r.ok, data: await r.json() }))
         .catch((e) => ({ kind: "ingest", ok: false, error: String(e) })),
@@ -162,9 +222,14 @@ serve(async (req) => {
     const pdfRes = results.find((r) => r.kind === "pdf");
     const ingestRes = results.find((r) => r.kind === "ingest");
 
-    // Se PDF foi baixado, copia para processo-arquivos/<user>/<licitacao>/edital/edital-original.pdf
+    // Se PDF foi baixado, determina o destino final
     let editalPdfPath: string | null = null;
-    if (pdfRes?.ok && pdfRes.data?.path) {
+
+    if (pdfRes?.ok && pdfRes.data?.direct) {
+      // Download PNCP direto — já foi salvo em processo-arquivos pela task
+      editalPdfPath = pdfRes.data.path;
+    } else if (pdfRes?.ok && pdfRes.data?.path) {
+      // Download via baixar-pdf-edital — copia de documentos-publicos para processo-arquivos
       try {
         const sourcePath: string = pdfRes.data.path; // "editais/<edital_id>.pdf"
         const { data: pdfBlob, error: dlErr } = await admin.storage
@@ -190,8 +255,10 @@ serve(async (req) => {
       }
     }
 
-    const success = !!editalPdfPath || !!ingestRes?.ok;
     const totalItens = ingestRes?.data?.total ?? 0;
+    // Sucesso real = PDF baixado OU itens extraídos com sucesso
+    const ingestSuccess = !!ingestRes?.ok && !!ingestRes?.data?.success && totalItens > 0;
+    const success = !!editalPdfPath || ingestSuccess;
 
     await admin.from("processos_ingest_status").upsert(
       {

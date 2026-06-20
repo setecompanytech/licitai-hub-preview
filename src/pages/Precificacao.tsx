@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +34,7 @@ import FontesManager from '@/components/precificacao/FontesManager';
 import CotacoesUnificado from '@/components/precificacao/CotacoesUnificado';
 import InteligenciaUnificada from '@/components/precificacao/InteligenciaUnificada';
 import RevisaoItensExtraidos, { type ItemExtraido } from '@/components/precificacao/RevisaoItensExtraidos';
+import EditalItensViewer from '@/components/precificacao/EditalItensViewer';
 import PlanilhaCustosEdital from '@/components/precificacao/PlanilhaCustosEdital';
 import ReextrairEditalButton from '@/components/shared/ReextrairEditalButton';
 
@@ -93,6 +94,8 @@ export default function Precificacao() {
   const [filterLojas, setFilterLojas] = useState<string[]>([]);
   const [filterMarcas, setFilterMarcas] = useState<string[]>([]);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const tabInicial = searchParams.get('tab') || 'marketplaces';
   const { addItem, hasPending, pendingItems } = usePropostaCart();
   const abortRef = useRef(false);
   const { user } = useAuth();
@@ -438,21 +441,27 @@ export default function Precificacao() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
-              Precificação de Preços
+              {tabInicial === 'extracao-itens'
+                ? <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+                : <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />}
+              {tabInicial === 'extracao-itens' ? 'Itens do Edital' : 'Precificação de Preços'}
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              Pesquisa integrada com Mercado Livre, Google Shopping, Painel de Preços Gov.br e cotações de fornecedores
+              {tabInicial === 'extracao-itens'
+                ? 'Itens extraídos do edital — lote, descrição, quantidade, unidade e valor'
+                : 'Pesquisa integrada com Mercado Livre, Google Shopping, Painel de Preços Gov.br e cotações de fornecedores'}
             </p>
           </div>
-          <div className="flex gap-2 self-start sm:self-auto flex-shrink-0">
-            <Button variant="outline" size="sm">
-              <RefreshCw className="w-4 h-4 mr-1" /> Atualizar Preços
-            </Button>
-            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm">
-              <BarChart3 className="w-4 h-4 mr-1" /> Gerar Relatório
-            </Button>
-          </div>
+          {tabInicial !== 'extracao-itens' && (
+            <div className="flex gap-2 self-start sm:self-auto flex-shrink-0">
+              <Button variant="outline" size="sm">
+                <RefreshCw className="w-4 h-4 mr-1" /> Atualizar Preços
+              </Button>
+              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm">
+                <BarChart3 className="w-4 h-4 mr-1" /> Gerar Relatório
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Stats */}
@@ -536,7 +545,7 @@ export default function Precificacao() {
         </div>
 
         {/* Source Tabs */}
-        <Tabs defaultValue="marketplaces" className="space-y-4">
+        <Tabs defaultValue={tabInicial} className="space-y-4">
           <TabsList className="bg-muted/50 flex-wrap h-auto">
             <TabsTrigger value="marketplaces" className="gap-1.5">
               <ShoppingCart className="w-3.5 h-3.5" /> Pesquisa de Preços
@@ -1111,11 +1120,9 @@ export default function Precificacao() {
           </TabsContent>
 
           <TabsContent value="extracao-itens">
-            <RevisaoItensExtraidos
-              onAprovado={(itensAprovados) => {
-                toast.success(`${itensAprovados.length} itens prontos para precificação!`);
-              }}
-            />
+            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+              <EditalItensViewer licitacaoId={processoId ?? null} />
+            </div>
           </TabsContent>
         </Tabs>
       </div>

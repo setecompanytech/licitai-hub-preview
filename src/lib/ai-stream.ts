@@ -36,25 +36,23 @@ export async function streamAIChat({
   endpoint?: "ai-chat" | "aurelia-tools";
 }) {
   try {
-    // Use user's JWT token if available, fallback to anon key for public actions
+    // Resolve user JWT via getUser() — auto-refreshes expired tokens internally
     let authToken = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     try {
-      let { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        const { data: refreshed } = await supabase.auth.refreshSession();
-        session = refreshed.session;
-      } else {
-        // Token present but may be expired or expiring — refresh proactively
-        const nowSecs = Math.floor(Date.now() / 1000);
-        if (!session.expires_at || session.expires_at <= nowSecs + 30) {
-          const { data: refreshed } = await supabase.auth.refreshSession();
-          session = refreshed.session ?? session;
-        }
+      const { data: { user }, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !user) {
+        onError?.("Sessão expirada. Por favor, recarregue a página e faça login novamente.");
+        onDone();
+        return;
       }
+      // getUser() refreshes the token if needed; getSession() now returns the fresh token
+      const { data: { session } } = await supabase.auth.getSession();
       if (session?.access_token) {
         authToken = session.access_token;
       }
-    } catch (error) { logger.warn("Falha ao obter sessão, usando anon key", error); }
+    } catch (error) {
+      logger.warn("Falha ao obter sessão", error);
+    }
 
     const url = endpoint === "aurelia-tools" ? AURELIA_TOOLS_URL : AI_CHAT_URL;
     const body = endpoint === "aurelia-tools"
@@ -73,7 +71,7 @@ export async function streamAIChat({
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
       const httpMsg: Record<number, string> = {
-        401: `Sessão expirada (401) — recarregue a página.`,
+        401: `Sessão inválida ou expirada — recarregue a página (F5) e tente novamente.`,
         402: `Créditos de IA insuficientes (402) — verifique o plano da conta.`,
         403: `Acesso negado (403) — verifique suas permissões.`,
         429: `Muitas requisições (429) — aguarde alguns segundos e tente novamente.`,

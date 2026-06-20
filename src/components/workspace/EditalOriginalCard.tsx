@@ -9,14 +9,10 @@ import { toast } from 'sonner';
 
 interface Props {
   licitacaoId: string;
+  urlEdital?: string;
 }
 
-/**
- * Card "Edital Original" na Visão Geral da Pasta:
- *  - mostra status da preparação automática (download do PDF + extração)
- *  - permite abrir em nova aba, baixar e re-disparar a preparação
- */
-export default function EditalOriginalCard({ licitacaoId }: Props) {
+export default function EditalOriginalCard({ licitacaoId, urlEdital }: Props) {
   const { prepared, running, editalPdfPath, totalItens, trigger } = useProcessoAutoPrepare(
     licitacaoId,
     { autoRun: true },
@@ -30,18 +26,21 @@ export default function EditalOriginalCard({ licitacaoId }: Props) {
     setLoadingUrl(true);
     supabase.storage
       .from('processo-arquivos')
-      .createSignedUrl(editalPdfPath, 60 * 60) // 1h
+      .createSignedUrl(editalPdfPath, 60 * 60)
       .then(({ data }) => { if (!cancelled) setSignedUrl(data?.signedUrl ?? null); })
       .finally(() => { if (!cancelled) setLoadingUrl(false); });
     return () => { cancelled = true; };
   }, [editalPdfPath]);
 
   const handleReprocess = async () => {
-    toast.info('🔄 Refazendo preparação automática…');
+    toast.info('Refazendo preparação automática…');
     const ok = await trigger(true);
-    if (ok) toast.success('✅ Pasta preparada novamente.');
-    else toast.warning('Não foi possível concluir a preparação automática.');
+    if (ok) toast.success('Pasta preparada com sucesso.');
+    else toast.warning('Não foi possível concluir a preparação automática. Tente abrir o edital diretamente no portal de origem.');
   };
+
+  const isPncp = !!urlEdital?.includes('pncp.gov.br');
+  const unavailable = !prepared && !running;
 
   return (
     <Card className="p-4 border-accent/30">
@@ -62,7 +61,7 @@ export default function EditalOriginalCard({ licitacaoId }: Props) {
                 <Loader2 className="w-3 h-3 animate-spin" /> Preparando…
               </Badge>
             )}
-            {!prepared && !running && (
+            {unavailable && (
               <Badge variant="outline" className="gap-1 text-xs">
                 <AlertTriangle className="w-3 h-3 text-warning" /> Indisponível
               </Badge>
@@ -78,6 +77,8 @@ export default function EditalOriginalCard({ licitacaoId }: Props) {
               ? 'O PDF do edital foi baixado automaticamente e está disponível para consulta nesta pasta.'
               : running
               ? 'Buscando o edital original na fonte e extraindo os itens em segundo plano…'
+              : isPncp
+              ? 'Não foi possível baixar o PDF automaticamente. Use o botão abaixo para acessar o edital no PNCP ou tente novamente.'
               : 'O sistema tenta baixar o PDF e extrair os itens automaticamente quando você marca interesse no processo.'}
           </p>
 
@@ -100,6 +101,15 @@ export default function EditalOriginalCard({ licitacaoId }: Props) {
               <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
                 <Loader2 className="w-3 h-3 animate-spin" /> Gerando link…
               </span>
+            )}
+            {/* Link direto ao portal quando PDF não está disponível */}
+            {unavailable && urlEdital && (
+              <Button asChild size="sm" variant="outline">
+                <a href={urlEdital} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                  {isPncp ? 'Ver no PNCP' : 'Ver edital'}
+                </a>
+              </Button>
             )}
             <Button size="sm" variant="ghost" onClick={handleReprocess} disabled={running}>
               <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${running ? 'animate-spin' : ''}`} />

@@ -202,6 +202,15 @@ interface FiltrosLei14133 {
   ufs: string[];
   municipios: string[];
   uasgs: string[];
+  // Novos filtros PNCP
+  esferas: string[];
+  poderes: string[];
+  tiposInstrumento: string[];
+  statusFiltro: string[];
+  orgaoTexto: string;
+  unidadeTexto: string;
+  conteudoNacional: '' | 'sim' | 'nao';
+  emendaParlamentar: '' | 'sim' | 'nao';
 }
 
 const filtrosVazios: FiltrosLei14133 = {
@@ -217,7 +226,20 @@ const filtrosVazios: FiltrosLei14133 = {
   ufs: [],
   municipios: [],
   uasgs: [],
+  esferas: [],
+  poderes: [],
+  tiposInstrumento: [],
+  statusFiltro: [],
+  orgaoTexto: '',
+  unidadeTexto: '',
+  conteudoNacional: '',
+  emendaParlamentar: '',
 };
+
+// Mapeamentos para filtros client-side
+const ESFERA_LABEL_TO_CODE: Record<string, string> = { Federal: 'F', Estadual: 'E', Municipal: 'M', Distrital: 'D' };
+const PODER_LABEL_TO_CODE: Record<string, string> = { Executivo: 'E', Legislativo: 'L', 'Judiciário': 'J', 'Ministério Público': 'M' };
+const STATUS_LABEL_TO_KEY: Record<string, string> = { Aberto: 'aberto', Aguardando: 'aguardando', Suspenso: 'suspenso', Homologado: 'homologado', Encerrado: 'encerrado' };
 
 // ─── Componente principal ────────────────────────────────────────────────────
 
@@ -364,13 +386,17 @@ export default function MonitoramentoEditais() {
       const dataIni = filtros.dataIni ? dmyToIso(filtros.dataIni) : null;
       const dataFim = filtros.dataFim ? dmyToIso(filtros.dataFim) : null;
 
-      // Validação: se usuário preencheu apenas uma das datas, avisa
-      if ((filtros.dataIni && !filtros.dataFim) || (!filtros.dataIni && filtros.dataFim)) {
-        const msg = 'Informe data inicial e final do período.';
-        setErro(msg);
-        setCarregando(false);
-        toast.warning('Filtro de período incompleto', { description: msg });
-        return;
+      const buscandoPorNumero = !!filtros.numero.trim();
+
+      // Validação de período — ignorada quando há número de licitação informado
+      if (!buscandoPorNumero) {
+        if ((filtros.dataIni && !filtros.dataFim) || (!filtros.dataIni && filtros.dataFim)) {
+          const msg = 'Informe data inicial e final do período.';
+          setErro(msg);
+          setCarregando(false);
+          toast.warning('Filtro de período incompleto', { description: msg });
+          return;
+        }
       }
       // Validação: data inicial não pode ser maior que final
       if (dataIni && dataFim && dataIni > dataFim) {
@@ -456,21 +482,44 @@ export default function MonitoramentoEditais() {
       let liveErr = 0;
       let usouCache = false;
 
-      // Default: last 30 days when no date range specified — always search live
+      // Intervalo padrão quando nenhuma data foi informada:
+      // - busca por número → ano inteiro do campo "ano" (01/01/ano a 31/12/ano)
+      // - busca geral → últimos 30 dias
       const hojeStr = new Date().toISOString().slice(0, 10);
-      const trintaDiasStr = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-      const dataIniEfetiva = dataIni || trintaDiasStr;
-      const dataFimEfetiva = dataFim || hojeStr;
+      let dataIniEfetiva: string;
+      let dataFimEfetiva: string;
+      if (dataIni && dataFim) {
+        dataIniEfetiva = dataIni;
+        dataFimEfetiva = dataFim;
+      } else if (buscandoPorNumero) {
+        const anoNum = filtros.ano.trim() ? Number(filtros.ano.trim()) : new Date().getFullYear();
+        const anoValido = anoNum >= 2000 && anoNum <= new Date().getFullYear() + 1 ? anoNum : new Date().getFullYear();
+        dataIniEfetiva = `${anoValido}-01-01`;
+        dataFimEfetiva = `${anoValido}-12-31`;
+      } else {
+        const trintaDiasStr = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+        dataIniEfetiva = trintaDiasStr;
+        dataFimEfetiva = hojeStr;
+      }
 
       {
-        const modalidadesAoVivo = modalidadesEfetivas.length > 0 ? modalidadesEfetivas : ALL_MODALIDADE_IDS;
-        // Página > 1: pede mais itens para garantir que a página solicitada esteja no resultado
-        // (a fonte live é por UF×modalidade, não global; agregamos no client)
         const livePageSize = filtros.municipios.length > 0 || filtros.uasgs.length > 0
           ? 50
           : Math.min(50, tamanho * Math.max(1, pag));
+
+        // Quando nenhuma modalidade é selecionada, enviamos UMA chamada com modalidade vazia.
+        // A edge function tem um caminho multi-modal otimizado para esse caso.
+        // Quando modalidades específicas são selecionadas, fazemos uma chamada por modalidade.
+        const modalidadesList: (number | null)[] = modalidadesEfetivas.length > 0
+          ? modalidadesEfetivas
+          : [null];
+
+        const esfera = filtros.esferas.length === 1
+          ? (ESFERA_LABEL_TO_CODE[filtros.esferas[0]] || '')
+          : '';
+
         const liveCalls = ufsList.flatMap(uf =>
-          modalidadesAoVivo.map(modalidade =>
+          modalidadesList.map(modalidade =>
             supabase.functions.invoke('busca-licitacoes', {
               body: {
                 termo: termo || '',
@@ -479,8 +528,9 @@ export default function MonitoramentoEditais() {
                 tamanhoPagina: livePageSize,
                 dataInicial: dataIniEfetiva,
                 dataFinal: dataFimEfetiva,
-                modalidade: String(modalidade),
+                modalidade: modalidade != null ? String(modalidade) : '',
                 situacao: 'todas',
+                esfera,
               },
             })
           )
@@ -514,6 +564,8 @@ export default function MonitoramentoEditais() {
             municipio: item.municipio,
             uf: item.uf,
             esfera_id: item.esfera,
+            poder_id: item.poder,
+            unidade: item.unidade,
             modalidade_id: item.modalidadeId,
             modalidade_nome: item.modalidade,
             valor_total_estimado: item.valorEstimado,
@@ -560,12 +612,28 @@ export default function MonitoramentoEditais() {
       );
       const uasgSet = new Set(filtros.uasgs.map(u => String(u).trim()));
 
+      // Pré-calcula sets para os novos filtros
+      const esfSet = filtros.esferas.length > 0
+        ? new Set(filtros.esferas.map(e => ESFERA_LABEL_TO_CODE[e] || e))
+        : null;
+      const poderSet = filtros.poderes.length > 0
+        ? new Set(filtros.poderes.map(p => PODER_LABEL_TO_CODE[p] || p))
+        : null;
+      const statusSet = filtros.statusFiltro.length > 0
+        ? new Set(filtros.statusFiltro.map(s => STATUS_LABEL_TO_KEY[s] || s.toLowerCase()))
+        : null;
+      const orgaoNorm = filtros.orgaoTexto.trim()
+        ? filtros.orgaoTexto.trim().toLowerCase().normalize('NFD').replace(/\p{Mn}/gu, '')
+        : null;
+      const unidadeNorm = filtros.unidadeTexto.trim()
+        ? filtros.unidadeTexto.trim().toLowerCase().normalize('NFD').replace(/\p{Mn}/gu, '')
+        : null;
+
       const filtrados = rows.filter(r => {
         if (ufsSet.size > 0 && !ufsSet.has(r.uf)) return false;
         if (muniSet.size > 0 && !muniSet.has(String(r.municipio || '').toLowerCase())) return false;
         if (uasgSet.size > 0) {
           const uasgRow = String(r.unidade_orgao || r.cnpj_orgao || '').trim();
-          // Tenta casar pelo trecho numérico do unidade_orgao ou número compra
           const matches = Array.from(uasgSet).some(u => uasgRow.includes(u) || String(r.numero_compra || '').includes(u));
           if (!matches) return false;
         }
@@ -575,6 +643,37 @@ export default function MonitoramentoEditais() {
             return false;
           }
         }
+        // Esferas
+        if (esfSet && !esfSet.has(r.esfera_id)) return false;
+        // Poderes
+        if (poderSet && !poderSet.has(r.poder_id)) return false;
+        // Tipos de instrumento
+        if (filtros.tiposInstrumento.length > 0) {
+          const ti = (r.tipo_instrumento || '').toLowerCase();
+          const match = filtros.tiposInstrumento.some(t => ti.startsWith(t.toLowerCase()));
+          if (!match) return false;
+        }
+        // Status/situação
+        if (statusSet) {
+          const st = statusFromSituacao(r.situacao, r.data_abertura_proposta);
+          if (!statusSet.has(st)) return false;
+        }
+        // Órgão (busca parcial)
+        if (orgaoNorm) {
+          const nome = (r.orgao || '').toLowerCase().normalize('NFD').replace(/\p{Mn}/gu, '');
+          if (!nome.includes(orgaoNorm)) return false;
+        }
+        // Unidade (busca parcial)
+        if (unidadeNorm) {
+          const nome = (r.unidade || '').toLowerCase().normalize('NFD').replace(/\p{Mn}/gu, '');
+          if (!nome.includes(unidadeNorm)) return false;
+        }
+        // Conteúdo nacional (campo srp/indicador pode não estar disponível — filtra se presente)
+        if (filtros.conteudoNacional === 'sim' && r.conteudo_nacional === false) return false;
+        if (filtros.conteudoNacional === 'nao' && r.conteudo_nacional === true) return false;
+        // Emenda parlamentar
+        if (filtros.emendaParlamentar === 'sim' && r.emenda_parlamentar === false) return false;
+        if (filtros.emendaParlamentar === 'nao' && r.emenda_parlamentar === true) return false;
         return true;
       });
 
@@ -774,6 +873,14 @@ export default function MonitoramentoEditais() {
     if (filtros.ufs.length > 0) n++;
     if (filtros.municipios.length > 0) n++;
     if (filtros.uasgs.length > 0) n++;
+    if (filtros.esferas.length > 0) n++;
+    if (filtros.poderes.length > 0) n++;
+    if (filtros.tiposInstrumento.length > 0) n++;
+    if (filtros.statusFiltro.length > 0) n++;
+    if (filtros.orgaoTexto) n++;
+    if (filtros.unidadeTexto) n++;
+    if (filtros.conteudoNacional) n++;
+    if (filtros.emendaParlamentar) n++;
     return n;
   }, [filtros]);
 
@@ -1033,6 +1140,138 @@ export default function MonitoramentoEditais() {
               numericOnly
             />
 
+            {/* Linha 7: Situação */}
+            <ChipMultiSelect
+              label="Situação"
+              options={['Aberto', 'Aguardando', 'Suspenso', 'Homologado', 'Encerrado']}
+              valores={filtros.statusFiltro}
+              onToggle={v => toggleArr('statusFiltro', v)}
+              onClear={() => setFiltros(p => ({ ...p, statusFiltro: [] }))}
+              placeholder="Todos os status"
+            />
+
+            {/* Linha 8: Esferas */}
+            <ChipMultiSelect
+              label="Esferas"
+              options={['Federal', 'Estadual', 'Municipal', 'Distrital']}
+              valores={filtros.esferas}
+              onToggle={v => toggleArr('esferas', v)}
+              onClear={() => setFiltros(p => ({ ...p, esferas: [] }))}
+              placeholder="Todas as esferas"
+            />
+
+            {/* Linha 9: Poderes */}
+            <ChipMultiSelect
+              label="Poderes"
+              options={['Executivo', 'Legislativo', 'Judiciário', 'Ministério Público']}
+              valores={filtros.poderes}
+              onToggle={v => toggleArr('poderes', v)}
+              onClear={() => setFiltros(p => ({ ...p, poderes: [] }))}
+              placeholder="Todos os poderes"
+            />
+
+            {/* Linha 10: Tipos de Instrumento Convocatório */}
+            <ChipMultiSelect
+              label="Tipo de Instrumento"
+              labelSub="Convocatório"
+              options={['Edital', 'Aviso']}
+              valores={filtros.tiposInstrumento}
+              onToggle={v => toggleArr('tiposInstrumento', v)}
+              onClear={() => setFiltros(p => ({ ...p, tiposInstrumento: [] }))}
+              placeholder="Todos os tipos"
+            />
+
+            {/* Linha 11: Órgão */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+              <Label className="md:col-span-2 text-xs text-muted-foreground">Órgão</Label>
+              <div className="md:col-span-10 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="Busca parcial por nome do órgão…"
+                  value={filtros.orgaoTexto}
+                  onChange={e => setFiltros(p => ({ ...p, orgaoTexto: e.target.value }))}
+                  className="pl-9 h-9"
+                />
+              </div>
+            </div>
+
+            {/* Linha 12: Unidade */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+              <Label className="md:col-span-2 text-xs text-muted-foreground">Unidade</Label>
+              <div className="md:col-span-10 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="Busca parcial por nome da unidade…"
+                  value={filtros.unidadeTexto}
+                  onChange={e => setFiltros(p => ({ ...p, unidadeTexto: e.target.value }))}
+                  className="pl-9 h-9"
+                />
+              </div>
+            </div>
+
+            {/* Linha 13: Conteúdo Nacional / Emenda Parlamentar */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+              <Label className="md:col-span-2 text-xs text-muted-foreground pt-1">Outros filtros</Label>
+              <div className="md:col-span-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Conteúdo Nacional */}
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-foreground">Exigência de Conteúdo Nacional</p>
+                  <div className="flex items-center gap-4">
+                    {(['', 'sim', 'nao'] as const).map(v => (
+                      <label key={v} className="flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors">
+                        <input
+                          type="radio"
+                          name="conteudoNacional"
+                          value={v}
+                          checked={filtros.conteudoNacional === v}
+                          onChange={() => setFiltros(p => ({ ...p, conteudoNacional: v }))}
+                          className="accent-accent w-3.5 h-3.5"
+                        />
+                        {v === '' ? 'Todos' : v === 'sim' ? 'Sim' : 'Não'}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                {/* Emenda Parlamentar */}
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-foreground">Emenda Parlamentar</p>
+                  <div className="flex items-center gap-4">
+                    {(['', 'sim', 'nao'] as const).map(v => (
+                      <label key={v} className="flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors">
+                        <input
+                          type="radio"
+                          name="emendaParlamentar"
+                          value={v}
+                          checked={filtros.emendaParlamentar === v}
+                          onChange={() => setFiltros(p => ({ ...p, emendaParlamentar: v }))}
+                          className="accent-accent w-3.5 h-3.5"
+                        />
+                        {v === '' ? 'Todos' : v === 'sim' ? 'Sim' : 'Não'}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Linha 14: Fontes Orçamentárias / Margens de Preferência (em desenvolvimento) */}
+            <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 space-y-2">
+              <p className="text-xs font-semibold text-foreground flex items-center gap-2">
+                <Info className="w-3.5 h-3.5 text-accent" />
+                Filtros adicionais — em desenvolvimento
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium">Fontes Orçamentárias</p>
+                  <Input disabled placeholder="Disponível em breve" className="h-8 text-xs opacity-50" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium">Tipos de Margens de Preferência</p>
+                  <Input disabled placeholder="Disponível em breve" className="h-8 text-xs opacity-50" />
+                </div>
+              </div>
+            </div>
+
             {/* Aviso Materiais/Serviços */}
             <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
               <p className="flex items-center gap-2">
@@ -1224,9 +1463,10 @@ function CheckboxRow({
 }
 
 function ChipMultiSelect({
-  label, options, valores, onToggle, onClear, placeholder,
+  label, labelSub, options, valores, onToggle, onClear, placeholder,
 }: {
   label: string;
+  labelSub?: string;
   options: string[];
   valores: string[];
   onToggle: (v: string) => void;
@@ -1236,7 +1476,12 @@ function ChipMultiSelect({
   const [open, setOpen] = useState(false);
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
-      <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">{label}</Label>
+      <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">
+        {label}
+        {labelSub && (
+          <span className="block text-[10px] text-muted-foreground/70 font-normal mt-0.5">{labelSub}</span>
+        )}
+      </Label>
       <div className="md:col-span-10 space-y-2">
         <div
           className="rounded-md border border-border bg-background min-h-[40px] px-2 py-1.5 flex flex-wrap gap-1.5 items-center cursor-pointer"
@@ -1352,16 +1597,68 @@ interface EditalCardProps {
   onIniciarProcesso: () => void;
 }
 
+const PNCP_API = 'https://pncp.gov.br/api/consulta/v1';
+
+type AbaDetalhe = 'itens' | 'arquivos' | 'atas' | 'contratos' | 'historico';
+
 function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoId, onIniciarProcesso }: EditalCardProps) {
   const emGestao = !!licitacaoId;
   const emCompromisso = !!compromissoId;
   const [expandido, setExpandido] = useState(false);
+  const [abaAtiva, setAbaAtiva] = useState<AbaDetalhe>('itens');
+  const [detalhe, setDetalhe] = useState<any>(null);
+  const [itens, setItens] = useState<any[]>([]);
+  const [arquivos, setArquivos] = useState<any[]>([]);
+  const [carregandoDetalhe, setCarregandoDetalhe] = useState(false);
+  const detalhesCarregadosRef = useRef(false);
+
   const statusCfg = STATUS_CONFIG[edital.status] || STATUS_CONFIG.encerrado;
   const { Icon: StatusIcon } = statusCfg;
 
   const diasRestantes = edital.status === 'aberto'
     ? calcularDiasRestantes(edital.dataEncerramento)
     : null;
+
+  // Extrai CNPJ / ano / sequencial do linkPncp
+  const pncpCoords = useMemo(() => {
+    const m = (edital.linkPncp || '').match(/editais\/(\d{14})\/(\d{4})\/(\d+)/);
+    if (!m) return null;
+    return { cnpj: m[1], ano: m[2], seq: m[3] };
+  }, [edital.linkPncp]);
+
+  const carregarDetalhes = useCallback(async () => {
+    if (detalhesCarregadosRef.current || !pncpCoords) return;
+    detalhesCarregadosRef.current = true;
+    setCarregandoDetalhe(true);
+    try {
+      const { cnpj, ano, seq } = pncpCoords;
+      const base = `${PNCP_API}/orgaos/${cnpj}/compras/${ano}/${seq}`;
+      const hdrs = { Accept: 'application/json' };
+      const [rDet, rItens, rArqs] = await Promise.allSettled([
+        fetch(base, { headers: hdrs }),
+        fetch(`${base}/itens?pagina=1&tamanhoPagina=500`, { headers: hdrs }),
+        fetch(`${base}/arquivos?pagina=1&tamanhoPagina=100`, { headers: hdrs }),
+      ]);
+      if (rDet.status === 'fulfilled' && rDet.value.ok)
+        setDetalhe(await rDet.value.json());
+      if (rItens.status === 'fulfilled' && rItens.value.ok) {
+        const j = await rItens.value.json();
+        setItens(Array.isArray(j) ? j : (j?.data ?? []));
+      }
+      if (rArqs.status === 'fulfilled' && rArqs.value.ok) {
+        const j = await rArqs.value.json();
+        setArquivos(Array.isArray(j) ? j : (j?.data ?? []));
+      }
+    } catch {
+      // falha silenciosa — fallback será o link PNCP
+    } finally {
+      setCarregandoDetalhe(false);
+    }
+  }, [pncpCoords]);
+
+  useEffect(() => {
+    if (expandido) carregarDetalhes();
+  }, [expandido, carregarDetalhes]);
 
   return (
     <div className={`rounded-xl border transition-colors ${
@@ -1537,26 +1834,255 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
       </div>
 
       {expandido && (
-        <div className="px-4 pb-4 pt-0 border-t border-border mt-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-            <DetalheItem label="Número do processo" valor={edital.processo || '—'} />
-            <DetalheItem label="Situação PNCP" valor={edital.situacaoNome || '—'} />
-            <DetalheItem label="Tipo de instrumento" valor={edital.tipoEdital || '—'} />
-            <DetalheItem label="CNPJ do órgão" valor={edital.cnpj || '—'} mono />
-            {edital.dataPublicacao && (
-              <DetalheItem label="Data de publicação" valor={formatData(edital.dataPublicacao)} />
-            )}
-          </div>
+        <div className="border-t border-border">
+          {carregandoDetalhe ? (
+            <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground text-xs">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Carregando detalhes completos do PNCP…
+            </div>
+          ) : (
+            <div className="px-4 pb-4 pt-4 space-y-4">
 
-          {edital.informacaoComplementar && (
-            <div className="mt-4 rounded-lg bg-muted/50 border border-border p-3">
-              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                <Info className="w-3 h-3" />
-                Informação complementar
-              </p>
-              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4">
-                {edital.informacaoComplementar}
-              </p>
+              {/* ── Grade de metadados ── */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3">
+                <DetalheItem label="Número do processo" valor={detalhe?.numeroControlePncp || edital.processo || '—'} mono />
+                <DetalheItem label="Situação PNCP" valor={detalhe?.situacaoCompraNome || edital.situacaoNome || '—'} />
+                <DetalheItem label="CNPJ do órgão" valor={edital.cnpj || detalhe?.cnpjOrgao || '—'} mono />
+                <DetalheItem
+                  label="Unidade compradora"
+                  valor={
+                    detalhe?.codigoUnidadeOrgao
+                      ? `${detalhe.codigoUnidadeOrgao} — ${detalhe.nomeUnidadeOrgao || ''}`
+                      : '—'
+                  }
+                />
+                <DetalheItem label="Tipo de instrumento" valor={detalhe?.tipoInstrumentoConvocatorioNome || edital.tipoEdital || '—'} />
+                <DetalheItem label="Modo de disputa" valor={detalhe?.modoDisputaNome || edital.modoDisputa || '—'} />
+                <DetalheItem label="Registro de preços" valor={edital.srp ? 'Sim' : 'Não'} />
+                <DetalheItem label="Esfera" valor={detalhe?.esferaNome || ESFERA_LABELS[edital.esfera] || edital.esfera || '—'} />
+                <DetalheItem label="Poder" valor={detalhe?.poderNome || '—'} />
+                <DetalheItem
+                  label="Amparo legal"
+                  valor={
+                    detalhe?.amparoLegal?.descricao ||
+                    detalhe?.amparoLegalDescricao ||
+                    '—'
+                  }
+                />
+                <DetalheItem
+                  label="Fonte orçamentária"
+                  valor={
+                    detalhe?.fonteOrcamentaria ||
+                    detalhe?.fonteOrcamentariaNome ||
+                    'Não informada'
+                  }
+                />
+                <DetalheItem label="Sistema de origem" valor={detalhe?.sistemaOrigem || '—'} />
+                {edital.dataPublicacao && (
+                  <DetalheItem label="Data de publicação" valor={formatData(edital.dataPublicacao)} />
+                )}
+                {(detalhe?.dataAberturaProposta || edital.dataAbertura) && (
+                  <DetalheItem
+                    label="Início de recebimento"
+                    valor={formatData(detalhe?.dataAberturaProposta || edital.dataAbertura)}
+                  />
+                )}
+                {(detalhe?.dataEncerramentoProposta || edital.dataEncerramento) && (
+                  <DetalheItem
+                    label="Fim de recebimento"
+                    valor={formatData(detalhe?.dataEncerramentoProposta || edital.dataEncerramento)}
+                  />
+                )}
+                {detalhe?.dataAtualizacao && (
+                  <DetalheItem label="Última atualização" valor={formatData(detalhe.dataAtualizacao)} />
+                )}
+                {(edital.valorEstimado || detalhe?.valorTotalEstimado) && (
+                  <DetalheItem
+                    label="Valor total estimado"
+                    valor={formatMoeda(detalhe?.valorTotalEstimado ?? edital.valorEstimado)}
+                    destaque
+                  />
+                )}
+                {(detalhe?.valorTotalHomologado) && (
+                  <DetalheItem
+                    label="Valor total homologado"
+                    valor={formatMoeda(detalhe.valorTotalHomologado)}
+                    destaque
+                  />
+                )}
+              </div>
+
+              {/* ── Objeto ── */}
+              {(detalhe?.objetoCompra || edital.objeto) && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Objeto</p>
+                  <p className="text-sm text-foreground/80 leading-relaxed">
+                    {detalhe?.objetoCompra || edital.objeto}
+                  </p>
+                </div>
+              )}
+
+              {/* ── Informação complementar ── */}
+              {(detalhe?.informacaoComplementar || edital.informacaoComplementar) && (
+                <div className="rounded-lg bg-muted/50 border border-border p-3">
+                  <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                    <Info className="w-3 h-3" />
+                    Informação complementar
+                  </p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {detalhe?.informacaoComplementar || edital.informacaoComplementar}
+                  </p>
+                </div>
+              )}
+
+              {/* ── Abas: Itens / Arquivos / Atas / Contratos / Histórico ── */}
+              <div className="border-t border-border pt-3">
+                <div className="flex gap-0 border-b border-border mb-3 overflow-x-auto">
+                  {(
+                    [
+                      { key: 'itens' as const,     label: 'Itens',                  count: itens.length },
+                      { key: 'arquivos' as const,   label: 'Arquivos',               count: arquivos.length },
+                      { key: 'atas' as const,       label: 'Atas de Reg. de Preço',  count: 0 },
+                      { key: 'contratos' as const,  label: 'Contratos/Empenhos',     count: 0 },
+                      { key: 'historico' as const,  label: 'Histórico',              count: 0 },
+                    ]
+                  ).map(({ key, label, count }) => (
+                    <button
+                      key={key}
+                      onClick={() => setAbaAtiva(key)}
+                      className={`px-3 py-2 text-xs font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${
+                        abaAtiva === key
+                          ? 'border-accent text-accent'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {label}
+                      {count > 0 && (
+                        <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-muted text-[10px] font-normal">
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Itens */}
+                {abaAtiva === 'itens' && (
+                  itens.length === 0 ? (
+                    <div className="py-6 text-center space-y-2">
+                      <p className="text-xs text-muted-foreground">Nenhum item retornado pela API.</p>
+                      {edital.linkPncp && (
+                        <a href={edital.linkPncp} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
+                          <ExternalLink className="w-3 h-3" />Ver itens no portal PNCP
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto rounded border border-border/60">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-muted/40 border-b border-border text-muted-foreground">
+                            <th className="text-left px-3 py-2 font-medium w-10">Nº</th>
+                            <th className="text-left px-3 py-2 font-medium">Descrição</th>
+                            <th className="text-right px-3 py-2 font-medium w-24">Quantidade</th>
+                            <th className="text-right px-3 py-2 font-medium w-32">Vlr. unit. est.</th>
+                            <th className="text-right px-3 py-2 font-medium w-32">Vlr. total est.</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/40">
+                          {itens.map((item: any, i: number) => {
+                            const qtd = item.quantidade ?? item.quantidadeItens;
+                            const vUnit = item.valorUnitarioEstimado ?? item.valorUnitario;
+                            const vTotal = item.valorTotal ?? item.valorTotalEstimado
+                              ?? (vUnit != null && qtd != null ? vUnit * qtd : null);
+                            return (
+                              <tr key={item.numeroItem ?? i} className="hover:bg-muted/20 transition-colors">
+                                <td className="px-3 py-2 text-muted-foreground">{item.numeroItem ?? i + 1}</td>
+                                <td className="px-3 py-2 text-foreground/80">
+                                  {item.descricao || item.descricaoItem || '—'}
+                                  {item.unidadeMedida && (
+                                    <span className="ml-1.5 text-[10px] text-muted-foreground border border-border/60 px-1 rounded">
+                                      {item.unidadeMedida}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2 text-right">{qtd?.toLocaleString('pt-BR') ?? '—'}</td>
+                                <td className="px-3 py-2 text-right text-foreground/70">
+                                  {vUnit != null ? formatMoeda(vUnit) : '—'}
+                                </td>
+                                <td className="px-3 py-2 text-right font-medium text-success">
+                                  {vTotal != null ? formatMoeda(vTotal) : '—'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                )}
+
+                {/* Arquivos */}
+                {abaAtiva === 'arquivos' && (
+                  arquivos.length === 0 ? (
+                    <div className="py-6 text-center space-y-2">
+                      <p className="text-xs text-muted-foreground">Nenhum arquivo retornado pela API.</p>
+                      {edital.linkPncp && (
+                        <a href={edital.linkPncp} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
+                          <ExternalLink className="w-3 h-3" />Ver arquivos no portal PNCP
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {arquivos.map((arq: any, i: number) => (
+                        <div key={arq.sequencialDocumento ?? i}
+                          className="flex items-center justify-between p-2.5 rounded border border-border bg-muted/20 hover:bg-muted/40 transition-colors">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="w-4 h-4 text-accent shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium text-foreground/80 truncate">
+                                {arq.titulo || arq.nomeArquivo || `Arquivo ${i + 1}`}
+                              </p>
+                              {arq.dataPublicacao && (
+                                <p className="text-[10px] text-muted-foreground">{formatData(arq.dataPublicacao)}</p>
+                              )}
+                            </div>
+                          </div>
+                          {arq.url && (
+                            <a href={arq.url} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 shrink-0 ml-3 px-2 py-1 rounded border border-accent/30 hover:bg-accent/10 transition-colors">
+                              <ExternalLink className="w-3 h-3" />
+                              Abrir
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
+
+                {/* Atas / Contratos / Histórico — link direto ao PNCP */}
+                {(abaAtiva === 'atas' || abaAtiva === 'contratos' || abaAtiva === 'historico') && (
+                  <div className="py-6 text-center space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      {abaAtiva === 'atas' && 'Atas de Registro de Preço disponíveis no portal PNCP.'}
+                      {abaAtiva === 'contratos' && 'Contratos e empenhos disponíveis no portal PNCP.'}
+                      {abaAtiva === 'historico' && 'Histórico de alterações disponível no portal PNCP.'}
+                    </p>
+                    {edital.linkPncp && (
+                      <a href={edital.linkPncp} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Abrir no portal PNCP
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+
             </div>
           )}
         </div>

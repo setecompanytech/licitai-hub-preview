@@ -60,10 +60,7 @@ export default function AureliaPage() {
       },
       onDone: () => setIsLoading(false),
       onError: (err) => {
-        const msg = (err === 'Invalid token' || err === 'Unauthorized')
-          ? 'Sua sessão expirou. Por favor, recarregue a página ou faça login novamente.'
-          : `Erro: ${err}`;
-        setMessages(prev => [...prev, { role: 'assistant', content: msg }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: `Erro: ${err}` }]);
         setIsLoading(false);
       },
     });

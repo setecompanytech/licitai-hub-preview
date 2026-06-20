@@ -53,12 +53,18 @@ function parsePNCPNumeroControle(nc: string | null | undefined) {
 }
 
 async function listPNCPArquivos(cnpj: string, ano: string, seq: string): Promise<AnexoLink[]> {
-  const url = `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${ano}/${seq}/arquivos`;
+  const url = `https://pncp.gov.br/api/consulta/v1/orgaos/${cnpj}/compras/${ano}/${seq}/arquivos?pagina=1&tamanhoPagina=100`;
   try {
-    const r = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(10000) });
+    const r = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "Mozilla/5.0 (compatible; LicitAI/1.0)",
+      },
+      signal: AbortSignal.timeout(15000),
+    });
     if (!r.ok) return [];
     const data = await r.json();
-    const arr: any[] = data?.data ?? (Array.isArray(data) ? data : []);
+    const arr: any[] = Array.isArray(data) ? data : (data?.data ?? []);
     return arr.map((a, idx) => {
       const seqArq = a.sequencialDocumento ?? a.sequencialArquivo ?? idx + 1;
       const itemUrl = a.url ?? a.uri ?? `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${ano}/${seq}/arquivos/${seqArq}`;
@@ -242,7 +248,7 @@ Deno.serve(async (req) => {
       user_id: user.id,
       licitacao_id: lic.id,
       ...patch,
-    }, { onConflict: "licitacao_id" });
+    }, { onConflict: "user_id,licitacao_id" });
   };
 
   await updateStatus({ status: "running", etapa: "resolve", iniciado_em: new Date().toISOString(), erro: null, mensagem: null });

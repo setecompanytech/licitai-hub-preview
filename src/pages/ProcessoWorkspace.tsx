@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,7 +27,7 @@ interface Licitacao {
 }
 
 const ATALHOS = [
-  { label: 'Edital / Itens', path: '/precificacao', icon: FileText, descricao: 'Visualizar itens extraídos do edital' },
+  { label: 'Edital / Itens', path: '/precificacao?tab=extracao-itens', icon: FileText, descricao: 'Visualizar itens extraídos do edital' },
   { label: 'Precificação', path: '/precificacao', icon: Calculator, descricao: 'Calcular preços e composição de custos' },
   { label: 'Proposta Comercial', path: '/proposta-tecnica', icon: FileText, descricao: 'Editar proposta técnica e gerar PDF' },
   { label: 'AURÉLIA (IA)', path: '/aurelia', icon: Sparkles, descricao: 'Análise jurídica/contábil com IA' },
@@ -61,6 +61,13 @@ export default function ProcessoWorkspace() {
   const [rascunhoPlanilha, setRascunhoPlanilha] = useState<RascunhoPlanilha | null>(null);
   const [loadingPrec, setLoadingPrec] = useState(false);
 
+  // Dados complementares do PNCP
+  const [pncpDetalhe, setPncpDetalhe] = useState<any>(null);
+  const [pncpItens, setPncpItens] = useState<any[]>([]);
+  const [pncpArquivos, setPncpArquivos] = useState<any[]>([]);
+  const [pncpCarregando, setPncpCarregando] = useState(false);
+  const pncpFetchedRef = useRef(false);
+
   const handleExportarZip = async () => {
     if (!lic) return;
     setExportando(true);
@@ -81,6 +88,33 @@ export default function ProcessoWorkspace() {
       .eq('id', id).eq('user_id', user.id).maybeSingle()
       .then(({ data }) => { setLic(data as Licitacao); setLoading(false); });
   }, [id, user]);
+
+  // Carrega detalhes completos do PNCP quando o processo tem url_edital do portal
+  useEffect(() => {
+    if (pncpFetchedRef.current || !lic?.url_edital) return;
+    const m = lic.url_edital.match(/editais\/(\d{14})\/(\d{4})\/(\d+)/);
+    if (!m) return;
+    pncpFetchedRef.current = true;
+    const [, cnpj, ano, seq] = m;
+    const base = `https://pncp.gov.br/api/consulta/v1/orgaos/${cnpj}/compras/${ano}/${seq}`;
+    const hdrs = { Accept: 'application/json' };
+    setPncpCarregando(true);
+    Promise.allSettled([
+      fetch(base, { headers: hdrs }),
+      fetch(`${base}/itens?pagina=1&tamanhoPagina=500`, { headers: hdrs }),
+      fetch(`${base}/arquivos?pagina=1&tamanhoPagina=100`, { headers: hdrs }),
+    ]).then(async ([rDet, rItens, rArqs]) => {
+      if (rDet.status === 'fulfilled' && rDet.value.ok) setPncpDetalhe(await rDet.value.json());
+      if (rItens.status === 'fulfilled' && rItens.value.ok) {
+        const j = await rItens.value.json();
+        setPncpItens(Array.isArray(j) ? j : (j?.data ?? []));
+      }
+      if (rArqs.status === 'fulfilled' && rArqs.value.ok) {
+        const j = await rArqs.value.json();
+        setPncpArquivos(Array.isArray(j) ? j : (j?.data ?? []));
+      }
+    }).finally(() => setPncpCarregando(false));
+  }, [lic?.url_edital]);
 
   const loadPrecificacao = async () => {
     if (!id || !user) return;
@@ -218,10 +252,180 @@ export default function ProcessoWorkspace() {
                 <p className="pt-2 border-t border-border/40 text-xs text-muted-foreground italic">{lic.observacoes}</p>
               )}
             </Card>
-            <EditalOriginalCard licitacaoId={lic.id} />
+            {/* ── Dados completos do PNCP ── */}
+            {(pncpCarregando || pncpDetalhe || pncpItens.length > 0 || pncpArquivos.length > 0) && (
+              <Card className="p-5">
+                {pncpCarregando ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Carregando dados completos do PNCP…
+                  </div>
+                ) : pncpDetalhe ? (
+                  <div className="space-y-4">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Informações detalhadas — PNCP
+                    </p>
+
+                    {/* Grade de campos */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3 text-sm">
+                      {pncpDetalhe.numeroControlePncp && (
+                        <div><p className="text-xs text-muted-foreground">ID PNCP</p>
+                          <p className="font-medium font-mono text-xs break-all">{pncpDetalhe.numeroControlePncp}</p></div>
+                      )}
+                      {pncpDetalhe.situacaoCompraNome && (
+                        <div><p className="text-xs text-muted-foreground">Situação PNCP</p>
+                          <p className="font-medium">{pncpDetalhe.situacaoCompraNome}</p></div>
+                      )}
+                      {pncpDetalhe.cnpjOrgao && (
+                        <div><p className="text-xs text-muted-foreground">CNPJ do órgão</p>
+                          <p className="font-medium font-mono text-xs">{pncpDetalhe.cnpjOrgao}</p></div>
+                      )}
+                      {(pncpDetalhe.codigoUnidadeOrgao || pncpDetalhe.nomeUnidadeOrgao) && (
+                        <div><p className="text-xs text-muted-foreground">Unidade compradora</p>
+                          <p className="font-medium text-xs leading-snug">
+                            {pncpDetalhe.codigoUnidadeOrgao && `${pncpDetalhe.codigoUnidadeOrgao} — `}
+                            {pncpDetalhe.nomeUnidadeOrgao}
+                          </p></div>
+                      )}
+                      {pncpDetalhe.esferaNome && (
+                        <div><p className="text-xs text-muted-foreground">Esfera</p>
+                          <p className="font-medium">{pncpDetalhe.esferaNome}</p></div>
+                      )}
+                      {pncpDetalhe.poderNome && (
+                        <div><p className="text-xs text-muted-foreground">Poder</p>
+                          <p className="font-medium">{pncpDetalhe.poderNome}</p></div>
+                      )}
+                      {pncpDetalhe.tipoInstrumentoConvocatorioNome && (
+                        <div><p className="text-xs text-muted-foreground">Tipo de instrumento</p>
+                          <p className="font-medium">{pncpDetalhe.tipoInstrumentoConvocatorioNome}</p></div>
+                      )}
+                      {pncpDetalhe.modoDisputaNome && (
+                        <div><p className="text-xs text-muted-foreground">Modo de disputa</p>
+                          <p className="font-medium">{pncpDetalhe.modoDisputaNome}</p></div>
+                      )}
+                      <div><p className="text-xs text-muted-foreground">Registro de preços</p>
+                        <p className="font-medium">{pncpDetalhe.srp ? 'Sim' : 'Não'}</p></div>
+                      {(pncpDetalhe.amparoLegal?.descricao || pncpDetalhe.amparoLegalDescricao) && (
+                        <div><p className="text-xs text-muted-foreground">Amparo legal</p>
+                          <p className="font-medium text-xs">{pncpDetalhe.amparoLegal?.descricao || pncpDetalhe.amparoLegalDescricao}</p></div>
+                      )}
+                      {(pncpDetalhe.fonteOrcamentaria || pncpDetalhe.fonteOrcamentariaNome) && (
+                        <div><p className="text-xs text-muted-foreground">Fonte orçamentária</p>
+                          <p className="font-medium">{pncpDetalhe.fonteOrcamentaria || pncpDetalhe.fonteOrcamentariaNome}</p></div>
+                      )}
+                      {pncpDetalhe.sistemaOrigem && (
+                        <div><p className="text-xs text-muted-foreground">Sistema de origem</p>
+                          <p className="font-medium">{pncpDetalhe.sistemaOrigem}</p></div>
+                      )}
+                      {pncpDetalhe.dataPublicacaoPncp && (
+                        <div><p className="text-xs text-muted-foreground">Publicação PNCP</p>
+                          <p className="font-medium">{new Date(pncpDetalhe.dataPublicacaoPncp).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p></div>
+                      )}
+                      {pncpDetalhe.dataAtualizacao && (
+                        <div><p className="text-xs text-muted-foreground">Última atualização</p>
+                          <p className="font-medium">{new Date(pncpDetalhe.dataAtualizacao).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p></div>
+                      )}
+                      {pncpDetalhe.valorTotalHomologado != null && (
+                        <div><p className="text-xs text-muted-foreground">Valor homologado</p>
+                          <p className="font-medium text-green-600">{fmt(pncpDetalhe.valorTotalHomologado)}</p></div>
+                      )}
+                    </div>
+
+                    {/* Informação complementar */}
+                    {pncpDetalhe.informacaoComplementar && (
+                      <div className="pt-3 border-t border-border/40">
+                        <p className="text-xs text-muted-foreground mb-1">Informação complementar</p>
+                        <p className="text-sm text-foreground/80 leading-relaxed">{pncpDetalhe.informacaoComplementar}</p>
+                      </div>
+                    )}
+
+                    {/* Itens da contratação */}
+                    {pncpItens.length > 0 && (
+                      <div className="pt-3 border-t border-border/40">
+                        <p className="text-xs text-muted-foreground mb-2 font-medium">
+                          Itens da contratação ({pncpItens.length})
+                        </p>
+                        <div className="overflow-x-auto rounded border border-border/60">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="bg-muted/40 border-b border-border text-muted-foreground">
+                                <th className="text-left px-3 py-2 font-medium w-10">Nº</th>
+                                <th className="text-left px-3 py-2 font-medium">Descrição</th>
+                                <th className="text-right px-3 py-2 font-medium w-24">Quantidade</th>
+                                <th className="text-right px-3 py-2 font-medium w-32">Vlr. unit. est.</th>
+                                <th className="text-right px-3 py-2 font-medium w-32">Vlr. total est.</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/40">
+                              {pncpItens.map((item: any, i: number) => {
+                                const qtd = item.quantidade ?? item.quantidadeItens;
+                                const vUnit = item.valorUnitarioEstimado ?? item.valorUnitario;
+                                const vTotal = item.valorTotal ?? item.valorTotalEstimado
+                                  ?? (vUnit != null && qtd != null ? vUnit * qtd : null);
+                                return (
+                                  <tr key={item.numeroItem ?? i} className="hover:bg-muted/20 transition-colors">
+                                    <td className="px-3 py-2 text-muted-foreground">{item.numeroItem ?? i + 1}</td>
+                                    <td className="px-3 py-2 text-foreground/80">
+                                      {item.descricao || item.descricaoItem || '—'}
+                                      {item.unidadeMedida && (
+                                        <span className="ml-1.5 text-[10px] text-muted-foreground border border-border/60 px-1 rounded">
+                                          {item.unidadeMedida}
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="px-3 py-2 text-right">{qtd?.toLocaleString('pt-BR') ?? '—'}</td>
+                                    <td className="px-3 py-2 text-right text-muted-foreground">{vUnit != null ? fmt(vUnit) : '—'}</td>
+                                    <td className="px-3 py-2 text-right font-medium text-green-600">{vTotal != null ? fmt(vTotal) : '—'}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Arquivos */}
+                    {pncpArquivos.length > 0 && (
+                      <div className="pt-3 border-t border-border/40">
+                        <p className="text-xs text-muted-foreground mb-2 font-medium">
+                          Arquivos ({pncpArquivos.length})
+                        </p>
+                        <div className="space-y-2">
+                          {pncpArquivos.map((arq: any, i: number) => (
+                            <div key={arq.sequencialDocumento ?? i}
+                              className="flex items-center justify-between p-2.5 rounded border border-border bg-muted/20 hover:bg-muted/40 transition-colors">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <FileText className="w-4 h-4 text-accent shrink-0" />
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium truncate">{arq.titulo || arq.nomeArquivo || `Arquivo ${i + 1}`}</p>
+                                  {arq.dataPublicacao && (
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {new Date(arq.dataPublicacao).toLocaleDateString('pt-BR')}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              {arq.url && (
+                                <a href={arq.url} target="_blank" rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-xs text-accent hover:underline shrink-0 ml-3">
+                                  <ExternalLink className="w-3 h-3" />Abrir
+                                </a>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </Card>
+            )}
+
+            <EditalOriginalCard licitacaoId={lic.id} urlEdital={lic.url_edital ?? undefined} />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {ATALHOS.map(a => (
-                <Link key={a.label} to={`${a.path}?lid=${lic.id}`}>
+                <Link key={a.label} to={`${a.path}${a.path.includes('?') ? '&' : '?'}lid=${lic.id}`}>
                   <Card className="p-4 hover:border-accent transition cursor-pointer h-full">
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-md bg-accent/10 flex items-center justify-center shrink-0">
@@ -377,7 +581,7 @@ export default function ProcessoWorkspace() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {ATALHOS.map(a => (
                   <Button key={a.label} variant="outline" className="justify-start gap-2" asChild>
-                    <Link to={`${a.path}?lid=${lic.id}`}>
+                    <Link to={`${a.path}${a.path.includes('?') ? '&' : '?'}lid=${lic.id}`}>
                       <a.icon className="w-4 h-4" /> {a.label}
                     </Link>
                   </Button>

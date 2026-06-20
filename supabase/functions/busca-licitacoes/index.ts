@@ -120,6 +120,8 @@ function mapearItem(item: Record<string, unknown>) {
     municipio: (unidade.municipioNome as string) || '',
     uf: (unidade.ufSigla as string) || (unidade.ufNome as string) || '',
     esfera: orgao.esferaId || '',
+    poder: orgao.poderId || '',
+    unidade: (unidade.nomeUnidade as string) || '',
     modalidadeId: Number(item.modalidadeId) || 0,
     modalidade: MODALIDADES[Number(item.modalidadeId)] || 'Modalidade não informada',
     valorEstimado: Number(item.valorTotalEstimado) || null,
