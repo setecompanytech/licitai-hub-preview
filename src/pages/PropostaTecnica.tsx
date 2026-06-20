@@ -32,6 +32,7 @@ import PropostaDownload from '@/components/proposta/PropostaDownload';
 import PropostaRenderer from '@/components/proposta/PropostaRenderer';
 import PropostaLivePreview from '@/components/proposta/PropostaLivePreview';
 import DadosEmpresaUploader, { type ExtractedEmpresaData } from '@/components/proposta/DadosEmpresaUploader';
+import RepresentanteUploader from '@/components/configuracoes/RepresentanteUploader';
 import BancoSelector from '@/components/proposta/BancoSelector';
 import ImportarDoCatalogo from '@/components/proposta/ImportarDoCatalogo';
 
@@ -327,21 +328,45 @@ export default function PropostaTecnica() {
   }, [proposal]);
 
   useEffect(() => {
-    if (empresaAtiva) {
-      if (empresaAtiva.inscricao_estadual) setInscEstadual(empresaAtiva.inscricao_estadual);
-      if (empresaAtiva.inscricao_municipal) setInscMunicipal(empresaAtiva.inscricao_municipal);
-      if (empresaAtiva.telefone) setTelefone(empresaAtiva.telefone);
-      if (empresaAtiva.email) setEmail(empresaAtiva.email);
-      // Auto-fill representative data from Configurações
-      if ((empresaAtiva as any).rep_nome) setRepNome((empresaAtiva as any).rep_nome);
-      if ((empresaAtiva as any).rep_cpf) setRepCpf((empresaAtiva as any).rep_cpf);
-      if ((empresaAtiva as any).rep_rg) setRepRg((empresaAtiva as any).rep_rg);
-      if ((empresaAtiva as any).rep_orgao_expedidor) setRepOrgaoExp((empresaAtiva as any).rep_orgao_expedidor);
-      if ((empresaAtiva as any).rep_cargo) setRepCargo((empresaAtiva as any).rep_cargo);
-      if ((empresaAtiva as any).rep_naturalidade) setRepNaturalidade((empresaAtiva as any).rep_naturalidade);
-      if ((empresaAtiva as any).rep_nacionalidade) setRepNacionalidade((empresaAtiva as any).rep_nacionalidade);
-    }
+    if (!empresaAtiva) return;
+    if (empresaAtiva.inscricao_estadual) setInscEstadual(empresaAtiva.inscricao_estadual);
+    if (empresaAtiva.inscricao_municipal) setInscMunicipal(empresaAtiva.inscricao_municipal);
+    if (empresaAtiva.telefone) setTelefone(empresaAtiva.telefone);
+    if (empresaAtiva.email) setEmail(empresaAtiva.email);
+    if ((empresaAtiva as any).rep_nome) setRepNome((empresaAtiva as any).rep_nome);
+    if ((empresaAtiva as any).rep_cpf) setRepCpf((empresaAtiva as any).rep_cpf);
+    if ((empresaAtiva as any).rep_rg) setRepRg((empresaAtiva as any).rep_rg);
+    if ((empresaAtiva as any).rep_orgao_expedidor) setRepOrgaoExp((empresaAtiva as any).rep_orgao_expedidor);
+    if ((empresaAtiva as any).rep_cargo) setRepCargo((empresaAtiva as any).rep_cargo);
+    if ((empresaAtiva as any).rep_naturalidade) setRepNaturalidade((empresaAtiva as any).rep_naturalidade);
+    if ((empresaAtiva as any).rep_nacionalidade) setRepNacionalidade((empresaAtiva as any).rep_nacionalidade);
   }, [empresaAtiva]);
+
+  // Quando chega no passo 3, preenche campos ainda vazios com dados da empresa ativa
+  useEffect(() => {
+    if (currentStep !== 3 || !empresaAtiva) return;
+    const ea = empresaAtiva as any;
+    if (!repNome && ea.rep_nome) setRepNome(ea.rep_nome);
+    if (!repCpf && ea.rep_cpf) setRepCpf(ea.rep_cpf);
+    if (!repRg && ea.rep_rg) setRepRg(ea.rep_rg);
+    if (!repOrgaoExp && ea.rep_orgao_expedidor) setRepOrgaoExp(ea.rep_orgao_expedidor);
+    if (!repCargo && ea.rep_cargo) setRepCargo(ea.rep_cargo);
+    if (!repNaturalidade && ea.rep_naturalidade) setRepNaturalidade(ea.rep_naturalidade);
+    if ((!repNacionalidade || repNacionalidade === 'Brasileira') && ea.rep_nacionalidade) setRepNacionalidade(ea.rep_nacionalidade);
+    // Endereço do representante: usa o endereço da empresa como fallback
+    if (!repEndereco) {
+      const partes = [
+        empresaAtiva.endereco,
+        empresaAtiva.bairro,
+        empresaAtiva.municipio && empresaAtiva.uf
+          ? `${empresaAtiva.municipio}/${empresaAtiva.uf}`
+          : (empresaAtiva.municipio || empresaAtiva.uf),
+        empresaAtiva.cep,
+      ].filter(Boolean);
+      if (partes.length > 0) setRepEndereco(partes.join(', '));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep]);
 
   // Import pending items from Precificação — react to changes
   useEffect(() => {
@@ -842,11 +867,32 @@ export default function PropostaTecnica() {
                 <User className="w-5 h-5 text-accent" />
                 <h2 className="font-semibold text-lg">Representante Legal</h2>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Preencha os dados do representante legal que assinará a proposta. Esses dados podem ser extraídos automaticamente
-                do contrato social ou procuração na etapa anterior.
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              {/* Auto-fill status / uploader */}
+              {repNome ? (
+                <div className="flex items-center gap-2 p-2.5 bg-accent/5 border border-accent/15 rounded-lg text-xs text-accent">
+                  <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                  Dados preenchidos automaticamente do cadastro da empresa. Revise e ajuste se necessário.
+                </div>
+              ) : (
+                <div className="border border-border/50 rounded-lg p-4 bg-muted/20 space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Nenhum dado do representante encontrado no cadastro. Faça upload do contrato social ou procuração para extração automática.
+                  </p>
+                  <RepresentanteUploader
+                    onExtracted={(data) => {
+                      if (data.repNome !== undefined) setRepNome(data.repNome ?? '');
+                      if (data.repCpf !== undefined) setRepCpf(data.repCpf ?? '');
+                      if (data.repRg !== undefined) setRepRg(data.repRg ?? '');
+                      if (data.repOrgaoExp !== undefined) setRepOrgaoExp(data.repOrgaoExp ?? '');
+                      if (data.repCargo !== undefined) setRepCargo(data.repCargo ?? '');
+                      if (data.repNaturalidade !== undefined) setRepNaturalidade(data.repNaturalidade ?? '');
+                      if (data.repNacionalidade !== undefined) setRepNacionalidade(data.repNacionalidade ?? '');
+                    }}
+                  />
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                 <div className="space-y-2">
                   <Label>Nome Completo *</Label>
                   <Input value={repNome} onChange={e => setRepNome(e.target.value)} />
