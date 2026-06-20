@@ -38,8 +38,10 @@ export default function ChatAureliaEditais() {
     setLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const { getUserJwt } = await import('@/lib/auth-token');
+      const token = await getUserJwt({ showToastOnFail: true });
+      if (!token) { setLoading(false); return; }
+
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aurelia-chat-editais`;
       const resp = await fetch(url, {
         method: 'POST',

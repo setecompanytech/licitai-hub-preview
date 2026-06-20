@@ -93,56 +93,20 @@ export default function BaseContabilUpload() {
         return;
       }
       const truncated = rawText.slice(0, 15000);
-      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({
-          messages: [{
-            role: 'user',
-            content: `Analise o documento contábil abaixo e extraia as seguintes informações em JSON:
-{
-  "titulo": "título do documento",
-  "tipo": "balanco|dre|balancete|parecer_contabil|norma|legislacao_tributaria|demonstracao_fluxo|nota_explicativa",
-  "orgao_emissor": "órgão emissor ou empresa",
-  "numero_documento": "número do documento se houver",
-  "ementa": "resumo do documento com foco em dados contábeis relevantes (máx 500 palavras)",
-  "tags": ["palavras-chave relevantes para contabilidade, tributação e licitações"]
-}
-
-Documento:
-${truncated}`
-          }],
-          action: 'extracao_contabil',
-        }),
-      });
-      if (!resp.ok) throw new Error('Erro na extração');
+      const { streamAIChat } = await import('@/lib/ai-stream');
       let fullText = '';
-      if (resp.body) {
-        const reader = resp.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          let idx;
-          while ((idx = buffer.indexOf('\n')) !== -1) {
-            const line = buffer.slice(0, idx);
-            buffer = buffer.slice(idx + 1);
-            if (!line.startsWith('data: ')) continue;
-            const jsonStr = line.slice(6).trim();
-            if (jsonStr === '[DONE]') break;
-            try {
-              const p = JSON.parse(jsonStr);
-              const c = p.choices?.[0]?.delta?.content;
-              if (c) fullText += c;
-            } catch { /* partial */ }
-          }
-        }
-      }
+      let streamErr = '';
+      await streamAIChat({
+        messages: [{
+          role: 'user',
+          content: `Analise o documento contábil abaixo e extraia as seguintes informações em JSON:\n{\n  "titulo": "título do documento",\n  "tipo": "balanco|dre|balancete|parecer_contabil|norma|legislacao_tributaria|demonstracao_fluxo|nota_explicativa",\n  "orgao_emissor": "órgão emissor ou empresa",\n  "numero_documento": "número do documento se houver",\n  "ementa": "resumo do documento com foco em dados contábeis relevantes (máx 500 palavras)",\n  "tags": ["palavras-chave relevantes para contabilidade, tributação e licitações"]\n}\n\nDocumento:\n${truncated}`,
+        }],
+        action: 'extracao_contabil',
+        onDelta: (chunk) => { fullText += chunk; },
+        onDone: () => {},
+        onError: (err) => { streamErr = err; },
+      });
+      if (streamErr) throw new Error(streamErr);
       const jsonMatch = fullText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
@@ -154,10 +118,21 @@ ${truncated}`
         if (parsed.tags) setTags(parsed.tags.join(', '));
         setTextoExtraido(truncated);
         toast.success('Dados extraídos com sucesso pela IA!');
+      } else {
+        toast.warning('Extração concluída, mas nenhum dado estruturado foi identificado. Preencha os campos manualmente.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error('Erro na extração automática. Preencha manualmente.');
+      const isAuth = /invalid token|unauthorized|sessão/i.test(err?.message ?? '');
+      toast.error(
+        isAuth ? 'Sessão expirada' : 'Falha na extração automática do documento',
+        {
+          description: isAuth
+            ? 'Recarregue a página (F5) e faça login novamente.'
+            : 'Preencha os campos manualmente ou tente outro formato de arquivo (PDF, DOCX, TXT).',
+          duration: 8000,
+        }
+      );
     }
     setExtracting(false);
   };

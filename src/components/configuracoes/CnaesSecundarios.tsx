@@ -236,51 +236,21 @@ Retorne APENAS um JSON puro (sem markdown, sem crases) neste formato:
 
 Use códigos CNAE reais da tabela IBGE/CONCLA. Não invente códigos.`;
 
-      // Use user JWT for authenticated AI calls
-      let authToken = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) authToken = session.access_token;
-      } catch { /* fallback to anon key */ }
-
-      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: prompt }],
-          action: 'assistente',
-        }),
-      });
-
-      if (!resp.ok) throw new Error('Erro na consulta IA');
-
-      // Read streaming response
-      const reader = resp.body!.getReader();
-      const decoder = new TextDecoder();
+      const { streamAIChat } = await import('@/lib/ai-stream');
       let fullText = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
-          if (!line.startsWith('data: ')) continue;
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') continue;
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) fullText += content;
-          } catch { /* partial */ }
-        }
-      }
+      let streamErr = '';
+      await streamAIChat({
+        messages: [{ role: 'user', content: prompt }],
+        action: 'assistente',
+        onDelta: (chunk) => { fullText += chunk; },
+        onDone: () => {},
+        onError: (err) => { streamErr = err; },
+      });
+      if (streamErr) throw new Error(streamErr);
 
       // Extract JSON from response
       const jsonMatch = fullText.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) throw new Error('Resposta inválida da IA');
+      if (!jsonMatch) throw new Error('A IA não retornou uma lista de CNAEs válida. Tente novamente.');
 
       const parsed: CnaeItem[] = JSON.parse(jsonMatch[0]);
       const valid = dedupeCnaes(parsed.filter(c => c.codigo && c.descricao).map((item) => ({
@@ -300,7 +270,10 @@ Use códigos CNAE reais da tabela IBGE/CONCLA. Não invente códigos.`;
       await persistCnaes(nextCnaes, `${autoAdd.length} CNAEs correlatos adicionados via IA`);
     } catch (e: any) {
       console.error('IA CNAE error:', e);
-      toast.error(e.message || 'Erro ao buscar CNAEs via IA');
+      toast.error('Falha ao buscar CNAEs por IA', {
+        description: e.message || 'Verifique sua conexão e tente novamente.',
+        duration: 6000,
+      });
     } finally {
       setLoadingIA(false);
     }

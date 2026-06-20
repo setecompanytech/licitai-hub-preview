@@ -327,22 +327,36 @@ export default function PropostaTecnica() {
     }
   }, [proposal]);
 
+  // Sincroniza campos da empresa e representante sempre que a empresa ativa mudar
   useEffect(() => {
     if (!empresaAtiva) return;
-    if (empresaAtiva.inscricao_estadual) setInscEstadual(empresaAtiva.inscricao_estadual);
-    if (empresaAtiva.inscricao_municipal) setInscMunicipal(empresaAtiva.inscricao_municipal);
-    if (empresaAtiva.telefone) setTelefone(empresaAtiva.telefone);
-    if (empresaAtiva.email) setEmail(empresaAtiva.email);
-    if ((empresaAtiva as any).rep_nome) setRepNome((empresaAtiva as any).rep_nome);
-    if ((empresaAtiva as any).rep_cpf) setRepCpf((empresaAtiva as any).rep_cpf);
-    if ((empresaAtiva as any).rep_rg) setRepRg((empresaAtiva as any).rep_rg);
-    if ((empresaAtiva as any).rep_orgao_expedidor) setRepOrgaoExp((empresaAtiva as any).rep_orgao_expedidor);
-    if ((empresaAtiva as any).rep_cargo) setRepCargo((empresaAtiva as any).rep_cargo);
-    if ((empresaAtiva as any).rep_naturalidade) setRepNaturalidade((empresaAtiva as any).rep_naturalidade);
-    if ((empresaAtiva as any).rep_nacionalidade) setRepNacionalidade((empresaAtiva as any).rep_nacionalidade);
+    const ea = empresaAtiva as any;
+    // Dados da empresa
+    setInscEstadual(ea.inscricao_estadual || '');
+    setInscMunicipal(ea.inscricao_municipal || '');
+    if (ea.telefone) setTelefone(ea.telefone);
+    if (ea.email) setEmail(ea.email);
+    // Representante legal — sobrescreve com dados da nova empresa
+    setRepNome(ea.rep_nome || '');
+    setRepCpf(ea.rep_cpf || '');
+    setRepRg(ea.rep_rg || '');
+    setRepOrgaoExp(ea.rep_orgao_expedidor || '');
+    setRepCargo(ea.rep_cargo || '');
+    setRepNaturalidade(ea.rep_naturalidade || '');
+    setRepNacionalidade(ea.rep_nacionalidade || 'Brasileira');
+    // Endereço do representante: usa endereço da empresa como fallback quando vazio
+    const partes = [
+      empresaAtiva.endereco,
+      empresaAtiva.bairro,
+      empresaAtiva.municipio && empresaAtiva.uf
+        ? `${empresaAtiva.municipio}/${empresaAtiva.uf}`
+        : (empresaAtiva.municipio || empresaAtiva.uf),
+      empresaAtiva.cep,
+    ].filter(Boolean);
+    if (partes.length > 0) setRepEndereco(partes.join(', '));
   }, [empresaAtiva]);
 
-  // Quando chega no passo 3, preenche campos ainda vazios com dados da empresa ativa
+  // Quando chega no passo 3, preenche campos ainda vazios (caso empresa já estivesse carregada)
   useEffect(() => {
     if (currentStep !== 3 || !empresaAtiva) return;
     const ea = empresaAtiva as any;
@@ -353,7 +367,6 @@ export default function PropostaTecnica() {
     if (!repCargo && ea.rep_cargo) setRepCargo(ea.rep_cargo);
     if (!repNaturalidade && ea.rep_naturalidade) setRepNaturalidade(ea.rep_naturalidade);
     if ((!repNacionalidade || repNacionalidade === 'Brasileira') && ea.rep_nacionalidade) setRepNacionalidade(ea.rep_nacionalidade);
-    // Endereço do representante: usa o endereço da empresa como fallback
     if (!repEndereco) {
       const partes = [
         empresaAtiva.endereco,
@@ -365,8 +378,7 @@ export default function PropostaTecnica() {
       ].filter(Boolean);
       if (partes.length > 0) setRepEndereco(partes.join(', '));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep]);
+  }, [currentStep, empresaAtiva]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Import pending items from Precificação — react to changes
   useEffect(() => {
