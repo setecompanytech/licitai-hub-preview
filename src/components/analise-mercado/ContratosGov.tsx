@@ -69,7 +69,10 @@ export default function ContratosGov() {
       if (error) throw error;
       setDados(data || []);
     } catch (e: any) {
-      toast.error(e.message || 'Erro ao carregar dados');
+      toast.error('Não foi possível carregar os dados de contratos', {
+        description: e.message || 'Verifique sua conexão e tente recarregar a página.',
+        duration: 6000,
+      });
     } finally {
       setLoading(false);
     }
@@ -114,10 +117,16 @@ export default function ContratosGov() {
         toast.success(`${rows.length} órgãos importados via IA (estimativas baseadas em dados públicos)`);
         loadDados();
       } else {
-        toast.error(data?.error || 'Nenhum dado extraído');
+        toast.error('Nenhum dado extraído pela IA', {
+          description: data?.error || 'Não foram encontrados contratos para os filtros selecionados. Tente outro ano ou tipo.',
+          duration: 7000,
+        });
       }
     } catch (e: any) {
-      toast.error(e.message || 'Erro ao extrair dados');
+      toast.error('Falha ao importar dados de contratos', {
+        description: e.message || 'Verifique sua conexão e tente novamente.',
+        duration: 6000,
+      });
     } finally {
       setExtracting(false);
     }

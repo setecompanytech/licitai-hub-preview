@@ -53,7 +53,10 @@ export default function FinAprovacoes() {
       toast.success("Pagamento aprovado.");
       qc.invalidateQueries({ queryKey: ["aprovacoes-pendentes"] });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro");
+      toast.error("Não foi possível aprovar o pagamento", {
+        description: e instanceof Error ? e.message : "Erro ao salvar no banco de dados. Verifique sua conexão e tente novamente.",
+        duration: 6000,
+      });
     } finally {
       setActing(null);
     }
@@ -70,7 +73,10 @@ export default function FinAprovacoes() {
       toast.success("Pagamento rejeitado.");
       qc.invalidateQueries({ queryKey: ["aprovacoes-pendentes"] });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro");
+      toast.error("Não foi possível rejeitar o pagamento", {
+        description: e instanceof Error ? e.message : "Erro ao salvar no banco de dados. Verifique sua conexão e tente novamente.",
+        duration: 6000,
+      });
     } finally {
       setActing(null);
     }

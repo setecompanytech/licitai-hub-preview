@@ -198,7 +198,14 @@ export default function PlanilhaCustosEdital({
   }, [itens, sourceLabel, licitacaoNumero, autoSave]);
 
   const handleCotarTodos = async () => {
-    if (itens.length === 0 || isCotando) return;
+    if (isCotando) return;
+    if (itens.length === 0) {
+      toast.error('Nenhum item na planilha', {
+        description: 'Adicione itens antes de cotar. Use "Usar processo vinculado", faça upload de um edital ou clique em "Adicionar Item" para inserir manualmente.',
+        duration: 7000,
+      });
+      return;
+    }
     setIsCotando(true);
     setCotacaoProgress(0);
     setCotacaoMsgs([]);
@@ -314,13 +321,19 @@ export default function PlanilhaCustosEdital({
       const text = resolved.text.trim();
 
       if (text.length < 50) {
-        toast.warning('Não foi possível obter o edital vinculado. Faça upload manual ou revise o processo na Gestão.');
+        toast.warning('Edital do processo sem texto legível', {
+        description: 'Não foi possível extrair o texto do edital vinculado. Faça o upload manual do arquivo do edital usando o botão acima.',
+        duration: 7000,
+      });
         return;
       }
 
       const parsed = await extrairItensDoTexto(text, { skipValidation: text.length < 500 });
       if (parsed.length === 0) {
-        toast.warning('Nenhum item identificado no edital vinculado.');
+        toast.warning('Nenhum item identificado no edital vinculado', {
+          description: 'O edital pode estar em formato de imagem (PDF escaneado) ou sem lista de itens estruturada. Tente fazer o upload manual do arquivo.',
+          duration: 7000,
+        });
         return;
       }
 
@@ -331,7 +344,10 @@ export default function PlanilhaCustosEdital({
       toast.success(`${planilha.length} itens carregados do processo vinculado!`);
     } catch (error) {
       console.error('Erro ao usar edital do processo vinculado:', error);
-      toast.error('Não foi possível usar o edital do processo vinculado.');
+      toast.error('Falha ao carregar edital do processo vinculado', {
+        description: 'Verifique se o processo possui edital associado e tente novamente. Se o problema persistir, faça o upload manual do arquivo.',
+        duration: 7000,
+      });
     } finally {
       setIsExtracting(false);
     }
@@ -345,13 +361,19 @@ export default function PlanilhaCustosEdital({
     try {
       const text = await extractTextFromFile(file, 150, true);
       if (!text || text.trim().length < 20) {
-        toast.error('Não foi possível extrair texto suficiente do documento.');
+        toast.error('Documento sem texto legível', {
+        description: 'Não foi possível extrair texto suficiente do arquivo. Se for PDF escaneado, tente converter para PDF pesquisável ou envie uma imagem (JPG/PNG) nítida do documento.',
+        duration: 8000,
+      });
         return;
       }
 
       const parsed = await extrairItensDoTexto(text, { skipValidation: true });
       if (parsed.length === 0) {
-        toast.warning('Nenhum item identificado no documento.');
+        toast.warning('Nenhum item identificado no documento', {
+          description: 'A IA não encontrou itens estruturados neste arquivo. Certifique-se de que o documento é um edital, termo de referência ou anexo de itens. Tente outro arquivo ou adicione os itens manualmente.',
+          duration: 8000,
+        });
         return;
       }
 
@@ -362,7 +384,10 @@ export default function PlanilhaCustosEdital({
       toast.success(`${planilha.length} itens extraídos com sucesso!`);
     } catch (e) {
       console.error('Erro extração planilha:', e);
-      toast.error(e instanceof Error ? e.message : 'Erro ao processar documento.');
+      toast.error('Falha ao processar documento', {
+        description: e instanceof Error ? e.message : 'Não foi possível extrair os itens. Tente um formato diferente (PDF, DOCX, TXT) ou verifique se o arquivo não está corrompido.',
+        duration: 8000,
+      });
     } finally {
       setIsExtracting(false);
     }
@@ -404,7 +429,13 @@ export default function PlanilhaCustosEdital({
   const totalRef = itens.reduce((sum, it) => sum + (it.valorTotalRef ?? 0), 0);
 
   const handleExportExcel = async () => {
-    if (itens.length === 0) return;
+    if (itens.length === 0) {
+      toast.error('Nenhum item para exportar', {
+        description: 'Adicione itens à planilha antes de exportar para Excel.',
+        duration: 5000,
+      });
+      return;
+    }
 
     const header = [
       'Item', 'Descrição / Especificação Técnica', 'CATMAT',

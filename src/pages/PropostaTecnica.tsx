@@ -512,15 +512,40 @@ export default function PropostaTecnica() {
   };
 
   const handleGenerate = async () => {
-    if (!objeto.trim()) { toast.error('Informe o objeto da licitação'); return; }
-    if (!orgao.trim()) { toast.error('Informe o órgão licitante'); return; }
+    if (!empresaAtiva) {
+      toast.error('Empresa não configurada', {
+        description: 'Cadastre sua empresa em Configurações → Empresa antes de gerar a proposta.',
+        duration: 8000,
+      });
+      return;
+    }
+    if (!objeto.trim()) {
+      toast.error('Objeto da licitação não preenchido', {
+        description: 'Volte à etapa "Licitação" (passo 4) e informe o objeto antes de gerar.',
+        duration: 6000,
+      });
+      return;
+    }
+    if (!orgao.trim()) {
+      toast.error('Órgão licitante não preenchido', {
+        description: 'Volte à etapa "Licitação" (passo 4) e informe o órgão licitante antes de gerar.',
+        duration: 6000,
+      });
+      return;
+    }
 
     if (itens.filter(i => i.descricao.trim()).length === 0) {
-      toast.warning('Nenhum item na planilha de preços. A proposta será gerada sem planilha.');
+      toast.warning('Planilha de preços vazia', {
+        description: 'Nenhum item foi adicionado à planilha. A proposta será gerada sem planilha de preços. Adicione itens na etapa "Planilha" (passo 5) se necessário.',
+        duration: 7000,
+      });
     }
 
     if (!repNome || !repCpf) {
-      toast.warning('Representante legal não preenchido. Verifique a aba Representante.');
+      toast.warning('Representante legal incompleto', {
+        description: 'Nome e/ou CPF do representante não foram preenchidos. A proposta será gerada sem esses dados. Preencha na etapa "Representante" (passo 3).',
+        duration: 7000,
+      });
     }
 
     setIsLoading(true);
@@ -555,7 +580,34 @@ export default function PropostaTecnica() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const nextStep = () => setCurrentStep(s => Math.min(s + 1, STEPS.length));
+  const nextStep = () => {
+    if (currentStep === 1 && !empresaAtiva) {
+      toast.warning('Empresa não cadastrada', {
+        description: 'Você ainda não tem uma empresa configurada. Vá em Configurações → Empresa para cadastrar antes de continuar.',
+        duration: 6000,
+      });
+    }
+    if (currentStep === 2 && !empresaAtiva) {
+      toast.error('Selecione ou cadastre uma empresa antes de continuar', {
+        description: 'Acesse Configurações → Empresa para cadastrar os dados da sua empresa.',
+        duration: 6000,
+      });
+      return;
+    }
+    if (currentStep === 3 && (!repNome.trim() || !repCpf.trim())) {
+      toast.warning('Representante legal incompleto', {
+        description: 'Preencha pelo menos o Nome Completo e o CPF do representante antes de avançar.',
+        duration: 5000,
+      });
+    }
+    if (currentStep === 4 && (!objeto.trim() || !orgao.trim())) {
+      toast.warning('Dados da licitação incompletos', {
+        description: `Preencha ${!objeto.trim() ? 'o Objeto' : ''}${!objeto.trim() && !orgao.trim() ? ' e ' : ''}${!orgao.trim() ? 'o Órgão Licitante' : ''} antes de avançar.`,
+        duration: 5000,
+      });
+    }
+    setCurrentStep(s => Math.min(s + 1, STEPS.length));
+  };
   const prevStep = () => setCurrentStep(s => Math.max(s - 1, 1));
 
   const completedSteps = () => {

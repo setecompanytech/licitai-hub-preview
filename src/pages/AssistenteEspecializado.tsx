@@ -90,8 +90,17 @@ export default function AssistenteEspecializado() {
       );
 
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: 'Erro desconhecido' }));
-        toast.error(err.error || `Erro ${resp.status}`);
+        const err = await resp.json().catch(() => ({ error: '' }));
+        const isAuthErr = resp.status === 401;
+        toast.error(
+          isAuthErr ? 'Sessão expirada' : 'Falha ao consultar o assistente',
+          {
+            description: isAuthErr
+              ? 'Sua sessão expirou. Recarregue a página e faça login novamente.'
+              : err.error || `O servidor retornou o erro ${resp.status}. Tente novamente em instantes.`,
+            duration: 8000,
+          }
+        );
         setIsLoading(false);
         return;
       }
@@ -103,7 +112,10 @@ export default function AssistenteEspecializado() {
       } catch { /* ignore */ }
 
       if (!resp.body) {
-        toast.error('Sem resposta do servidor');
+        toast.error('Resposta vazia do servidor', {
+          description: 'O assistente não retornou conteúdo. Verifique sua conexão e tente novamente.',
+          duration: 6000,
+        });
         setIsLoading(false);
         return;
       }
@@ -177,7 +189,10 @@ export default function AssistenteEspecializado() {
       updateAssistant(assistantContent);
     } catch (err) {
       console.error('Stream error:', err);
-      toast.error('Erro de conexão com a IA');
+      toast.error('Erro de conexão com o assistente', {
+        description: 'Não foi possível completar a resposta. Verifique sua conexão e tente enviar a mensagem novamente.',
+        duration: 7000,
+      });
     }
 
     setIsLoading(false);

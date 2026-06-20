@@ -155,7 +155,10 @@ export default function AgenteDashboard() {
       }, { onConflict: 'empresa_id' });
 
     if (error) {
-      toast.error('Erro ao alterar estado do agente');
+      toast.error(`Não foi possível ${novoEstado ? 'ativar' : 'desativar'} o agente AURÉLIA`, {
+        description: 'Verifique sua conexão e tente novamente. Se o problema persistir, recarregue a página.',
+        duration: 6000,
+      });
       return;
     }
 
@@ -170,7 +173,10 @@ export default function AgenteDashboard() {
       .eq('id', licitacaoId);
 
     if (error) {
-      toast.error('Erro ao aprovar');
+      toast.error('Não foi possível aprovar a participação nesta licitação', {
+        description: 'Verifique sua conexão e tente novamente. Se o problema persistir, recarregue a página.',
+        duration: 6000,
+      });
       return;
     }
 

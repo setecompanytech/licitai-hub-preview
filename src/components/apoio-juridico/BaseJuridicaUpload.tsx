@@ -166,14 +166,27 @@ ${truncated}`
       }
     } catch (err) {
       console.error(err);
-      toast.error('Erro na extração automática. Preencha manualmente.');
+      toast.error('Falha na extração automática do documento', {
+        description: 'A IA não conseguiu identificar os dados estruturados. Preencha o título, tipo e ementa manualmente nos campos abaixo.',
+        duration: 8000,
+      });
     }
     setExtracting(false);
   };
 
   const handleUpload = async () => {
-    if (!user || !file || !titulo) {
-      toast.error('Preencha o título e selecione um arquivo');
+    if (!file) {
+      toast.error('Nenhum arquivo selecionado', {
+        description: 'Selecione um arquivo (PDF, DOCX ou TXT) para adicionar à base jurídica.',
+        duration: 5000,
+      });
+      return;
+    }
+    if (!titulo) {
+      toast.error('Título obrigatório', {
+        description: 'Informe um título para identificar este documento na base jurídica.',
+        duration: 5000,
+      });
       return;
     }
     setUploading(true);
