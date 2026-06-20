@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -46,6 +46,12 @@ const getOrigemLabel = (item: ContratoItem, aditivos: AditivoRef[]): string => {
   const ad = aditivos.find(a => a.id === item.origem_aditivo_id);
   return ad ? `📎 ${ad.numero_aditivo}` : '📎 Aditivo';
 };
+
+/** Chave de agrupamento para identificar o mesmo item físico entre versões */
+function itemGroupKey(item: ContratoItem): string {
+  return item.codigo_item?.toLowerCase().trim()
+    || item.descricao.toLowerCase().trim();
+}
 type Pedido = {
   id: string; numero_pedido: string; descricao: string | null;
   contrato_item_id: string | null; quantidade: number; valor_unitario: number;
@@ -203,6 +209,50 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contratoId]);
+
+  /**
+   * Filtra itens de acordo com a origem selecionada, usando lógica de mesclagem:
+   * - "Todos": mostra todos os registros individuais
+   * - "Contrato Original": apenas itens sem origem_aditivo_id
+   * - "Aditivo X": mostra a versão EFETIVA de cada item físico no nível desse aditivo
+   *   (itens modificados pelo aditivo X com os novos valores + itens não tocados com valores originais)
+   *   Isso garante que o usuário veja TODOS os itens disponíveis com os preços corretos da época do aditivo.
+   */
+  const itensFiltrados = useMemo((): ContratoItem[] => {
+    if (origemFilter === '__todos__') return itens;
+    if (origemFilter === '__contrato__') return itens.filter(i => !i.origem_aditivo_id);
+
+    const aditivoIdx = aditivos.findIndex(a => a.id === origemFilter);
+    if (aditivoIdx < 0) return itens;
+
+    // Aditivos "em escopo" até o selecionado (inclusive)
+    const aditivoIdsEmEscopo = new Set(aditivos.slice(0, aditivoIdx + 1).map(a => a.id));
+
+    // Agrupa por item físico
+    const grupos = new Map<string, ContratoItem[]>();
+    for (const item of itens) {
+      const key = itemGroupKey(item);
+      if (!grupos.has(key)) grupos.set(key, []);
+      grupos.get(key)!.push(item);
+    }
+
+    const resultado: ContratoItem[] = [];
+    for (const grupo of grupos.values()) {
+      // Versões válidas até o aditivo selecionado: original + aditivos anteriores e o selecionado
+      const emEscopo = grupo.filter(i => !i.origem_aditivo_id || aditivoIdsEmEscopo.has(i.origem_aditivo_id));
+      if (emEscopo.length === 0) continue;
+
+      // Pega a versão mais recente em escopo: ordena por índice do aditivo (original = -1)
+      const ordenado = [...emEscopo].sort((a, b) => {
+        const ia = a.origem_aditivo_id ? aditivos.findIndex(x => x.id === a.origem_aditivo_id) : -1;
+        const ib = b.origem_aditivo_id ? aditivos.findIndex(x => x.id === b.origem_aditivo_id) : -1;
+        return ib - ia; // maior índice primeiro
+      });
+      resultado.push(ordenado[0]); // o mais recente em escopo
+    }
+
+    return resultado;
+  }, [itens, aditivos, origemFilter]);
 
   const handleItemChange = (itemId: string) => {
     setForm(f => {
@@ -945,18 +995,15 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                         <Select value={form.contrato_item_id} onValueChange={handleItemChange}>
                           <SelectTrigger><SelectValue placeholder="Selecionar item" /></SelectTrigger>
                           <SelectContent>
-                            {itens
-                              .filter(i => {
-                                if (origemFilter === '__todos__') return true;
-                                if (origemFilter === '__contrato__') return !i.origem_aditivo_id;
-                                return i.origem_aditivo_id === origemFilter;
-                              })
-                              .map(i => (
-                        <SelectItem key={i.id} value={i.id}>
-                          <span className="text-muted-foreground text-[10px] mr-1">[{getOrigemLabel(i, aditivos)}]</span>
-                          {i.descricao} ({i.unidade})
-                        </SelectItem>
-                              ))}
+                            {itensFiltrados.map(i => (
+                              <SelectItem key={i.id} value={i.id}>
+                                <span className="text-muted-foreground text-[10px] mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                                {i.descricao} ({i.unidade}) — {fmt(i.valor_unitario)}
+                              </SelectItem>
+                            ))}
+                            {itensFiltrados.length === 0 && (
+                              <div className="py-2 text-center text-xs text-muted-foreground">Nenhum item para esta origem</div>
+                            )}
                           </SelectContent>
                         </Select>
                       )}

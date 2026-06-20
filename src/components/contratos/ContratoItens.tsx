@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -8,12 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { toast } from 'sonner';
 import {
-  Plus, Trash2, Loader2, Package, Copy, Download, Link2
+  Plus, Trash2, Loader2, Package, Copy, Download, Link2, History, Layers
 } from 'lucide-react';
 import { MoneyInput } from '@/components/ui/money-input';
 import EstruturaDocumentoCard from './EstruturaDocumentoCard';
@@ -38,6 +39,21 @@ type ContratoMeta = {
   tipo_estrutura?: 'itens' | 'lotes' | string | null;
 };
 
+/** Chave de agrupamento para identificar o mesmo item físico entre versões */
+function itemGroupKey(item: ContratoItem): string {
+  return item.codigo_item?.toLowerCase().trim()
+    || item.descricao.toLowerCase().trim();
+}
+
+/** Item consolidado: representa o estado ATUAL de um item físico, agregando todas as suas versões (original + aditivos) */
+type ItemConsolidado = ContratoItem & {
+  _versoes: ContratoItem[];         // todas as versões (inclusive a atual)
+  _original: ContratoItem | null;   // versão original (origem_aditivo_id = null), se existir
+  _foiModificado: boolean;          // item original foi alterado por pelo menos um aditivo
+  _foiAdicionado: boolean;          // item novo criado por um aditivo (não existia no original)
+  _aditivoModificador: Aditivo | null; // aditivo responsável pelo estado atual
+};
+
 export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const { user } = useAuth();
   const { isFinanceiro, isAdmin } = useMembroPermissoes();
@@ -50,6 +66,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const [importing, setImporting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [consolidado, setConsolidado] = useState(true); // visão mesclada por padrão
   const [form, setForm] = useState({
     descricao: '', unidade: 'UN', quantidade_contratada: '',
     valor_unitario: '', custo_unitario: '', codigo_item: '', observacoes: '', origem_aditivo_id: '',
@@ -57,6 +74,54 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
   });
 
   const isContratoComATA = meta?.tipo_documento === 'contrato' && !!meta?.ata_srp_id;
+
+  // Agrupa itens pelo mesmo item físico (mesmo codigo_item ou mesma descrição)
+  // e retorna a visão consolidada: uma linha por item físico com o estado mais recente
+  const itensMesclados = useMemo((): ItemConsolidado[] => {
+    const grupos = new Map<string, ContratoItem[]>();
+    for (const item of itens) {
+      const key = itemGroupKey(item);
+      if (!grupos.has(key)) grupos.set(key, []);
+      grupos.get(key)!.push(item);
+    }
+
+    const result: ItemConsolidado[] = [];
+    for (const grupo of grupos.values()) {
+      const original = grupo.find(i => !i.origem_aditivo_id) ?? null;
+
+      // Ordena versões com aditivo pela posição do aditivo na lista (preserva a ordem cronológica)
+      const versoesPorAditivo = grupo
+        .filter(i => i.origem_aditivo_id)
+        .sort((a, b) =>
+          aditivos.findIndex(x => x.id === a.origem_aditivo_id) -
+          aditivos.findIndex(x => x.id === b.origem_aditivo_id)
+        );
+
+      // Estado efetivo = última versão de aditivo, ou original se não há versões de aditivo
+      const efetivo = versoesPorAditivo.length > 0
+        ? versoesPorAditivo[versoesPorAditivo.length - 1]
+        : (original ?? grupo[0]);
+
+      const aditivoModificador = efetivo.origem_aditivo_id
+        ? (aditivos.find(a => a.id === efetivo.origem_aditivo_id) ?? null)
+        : null;
+
+      result.push({
+        ...efetivo,
+        _versoes: grupo,
+        _original: original,
+        _foiModificado: !!original && versoesPorAditivo.length > 0,
+        _foiAdicionado: !original && versoesPorAditivo.length > 0,
+        _aditivoModificador: aditivoModificador,
+      });
+    }
+    return result;
+  }, [itens, aditivos]);
+
+  // Na visão consolidada, totais calculados apenas sobre o estado efetivo (sem duplicar versões)
+  const itensExibidos = consolidado ? itensMesclados : itens;
+  const totalContratadoEfetivo = itensMesclados.reduce((s, i) => s + i.valor_total, 0);
+  const totalSaldoEfetivo = itensMesclados.reduce((s, i) => s + i.saldo_financeiro, 0);
 
   const loadData = async () => {
     setLoading(true);
@@ -226,9 +291,6 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
     setDialogOpen(true);
   };
 
-  const totalContratado = itens.reduce((s, i) => s + i.valor_total, 0);
-  const totalSaldo = itens.reduce((s, i) => s + i.saldo_financeiro, 0);
-
   return (
     <div className="space-y-4">
       <EstruturaDocumentoCard contratoId={contratoId} />
@@ -243,7 +305,10 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
             )}
           </h3>
           <p className="text-xs text-muted-foreground">
-            Total: {fmt(totalContratado)} | Saldo: {fmt(totalSaldo)}
+            Total efetivo: {fmt(totalContratadoEfetivo)} | Saldo: {fmt(totalSaldoEfetivo)}
+            {!consolidado && itens.length !== itensMesclados.length && (
+              <span className="ml-2 text-warning">({itens.length} registros, {itensMesclados.length} itens físicos)</span>
+            )}
           </p>
           {isContratoComATA && (
             <p className="text-[11px] text-warning mt-1 flex items-center gap-1">
@@ -252,6 +317,18 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {/* Toggle de visão mesclada / todos os registros */}
+          {aditivos.length > 0 && (
+            <Button
+              size="sm"
+              variant={consolidado ? 'secondary' : 'outline'}
+              onClick={() => setConsolidado(v => !v)}
+              className="text-xs gap-1.5"
+            >
+              {consolidado ? <Layers className="w-3.5 h-3.5" /> : <History className="w-3.5 h-3.5" />}
+              {consolidado ? 'Consolidado' : 'Todos os registros'}
+            </Button>
+          )}
           {isContratoComATA && ataItens.length > 0 && (
             <Button size="sm" variant="outline" onClick={handleImportarDaAta} disabled={importing}>
               {importing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1" />}
@@ -356,11 +433,12 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
             : 'Nenhum item cadastrado'}
         </Card>
       ) : (
+        <TooltipProvider>
         <div className="rounded-lg border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs whitespace-nowrap">Origem</TableHead>
+                <TableHead className="text-xs whitespace-nowrap">Situação</TableHead>
                 {meta?.tipo_estrutura === 'lotes' && <TableHead className="text-xs whitespace-nowrap">Lote</TableHead>}
                 {isContratoComATA && <TableHead className="text-xs whitespace-nowrap">Item ATA</TableHead>}
                 <TableHead className="text-xs whitespace-nowrap">Código</TableHead>
@@ -378,16 +456,76 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {itens.map(item => {
+              {(itensExibidos as (ContratoItem & Partial<ItemConsolidado>)[]).map(item => {
                 const pct = item.quantidade_contratada > 0
                   ? (item.quantidade_consumida / item.quantidade_contratada) * 100 : 0;
                 const lowStock = pct >= 80;
+
+                // Lógica de badge de situação para visão consolidada
+                const foiModificado = !!(item as ItemConsolidado)._foiModificado;
+                const foiAdicionado = !!(item as ItemConsolidado)._foiAdicionado;
+                const aditivoModificador = (item as ItemConsolidado)._aditivoModificador ?? null;
+                const original = (item as ItemConsolidado)._original ?? null;
+
+                // Para visão plana (todos os registros), usa a lógica original
+                const origemLabel = !consolidado
+                  ? getOrigemLabel(item.origem_aditivo_id)
+                  : foiModificado && aditivoModificador
+                    ? `✏ Atualizado: ${aditivoModificador.numero_aditivo}`
+                    : foiAdicionado && aditivoModificador
+                      ? `✦ Novo: ${aditivoModificador.numero_aditivo}`
+                      : meta?.tipo_documento === 'ata_srp' ? 'ATA SRP' : 'Contrato Original';
+
+                const badgeColor = !consolidado
+                  ? 'bg-muted text-muted-foreground'
+                  : foiModificado
+                    ? 'bg-accent/10 text-accent border-accent/30'
+                    : foiAdicionado
+                      ? 'bg-primary/10 text-primary border-primary/30'
+                      : 'bg-muted text-muted-foreground';
+
+                // Tooltip com histórico de versões (só na visão consolidada)
+                const tooltipContent = consolidado && foiModificado && original ? (
+                  <div className="text-xs space-y-1">
+                    <p className="font-semibold">Histórico de alterações:</p>
+                    <p className="text-muted-foreground">
+                      Original: {fmt(original.valor_unitario)}/un × {original.quantidade_contratada} {original.unidade}
+                    </p>
+                    {(item as ItemConsolidado)._versoes?.filter(v => v.origem_aditivo_id).map(v => {
+                      const ad = aditivos.find(a => a.id === v.origem_aditivo_id);
+                      return (
+                        <p key={v.id}>
+                          {ad?.numero_aditivo ?? 'Aditivo'}: {fmt(v.valor_unitario)}/un × {v.quantidade_contratada} {v.unidade}
+                          {v.valor_unitario !== original.valor_unitario && (
+                            <span className={v.valor_unitario > original.valor_unitario ? ' text-success' : ' text-destructive'}>
+                              {' '}({v.valor_unitario > original.valor_unitario ? '+' : ''}{((v.valor_unitario - original.valor_unitario) / original.valor_unitario * 100).toFixed(1)}%)
+                            </span>
+                          )}
+                        </p>
+                      );
+                    })}
+                  </div>
+                ) : null;
+
                 return (
                   <TableRow key={item.id} className={lowStock ? 'bg-warning/5' : ''}>
                     <TableCell className="text-xs whitespace-nowrap">
-                      <Badge variant="outline" className="text-[10px] font-normal">
-                        {getOrigemLabel(item.origem_aditivo_id)}
-                      </Badge>
+                      {tooltipContent ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className={`text-[10px] font-normal cursor-help ${badgeColor}`}>
+                              {origemLabel}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="max-w-xs">
+                            {tooltipContent}
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Badge variant="outline" className={`text-[10px] font-normal ${badgeColor}`}>
+                          {origemLabel}
+                        </Badge>
+                      )}
                     </TableCell>
                     {meta?.tipo_estrutura === 'lotes' && (
                       <TableCell className="text-xs whitespace-nowrap">
@@ -404,7 +542,14 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       </TableCell>
                     )}
                     <TableCell className="text-xs font-mono whitespace-nowrap">{item.codigo_item || '—'}</TableCell>
-                    <TableCell className="text-xs max-w-[200px] truncate">{item.descricao}</TableCell>
+                    <TableCell className="text-xs max-w-[200px]">
+                      <span className="truncate block">{item.descricao}</span>
+                      {consolidado && foiModificado && original && original.valor_unitario !== item.valor_unitario && (
+                        <span className="text-[10px] text-muted-foreground line-through">
+                          {fmt(original.valor_unitario)}/un (original)
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-xs text-center whitespace-nowrap">{item.unidade}</TableCell>
                     <TableCell className="text-xs text-right whitespace-nowrap">{item.quantidade_contratada}</TableCell>
                     {podeVerCustos && (
@@ -412,7 +557,9 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         {item.custo_unitario != null ? fmt(item.custo_unitario) : '—'}
                       </TableCell>
                     )}
-                    <TableCell className="text-xs text-right whitespace-nowrap">{fmt(item.valor_unitario)}</TableCell>
+                    <TableCell className="text-xs text-right whitespace-nowrap font-medium">
+                      {fmt(item.valor_unitario)}
+                    </TableCell>
                     <TableCell className="text-xs text-right font-medium whitespace-nowrap">{fmt(item.valor_total)}</TableCell>
                     {podeVerCustos && (
                       <TableCell className="text-xs text-right whitespace-nowrap text-muted-foreground">
@@ -445,6 +592,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
             </TableBody>
           </Table>
         </div>
+        </TooltipProvider>
       )}
     </div>
   );
