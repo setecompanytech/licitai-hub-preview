@@ -141,7 +141,10 @@ export default function MunicipiosByUFSelect({
             : `${municipios.length.toLocaleString("pt-BR")} municípios disponíveis (IBGE) para ${ufs.join(", ")}`}
         </p>
 
-        <div className="rounded-md border border-border bg-background min-h-[40px] px-2 py-1.5 flex flex-wrap gap-1.5 items-center">
+        <div
+          className={`rounded-md border border-border bg-background min-h-[40px] px-2 py-1.5 flex flex-wrap gap-1.5 items-center ${!ufsVazias ? "cursor-pointer" : ""}`}
+          onClick={() => { if (!ufsVazias) setOpen((o) => !o); }}
+        >
           {selecionados.length === 0 ? (
             <span className="text-xs text-muted-foreground px-1.5">
               {ufsVazias
@@ -156,7 +159,7 @@ export default function MunicipiosByUFSelect({
               >
                 {v}
                 <button
-                  onClick={() => onToggle(v)}
+                  onClick={(e) => { e.stopPropagation(); onToggle(v); }}
                   className="hover:text-accent-foreground"
                   type="button"
                 >
@@ -170,7 +173,7 @@ export default function MunicipiosByUFSelect({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={onClear}
+                onClick={(e) => { e.stopPropagation(); onClear(); }}
                 className="h-6 text-[11px] px-2 text-muted-foreground hover:text-destructive"
                 type="button"
               >
@@ -180,7 +183,7 @@ export default function MunicipiosByUFSelect({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setOpen((o) => !o)}
+              onClick={(e) => { e.stopPropagation(); if (!ufsVazias) setOpen((o) => !o); }}
               disabled={ufsVazias}
               type="button"
               className="h-6 text-[11px] px-2"

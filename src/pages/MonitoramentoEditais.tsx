@@ -1238,14 +1238,17 @@ function ChipMultiSelect({
     <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
       <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">{label}</Label>
       <div className="md:col-span-10 space-y-2">
-        <div className="rounded-md border border-border bg-background min-h-[40px] px-2 py-1.5 flex flex-wrap gap-1.5 items-center">
+        <div
+          className="rounded-md border border-border bg-background min-h-[40px] px-2 py-1.5 flex flex-wrap gap-1.5 items-center cursor-pointer"
+          onClick={() => setOpen(o => !o)}
+        >
           {valores.length === 0 ? (
             <span className="text-xs text-muted-foreground px-1.5">{placeholder}</span>
           ) : (
             valores.map(v => (
               <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent/15 text-accent text-xs font-medium">
                 {v}
-                <button onClick={() => onToggle(v)} className="hover:text-accent-foreground">
+                <button onClick={(e) => { e.stopPropagation(); onToggle(v); }} className="hover:text-accent-foreground">
                   <X className="w-3 h-3" />
                 </button>
               </span>
@@ -1253,11 +1256,11 @@ function ChipMultiSelect({
           )}
           <div className="ml-auto flex items-center gap-1">
             {valores.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={onClear} className="h-6 text-[11px] px-2 text-muted-foreground hover:text-destructive">
+              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onClear(); }} className="h-6 text-[11px] px-2 text-muted-foreground hover:text-destructive">
                 Excluir
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={() => setOpen(o => !o)} className="h-6 text-[11px] px-2">
+            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }} className="h-6 text-[11px] px-2">
               {open ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
               Selecionar
             </Button>
