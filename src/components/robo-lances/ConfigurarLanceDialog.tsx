@@ -443,7 +443,9 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
       try {
         const d = new Date(fonteHorario);
         if (!isNaN(d.getTime())) {
-          setHorario(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+          // Timestamps do banco chegam em UTC; getUTCHours preserva o horário
+          // original sem conversão para o fuso local do navegador
+          setHorario(`${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`);
         }
       } catch {
         // ignore
