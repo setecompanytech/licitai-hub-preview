@@ -95,6 +95,8 @@ export async function streamAIChat({
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    let totalContent = 0;
+    let streamError: string | null = null;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -116,9 +118,13 @@ export async function streamAIChat({
         try {
           const parsed = JSON.parse(jsonStr);
           if (parsed.tool_event) { onToolEvent?.(parsed.tool_event as ToolEvent); continue; }
-          if (parsed.error) { onError?.(parsed.error); continue; }
+          if (parsed.error) {
+            // Accumulate stream error — only report if no content was generated
+            streamError = typeof parsed.error === "string" ? parsed.error : JSON.stringify(parsed.error);
+            continue;
+          }
           const content = parsed.choices?.[0]?.delta?.content;
-          if (content) onDelta(content);
+          if (content) { onDelta(content); totalContent += content.length; }
         } catch {
           buffer = line + "\n" + buffer;
           break;
@@ -128,18 +134,26 @@ export async function streamAIChat({
 
     // Flush remaining
     if (buffer.trim()) {
-      for (let raw of buffer.split("\n")) {
+      for (const raw of buffer.split("\n")) {
         if (!raw || !raw.startsWith("data: ")) continue;
         const jsonStr = raw.slice(6).trim();
         if (jsonStr === "[DONE]") continue;
         try {
           const parsed = JSON.parse(jsonStr);
           if (parsed.tool_event) { onToolEvent?.(parsed.tool_event as ToolEvent); continue; }
-          if (parsed.error) { onError?.(parsed.error); continue; }
+          if (parsed.error) {
+            streamError = typeof parsed.error === "string" ? parsed.error : JSON.stringify(parsed.error);
+            continue;
+          }
           const content = parsed.choices?.[0]?.delta?.content;
-          if (content) onDelta(content);
+          if (content) { onDelta(content); totalContent += content.length; }
         } catch { /* ignore */ }
       }
+    }
+
+    // Only surface stream error if no content was produced (transient errors during successful generation are ignored)
+    if (streamError && totalContent === 0) {
+      onError?.(streamError);
     }
 
     onDone();

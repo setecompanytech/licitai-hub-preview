@@ -558,10 +558,24 @@ export default function PropostaTecnica() {
         action: 'proposta_tecnica',
         context: buildContext(),
         onDelta: (chunk) => { content += chunk; setProposal(content); },
-        onDone: () => { setIsLoading(false); toast.success('Proposta gerada com sucesso!'); },
-        onError: (error) => { 
-          toast.error('Erro ao gerar proposta', { description: error, duration: 8000 }); 
-          setIsLoading(false); 
+        onDone: () => {
+          setIsLoading(false);
+          if (content.trim().length > 50) {
+            toast.success('Proposta gerada com sucesso!');
+          }
+        },
+        onError: (error) => {
+          setIsLoading(false);
+          const isAuth = /invalid token|unauthorized|sessão/i.test(error);
+          toast.error(
+            isAuth ? 'Sessão expirada' : 'Erro ao gerar proposta',
+            {
+              description: isAuth
+                ? 'Sua sessão expirou. Recarregue a página (F5) e tente novamente.'
+                : error,
+              duration: 8000,
+            }
+          );
         },
       });
     } catch (err: any) {
