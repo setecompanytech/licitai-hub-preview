@@ -136,6 +136,7 @@ function mapRow(item: any, uf: string, mod: number) {
     tipo_instrumento: item.tipoInstrumentoConvocatorioNome || null,
     srp: item.srp ?? null,
     codigo_unidade: item.unidadeOrgao?.codigoUnidade || null,
+    margem_preferencia: item.tipoMargemPreferenciaNome || item.tipoMargemPreferencia?.nome || null,
     _objeto_raw: item.objetoCompra || '',
   }
 }

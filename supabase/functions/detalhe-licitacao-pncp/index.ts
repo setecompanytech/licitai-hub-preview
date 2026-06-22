@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { requireAuth } from "../_shared/auth-rate-limit.ts";
 
 const corsHeaders = {
@@ -289,6 +290,23 @@ serve(async (req) => {
     };
 
     console.log(`PNCP detalhe OK: ${String(resultado.numero_controle_pncp)} | itens=${resultado.total_itens} | fonte=${resultado.fonte_sistema}`);
+
+    // Salva fonte_orcamentaria de volta ao cache para habilitar filtro
+    if (resultado.fonte_orcamentaria) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+        const pncpId = `${cnpj}-${ano}-${seq}`;
+        await adminClient
+          .from("pncp_editais_cache")
+          .update({ fonte_orcamentaria: resultado.fonte_orcamentaria })
+          .eq("pncp_id", pncpId)
+          .is("fonte_orcamentaria", null); // só atualiza se ainda não preenchido
+      } catch (cacheErr) {
+        console.warn("Não foi possível salvar fonte_orcamentaria no cache:", cacheErr);
+      }
+    }
 
     return new Response(JSON.stringify(resultado), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

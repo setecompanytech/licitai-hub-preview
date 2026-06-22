@@ -211,6 +211,8 @@ interface FiltrosLei14133 {
   unidadeTexto: string;
   conteudoNacional: '' | 'sim' | 'nao';
   emendaParlamentar: '' | 'sim' | 'nao';
+  fontesOrcamentarias: string[];
+  margensPreferencia: string[];
 }
 
 const filtrosVazios: FiltrosLei14133 = {
@@ -234,6 +236,8 @@ const filtrosVazios: FiltrosLei14133 = {
   unidadeTexto: '',
   conteudoNacional: '',
   emendaParlamentar: '',
+  fontesOrcamentarias: [],
+  margensPreferencia: [],
 };
 
 // Mapeamentos para filtros client-side
@@ -266,6 +270,31 @@ export default function MonitoramentoEditais() {
   const [emCompromissos, setEmCompromissos] = useState<Map<string, string>>(new Map());
   const [modalEdital, setModalEdital] = useState<EditalSeed | null>(null);
   const [modalExistingId, setModalExistingId] = useState<string | null>(null);
+
+  // Valores disponíveis para filtros de fonte orçamentária e margem de preferência
+  const [fontesOrcamentariasOpts, setFontesOrcamentariasOpts] = useState<string[]>([]);
+  const [margensPreferenciaOpts, setMargensPreferenciaOpts] = useState<string[]>([]);
+
+  useEffect(() => {
+    supabase
+      .from('pncp_editais_cache')
+      .select('fonte_orcamentaria')
+      .not('fonte_orcamentaria', 'is', null)
+      .limit(500)
+      .then(({ data }) => {
+        const uniq = [...new Set((data || []).map((r: any) => r.fonte_orcamentaria as string).filter(Boolean))].sort();
+        setFontesOrcamentariasOpts(uniq);
+      });
+    supabase
+      .from('pncp_editais_cache')
+      .select('margem_preferencia')
+      .not('margem_preferencia', 'is', null)
+      .limit(500)
+      .then(({ data }) => {
+        const uniq = [...new Set((data || []).map((r: any) => r.margem_preferencia as string).filter(Boolean))].sort();
+        setMargensPreferenciaOpts(uniq);
+      });
+  }, []);
 
   const carregarEmGestao = useCallback(async () => {
     if (!user) return;
@@ -451,6 +480,8 @@ export default function MonitoramentoEditais() {
                 p_direcao: 'desc',
                 p_pagina: pag,
                 p_tamanho: tamanho,
+                p_fonte_orcamentaria: filtros.fontesOrcamentarias.length === 1 ? filtros.fontesOrcamentarias[0] : null,
+                p_margem_preferencia: filtros.margensPreferencia.length === 1 ? filtros.margensPreferencia[0] : null,
               }) as any)
             );
           }
@@ -1254,22 +1285,22 @@ export default function MonitoramentoEditais() {
               </div>
             </div>
 
-            {/* Linha 14: Fontes Orçamentárias / Margens de Preferência (em desenvolvimento) */}
-            <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 space-y-2">
-              <p className="text-xs font-semibold text-foreground flex items-center gap-2">
-                <Info className="w-3.5 h-3.5 text-accent" />
-                Filtros adicionais — em desenvolvimento
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground font-medium">Fontes Orçamentárias</p>
-                  <Input disabled placeholder="Disponível em breve" className="h-8 text-xs opacity-50" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground font-medium">Tipos de Margens de Preferência</p>
-                  <Input disabled placeholder="Disponível em breve" className="h-8 text-xs opacity-50" />
-                </div>
-              </div>
+            {/* Linha 14: Fontes Orçamentárias / Margens de Preferência */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <ChipMultiSelect
+                label="Fontes Orçamentárias"
+                options={fontesOrcamentariasOpts}
+                valores={filtros.fontesOrcamentarias}
+                onToggle={v => toggleArr('fontesOrcamentarias', v)}
+                placeholder={fontesOrcamentariasOpts.length === 0 ? 'Dados ainda não disponíveis' : 'Todas as fontes'}
+              />
+              <ChipMultiSelect
+                label="Tipos de Margem de Preferência"
+                options={margensPreferenciaOpts}
+                valores={filtros.margensPreferencia}
+                onToggle={v => toggleArr('margensPreferencia', v)}
+                placeholder={margensPreferenciaOpts.length === 0 ? 'Dados ainda não disponíveis' : 'Todas as margens'}
+              />
             </div>
 
             {/* Aviso Materiais/Serviços */}
