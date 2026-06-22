@@ -1295,7 +1295,20 @@ export default function MonitoramentoEditais() {
                 onToggle={v => toggleArr('fontesOrcamentarias', v)}
                 onClear={() => setFiltros(f => ({ ...f, fontesOrcamentarias: [] }))}
                 placeholder={fontesOrcamentariasOpts.length === 0 ? 'Dados ainda não disponíveis' : 'Todas as fontes'}
-                info="⚠ Limitação da API: a fonte orçamentária não é retornada pela API pública do PNCP na listagem de editais — ela só existe no endpoint de detalhe individual de cada edital. Como preencher: ao clicar em qualquer edital e abrir seus detalhes, o sistema salva automaticamente a fonte orçamentária. Quanto mais editais você visualizar, mais opções aparecerão aqui para filtrar."
+                info={
+                  <div className="space-y-2">
+                    <p className="font-semibold text-amber-400">Fonte Orçamentária</p>
+                    <p>Indica de onde vêm os recursos da licitação — ex: <span className="font-medium">Tesouro Nacional</span>, <span className="font-medium">Recursos Próprios</span>, <span className="font-medium">Convênio</span>.</p>
+                    <div className="border-t border-white/10 pt-2 space-y-1">
+                      <p className="font-medium text-amber-400/80 text-[11px] uppercase tracking-wide">Por que está vazio?</p>
+                      <p>A API pública do PNCP <span className="font-semibold">não retorna esse campo na listagem</span> de editais — ele só existe no endpoint de detalhe individual.</p>
+                    </div>
+                    <div className="border-t border-white/10 pt-2 space-y-1">
+                      <p className="font-medium text-green-400/80 text-[11px] uppercase tracking-wide">Como preencher?</p>
+                      <p>Abra o detalhe de qualquer edital clicando nele. O sistema salva a fonte automaticamente. Quanto mais editais você visualizar, mais opções aparecerão aqui.</p>
+                    </div>
+                  </div>
+                }
               />
               <ChipMultiSelect
                 label="Tipos de Margem de Preferência"
@@ -1304,7 +1317,20 @@ export default function MonitoramentoEditais() {
                 onToggle={v => toggleArr('margensPreferencia', v)}
                 onClear={() => setFiltros(f => ({ ...f, margensPreferencia: [] }))}
                 placeholder={margensPreferenciaOpts.length === 0 ? 'Dados ainda não disponíveis' : 'Todas as margens'}
-                info="⚠ Limitação da API: o tipo de margem de preferência não é retornado pela API pública do PNCP na listagem de editais — ele pode aparecer apenas no detalhe de cada edital dependendo da versão da API. Como preencher: o sistema tenta extrair esse dado automaticamente a cada coleta periódica do PNCP. Quando disponível na API, as opções aparecerão aqui automaticamente após a próxima atualização do sistema."
+                info={
+                  <div className="space-y-2">
+                    <p className="font-semibold text-amber-400">Margem de Preferência</p>
+                    <p>Indica se a licitação aplica vantagem de preço para produtos ou serviços nacionais — ex: <span className="font-medium">Normal</span>, <span className="font-medium">Ampliada</span>.</p>
+                    <div className="border-t border-white/10 pt-2 space-y-1">
+                      <p className="font-medium text-amber-400/80 text-[11px] uppercase tracking-wide">Por que está vazio?</p>
+                      <p>A API pública do PNCP <span className="font-semibold">não retorna esse campo na listagem</span> de editais. Dependendo da versão da API, ele pode aparecer só no detalhe individual.</p>
+                    </div>
+                    <div className="border-t border-white/10 pt-2 space-y-1">
+                      <p className="font-medium text-green-400/80 text-[11px] uppercase tracking-wide">Como preencher?</p>
+                      <p>O sistema tenta extrair esse dado automaticamente a cada coleta periódica do PNCP. As opções aparecerão aqui assim que estiverem disponíveis na próxima atualização.</p>
+                    </div>
+                  </div>
+                }
               />
             </div>
 
@@ -1508,7 +1534,7 @@ function ChipMultiSelect({
   onToggle: (v: string) => void;
   onClear: () => void;
   placeholder: string;
-  info?: string;
+  info?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -1537,7 +1563,7 @@ function ChipMultiSelect({
                         !
                       </span>
                     </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
+                    <TooltipContent side="top" className="max-w-sm text-xs leading-relaxed p-3">
                       {info}
                     </TooltipContent>
                   </Tooltip>
@@ -1568,7 +1594,7 @@ function ChipMultiSelect({
           </div>
         </div>
         {open && options.length === 0 && info && (
-          <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-3 py-2 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+          <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-3 py-2.5 text-xs text-amber-900 dark:text-amber-200 leading-relaxed [&_p]:mb-1 [&_.border-t]:border-amber-200 [&_.dark\:border-white\/10]:border-amber-200 [&_p.font-medium]:text-amber-700 dark:[&_p.font-medium]:text-amber-400">
             {info}
           </div>
         )}
