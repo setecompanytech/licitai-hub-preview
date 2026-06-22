@@ -535,6 +535,19 @@ export default function MonitoramentoEditais() {
       }
 
       {
+        // A API pública do PNCP não suporta busca por número de edital (numero_compra).
+        // Nesse caso pulamos o live e usamos apenas o cache local que tem busca por número.
+        const isNumeroBusca = buscandoPorNumero && /^[\d/\-\.]+$/.test(filtros.numero.trim());
+
+        if (isNumeroBusca) {
+          logCtx({ etapa: 'busca_por_numero_direto_cache' });
+          const cacheRes = await consultarCache();
+          rowsRaw = cacheRes.rows;
+          totalCache = cacheRes.totalSomado;
+          usouCache = true;
+          logCtx({ etapa: 'cache_numero_fim', registros: rowsRaw.length });
+        } else {
+
         const livePageSize = filtros.municipios.length > 0 || filtros.uasgs.length > 0
           ? 50
           : Math.min(50, tamanho * Math.max(1, pag));
@@ -623,6 +636,8 @@ export default function MonitoramentoEditais() {
         usouCache = true;
         logCtx({ etapa: 'fallback_cache_fim', registros: rowsRaw.length, totalCache });
       }
+
+        } // fecha else (não é busca por número)
 
       // Deduplicação global por chave estável (suporta merge live+cache no futuro)
       const seen = new Set<string>();
