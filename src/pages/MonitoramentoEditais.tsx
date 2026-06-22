@@ -1295,7 +1295,7 @@ export default function MonitoramentoEditais() {
                 onToggle={v => toggleArr('fontesOrcamentarias', v)}
                 onClear={() => setFiltros(f => ({ ...f, fontesOrcamentarias: [] }))}
                 placeholder={fontesOrcamentariasOpts.length === 0 ? 'Dados ainda não disponíveis' : 'Todas as fontes'}
-                info="A fonte orçamentária indica de onde vêm os recursos da licitação (ex: Tesouro Nacional, Recursos Próprios, Convênio). Esse dado só está disponível no detalhe individual de cada edital no PNCP, por isso é preenchido progressivamente conforme os editais são visualizados no sistema. Acesse o detalhe de alguns editais para começar a popular esse filtro."
+                info="⚠ A API pública do PNCP não inclui a fonte orçamentária na listagem de editais — esse dado só está disponível ao abrir o detalhe de cada edital individualmente. Por isso, este filtro é preenchido progressivamente: cada vez que você visualiza um edital no sistema, a fonte é salva e passa a aparecer aqui."
               />
               <ChipMultiSelect
                 label="Tipos de Margem de Preferência"
@@ -1304,7 +1304,7 @@ export default function MonitoramentoEditais() {
                 onToggle={v => toggleArr('margensPreferencia', v)}
                 onClear={() => setFiltros(f => ({ ...f, margensPreferencia: [] }))}
                 placeholder={margensPreferenciaOpts.length === 0 ? 'Dados ainda não disponíveis' : 'Todas as margens'}
-                info="A margem de preferência indica se a licitação reserva vantagem de preço para produtos ou serviços nacionais (ex: Margem de Preferência Normal, Ampliada). Esse dado é extraído automaticamente pelo sistema a cada nova coleta do PNCP. Se estiver vazio, aguarde a próxima atualização automática do sistema ou acione o crawler manualmente pelo painel do Supabase."
+                info="⚠ A API pública do PNCP não inclui o tipo de margem de preferência na listagem de editais — esse campo não é retornado na busca em massa. O sistema tenta extraí-lo automaticamente a cada coleta, mas ele pode estar ausente dependendo da versão da API. Se estiver vazio, os dados ainda não foram coletados para os editais no banco."
               />
             </div>
 
