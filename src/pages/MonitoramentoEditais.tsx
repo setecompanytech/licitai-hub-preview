@@ -1295,7 +1295,7 @@ export default function MonitoramentoEditais() {
                 onToggle={v => toggleArr('fontesOrcamentarias', v)}
                 onClear={() => setFiltros(f => ({ ...f, fontesOrcamentarias: [] }))}
                 placeholder={fontesOrcamentariasOpts.length === 0 ? 'Dados ainda não disponíveis' : 'Todas as fontes'}
-                info="⚠ A API pública do PNCP não inclui a fonte orçamentária na listagem de editais — esse dado só está disponível ao abrir o detalhe de cada edital individualmente. Por isso, este filtro é preenchido progressivamente: cada vez que você visualiza um edital no sistema, a fonte é salva e passa a aparecer aqui."
+                info="⚠ Limitação da API: a fonte orçamentária não é retornada pela API pública do PNCP na listagem de editais — ela só existe no endpoint de detalhe individual de cada edital. Como preencher: ao clicar em qualquer edital e abrir seus detalhes, o sistema salva automaticamente a fonte orçamentária. Quanto mais editais você visualizar, mais opções aparecerão aqui para filtrar."
               />
               <ChipMultiSelect
                 label="Tipos de Margem de Preferência"
@@ -1304,7 +1304,7 @@ export default function MonitoramentoEditais() {
                 onToggle={v => toggleArr('margensPreferencia', v)}
                 onClear={() => setFiltros(f => ({ ...f, margensPreferencia: [] }))}
                 placeholder={margensPreferenciaOpts.length === 0 ? 'Dados ainda não disponíveis' : 'Todas as margens'}
-                info="⚠ A API pública do PNCP não inclui o tipo de margem de preferência na listagem de editais — esse campo não é retornado na busca em massa. O sistema tenta extraí-lo automaticamente a cada coleta, mas ele pode estar ausente dependendo da versão da API. Se estiver vazio, os dados ainda não foram coletados para os editais no banco."
+                info="⚠ Limitação da API: o tipo de margem de preferência não é retornado pela API pública do PNCP na listagem de editais — ele pode aparecer apenas no detalhe de cada edital dependendo da versão da API. Como preencher: o sistema tenta extrair esse dado automaticamente a cada coleta periódica do PNCP. Quando disponível na API, as opções aparecerão aqui automaticamente após a próxima atualização do sistema."
               />
             </div>
 
