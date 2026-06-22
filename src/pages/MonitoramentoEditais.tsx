@@ -1301,11 +1301,11 @@ export default function MonitoramentoEditais() {
                     <p>Indica de onde vêm os recursos da licitação — ex: <span className="font-medium">Tesouro Nacional</span>, <span className="font-medium">Recursos Próprios</span>, <span className="font-medium">Convênio</span>.</p>
                     <div className="border-t border-white/10 pt-2 space-y-1">
                       <p className="font-medium text-amber-400/80 text-[11px] uppercase tracking-wide">Por que está vazio?</p>
-                      <p>A API pública do PNCP <span className="font-semibold">não retorna esse campo na listagem</span> de editais — ele só existe no endpoint de detalhe individual.</p>
+                      <p>A API pública do PNCP <span className="font-semibold">não retorna esse campo na listagem</span> de editais — ele só existe no endpoint de detalhe individual de cada edital.</p>
                     </div>
                     <div className="border-t border-white/10 pt-2 space-y-1">
                       <p className="font-medium text-green-400/80 text-[11px] uppercase tracking-wide">Como preencher?</p>
-                      <p>Abra o detalhe de qualquer edital clicando nele. O sistema salva a fonte automaticamente. Quanto mais editais você visualizar, mais opções aparecerão aqui.</p>
+                      <p>Nesta página, faça uma busca e clique em <span className="font-semibold">"Ver detalhes"</span> em qualquer edital dos resultados. O sistema consultará o PNCP e salvará a fonte automaticamente. Repita para alguns editais — as opções começarão a aparecer aqui.</p>
                     </div>
                   </div>
                 }
@@ -1726,8 +1726,31 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
         fetch(`${base}/itens?pagina=1&tamanhoPagina=500`, { headers: hdrs }),
         fetch(`${base}/arquivos?pagina=1&tamanhoPagina=100`, { headers: hdrs }),
       ]);
-      if (rDet.status === 'fulfilled' && rDet.value.ok)
-        setDetalhe(await rDet.value.json());
+      if (rDet.status === 'fulfilled' && rDet.value.ok) {
+        const det = await rDet.value.json();
+        setDetalhe(det);
+        // Salva fonte_orcamentaria no cache para habilitar filtro
+        const fontes: unknown[] = det.fontesOrcamentarias || (det.fonteOrcamentaria ? [det.fonteOrcamentaria] : []);
+        if (Array.isArray(fontes) && fontes.length > 0 && pncpCoords) {
+          const formatado = fontes
+            .map((f: any) => {
+              if (!f) return null;
+              if (typeof f === 'string') return f;
+              const parts = [f.codigoFonte, f.descricao, f.nome, f.fonte].filter(Boolean).map(String);
+              return parts.length > 0 ? parts.join(' - ') : null;
+            })
+            .filter(Boolean)
+            .join(' • ');
+          if (formatado) {
+            const pncpId = `${pncpCoords.cnpj}-${pncpCoords.ano}-${pncpCoords.seq}`;
+            supabase.from('pncp_editais_cache')
+              .update({ fonte_orcamentaria: formatado })
+              .eq('pncp_id', pncpId)
+              .is('fonte_orcamentaria', null)
+              .then(() => {});
+          }
+        }
+      }
       if (rItens.status === 'fulfilled' && rItens.value.ok) {
         const j = await rItens.value.json();
         setItens(Array.isArray(j) ? j : (j?.data ?? []));
