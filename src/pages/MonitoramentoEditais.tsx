@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Calendar } from '@/components/ui/calendar';
 import MunicipiosByUFSelect from '@/components/monitoramento/MunicipiosByUFSelect';
 import { toast } from 'sonner';
@@ -1292,14 +1293,18 @@ export default function MonitoramentoEditais() {
                 options={fontesOrcamentariasOpts}
                 valores={filtros.fontesOrcamentarias}
                 onToggle={v => toggleArr('fontesOrcamentarias', v)}
+                onClear={() => setFiltros(f => ({ ...f, fontesOrcamentarias: [] }))}
                 placeholder={fontesOrcamentariasOpts.length === 0 ? 'Dados ainda não disponíveis' : 'Todas as fontes'}
+                info="A fonte orçamentária indica de onde vêm os recursos da licitação (ex: Tesouro Nacional, Recursos Próprios, Convênio). Esse dado só está disponível no detalhe individual de cada edital no PNCP, por isso é preenchido progressivamente conforme os editais são visualizados no sistema. Acesse o detalhe de alguns editais para começar a popular esse filtro."
               />
               <ChipMultiSelect
                 label="Tipos de Margem de Preferência"
                 options={margensPreferenciaOpts}
                 valores={filtros.margensPreferencia}
                 onToggle={v => toggleArr('margensPreferencia', v)}
+                onClear={() => setFiltros(f => ({ ...f, margensPreferencia: [] }))}
                 placeholder={margensPreferenciaOpts.length === 0 ? 'Dados ainda não disponíveis' : 'Todas as margens'}
+                info="A margem de preferência indica se a licitação reserva vantagem de preço para produtos ou serviços nacionais (ex: Margem de Preferência Normal, Ampliada). Esse dado é extraído automaticamente pelo sistema a cada nova coleta do PNCP. Se estiver vazio, aguarde a próxima atualização automática do sistema ou acione o crawler manualmente pelo painel do Supabase."
               />
             </div>
 
@@ -1494,7 +1499,7 @@ function CheckboxRow({
 }
 
 function ChipMultiSelect({
-  label, labelSub, options, valores, onToggle, onClear, placeholder,
+  label, labelSub, options, valores, onToggle, onClear, placeholder, info,
 }: {
   label: string;
   labelSub?: string;
@@ -1503,6 +1508,7 @@ function ChipMultiSelect({
   onToggle: (v: string) => void;
   onClear: () => void;
   placeholder: string;
+  info?: string;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -1519,7 +1525,26 @@ function ChipMultiSelect({
           onClick={() => setOpen(o => !o)}
         >
           {valores.length === 0 ? (
-            <span className="text-xs text-muted-foreground px-1.5">{placeholder}</span>
+            <span className="text-xs text-muted-foreground px-1.5 flex items-center gap-1.5">
+              {info && options.length === 0 && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span
+                        className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500/15 text-amber-600 text-[10px] font-bold cursor-help shrink-0"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        !
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
+                      {info}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              {placeholder}
+            </span>
           ) : (
             valores.map(v => (
               <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent/15 text-accent text-xs font-medium">
@@ -1542,7 +1567,12 @@ function ChipMultiSelect({
             </Button>
           </div>
         </div>
-        {open && (
+        {open && options.length === 0 && info && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-3 py-2 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+            {info}
+          </div>
+        )}
+        {open && options.length > 0 && (
           <div className="rounded-md border border-border bg-card p-3 grid grid-cols-6 sm:grid-cols-9 lg:grid-cols-14 gap-1.5">
             {options.map(opt => (
               <button
