@@ -602,6 +602,7 @@ export default function MonitoramentoEditais() {
             return [];
           }
           liveOk++;
+          if (payload?.cache) usouCache = true;
           // Soma o total de cada chamada (cada UF×modalidade é um conjunto independente)
           totalLive += Number(payload?.total) || 0;
           return (payload?.data || []).map((item: any) => ({
@@ -847,13 +848,19 @@ export default function MonitoramentoEditais() {
       if (editais.length === 0) {
         if (liveErr > 0 && liveOk === 0) {
           toast.warning('PNCP temporariamente indisponível', {
-            description: 'Não foi possível conectar ao PNCP. Tente novamente em alguns instantes.',
+            description: 'O cache também não possui dados para este período. Tente novamente em alguns minutos.',
           });
         } else {
           toast.info('Nenhum edital encontrado', {
             description: 'Tente ampliar o período ou remover filtros (UF, modalidade, município).',
           });
         }
+      }
+      if (usouCache && editais.length > 0) {
+        toast.info('Exibindo dados do cache', {
+          description: 'O PNCP está com instabilidade. Os resultados são do último acesso ao sistema.',
+          duration: 4000,
+        });
       }
     } catch (e: unknown) {
       if (e instanceof Error && e.name === 'AbortError') return;
