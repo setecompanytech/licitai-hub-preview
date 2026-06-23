@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import { useEditalExtraction } from '@/hooks/useEditalExtraction';
 import { extractTextFromFile } from '@/lib/pdf-text-extractor';
+import { supabase } from '@/integrations/supabase/client';
 import SugestaoMarcasReview from './SugestaoMarcasReview';
 
 interface EditalUploaderProps {
@@ -89,7 +90,35 @@ export default function EditalUploader({ onExtracted, isExtracting, setIsExtract
     setProgress('Lendo documento...');
     let content = '';
 
-    const text = await extractTextFromFile(editalFile, 150, true);
+    let text = await extractTextFromFile(editalFile, 150, true);
+    if ((!text || text.trim().length < 50) && (editalFile.name.toLowerCase().endsWith('.pdf') || editalFile.type === 'application/pdf')) {
+      try {
+        const pdfjsLib = await import('pdfjs-dist');
+        const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
+        const arrayBuffer = await editalFile.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const canvas = document.createElement('canvas');
+        const images: { name: string; dataUrl: string }[] = [];
+        for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) {
+          const page = await pdf.getPage(i);
+          const viewport = page.getViewport({ scale: 2 });
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d')!;
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          images.push({ name: `page-${i}.jpg`, dataUrl: canvas.toDataURL('image/jpeg', 0.85) });
+        }
+        if (images.length > 0) {
+          const { data: ocrData, error: ocrErr } = await supabase.functions.invoke('document-vision-extract', {
+            body: { fileName: editalFile.name, images },
+          });
+          if (!ocrErr && ocrData?.text) text = ocrData.text;
+        }
+      } catch (canvasErr) {
+        console.warn('Canvas OCR fallback failed:', canvasErr);
+      }
+    }
     if (!text || text.trim().length < 50) {
       toast.error('Não foi possível extrair texto do documento. Verifique se o arquivo não está protegido ou corrompido.');
       setIsExtracting(false);

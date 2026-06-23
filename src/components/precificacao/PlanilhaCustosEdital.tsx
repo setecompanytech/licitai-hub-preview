@@ -359,12 +359,40 @@ export default function PlanilhaCustosEdital({
     setItens([]);
 
     try {
-      const text = await extractTextFromFile(file, 150, true);
+      let text = await extractTextFromFile(file, 150, true);
+      if ((!text || text.trim().length < 20) && (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf')) {
+        try {
+          const pdfjsLib = await import('pdfjs-dist');
+          const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+          pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          const canvas = document.createElement('canvas');
+          const images: { name: string; dataUrl: string }[] = [];
+          for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) {
+            const page = await pdf.getPage(i);
+            const viewport = page.getViewport({ scale: 2 });
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d')!;
+            await page.render({ canvasContext: ctx, viewport }).promise;
+            images.push({ name: `page-${i}.jpg`, dataUrl: canvas.toDataURL('image/jpeg', 0.85) });
+          }
+          if (images.length > 0) {
+            const { data: ocrData, error: ocrErr } = await supabase.functions.invoke('document-vision-extract', {
+              body: { fileName: file.name, images },
+            });
+            if (!ocrErr && ocrData?.text) text = ocrData.text;
+          }
+        } catch (canvasErr) {
+          console.warn('Canvas OCR fallback failed:', canvasErr);
+        }
+      }
       if (!text || text.trim().length < 20) {
         toast.error('Documento sem texto legível', {
-        description: 'Não foi possível extrair texto suficiente do arquivo. Se for PDF escaneado, tente converter para PDF pesquisável ou envie uma imagem (JPG/PNG) nítida do documento.',
-        duration: 8000,
-      });
+          description: 'Não foi possível extrair texto suficiente do arquivo. Se for PDF escaneado, tente enviar como imagem (JPG/PNG).',
+          duration: 8000,
+        });
         return;
       }
 

@@ -517,16 +517,50 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
 
       // 4) Trigger IA re-extraction (best-effort, async)
       try {
-        const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
-        const texto = await extractTextFromFile(file, 50);
+        const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+        let texto = '';
+        let images: { dataUrl: string }[] = [];
 
-        if (!texto || texto.trim().length < 80) {
+        if (isPdf) {
+          const pdfjsLib = await import('pdfjs-dist');
+          const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+          pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          for (let i = 1; i <= Math.min(pdf.numPages, 50); i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            texto += content.items.map((item: any) => item.str).join(' ') + '\n';
+          }
+          if (texto.trim().length < 80) {
+            const canvas = document.createElement('canvas');
+            for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) {
+              const page = await pdf.getPage(i);
+              const viewport = page.getViewport({ scale: 2 });
+              canvas.width = viewport.width;
+              canvas.height = viewport.height;
+              const ctx = canvas.getContext('2d')!;
+              await page.render({ canvasContext: ctx, viewport }).promise;
+              images.push({ dataUrl: canvas.toDataURL('image/jpeg', 0.85) });
+            }
+          }
+        } else {
+          const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
+          texto = await extractTextFromFile(file, 50);
+        }
+
+        if (texto.trim().length < 80 && images.length === 0) {
           toast.warning('Não foi possível extrair texto do arquivo. Edite valores manualmente.');
           return;
         }
 
         const { data: extracted, error: extErr } = await supabase.functions.invoke('extrair-contrato-pdf', {
-          body: { texto_pdf: texto, nome_arquivo: file.name, tipo_arquivo: arquivo.tipo },
+          body: {
+            texto_pdf: texto.trim().length >= 80 ? texto : '',
+            nome_arquivo: file.name,
+            tipo_arquivo: arquivo.tipo,
+            images: images.length > 0 ? images : undefined,
+          },
         });
         if (extErr) throw extErr;
         if (!extracted?.success || !extracted?.data) {

@@ -96,20 +96,51 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
     setProgress(10);
 
     try {
-      const texto = await extractTextFromFile(file, 80);
+      const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+      let texto = '';
+      let images: { dataUrl: string }[] = [];
+
+      if (isPdf) {
+        const pdfjsLib = await import('pdfjs-dist');
+        const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        for (let i = 1; i <= Math.min(pdf.numPages, 80); i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          texto += content.items.map((item: any) => item.str).join(' ') + '\n';
+        }
+        if (texto.trim().length < 80) {
+          const canvas = document.createElement('canvas');
+          for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) {
+            const page = await pdf.getPage(i);
+            const viewport = page.getViewport({ scale: 2 });
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d')!;
+            await page.render({ canvasContext: ctx, viewport }).promise;
+            images.push({ dataUrl: canvas.toDataURL('image/jpeg', 0.85) });
+          }
+        }
+      } else {
+        texto = await extractTextFromFile(file, 80);
+      }
+
       setProgress(55);
 
-      if (!texto || texto.trim().length < 80) {
-        throw new Error('Não foi possível extrair texto legível do documento. Verifique se o arquivo está protegido, corrompido ou contém apenas imagens.');
+      if (texto.trim().length < 80 && images.length === 0) {
+        throw new Error('Não foi possível extrair texto legível do documento. Verifique se o arquivo está protegido ou corrompido.');
       }
 
       setProgress(65);
       const { data, error } = await supabase.functions.invoke('extrair-contrato-pdf', {
         body: {
-          texto_pdf: texto,
+          texto_pdf: texto.trim().length >= 80 ? texto : '',
           nome_arquivo: file.name,
           tipo_arquivo: file.type || file.name.split('.').pop() || 'desconhecido',
           tipo_estrutura: tipoEstrutura,
+          images: images.length > 0 ? images : undefined,
         },
       });
 

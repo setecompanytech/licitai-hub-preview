@@ -187,8 +187,11 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { texto_pdf, nome_arquivo, tipo_arquivo, tipo_estrutura } = await req.json();
-    if (!texto_pdf || texto_pdf.trim().length < 80) {
+    const { texto_pdf, nome_arquivo, tipo_arquivo, tipo_estrutura, images } = await req.json();
+    const hasText = texto_pdf && texto_pdf.trim().length >= 80;
+    const hasImages = Array.isArray(images) && images.length > 0;
+
+    if (!hasText && !hasImages) {
       return new Response(JSON.stringify({ success: false, error: "Texto do documento muito curto ou vazio" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -198,7 +201,23 @@ serve(async (req) => {
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
-    const truncated = texto_pdf.slice(0, 90000);
+    const model = hasImages && !hasText ? "gpt-4o" : "gpt-4o-mini";
+    const systemPrompt = "Você é um extrator técnico de documentos públicos brasileiros (Contratos Administrativos, ATAs de Registro de Preços e Termos Aditivos). Extraia SOMENTE informações que aparecem literalmente no documento. Não invente, não estime, não complete lacunas. Se um campo não estiver explícito, retorne null. Preserve a descrição real dos itens exatamente como no documento. SEMPRE classifique o tipo de documento em tipo_documento_detectado: 'ata_srp', 'contrato', 'aditivo' ou 'outro'. SEMPRE classifique também a estrutura em tipo_estrutura_detectado: 'lotes' (quando o documento agrupa itens sob marcadores tipo 'LOTE 01', 'LOTE 02', 'GRUPO A', 'CATEGORIA') ou 'itens' (quando os itens são listados individualmente sem agrupamento). Forneça tipo_estrutura_confianca de 0.0 a 1.0 e uma justificativa curta. Quando o documento for aditivo, preencha 'aditivo' com os campos correspondentes.";
+    const promptText = `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- NÃO invente campos\n- NÃO reescreva descrições com sinônimos\n- Use null quando o campo não existir\n- Datas no formato DD/MM/AAAA ou YYYY-MM-DD`;
+
+    let userContent: unknown;
+    if (hasImages && !hasText) {
+      userContent = [
+        { type: "text", text: promptText },
+        ...images.slice(0, 5).map((img: { dataUrl: string }) => ({
+          type: "image_url",
+          image_url: { url: img.dataUrl, detail: "high" },
+        })),
+      ];
+    } else {
+      const truncated = texto_pdf.slice(0, 90000);
+      userContent = `${promptText}\n\nTEXTO DO DOCUMENTO:\n${truncated}`;
+    }
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -207,17 +226,10 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model,
         messages: [
-          {
-            role: "system",
-            content:
-              "Você é um extrator técnico de documentos públicos brasileiros (Contratos Administrativos, ATAs de Registro de Preços e Termos Aditivos). Extraia SOMENTE informações que aparecem literalmente no documento. Não invente, não estime, não complete lacunas. Se um campo não estiver explícito, retorne null. Preserve a descrição real dos itens exatamente como no documento. SEMPRE classifique o tipo de documento em tipo_documento_detectado: 'ata_srp', 'contrato', 'aditivo' ou 'outro'. SEMPRE classifique também a estrutura em tipo_estrutura_detectado: 'lotes' (quando o documento agrupa itens sob marcadores tipo 'LOTE 01', 'LOTE 02', 'GRUPO A', 'CATEGORIA') ou 'itens' (quando os itens são listados individualmente sem agrupamento). Forneça tipo_estrutura_confianca de 0.0 a 1.0 e uma justificativa curta. Quando o documento for aditivo, preencha 'aditivo' com os campos correspondentes.",
-          },
-          {
-            role: "user",
-            content: `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- NÃO invente campos\n- NÃO reescreva descrições com sinônimos\n- Use null quando o campo não existir\n- Datas no formato DD/MM/AAAA ou YYYY-MM-DD\n\nTEXTO DO DOCUMENTO:\n${truncated}`,
-          },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
         ],
         tools: [
           {
