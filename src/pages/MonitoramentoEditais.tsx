@@ -513,6 +513,7 @@ export default function MonitoramentoEditais() {
       let liveOk = 0;
       let liveErr = 0;
       let usouCache = false;
+      let pncpIndisponivel = false;
 
       // Intervalo padrão quando nenhuma data foi informada:
       // - busca por número → ano inteiro do campo "ano" (01/01/ano a 31/12/ano)
@@ -595,6 +596,7 @@ export default function MonitoramentoEditais() {
           }
           liveOk++;
           const payload = resp.value.data as any;
+          if (payload?.aviso) pncpIndisponivel = true;
           // Soma o total de cada chamada (cada UF×modalidade é um conjunto independente)
           totalLive += Number(payload?.total) || 0;
           return (payload?.data || []).map((item: any) => ({
@@ -611,6 +613,7 @@ export default function MonitoramentoEditais() {
             esfera_id: item.esfera,
             poder_id: item.poder,
             unidade: item.unidade,
+            unidade_orgao: item.unidade,
             modalidade_id: item.modalidadeId,
             modalidade_nome: item.modalidade,
             valor_total_estimado: item.valorEstimado,
@@ -680,8 +683,8 @@ export default function MonitoramentoEditais() {
         if (ufsSet.size > 0 && !ufsSet.has(r.uf)) return false;
         if (muniSet.size > 0 && !muniSet.has(String(r.municipio || '').toLowerCase())) return false;
         if (uasgSet.size > 0) {
-          const uasgRow = String(r.unidade_orgao || r.cnpj_orgao || '').trim();
-          const matches = Array.from(uasgSet).some(u => uasgRow.includes(u) || String(r.numero_compra || '').includes(u));
+          const uasgRow = String(r.unidade_orgao || r.unidade || r.cnpj_orgao || '').trim();
+          const matches = Array.from(uasgSet).some(u => uasgRow.toLowerCase().includes(u.toLowerCase()) || String(r.numero_compra || '').includes(u));
           if (!matches) return false;
         }
         if (filtros.ano && filtros.numero) {
@@ -712,7 +715,7 @@ export default function MonitoramentoEditais() {
         }
         // Unidade (busca parcial)
         if (unidadeNorm) {
-          const nome = (r.unidade || '').toLowerCase().normalize('NFD').replace(/\p{Mn}/gu, '');
+          const nome = (r.unidade || r.unidade_orgao || '').toLowerCase().normalize('NFD').replace(/\p{Mn}/gu, '');
           if (!nome.includes(unidadeNorm)) return false;
         }
         // Conteúdo nacional (campo srp/indicador pode não estar disponível — filtra se presente)
@@ -846,9 +849,19 @@ export default function MonitoramentoEditais() {
       }
 
       if (editais.length === 0) {
-        toast.info('Nenhum edital encontrado', {
-          description: 'Tente ampliar o período ou remover filtros (UF, modalidade, município).',
-        });
+        if (pncpIndisponivel && usouCache) {
+          toast.warning('PNCP temporariamente indisponível', {
+            description: 'O PNCP está com instabilidade e o cache local está vazio. Tente novamente em alguns minutos.',
+          });
+        } else if (liveErr > 0 && liveOk === 0 && !usouCache) {
+          toast.warning('Falha na consulta ao PNCP', {
+            description: 'Não foi possível conectar ao PNCP. Verifique sua conexão e tente novamente.',
+          });
+        } else {
+          toast.info('Nenhum edital encontrado', {
+            description: 'Tente ampliar o período ou remover filtros (UF, modalidade, município).',
+          });
+        }
       }
     } catch (e: unknown) {
       if (e instanceof Error && e.name === 'AbortError') return;

@@ -142,6 +142,46 @@ function mapearItem(item: Record<string, unknown>) {
   };
 }
 
+function mapRawParaCache(raw: Record<string, unknown>): Record<string, unknown> | null {
+  const orgao = (raw.orgaoEntidade as Record<string, unknown>) || {};
+  const unidade = (raw.unidadeOrgao as Record<string, unknown>) || {};
+  // PNCP usa "numeroControlePNCP" (maiúsculo) como chave única por contratação
+  const numeroControle = (raw.numeroControlePNCP as string) || null;
+  if (!numeroControle) return null; // sem chave estável, não insere
+  const pncpId = numeroControle;
+  return {
+    pncp_id: pncpId,
+    fonte: 'PNCP',
+    fonte_id: numeroControle,
+    numero_controle_pncp: numeroControle,
+    cnpj_orgao: (orgao.cnpj as string) || null,
+    ano_compra: raw.anoCompra ? String(raw.anoCompra) : null,
+    sequencial_compra: raw.sequencialCompra ? String(raw.sequencialCompra) : null,
+    numero_compra: (raw.numeroCompra as string) || null,
+    orgao: (orgao.razaoSocial as string) || null,
+    unidade_orgao: (unidade.nomeUnidade as string) || null,
+    objeto: (raw.objetoCompra as string) || null,
+    modalidade_id: Number(raw.modalidadeId) || null,
+    modalidade_nome: MODALIDADES[Number(raw.modalidadeId)] || null,
+    situacao: (raw.situacaoCompraNome as string) || null,
+    valor_total_estimado: raw.valorTotalEstimado ? Number(raw.valorTotalEstimado) : null,
+    uf: (unidade.ufSigla as string) || (unidade.ufNome as string) || null,
+    municipio: (unidade.municipioNome as string) || null,
+    municipio_ibge: unidade.codigoIbge ? String(unidade.codigoIbge) : null,
+    esfera_id: (orgao.esferaId as string) || null,
+    data_publicacao_pncp: (raw.dataPublicacaoPncp as string) || (raw.dataInclusao as string) || null,
+    data_abertura_proposta: (raw.dataAberturaProposta as string) || null,
+    data_encerramento_proposta: (raw.dataEncerramentoProposta as string) || null,
+    link_sistema_origem: (raw.linkSistemaOrigem as string) || null,
+    url_pncp: `https://pncp.gov.br/app/editais/${orgao.cnpj}/${raw.anoCompra}/${raw.sequencialCompra}`,
+    tipo_instrumento: (raw.tipoInstrumentoConvocatorioNome as string) || null,
+    srp: Boolean(raw.srp),
+    codigo_unidade: unidade.codigoUnidade ? String(unidade.codigoUnidade) : null,
+    lei_base: (raw as any).amparoLegal?.descricao || null,
+    link_comprasnet: null,
+  };
+}
+
 function mapearItemCache(item: Record<string, unknown>) {
   const status = calcularStatusCache(item);
   const linkPncp = item.url_pncp || (
@@ -324,7 +364,10 @@ Deno.serve(async (req) => {
       // Busca ao vivo no PNCP para as modalidades mais comuns em paralelo
       const MODALIDADES_COMUNS = [6, 4, 8, 9, 5, 7]; // Pregão Eletrônico, Concorrência Eletrônica, Dispensa, Inexigibilidade, Concorrência Presencial, Pregão Presencial
 
-      const fetchModalidade = async (modId: number): Promise<ReturnType<typeof mapearItem>[]> => {
+      const fetchModalidade = async (modId: number): Promise<{
+        mapped: ReturnType<typeof mapearItem>[];
+        raw: Record<string, unknown>[];
+      }> => {
         const p = new URLSearchParams({
           pagina: '1',
           tamanhoPagina: String(Math.min(50, pageSize * 3)),
@@ -339,22 +382,51 @@ Deno.serve(async (req) => {
           headers: { 'Accept': 'application/json', 'User-Agent': 'Praefectus/1.0 (licitacoes@praefectus.com.br)' },
           signal: AbortSignal.timeout(25_000),
         });
-        if (!resp.ok) return [];
+        if (!resp.ok) return { mapped: [], raw: [] };
         const json = await resp.json();
-        return ((json.data || []) as Record<string, unknown>[]).map(mapearItem);
+        const rawItems = (json.data || []) as Record<string, unknown>[];
+        return { mapped: rawItems.map(mapearItem), raw: rawItems };
       };
 
       try {
         const settled = await Promise.allSettled(MODALIDADES_COMUNS.map(fetchModalidade));
         const allItems: ReturnType<typeof mapearItem>[] = [];
+        const allRaw: Record<string, unknown>[] = [];
         for (const r of settled) {
-          if (r.status === 'fulfilled') allItems.push(...r.value);
+          if (r.status === 'fulfilled') {
+            allItems.push(...r.value.mapped);
+            allRaw.push(...r.value.raw);
+          }
         }
 
         if (allItems.length > 0) {
           const filtrados = aplicarFiltroSituacao(allItems, situacao);
           filtrados.sort((a, b) => new Date(b.dataPublicacao || '').getTime() - new Date(a.dataPublicacao || '').getTime());
           const inicio = (paginaAtual - 1) * pageSize;
+
+          // Salva resultados no cache para ter dados de fallback quando PNCP falhar
+          if (allRaw.length > 0) {
+            try {
+              const sc = createServiceClient();
+              // Filtra nulos e deduplica por (fonte,fonte_id) — igual ao pncp-sync-diario
+              const mapped = allRaw.map(mapRawParaCache).filter(Boolean) as Record<string, unknown>[];
+              const dedupMap = new Map<string, Record<string, unknown>>();
+              for (const item of mapped) {
+                const k = `PNCP::${item.fonte_id}`;
+                dedupMap.set(k, item);
+              }
+              const dedupItems = [...dedupMap.values()];
+              if (dedupItems.length > 0) {
+                const { error: cacheErr } = await sc.from('pncp_editais_cache')
+                  .upsert(dedupItems, { ignoreDuplicates: true });
+                if (cacheErr) console.warn('Cache upsert error:', cacheErr.message);
+                else console.log(`Cache: ${dedupItems.length} itens salvos`);
+              }
+            } catch (cacheInitErr: any) {
+              console.warn('Cache init/upsert error:', cacheInitErr?.message || cacheInitErr);
+            }
+          }
+
           return new Response(JSON.stringify({
             data: filtrados.slice(inicio, inicio + pageSize),
             total: filtrados.length,
