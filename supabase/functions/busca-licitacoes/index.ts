@@ -1,15 +1,4 @@
 // @ts-nocheck
-/**
- * busca-licitacoes — Edge Function PNCP
- *
- * v4 — Correções:
- * 1. Sem retry sequencial forçando modalidade 6
- * 2. Busca em "todas as modalidades" via cache sincronizado
- * 3. Fallback para cache em timeout/erro do PNCP
- * 4. Resposta estável para evitar erro + resultado controverso
- */
-
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/security-headers.ts';
 
 const PNCP_BASE = 'https://pncp.gov.br/api/consulta/v1';
@@ -41,22 +30,6 @@ const SITUACOES: Record<number, { label: string; cor: string }> = {
   8: { label: 'Fracassada', cor: 'vermelho' },
 };
 
-const CACHE_MIN_SAMPLE = 200;
-const CACHE_MAX_SAMPLE = 1000;
-const CACHE_PAGE_MULTIPLIER = 10;
-
-type BuscaParams = {
-  termo: string;
-  uf: string;
-  pagina: number;
-  tamanhoPagina: number;
-  dataInicial: string;
-  dataFinal: string;
-  modalidade: string;
-  situacao: string;
-  esfera: string;
-};
-
 function calcularStatus(item: Record<string, unknown>): string {
   const situacaoId = Number(item.situacaoCompraId);
   const agora = new Date();
@@ -71,33 +44,6 @@ function calcularStatus(item: Record<string, unknown>): string {
   if (situacaoId === 4) return 'suspenso';
   if (situacaoId === 5) return 'encerrado';
   if (situacaoId === 6) return 'homologado';
-
-  if (encerramento && encerramento < agora) return 'encerrado';
-  if (abertura && abertura > agora) return 'aguardando';
-  return 'aberto';
-}
-
-function calcularStatusCache(item: Record<string, unknown>): string {
-  const situacao = String(item.situacao || '').toLowerCase();
-  const agora = new Date();
-  const encerramento = item.data_encerramento_proposta
-    ? new Date(item.data_encerramento_proposta as string)
-    : null;
-  const abertura = item.data_abertura_proposta
-    ? new Date(item.data_abertura_proposta as string)
-    : null;
-
-  if (situacao.includes('susp')) return 'suspenso';
-  if (situacao.includes('homolog')) return 'homologado';
-  if (
-    situacao.includes('encerr') ||
-    situacao.includes('revog') ||
-    situacao.includes('anulad') ||
-    situacao.includes('desert') ||
-    situacao.includes('fracass')
-  ) {
-    return 'encerrado';
-  }
 
   if (encerramento && encerramento < agora) return 'encerrado';
   if (abertura && abertura > agora) return 'aguardando';
@@ -142,187 +88,36 @@ function mapearItem(item: Record<string, unknown>) {
   };
 }
 
-function mapRawParaCache(raw: Record<string, unknown>): Record<string, unknown> | null {
-  const orgao = (raw.orgaoEntidade as Record<string, unknown>) || {};
-  const unidade = (raw.unidadeOrgao as Record<string, unknown>) || {};
-  // PNCP usa "numeroControlePNCP" (maiúsculo) como chave única por contratação
-  const numeroControle = (raw.numeroControlePNCP as string) || null;
-  if (!numeroControle) return null; // sem chave estável, não insere
-  const pncpId = numeroControle;
-  return {
-    pncp_id: pncpId,
-    fonte: 'PNCP',
-    fonte_id: numeroControle,
-    numero_controle_pncp: numeroControle,
-    cnpj_orgao: (orgao.cnpj as string) || null,
-    ano_compra: raw.anoCompra ? String(raw.anoCompra) : null,
-    sequencial_compra: raw.sequencialCompra ? String(raw.sequencialCompra) : null,
-    numero_compra: (raw.numeroCompra as string) || null,
-    orgao: (orgao.razaoSocial as string) || null,
-    unidade_orgao: (unidade.nomeUnidade as string) || null,
-    objeto: (raw.objetoCompra as string) || null,
-    modalidade_id: Number(raw.modalidadeId) || null,
-    modalidade_nome: MODALIDADES[Number(raw.modalidadeId)] || null,
-    situacao: (raw.situacaoCompraNome as string) || null,
-    valor_total_estimado: raw.valorTotalEstimado ? Number(raw.valorTotalEstimado) : null,
-    uf: (unidade.ufSigla as string) || (unidade.ufNome as string) || null,
-    municipio: (unidade.municipioNome as string) || null,
-    municipio_ibge: unidade.codigoIbge ? String(unidade.codigoIbge) : null,
-    esfera_id: (orgao.esferaId as string) || null,
-    data_publicacao_pncp: (raw.dataPublicacaoPncp as string) || (raw.dataInclusao as string) || null,
-    data_abertura_proposta: (raw.dataAberturaProposta as string) || null,
-    data_encerramento_proposta: (raw.dataEncerramentoProposta as string) || null,
-    link_sistema_origem: (raw.linkSistemaOrigem as string) || null,
-    url_pncp: `https://pncp.gov.br/app/editais/${orgao.cnpj}/${raw.anoCompra}/${raw.sequencialCompra}`,
-    tipo_instrumento: (raw.tipoInstrumentoConvocatorioNome as string) || null,
-    srp: Boolean(raw.srp),
-    codigo_unidade: unidade.codigoUnidade ? String(unidade.codigoUnidade) : null,
-    lei_base: (raw as any).amparoLegal?.descricao || null,
-    link_comprasnet: null,
-  };
-}
-
-function mapearItemCache(item: Record<string, unknown>) {
-  const status = calcularStatusCache(item);
-  const linkPncp = item.url_pncp || (
-    item.cnpj_orgao && item.ano_compra && item.sequencial_compra
-      ? `https://pncp.gov.br/app/editais/${item.cnpj_orgao}/${item.ano_compra}/${item.sequencial_compra}`
-      : ''
-  );
-
-  return {
-    id: String(item.id || `${item.ano_compra}-${item.sequencial_compra}-${item.cnpj_orgao || 'cache'}`),
-    numeroCompra: item.numero_compra || `${item.sequencial_compra}/${item.ano_compra}`,
-    processo: item.numero_controle_pncp || '',
-    objeto: item.objeto || 'Objeto não informado',
-    orgao: item.orgao || 'Órgão não informado',
-    cnpj: item.cnpj_orgao || '',
-    municipio: (item.municipio as string) || '',
-    uf: (item.uf as string) || '',
-    esfera: item.esfera_id || '',
-    modalidadeId: Number(item.modalidade_id) || 0,
-    modalidade: item.modalidade_nome || MODALIDADES[Number(item.modalidade_id)] || 'Modalidade não informada',
-    valorEstimado: Number(item.valor_total_estimado) || null,
-    valorHomologado: null,
-    dataPublicacao: item.data_publicacao_pncp || null,
-    dataAbertura: item.data_abertura_proposta || null,
-    dataEncerramento: item.data_encerramento_proposta || null,
-    situacaoId: 0,
-    situacaoNome: item.situacao || 'Publicada',
-    situacaoCor: status === 'homologado'
-      ? 'verde'
-      : status === 'suspenso'
-        ? 'amarelo'
-        : status === 'encerrado'
-          ? 'cinza'
-          : 'azul',
-    status,
-    srp: Boolean(item.srp),
-    modoDisputa: '',
-    tipoEdital: item.tipo_instrumento || 'Edital',
-    link: item.link_sistema_origem || item.link_comprasnet || '',
-    linkPncp,
-    informacaoComplementar: '',
-  };
-}
-
 function aplicarFiltroSituacao<T extends { status: string }>(items: T[], situacao: string): T[] {
   if (situacao === 'abertas') {
     return items.filter((item) => item.status === 'aberto' || item.status === 'aguardando');
   }
-
   if (situacao === 'encerradas') {
     return items.filter((item) => item.status === 'encerrado');
   }
-
   return items;
-}
-
-function formatPncpDate(d: Date): string {
-  return d.toISOString().slice(0, 10).replace(/-/g, '');
 }
 
 function formatIsoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-function createServiceClient() {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Configuração do cache indisponível');
-  }
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-}
-
-async function buscarNoCache(params: BuscaParams, cors: HeadersInit, aviso: string) {
-  const supabase = createServiceClient();
-  const sampleSize = Math.min(
-    CACHE_MAX_SAMPLE,
-    Math.max(CACHE_MIN_SAMPLE, params.pagina * params.tamanhoPagina * CACHE_PAGE_MULTIPLIER),
-  );
-
-  const { data, error } = await supabase.rpc('busca_editais_instantanea', {
-    p_q: params.termo || null,
-    p_uf: params.uf || null,
-    p_municipio_ibge: null,
-    p_esfera: params.esfera || null,
-    p_modalidade_id: params.modalidade && params.modalidade !== 'all' && params.modalidade !== '0'
-      ? Number(params.modalidade)
-      : null,
-    p_segmento: null,
-    p_data_inicio: params.dataInicial || null,
-    p_data_fim: params.dataFinal || null,
-    p_ordenacao: params.situacao === 'abertas' ? 'data_abertura' : 'data_publicacao',
-    p_direcao: 'desc',
-    p_pagina: 1,
-    p_tamanho: sampleSize,
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  const mapped = aplicarFiltroSituacao(
-    ((data || []) as Record<string, unknown>[]).map(mapearItemCache),
-    params.situacao,
-  );
-
-  const inicio = (params.pagina - 1) * params.tamanhoPagina;
-  const paginados = mapped.slice(inicio, inicio + params.tamanhoPagina);
-  const total = mapped.length;
-  const avisoFinal = sampleSize === CACHE_MAX_SAMPLE && (data?.length || 0) >= CACHE_MAX_SAMPLE
-    ? `${aviso} A paginação pode ser parcial em pesquisas muito amplas.`
-    : aviso;
-
-  return new Response(JSON.stringify({
-    data: paginados,
-    total,
-    paginas: Math.max(1, Math.ceil(total / params.tamanhoPagina)),
-    pagina: params.pagina,
-    aviso: avisoFinal,
-  }), {
-    headers: { ...cors, 'Content-Type': 'application/json' },
-  });
-}
+const ERRO_PNCP = JSON.stringify({
+  error: 'O PNCP está temporariamente indisponível. Tente novamente em alguns instantes.',
+  data: [],
+  total: 0,
+  paginas: 0,
+});
 
 Deno.serve(async (req) => {
   const cors = getCorsHeaders(req);
-  let parsedBody: Record<string, unknown> = {};
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: cors });
   }
 
   try {
-    parsedBody = await req.json();
+    const parsedBody = await req.json();
     const {
       termo = '',
       uf = '',
@@ -339,7 +134,6 @@ Deno.serve(async (req) => {
     const pageSize = Math.max(10, Math.min(Number(tamanhoPagina) || 20, 50));
     const paginaAtual = Math.max(1, Number(pagina) || 1);
 
-    // Default: 30 dias atrás
     const inicio30 = new Date(hoje);
     inicio30.setDate(inicio30.getDate() - 30);
 
@@ -348,25 +142,18 @@ Deno.serve(async (req) => {
     const modalidadeFiltro = modalidade ? String(modalidade) : '';
     const esferaFiltro = esfera && esfera !== 'all' ? String(esfera) : '';
 
-    const buscaParams: BuscaParams = {
-      termo,
-      uf,
-      pagina: paginaAtual,
-      tamanhoPagina: pageSize,
-      dataInicial: dataInicialFiltro,
-      dataFinal: dataFinalFiltro,
-      modalidade: modalidadeFiltro,
-      situacao,
-      esfera: esferaFiltro,
+    const pncpHeaders = {
+      'Accept': 'application/json',
+      'User-Agent': 'Praefectus/1.0 (licitacoes@praefectus.com.br)',
     };
 
+    // Busca sem modalidade específica: chama as 6 modalidades mais comuns em paralelo
     if (!modalidadeFiltro || modalidadeFiltro === 'all' || modalidadeFiltro === '0') {
-      // Busca ao vivo no PNCP para as modalidades mais comuns em paralelo
-      const MODALIDADES_COMUNS = [6, 4, 8, 9, 5, 7]; // Pregão Eletrônico, Concorrência Eletrônica, Dispensa, Inexigibilidade, Concorrência Presencial, Pregão Presencial
+      const MODALIDADES_COMUNS = [6, 4, 8, 9, 5, 7];
 
       const fetchModalidade = async (modId: number): Promise<{
         mapped: ReturnType<typeof mapearItem>[];
-        raw: Record<string, unknown>[];
+        success: boolean;
       }> => {
         const p = new URLSearchParams({
           pagina: '1',
@@ -378,128 +165,79 @@ Deno.serve(async (req) => {
         p.set('codigoModalidadeContratacao', String(modId));
         p.set('dataInicial', dataInicialFiltro.replace(/-/g, ''));
         p.set('dataFinal', dataFinalFiltro.replace(/-/g, ''));
+
         const resp = await fetch(`${PNCP_BASE}/contratacoes/publicacao?${p}`, {
-          headers: { 'Accept': 'application/json', 'User-Agent': 'Praefectus/1.0 (licitacoes@praefectus.com.br)' },
+          headers: pncpHeaders,
           signal: AbortSignal.timeout(25_000),
         });
-        if (!resp.ok) return { mapped: [], raw: [] };
+        if (!resp.ok) return { mapped: [], success: false };
         const json = await resp.json();
-        const rawItems = (json.data || []) as Record<string, unknown>[];
-        return { mapped: rawItems.map(mapearItem), raw: rawItems };
+        return {
+          mapped: ((json.data || []) as Record<string, unknown>[]).map(mapearItem),
+          success: true,
+        };
       };
 
-      try {
-        const settled = await Promise.allSettled(MODALIDADES_COMUNS.map(fetchModalidade));
-        const allItems: ReturnType<typeof mapearItem>[] = [];
-        const allRaw: Record<string, unknown>[] = [];
-        for (const r of settled) {
-          if (r.status === 'fulfilled') {
-            allItems.push(...r.value.mapped);
-            allRaw.push(...r.value.raw);
-          }
+      const settled = await Promise.allSettled(MODALIDADES_COMUNS.map(fetchModalidade));
+      const allItems: ReturnType<typeof mapearItem>[] = [];
+      let successCount = 0;
+
+      for (const r of settled) {
+        if (r.status === 'fulfilled') {
+          allItems.push(...r.value.mapped);
+          if (r.value.success) successCount++;
         }
-
-        if (allItems.length > 0) {
-          const filtrados = aplicarFiltroSituacao(allItems, situacao);
-          filtrados.sort((a, b) => new Date(b.dataPublicacao || '').getTime() - new Date(a.dataPublicacao || '').getTime());
-          const inicio = (paginaAtual - 1) * pageSize;
-
-          // Salva resultados no cache para ter dados de fallback quando PNCP falhar
-          if (allRaw.length > 0) {
-            try {
-              const sc = createServiceClient();
-              // Filtra nulos e deduplica por (fonte,fonte_id) — igual ao pncp-sync-diario
-              const mapped = allRaw.map(mapRawParaCache).filter(Boolean) as Record<string, unknown>[];
-              const dedupMap = new Map<string, Record<string, unknown>>();
-              for (const item of mapped) {
-                const k = `PNCP::${item.fonte_id}`;
-                dedupMap.set(k, item);
-              }
-              const dedupItems = [...dedupMap.values()];
-              if (dedupItems.length > 0) {
-                const { error: cacheErr } = await sc.from('pncp_editais_cache')
-                  .upsert(dedupItems, { ignoreDuplicates: true });
-                if (cacheErr) console.warn('Cache upsert error:', cacheErr.message);
-                else console.log(`Cache: ${dedupItems.length} itens salvos`);
-              }
-            } catch (cacheInitErr: any) {
-              console.warn('Cache init/upsert error:', cacheInitErr?.message || cacheInitErr);
-            }
-          }
-
-          return new Response(JSON.stringify({
-            data: filtrados.slice(inicio, inicio + pageSize),
-            total: filtrados.length,
-            paginas: Math.max(1, Math.ceil(filtrados.length / pageSize)),
-            pagina: paginaAtual,
-          }), { headers: { ...cors, 'Content-Type': 'application/json' } });
-        }
-      } catch (e) {
-        console.error('Multi-modalidade PNCP error:', e);
       }
 
-      return await buscarNoCache(
-        buscaParams,
-        cors,
-        'Pesquisa em todas as modalidades via cache sincronizado do PNCP.',
+      // Se todas as modalidades falharam, PNCP está indisponível
+      if (successCount === 0) {
+        return new Response(ERRO_PNCP, {
+          headers: { ...cors, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const filtrados = aplicarFiltroSituacao(allItems, situacao);
+      filtrados.sort((a, b) =>
+        new Date(b.dataPublicacao || '').getTime() - new Date(a.dataPublicacao || '').getTime()
       );
+      const inicio = (paginaAtual - 1) * pageSize;
+
+      return new Response(JSON.stringify({
+        data: filtrados.slice(inicio, inicio + pageSize),
+        total: filtrados.length,
+        paginas: Math.max(1, Math.ceil(filtrados.length / pageSize)),
+        pagina: paginaAtual,
+      }), { headers: { ...cors, 'Content-Type': 'application/json' } });
     }
 
+    // Busca com modalidade específica: chama PNCP diretamente
     const params = new URLSearchParams({
       pagina: String(paginaAtual),
       tamanhoPagina: String(pageSize),
     });
-
     if (termo) params.set('q', termo);
     if (uf) params.set('uf', uf.toUpperCase());
     if (esferaFiltro) params.set('codigoEsfera', esferaFiltro);
     params.set('codigoModalidadeContratacao', modalidadeFiltro);
-
-    // Dates
     params.set('dataInicial', dataInicialFiltro.replace(/-/g, ''));
     params.set('dataFinal', dataFinalFiltro.replace(/-/g, ''));
 
-    const endpoint = `${PNCP_BASE}/contratacoes/publicacao`;
-    const url = `${endpoint}?${params.toString()}`;
-    console.log(`PNCP request: ${url}`);
-
-    const resp = await fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'Praefectus/1.0 (licitacoes@praefectus.com.br)',
-      },
+    const resp = await fetch(`${PNCP_BASE}/contratacoes/publicacao?${params}`, {
+      headers: pncpHeaders,
       signal: AbortSignal.timeout(45_000),
     });
 
     if (!resp.ok) {
-      const errText = await resp.text();
-      console.error(`PNCP error ${resp.status}: ${errText.slice(0, 500)}`);
-
-      try {
-        return await buscarNoCache(
-          buscaParams,
-          cors,
-          `Consulta ao PNCP indisponível (HTTP ${resp.status}); exibindo resultados do cache sincronizado.`,
-        );
-      } catch (cacheError) {
-        console.error('cache fallback error:', cacheError);
-      }
-
-      return new Response(JSON.stringify({
-        error: `Erro na consulta PNCP (HTTP ${resp.status}). Tente novamente.`,
-        data: [], total: 0, paginas: 0,
-      }), {
-        status: 200,
+      console.error(`PNCP error ${resp.status}`);
+      return new Response(ERRO_PNCP, {
         headers: { ...cors, 'Content-Type': 'application/json' },
       });
     }
 
     const json = await resp.json();
     const items: Record<string, unknown>[] = json.data || [];
-
     const mapeados = items.map(mapearItem);
     const resultado = aplicarFiltroSituacao(mapeados, situacao);
-
     const filteredCount = resultado.length;
     const totalOriginal = json.totalRegistros || items.length;
 
@@ -510,42 +248,19 @@ Deno.serve(async (req) => {
         ? (json.totalPaginas || Math.ceil(totalOriginal / pageSize))
         : Math.max(1, Math.ceil(filteredCount / pageSize)),
       pagina: paginaAtual,
-    }), {
-      headers: { ...cors, 'Content-Type': 'application/json' },
-    });
+    }), { headers: { ...cors, 'Content-Type': 'application/json' } });
 
   } catch (err) {
     console.error('busca-licitacoes error:', err);
-
-    const msg = err instanceof Error ? err.message : 'Erro interno';
-    if (msg.toLowerCase().includes('timeout') || msg.toLowerCase().includes('timed out')) {
-      try {
-        const hoje = new Date();
-        const inicio30 = new Date(hoje);
-        inicio30.setDate(inicio30.getDate() - 30);
-
-        return await buscarNoCache({
-          termo: String(parsedBody.termo || ''),
-          uf: String(parsedBody.uf || ''),
-          pagina: Math.max(1, Number(parsedBody.pagina) || 1),
-          tamanhoPagina: Math.max(10, Math.min(Number(parsedBody.tamanhoPagina) || 20, 50)),
-          dataInicial: String(parsedBody.dataInicial || formatIsoDate(inicio30)),
-          dataFinal: String(parsedBody.dataFinal || formatIsoDate(hoje)),
-          modalidade: parsedBody.modalidade ? String(parsedBody.modalidade) : '',
-          situacao: String(parsedBody.situacao || 'abertas'),
-          esfera: String(parsedBody.esfera || ''),
-        }, cors, 'O PNCP demorou para responder; exibindo resultados do cache sincronizado.');
-      } catch (cacheError) {
-        console.error('cache fallback error:', cacheError);
-      }
-    }
-
+    const msg = err instanceof Error ? err.message : String(err);
+    const isTimeout = msg.toLowerCase().includes('timeout') || msg.toLowerCase().includes('timed out');
     return new Response(JSON.stringify({
-      error: msg,
-      data: [], total: 0, paginas: 0,
-    }), {
-      status: 200,
-      headers: { ...cors, 'Content-Type': 'application/json' },
-    });
+      error: isTimeout
+        ? 'O PNCP demorou para responder. Tente novamente.'
+        : 'O PNCP está temporariamente indisponível. Tente novamente em alguns instantes.',
+      data: [],
+      total: 0,
+      paginas: 0,
+    }), { headers: { ...cors, 'Content-Type': 'application/json' } });
   }
 });

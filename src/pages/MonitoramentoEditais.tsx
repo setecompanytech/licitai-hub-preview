@@ -594,9 +594,14 @@ export default function MonitoramentoEditais() {
             }
             return [];
           }
-          liveOk++;
           const payload = resp.value.data as any;
-          if (payload?.aviso) pncpIndisponivel = true;
+          // Edge function retorna {error: "..."} no body quando PNCP está indisponível
+          if (payload?.error) {
+            liveErr++;
+            console.warn('[Mural/buscar] pncp erro no body:', payload.error);
+            return [];
+          }
+          liveOk++;
           // Soma o total de cada chamada (cada UF×modalidade é um conjunto independente)
           totalLive += Number(payload?.total) || 0;
           return (payload?.data || []).map((item: any) => ({
@@ -630,15 +635,6 @@ export default function MonitoramentoEditais() {
         logCtx({ etapa: 'live_fim', ok: liveOk, erros: liveErr, registros: rowsRaw.length, totalLive });
       }
 
-      // Fallback / complemento: consulta o cache quando o live falhou ou veio vazio.
-      if (rowsRaw.length === 0) {
-        logCtx({ etapa: 'fallback_cache' });
-        const cacheRes = await consultarCache();
-        rowsRaw = cacheRes.rows;
-        totalCache = cacheRes.totalSomado;
-        usouCache = true;
-        logCtx({ etapa: 'fallback_cache_fim', registros: rowsRaw.length, totalCache });
-      }
 
         } // fecha else (não é busca por número)
 
@@ -849,13 +845,9 @@ export default function MonitoramentoEditais() {
       }
 
       if (editais.length === 0) {
-        if (pncpIndisponivel && usouCache) {
+        if (liveErr > 0 && liveOk === 0) {
           toast.warning('PNCP temporariamente indisponível', {
-            description: 'O PNCP está com instabilidade e o cache local está vazio. Tente novamente em alguns minutos.',
-          });
-        } else if (liveErr > 0 && liveOk === 0 && !usouCache) {
-          toast.warning('Falha na consulta ao PNCP', {
-            description: 'Não foi possível conectar ao PNCP. Verifique sua conexão e tente novamente.',
+            description: 'Não foi possível conectar ao PNCP. Tente novamente em alguns instantes.',
           });
         } else {
           toast.info('Nenhum edital encontrado', {
