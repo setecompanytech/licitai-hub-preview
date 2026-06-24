@@ -855,12 +855,19 @@ export default function PlanilhaCustosEdital({
                       {it.valorTotalRef != null ? formatCurrency(it.valorTotalRef) : '—'}
                     </td>
                     <td className="px-3 py-2">
-                      <Input
-                        value={it.marca}
-                        onChange={(e) => updateItem(idx, 'marca', e.target.value)}
-                        className="h-7 text-xs text-center w-24 mx-auto"
-                        placeholder="Marca"
-                      />
+                      <div className="flex flex-col items-center gap-0.5">
+                        <Input
+                          value={it.marca}
+                          onChange={(e) => updateItem(idx, 'marca', e.target.value)}
+                          className="h-7 text-xs text-center w-24 mx-auto"
+                          placeholder="Digitar..."
+                        />
+                        {!it.marca && (
+                          <span className="text-[9px] text-amber-500/80 italic whitespace-nowrap">
+                            Edital não informa
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2">
                       <MoneyInput

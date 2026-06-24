@@ -69,7 +69,29 @@ export function useEditalAutoIngest(licitacaoId: string | null) {
         if (!opts?.silent) toast.success(`✅ ${data.total} itens importados (${data.fonte}).`);
         return true;
       } else {
-        if (!opts?.silent) toast.warning('Não foi possível extrair itens automaticamente. Use upload manual.');
+        if (!opts?.silent) {
+          const pncpDetectado: boolean = data?.pncp_detectado === true;
+          const motivo: string = data?.motivo || '';
+          const pdfUrl: string | null = data?.pdf_url || null;
+          const descricao = motivo
+            ? motivo.slice(0, 120)
+            : pncpDetectado
+              ? 'PNCP detectado mas sem itens estruturados disponíveis.'
+              : 'PNCP não detectado para este processo.';
+
+          if (pdfUrl) {
+            toast.warning('Itens não extraídos automaticamente. PDF disponível.', {
+              description: descricao,
+              action: { label: 'Abrir PDF', onClick: () => window.open(pdfUrl, '_blank') },
+              duration: 10000,
+            });
+          } else {
+            toast.warning('Não foi possível extrair itens automaticamente.', {
+              description: descricao,
+              duration: 8000,
+            });
+          }
+        }
         return false;
       }
     } catch (err: any) {

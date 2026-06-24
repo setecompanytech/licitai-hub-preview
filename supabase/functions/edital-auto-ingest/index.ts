@@ -322,12 +322,53 @@ Deno.serve(async (req) => {
 
   await updateStatus({ etapa: "classify", arquivos_baixados: anexos as any });
 
-  // Estratégia: priorizar XLSX
-  const xlsxFirst = anexos.find((a) => a.tipo === "xlsx");
+  // Estratégia 0: PNCP itens API direta (estruturada, mais rápida e confiável)
   let itens: any[] = [];
   let fonteUsada = "";
 
-  if (xlsxFirst) {
+  if (pncp && itens.length === 0) {
+    const seqInt = parseInt(pncp.seq, 10) || pncp.seq;
+    const urlItens = `https://pncp.gov.br/api/consulta/v1/orgaos/${pncp.cnpj}/compras/${pncp.ano}/${seqInt}/itens?pagina=1&tamanhoPagina=500`;
+    console.log(`[auto-ingest] Tentando PNCP itens API: ${urlItens}`);
+    try {
+      const r = await fetch(urlItens, {
+        headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 (compatible; LicitAI/1.0)" },
+        signal: AbortSignal.timeout(12000),
+      });
+      console.log(`[auto-ingest] PNCP itens API HTTP ${r.status}`);
+      if (r.ok) {
+        const data = await r.json();
+        const pncpItens: any[] = data?.data ?? (Array.isArray(data) ? data : []);
+        if (pncpItens.length > 0) {
+          itens = pncpItens
+            .map((item: any, idx: number) => ({
+              item: item.numeroItem ?? idx + 1,
+              descricao: (item.descricao ?? item.descricaoItem ?? "").trim(),
+              quantidade: Number(item.quantidade ?? 1),
+              unidade: item.unidadeMedida ?? item.unidade ?? "UN",
+              valor_unitario: Number(item.valorUnitarioEstimado ?? item.valorUnitario ?? 0),
+              valor_total: Number(item.valorTotal ?? 0) || Number(item.quantidade ?? 0) * Number(item.valorUnitarioEstimado ?? 0),
+              lote: item.lote ? String(item.lote) : "Único",
+              marca: item.marcaFabricante ?? null,
+              fabricante: null,
+              modelo: null,
+            }))
+            .filter((i: any) => i.descricao.length > 0);
+          fonteUsada = "PNCP_ITENS";
+          console.log(`[auto-ingest] PNCP itens API: ${itens.length} itens encontrados`);
+        } else {
+          console.log("[auto-ingest] PNCP itens API: 0 itens (lista vazia)");
+        }
+      }
+    } catch (e) {
+      console.warn("[auto-ingest] PNCP itens API erro:", String(e));
+    }
+  }
+
+  // Estratégia 1: XLSX nos anexos
+  const xlsxFirst = anexos.find((a) => a.tipo === "xlsx");
+
+  if (xlsxFirst && itens.length === 0) {
     await updateStatus({ etapa: "parse", mensagem: `Lendo planilha: ${xlsxFirst.nome}` });
     const dl = await downloadBinary(xlsxFirst.url);
     if (dl) {
@@ -337,7 +378,8 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Fallback PDF/IA via extrair-itens-edital
+  // Estratégia 2: Fallback PDF/IA via extrair-itens-edital
+  let iaResult: any = null;
   if (itens.length === 0) {
     await updateStatus({ etapa: "parse", mensagem: "Lendo edital com IA…" });
     const pdfFirst = anexos.find((a) => a.tipo === "pdf");
@@ -350,7 +392,6 @@ Deno.serve(async (req) => {
     }
     if (pdfFirst) payload.pdf_url = pdfFirst.url;
 
-    // Sempre passar texto bruto do objeto/observações como último recurso
     const textoFallback = [lic.objeto, lic.observacoes].filter(Boolean).join("\n\n");
     if (textoFallback.length >= 50) {
       payload.texto_edital = textoFallback;
@@ -359,27 +400,56 @@ Deno.serve(async (req) => {
 
     if (Object.keys(payload).length > 0) {
       console.log("[auto-ingest] Chamando extrair-itens-edital com:", Object.keys(payload));
-      const result = await callExtrairItensIA(SUPABASE_URL, SUPABASE_ANON_KEY, payload);
-      console.log("[auto-ingest] Resultado IA:", { success: result?.success, count: result?.data?.length, error: result?.error });
-      if (result?.success && Array.isArray(result.data) && result.data.length > 0) {
-        itens = result.data;
-        fonteUsada = result.fonte || "IA";
+      iaResult = await callExtrairItensIA(SUPABASE_URL, SUPABASE_ANON_KEY, payload);
+      console.log("[auto-ingest] Resultado IA:", { success: iaResult?.success, count: iaResult?.data?.length, error: iaResult?.error, fonte: iaResult?.fonte });
+      if (iaResult?.success && Array.isArray(iaResult.data) && iaResult.data.length > 0) {
+        itens = iaResult.data;
+        fonteUsada = iaResult.fonte || "IA";
       }
     }
   }
 
+  // Backfill PNCP coords na licitação para acelerar futuras extrações
+  if (pncp && (!lic.cnpj_orgao || !lic.ano_compra || !lic.sequencial_compra)) {
+    await admin.from("licitacoes").update({
+      cnpj_orgao: pncp.cnpj,
+      ano_compra: pncp.ano,
+      sequencial_compra: pncp.seq,
+    }).eq("id", lic.id).eq("user_id", user.id);
+    console.log("[auto-ingest] Backfill PNCP coords salvo");
+  }
+
   if (itens.length === 0) {
-    const motivo = anexos.length === 0
-      ? "Não foi possível localizar anexos do edital automaticamente. Tente fazer upload manual do PDF/planilha."
-      : "Anexos foram localizados mas não foi possível extrair itens estruturados. Tente upload manual.";
+    let motivo: string;
+    if (!pncp) {
+      motivo = `PNCP não detectado para este processo (numero: "${lic.numero}", url: "${lic.url_edital || "—"}"). Faça upload manual do PDF/planilha.`;
+    } else if (anexos.length === 0 && !iaResult) {
+      motivo = `PNCP detectado (${pncp.cnpj}/${pncp.ano}/${pncp.seq}) mas sem arquivos disponíveis via API e sem resposta da IA.`;
+    } else if (anexos.length === 0) {
+      motivo = `PNCP detectado mas sem arquivos/itens disponíveis na API. Os itens podem não ter sido publicados ainda. Faça upload manual do edital.`;
+    } else {
+      motivo = `Arquivos localizados (${anexos.length}) mas nenhum item estruturado pôde ser extraído. O PDF pode ser escaneado. Faça upload manual.`;
+    }
+
+    // Inclui pdf_url se extrair-itens-edital encontrou o PDF mas não conseguiu extrair
+    const pdfUrl = iaResult?.pdf_url ?? anexos.find((a) => a.tipo === "pdf")?.url ?? null;
+
     await updateStatus({
       status: "failed",
       etapa: "done",
       finalizado_em: new Date().toISOString(),
       mensagem: motivo,
-      erro: anexos.length === 0 ? "no_attachments_found" : "no_items_extracted",
+      erro: !pncp ? "pncp_not_detected" : anexos.length === 0 ? "no_attachments_found" : "no_items_extracted",
     });
-    return new Response(JSON.stringify({ success: false, reason: "no_items", motivo, anexos, pncp_detectado: !!pncp }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({
+      success: false,
+      reason: "no_items",
+      motivo,
+      pncp_detectado: !!pncp,
+      pncp_coords: pncp ? `${pncp.cnpj}/${pncp.ano}/${pncp.seq}` : null,
+      anexos_encontrados: anexos.length,
+      pdf_url: pdfUrl,
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   // Persistir
