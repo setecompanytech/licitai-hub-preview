@@ -181,7 +181,33 @@ export default function PropostaTecnica() {
         if (data.localEntrega) setLocalEntrega(data.localEntrega);
         if (data.liquidacaoNfe) setLiquidacaoNfe(data.liquidacaoNfe);
         if (data.editalRawText) setEditalRawText(data.editalRawText);
-        if (data.itens?.length > 0) setItens(data.itens);
+        if (data.itens?.length > 0) {
+          setItens(data.itens);
+          // Sincroniza itens do rascunho com licitacao_itens para que apareçam
+          // em ImportarDoCatalogo e Precificação em visitas futuras
+          if (processoId && user) {
+            const parseVal = (v: string) =>
+              parseFloat((v || '0').replace(/\./g, '').replace(',', '.')) || 0;
+            const rows = (data.itens as any[]).map((it: any, idx: number) => ({
+              licitacao_id: processoId,
+              user_id: user.id,
+              numero: parseInt(it.item) || idx + 1,
+              descricao: it.descricao || '',
+              quantidade: parseFloat(it.quantidade) || 1,
+              unidade: it.unidade || 'UN',
+              valor_unitario: parseVal(it.valorUnitario),
+              valor_total: parseVal(it.valorTotal),
+              marca: it.marca || null,
+              fabricante: it.fabricante || null,
+              modelo: it.modelo || null,
+            }));
+            supabase.from('licitacao_itens')
+              .upsert(rows, { onConflict: 'licitacao_id,numero' })
+              .then(({ error }) => {
+                if (error) console.warn('[rascunho-sync] licitacao_itens:', error);
+              });
+          }
+        }
         if (data.repNome !== undefined) setRepNome(data.repNome ?? '');
         if (data.repCpf !== undefined) setRepCpf(data.repCpf ?? '');
         if (data.repRg !== undefined) setRepRg(data.repRg ?? '');
