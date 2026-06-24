@@ -203,25 +203,21 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
         />
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border border-border rounded-lg">
+      <div className="overflow-x-auto rounded-lg border border-border/50">
+        <table className="w-full text-sm min-w-[700px]">
           <thead>
-            <tr className="bg-muted/50">
-              <th className="px-2 py-2 text-left w-12">Item</th>
-              <th className="px-2 py-2 text-left">Descrição</th>
-              <th className="px-2 py-2 text-left w-16">Qtd</th>
-              <th className="px-2 py-2 text-left w-14">Und</th>
-              <th className="px-2 py-2 text-left w-24">Marca</th>
-              <th className="px-2 py-2 text-left w-24">Fabricante</th>
-              <th className="px-2 py-2 text-left w-24">Modelo</th>
-              <th className="px-2 py-2 text-left w-28">Vlr Unit. (R$)</th>
-              <th className="px-2 py-2 text-left w-36">Vlr Unit. Extenso</th>
-              <th className="px-2 py-2 text-left w-24">Vlr Total (R$)</th>
-              <th className="px-2 py-2 text-left w-36">Vlr Total Extenso</th>
-              <th className="px-2 py-2 w-10"></th>
+            <tr className="bg-muted/60 border-b border-border/60">
+              <th className="px-2 py-2.5 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-10">#</th>
+              <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Descrição</th>
+              <th className="px-2 py-2.5 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-14">Qtd</th>
+              <th className="px-2 py-2.5 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-14">Und</th>
+              <th className="px-2 py-2.5 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-32">Marca / Fab. / Mod.</th>
+              <th className="px-2 py-2.5 text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-32">Vlr Unitário</th>
+              <th className="px-2 py-2.5 text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-32">Vlr Total</th>
+              <th className="px-2 py-2.5 w-8"></th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-border/40">
             {itens.map((item, i) => {
               const temSugestao = sugestoes[i] !== undefined;
               const precoSug = sugestoes[i];
@@ -229,48 +225,92 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
               const usandoCusto = temSugestao && item.custoAquisicao && Math.abs(valorAtual - item.custoAquisicao) < 0.01;
 
               return (
-                <tr key={i} className={`border-t border-border/50 ${usandoCusto ? 'bg-accent/5' : ''}`}>
-                  <td className="px-2 py-1">
-                    <Input className="h-8 text-xs" value={item.item} onChange={e => updateItem(i, 'item', e.target.value)} />
+                <tr key={i} className={`group transition-colors hover:bg-muted/20 ${usandoCusto ? 'bg-accent/5' : i % 2 === 0 ? '' : 'bg-muted/10'}`}>
+                  {/* # */}
+                  <td className="px-2 py-2 text-center">
+                    <Input
+                      className="h-7 text-xs text-center w-9 mx-auto px-1 font-mono"
+                      value={item.item}
+                      onChange={e => updateItem(i, 'item', e.target.value)}
+                    />
                   </td>
-                  <td className="px-2 py-1">
-                    <Input className="h-8 text-xs" value={item.descricao} onChange={e => updateItem(i, 'descricao', e.target.value)} />
+
+                  {/* Descrição */}
+                  <td className="px-3 py-2">
+                    <Input
+                      className="h-7 text-xs w-full min-w-[180px]"
+                      value={item.descricao}
+                      onChange={e => updateItem(i, 'descricao', e.target.value)}
+                      placeholder="Descrição do item"
+                    />
                   </td>
-                  <td className="px-2 py-1">
-                    <Input className="h-8 text-xs" value={item.quantidade} onChange={e => updateItem(i, 'quantidade', e.target.value)} />
+
+                  {/* Qtd */}
+                  <td className="px-2 py-2">
+                    <Input
+                      className="h-7 text-xs text-center w-14 mx-auto px-1"
+                      value={item.quantidade}
+                      onChange={e => updateItem(i, 'quantidade', e.target.value)}
+                    />
                   </td>
-                  <td className="px-2 py-1">
-                    <Input className="h-8 text-xs" value={item.unidade} onChange={e => updateItem(i, 'unidade', e.target.value)} />
+
+                  {/* Und */}
+                  <td className="px-2 py-2">
+                    <Input
+                      className="h-7 text-xs text-center w-14 mx-auto px-1"
+                      value={item.unidade}
+                      onChange={e => updateItem(i, 'unidade', e.target.value)}
+                    />
                   </td>
-                  <td className="px-2 py-1">
-                    <Input className="h-8 text-xs" value={item.marca} onChange={e => updateItem(i, 'marca', e.target.value)} placeholder="Marca" />
-                  </td>
-                  <td className="px-2 py-1">
-                    <Input className="h-8 text-xs" value={item.fabricante} onChange={e => updateItem(i, 'fabricante', e.target.value)} placeholder="Fabricante" />
-                  </td>
-                  <td className="px-2 py-1">
-                    <Input className="h-8 text-xs" value={item.modelo} onChange={e => updateItem(i, 'modelo', e.target.value)} placeholder="Modelo" />
-                  </td>
-                  <td className="px-2 py-1">
+
+                  {/* Marca / Fab / Modelo — stacked */}
+                  <td className="px-2 py-2">
                     <div className="space-y-1">
-                      <Input className="h-8 text-xs" value={item.valorUnitario} onChange={e => updateItem(i, 'valorUnitario', e.target.value)} />
+                      <Input
+                        className="h-6 text-[11px] px-2"
+                        value={item.marca}
+                        onChange={e => updateItem(i, 'marca', e.target.value)}
+                        placeholder="Marca"
+                      />
+                      <Input
+                        className="h-6 text-[11px] px-2"
+                        value={item.fabricante}
+                        onChange={e => updateItem(i, 'fabricante', e.target.value)}
+                        placeholder="Fabricante"
+                      />
+                      <Input
+                        className="h-6 text-[11px] px-2"
+                        value={item.modelo}
+                        onChange={e => updateItem(i, 'modelo', e.target.value)}
+                        placeholder="Modelo"
+                      />
+                    </div>
+                  </td>
+
+                  {/* Vlr Unitário + extenso + sugestão */}
+                  <td className="px-2 py-2 text-right">
+                    <div className="space-y-1">
+                      <Input
+                        className="h-7 text-xs text-right font-mono ml-auto"
+                        value={item.valorUnitario}
+                        onChange={e => updateItem(i, 'valorUnitario', e.target.value)}
+                        placeholder="0,00"
+                      />
+                      {item.valorUnitarioExtenso && (
+                        <p className="text-[9px] text-muted-foreground italic leading-tight text-right truncate max-w-[128px] ml-auto" title={item.valorUnitarioExtenso}>
+                          {item.valorUnitarioExtenso}
+                        </p>
+                      )}
                       {temSugestao && precoSug && (
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button
                                 onClick={() => aplicarSugestao(i)}
-                                className="flex items-center gap-1 text-[10px] text-accent hover:text-accent/80 transition-colors group w-full"
+                                className="flex items-center gap-1 text-[10px] text-accent hover:text-accent/80 transition-colors ml-auto"
                               >
-                                <Sparkles className="w-3 h-3 shrink-0" />
-                                <span className="font-medium">
-                                  Sugerido: R$ {precoSug.toFixed(2).replace('.', ',')}
-                                </span>
-                                {usandoCusto && (
-                                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-accent/40 text-accent">
-                                    Custo
-                                  </Badge>
-                                )}
+                                <Sparkles className="w-2.5 h-2.5 shrink-0" />
+                                <span className="font-medium">R$ {precoSug.toFixed(2).replace('.', ',')}</span>
                               </button>
                             </TooltipTrigger>
                             <TooltipContent side="bottom" className="max-w-xs">
@@ -290,21 +330,32 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
                       )}
                     </div>
                   </td>
-                  <td className="px-2 py-1">
-                    <span className="text-xs text-muted-foreground italic leading-tight block truncate max-w-[140px]" title={item.valorUnitarioExtenso}>
-                      {item.valorUnitarioExtenso || '—'}
-                    </span>
+
+                  {/* Vlr Total (calc) + extenso */}
+                  <td className="px-2 py-2 text-right">
+                    <div className="space-y-1">
+                      <div className="h-7 flex items-center justify-end px-2 rounded-md bg-muted/40 border border-border/40 font-mono text-xs font-semibold text-foreground">
+                        {item.valorTotal
+                          ? `R$ ${parseFloat(item.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                          : <span className="text-muted-foreground/50">—</span>
+                        }
+                      </div>
+                      {item.valorTotalExtenso && (
+                        <p className="text-[9px] text-muted-foreground italic leading-tight text-right truncate max-w-[128px] ml-auto" title={item.valorTotalExtenso}>
+                          {item.valorTotalExtenso}
+                        </p>
+                      )}
+                    </div>
                   </td>
-                  <td className="px-2 py-1">
-                    <Input className="h-8 text-xs bg-muted/30" value={item.valorTotal} readOnly />
-                  </td>
-                  <td className="px-2 py-1">
-                    <span className="text-xs text-muted-foreground italic leading-tight block truncate max-w-[140px]" title={item.valorTotalExtenso}>
-                      {item.valorTotalExtenso || '—'}
-                    </span>
-                  </td>
-                  <td className="px-2 py-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeItem(i)}>
+
+                  {/* Delete */}
+                  <td className="px-1 py-2 text-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => removeItem(i)}
+                    >
                       <Trash2 className="w-3 h-3" />
                     </Button>
                   </td>
