@@ -419,6 +419,10 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
       data_encerramento: lic.data_encerramento,
       portal: lic.portal,
       url: lic.url,
+      pncpNumero: lic.pncpNumero || null,
+      cnpjOrgao: lic.cnpjOrgao || null,
+      anoCompra: lic.anoCompra || null,
+      sequencialCompra: lic.sequencialCompra || null,
     });
     setIniciandoProcesso(null);
   }, [iniciarProcesso]);

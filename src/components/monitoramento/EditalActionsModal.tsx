@@ -20,6 +20,10 @@ export interface EditalSeed {
   data_encerramento?: string | null;
   portal?: string | null;
   url?: string | null;
+  pncpNumero?: string | null;
+  cnpjOrgao?: string | null;
+  anoCompra?: number | string | null;
+  sequencialCompra?: number | string | null;
 }
 
 interface Props {
@@ -57,7 +61,7 @@ export default function EditalActionsModal({ open, onOpenChange, edital, existin
       let licitacaoId: string | null = existingId || null;
 
       if (!licitacaoId) {
-        const created = await iniciarProcesso(edital);
+        const created = await iniciarProcesso(edital as any);
         licitacaoId = created || null;
         if (!licitacaoId) {
           toast.error('Não foi possível iniciar o processo.');

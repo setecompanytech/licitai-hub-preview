@@ -233,10 +233,10 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { return new Response(JSON.stringify({ error: "invalid json" }), { status: 400, headers: corsHeaders }); }
   if (!body.licitacao_id) return new Response(JSON.stringify({ error: "licitacao_id required" }), { status: 400, headers: corsHeaders });
 
-  // Carrega licitação (e numero_controle_pncp via cache se houver)
+  // Carrega licitação com coordenadas PNCP quando disponíveis
   const { data: lic } = await admin
     .from("licitacoes")
-    .select("id, user_id, numero, orgao, objeto, observacoes, url_edital, valor_estimado")
+    .select("id, user_id, numero, orgao, objeto, observacoes, url_edital, valor_estimado, cnpj_orgao, ano_compra, sequencial_compra, numero_controle_pncp")
     .eq("id", body.licitacao_id)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -253,15 +253,41 @@ Deno.serve(async (req) => {
 
   await updateStatus({ status: "running", etapa: "resolve", iniciado_em: new Date().toISOString(), erro: null, mensagem: null });
 
-  // Resolver fonte: tentar PNCP via numero/url/cache
+  // Resolver fonte: tentar PNCP via coordenadas salvas, numero, url ou cache
   let anexos: AnexoLink[] = [];
   let fonte = "generic";
   let pncp: ReturnType<typeof parsePNCPNumeroControle> = null;
 
+  // 0) Usar coordenadas PNCP salvas diretamente na licitação (caminho mais confiável)
+  if (lic.cnpj_orgao && lic.ano_compra && lic.sequencial_compra) {
+    pncp = { cnpj: lic.cnpj_orgao, seq: lic.sequencial_compra, ano: lic.ano_compra };
+    console.log("[auto-ingest] PNCP coords from licitacoes:", pncp);
+  }
+
+  // 0b) Tentar via numero_controle_pncp salvo
+  if (!pncp && lic.numero_controle_pncp) {
+    pncp = parsePNCPNumeroControle(lic.numero_controle_pncp);
+    if (pncp) console.log("[auto-ingest] PNCP from numero_controle_pncp:", pncp);
+  }
+
   // 1) Tentar parsear do número do processo
-  pncp = parsePNCPNumeroControle(lic.numero || "");
+  if (!pncp) pncp = parsePNCPNumeroControle(lic.numero || "");
   // 2) Tentar parsear da URL do edital
   if (!pncp) pncp = parsePNCPNumeroControle(lic.url_edital || "");
+
+  // 2b) Tentar localizar no cache por numero_compra
+  if (!pncp && lic.numero) {
+    const { data: cacheByNumero } = await admin
+      .from("pncp_editais_cache")
+      .select("cnpj_orgao, ano_compra, sequencial_compra")
+      .eq("numero_compra", lic.numero)
+      .limit(1)
+      .maybeSingle();
+    if (cacheByNumero?.cnpj_orgao && cacheByNumero?.ano_compra && cacheByNumero?.sequencial_compra) {
+      pncp = { cnpj: cacheByNumero.cnpj_orgao, seq: String(cacheByNumero.sequencial_compra), ano: String(cacheByNumero.ano_compra) };
+      console.log("[auto-ingest] PNCP found via cache numero_compra:", pncp);
+    }
+  }
 
   // 3) Tentar localizar no cache PNCP por objeto + órgão
   if (!pncp && lic.objeto && lic.orgao) {

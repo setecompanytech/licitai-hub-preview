@@ -51,6 +51,10 @@ interface Edital {
   link: string;
   linkPncp: string;
   informacaoComplementar: string;
+  // Coordenadas PNCP para extração automática de itens
+  anoCompra: string | null;
+  sequencialCompra: string | null;
+  numeroControlePncp: string | null;
 }
 
 interface ResultadoBusca {
@@ -611,6 +615,7 @@ export default function MonitoramentoEditais() {
             numero_controle_pncp: item.numeroControlePncp || null,
             numero_compra: item.numeroCompra,
             ano_compra: item.anoCompra ? String(item.anoCompra) : null,
+            sequencial_compra: item.sequencialCompra ? String(item.sequencialCompra) : null,
             objeto: item.objeto,
             orgao: item.orgao,
             cnpj_orgao: item.cnpj,
@@ -751,6 +756,9 @@ export default function MonitoramentoEditais() {
         link: r.link_sistema_origem ?? r.link_comprasnet ?? '',
         linkPncp: r.url_pncp ?? '',
         informacaoComplementar: '',
+        anoCompra: r.ano_compra ?? null,
+        sequencialCompra: r.sequencial_compra ?? null,
+        numeroControlePncp: r.numero_controle_pncp ?? null,
       }));
 
       // Validação do total reportado pela API (soma UF×modalidade):
@@ -1474,7 +1482,11 @@ export default function MonitoramentoEditais() {
                       municipio: edital.municipio,
                       data_encerramento: edital.dataEncerramento,
                       portal: 'PNCP',
-                      url: edital.linkPncp,
+                      url: edital.linkPncp || null,
+                      pncpNumero: edital.numeroControlePncp || null,
+                      cnpjOrgao: edital.cnpj || null,
+                      anoCompra: edital.anoCompra || null,
+                      sequencialCompra: edital.sequencialCompra || null,
                     })}
                   />
                 );

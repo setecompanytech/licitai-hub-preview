@@ -16,6 +16,11 @@ type EditalData = {
   data_encerramento?: string | null;
   portal?: string | null;
   url?: string | null;
+  // Coordenadas PNCP — usadas por edital-auto-ingest para extrair itens
+  pncpNumero?: string | null;
+  cnpjOrgao?: string | null;
+  anoCompra?: number | string | null;
+  sequencialCompra?: number | string | null;
 };
 
 export function useLicitacaoIntegration() {
@@ -60,6 +65,10 @@ export function useLicitacaoIntegration() {
           data_encerramento: edital.data_encerramento,
           portal: edital.portal,
           url_edital: edital.url,
+          numero_controle_pncp: edital.pncpNumero || null,
+          cnpj_orgao: edital.cnpjOrgao || null,
+          ano_compra: edital.anoCompra ? String(edital.anoCompra) : null,
+          sequencial_compra: edital.sequencialCompra ? String(edital.sequencialCompra) : null,
         })
         .select('id')
         .single();
