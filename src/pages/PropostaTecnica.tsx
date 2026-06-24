@@ -210,6 +210,10 @@ export default function PropostaTecnica() {
         if (data.currentStep) setCurrentStep(data.currentStep);
         if (typeof data.usarMarcaDagua === 'boolean') setUsarMarcaDagua(data.usarMarcaDagua);
         toast.info('Rascunho restaurado automaticamente.');
+        // Se o rascunho não tem itens, ainda carrega do banco para não deixar a tabela vazia
+        if (!data.itens?.length && processoId) {
+          loadProcessoData(processoId);
+        }
       } else if (processoId) {
         // No draft found — try to load process data from licitacoes table
         loadProcessoData(processoId);
@@ -268,6 +272,33 @@ export default function PropostaTecnica() {
       }));
       setItens(mapped);
       toast.success(`${mapped.length} item(ns) carregado(s) da precificação deste processo.`);
+      return;
+    }
+
+    // Fallback: carregar itens extraídos do edital (sem preços preenchidos)
+    const { data: editalItens } = await supabase
+      .from('licitacao_itens')
+      .select('numero, descricao, quantidade, unidade, valor_unitario, valor_total, marca')
+      .eq('user_id', user.id)
+      .eq('licitacao_id', lid)
+      .order('numero', { ascending: true });
+
+    if (editalItens && editalItens.length > 0) {
+      const mapped = editalItens.map((it: any, idx: number) => ({
+        item: String(it.numero || idx + 1),
+        descricao: it.descricao || '',
+        quantidade: String(it.quantidade || 1),
+        unidade: it.unidade || 'UN',
+        marca: it.marca || '',
+        fabricante: '',
+        modelo: '',
+        valorUnitario: (it.valor_unitario || 0).toFixed(2).replace('.', ','),
+        valorUnitarioExtenso: valorPorExtenso(it.valor_unitario || 0),
+        valorTotal: (it.valor_total || 0).toFixed(2).replace('.', ','),
+        valorTotalExtenso: valorPorExtenso(it.valor_total || 0),
+      }));
+      setItens(mapped);
+      toast.info(`${mapped.length} item(ns) do edital carregado(s). Preencha os preços.`);
     }
   };
 
