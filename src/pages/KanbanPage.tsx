@@ -124,23 +124,27 @@ export default function KanbanPage() {
     };
   }, [user]);
 
-  const handleDragStart = (id: string) => setDragItem(id);
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    // dataTransfer.setData é obrigatório no Firefox para o drop disparar
+    e.dataTransfer.setData('text/plain', id);
+    e.dataTransfer.effectAllowed = 'move';
+    setDragItem(id);
+  };
   const handleDragOver = (e: React.DragEvent, colId: string) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     setDragOverCol(colId);
   };
   const handleDrop = async (e: React.DragEvent, colId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    if (dragItem) {
-      const item = items.find(i => i.id === dragItem);
+    // Lê o id tanto do estado React quanto do dataTransfer (fallback cross-browser)
+    const id = dragItem || e.dataTransfer.getData('text/plain');
+    if (id) {
+      const item = items.find(i => i.id === id);
       if (item && item.status !== colId) {
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === dragItem ? { ...i, status: colId } : i
-          )
-        );
-        await atualizarStatus(dragItem, colId, `Status alterado de "${item.status}" para "${colId}" via Kanban.`);
+        setItems((prev) => prev.map((i) => i.id === id ? { ...i, status: colId } : i));
+        await atualizarStatus(id, colId, `Status alterado de "${item.status}" para "${colId}" via Kanban.`);
       }
     }
     setDragItem(null);
@@ -227,7 +231,7 @@ export default function KanbanPage() {
                         dragItem === lic.id && 'opacity-40 scale-95'
                       )}
                       draggable
-                      onDragStart={() => handleDragStart(lic.id)}
+                      onDragStart={(e) => handleDragStart(e, lic.id)}
                       onDragEnd={() => { setDragItem(null); setDragOverCol(null); }}
                     >
                       <div className="flex items-start gap-1.5 kanban-card-body">
