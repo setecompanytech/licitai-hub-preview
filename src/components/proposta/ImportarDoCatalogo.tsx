@@ -26,6 +26,7 @@ interface CatalogoItem {
   licitacao_id: string | null;
   licitacao_numero: string | null;
   licitacao_orgao: string | null;
+  _fonte?: 'catalogo' | 'edital';
 }
 
 interface Props {
@@ -86,11 +87,45 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
       error = result.error;
     }
 
+    let catalogoData: CatalogoItem[] = [];
     if (!error && data) {
-      setItems(data as any[]);
-      const lics = [...new Set(data.filter((d: any) => d.licitacao_numero).map((d: any) => d.licitacao_numero as string))];
-      setLicitacoes(lics);
+      catalogoData = (data as any[]).map(d => ({ ...d, _fonte: 'catalogo' as const }));
     }
+
+    // Fallback: se não há itens no catálogo para esta licitação, busca licitacao_itens (extraídos do edital)
+    if (licitacaoId && catalogoData.filter(i => i.licitacao_id === licitacaoId || i.licitacao_numero === licitacaoNumero).length === 0) {
+      const { data: editalItens } = await supabase
+        .from('licitacao_itens')
+        .select('id, numero, descricao, quantidade, unidade, valor_unitario, valor_total, marca, fabricante, modelo, lote')
+        .eq('user_id', user.id)
+        .eq('licitacao_id', licitacaoId)
+        .order('numero', { ascending: true });
+
+      if (editalItens && editalItens.length > 0) {
+        const editalMapped: CatalogoItem[] = editalItens.map((it: any) => ({
+          id: it.id,
+          descricao: it.descricao,
+          quantidade: Number(it.quantidade ?? 1),
+          unidade: it.unidade || 'UN',
+          marca: it.marca || null,
+          fabricante: it.fabricante || null,
+          modelo: it.modelo || null,
+          preco_unitario: Number(it.valor_unitario ?? 0),
+          preco_total: Number(it.valor_total ?? 0),
+          tipo_calculo: 'edital',
+          licitacao_id: licitacaoId,
+          licitacao_numero: licitacaoNumero || null,
+          licitacao_orgao: null,
+          _fonte: 'edital' as const,
+        }));
+        catalogoData = [...catalogoData, ...editalMapped];
+      }
+    }
+
+    setItems(catalogoData);
+    const lics = [...new Set(catalogoData.filter(d => d.licitacao_numero).map(d => d.licitacao_numero as string))];
+    setLicitacoes(lics);
+
     // Load user processes for the filter dropdown
     const procs = await fetchProcessos();
     setProcessos(procs);
@@ -190,10 +225,15 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
             </div>
           ) : filteredItems.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-4">
-              Nenhum item no catálogo. Precifique itens na aba Precificação primeiro.
+              Nenhum item encontrado. Extraia os itens do edital ou precifique na aba Precificação.
             </p>
           ) : (
             <div className="max-h-[250px] overflow-y-auto space-y-1">
+              {filteredItems.some(i => i._fonte === 'edital') && (
+                <p className="text-[10px] text-amber-500/80 px-1 pb-1">
+                  Itens extraídos do edital (valores de referência). Preencha seu preço após importar.
+                </p>
+              )}
               {filteredItems.map(item => (
                 <label
                   key={item.id}
@@ -209,11 +249,14 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
                   />
                   <span className="flex-1 truncate">{item.descricao}</span>
                   <span className="text-muted-foreground">{item.quantidade} {item.unidade}</span>
-                  <span className="font-medium">{formatCurrency(item.preco_unitario)}</span>
-                  <span className="font-semibold text-accent">{formatCurrency(item.preco_total)}</span>
-                  {item.licitacao_numero && (
-                    <Badge variant="outline" className="text-[8px] shrink-0">{item.licitacao_numero}</Badge>
-                  )}
+                  {item.preco_unitario > 0
+                    ? <span className="font-medium">{formatCurrency(item.preco_unitario)}</span>
+                    : <span className="text-muted-foreground/50 text-[10px]">sem preço</span>
+                  }
+                  {item._fonte === 'edital'
+                    ? <Badge variant="outline" className="text-[8px] shrink-0 border-amber-500/40 text-amber-500">Edital</Badge>
+                    : <span className="font-semibold text-accent">{formatCurrency(item.preco_total)}</span>
+                  }
                 </label>
               ))}
             </div>
