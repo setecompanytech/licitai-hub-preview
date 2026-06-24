@@ -521,7 +521,7 @@ export default function MonitoramentoEditais() {
 
       // Intervalo padrão quando nenhuma data foi informada:
       // - busca por número → ano inteiro do campo "ano" (01/01/ano a 31/12/ano)
-      // - busca geral → últimos 30 dias
+      // - busca geral → últimos 90 dias (era 30 — aumentado para cobrir mais editais)
       const hojeStr = new Date().toISOString().slice(0, 10);
       let dataIniEfetiva: string;
       let dataFimEfetiva: string;
@@ -534,8 +534,8 @@ export default function MonitoramentoEditais() {
         dataIniEfetiva = `${anoValido}-01-01`;
         dataFimEfetiva = `${anoValido}-12-31`;
       } else {
-        const trintaDiasStr = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-        dataIniEfetiva = trintaDiasStr;
+        const noventaDiasStr = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+        dataIniEfetiva = noventaDiasStr;
         dataFimEfetiva = hojeStr;
       }
 

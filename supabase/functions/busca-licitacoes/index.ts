@@ -282,10 +282,10 @@ Deno.serve(async (req) => {
     const pageSize = Math.max(10, Math.min(Number(tamanhoPagina) || 20, 50));
     const paginaAtual = Math.max(1, Number(pagina) || 1);
 
-    const inicio30 = new Date(hoje);
-    inicio30.setDate(inicio30.getDate() - 30);
+    const inicio90 = new Date(hoje);
+    inicio90.setDate(inicio90.getDate() - 90);
 
-    const dataInicialFiltro = dataInicial || formatIsoDate(inicio30);
+    const dataInicialFiltro = dataInicial || formatIsoDate(inicio90);
     const dataFinalFiltro = dataFinal || formatIsoDate(hoje);
     const modalidadeFiltro = modalidade ? String(modalidade) : '';
     const esferaFiltro = esfera && esfera !== 'all' ? String(esfera) : '';
@@ -306,24 +306,42 @@ Deno.serve(async (req) => {
       const MODALIDADES_COMUNS = [6, 4, 8, 9, 5, 7];
 
       const fetchModalidade = async (modId: number) => {
-        const p = new URLSearchParams({
-          pagina: '1',
-          tamanhoPagina: String(Math.min(50, pageSize * 3)),
-        });
-        if (termo) p.set('q', termo);
-        if (uf) p.set('uf', uf.toUpperCase());
-        if (esferaFiltro) p.set('codigoEsfera', esferaFiltro);
-        p.set('codigoModalidadeContratacao', String(modId));
-        p.set('dataInicial', dataInicialFiltro.replace(/-/g, ''));
-        p.set('dataFinal', dataFinalFiltro.replace(/-/g, ''));
+        // PNCP permite até 500 por página. Buscamos página 1 com 500 itens;
+        // se vier cheia, buscamos a página 2 em seguida para cobrir mais resultados.
+        const buildParams = (pagina: number) => {
+          const p = new URLSearchParams({ pagina: String(pagina), tamanhoPagina: '500' });
+          if (termo) p.set('q', termo);
+          if (uf) p.set('uf', uf.toUpperCase());
+          if (esferaFiltro) p.set('codigoEsfera', esferaFiltro);
+          p.set('codigoModalidadeContratacao', String(modId));
+          p.set('dataInicial', dataInicialFiltro.replace(/-/g, ''));
+          p.set('dataFinal', dataFinalFiltro.replace(/-/g, ''));
+          return p;
+        };
 
-        const resp = await fetch(`${PNCP_BASE}/contratacoes/publicacao?${p}`, {
+        const baseUrl = `${PNCP_BASE}/contratacoes/publicacao`;
+        const resp1 = await fetch(`${baseUrl}?${buildParams(1)}`, {
           headers: pncpHeaders,
           signal: AbortSignal.timeout(25_000),
         });
-        if (!resp.ok) return { mapped: [], raw: [], ok: false };
-        const json = await resp.json();
-        const rawItems = (json.data || []) as Record<string, unknown>[];
+        if (!resp1.ok) return { mapped: [], raw: [], ok: false };
+        const json1 = await resp1.json();
+        const rawItems: Record<string, unknown>[] = json1.data || [];
+
+        // Se a página 1 veio cheia, busca a página 2 também
+        if (rawItems.length >= 500) {
+          try {
+            const resp2 = await fetch(`${baseUrl}?${buildParams(2)}`, {
+              headers: pncpHeaders,
+              signal: AbortSignal.timeout(25_000),
+            });
+            if (resp2.ok) {
+              const json2 = await resp2.json();
+              rawItems.push(...(json2.data || []));
+            }
+          } catch (_) { /* ignora timeout na página 2 */ }
+        }
+
         return { mapped: rawItems.map(mapearItem), raw: rawItems, ok: true };
       };
 
@@ -431,14 +449,14 @@ Deno.serve(async (req) => {
     if (isTimeout) {
       try {
         const hoje = new Date();
-        const inicio30 = new Date(hoje);
-        inicio30.setDate(inicio30.getDate() - 30);
+        const inicio90 = new Date(hoje);
+        inicio90.setDate(inicio90.getDate() - 90);
         return await buscarNoCache({
           termo: String(parsedBody.termo || ''),
           uf: String(parsedBody.uf || ''),
           pagina: Math.max(1, Number(parsedBody.pagina) || 1),
           tamanhoPagina: Math.max(10, Math.min(Number(parsedBody.tamanhoPagina) || 20, 50)),
-          dataInicial: String(parsedBody.dataInicial || formatIsoDate(inicio30)),
+          dataInicial: String(parsedBody.dataInicial || formatIsoDate(inicio90)),
           dataFinal: String(parsedBody.dataFinal || formatIsoDate(hoje)),
           modalidade: parsedBody.modalidade ? String(parsedBody.modalidade) : '',
           situacao: String(parsedBody.situacao || 'abertas'),
