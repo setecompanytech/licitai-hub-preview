@@ -227,12 +227,16 @@ export default function KanbanPage() {
                     <div
                       key={lic.id}
                       className={cn(
-                        'bg-card rounded-lg border border-border/50 p-3 shadow-sm cursor-grab active:cursor-grabbing transition-all hover:shadow-md kanban-card',
-                        dragItem === lic.id && 'opacity-40 scale-95'
+                        'bg-card rounded-lg border border-border/50 p-3 shadow-sm cursor-grab active:cursor-grabbing transition-[box-shadow,opacity] hover:shadow-md kanban-card select-none',
+                        dragItem === lic.id && 'opacity-40'
                       )}
-                      draggable
+                      // Durante um drag, apenas o card arrastado permanece draggable.
+                      // No Chrome, cards draggable no destino interceptam o evento e impedem o drop.
+                      draggable={dragItem === null || dragItem === lic.id}
                       onDragStart={(e) => handleDragStart(e, lic.id)}
                       onDragEnd={() => { setDragItem(null); setDragOverCol(null); }}
+                      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverCol(col.id); }}
+                      onDrop={(e) => handleDrop(e, col.id)}
                     >
                       <div className="flex items-start gap-1.5 kanban-card-body">
                         <GripVertical className="w-3.5 h-3.5 text-muted-foreground/30 mt-0.5 flex-shrink-0" />
