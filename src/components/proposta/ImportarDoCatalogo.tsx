@@ -42,6 +42,8 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
   const [items, setItems] = useState<CatalogoItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [filterLicitacao, setFilterLicitacao] = useState(licitacaoId || licitacaoNumero || 'todos');
+  // resolvedLicId: o UUID real do processo (pode ser null se ainda não resolvido)
+  const [resolvedLicId, setResolvedLicId] = useState<string | null>(licitacaoId || null);
   const [licitacoes, setLicitacoes] = useState<string[]>([]);
   const [processos, setProcessos] = useState<ProcessoResumo[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -92,13 +94,26 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
       catalogoData = (data as any[]).map(d => ({ ...d, _fonte: 'catalogo' as const }));
     }
 
-    // Fallback: se não há itens no catálogo para este licitacao_id específico, busca licitacao_itens (extraídos do edital)
-    if (licitacaoId && catalogoData.filter(i => i.licitacao_id === licitacaoId).length === 0) {
+    // Resolver o licitacao_id efetivo: pode vir via prop direta ou precisar ser
+    // buscado pelo numero quando o usuário está sem ?lid= na URL.
+    let effectiveLicId: string | null = licitacaoId || null;
+    if (!effectiveLicId && licitacaoNumero) {
+      const { data: licRow } = await supabase
+        .from('licitacoes')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('numero', licitacaoNumero)
+        .limit(1)
+        .maybeSingle();
+      effectiveLicId = licRow?.id ?? null;
+    }
+
+    // Fallback: se não há itens do catálogo para este processo, carrega licitacao_itens (extraídos do edital)
+    if (effectiveLicId && catalogoData.filter(i => i.licitacao_id === effectiveLicId).length === 0) {
       const { data: editalItens } = await supabase
         .from('licitacao_itens')
         .select('id, numero, descricao, quantidade, unidade, valor_unitario, valor_total, marca, fabricante, modelo, lote')
-        .eq('user_id', user.id)
-        .eq('licitacao_id', licitacaoId)
+        .eq('licitacao_id', effectiveLicId)
         .order('numero', { ascending: true });
 
       if (editalItens && editalItens.length > 0) {
@@ -113,7 +128,7 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
           preco_unitario: Number(it.valor_unitario ?? 0),
           preco_total: Number(it.valor_total ?? 0),
           tipo_calculo: 'edital',
-          licitacao_id: licitacaoId,
+          licitacao_id: effectiveLicId,
           licitacao_numero: licitacaoNumero || null,
           licitacao_orgao: null,
           _fonte: 'edital' as const,
@@ -122,6 +137,7 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
       }
     }
 
+    if (effectiveLicId) setResolvedLicId(effectiveLicId);
     setItems(catalogoData);
     const lics = [...new Set(catalogoData.filter(d => d.licitacao_numero).map(d => d.licitacao_numero as string))];
     setLicitacoes(lics);
@@ -143,10 +159,10 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
 
   const filteredItems = items.filter(i => {
     if (filterLicitacao === 'todos') return true;
-    // Filter by licitacao_id (process ID)
     if (i.licitacao_id === filterLicitacao) return true;
-    // Fallback: filter by licitacao_numero
     if (i.licitacao_numero === filterLicitacao) return true;
+    // Quando filterLicitacao é o numero mas o item tem apenas o UUID resolvido
+    if (resolvedLicId && i.licitacao_id === resolvedLicId) return true;
     return false;
   });
 
