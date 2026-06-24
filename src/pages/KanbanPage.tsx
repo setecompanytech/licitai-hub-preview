@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { MapPin, Calendar, GripVertical, Plus, Pencil, LayoutDashboard, ListChecks, History } from 'lucide-react';
+import { MapPin, Calendar, GripVertical, Plus, Pencil, LayoutDashboard, ListChecks, History, ChevronRight } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
@@ -241,15 +242,43 @@ export default function KanbanPage() {
                       <div className="flex items-start gap-1.5 kanban-card-body">
                         <GripVertical className="w-3.5 h-3.5 text-muted-foreground/30 mt-0.5 flex-shrink-0" />
                         <div className="flex-1 min-w-0 max-w-full">
-                          <div className="flex items-center justify-between gap-2 min-w-0">
+                          <div className="flex items-center justify-between gap-1 min-w-0">
                             <span className="text-[10px] font-mono text-muted-foreground truncate">{lic.numero}</span>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleEdit(lic); }}
-                              className="p-1 rounded-md hover:bg-accent/10 text-muted-foreground/40 hover:text-accent transition-colors shrink-0"
-                              title="Editar processo"
-                            >
-                              <Pencil className="w-3 h-3" />
-                            </button>
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="p-1 rounded-md hover:bg-accent/10 text-muted-foreground/40 hover:text-accent transition-colors"
+                                    title="Mover para etapa"
+                                  >
+                                    <ChevronRight className="w-3 h-3" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-44">
+                                  {columns.filter(c => c.id !== lic.status).map(c => (
+                                    <DropdownMenuItem
+                                      key={c.id}
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        setItems(prev => prev.map(i => i.id === lic.id ? { ...i, status: c.id } : i));
+                                        await atualizarStatus(lic.id, c.id, `Status alterado para "${c.id}" via Kanban.`);
+                                      }}
+                                    >
+                                      <div className="w-2 h-2 rounded-full mr-2 shrink-0" style={{ background: c.color }} />
+                                      {c.title}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleEdit(lic); }}
+                                className="p-1 rounded-md hover:bg-accent/10 text-muted-foreground/40 hover:text-accent transition-colors"
+                                title="Editar processo"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                            </div>
                           </div>
                           <p className="kanban-card-title mt-0.5 leading-tight" title={lic.objeto}>{lic.objeto}</p>
                           <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground flex-wrap">
