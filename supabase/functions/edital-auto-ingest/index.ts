@@ -422,13 +422,11 @@ Deno.serve(async (req) => {
   if (itens.length === 0) {
     let motivo: string;
     if (!pncp) {
-      motivo = `PNCP não detectado para este processo (numero: "${lic.numero}", url: "${lic.url_edital || "—"}"). Faça upload manual do PDF/planilha.`;
-    } else if (anexos.length === 0 && !iaResult) {
-      motivo = `PNCP detectado (${pncp.cnpj}/${pncp.ano}/${pncp.seq}) mas sem arquivos disponíveis via API e sem resposta da IA.`;
+      motivo = "Não foi possível identificar este edital no PNCP automaticamente. Faça upload manual do arquivo (PDF ou DOCX).";
     } else if (anexos.length === 0) {
-      motivo = `PNCP detectado mas sem arquivos/itens disponíveis na API. Os itens podem não ter sido publicados ainda. Faça upload manual do edital.`;
+      motivo = "Edital localizado no PNCP mas ainda sem itens ou arquivos publicados. Tente novamente em breve ou faça upload manual.";
     } else {
-      motivo = `Arquivos localizados (${anexos.length}) mas nenhum item estruturado pôde ser extraído. O PDF pode ser escaneado. Faça upload manual.`;
+      motivo = "Arquivos encontrados mas sem itens estruturados (PDF pode estar escaneado). Faça upload manual do edital.";
     }
 
     // Inclui pdf_url se extrair-itens-edital encontrou o PDF mas não conseguiu extrair
