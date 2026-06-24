@@ -92,8 +92,8 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
       catalogoData = (data as any[]).map(d => ({ ...d, _fonte: 'catalogo' as const }));
     }
 
-    // Fallback: se não há itens no catálogo para esta licitação, busca licitacao_itens (extraídos do edital)
-    if (licitacaoId && catalogoData.filter(i => i.licitacao_id === licitacaoId || i.licitacao_numero === licitacaoNumero).length === 0) {
+    // Fallback: se não há itens no catálogo para este licitacao_id específico, busca licitacao_itens (extraídos do edital)
+    if (licitacaoId && catalogoData.filter(i => i.licitacao_id === licitacaoId).length === 0) {
       const { data: editalItens } = await supabase
         .from('licitacao_itens')
         .select('id, numero, descricao, quantidade, unidade, valor_unitario, valor_total, marca, fabricante, modelo, lote')
