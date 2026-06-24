@@ -103,7 +103,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
 
   return (
     <div
-      className="bg-white dark:bg-card rounded-lg shadow-inner border border-border/30 relative overflow-hidden transition-all duration-300"
+      className="rounded-lg shadow-inner border border-border/30 relative overflow-hidden transition-all duration-300"
       style={{
         fontFamily: `'${fontFamily}', Arial, Helvetica, sans-serif`,
         fontSize: `${Math.max(fontSize - 2, 9)}pt`,
@@ -113,6 +113,8 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
         aspectRatio: pageOrientation === 'landscape' ? '297 / 210' : '210 / 297',
         maxWidth: pageOrientation === 'landscape' ? '100%' : '595px',
         color: '#000',
+        backgroundColor: '#fff',
+        colorScheme: 'light',
       }}
     >
       {/* Marca d'água */}
