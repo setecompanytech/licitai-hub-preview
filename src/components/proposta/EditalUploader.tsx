@@ -263,7 +263,6 @@ ${truncated}`
                 origem: 'ia',
                 lote: 'Único',
                 licitacao_id: licitacaoId,
-                user_id: '',
               })));
               setHasExistingItens(true);
             }

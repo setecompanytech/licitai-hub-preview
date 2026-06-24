@@ -97,14 +97,24 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
     // Resolver o licitacao_id efetivo: vem via prop ou buscado pelo numero
     let effectiveLicId: string | null = licitacaoId || null;
     if (!effectiveLicId && licitacaoNumero) {
-      const { data: licRow } = await supabase
+      // Busca todas as licitações do usuário e filtra client-side
+      // porque o numero guardado pode ser "07/2026/PMPA-DL" enquanto
+      // licitacaoNumero é "PREGÃO ELETRÔNICO Nº 07/2026/PMPA-DL" (ou vice-versa)
+      const { data: allLics } = await supabase
         .from('licitacoes')
-        .select('id')
-        .eq('user_id', user.id)
-        .ilike('numero', licitacaoNumero.trim())
-        .limit(1)
-        .maybeSingle();
-      effectiveLicId = licRow?.id ?? null;
+        .select('id, numero')
+        .eq('user_id', user.id);
+
+      if (allLics && allLics.length > 0) {
+        const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+        const target = norm(licitacaoNumero);
+        const match = allLics.find(l => {
+          if (!l.numero) return false;
+          const dbNum = norm(l.numero);
+          return dbNum === target || target.includes(dbNum) || dbNum.includes(target);
+        });
+        effectiveLicId = match?.id ?? null;
+      }
     }
 
     // Sempre carrega itens extraídos do edital (licitacao_itens) e mescla com catálogo
