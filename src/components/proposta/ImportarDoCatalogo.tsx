@@ -94,45 +94,48 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
       catalogoData = (data as any[]).map(d => ({ ...d, _fonte: 'catalogo' as const }));
     }
 
-    // Resolver o licitacao_id efetivo: pode vir via prop direta ou precisar ser
-    // buscado pelo numero quando o usuário está sem ?lid= na URL.
+    // Resolver o licitacao_id efetivo: vem via prop ou buscado pelo numero
     let effectiveLicId: string | null = licitacaoId || null;
     if (!effectiveLicId && licitacaoNumero) {
       const { data: licRow } = await supabase
         .from('licitacoes')
         .select('id')
         .eq('user_id', user.id)
-        .eq('numero', licitacaoNumero)
+        .ilike('numero', licitacaoNumero.trim())
         .limit(1)
         .maybeSingle();
       effectiveLicId = licRow?.id ?? null;
     }
 
-    // Fallback: se não há itens do catálogo para este processo, carrega licitacao_itens (extraídos do edital)
-    if (effectiveLicId && catalogoData.filter(i => i.licitacao_id === effectiveLicId).length === 0) {
+    // Sempre carrega itens extraídos do edital (licitacao_itens) e mescla com catálogo
+    if (effectiveLicId) {
       const { data: editalItens } = await supabase
         .from('licitacao_itens')
         .select('id, numero, descricao, quantidade, unidade, valor_unitario, valor_total, marca, fabricante, modelo, lote')
+        .eq('user_id', user.id)
         .eq('licitacao_id', effectiveLicId)
         .order('numero', { ascending: true });
 
       if (editalItens && editalItens.length > 0) {
-        const editalMapped: CatalogoItem[] = editalItens.map((it: any) => ({
-          id: it.id,
-          descricao: it.descricao,
-          quantidade: Number(it.quantidade ?? 1),
-          unidade: it.unidade || 'UN',
-          marca: it.marca || null,
-          fabricante: it.fabricante || null,
-          modelo: it.modelo || null,
-          preco_unitario: Number(it.valor_unitario ?? 0),
-          preco_total: Number(it.valor_total ?? 0),
-          tipo_calculo: 'edital',
-          licitacao_id: effectiveLicId,
-          licitacao_numero: licitacaoNumero || null,
-          licitacao_orgao: null,
-          _fonte: 'edital' as const,
-        }));
+        const catalogIds = new Set(catalogoData.map(i => i.id));
+        const editalMapped: CatalogoItem[] = editalItens
+          .filter((it: any) => !catalogIds.has(it.id))
+          .map((it: any) => ({
+            id: it.id,
+            descricao: it.descricao,
+            quantidade: Number(it.quantidade ?? 1),
+            unidade: it.unidade || 'UN',
+            marca: it.marca || null,
+            fabricante: it.fabricante || null,
+            modelo: it.modelo || null,
+            preco_unitario: Number(it.valor_unitario ?? 0),
+            preco_total: Number(it.valor_total ?? 0),
+            tipo_calculo: 'edital',
+            licitacao_id: effectiveLicId,
+            licitacao_numero: licitacaoNumero || null,
+            licitacao_orgao: null,
+            _fonte: 'edital' as const,
+          }));
         catalogoData = [...catalogoData, ...editalMapped];
       }
     }
