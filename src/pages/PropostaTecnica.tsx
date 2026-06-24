@@ -443,7 +443,8 @@ export default function PropostaTecnica() {
     if (data.rawText) setEditalRawText(data.rawText);
 
     // Auto-create a process if none is linked
-    if (!processoId && user && (data.numeroLicitacao || data.orgao)) {
+    let lid = processoId;
+    if (!lid && user && (data.numeroLicitacao || data.orgao)) {
       const linkedId = await ensureProcesso({
         numero: data.numeroLicitacao || 'Processo Manual',
         orgao: data.orgao || '',
@@ -452,9 +453,32 @@ export default function PropostaTecnica() {
         valorEstimado: data.valorEstimado ? parseFloat(data.valorEstimado.replace(/[^\d,.-]/g, '').replace(',', '.')) || null : undefined,
       });
       if (linkedId) {
+        lid = linkedId;
         setProcessoId(linkedId);
         toast.info('Processo licitatório criado automaticamente.');
       }
+    }
+
+    // Persist extracted items to licitacao_itens so they appear in ImportarDoCatalogo
+    // and in Precificação on future visits
+    if (lid && user && data.itens && data.itens.length > 0) {
+      const parseVal = (v: string) => parseFloat((v || '0').replace(/\./g, '').replace(',', '.')) || 0;
+      const rows = data.itens.map((it: any, idx: number) => ({
+        licitacao_id: lid,
+        user_id: user.id,
+        numero: parseInt(it.item) || idx + 1,
+        descricao: it.descricao || '',
+        quantidade: parseFloat(it.quantidade) || 1,
+        unidade: it.unidade || 'UN',
+        valor_unitario: parseVal(it.valorUnitario),
+        valor_total: parseVal(it.valorTotal),
+        marca: it.marca || null,
+        fabricante: it.fabricante || null,
+        modelo: it.modelo || null,
+      }));
+      supabase.from('licitacao_itens')
+        .upsert(rows, { onConflict: 'licitacao_id,numero' })
+        .then(({ error }) => { if (error) console.warn('[handleEditalExtracted] upsert licitacao_itens:', error); });
     }
 
     toast.info('Dados extraídos! Avance para revisá-los.');
