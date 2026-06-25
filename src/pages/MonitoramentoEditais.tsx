@@ -787,7 +787,19 @@ export default function MonitoramentoEditais() {
         return true;
       });
 
-      const editais: Edital[] = filtrados.map(r => ({
+      // Quando usamos cache (PNCP offline) e o filtro UASG zeraria os resultados,
+      // mostramos os dados do cache sem o filtro UASG — é melhor ter dados imprecisos
+      // do que tela vazia. O aviso já será exibido pelo toast de "cache".
+      let filtradosFinal = filtrados;
+      if (filtrados.length === 0 && usouCache && uasgSet.size > 0 && rows.length > 0) {
+        filtradosFinal = rows.filter(r => {
+          if (ufsSet.size > 0 && !ufsSet.has(r.uf)) return false;
+          if (muniSet.size > 0 && !muniSet.has(String(r.municipio || '').toLowerCase())) return false;
+          return true;
+        });
+      }
+
+      const editais: Edital[] = filtradosFinal.map(r => ({
         id: r.id,
         numeroCompra: r.numero_compra ?? '',
         processo: r.numero_compra ?? '',
@@ -911,15 +923,12 @@ export default function MonitoramentoEditais() {
         console.warn('[Mural/telemetria] falha ao registrar:', telErr);
       }
 
+      const uasgFiltroIgnorado = filtradosFinal.length > 0 && filtrados.length === 0 && usouCache && uasgSet.size > 0;
+
       if (editais.length === 0) {
-        if (liveErr > 0 && liveOk === 0) {
+        if (liveErr > 0 && liveOk === 0 && !usouCache) {
           toast.warning('PNCP temporariamente indisponível', {
             description: 'Não foi possível buscar editais agora. Tente novamente em alguns minutos.',
-          });
-        } else if (isUasgSemUf) {
-          toast.info('Nenhum edital encontrado para esta UASG', {
-            description: 'Selecione também o Estado (UF) correspondente para ampliar a busca pelo PNCP em tempo real.',
-            duration: 6000,
           });
         } else {
           toast.info('Nenhum edital encontrado', {
@@ -928,10 +937,17 @@ export default function MonitoramentoEditais() {
         }
       }
       if (usouCache && editais.length > 0) {
-        toast.info('Exibindo dados do cache', {
-          description: 'O PNCP está com instabilidade. Os resultados são do último acesso ao sistema.',
-          duration: 4000,
-        });
+        if (uasgFiltroIgnorado) {
+          toast.warning('PNCP offline — filtro UASG temporariamente inativo', {
+            description: 'Exibindo dados do cache sem filtro por UASG. O código da unidade será aplicado quando o PNCP voltar.',
+            duration: 6000,
+          });
+        } else {
+          toast.info('Exibindo dados do cache', {
+            description: 'O PNCP está com instabilidade. Os resultados são do último acesso ao sistema.',
+            duration: 4000,
+          });
+        }
       }
     } catch (e: unknown) {
       if (e instanceof Error && e.name === 'AbortError') return;
