@@ -556,10 +556,6 @@ export default function MonitoramentoEditais() {
           logCtx({ etapa: 'cache_numero_fim', registros: rowsRaw.length });
         } else {
 
-        // pageSize fixo: evita o bug onde pageSize aumenta com a página e
-        // cria slices inconsistentes (p.ex. pag=1→20 itens, pag=4→items 150-199 em vez de 60-79)
-        const livePageSize = 50;
-
         // Quando nenhuma modalidade é selecionada, enviamos UMA chamada com modalidade vazia.
         // A edge function tem um caminho multi-modal otimizado para esse caso.
         // Quando modalidades específicas são selecionadas, fazemos uma chamada por modalidade.
@@ -578,7 +574,7 @@ export default function MonitoramentoEditais() {
                 termo: termo || '',
                 uf: uf || '',
                 pagina: pag,
-                tamanhoPagina: livePageSize,
+                tamanhoPagina: tamanho,
                 dataInicial: dataIniEfetiva,
                 dataFinal: dataFimEfetiva,
                 modalidade: modalidade != null ? String(modalidade) : '',
@@ -590,7 +586,7 @@ export default function MonitoramentoEditais() {
           )
         );
 
-        logCtx({ etapa: 'live_inicio', chamadas: liveCalls.length, pageSize: livePageSize });
+        logCtx({ etapa: 'live_inicio', chamadas: liveCalls.length, pageSize: tamanho });
         const liveRespostas = await Promise.allSettled(liveCalls);
         rowsRaw = liveRespostas.flatMap((resp) => {
           if (resp.status !== 'fulfilled' || resp.value.error) {
@@ -868,13 +864,8 @@ export default function MonitoramentoEditais() {
         });
       }
 
-      // Paginação client-side: como agregamos múltiplas chamadas (UF×modalidade),
-      // recortamos a página solicitada de forma consistente.
-      const inicio = (pag - 1) * tamanho;
-      const editaisPagina = editais.slice(inicio, inicio + tamanho);
-
       setResultado({
-        data: editaisPagina,
+        data: editais,
         total,
         paginas,
         pagina: pag,
