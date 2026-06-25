@@ -518,6 +518,7 @@ export default function MonitoramentoEditais() {
       let liveErr = 0;
       let usouCache = false;
       let pncpIndisponivel = false;
+      const isUasgSemUf = filtros.uasgs.length > 0 && filtros.ufs.length === 0;
 
       // Intervalo padrão quando nenhuma data foi informada:
       // - busca por número → ano inteiro do campo "ano" (01/01/ano a 31/12/ano)
@@ -546,8 +547,6 @@ export default function MonitoramentoEditais() {
 
         // UASG sem UF: PNCP retornaria todos os editais do Brasil → timeout garantido.
         // O cache já tem cobertura nacional via sync diário — mais eficiente e confiável.
-        const isUasgSemUf = filtros.uasgs.length > 0 && filtros.ufs.length === 0;
-
         if (isNumeroBusca || isUasgSemUf) {
           logCtx({ etapa: isNumeroBusca ? 'busca_por_numero_direto_cache' : 'busca_uasg_sem_uf_cache' });
           if (isUasgSemUf) {
