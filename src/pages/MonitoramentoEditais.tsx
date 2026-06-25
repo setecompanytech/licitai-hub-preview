@@ -940,6 +940,11 @@ export default function MonitoramentoEditais() {
           toast.warning('PNCP temporariamente indisponível', {
             description: 'Não foi possível buscar editais agora. Tente novamente em alguns minutos.',
           });
+        } else if (isUasgSemUf) {
+          toast.info('Nenhum edital encontrado para esta UASG', {
+            description: 'Selecione também o Estado (UF) correspondente para ampliar a busca pelo PNCP em tempo real.',
+            duration: 6000,
+          });
         } else {
           toast.info('Nenhum edital encontrado', {
             description: 'Tente ampliar o período ou remover filtros (UF, modalidade, município).',

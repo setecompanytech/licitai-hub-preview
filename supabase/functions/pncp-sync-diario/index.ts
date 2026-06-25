@@ -122,6 +122,7 @@ async function processarUf(
             numero_compra: e.numeroCompra || null,
             orgao: e.orgaoEntidade?.razaoSocial || null,
             unidade_orgao: e.unidadeOrgao?.nomeUnidade || null,
+            codigo_unidade: e.unidadeOrgao?.codigoUnidade ? String(e.unidadeOrgao.codigoUnidade) : null,
             objeto: e.objetoCompra || null,
             modalidade_id: modalidade.id,
             modalidade_nome: e.modalidadeNome || modalidade.nome,
