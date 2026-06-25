@@ -314,36 +314,85 @@ Deno.serve(async (req) => {
       modalidade: modalidadeFiltro, situacao, esfera: esferaFiltro,
     };
 
-    // Quando UASG é fornecido sem UF: descobre o estado da UASG via cache
-    // para evitar a busca nacional (que retorna 1000 itens de todo o Brasil
-    // e pode deixar de fora editais de UASGs menos recentes).
+    // Quando UASG é fornecido sem UF: descobre o estado da UASG.
+    // Estratégia 1: lookup rápido no cache (sub-ms).
+    // Estratégia 2: se não estiver no cache, busca de descoberta em paralelo
+    //   nos 27 estados (só 1 página de 20 itens cada) para encontrar em qual UF
+    //   a UASG publicou. Funciona para qualquer UASG, mesmo sem histórico no cache.
+    const ALL_UFS = [
+      'AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT',
+      'PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO',
+    ];
+    const pncpHeadersEarly = {
+      'Accept': 'application/json',
+      'User-Agent': 'Praefectus/1.0 (licitacoes@praefectus.com.br)',
+    };
+
     let ufEfetiva = uf;
     if (uasgCodes.length > 0 && !uf) {
+      // Estratégia 1: cache
       try {
         const sc = createServiceClient();
         const { data: uasgRows } = await sc
           .from('pncp_editais_cache')
-          .select('uf, cnpj_orgao')
+          .select('uf')
           .in('codigo_unidade', uasgCodes)
           .not('uf', 'is', null)
           .limit(5);
         if (uasgRows && uasgRows.length > 0) {
           const ufs = [...new Set(uasgRows.map((r: any) => r.uf).filter(Boolean))];
           if (ufs.length === 1) {
-            // UASG encontrada em um único estado: usa esse UF para busca direcionada
             ufEfetiva = ufs[0] as string;
-            console.log(`UASG ${uasgCodes.join(',')} → UF detectada: ${ufEfetiva}`);
+            console.log(`UASG ${uasgCodes.join(',')} → UF via cache: ${ufEfetiva}`);
           }
         }
       } catch (e: any) {
         console.warn('Falha ao detectar UF da UASG via cache:', e?.message);
       }
+
+      // Estratégia 2: se não achou no cache, busca de descoberta nos 27 estados
+      if (!ufEfetiva) {
+        console.log(`UASG ${uasgCodes.join(',')} não encontrada no cache, iniciando descoberta por UF...`);
+        try {
+          const discoverUrl = `${PNCP_BASE}/contratacoes/publicacao`;
+          const uasgSet = new Set(uasgCodes);
+          // Busca 1 página de 20 itens em cada UF em paralelo (27 chamadas leves)
+          const discovered = await Promise.allSettled(
+            ALL_UFS.map(async (ufCandidate) => {
+              const p = new URLSearchParams({
+                pagina: '1', tamanhoPagina: '20',
+                codigoModalidadeContratacao: '6', // Pregão Eletrônico — modalidade mais comum
+                dataInicial: dataInicialFiltro.replace(/-/g, ''),
+                dataFinal: dataFinalFiltro.replace(/-/g, ''),
+                uf: ufCandidate,
+              });
+              const resp = await fetch(`${discoverUrl}?${p}`, {
+                headers: pncpHeadersEarly,
+                signal: AbortSignal.timeout(10_000),
+              });
+              if (!resp.ok) return null;
+              const json = await resp.json();
+              const items: any[] = json.data || [];
+              const found = items.find(i => uasgSet.has(String(i.unidadeOrgao?.codigoUnidade || '')));
+              return found ? ufCandidate : null;
+            })
+          );
+          const foundUfs = discovered
+            .filter(r => r.status === 'fulfilled' && r.value)
+            .map(r => (r as any).value as string);
+          if (foundUfs.length > 0) {
+            ufEfetiva = foundUfs[0];
+            console.log(`UASG ${uasgCodes.join(',')} → UF descoberta via PNCP: ${ufEfetiva}`);
+          } else {
+            console.log(`UASG ${uasgCodes.join(',')} não encontrada em nenhuma UF no período, usando busca nacional`);
+          }
+        } catch (e: any) {
+          console.warn('Falha na descoberta de UF via PNCP:', e?.message);
+        }
+      }
     }
 
-    const pncpHeaders = {
-      'Accept': 'application/json',
-      'User-Agent': 'Praefectus/1.0 (licitacoes@praefectus.com.br)',
-    };
+    const pncpHeaders = pncpHeadersEarly;
 
     // ── Busca sem modalidade: chama 6 modalidades em paralelo ──
     if (!modalidadeFiltro || modalidadeFiltro === 'all' || modalidadeFiltro === '0') {
