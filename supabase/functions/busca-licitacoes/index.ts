@@ -314,6 +314,32 @@ Deno.serve(async (req) => {
       modalidade: modalidadeFiltro, situacao, esfera: esferaFiltro,
     };
 
+    // Quando UASG é fornecido sem UF: descobre o estado da UASG via cache
+    // para evitar a busca nacional (que retorna 1000 itens de todo o Brasil
+    // e pode deixar de fora editais de UASGs menos recentes).
+    let ufEfetiva = uf;
+    if (uasgCodes.length > 0 && !uf) {
+      try {
+        const sc = createServiceClient();
+        const { data: uasgRows } = await sc
+          .from('pncp_editais_cache')
+          .select('uf, cnpj_orgao')
+          .in('codigo_unidade', uasgCodes)
+          .not('uf', 'is', null)
+          .limit(5);
+        if (uasgRows && uasgRows.length > 0) {
+          const ufs = [...new Set(uasgRows.map((r: any) => r.uf).filter(Boolean))];
+          if (ufs.length === 1) {
+            // UASG encontrada em um único estado: usa esse UF para busca direcionada
+            ufEfetiva = ufs[0] as string;
+            console.log(`UASG ${uasgCodes.join(',')} → UF detectada: ${ufEfetiva}`);
+          }
+        }
+      } catch (e: any) {
+        console.warn('Falha ao detectar UF da UASG via cache:', e?.message);
+      }
+    }
+
     const pncpHeaders = {
       'Accept': 'application/json',
       'User-Agent': 'Praefectus/1.0 (licitacoes@praefectus.com.br)',
@@ -329,7 +355,7 @@ Deno.serve(async (req) => {
         const buildParams = (pagina: number) => {
           const p = new URLSearchParams({ pagina: String(pagina), tamanhoPagina: '500' });
           if (termo) p.set('q', termo);
-          if (uf) p.set('uf', uf.toUpperCase());
+          if (ufEfetiva) p.set('uf', ufEfetiva.toUpperCase());
           if (esferaFiltro) p.set('codigoEsfera', esferaFiltro);
           p.set('codigoModalidadeContratacao', String(modId));
           p.set('dataInicial', dataInicialFiltro.replace(/-/g, ''));
@@ -420,7 +446,7 @@ Deno.serve(async (req) => {
       tamanhoPagina: String(pageSize),
     });
     if (termo) params.set('q', termo);
-    if (uf) params.set('uf', uf.toUpperCase());
+    if (ufEfetiva) params.set('uf', ufEfetiva.toUpperCase());
     if (esferaFiltro) params.set('codigoEsfera', esferaFiltro);
     params.set('codigoModalidadeContratacao', modalidadeFiltro);
     params.set('dataInicial', dataInicialFiltro.replace(/-/g, ''));
