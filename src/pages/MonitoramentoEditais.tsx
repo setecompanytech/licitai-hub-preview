@@ -544,13 +544,40 @@ export default function MonitoramentoEditais() {
         // Nesse caso pulamos o live e usamos apenas o cache local que tem busca por número.
         const isNumeroBusca = buscandoPorNumero && /^[\d/\-\.]+$/.test(filtros.numero.trim());
 
-        if (isNumeroBusca) {
-          logCtx({ etapa: 'busca_por_numero_direto_cache' });
-          const cacheRes = await consultarCache();
-          rowsRaw = cacheRes.rows;
-          totalCache = cacheRes.totalSomado;
+        // UASG sem UF: PNCP retornaria todos os editais do Brasil → timeout garantido.
+        // O cache já tem cobertura nacional via sync diário — mais eficiente e confiável.
+        const isUasgSemUf = filtros.uasgs.length > 0 && filtros.ufs.length === 0;
+
+        if (isNumeroBusca || isUasgSemUf) {
+          logCtx({ etapa: isNumeroBusca ? 'busca_por_numero_direto_cache' : 'busca_uasg_sem_uf_cache' });
+          if (isUasgSemUf) {
+            // Busca UASG sem UF: usa cache com amostra grande (500) para cobrir
+            // mais editais e deixar o filtro client-side encontrar a UASG correta.
+            const { data: cacheData } = await supabase.rpc('busca_editais_instantanea' as any, {
+              p_q: termo || null,
+              p_uf: null,
+              p_municipio_ibge: null,
+              p_esfera: null,
+              p_modalidade_id: null,
+              p_segmento: null,
+              p_data_inicio: null,
+              p_data_fim: null,
+              p_ordenacao: 'data_publicacao',
+              p_direcao: 'desc',
+              p_pagina: 1,
+              p_tamanho: 500,
+              p_fonte_orcamentaria: null,
+              p_margem_preferencia: null,
+            } as any);
+            rowsRaw = cacheData || [];
+            totalCache = rowsRaw.length;
+          } else {
+            const cacheRes = await consultarCache();
+            rowsRaw = cacheRes.rows;
+            totalCache = cacheRes.totalSomado;
+          }
           usouCache = true;
-          logCtx({ etapa: 'cache_numero_fim', registros: rowsRaw.length });
+          logCtx({ etapa: 'cache_fim', registros: rowsRaw.length });
         } else {
 
         // pageSize fixo: evita o bug onde pageSize aumenta com a página e
