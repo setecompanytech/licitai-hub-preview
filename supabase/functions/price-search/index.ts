@@ -175,18 +175,25 @@ async function coletorLeroyMerlin(termos: string[]): Promise<PriceResult[]> {
   return resultados;
 }
 
-async function coletorPesquisaReal(supabase: any, termos: string[]): Promise<PriceResult[]> {
+async function coletorPesquisaReal(termos: string[], authHeader: string | null): Promise<PriceResult[]> {
   const resultados: PriceResult[] = [];
+  if (!authHeader || termos.length === 0) return resultados;
   try {
-    const { data } = await supabase.functions.invoke('pesquisa-preco-real', {
-      body: { termos: termos.slice(0, 3) },
+    // Usa client anon com JWT do usuário — requireAuth em pesquisa-preco-real rejeita service role key
+    const userClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: authHeader } },
     });
-    if (data?.resultados) {
-      for (const r of data.resultados) {
+    const { data, error } = await userClient.functions.invoke('pesquisa-preco-real', {
+      body: { termo: termos[0] }, // pesquisa-preco-real espera { termo: string }, não array
+    });
+    if (error) { console.error('Pesquisa real invoke error:', error); return resultados; }
+    // pesquisa-preco-real retorna { success, data: { fornecedores: ProdutoExtraido[] } }
+    for (const r of (data?.data?.fornecedores ?? [])) {
+      if (r.preco > 0) {
         resultados.push({
-          fonte: r.fonte || 'marketplace', titulo: r.titulo || r.nome || '',
-          preco_unitario: r.preco || r.preco_unitario || 0, vendedor: r.vendedor || r.loja || 'Marketplace',
-          condicao: 'Novo', url: r.url || r.link || '', coletado_em: new Date().toISOString(),
+          fonte: 'marketplace', titulo: r.produto || '',
+          preco_unitario: r.preco, vendedor: r.loja || 'Marketplace',
+          condicao: r.condicao || 'Novo', url: r.url || '', coletado_em: new Date().toISOString(),
         });
       }
     }
@@ -251,6 +258,7 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+    const authHeader = req.headers.get('Authorization');
     const { descricao, codigoCatmat, especificacoes, empresaId, itemEditalId, modo = 'manual', unidade, quantidade } = await req.json();
 
     if (!descricao) {
@@ -313,7 +321,7 @@ Deno.serve(async (req) => {
       coletoresPromises.push(coletorLeroyMerlin(termosMarketplace));
     }
 
-    coletoresPromises.push(coletorPesquisaReal(supabase, termosGerais));
+    coletoresPromises.push(coletorPesquisaReal(termosGerais, authHeader));
 
     const resultadosSettled = await Promise.allSettled(coletoresPromises);
 
