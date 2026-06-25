@@ -625,6 +625,7 @@ export default function MonitoramentoEditais() {
             poder_id: item.poder,
             unidade: item.unidade,
             unidade_orgao: item.unidade,
+            codigo_unidade: item.codigoUnidade || '',
             modalidade_id: item.modalidadeId,
             modalidade_nome: item.modalidade,
             valor_total_estimado: item.valorEstimado,
@@ -685,8 +686,15 @@ export default function MonitoramentoEditais() {
         if (ufsSet.size > 0 && !ufsSet.has(r.uf)) return false;
         if (muniSet.size > 0 && !muniSet.has(String(r.municipio || '').toLowerCase())) return false;
         if (uasgSet.size > 0) {
+          // Compara contra codigo_unidade (= UASG, campo numérico da unidade de compra)
+          // e também contra nome/cnpj como fallback para buscas parciais
+          const codigoUnidade = String(r.codigo_unidade || '').trim();
           const uasgRow = String(r.unidade_orgao || r.unidade || r.cnpj_orgao || '').trim();
-          const matches = Array.from(uasgSet).some(u => uasgRow.toLowerCase().includes(u.toLowerCase()) || String(r.numero_compra || '').includes(u));
+          const matches = Array.from(uasgSet).some(u =>
+            codigoUnidade === u ||
+            uasgRow.toLowerCase().includes(u.toLowerCase()) ||
+            String(r.numero_compra || '').includes(u)
+          );
           if (!matches) return false;
         }
         if (filtros.ano && filtros.numero) {

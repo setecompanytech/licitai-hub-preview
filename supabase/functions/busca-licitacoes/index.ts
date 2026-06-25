@@ -92,6 +92,7 @@ function mapearItem(item: Record<string, unknown>) {
     esfera: orgao.esferaId || '',
     poder: orgao.poderId || '',
     unidade: (unidade.nomeUnidade as string) || '',
+    codigoUnidade: unidade.codigoUnidade ? String(unidade.codigoUnidade) : '',
     modalidadeId: Number(item.modalidadeId) || 0,
     modalidade: MODALIDADES[Number(item.modalidadeId)] || 'Modalidade não informada',
     valorEstimado: Number(item.valorTotalEstimado) || null,
