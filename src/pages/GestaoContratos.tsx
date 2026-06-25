@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 
 const formatInputBRL = (value: string): string => {
@@ -67,6 +68,7 @@ type Licitacao = { id: string; numero: string; orgao: string; objeto: string; mo
 
 export default function GestaoContratos() {
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,21 +97,22 @@ export default function GestaoContratos() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !empresaAtiva) return;
     loadContratos();
     supabase.from('licitacoes').select('id, numero, orgao, objeto, modalidade')
       .eq('user_id', user.id).order('created_at', { ascending: false })
       .then(({ data }) => setLicitacoes((data as Licitacao[]) || []));
     const channel = supabase
       .channel('contratos-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'contratos', filter: `user_id=eq.${user.id}` }, () => loadContratos())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contratos', filter: `empresa_id=eq.${empresaAtiva.id}` }, () => loadContratos())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [user]);
+  }, [user, empresaAtiva]);
 
   const loadContratos = async () => {
+    if (!empresaAtiva) return;
     setLoading(true);
-    const { data } = await supabase.from('contratos').select('*').eq('user_id', user!.id).order('created_at', { ascending: false });
+    const { data } = await supabase.from('contratos').select('*').eq('empresa_id', empresaAtiva.id).order('created_at', { ascending: false });
     const list = (data as any[]) || [];
     setContratos(list);
     if (selectedContrato) {
@@ -139,6 +142,7 @@ export default function GestaoContratos() {
     const consumed = parseFloat(form.valor_consumido) || 0;
     const { data: inserted, error } = await supabase.from('contratos').insert({
       user_id: user!.id,
+      empresa_id: empresaAtiva!.id,
       tipo_documento: form.tipo_documento,
       tipo_estrutura: form.tipo_estrutura,
       ata_srp_id: form.tipo_documento === 'contrato' && form.ata_srp_id ? form.ata_srp_id : null,
