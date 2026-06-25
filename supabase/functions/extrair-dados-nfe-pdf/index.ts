@@ -1,3 +1,4 @@
+// v2
 import { chamarClaude, parsearJson } from "../_shared/claude-client.ts";
 import { requireAuth } from "../_shared/auth-rate-limit.ts";
 
