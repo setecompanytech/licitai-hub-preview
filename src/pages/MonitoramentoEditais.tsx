@@ -640,6 +640,52 @@ export default function MonitoramentoEditais() {
           }));
         });
         logCtx({ etapa: 'live_fim', ok: liveOk, erros: liveErr, registros: rowsRaw.length, totalLive });
+
+        // Se todas as chamadas falharam E não trouxeram nada, tenta o cache RPC diretamente
+        // (fallback duplo: a edge function já tenta o cache internamente, mas pode falhar no timeout)
+        if (liveOk === 0 && rowsRaw.length === 0) {
+          pncpIndisponivel = true;
+          logCtx({ etapa: 'cache_fallback_direto' });
+          try {
+            // Primeiro com datas; se vazio, sem datas (para sempre mostrar algo)
+            let cacheRes = await consultarCache();
+            if (cacheRes.rows.length === 0) {
+              // Retry sem filtro de data: qualquer edital do cache serve
+              const fallbackCalls = ufsList.flatMap(uf =>
+                modList.map(mod =>
+                  Promise.resolve(supabase.rpc('busca_editais_instantanea' as any, {
+                    p_q: termo,
+                    p_uf: uf,
+                    p_municipio_ibge: null,
+                    p_esfera: null,
+                    p_modalidade_id: mod,
+                    p_segmento: null,
+                    p_data_inicio: null,
+                    p_data_fim: null,
+                    p_ordenacao: 'data_publicacao',
+                    p_direcao: 'desc',
+                    p_pagina: pag,
+                    p_tamanho: tamanho,
+                    p_fonte_orcamentaria: null,
+                    p_margem_preferencia: null,
+                  }) as any)
+                )
+              );
+              const fallbackRespostas = await Promise.all(fallbackCalls);
+              const fallbackRows: any[] = [];
+              for (const r of fallbackRespostas) {
+                if (!r.error && r.data) fallbackRows.push(...r.data);
+              }
+              cacheRes = { rows: fallbackRows, totalSomado: fallbackRows.length };
+            }
+            rowsRaw = cacheRes.rows;
+            totalCache = cacheRes.totalSomado;
+            usouCache = true;
+            logCtx({ etapa: 'cache_fallback_fim', registros: rowsRaw.length });
+          } catch (cacheErr) {
+            logCtx({ etapa: 'cache_fallback_erro', erro: String(cacheErr) });
+          }
+        }
       }
 
 
@@ -864,7 +910,7 @@ export default function MonitoramentoEditais() {
       if (editais.length === 0) {
         if (liveErr > 0 && liveOk === 0) {
           toast.warning('PNCP temporariamente indisponível', {
-            description: 'O cache também não possui dados para este período. Tente novamente em alguns minutos.',
+            description: 'Não foi possível buscar editais agora. Tente novamente em alguns minutos.',
           });
         } else {
           toast.info('Nenhum edital encontrado', {

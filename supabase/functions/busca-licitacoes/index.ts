@@ -226,21 +226,34 @@ async function salvarNoCache(rawItems: Record<string, unknown>[]): Promise<void>
 
 async function buscarNoCache(params: BuscaParams, cors: HeadersInit): Promise<Response> {
   const sc = createServiceClient();
-  const { data, error } = await sc.rpc('busca_editais_instantanea', {
-    p_q: params.termo || null,
-    p_uf: params.uf || null,
-    p_municipio_ibge: null,
-    p_esfera: params.esfera || null,
-    p_modalidade_id: params.modalidade && params.modalidade !== 'all' && params.modalidade !== '0'
-      ? Number(params.modalidade) : null,
-    p_segmento: null,
-    p_data_inicio: params.dataInicial || null,
-    p_data_fim: params.dataFinal || null,
-    p_ordenacao: params.situacao === 'abertas' ? 'data_abertura' : 'data_publicacao',
-    p_direcao: 'desc',
-    p_pagina: 1,
-    p_tamanho: CACHE_SAMPLE,
-  });
+
+  const queryRpc = async (dataInicio: string | null, dataFim: string | null) =>
+    sc.rpc('busca_editais_instantanea', {
+      p_q: params.termo || null,
+      p_uf: params.uf || null,
+      p_municipio_ibge: null,
+      p_esfera: params.esfera || null,
+      p_modalidade_id: params.modalidade && params.modalidade !== 'all' && params.modalidade !== '0'
+        ? Number(params.modalidade) : null,
+      p_segmento: null,
+      p_data_inicio: dataInicio,
+      p_data_fim: dataFim,
+      p_ordenacao: params.situacao === 'abertas' ? 'data_abertura' : 'data_publicacao',
+      p_direcao: 'desc',
+      p_pagina: 1,
+      p_tamanho: CACHE_SAMPLE,
+    });
+
+  // Tenta com filtro de data primeiro
+  let { data, error } = await queryRpc(params.dataInicial || null, params.dataFinal || null);
+  if (error) throw error;
+
+  // Se não encontrou nada com filtro de data, abre para todos os registros do cache
+  // (PNCP está fora do ar — melhor mostrar dados retroativos do que tela vazia)
+  if (!data || data.length === 0) {
+    const r2 = await queryRpc(null, null);
+    if (!r2.error) data = r2.data;
+  }
 
   if (error) throw error;
 
@@ -256,6 +269,7 @@ async function buscarNoCache(params: BuscaParams, cors: HeadersInit): Promise<Re
     paginas: Math.max(1, Math.ceil(mapped.length / params.tamanhoPagina)),
     pagina: params.pagina,
     cache: true,
+    aviso: 'PNCP temporariamente indisponível — exibindo dados do cache local.',
   }), { headers: { ...cors, 'Content-Type': 'application/json' } });
 }
 
