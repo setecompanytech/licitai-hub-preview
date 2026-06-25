@@ -291,7 +291,10 @@ Deno.serve(async (req) => {
       modalidade,
       situacao = 'abertas',
       esfera,
+      uasgs,
     } = parsedBody;
+    // Códigos UASG para filtro server-side (garante paginação correta)
+    const uasgCodes: string[] = Array.isArray(uasgs) ? uasgs.map(String) : [];
 
     const hoje = new Date();
     const pageSize = Math.max(10, Math.min(Number(tamanhoPagina) || 20, 50));
@@ -376,7 +379,11 @@ Deno.serve(async (req) => {
       if (allItems.length > 0) {
         // PNCP funcionou — salva no cache e retorna dados ao vivo
         await salvarNoCache(allRaw);
-        const filtrados = aplicarFiltroSituacao(allItems, situacao);
+        let filtrados = aplicarFiltroSituacao(allItems, situacao);
+        // Aplica filtro de UASG server-side para que paginação reflita contagem correta
+        if (uasgCodes.length > 0) {
+          filtrados = filtrados.filter(i => uasgCodes.includes(String(i.codigoUnidade || '')));
+        }
         filtrados.sort((a, b) => new Date(b.dataPublicacao || '').getTime() - new Date(a.dataPublicacao || '').getTime());
         const inicio = (paginaAtual - 1) * pageSize;
         return new Response(JSON.stringify({
@@ -443,13 +450,16 @@ Deno.serve(async (req) => {
     // Salva no cache e retorna ao vivo
     await salvarNoCache(items);
     const mapeados = items.map(mapearItem);
-    const resultado = aplicarFiltroSituacao(mapeados, situacao);
+    let resultado = aplicarFiltroSituacao(mapeados, situacao);
+    if (uasgCodes.length > 0) {
+      resultado = resultado.filter(i => uasgCodes.includes(String(i.codigoUnidade || '')));
+    }
     const filteredCount = resultado.length;
     const totalOriginal = json.totalRegistros || items.length;
 
     return new Response(JSON.stringify({
       data: resultado,
-      total: situacao === 'todas' ? totalOriginal : filteredCount,
+      total: uasgCodes.length > 0 ? filteredCount : (situacao === 'todas' ? totalOriginal : filteredCount),
       paginas: situacao === 'todas'
         ? (json.totalPaginas || Math.ceil(totalOriginal / pageSize))
         : Math.max(1, Math.ceil(filteredCount / pageSize)),

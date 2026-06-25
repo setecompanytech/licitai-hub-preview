@@ -553,9 +553,9 @@ export default function MonitoramentoEditais() {
           logCtx({ etapa: 'cache_numero_fim', registros: rowsRaw.length });
         } else {
 
-        const livePageSize = filtros.municipios.length > 0 || filtros.uasgs.length > 0
-          ? 50
-          : Math.min(50, tamanho * Math.max(1, pag));
+        // pageSize fixo: evita o bug onde pageSize aumenta com a página e
+        // cria slices inconsistentes (p.ex. pag=1→20 itens, pag=4→items 150-199 em vez de 60-79)
+        const livePageSize = 50;
 
         // Quando nenhuma modalidade é selecionada, enviamos UMA chamada com modalidade vazia.
         // A edge function tem um caminho multi-modal otimizado para esse caso.
@@ -581,6 +581,7 @@ export default function MonitoramentoEditais() {
                 modalidade: modalidade != null ? String(modalidade) : '',
                 situacao: 'todas',
                 esfera,
+                uasgs: filtros.uasgs.length > 0 ? filtros.uasgs : undefined,
               },
             })
           )
