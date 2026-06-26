@@ -291,10 +291,12 @@ Deno.serve(async (req) => {
       modalidade,
       situacao = 'abertas',
       esfera,
-      uasgs,
+      cnpjs,
     } = parsedBody;
-    // Códigos UASG para filtro server-side (garante paginação correta)
-    const uasgCodes: string[] = Array.isArray(uasgs) ? uasgs.map(String) : [];
+    // CNPJs fornecidos diretamente pelo usuário (apenas dígitos)
+    const cnpjsParam: string[] = Array.isArray(cnpjs)
+      ? cnpjs.map((c: any) => String(c).replace(/\D/g, '')).filter(c => c.length === 14)
+      : [];
 
     const hoje = new Date();
     const pageSize = Math.max(10, Math.min(Number(tamanhoPagina) || 20, 50));
@@ -323,77 +325,36 @@ Deno.serve(async (req) => {
       ? formatIsoDate(new Date(dataFinalObj.getTime() - 365 * 86_400_000))
       : dataInicialFiltro;
 
-    // Quando UASG é fornecido: busca CNPJ + UF no cache para fazer busca
-    // direcionada no PNCP por cnpj (parâmetro suportado na API).
-    // cnpj+uf → escopo muito estreito → filtra por codigoUnidade → resultado preciso.
-    const ALL_UFS = [
-      'AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT',
-      'PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO',
-    ];
-
+    // Quando o usuário fornece CNPJs: usa-os diretamente na chamada PNCP.
+    // Se o usuário selecionou UF, combina cnpj+uf para escopo mais estreito.
+    // Se não selecionou UF, busca sem filtro de UF (retorna todas as unidades do órgão).
     let ufEfetiva = uf;
-    let cnpjUasg = '';  // CNPJ do órgão da UASG (se conhecido)
+    let cnpjUasg = cnpjsParam.length > 0 ? cnpjsParam[0] : '';
 
-    if (uasgCodes.length > 0) {
+    if (cnpjUasg && !ufEfetiva) {
+      // Tenta descobrir UF pelo cache (útil para órgãos de UF única como prefeituras)
       try {
         const sc = createServiceClient();
-        const { data: uasgRows } = await sc
+        const { data: rows } = await sc
           .from('pncp_editais_cache')
-          .select('uf, cnpj_orgao')
-          .in('codigo_unidade', uasgCodes)
-          .not('cnpj_orgao', 'is', null)
-          .limit(5);
-        if (uasgRows && uasgRows.length > 0) {
-          const cnpjs = [...new Set(uasgRows.map((r: any) => r.cnpj_orgao).filter(Boolean))];
-          if (cnpjs.length === 1) cnpjUasg = cnpjs[0] as string;
-
-          if (!uf) {
-            const ufs = [...new Set(uasgRows.map((r: any) => r.uf).filter(Boolean))];
-            if (ufs.length === 1) ufEfetiva = ufs[0] as string;
+          .select('uf')
+          .eq('cnpj_orgao', cnpjUasg)
+          .not('uf', 'is', null)
+          .limit(10);
+        if (rows && rows.length > 0) {
+          const ufs = [...new Set(rows.map((r: any) => r.uf).filter(Boolean))];
+          if (ufs.length === 1) {
+            ufEfetiva = ufs[0] as string;
+            console.log(`CNPJ ${cnpjUasg} → UF única no cache: ${ufEfetiva}`);
           }
-          console.log(`UASG ${uasgCodes.join(',')} → CNPJ: ${cnpjUasg}, UF: ${ufEfetiva || 'desconhecida'}`);
         }
       } catch (e: any) {
-        console.warn('Falha ao buscar CNPJ/UF da UASG no cache:', e?.message);
+        console.warn('Falha ao buscar UF do CNPJ no cache:', e?.message);
       }
+    }
 
-      // Se não achou UF no cache, tenta descoberta por PNCP nos 27 estados
-      if (!ufEfetiva) {
-        try {
-          const uasgSet = new Set(uasgCodes);
-          const discovered = await Promise.allSettled(
-            ALL_UFS.map(async (ufCandidate) => {
-              const p = new URLSearchParams({
-                pagina: '1', tamanhoPagina: '20',
-                codigoModalidadeContratacao: '6',
-                dataInicial: dataInicialFiltro.replace(/-/g, ''),
-                dataFinal: dataFinalFiltro.replace(/-/g, ''),
-                uf: ufCandidate,
-              });
-              if (cnpjUasg) p.set('cnpj', cnpjUasg);
-              const resp = await fetch(`${PNCP_BASE}/contratacoes/publicacao?${p}`, {
-                headers: { 'Accept': 'application/json', 'User-Agent': 'Praefectus/1.0 (licitacoes@praefectus.com.br)' },
-                signal: AbortSignal.timeout(10_000),
-              });
-              if (!resp.ok) return null;
-              const json = await resp.json();
-              const items: any[] = json.data || [];
-              const found = items.find(i => uasgSet.has(String(i.unidadeOrgao?.codigoUnidade || '')));
-              if (found && !cnpjUasg) cnpjUasg = found.orgaoEntidade?.cnpj || '';
-              return found ? ufCandidate : null;
-            })
-          );
-          const foundUfs = discovered
-            .filter(r => r.status === 'fulfilled' && r.value)
-            .map(r => (r as any).value as string);
-          if (foundUfs.length > 0) {
-            ufEfetiva = foundUfs[0];
-            console.log(`UASG ${uasgCodes.join(',')} → UF descoberta: ${ufEfetiva}, CNPJ: ${cnpjUasg}`);
-          }
-        } catch (e: any) {
-          console.warn('Falha na descoberta de UF/CNPJ:', e?.message);
-        }
-      }
+    if (cnpjUasg) {
+      console.log(`Busca por CNPJ: ${cnpjUasg}, UF: ${ufEfetiva || 'todas'}`);
     }
 
     const pncpHeaders = {
@@ -463,10 +424,6 @@ Deno.serve(async (req) => {
         // PNCP funcionou — salva no cache e retorna dados ao vivo
         await salvarNoCache(allRaw);
         let filtrados = aplicarFiltroSituacao(allItems, situacao);
-        // Aplica filtro de UASG server-side para que paginação reflita contagem correta
-        if (uasgCodes.length > 0) {
-          filtrados = filtrados.filter(i => uasgCodes.includes(String(i.codigoUnidade || '')));
-        }
         filtrados.sort((a, b) => new Date(b.dataPublicacao || '').getTime() - new Date(a.dataPublicacao || '').getTime());
         const inicio = (paginaAtual - 1) * pageSize;
         return new Response(JSON.stringify({
@@ -534,16 +491,13 @@ Deno.serve(async (req) => {
     // Salva no cache e retorna ao vivo
     await salvarNoCache(items);
     const mapeados = items.map(mapearItem);
-    let resultado = aplicarFiltroSituacao(mapeados, situacao);
-    if (uasgCodes.length > 0) {
-      resultado = resultado.filter(i => uasgCodes.includes(String(i.codigoUnidade || '')));
-    }
+    const resultado = aplicarFiltroSituacao(mapeados, situacao);
     const filteredCount = resultado.length;
     const totalOriginal = json.totalRegistros || items.length;
 
     return new Response(JSON.stringify({
       data: resultado,
-      total: uasgCodes.length > 0 ? filteredCount : (situacao === 'todas' ? totalOriginal : filteredCount),
+      total: situacao === 'todas' ? totalOriginal : filteredCount,
       paginas: situacao === 'todas'
         ? (json.totalPaginas || Math.ceil(totalOriginal / pageSize))
         : Math.max(1, Math.ceil(filteredCount / pageSize)),
