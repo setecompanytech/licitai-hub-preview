@@ -314,66 +314,72 @@ Deno.serve(async (req) => {
       modalidade: modalidadeFiltro, situacao, esfera: esferaFiltro,
     };
 
-    // Quando UASG é fornecido sem UF: descobre o estado da UASG.
-    // Estratégia 1: lookup rápido no cache (sub-ms).
-    // Estratégia 2: se não estiver no cache, busca de descoberta em paralelo
-    //   nos 27 estados (só 1 página de 20 itens cada) para encontrar em qual UF
-    //   a UASG publicou. Funciona para qualquer UASG, mesmo sem histórico no cache.
+    // PNCP limita o intervalo de busca a 365 dias. Se o usuário pedir mais,
+    // capamos o dataInicial para não ultrapassar o limite da API.
+    const dataFinalObj = new Date(dataFinalFiltro);
+    const dataInicialObj = new Date(dataInicialFiltro);
+    const rangeDays = (dataFinalObj.getTime() - dataInicialObj.getTime()) / 86_400_000;
+    const dataInicialPncp = rangeDays > 365
+      ? formatIsoDate(new Date(dataFinalObj.getTime() - 365 * 86_400_000))
+      : dataInicialFiltro;
+
+    // Quando UASG é fornecido: busca CNPJ + UF no cache para fazer busca
+    // direcionada no PNCP por cnpj (parâmetro suportado na API).
+    // cnpj+uf → escopo muito estreito → filtra por codigoUnidade → resultado preciso.
     const ALL_UFS = [
       'AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT',
       'PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO',
     ];
-    const pncpHeadersEarly = {
-      'Accept': 'application/json',
-      'User-Agent': 'Praefectus/1.0 (licitacoes@praefectus.com.br)',
-    };
 
     let ufEfetiva = uf;
-    if (uasgCodes.length > 0 && !uf) {
-      // Estratégia 1: cache
+    let cnpjUasg = '';  // CNPJ do órgão da UASG (se conhecido)
+
+    if (uasgCodes.length > 0) {
       try {
         const sc = createServiceClient();
         const { data: uasgRows } = await sc
           .from('pncp_editais_cache')
-          .select('uf')
+          .select('uf, cnpj_orgao')
           .in('codigo_unidade', uasgCodes)
-          .not('uf', 'is', null)
+          .not('cnpj_orgao', 'is', null)
           .limit(5);
         if (uasgRows && uasgRows.length > 0) {
-          const ufs = [...new Set(uasgRows.map((r: any) => r.uf).filter(Boolean))];
-          if (ufs.length === 1) {
-            ufEfetiva = ufs[0] as string;
-            console.log(`UASG ${uasgCodes.join(',')} → UF via cache: ${ufEfetiva}`);
+          const cnpjs = [...new Set(uasgRows.map((r: any) => r.cnpj_orgao).filter(Boolean))];
+          if (cnpjs.length === 1) cnpjUasg = cnpjs[0] as string;
+
+          if (!uf) {
+            const ufs = [...new Set(uasgRows.map((r: any) => r.uf).filter(Boolean))];
+            if (ufs.length === 1) ufEfetiva = ufs[0] as string;
           }
+          console.log(`UASG ${uasgCodes.join(',')} → CNPJ: ${cnpjUasg}, UF: ${ufEfetiva || 'desconhecida'}`);
         }
       } catch (e: any) {
-        console.warn('Falha ao detectar UF da UASG via cache:', e?.message);
+        console.warn('Falha ao buscar CNPJ/UF da UASG no cache:', e?.message);
       }
 
-      // Estratégia 2: se não achou no cache, busca de descoberta nos 27 estados
+      // Se não achou UF no cache, tenta descoberta por PNCP nos 27 estados
       if (!ufEfetiva) {
-        console.log(`UASG ${uasgCodes.join(',')} não encontrada no cache, iniciando descoberta por UF...`);
         try {
-          const discoverUrl = `${PNCP_BASE}/contratacoes/publicacao`;
           const uasgSet = new Set(uasgCodes);
-          // Busca 1 página de 20 itens em cada UF em paralelo (27 chamadas leves)
           const discovered = await Promise.allSettled(
             ALL_UFS.map(async (ufCandidate) => {
               const p = new URLSearchParams({
                 pagina: '1', tamanhoPagina: '20',
-                codigoModalidadeContratacao: '6', // Pregão Eletrônico — modalidade mais comum
+                codigoModalidadeContratacao: '6',
                 dataInicial: dataInicialFiltro.replace(/-/g, ''),
                 dataFinal: dataFinalFiltro.replace(/-/g, ''),
                 uf: ufCandidate,
               });
-              const resp = await fetch(`${discoverUrl}?${p}`, {
-                headers: pncpHeadersEarly,
+              if (cnpjUasg) p.set('cnpj', cnpjUasg);
+              const resp = await fetch(`${PNCP_BASE}/contratacoes/publicacao?${p}`, {
+                headers: { 'Accept': 'application/json', 'User-Agent': 'Praefectus/1.0 (licitacoes@praefectus.com.br)' },
                 signal: AbortSignal.timeout(10_000),
               });
               if (!resp.ok) return null;
               const json = await resp.json();
               const items: any[] = json.data || [];
               const found = items.find(i => uasgSet.has(String(i.unidadeOrgao?.codigoUnidade || '')));
+              if (found && !cnpjUasg) cnpjUasg = found.orgaoEntidade?.cnpj || '';
               return found ? ufCandidate : null;
             })
           );
@@ -382,17 +388,18 @@ Deno.serve(async (req) => {
             .map(r => (r as any).value as string);
           if (foundUfs.length > 0) {
             ufEfetiva = foundUfs[0];
-            console.log(`UASG ${uasgCodes.join(',')} → UF descoberta via PNCP: ${ufEfetiva}`);
-          } else {
-            console.log(`UASG ${uasgCodes.join(',')} não encontrada em nenhuma UF no período, usando busca nacional`);
+            console.log(`UASG ${uasgCodes.join(',')} → UF descoberta: ${ufEfetiva}, CNPJ: ${cnpjUasg}`);
           }
         } catch (e: any) {
-          console.warn('Falha na descoberta de UF via PNCP:', e?.message);
+          console.warn('Falha na descoberta de UF/CNPJ:', e?.message);
         }
       }
     }
 
-    const pncpHeaders = pncpHeadersEarly;
+    const pncpHeaders = {
+      'Accept': 'application/json',
+      'User-Agent': 'Praefectus/1.0 (licitacoes@praefectus.com.br)',
+    };
 
     // ── Busca sem modalidade: chama 6 modalidades em paralelo ──
     if (!modalidadeFiltro || modalidadeFiltro === 'all' || modalidadeFiltro === '0') {
@@ -402,12 +409,13 @@ Deno.serve(async (req) => {
         // PNCP permite até 500 por página. Buscamos página 1 com 500 itens;
         // se vier cheia, buscamos a página 2 em seguida para cobrir mais resultados.
         const buildParams = (pagina: number) => {
-          const p = new URLSearchParams({ pagina: String(pagina), tamanhoPagina: '500' });
+          const p = new URLSearchParams({ pagina: String(pagina), tamanhoPagina: '50' });
           if (termo) p.set('q', termo);
           if (ufEfetiva) p.set('uf', ufEfetiva.toUpperCase());
+          if (cnpjUasg) p.set('cnpj', cnpjUasg);
           if (esferaFiltro) p.set('codigoEsfera', esferaFiltro);
           p.set('codigoModalidadeContratacao', String(modId));
-          p.set('dataInicial', dataInicialFiltro.replace(/-/g, ''));
+          p.set('dataInicial', dataInicialPncp.replace(/-/g, ''));
           p.set('dataFinal', dataFinalFiltro.replace(/-/g, ''));
           return p;
         };
@@ -421,8 +429,8 @@ Deno.serve(async (req) => {
         const json1 = await resp1.json();
         const rawItems: Record<string, unknown>[] = json1.data || [];
 
-        // Se a página 1 veio cheia, busca a página 2 também
-        if (rawItems.length >= 500) {
+        // Se a página 1 veio cheia (50 = limite do PNCP), busca a página 2 também
+        if (rawItems.length >= 50) {
           try {
             const resp2 = await fetch(`${baseUrl}?${buildParams(2)}`, {
               headers: pncpHeaders,
@@ -496,9 +504,10 @@ Deno.serve(async (req) => {
     });
     if (termo) params.set('q', termo);
     if (ufEfetiva) params.set('uf', ufEfetiva.toUpperCase());
+    if (cnpjUasg) params.set('cnpj', cnpjUasg);
     if (esferaFiltro) params.set('codigoEsfera', esferaFiltro);
     params.set('codigoModalidadeContratacao', modalidadeFiltro);
-    params.set('dataInicial', dataInicialFiltro.replace(/-/g, ''));
+    params.set('dataInicial', dataInicialPncp.replace(/-/g, ''));
     params.set('dataFinal', dataFinalFiltro.replace(/-/g, ''));
 
     const resp = await fetch(`${PNCP_BASE}/contratacoes/publicacao?${params}`, {
