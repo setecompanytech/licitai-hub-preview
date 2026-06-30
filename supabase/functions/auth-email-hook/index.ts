@@ -305,9 +305,14 @@ async function handleWebhook(req: Request): Promise<Response> {
   const newEmail = payload.email_data?.token_hash_new ? payload.user?.new_email : undefined
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 
-  // Build the confirmation link users will click
+  // Build the confirmation link users will click.
+  // Points to our own app instead of Supabase's /auth/v1/verify endpoint directly:
+  // that endpoint consumes the one-time token on any GET request, including the
+  // automated link-prefetch scans some email clients (Gmail/Outlook) perform before
+  // the user ever clicks. Routing through our SPA means the token is only consumed
+  // when client-side JS actually runs verifyOtp(), which prefetchers don't execute.
   const confirmationUrl = tokenHash
-    ? `${supabaseUrl}/auth/v1/verify?token=${tokenHash}&type=${emailType}&redirect_to=${encodeURIComponent(redirectTo)}`
+    ? `https://${ROOT_DOMAIN}/reset-password?token_hash=${tokenHash}&type=${emailType}&redirect_to=${encodeURIComponent(redirectTo)}`
     : redirectTo
 
   console.log('Received auth event', { emailType, email: recipientEmail })

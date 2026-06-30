@@ -36,8 +36,8 @@ export default function ResetPassword() {
         // Format 2 (legado): #access_token=...&refresh_token=...&type=recovery|invite
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
-        const type = hashParams.get('type');
-        if (!code && accessToken && refreshToken && (type === 'recovery' || type === 'invite' || type === 'signup')) {
+        const hashType = hashParams.get('type');
+        if (!code && accessToken && refreshToken && (hashType === 'recovery' || hashType === 'invite' || hashType === 'signup')) {
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
@@ -45,8 +45,24 @@ export default function ResetPassword() {
           if (error) throw error;
         }
 
+        // Format 3 (token_hash do nosso auth-email-hook): ?token_hash=...&type=...
+        // Consome o token via verifyOtp só quando o JS do navegador real executa —
+        // evita que scanners de e-mail (que só fazem GET, sem rodar JS) consumam
+        // o token de uso único antes do clique de verdade do usuário.
+        const tokenHash = url.searchParams.get('token_hash');
+        const queryType = url.searchParams.get('type');
+        if (!code && !accessToken && tokenHash && queryType) {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: queryType as 'recovery' | 'invite' | 'signup' | 'email_change' | 'magiclink',
+          });
+          if (error) throw error;
+        }
+
+        const type = hashType || queryType;
+
         // Detecta se é primeiro acesso (convite) — usuário sem senha definida ainda.
-        const inviteHint = type === 'invite' || type === 'signup' || url.searchParams.get('type') === 'invite';
+        const inviteHint = type === 'invite' || type === 'signup';
         if (inviteHint) setIsInvite(true);
 
         // Erro vindo do link (expirado/inválido)

@@ -76,9 +76,13 @@ Deno.serve(async (req) => {
         email: targetEmail,
         options: { redirectTo: redirectUrl },
       })
-      if (linkError || !linkData?.properties?.action_link) return false
+      if (linkError || !linkData?.properties?.hashed_token) return false
 
-      const actionLink = linkData.properties.action_link
+      // Point to our own app instead of Supabase's action_link (which hits
+      // /auth/v1/verify directly and consumes the one-time token on any GET,
+      // including automated email link-prefetch scans). Our page only calls
+      // verifyOtp() client-side when a real browser actually loads it.
+      const actionLink = `${redirectUrl}?token_hash=${linkData.properties.hashed_token}&type=recovery`
       const resendKey = Deno.env.get('RESEND_API_KEY')
       if (!resendKey) return false
 
