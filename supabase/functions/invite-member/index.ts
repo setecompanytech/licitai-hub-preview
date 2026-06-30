@@ -68,6 +68,45 @@ Deno.serve(async (req) => {
 
     const redirectUrl = 'https://app.praefectus.com.br/reset-password'
 
+    // For confirmed users: generateLink via admin API (no rate limit) then email via Resend.
+    // /auth/v1/recover (public endpoint) has strict Supabase rate limits — avoided here.
+    async function sendRecoveryEmail(targetEmail: string): Promise<boolean> {
+      const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+        type: 'recovery',
+        email: targetEmail,
+        options: { redirectTo: redirectUrl },
+      })
+      if (linkError || !linkData?.properties?.action_link) return false
+
+      const actionLink = linkData.properties.action_link
+      const resendKey = Deno.env.get('RESEND_API_KEY')
+      if (!resendKey) return false
+
+      const emailResp = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: 'PRAEFECTUS <noreply@praefectus.com.br>',
+          to: [targetEmail],
+          subject: 'Você foi adicionado como colaborador — PRAEFECTUS',
+          html: `<!DOCTYPE html><html lang="pt-BR"><body style="font-family:Arial,sans-serif;background:#f4f4f5;margin:0;padding:32px 0">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+<tr><td style="background:#b45309;padding:24px 32px"><h1 style="margin:0;color:#fff;font-size:22px;letter-spacing:2px">PRAEFECTUS</h1></td></tr>
+<tr><td style="padding:32px">
+<h2 style="margin:0 0 16px;color:#111827">Você foi adicionado como colaborador</h2>
+<p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6">Clique no botão abaixo para definir sua senha e acessar a plataforma.</p>
+<div style="text-align:center;margin:24px 0">
+<a href="${actionLink}" style="display:inline-block;background:#b45309;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:600">Definir Senha de Acesso</a>
+</div>
+<p style="margin:24px 0 0;color:#9ca3af;font-size:12px;border-top:1px solid #f3f4f6;padding-top:16px">Link direto: <a href="${actionLink}" style="color:#b45309">${actionLink}</a></p>
+</td></tr></table></td></tr></table></body></html>`,
+        }),
+      }).catch(() => null)
+
+      return emailResp?.ok === true
+    }
+
     if (existingUser) {
       userId = existingUser.id
 
@@ -110,54 +149,27 @@ Deno.serve(async (req) => {
           lastEmailError = reinviteError.message
           console.warn('[invite-member] inviteUserByEmail falhou, tentando recovery:', reinviteError.message)
 
-          // 2ª tentativa (fallback): gera link de recovery explícito.
-          // Se o usuário ainda não tem e-mail confirmado, força a confirmação
-          // antes para que o link de recovery funcione corretamente.
+          // 2ª tentativa (fallback): envia recovery pelo endpoint público (dispara o hook de e-mail).
+          // Força confirmação antes para que o /recover funcione em contas ainda não confirmadas.
           if (notConfirmed) {
-            const { error: confirmError } = await adminClient.auth.admin.updateUserById(userId, {
-              email_confirm: true,
-            })
-            if (confirmError) {
-              console.warn('[invite-member] updateUserById (email_confirm) falhou:', confirmError.message)
-            }
+            await adminClient.auth.admin.updateUserById(userId, { email_confirm: true }).catch(() => {})
           }
 
-          const { error: recError } = await adminClient.auth.admin.generateLink({
-            type: 'recovery',
-            email,
-            options: { redirectTo: redirectUrl },
-          })
-          if (!recError) {
+          const recOk = await sendRecoveryEmail(email)
+          if (recOk) {
             emailFlow = 'recovery'
             lastEmailError = null
           } else {
-            lastEmailError = `${lastEmailError} | recovery: ${recError.message}`
+            lastEmailError = `${lastEmailError} | recovery: falhou`
           }
         }
       } else {
-        // Usuário ativo e confirmado: envia recovery para definir/redefinir senha.
-        const { error: recError } = await adminClient.auth.admin.generateLink({
-          type: 'recovery',
-          email,
-          options: { redirectTo: redirectUrl },
-        })
-        if (!recError) {
+        // Usuário ativo e confirmado: envia recovery pelo endpoint público (dispara o hook de e-mail).
+        const recOk = await sendRecoveryEmail(email)
+        if (recOk) {
           emailFlow = 'recovery'
         } else {
-          lastEmailError = recError.message
-          console.warn('[invite-member] recovery falhou, tentando invite:', recError.message)
-
-          // Fallback: tenta invite mesmo assim.
-          const { error: inviteFallbackError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-            data: { nome_completo: nome || email, empresa_id, equipe: Array.isArray(equipe) ? equipe[0] : equipe },
-            redirectTo: redirectUrl,
-          })
-          if (!inviteFallbackError) {
-            emailFlow = 'invite'
-            lastEmailError = null
-          } else {
-            lastEmailError = `${lastEmailError} | invite: ${inviteFallbackError.message}`
-          }
+          lastEmailError = 'recovery: falhou'
         }
       }
 

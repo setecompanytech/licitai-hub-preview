@@ -101,8 +101,8 @@ export default function EquipeColaboradores() {
       });
 
       if (error) {
-        // data may contain the actual error body from the function even on non-2xx
-        const msg = (data as any)?.error || error.message;
+        let msg = error.message;
+        try { const body = await (error as any).context?.json?.(); if (body?.error) msg = body.error; } catch {}
         toast.error(`Erro ao convidar colaborador: ${msg}`);
       } else if (data?.error) {
         toast.error(data.error);
@@ -134,7 +134,8 @@ export default function EquipeColaboradores() {
         },
       });
       if (error) {
-        const msg = (data as any)?.error || error.message;
+        let msg = error.message;
+        try { const body = await (error as any).context?.json?.(); if (body?.error) msg = body.error; } catch {}
         toast.error(msg);
       } else if (data?.error) {
         toast.error(data.error);
@@ -160,7 +161,9 @@ export default function EquipeColaboradores() {
         body: { email, empresa_id: empresaAtiva.id },
       });
       if (error) {
-        toast.error(`Erro ao reenviar convite: ${error.message}`);
+        let msg = error.message;
+        try { const body = await (error as any).context?.json?.(); if (body?.error) msg = body.error; } catch {}
+        toast.error(`Erro ao reenviar convite: ${msg}`);
       } else if (data?.error) {
         toast.error(data.error);
       } else {

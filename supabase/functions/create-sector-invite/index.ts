@@ -69,11 +69,11 @@ Deno.serve(async (req) => {
 
     // 2. Verificar se o caller é dono ou admin da empresa
     const [{ data: empresaOwner }, { data: callerMember }] = await Promise.all([
-      adminClient.from('empresas').select('user_id').eq('id', empresa_id).maybeSingle(),
+      adminClient.from('empresas').select('created_by').eq('id', empresa_id).maybeSingle(),
       adminClient.from('empresa_membros').select('papel').eq('user_id', caller.id).eq('empresa_id', empresa_id).maybeSingle(),
     ])
 
-    const isOwner = empresaOwner?.user_id === caller.id
+    const isOwner = empresaOwner?.created_by === caller.id
     const isAdmin = callerMember?.papel === 'admin' || callerMember?.papel === 'gerente'
 
     if (!isOwner && !isAdmin) {
