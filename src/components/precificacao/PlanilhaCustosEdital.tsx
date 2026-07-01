@@ -250,9 +250,9 @@ export default function PlanilhaCustosEdital({
         const marca = closest?.ean?.replace('Marca: ', '') || closest?.vendedor || '';
         const valorTotal = Math.round(bestPrice * it.quantidade * 100) / 100;
 
-        // Store top 3 sources with URLs
+        // Store top 3 sources — show even without URL so origin is always visible
         const topFontes = results
-          .filter((r: any) => r.preco_unitario > 0 && r.url)
+          .filter((r: any) => r.preco_unitario > 0)
           .slice(0, 3)
           .map((r: any) => ({
             fonte: r.fonte || 'marketplace',
@@ -768,17 +768,27 @@ export default function PlanilhaCustosEdital({
                   {msg.fontes && msg.fontes.length > 0 && (
                     <div className="flex flex-wrap gap-x-3 gap-y-0.5 pl-3">
                       {msg.fontes.map((f, fi) => (
-                        <a
-                          key={fi}
-                          href={f.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-primary/70 hover:text-primary flex items-center gap-0.5 underline-offset-2 hover:underline"
-                          title={f.titulo}
-                        >
-                          <ExternalLink className="w-2.5 h-2.5 shrink-0" />
-                          {FONTE_LABELS[f.fonte] ?? f.fonte} — {formatCurrency(f.preco)}
-                        </a>
+                        f.url ? (
+                          <a
+                            key={fi}
+                            href={f.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-primary/70 hover:text-primary flex items-center gap-0.5 underline-offset-2 hover:underline"
+                            title={f.titulo}
+                          >
+                            <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                            {FONTE_LABELS[f.fonte] ?? f.fonte} — {formatCurrency(f.preco)}
+                          </a>
+                        ) : (
+                          <span
+                            key={fi}
+                            className="text-[10px] text-muted-foreground flex items-center gap-0.5"
+                            title={f.titulo}
+                          >
+                            {FONTE_LABELS[f.fonte] ?? f.fonte} — {formatCurrency(f.preco)}
+                          </span>
+                        )
                       ))}
                     </div>
                   )}
