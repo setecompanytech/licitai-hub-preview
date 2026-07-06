@@ -665,7 +665,10 @@ export default function PedidosOmie() {
           </Button>
           <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white"
             onClick={async () => {
-              if (pendingFaturarId) await updatePedidoStatus(pendingFaturarId, 'faturado');
+              if (pendingFaturarId) {
+                await updatePedidoStatus(pendingFaturarId, 'faturado');
+                if (pendingFaturarId === editingId) setEditingStatus('faturado');
+              }
               setNfeAlertOpen(false); setPendingFaturarId(null);
             }}>
             <Zap className="w-3.5 h-3.5 mr-1" /> Faturar mesmo assim
@@ -1033,14 +1036,43 @@ export default function PedidosOmie() {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/20 shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm">{formTitle}</span>
-          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${STATUS_BADGE[editingStatus]}`}>
-            {STATUS_MSG[editingStatus]}
-          </Badge>
+      <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/20 shrink-0 gap-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-semibold text-sm truncate">{formTitle}</span>
         </div>
-        <button onClick={closeForm} className="text-muted-foreground hover:text-foreground text-sm font-medium">
+
+        {/* Status changer — só exibe ao editar um pedido existente */}
+        {editingId && (
+          <div className="flex items-center gap-2 shrink-0 text-xs">
+            <span className="text-muted-foreground whitespace-nowrap">Coluna atual:</span>
+            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 whitespace-nowrap ${STATUS_BADGE[editingStatus]}`}>
+              {STATUS_MSG[editingStatus]}
+            </Badge>
+            <span className="text-muted-foreground">→</span>
+            <span className="text-muted-foreground whitespace-nowrap">Mover para:</span>
+            <div className="flex items-center gap-1">
+              {KANBAN_STATUS.filter(s => s.key !== editingStatus).map(s => (
+                <button
+                  key={s.key}
+                  onClick={async () => {
+                    if (s.key === 'faturado') {
+                      setPendingFaturarId(editingId);
+                      setNfeAlertOpen(true);
+                    } else {
+                      await updatePedidoStatus(editingId, s.key);
+                      setEditingStatus(s.key);
+                    }
+                  }}
+                  className={`px-2 py-0.5 rounded border text-[10px] transition-colors hover:bg-muted/60 whitespace-nowrap ${STATUS_BADGE[s.key]}`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <button onClick={closeForm} className="text-muted-foreground hover:text-foreground text-sm font-medium shrink-0">
           Fechar ✕
         </button>
       </div>
