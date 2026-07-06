@@ -371,6 +371,7 @@ export default function PedidosOmie() {
   const [dateFrom, setDateFrom]     = useState('');
   const [dateTo, setDateTo]         = useState('');
   const [kanbanMenu, setKanbanMenu] = useState<string | null>(null);
+  const draggedIdRef                = useRef<string | null>(null);
   const [draggedId, setDraggedId]   = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const [nfeAlertOpen, setNfeAlertOpen]       = useState(false);
@@ -476,19 +477,26 @@ export default function PedidosOmie() {
     await loadPedidos();
   }
 
+  function resetDrag() {
+    draggedIdRef.current = null;
+    setDraggedId(null);
+    setDragOverCol(null);
+  }
+
   async function handleDrop(colKey: Pedido['status'], e: React.DragEvent) {
     e.preventDefault();
-    setDragOverCol(null);
-    if (!draggedId) return;
-    const current = pedidos.find(p => p.id === draggedId)?.status;
-    if (!current || current === colKey) { setDraggedId(null); return; }
+    e.stopPropagation();
+    const id = draggedIdRef.current;
+    resetDrag();
+    if (!id) return;
+    const current = pedidos.find(p => p.id === id)?.status;
+    if (!current || current === colKey) return;
     if (colKey === 'faturado') {
-      setPendingFaturarId(draggedId);
+      setPendingFaturarId(id);
       setNfeAlertOpen(true);
     } else {
-      await updatePedidoStatus(draggedId, colKey);
+      await updatePedidoStatus(id, colKey);
     }
-    setDraggedId(null);
   }
 
   async function handleSave() {
@@ -879,8 +887,8 @@ export default function PedidosOmie() {
             {kanbanCols.map((col, colIdx) => (
               <div key={col.key}
             className={`flex flex-col min-w-[230px] max-w-[230px] rounded-lg border transition-colors ${dragOverCol === col.key ? 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-400/60' : 'bg-muted/20 border-muted/40'}`}
-            onDragOver={e => { e.preventDefault(); setDragOverCol(col.key); }}
-            onDragLeave={() => setDragOverCol(null)}
+            onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (dragOverCol !== col.key) setDragOverCol(col.key); }}
+            onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverCol(null); }}
             onDrop={e => handleDrop(col.key, e)}
           >
                 {/* Column header */}
@@ -904,8 +912,8 @@ export default function PedidosOmie() {
                     return (
                       <div key={p.id}
                         draggable
-                        onDragStart={() => setDraggedId(p.id)}
-                        onDragEnd={() => { setDraggedId(null); setDragOverCol(null); }}
+                        onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; draggedIdRef.current = p.id; setDraggedId(p.id); }}
+                        onDragEnd={() => resetDrag()}
                         className={`bg-background border rounded-lg p-2.5 cursor-grab active:cursor-grabbing hover:shadow-sm transition-all select-none ${draggedId === p.id ? 'opacity-50 scale-95' : ''}`}
                         onDoubleClick={() => openEdit(p)}
                       >
