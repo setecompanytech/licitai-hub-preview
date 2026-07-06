@@ -897,7 +897,7 @@ export default function GestaoCompras() {
       {/* Header */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Compras</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Compras e Pedidos</h1>
           <p className="text-sm text-muted-foreground mt-1">Pedidos, fornecedores, estoque e notas fiscais</p>
         </div>
         {!isOnboarding && (
