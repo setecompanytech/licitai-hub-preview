@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import ProdutosOmie from '@/components/gestao-compras/ProdutosOmie';
+import PedidosOmie from '@/components/gestao-compras/PedidosOmie';
+import PessoaFormDialog from '@/components/financeiro/PessoaFormDialog';
+import { usePessoas, useDeletePessoa, type Pessoa } from '@/hooks/useFinanceiro';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -141,7 +145,14 @@ export default function GestaoCompras() {
   const [pedidoForm, setPedidoForm] = useState(defaultPedidoForm);
   const [formItens,  setFormItens]  = useState<FormItem[]>([blankItem()]);
 
-  // ── State: dialog Fornecedor ──────────────────────────────────
+  // ── State: dialog Fornecedor (FinPessoas unificado) ───────────
+  const [pessoaOpen,    setPessoaOpen]    = useState(false);
+  const [editingPessoa, setEditingPessoa] = useState<Pessoa | null>(null);
+  const { data: todasPessoas = [] } = usePessoas();
+  const deletePessoa = useDeletePessoa();
+  const pessoasFornecedores = todasPessoas.filter(p => p.tipo === 'fornecedor' || p.tipo === 'ambos');
+
+  // mantidos para compatibilidade com selects de pedido e NF-e
   const [fornOpen,      setFornOpen]      = useState(false);
   const [editingForn,   setEditingForn]   = useState<Fornecedor | null>(null);
   const [fornForm,      setFornForm]      = useState(defaultFornForm);
@@ -892,12 +903,12 @@ export default function GestaoCompras() {
         {!isOnboarding && (
           <div className="flex gap-2">
             {mainTab === 'fornecedores' ? (
-              <Button onClick={() => { setEditingForn(null); setFornForm(defaultFornForm()); setFornOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Fornecedor</Button>
+              <Button onClick={() => { setEditingPessoa(null); setPessoaOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Fornecedor</Button>
             ) : mainTab === 'estoque' ? (
               <Button onClick={openNovoProduto}><Plus className="w-4 h-4 mr-2" /> Novo Produto</Button>
             ) : mainTab === 'nfe' ? (
               <Button onClick={() => { resetNfeDialog(); setNfeOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Importar NF-e</Button>
-            ) : (
+            ) : mainTab === 'produtos' ? null : mainTab === 'pedidos' ? null : (
               <Button onClick={() => { resetPedidoForm(); setPedidoOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Pedido</Button>
             )}
           </div>
@@ -911,7 +922,7 @@ export default function GestaoCompras() {
       ) : isOnboarding ? (
         <div className="min-h-[60vh] flex flex-col justify-center">
           <OnboardingCompras
-            onCadastrarFornecedor={() => { setEditingForn(null); setFornForm(defaultFornForm()); setFornOpen(true); }}
+            onCadastrarFornecedor={() => { setEditingPessoa(null); setPessoaOpen(true); }}
             onNovoPedido={() => { resetPedidoForm(); setPedidoOpen(true); }}
             onEstoque={() => { setMainTab('estoque'); openNovoProduto(); }}
             onImportarNfe={() => { resetNfeDialog(); setNfeOpen(true); }}
@@ -921,96 +932,49 @@ export default function GestaoCompras() {
         <Tabs value={mainTab} onValueChange={setMainTab}>
           <TabsList className="mb-4">
             <TabsTrigger value="pedidos"><ShoppingCart className="w-3.5 h-3.5 mr-1.5" /> Pedidos</TabsTrigger>
+            <TabsTrigger value="produtos"><Package className="w-3.5 h-3.5 mr-1.5" /> Produtos</TabsTrigger>
             <TabsTrigger value="fornecedores"><Users className="w-3.5 h-3.5 mr-1.5" /> Fornecedores</TabsTrigger>
             <TabsTrigger value="estoque"><Warehouse className="w-3.5 h-3.5 mr-1.5" /> Estoque</TabsTrigger>
             <TabsTrigger value="nfe"><FileText className="w-3.5 h-3.5 mr-1.5" /> NF-e</TabsTrigger>
           </TabsList>
 
+          {/* ══ ABA PRODUTOS ══ */}
+          <TabsContent value="produtos">
+            <ProdutosOmie />
+          </TabsContent>
+
           {/* ══ ABA PEDIDOS ══ */}
-          <TabsContent value="pedidos" className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><ShoppingCart className="w-4 h-4" /> Em Aberto</div><p className="text-2xl font-bold">{abertos.length}</p></Card>
-              <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><DollarSign className="w-4 h-4" /> Comprometido</div><p className="text-lg font-bold leading-tight">{fmtCurrency(valorComp)}</p></Card>
-              <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><Building2 className="w-4 h-4" /> Contratos</div><p className="text-2xl font-bold">{contrVinc}</p></Card>
-              <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><AlertTriangle className="w-4 h-4" /> Atrasados</div><p className="text-2xl font-bold text-destructive">{atrasados}</p></Card>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar por descrição, fornecedor ou contrato..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" /></div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Status" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os status</SelectItem>
-                  <SelectItem value="rascunho">Rascunho</SelectItem>
-                  <SelectItem value="aguardando">Aguardando</SelectItem>
-                  <SelectItem value="entregue">Entregue</SelectItem>
-                  <SelectItem value="cancelado">Cancelado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {filtPedidos.length === 0 ? (
-              <Card className="p-12 text-center"><ShoppingCart className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">Nenhum pedido encontrado</p></Card>
-            ) : (
-              <div className="space-y-2">
-                {filtPedidos.map(p => {
-                  const forn = fornecedores.find(f => f.id === p.fornecedor_id);
-                  const cont = contratos.find(c => c.id === p.contrato_id);
-                  const cfg  = statusConfig[p.status];
-                  const Icon = cfg.icon;
-                  const isAtrasado = p.data_entrega_prevista && p.status !== 'entregue' && p.status !== 'cancelado' && p.data_entrega_prevista < todayStr;
-                  return (
-                    <Card key={p.id} className="p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedPedido(p)}>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <span className="text-sm font-semibold truncate">{p.observacoes || 'Pedido de Compra'}</span>
-                            <Badge className={`${cfg.color} text-[10px]`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
-                            {isAtrasado && <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30">Atrasado</Badge>}
-                          </div>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-                            {forn && <span className="flex items-center gap-1"><Truck className="w-3 h-3" />{forn.razao_social}</span>}
-                            {cont && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />Ct. {cont.numero_contrato}</span>}
-                            {p.data_pedido && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Pedido: {fmtDate(p.data_pedido)}</span>}
-                            {p.data_entrega_prevista && <span className="flex items-center gap-1"><Truck className="w-3 h-3" />Prev: {fmtDate(p.data_entrega_prevista)}</span>}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <div className="text-right"><p className="text-xs text-muted-foreground">Valor Total</p><p className="text-sm font-bold">{fmtCurrency(p.valor_total)}</p></div>
-                          <Button size="sm" variant="ghost" onClick={e => handleDeletePedido(p.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
-                        </div>
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
+          <TabsContent value="pedidos">
+            <PedidosOmie />
           </TabsContent>
 
           {/* ══ ABA FORNECEDORES ══ */}
           <TabsContent value="fornecedores" className="space-y-4">
-            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar fornecedor ou categoria..." value={fornSearch} onChange={e => setFornSearch(e.target.value)} className="pl-9" /></div>
-            {filtForn.length === 0 ? (
+            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar fornecedor, CNPJ ou e-mail..." value={fornSearch} onChange={e => setFornSearch(e.target.value)} className="pl-9" /></div>
+            {pessoasFornecedores.length === 0 ? (
               <Card className="p-12 text-center"><Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">Nenhum fornecedor cadastrado</p></Card>
             ) : (
               <div className="space-y-2">
-                {filtForn.map(f => (
-                  <Card key={f.id} className={`p-4 ${!f.ativo ? 'opacity-60' : ''}`}>
+                {pessoasFornecedores
+                  .filter(f => !fornSearch || f.nome.toLowerCase().includes(fornSearch.toLowerCase()) || (f.documento ?? '').includes(fornSearch) || (f.email ?? '').toLowerCase().includes(fornSearch.toLowerCase()))
+                  .map(f => (
+                  <Card key={f.id} className="p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold">{f.razao_social}</span>
-                          {f.categoria && <Badge variant="outline" className="text-[10px]">{f.categoria}</Badge>}
-                          {!f.ativo && <Badge variant="outline" className="text-[10px] text-muted-foreground">Inativo</Badge>}
+                          <span className="text-sm font-semibold">{f.nome}</span>
+                          {f.nome_fantasia && <span className="text-xs text-muted-foreground">({f.nome_fantasia})</span>}
+                          {f.tipo === 'ambos' && <Badge variant="outline" className="text-[10px]">Cliente e Fornecedor</Badge>}
                         </div>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                          {f.cnpj && <span>{f.cnpj}</span>}
-                          {f.contato_nome && <span className="flex items-center gap-1"><Users className="w-3 h-3" />{f.contato_nome}</span>}
-                          {f.contato_email && <span>{f.contato_email}</span>}
-                          {f.prazo_entrega_dias != null && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{f.prazo_entrega_dias}d prazo</span>}
+                          {f.documento && <span>{f.documento}</span>}
+                          {f.email && <span>{f.email}</span>}
+                          {f.telefone && <span className="flex items-center gap-1"><Users className="w-3 h-3" />{f.telefone}</span>}
                         </div>
                       </div>
                       <div className="flex gap-1 shrink-0">
-                        <Button size="sm" variant="ghost" onClick={() => { setEditingForn(f); setFornForm({ razao_social: f.razao_social, cnpj: f.cnpj ?? '', categoria: f.categoria ?? '', prazo_entrega_dias: f.prazo_entrega_dias != null ? String(f.prazo_entrega_dias) : '', contato_nome: f.contato_nome ?? '', contato_email: f.contato_email ?? '', contato_telefone: f.contato_telefone ?? '', observacoes: f.observacoes ?? '', ativo: f.ativo, inscricao_estadual: f.inscricao_estadual ?? '', regime_tributario: f.regime_tributario ?? '', uf: f.uf ?? '', municipio: f.municipio ?? '', cep: f.cep ?? '', logradouro: f.logradouro ?? '', numero_endereco: f.numero_endereco ?? '', bairro: f.bairro ?? '' }); setFornOpen(true); }}><Pencil className="w-4 h-4" /></Button>
-                        <Button size="sm" variant="ghost" onClick={e => handleDeleteFornecedor(f.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setEditingPessoa(f); setPessoaOpen(true); }}><Pencil className="w-4 h-4" /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => deletePessoa.mutate({ id: f.id })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                       </div>
                     </div>
                   </Card>
@@ -1184,67 +1148,13 @@ export default function GestaoCompras() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Fornecedor */}
-      <Dialog open={fornOpen} onOpenChange={o => { setFornOpen(o); if (!o) { setEditingForn(null); setFornForm(defaultFornForm()); } }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editingForn ? 'Editar Fornecedor' : 'Novo Fornecedor'}</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-            <div className="md:col-span-2"><Label>Razão Social *</Label><Input value={fornForm.razao_social} onChange={e => setFornForm(f => ({ ...f, razao_social: e.target.value }))} /></div>
-            <div>
-              <Label>CNPJ</Label>
-              <div className="relative">
-                <Input
-                  value={fornForm.cnpj}
-                  onChange={e => {
-                    const val = e.target.value;
-                    setFornForm(f => ({ ...f, cnpj: val }));
-                    buscarCnpj(val);
-                  }}
-                  placeholder="00.000.000/0001-00"
-                  className={fetchingCnpj ? 'pr-9' : ''}
-                />
-                {fetchingCnpj && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-            </div>
-            <div><Label>Categoria</Label><Input value={fornForm.categoria} onChange={e => setFornForm(f => ({ ...f, categoria: e.target.value }))} placeholder="Materiais, TI, Serviços..." /></div>
-            <div><Label>Prazo de Entrega (dias)</Label><Input type="number" min="0" value={fornForm.prazo_entrega_dias} onChange={e => setFornForm(f => ({ ...f, prazo_entrega_dias: e.target.value }))} /></div>
-            <div className="flex items-center gap-3 mt-5"><Switch id="forn-ativo" checked={fornForm.ativo} onCheckedChange={v => setFornForm(f => ({ ...f, ativo: v }))} /><Label htmlFor="forn-ativo" className="cursor-pointer">Fornecedor ativo</Label></div>
-            <div><Label>Contato — Nome</Label><Input value={fornForm.contato_nome} onChange={e => setFornForm(f => ({ ...f, contato_nome: e.target.value }))} /></div>
-            <div><Label>Contato — E-mail</Label><Input type="email" value={fornForm.contato_email} onChange={e => setFornForm(f => ({ ...f, contato_email: e.target.value }))} /></div>
-            <div className="md:col-span-2"><Label>Contato — Telefone</Label><Input value={fornForm.contato_telefone} onChange={e => setFornForm(f => ({ ...f, contato_telefone: e.target.value }))} /></div>
-            <div className="md:col-span-2"><Label>Observações</Label><Textarea value={fornForm.observacoes} onChange={e => setFornForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} /></div>
-            <div className="md:col-span-2 border-t pt-3 mt-1">
-              <p className="text-xs font-semibold text-muted-foreground mb-2">Dados Fiscais (preenchidos automaticamente via NF-e)</p>
-            </div>
-            <div><Label>Inscrição Estadual</Label><Input value={fornForm.inscricao_estadual} onChange={e => setFornForm(f => ({ ...f, inscricao_estadual: e.target.value }))} /></div>
-            <div><Label>Regime Tributário</Label>
-              <Select value={fornForm.regime_tributario || 'none'} onValueChange={v => setFornForm(f => ({ ...f, regime_tributario: v === 'none' ? '' : v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— Não informado —</SelectItem>
-                  <SelectItem value="1">1 — Simples Nacional</SelectItem>
-                  <SelectItem value="2">2 — Simples Nacional — Excesso</SelectItem>
-                  <SelectItem value="3">3 — Regime Normal</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div><Label>UF</Label><Input value={fornForm.uf} onChange={e => setFornForm(f => ({ ...f, uf: e.target.value }))} placeholder="SP" maxLength={2} /></div>
-            <div><Label>Município</Label><Input value={fornForm.municipio} onChange={e => setFornForm(f => ({ ...f, municipio: e.target.value }))} /></div>
-            <div><Label>CEP</Label><Input value={fornForm.cep} onChange={e => setFornForm(f => ({ ...f, cep: e.target.value }))} placeholder="00000-000" /></div>
-            <div className="md:col-span-2"><Label>Logradouro</Label><Input value={fornForm.logradouro} onChange={e => setFornForm(f => ({ ...f, logradouro: e.target.value }))} /></div>
-            <div><Label>Número</Label><Input value={fornForm.numero_endereco} onChange={e => setFornForm(f => ({ ...f, numero_endereco: e.target.value }))} /></div>
-            <div><Label>Bairro</Label><Input value={fornForm.bairro} onChange={e => setFornForm(f => ({ ...f, bairro: e.target.value }))} /></div>
-          </div>
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={() => { setFornOpen(false); setEditingForn(null); setFornForm(defaultFornForm()); }}>Cancelar</Button>
-            <Button onClick={handleSaveFornecedor} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Salvar</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Dialog: Fornecedor — componente unificado com Financeiro */}
+      <PessoaFormDialog
+        open={pessoaOpen}
+        onOpenChange={o => { setPessoaOpen(o); if (!o) setEditingPessoa(null); }}
+        editing={editingPessoa}
+        defaultTipo="fornecedor"
+      />
 
       {/* Dialog: Produto */}
       <ProdutoDialog open={produtoOpen} onOpenChange={setProdutoOpen} editing={editingProduto} form={produtoForm} setForm={setProdutoForm} saving={saving} onSave={handleSaveProduto} onClose={() => { setEditingProduto(null); setProdutoForm(defaultProdutoForm()); }} />

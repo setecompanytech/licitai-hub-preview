@@ -13,6 +13,7 @@ import GlobalSearch from '@/components/search/GlobalSearch';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import MaintenanceBanner from '@/components/layout/MaintenanceBanner';
 import ExportarDados from '@/components/export/ExportarDados';
+import MeuPerfilModal from '@/components/perfil/MeuPerfilModal';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -30,6 +31,7 @@ const profileMenuItems = [
 const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function AppLayout({ children }, _ref) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [perfilModalOpen, setPerfilModalOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -169,6 +171,15 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
                 </div>
 
                 <div className="py-1.5 max-h-[260px] overflow-y-auto">
+                  {/* Meu Perfil — acima de tudo */}
+                  <button
+                    className="w-full flex items-center gap-3 px-5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors text-left font-medium"
+                    onClick={() => { setProfileOpen(false); setPerfilModalOpen(true); }}
+                  >
+                    <User className="w-4 h-4 text-primary shrink-0" />
+                    <span>Meu Perfil</span>
+                  </button>
+                  <div className="mx-4 my-1 border-t border-border" />
                   {profileMenuItems.map((item) => (
                     <button
                       key={item.label}
@@ -214,6 +225,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
       />
       <AureliaChat />
       <GlobalSearch />
+      <MeuPerfilModal open={perfilModalOpen} onOpenChange={setPerfilModalOpen} />
     </div>
   );
 });
