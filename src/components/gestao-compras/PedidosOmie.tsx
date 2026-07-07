@@ -372,9 +372,10 @@ export default function PedidosOmie() {
   const [dateFrom, setDateFrom]     = useState('');
   const [dateTo, setDateTo]         = useState('');
   const [kanbanMenu, setKanbanMenu] = useState<string | null>(null);
-  const draggedIdRef                = useRef<string | null>(null);
-  const [draggedId, setDraggedId]   = useState<string | null>(null);
-  const [dragOverCol, setDragOverCol] = useState<string | null>(null);
+  const draggingIdRef               = useRef<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [ghostPos, setGhostPos]     = useState<{ x: number; y: number } | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<Pedido['status'] | null>(null);
   const [nfeAlertOpen, setNfeAlertOpen]       = useState(false);
   const [pendingFaturarId, setPendingFaturarId] = useState<string | null>(null);
   const [editingStatus, setEditingStatus]     = useState<Pedido['status']>('pedido');
@@ -478,27 +479,57 @@ export default function PedidosOmie() {
     await loadPedidos();
   }
 
-  function resetDrag() {
-    draggedIdRef.current = null;
-    setDraggedId(null);
+  function startDrag(e: React.PointerEvent, pedidoId: string) {
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    draggingIdRef.current = pedidoId;
+    setDraggingId(pedidoId);
+    setGhostPos({ x: e.clientX, y: e.clientY });
+  }
+
+  function cancelDrag() {
+    draggingIdRef.current = null;
+    setDraggingId(null);
+    setGhostPos(null);
     setDragOverCol(null);
   }
 
-  async function handleDrop(colKey: Pedido['status'], e: React.DragEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    const id = draggedIdRef.current;
-    resetDrag();
-    if (!id) return;
-    const current = pedidos.find(p => p.id === id)?.status;
-    if (!current || current === colKey) return;
-    if (colKey === 'faturado') {
-      setPendingFaturarId(id);
-      setNfeAlertOpen(true);
-    } else {
-      await updatePedidoStatus(id, colKey);
-    }
-  }
+  useEffect(() => {
+    if (!draggingId) return;
+
+    const onMove = (e: PointerEvent) => {
+      setGhostPos({ x: e.clientX, y: e.clientY });
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const colEl = el?.closest('[data-col]');
+      const key = (colEl?.getAttribute('data-col') ?? null) as Pedido['status'] | null;
+      setDragOverCol(key);
+    };
+
+    const onUp = async (e: PointerEvent) => {
+      const id = draggingIdRef.current;
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const colEl = el?.closest('[data-col]');
+      const colKey = (colEl?.getAttribute('data-col') ?? null) as Pedido['status'] | null;
+      cancelDrag();
+      if (!id || !colKey) return;
+      const current = pedidos.find(p => p.id === id)?.status;
+      if (current === colKey) return;
+      if (colKey === 'faturado') { setPendingFaturarId(id); setNfeAlertOpen(true); }
+      else await updatePedidoStatus(id, colKey);
+    };
+
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') cancelDrag(); };
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('keydown', onKey);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draggingId, pedidos]);
 
   async function handleSave() {
     setSaving(true);
@@ -887,14 +918,27 @@ export default function PedidosOmie() {
           </div>
         ) : (
           /* ── KANBAN VIEW ── */
-          <div className="flex gap-3 overflow-x-auto pb-2" style={{ minHeight: 'calc(100vh - 300px)' }}>
+          <div className="flex gap-3 overflow-x-auto pb-2 relative" style={{ minHeight: 'calc(100vh - 300px)' }}>
+            {/* Ghost card shown while dragging */}
+            {draggingId && ghostPos && (() => {
+              const dp = pedidos.find(x => x.id === draggingId);
+              return dp ? (
+                <div
+                  style={{ position: 'fixed', left: ghostPos.x + 12, top: ghostPos.y + 8, zIndex: 9999, pointerEvents: 'none', width: 210 }}
+                  className="bg-background border-2 border-amber-400 rounded-lg p-2.5 shadow-2xl opacity-90 rotate-1"
+                >
+                  <p className="text-xs font-semibold text-muted-foreground">Pedido Nº {dp.numero}</p>
+                  {getPessoaNome(dp.pessoa_id) && <p className="text-xs font-medium mt-0.5 truncate">{getPessoaNome(dp.pessoa_id)}</p>}
+                  <p className="text-xs font-bold mt-1">R$ {fmtM(dp.valor_total)}</p>
+                </div>
+              ) : null;
+            })()}
+
             {kanbanCols.map((col, colIdx) => (
               <div key={col.key}
-            className={`flex flex-col min-w-[230px] max-w-[230px] rounded-lg border transition-colors ${dragOverCol === col.key ? 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-400/60' : 'bg-muted/20 border-muted/40'}`}
-            onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (dragOverCol !== col.key) setDragOverCol(col.key); }}
-            onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverCol(null); }}
-            onDrop={e => handleDrop(col.key, e)}
-          >
+                data-col={col.key}
+                className={`flex flex-col min-w-[230px] max-w-[230px] rounded-lg border transition-colors ${draggingId && dragOverCol === col.key ? 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-400/60 shadow-inner' : 'bg-muted/20 border-muted/40'}`}
+              >
                 {/* Column header */}
                 <div className="flex items-center justify-between px-3 py-2.5 border-b border-muted/40">
                   <span className="font-semibold text-sm">{col.label}</span>
@@ -915,11 +959,9 @@ export default function PedidosOmie() {
 
                     return (
                       <div key={p.id}
-                        draggable
-                        onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; draggedIdRef.current = p.id; setDraggedId(p.id); }}
-                        onDragEnd={() => resetDrag()}
-                        className={`bg-background border rounded-lg p-2.5 cursor-grab active:cursor-grabbing hover:shadow-sm transition-all select-none ${draggedId === p.id ? 'opacity-50 scale-95' : ''}`}
-                        onDoubleClick={() => openEdit(p)}
+                        onPointerDown={e => { if (!(e.target as HTMLElement).closest('button')) startDrag(e, p.id); }}
+                        onDoubleClick={() => { if (!draggingId) openEdit(p); }}
+                        className={`bg-background border rounded-lg p-2.5 hover:shadow-sm transition-all select-none touch-none ${draggingId === p.id ? 'opacity-40 scale-95 cursor-grabbing' : 'cursor-grab'}`}
                       >
                         <div className="flex items-start justify-between gap-1">
                           <div className="flex-1 min-w-0">
@@ -960,6 +1002,18 @@ export default function PedidosOmie() {
                             >
                               <Pencil className="w-3 h-3 text-amber-600" /> Editar
                             </button>
+                            {KANBAN_STATUS.filter(s => s.key !== p.status).map(s => (
+                              <button key={s.key}
+                                className="w-full text-left text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-1 py-1 rounded hover:bg-muted/50"
+                                onClick={async () => {
+                                  setKanbanMenu(null);
+                                  if (s.key === 'faturado') { setPendingFaturarId(p.id); setNfeAlertOpen(true); }
+                                  else await updatePedidoStatus(p.id, s.key);
+                                }}
+                              >
+                                <ChevronsUpDown className="w-3 h-3 text-blue-500" /> Mover → {s.label}
+                              </button>
+                            ))}
                             <button
                               className="w-full text-left text-xs text-destructive flex items-center gap-1.5 px-1 py-1 rounded hover:bg-destructive/10"
                               onClick={() => handleDelete(p.id)}

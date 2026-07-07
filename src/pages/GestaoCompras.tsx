@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import ProdutosOmie from '@/components/gestao-compras/ProdutosOmie';
 import PedidosOmie from '@/components/gestao-compras/PedidosOmie';
+import CertificadoDigital from '@/components/gestao-compras/CertificadoDigital';
 import PessoaFormDialog from '@/components/financeiro/PessoaFormDialog';
 import { usePessoas, useDeletePessoa, type Pessoa } from '@/hooks/useFinanceiro';
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,7 @@ import {
   ShoppingCart, Plus, Search, Trash2, ArrowLeft, Loader2,
   Building2, Calendar, DollarSign, AlertTriangle, CheckCircle2,
   Clock, Package, Truck, Users, X, Pencil, FileText,
-  Warehouse, TrendingUp, TrendingDown, Upload, RotateCcw, AlertCircle,
+  Warehouse, TrendingUp, TrendingDown, Upload, RotateCcw, AlertCircle, ShieldCheck,
 } from 'lucide-react';
 
 // ── Formatters ────────────────────────────────────────────────
@@ -936,6 +937,7 @@ export default function GestaoCompras() {
             <TabsTrigger value="fornecedores"><Users className="w-3.5 h-3.5 mr-1.5" /> Fornecedores</TabsTrigger>
             <TabsTrigger value="estoque"><Warehouse className="w-3.5 h-3.5 mr-1.5" /> Estoque</TabsTrigger>
             <TabsTrigger value="nfe"><FileText className="w-3.5 h-3.5 mr-1.5" /> NF-e</TabsTrigger>
+            <TabsTrigger value="certificado"><ShieldCheck className="w-3.5 h-3.5 mr-1.5" /> Certificado</TabsTrigger>
           </TabsList>
 
           {/* ══ ABA PRODUTOS ══ */}
@@ -1083,6 +1085,11 @@ export default function GestaoCompras() {
                 </table>
               </div>
             )}
+          </TabsContent>
+
+          {/* ══ ABA CERTIFICADO ══ */}
+          <TabsContent value="certificado" className="space-y-4">
+            <CertificadoDigital />
           </TabsContent>
         </Tabs>
       )}

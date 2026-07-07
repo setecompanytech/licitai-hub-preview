@@ -202,3 +202,37 @@ CREATE POLICY "pi_update" ON public.pedido_itens
 CREATE POLICY "pi_delete" ON public.pedido_itens
   FOR DELETE USING (public.is_empresa_member(auth.uid(), empresa_id));
 ```
+
+---
+
+## [2026-07-07] Tabela certificados_digitais (Certificado A1/A3 para NFS-e)
+
+```sql
+CREATE TABLE IF NOT EXISTS public.certificados_digitais (
+  id              uuid        NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  empresa_id      uuid        NOT NULL REFERENCES public.empresas(id) ON DELETE CASCADE,
+  tipo            text        NOT NULL DEFAULT 'A1',
+  nome_titular    text,
+  cnpj_titular    text,
+  validade        date,
+  storage_path    text,
+  ativo           boolean     NOT NULL DEFAULT true,
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  updated_at      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_cert_empresa ON public.certificados_digitais(empresa_id);
+
+ALTER TABLE public.certificados_digitais ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "cert_select" ON public.certificados_digitais
+  FOR SELECT USING (public.is_empresa_member(auth.uid(), empresa_id));
+CREATE POLICY "cert_insert" ON public.certificados_digitais
+  FOR INSERT WITH CHECK (public.is_empresa_admin(auth.uid(), empresa_id));
+CREATE POLICY "cert_update" ON public.certificados_digitais
+  FOR UPDATE USING (public.is_empresa_admin(auth.uid(), empresa_id));
+CREATE POLICY "cert_delete" ON public.certificados_digitais
+  FOR DELETE USING (public.is_empresa_admin(auth.uid(), empresa_id));
+```
+
+> **Bucket Supabase Storage**: crie o bucket privado `certificados` em **Storage → New Bucket → Name: certificados → Public: OFF**.
