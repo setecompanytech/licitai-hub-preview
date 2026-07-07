@@ -57,7 +57,7 @@ export default function CertificadoDigital() {
     try {
       const path = `${empresaAtiva.id}/certificados/${Date.now()}_${file.name}`;
       const { error: upErr } = await supabase.storage
-        .from('certificados')
+        .from('certificados-digitais')
         .upload(path, file, { upsert: false });
       if (upErr) throw upErr;
 
@@ -86,7 +86,7 @@ export default function CertificadoDigital() {
 
   async function handleDelete(cert: Certificado) {
     if (cert.storage_path) {
-      await supabase.storage.from('certificados').remove([cert.storage_path]);
+      await supabase.storage.from('certificados-digitais').remove([cert.storage_path]);
     }
     await supabase.from('certificados_digitais' as never).delete().eq('id', cert.id);
     toast.success('Certificado removido');
