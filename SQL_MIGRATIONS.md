@@ -228,7 +228,7 @@ ALTER TABLE public.certificados_digitais ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "cert_select" ON public.certificados_digitais
   FOR SELECT USING (public.is_empresa_member(auth.uid(), empresa_id));
 CREATE POLICY "cert_insert" ON public.certificados_digitais
-  FOR INSERT WITH CHECK (public.is_empresa_admin(auth.uid(), empresa_id));
+  FOR INSERT WITH CHECK (public.is_empresa_member(auth.uid(), empresa_id));
 CREATE POLICY "cert_update" ON public.certificados_digitais
   FOR UPDATE USING (public.is_empresa_admin(auth.uid(), empresa_id));
 CREATE POLICY "cert_delete" ON public.certificados_digitais
