@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,11 +31,10 @@ export default function CertificadoDigital() {
   const [senha, setSenha]             = useState('');
   const [showSenha, setShowSenha]     = useState(false);
   const [uploading, setUploading]     = useState(false);
-  const [loaded, setLoaded]           = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function loadCerts() {
-    if (!empresaAtiva || loaded) return;
+    if (!empresaAtiva) return;
     setLoading(true);
     const { data } = await supabase
       .from('certificados_digitais' as never)
@@ -43,12 +42,10 @@ export default function CertificadoDigital() {
       .eq('empresa_id', empresaAtiva.id)
       .order('created_at', { ascending: false });
     setCerts((data ?? []) as Certificado[]);
-    setLoaded(true);
     setLoading(false);
   }
 
-  // Lazy load on mount
-  useState(() => { loadCerts(); });
+  useEffect(() => { loadCerts(); }, [empresaAtiva?.id]);
 
   async function handleUpload() {
     if (!file || !empresaAtiva) return;
@@ -75,7 +72,6 @@ export default function CertificadoDigital() {
       setUploadOpen(false);
       setFile(null);
       setSenha('');
-      setLoaded(false);
       loadCerts();
     } catch (err: any) {
       toast.error(`Erro ao enviar certificado: ${err.message ?? 'verifique o arquivo'}`);
@@ -90,7 +86,6 @@ export default function CertificadoDigital() {
     }
     await supabase.from('certificados_digitais' as never).delete().eq('id', cert.id);
     toast.success('Certificado removido');
-    setLoaded(false);
     loadCerts();
   }
 
