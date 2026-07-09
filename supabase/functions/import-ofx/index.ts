@@ -136,6 +136,22 @@ function leafValue(parent: OFXNode | null, tag: string): string | null {
   return null;
 }
 
+function parseOFXDate(raw: string): string {
+  if (!raw) return "";
+  // Remove sufixo de timezone ex: "20240115120000.000[0:GMT]"
+  const clean = raw.replace(/\[.*\]/, "").trim();
+  const m = clean.match(/^(\d{4})(\d{2})(\d{2})/);
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : "";
+}
+
+function mapType(trnType: string, amount: number): string {
+  const tipo = trnType.toUpperCase();
+  const creditTypes = ["CREDIT", "DEP", "INT", "DIV", "DIRECTDEP", "REPEATPMT"];
+  if (creditTypes.includes(tipo)) return "credito";
+  if (tipo === "DEBIT" || tipo === "DIRECTDEBIT") return "debito";
+  return amount >= 0 ? "credito" : "debito";
+}
+
 function parseOFX(content: string) {
   const root = tokenizeOFX(content);
 

@@ -8,6 +8,7 @@ import {
   useConciliarManual,
   useDesfazerConciliacao,
   useLancamentos,
+  useUpsertLancamento,
 } from "@/hooks/useFinanceiro";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -123,6 +124,8 @@ export default function FinConciliacao() {
     defaultTipo: "a_pagar" | "a_receber" | "movimentacao";
   } | null>(null);
 
+  const [movsSelecionados, setMovsSelecionados] = useState<Set<string>>(new Set());
+
   const { data: contas } = useContas();
   const { data: extratos } = useExtratosImportados();
   const { data: movimentos, isLoading: loadingMov } = useMovimentosExtrato({
@@ -138,6 +141,7 @@ export default function FinConciliacao() {
   const conciliarAuto = useConciliarAutomatico();
   const conciliarManual = useConciliarManual();
   const desfazer = useDesfazerConciliacao();
+  const upsertLancamento = useUpsertLancamento();
 
   // Marca/desmarca movimento como ignorado (tarifas, estornos, lançamentos pessoais)
   const ignorarMov = useMutation({
@@ -354,6 +358,40 @@ export default function FinConciliacao() {
   function toggleTodas(check: boolean) {
     if (check) setSelecionadas(new Set(sugestoes.map((s) => s.movimento_id)));
     else setSelecionadas(new Set());
+  }
+
+  async function efetivarSelecionados() {
+    const movsSel = movimentosFiltrados.filter(
+      (m: any) => movsSelecionados.has(m.id) && !m.conciliado && !m.ignorado
+    );
+    if (movsSel.length === 0) return;
+    let ok = 0, erros = 0;
+    for (const m of movsSel) {
+      const isCredito = Number(m.valor) >= 0;
+      try {
+        const lanc = await upsertLancamento.mutateAsync({
+          descricao: m.descricao || "Movimento bancário",
+          valor: Math.abs(Number(m.valor)),
+          data_competencia: m.data_movimento,
+          conta_id: m.conta_id,
+          natureza: isCredito ? "receita" : "despesa",
+          tipo: isCredito ? "a_receber" : "a_pagar",
+          status: "conciliado",
+          data_realizado: m.data_movimento,
+        });
+        await conciliarManual.mutateAsync({
+          movimento_id: m.id,
+          lancamento_id: (lanc as any).id,
+        });
+        ok++;
+      } catch {
+        erros++;
+      }
+    }
+    if (ok > 0) toast.success(`${ok} lançamento(s) efetivados e conciliados.`);
+    if (erros > 0) toast.error(`${erros} falha(s) ao efetivar.`);
+    setMovsSelecionados(new Set());
+    qc.invalidateQueries({ queryKey: ["fin-movimentos-extrato"] });
   }
 
   return (
@@ -771,13 +809,49 @@ export default function FinConciliacao() {
       {/* Movimentos */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Movimentos do extrato</CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-base">Movimentos do extrato</CardTitle>
+            {movsSelecionados.size > 0 && (
+              <Button
+                size="sm"
+                onClick={efetivarSelecionados}
+                disabled={upsertLancamento.isPending || conciliarManual.isPending}
+              >
+                {upsertLancamento.isPending || conciliarManual.isPending ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                )}
+                Efetivar selecionados ({movsSelecionados.size})
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[40px]">
+                    <Checkbox
+                      checked={
+                        movimentosFiltrados.filter((m: any) => !m.conciliado && !m.ignorado).length > 0 &&
+                        movimentosFiltrados
+                          .filter((m: any) => !m.conciliado && !m.ignorado)
+                          .every((m: any) => movsSelecionados.has(m.id))
+                      }
+                      onCheckedChange={(v) => {
+                        const pendentes = movimentosFiltrados.filter(
+                          (m: any) => !m.conciliado && !m.ignorado
+                        );
+                        setMovsSelecionados(v ? new Set(pendentes.map((m: any) => m.id)) : new Set());
+                      }}
+                      aria-label="Selecionar todos"
+                      disabled={
+                        movimentosFiltrados.filter((m: any) => !m.conciliado && !m.ignorado).length === 0
+                      }
+                    />
+                  </TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead>Conta</TableHead>
@@ -789,7 +863,7 @@ export default function FinConciliacao() {
               <TableBody>
                 {loadingMov && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       <Loader2 className="w-4 h-4 inline animate-spin mr-2" />
                       Carregando…
                     </TableCell>
@@ -797,7 +871,7 @@ export default function FinConciliacao() {
                 )}
                 {!loadingMov && movimentosFiltrados.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       Nenhum movimento. Importe um arquivo OFX para começar.
                     </TableCell>
                   </TableRow>
@@ -817,6 +891,21 @@ export default function FinConciliacao() {
                   };
                   return (
                     <TableRow key={m.id} className={m.ignorado ? "opacity-60" : ""}>
+                      <TableCell>
+                        {!m.conciliado && !m.ignorado && (
+                          <Checkbox
+                            checked={movsSelecionados.has(m.id)}
+                            onCheckedChange={(v) => {
+                              setMovsSelecionados((curr) => {
+                                const next = new Set(curr);
+                                if (v) next.add(m.id); else next.delete(m.id);
+                                return next;
+                              });
+                            }}
+                            aria-label="Selecionar movimento"
+                          />
+                        )}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {formatDate(m.data_movimento)}
                       </TableCell>
