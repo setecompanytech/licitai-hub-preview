@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import {
   FileText, Plus, Trash2, Send, AlertCircle, Loader2, ExternalLink, Search,
-  CheckCircle2, Building2, User, Truck, Calculator, ShieldCheck, FileDown, Info, RefreshCw,
+  CheckCircle2, Building2, User, Truck, Calculator, ShieldCheck, FileDown, Info, RefreshCw, Package,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -95,6 +95,14 @@ type NFeRow = {
   danfe_url: string | null; motivo: string | null; data_emissao: string | null;
 };
 
+type PedidoFatura = {
+  id: string; numero: number; tipo: string; status: string;
+  valor_total: number; created_at: string; pessoa_id: string | null;
+  pessoa_nome: string | null; pessoa_doc: string | null;
+  nfe_id: string | null; nfe_numero: number | null;
+  nfe_status: string | null; nfe_chave: string | null;
+};
+
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   rascunho: "secondary", processando: "default", autorizada: "default",
   rejeitada: "destructive", cancelada: "destructive", denegada: "destructive",
@@ -171,7 +179,11 @@ export default function FinEmissorNFe() {
   const [emitting, setEmitting] = useState(false);
   const [emitidas, setEmitidas] = useState<NFeRow[]>([]);
   const [loadingList, setLoadingList] = useState(false);
-  const [activeTab, setActiveTab] = useState("emissao");
+  const [activeTab, setActiveTab] = useState("faturas");
+
+  const [pedidosFatura, setPedidosFatura] = useState<PedidoFatura[]>([]);
+  const [loadingPedidos, setLoadingPedidos] = useState(false);
+  const [pedidoEmissaoId, setPedidoEmissaoId] = useState<string | null>(null);
 
   // ====== Cálculo automático do idDest (1=Interna, 2=Interestadual, 3=Exterior) ======
   useEffect(() => {
@@ -198,7 +210,80 @@ export default function FinEmissorNFe() {
     finally { setLoadingList(false); }
   };
 
-  useEffect(() => { carregar(); }, [empresaAtiva?.id]);
+  const carregarPedidosFatura = async () => {
+    if (!empresaAtiva) return;
+    setLoadingPedidos(true);
+    try {
+      const { data: pedidosData, error: pedErr } = await (supabase
+        .from('pedidos' as never)
+        .select('id, numero, tipo, status, valor_total, created_at, pessoa_id')
+        .eq('empresa_id', empresaAtiva.id)
+        .in('status', ['faturar', 'faturado'])
+        .order('created_at', { ascending: false }) as any);
+      if (pedErr) throw pedErr;
+      if (!pedidosData || pedidosData.length === 0) { setPedidosFatura([]); return; }
+
+      const pedidoIds = pedidosData.map((p: any) => p.id);
+      const pessoaIds = [...new Set(pedidosData.filter((p: any) => p.pessoa_id).map((p: any) => p.pessoa_id))] as string[];
+
+      const [pessoasRes, nfesRes] = await Promise.all([
+        pessoaIds.length > 0
+          ? supabase.from('financeiro_pessoas').select('id, nome, documento').in('id', pessoaIds)
+          : Promise.resolve({ data: [] as any[] }),
+        supabase
+          .from('financeiro_nfes_emitidas')
+          .select('id, numero, status, chave_acesso, pedido_id')
+          .in('pedido_id' as any, pedidoIds)
+          .then(r => r)
+          .catch(() => ({ data: null })),
+      ]);
+
+      const pessoasMap: Record<string, any> = {};
+      (pessoasRes.data || []).forEach((p: any) => { pessoasMap[p.id] = p; });
+      const nfesMap: Record<string, any> = {};
+      ((nfesRes as any).data || []).forEach((n: any) => { if (n.pedido_id) nfesMap[n.pedido_id] = n; });
+
+      setPedidosFatura(pedidosData.map((p: any) => ({
+        id: p.id, numero: p.numero, tipo: p.tipo, status: p.status,
+        valor_total: p.valor_total, created_at: p.created_at, pessoa_id: p.pessoa_id,
+        pessoa_nome: pessoasMap[p.pessoa_id]?.nome ?? null,
+        pessoa_doc: pessoasMap[p.pessoa_id]?.documento ?? null,
+        nfe_id: nfesMap[p.id]?.id ?? null,
+        nfe_numero: nfesMap[p.id]?.numero ?? null,
+        nfe_status: nfesMap[p.id]?.status ?? null,
+        nfe_chave: nfesMap[p.id]?.chave_acesso ?? null,
+      })));
+    } catch (e: any) {
+      toast.error('Erro ao carregar pedidos: ' + e.message);
+    } finally {
+      setLoadingPedidos(false);
+    }
+  };
+
+  const preencherDoPedido = async (pedido: PedidoFatura) => {
+    setPedidoEmissaoId(pedido.id);
+    setDestinatario({ ...destinatarioVazio(), nome: pedido.pessoa_nome || '', documento: pedido.pessoa_doc || '' });
+    try {
+      const { data: itensPedido } = await (supabase
+        .from('pedido_itens' as never)
+        .select('*')
+        .eq('pedido_id', pedido.id) as any);
+      if (itensPedido && itensPedido.length > 0) {
+        setItens(itensPedido.map((item: any) => ({
+          ...itemVazio(),
+          codigo: item.codigo_produto || '',
+          descricao: item.descricao || '',
+          unidade: item.unidade || 'UN',
+          quantidade: Number(item.quantidade) || 1,
+          valor_unitario: Number(item.preco_unitario) || 0,
+        })));
+      }
+    } catch { /* itens opcionais */ }
+    setActiveTab('emissao');
+    toast.info(`Pré-preenchido com Pedido #${pedido.numero}. Complete NCM, CFOP e dados fiscais antes de transmitir.`);
+  };
+
+  useEffect(() => { carregar(); carregarPedidosFatura(); }, [empresaAtiva?.id]);
 
   const buscarDestinatario = async () => {
     const digits = destinatario.documento.replace(/\D/g, "");
@@ -411,6 +496,18 @@ export default function FinEmissorNFe() {
         await aguardarAutorizacaoEBaixar(nfeId);
         await carregar();
       }
+
+      // Vincular NF-e ao pedido de origem
+      if (nfeId && pedidoEmissaoId) {
+        try {
+          await supabase
+            .from('financeiro_nfes_emitidas')
+            .update({ pedido_id: pedidoEmissaoId } as never)
+            .eq('id', nfeId);
+          await carregarPedidosFatura();
+        } catch { /* link opcional */ }
+        setPedidoEmissaoId(null);
+      }
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -422,13 +519,140 @@ export default function FinEmissorNFe() {
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
+          <TabsTrigger value="faturas">
+            <Package className="w-4 h-4 mr-1.5" />Faturas de pedido
+            {pedidosFatura.filter(p => p.status === 'faturar').length > 0 && (
+              <Badge className="ml-1.5 h-4 px-1 text-[10px] bg-amber-500 text-white border-0">
+                {pedidosFatura.filter(p => p.status === 'faturar').length}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="emissao"><Send className="w-4 h-4 mr-1.5" />Nova emissão</TabsTrigger>
           <TabsTrigger value="emitidas"><FileText className="w-4 h-4 mr-1.5" />Notas emitidas</TabsTrigger>
           <TabsTrigger value="guia"><Info className="w-4 h-4 mr-1.5" />Passo a passo (SEBRAE)</TabsTrigger>
         </TabsList>
 
+        {/* ============ FATURAS DE PEDIDO ============ */}
+        <TabsContent value="faturas">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2"><Package className="w-5 h-5" />Faturas de Pedido</CardTitle>
+                  <CardDescription>Pedidos que aguardam emissão de NF-e (A Faturar) ou que já foram faturados. Clique em "Pré-preencher" para iniciar a emissão.</CardDescription>
+                </div>
+                <Button size="sm" variant="outline" onClick={carregarPedidosFatura} disabled={loadingPedidos}>
+                  {loadingPedidos ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingPedidos ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : pedidosFatura.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
+                  <Package className="w-10 h-10 text-muted-foreground/20" />
+                  <p className="text-sm text-muted-foreground">Nenhum pedido aguardando faturamento</p>
+                  <p className="text-xs text-muted-foreground">Pedidos aparecem aqui ao mover para "A Faturar" ou "Faturado" no Kanban de Gestão de Compras.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nº</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Cliente / Fornecedor</TableHead>
+                        <TableHead>Valor Total</TableHead>
+                        <TableHead>Status Pedido</TableHead>
+                        <TableHead>NF-e Vinculada</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pedidosFatura.map(p => (
+                        <TableRow key={p.id} className={pedidoEmissaoId === p.id ? 'bg-primary/5 ring-1 ring-inset ring-primary/20' : ''}>
+                          <TableCell className="font-semibold">#{p.numero}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">{p.tipo === 'venda' ? 'Venda' : 'Compra'}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm font-medium">{p.pessoa_nome || <span className="text-muted-foreground">—</span>}</div>
+                            {p.pessoa_doc && <div className="text-xs text-muted-foreground">{p.pessoa_doc}</div>}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {(p.valor_total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={p.status === 'faturado' ? 'default' : 'secondary'}
+                              className={p.status === 'faturar' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border-amber-300/50' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-green-300/50'}
+                            >
+                              {p.status === 'faturado' ? 'Faturado' : 'A Faturar'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {p.nfe_numero ? (
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-xs font-medium">NF-e #{p.nfe_numero}</span>
+                                <Badge variant={STATUS_VARIANT[p.nfe_status || ''] || 'outline'} className="text-[10px] w-fit">
+                                  {p.nfe_status || '—'}
+                                </Badge>
+                                {p.nfe_chave && (
+                                  <span className="text-[10px] text-muted-foreground font-mono">{p.nfe_chave.slice(0, 8)}…{p.nfe_chave.slice(-4)}</span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">Não emitida</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(p.created_at).toLocaleDateString('pt-BR')}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1 flex-wrap">
+                              {!p.nfe_id ? (
+                                <Button
+                                  size="sm"
+                                  variant={pedidoEmissaoId === p.id ? 'default' : 'outline'}
+                                  className="h-7 text-xs"
+                                  onClick={() => preencherDoPedido(p)}
+                                >
+                                  <Send className="w-3 h-3 mr-1" />
+                                  {pedidoEmissaoId === p.id ? 'Selecionado' : 'Pré-preencher'}
+                                </Button>
+                              ) : (
+                                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setActiveTab('emitidas')}>
+                                  <FileText className="w-3 h-3 mr-1" /> Ver NF-e
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* ============ EMISSAO ============ */}
         <TabsContent value="emissao" className="space-y-4">
+          {pedidoEmissaoId && (
+            <Alert className="border-primary/40 bg-primary/5">
+              <Package className="w-4 h-4" />
+              <AlertTitle>Emissão vinculada a pedido</AlertTitle>
+              <AlertDescription className="text-xs flex items-center justify-between gap-2">
+                <span>Formulário pré-preenchido com dados do pedido. Após transmitir, a NF-e será automaticamente vinculada a ele.</span>
+                <button onClick={() => setPedidoEmissaoId(null)} className="underline shrink-0 text-muted-foreground hover:text-foreground">Desvincular</button>
+              </AlertDescription>
+            </Alert>
+          )}
           <Alert>
             <AlertCircle className="w-4 h-4" />
             <AlertTitle>Configuração necessária</AlertTitle>

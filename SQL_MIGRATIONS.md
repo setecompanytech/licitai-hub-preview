@@ -236,3 +236,31 @@ CREATE POLICY "cert_delete" ON public.certificados_digitais
 ```
 
 > **Bucket Supabase Storage**: crie o bucket privado `certificados` em **Storage → New Bucket → Name: certificados → Public: OFF**.
+
+---
+
+## [2026-07-09] Vinculação NF-e ↔ Pedido + colunas empresa_membros
+
+### Passo 1 — Coluna `pedido_id` em financeiro_nfes_emitidas
+
+```sql
+ALTER TABLE public.financeiro_nfes_emitidas
+  ADD COLUMN IF NOT EXISTS pedido_id uuid REFERENCES public.pedidos(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_nfes_pedido ON public.financeiro_nfes_emitidas(pedido_id);
+```
+
+### Passo 2 — Colunas de identificação em empresa_membros
+
+```sql
+ALTER TABLE public.empresa_membros
+  ADD COLUMN IF NOT EXISTS nome_individual      text,
+  ADD COLUMN IF NOT EXISTS login_individual     text,
+  ADD COLUMN IF NOT EXISTS identificacao_completa boolean NOT NULL DEFAULT false;
+
+DROP POLICY IF EXISTS "membros_update_self" ON public.empresa_membros;
+CREATE POLICY "membros_update_self" ON public.empresa_membros
+  FOR UPDATE
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+```
