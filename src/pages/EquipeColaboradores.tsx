@@ -187,22 +187,51 @@ export default function EquipeColaboradores() {
     }
   };
 
+  const notifyPermissionChange = (membro: Membro, alteracoes: { campo: string; de: string; para: string }[]) => {
+    if (!membro.email) return;
+    const empresaNome = empresaAtiva?.nome_fantasia || empresaAtiva?.razao_social || 'sua empresa';
+    supabase.functions.invoke('notify-permission-change', {
+      body: { to_email: membro.email, to_nome: membro.nome, empresa_nome: empresaNome, alteracoes },
+    }).catch(() => {});
+  };
+
+  const EQUIPE_LABELS: Record<string, string> = {
+    geral: 'Geral', financeiro: 'Financeiro', comercial: 'Comercial',
+    logistica: 'Logística', juridico: 'Jurídico', contabil: 'Contábil',
+    licitacoes: 'Licitações', documentos: 'Documentos',
+  };
+  const PAPEL_LABELS: Record<string, string> = {
+    admin: 'Administrador', gerente: 'Gerente', operador: 'Operador', viewer: 'Visualizador',
+  };
+
   const handleUpdateEquipe = async (membroId: string, equipe: string) => {
+    const membro = membros.find(m => m.id === membroId);
     const { error } = await supabase.from('empresa_membros').update({ equipe } as any).eq('id', membroId);
     if (error) {
       toast.error('Erro ao atualizar equipe');
     } else {
       toast.success('Equipe atualizada');
+      if (membro) notifyPermissionChange(membro, [{
+        campo: 'setor',
+        de: EQUIPE_LABELS[membro.equipe] || membro.equipe,
+        para: EQUIPE_LABELS[equipe] || equipe,
+      }]);
       loadMembros();
     }
   };
 
   const handleUpdatePapel = async (membroId: string, papel: string) => {
+    const membro = membros.find(m => m.id === membroId);
     const { error } = await supabase.from('empresa_membros').update({ papel } as any).eq('id', membroId);
     if (error) {
       toast.error('Erro ao atualizar papel');
     } else {
       toast.success('Papel atualizado');
+      if (membro) notifyPermissionChange(membro, [{
+        campo: 'papel',
+        de: PAPEL_LABELS[membro.papel] || membro.papel,
+        para: PAPEL_LABELS[papel] || papel,
+      }]);
       loadMembros();
     }
   };
@@ -219,6 +248,11 @@ export default function EquipeColaboradores() {
       toast.error('Erro ao atualizar permissões');
     } else {
       toast.success('Permissões atualizadas');
+      notifyPermissionChange(permDialog, [{
+        campo: 'permissoes',
+        de: '',
+        para: permissoesSel.length > 0 ? permissoesSel.join(', ') : 'Nenhuma',
+      }]);
       setPermDialog(null);
       loadMembros();
     }

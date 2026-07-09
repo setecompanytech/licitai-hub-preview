@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Lock, Loader2, CheckCircle2 } from 'lucide-react';
+import { Lock, Loader2, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import PraefectusLogo from '@/components/shared/PraefectusLogo';
 
@@ -15,70 +15,75 @@ export default function ResetPassword() {
   const [verifying, setVerifying] = useState(true);
   const [canReset, setCanReset] = useState(false);
   const [isInvite, setIsInvite] = useState(false);
+
+  // Format 3: token_hash detected — show "Confirmar" button instead of auto-consuming
+  const [pendingTokenHash, setPendingTokenHash] = useState<string | null>(null);
+  const [pendingType, setPendingType] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
 
-    const verifyRecovery = async () => {
+    const init = async () => {
       try {
         const url = new URL(window.location.href);
         const hash = window.location.hash || '';
         const hashParams = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash);
 
-        // Format 1 (PKCE - novo): ?code=XXXX  → trocar por sessão
+        const errorDescription = hashParams.get('error_description') || url.searchParams.get('error_description');
+        if (errorDescription) throw new Error(decodeURIComponent(errorDescription));
+
+        // Format 1 (PKCE): ?code=XXXX
         const code = url.searchParams.get('code');
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) throw error;
+          if (!cancelled) {
+            setCanReset(true);
+            window.history.replaceState({}, '', '/reset-password');
+          }
+          return;
         }
 
-        // Format 2 (legado): #access_token=...&refresh_token=...&type=recovery|invite
+        // Format 2 (legacy hash): #access_token=...&type=recovery|invite
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
         const hashType = hashParams.get('type');
-        if (!code && accessToken && refreshToken && (hashType === 'recovery' || hashType === 'invite' || hashType === 'signup')) {
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
+        if (accessToken && refreshToken && (hashType === 'recovery' || hashType === 'invite' || hashType === 'signup')) {
+          const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
           if (error) throw error;
+          if (!cancelled) {
+            if (hashType === 'invite' || hashType === 'signup') setIsInvite(true);
+            setCanReset(true);
+            window.history.replaceState({}, '', '/reset-password');
+          }
+          return;
         }
 
-        // Format 3 (token_hash do nosso auth-email-hook): ?token_hash=...&type=...
-        // Consome o token via verifyOtp só quando o JS do navegador real executa —
-        // evita que scanners de e-mail (que só fazem GET, sem rodar JS) consumam
-        // o token de uso único antes do clique de verdade do usuário.
+        // Format 3 (token_hash): ?token_hash=...&type=...
+        // NÃO consome o token aqui — exibe botão "Confirmar acesso" para que
+        // apenas um clique humano real consuma o token de uso único.
+        // Scanners de e-mail (mesmo com JS completo) não clicam em botões.
         const tokenHash = url.searchParams.get('token_hash');
         const queryType = url.searchParams.get('type');
-        if (!code && !accessToken && tokenHash && queryType) {
-          const { error } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: queryType as 'recovery' | 'invite' | 'signup' | 'email_change' | 'magiclink',
-          });
-          if (error) throw error;
+        if (tokenHash && queryType) {
+          if (!cancelled) {
+            if (queryType === 'invite' || queryType === 'signup') setIsInvite(true);
+            setPendingTokenHash(tokenHash);
+            setPendingType(queryType);
+            window.history.replaceState({}, '', '/reset-password');
+          }
+          return;
         }
 
-        const type = hashType || queryType;
-
-        // Detecta se é primeiro acesso (convite) — usuário sem senha definida ainda.
-        const inviteHint = type === 'invite' || type === 'signup';
-        if (inviteHint) setIsInvite(true);
-
-        // Erro vindo do link (expirado/inválido)
-        const errorDescription = hashParams.get('error_description') || url.searchParams.get('error_description');
-        if (errorDescription) throw new Error(decodeURIComponent(errorDescription));
-
-        // Confirmar que existe sessão
+        // Nenhum token no URL — verifica se já existe sessão ativa
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          throw new Error('Link de recuperação inválido ou expirado. Solicite um novo.');
-        }
-
-        if (!cancelled) {
-          setCanReset(true);
-          // Limpar URL para não reusar token
-          window.history.replaceState({}, '', '/reset-password');
+        if (session) {
+          if (!cancelled) setCanReset(true);
+        } else {
+          throw new Error('Link de acesso inválido ou expirado. Solicite um novo convite.');
         }
       } catch (err: any) {
         if (!cancelled) {
@@ -90,20 +95,32 @@ export default function ResetPassword() {
       }
     };
 
-    verifyRecovery();
+    init();
     return () => { cancelled = true; };
   }, [navigate]);
 
+  const handleConfirm = async () => {
+    if (!pendingTokenHash || !pendingType) return;
+    setConfirming(true);
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: pendingTokenHash,
+      type: pendingType as 'recovery' | 'invite' | 'signup' | 'email_change' | 'magiclink',
+    });
+    setConfirming(false);
+    if (error) {
+      toast.error('Link expirado ou já utilizado. Solicite um novo convite ao administrador.');
+      setTimeout(() => navigate('/auth'), 2500);
+    } else {
+      setPendingTokenHash(null);
+      setPendingType(null);
+      setCanReset(true);
+    }
+  };
+
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirm) {
-      toast.error('As senhas não coincidem');
-      return;
-    }
-    if (password.length < 6) {
-      toast.error('A senha deve ter pelo menos 6 caracteres');
-      return;
-    }
+    if (password !== confirm) { toast.error('As senhas não coincidem'); return; }
+    if (password.length < 6) { toast.error('A senha deve ter pelo menos 6 caracteres'); return; }
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
@@ -127,13 +144,35 @@ export default function ResetPassword() {
           {verifying ? (
             <div className="text-center space-y-3 py-6">
               <Loader2 className="w-8 h-8 animate-spin mx-auto text-accent" />
-              <p className="text-sm text-muted-foreground">Validando link de recuperação...</p>
+              <p className="text-sm text-muted-foreground">Validando link...</p>
             </div>
           ) : success ? (
             <div className="text-center space-y-3">
               <CheckCircle2 className="w-12 h-12 text-accent mx-auto" />
               <h2 className="text-xl font-bold">Senha alterada!</h2>
               <p className="text-sm text-muted-foreground">Redirecionando...</p>
+            </div>
+          ) : pendingTokenHash ? (
+            <div className="text-center space-y-5 py-2">
+              <ShieldCheck className="w-12 h-12 text-accent mx-auto" />
+              <div>
+                <h2 className="text-xl font-bold mb-1">
+                  {isInvite ? 'Confirmar convite' : 'Confirmar acesso'}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {isInvite
+                    ? 'Clique no botão abaixo para confirmar seu convite e criar sua senha de acesso.'
+                    : 'Clique no botão abaixo para validar seu link e redefinir sua senha.'}
+                </p>
+              </div>
+              <Button
+                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                onClick={handleConfirm}
+                disabled={confirming}
+              >
+                {confirming ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                {isInvite ? 'Confirmar convite e criar senha' : 'Confirmar e redefinir senha'}
+              </Button>
             </div>
           ) : canReset ? (
             <>
