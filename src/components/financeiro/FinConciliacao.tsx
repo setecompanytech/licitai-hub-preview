@@ -170,6 +170,16 @@ export default function FinConciliacao() {
     return lista;
   }, [movimentos, filtroConciliado]);
 
+  const resumoMovimentos = useMemo(() => {
+    const entradas = movimentosFiltrados
+      .filter((m: any) => Number(m.valor) > 0)
+      .reduce((acc: number, m: any) => acc + Number(m.valor), 0);
+    const saidas = movimentosFiltrados
+      .filter((m: any) => Number(m.valor) < 0)
+      .reduce((acc: number, m: any) => acc + Math.abs(Number(m.valor)), 0);
+    return { entradas, saidas, saldo: entradas - saidas };
+  }, [movimentosFiltrados]);
+
   // Indexa movimentos e lançamentos para exibir detalhes nas sugestões
   const movMap = useMemo(() => {
     const m = new Map<string, NonNullable<typeof movimentos>[number]>();
@@ -828,6 +838,24 @@ export default function FinConciliacao() {
           </div>
         </CardHeader>
         <CardContent>
+          {movimentosFiltrados.length > 0 && (
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="rounded-lg border border-success/30 bg-success/5 p-3">
+                <div className="text-xs text-muted-foreground mb-0.5">Entradas</div>
+                <div className="text-base font-semibold text-success">{formatBRL(resumoMovimentos.entradas)}</div>
+              </div>
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+                <div className="text-xs text-muted-foreground mb-0.5">Saídas</div>
+                <div className="text-base font-semibold text-destructive">{formatBRL(resumoMovimentos.saidas)}</div>
+              </div>
+              <div className="rounded-lg border p-3">
+                <div className="text-xs text-muted-foreground mb-0.5">Saldo Final</div>
+                <div className={`text-base font-semibold ${resumoMovimentos.saldo >= 0 ? "text-success" : "text-destructive"}`}>
+                  {formatBRL(resumoMovimentos.saldo)}
+                </div>
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -910,7 +938,12 @@ export default function FinConciliacao() {
                         {formatDate(m.data_movimento)}
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium text-sm">{m.descricao}</div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-medium text-sm">{m.descricao}</span>
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-blue-400/60 text-blue-500 dark:text-blue-400 shrink-0 font-normal">
+                            OFX
+                          </Badge>
+                        </div>
                         {m.descricao_extra && (
                           <div className="text-xs text-muted-foreground">{m.descricao_extra}</div>
                         )}
