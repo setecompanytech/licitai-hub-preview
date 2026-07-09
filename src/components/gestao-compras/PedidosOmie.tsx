@@ -1,5 +1,6 @@
 // v2
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -390,11 +391,24 @@ export default function PedidosOmie() {
   const getPessoaNome = (id: string | null) =>
     todasPessoas.find(p => p.id === id)?.nome ?? null;
 
+  const [searchParams, setSearchParams] = useSearchParams();
+
   useEffect(() => {
     if (!empresaAtiva) { setLoading(false); return; }
     loadPedidos();
     loadProdutos();
   }, [empresaAtiva]);
+
+  // Abre pedido direto quando vem de outra página via ?pedido=<id>
+  useEffect(() => {
+    const paramId = searchParams.get('pedido');
+    if (!paramId || pedidos.length === 0) return;
+    const found = pedidos.find(p => p.id === paramId);
+    if (found) {
+      openEdit(found);
+      setSearchParams(prev => { const n = new URLSearchParams(prev); n.delete('pedido'); return n; });
+    }
+  }, [searchParams.get('pedido'), pedidos]);
 
   async function loadPedidos() {
     setLoading(true);

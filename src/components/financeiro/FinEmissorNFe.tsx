@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -130,6 +131,7 @@ const transporteVazio = (): Transporte => ({
 
 export default function FinEmissorNFe() {
   const { empresaAtiva } = useEmpresa();
+  const navigate = useNavigate();
   const [buscandoCNPJ, setBuscandoCNPJ] = useState(false);
   const { baixarDanfe, aguardarAutorizacaoEBaixar, consultarStatus, downloading, polling } = useDanfeDownload();
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
@@ -183,7 +185,6 @@ export default function FinEmissorNFe() {
 
   const [pedidosFatura, setPedidosFatura] = useState<PedidoFatura[]>([]);
   const [loadingPedidos, setLoadingPedidos] = useState(false);
-  const [pedidoEmissaoId, setPedidoEmissaoId] = useState<string | null>(null);
 
   // ====== Cálculo automático do idDest (1=Interna, 2=Interestadual, 3=Exterior) ======
   useEffect(() => {
@@ -258,29 +259,6 @@ export default function FinEmissorNFe() {
     } finally {
       setLoadingPedidos(false);
     }
-  };
-
-  const preencherDoPedido = async (pedido: PedidoFatura) => {
-    setPedidoEmissaoId(pedido.id);
-    setDestinatario({ ...destinatarioVazio(), nome: pedido.pessoa_nome || '', documento: pedido.pessoa_doc || '' });
-    try {
-      const { data: itensPedido } = await (supabase
-        .from('pedido_itens' as never)
-        .select('*')
-        .eq('pedido_id', pedido.id) as any);
-      if (itensPedido && itensPedido.length > 0) {
-        setItens(itensPedido.map((item: any) => ({
-          ...itemVazio(),
-          codigo: item.codigo_produto || '',
-          descricao: item.descricao || '',
-          unidade: item.unidade || 'UN',
-          quantidade: Number(item.quantidade) || 1,
-          valor_unitario: Number(item.preco_unitario) || 0,
-        })));
-      }
-    } catch { /* itens opcionais */ }
-    setActiveTab('emissao');
-    toast.info(`Pré-preenchido com Pedido #${pedido.numero}. Complete NCM, CFOP e dados fiscais antes de transmitir.`);
   };
 
   useEffect(() => { carregar(); carregarPedidosFatura(); }, [empresaAtiva?.id]);
@@ -497,17 +475,6 @@ export default function FinEmissorNFe() {
         await carregar();
       }
 
-      // Vincular NF-e ao pedido de origem
-      if (nfeId && pedidoEmissaoId) {
-        try {
-          await supabase
-            .from('financeiro_nfes_emitidas')
-            .update({ pedido_id: pedidoEmissaoId } as never)
-            .eq('id', nfeId);
-          await carregarPedidosFatura();
-        } catch { /* link opcional */ }
-        setPedidoEmissaoId(null);
-      }
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -574,7 +541,7 @@ export default function FinEmissorNFe() {
                     </TableHeader>
                     <TableBody>
                       {pedidosFatura.map(p => (
-                        <TableRow key={p.id} className={pedidoEmissaoId === p.id ? 'bg-primary/5 ring-1 ring-inset ring-primary/20' : ''}>
+                        <TableRow key={p.id}>
                           <TableCell className="font-semibold">#{p.numero}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-xs">{p.tipo === 'venda' ? 'Venda' : 'Compra'}</Badge>
@@ -614,17 +581,15 @@ export default function FinEmissorNFe() {
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1 flex-wrap">
-                              {!p.nfe_id ? (
-                                <Button
-                                  size="sm"
-                                  variant={pedidoEmissaoId === p.id ? 'default' : 'outline'}
-                                  className="h-7 text-xs"
-                                  onClick={() => preencherDoPedido(p)}
-                                >
-                                  <Send className="w-3 h-3 mr-1" />
-                                  {pedidoEmissaoId === p.id ? 'Selecionado' : 'Pré-preencher'}
-                                </Button>
-                              ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                                onClick={() => navigate(`/gestao-compras?pedido=${p.id}`)}
+                              >
+                                <ExternalLink className="w-3 h-3 mr-1" /> Detalhar Pedido
+                              </Button>
+                              {p.nfe_id && (
                                 <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setActiveTab('emitidas')}>
                                   <FileText className="w-3 h-3 mr-1" /> Ver NF-e
                                 </Button>
@@ -643,16 +608,6 @@ export default function FinEmissorNFe() {
 
         {/* ============ EMISSAO ============ */}
         <TabsContent value="emissao" className="space-y-4">
-          {pedidoEmissaoId && (
-            <Alert className="border-primary/40 bg-primary/5">
-              <Package className="w-4 h-4" />
-              <AlertTitle>Emissão vinculada a pedido</AlertTitle>
-              <AlertDescription className="text-xs flex items-center justify-between gap-2">
-                <span>Formulário pré-preenchido com dados do pedido. Após transmitir, a NF-e será automaticamente vinculada a ele.</span>
-                <button onClick={() => setPedidoEmissaoId(null)} className="underline shrink-0 text-muted-foreground hover:text-foreground">Desvincular</button>
-              </AlertDescription>
-            </Alert>
-          )}
           <Alert>
             <AlertCircle className="w-4 h-4" />
             <AlertTitle>Configuração necessária</AlertTitle>
