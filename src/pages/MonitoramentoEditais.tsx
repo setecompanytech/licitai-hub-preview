@@ -480,7 +480,7 @@ export default function MonitoramentoEditais() {
         return sig.length > 4 ? sig : `__sem_chave__${Math.random()}`;
       };
 
-      const consultarCache = async () => {
+      const consultarCache = async (dIni?: string | null, dFim?: string | null) => {
         const calls: Promise<{ data: any[] | null; error: any }>[] = [];
         for (const uf of ufsList) {
           for (const mod of modList) {
@@ -492,8 +492,8 @@ export default function MonitoramentoEditais() {
                 p_esfera: null,
                 p_modalidade_id: mod,
                 p_segmento: null,
-                p_data_inicio: dataIni,
-                p_data_fim: dataFim,
+                p_data_inicio: dIni ?? dataIni,
+                p_data_fim: dFim ?? dataFim,
                 p_ordenacao: 'data_publicacao',
                 p_direcao: 'desc',
                 p_pagina: pag,
@@ -562,7 +562,7 @@ export default function MonitoramentoEditais() {
         // Nesse caso pulamos o live e usamos apenas o cache local que tem busca por número.
         if (isNumeroBusca) {
           logCtx({ etapa: 'busca_por_numero_direto_cache' });
-          const cacheRes = await consultarCache();
+          const cacheRes = await consultarCache(dataIniEfetiva, dataFimEfetiva);
           rowsRaw = cacheRes.rows;
           totalCache = cacheRes.totalSomado;
           usouCache = true;
@@ -660,37 +660,7 @@ export default function MonitoramentoEditais() {
           pncpIndisponivel = true;
           logCtx({ etapa: 'cache_fallback_direto' });
           try {
-            // Primeiro com datas; se vazio, sem datas (para sempre mostrar algo)
-            let cacheRes = await consultarCache();
-            if (cacheRes.rows.length === 0) {
-              // Retry sem filtro de data: qualquer edital do cache serve
-              const fallbackCalls = ufsList.flatMap(uf =>
-                modList.map(mod =>
-                  Promise.resolve(supabase.rpc('busca_editais_instantanea' as any, {
-                    p_q: termo,
-                    p_uf: uf,
-                    p_municipio_ibge: null,
-                    p_esfera: null,
-                    p_modalidade_id: mod,
-                    p_segmento: null,
-                    p_data_inicio: null,
-                    p_data_fim: null,
-                    p_ordenacao: 'data_publicacao',
-                    p_direcao: 'desc',
-                    p_pagina: pag,
-                    p_tamanho: tamanho,
-                    p_fonte_orcamentaria: null,
-                    p_margem_preferencia: null,
-                  }) as any)
-                )
-              );
-              const fallbackRespostas = await Promise.all(fallbackCalls);
-              const fallbackRows: any[] = [];
-              for (const r of fallbackRespostas) {
-                if (!r.error && r.data) fallbackRows.push(...r.data);
-              }
-              cacheRes = { rows: fallbackRows, totalSomado: fallbackRows.length };
-            }
+            const cacheRes = await consultarCache(dataIniEfetiva, dataFimEfetiva);
             rowsRaw = cacheRes.rows;
             totalCache = cacheRes.totalSomado;
             usouCache = true;
@@ -792,6 +762,12 @@ export default function MonitoramentoEditais() {
         // Emenda parlamentar
         if (filtros.emendaParlamentar === 'sim' && r.emenda_parlamentar === false) return false;
         if (filtros.emendaParlamentar === 'nao' && r.emenda_parlamentar === true) return false;
+        // Garantia final: rejeita itens fora do período efetivo, independente da fonte
+        const dataRef = r.data_publicacao_pncp || r.data_abertura_proposta;
+        if (dataRef) {
+          const d = dataRef.slice(0, 10);
+          if (d < dataIniEfetiva || d > dataFimEfetiva) return false;
+        }
         return true;
       });
 
