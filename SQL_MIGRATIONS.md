@@ -250,6 +250,51 @@ ALTER TABLE public.financeiro_nfes_emitidas
 CREATE INDEX IF NOT EXISTS idx_nfes_pedido ON public.financeiro_nfes_emitidas(pedido_id);
 ```
 
+### Passo 3 — Trigger: saldo_atual da conta ao marcar lançamento como realizado
+
+```sql
+CREATE OR REPLACE FUNCTION public.trg_fn_saldo_lancamento()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE v_delta NUMERIC;
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.status = 'realizado' AND (OLD.status IS DISTINCT FROM 'realizado') THEN
+      IF NEW.conta_id IS NOT NULL AND NEW.valor IS NOT NULL THEN
+        v_delta := CASE WHEN NEW.natureza = 'receita' THEN NEW.valor ELSE -NEW.valor END;
+        UPDATE public.financeiro_contas SET saldo_atual = COALESCE(saldo_atual,0) + v_delta WHERE id = NEW.conta_id;
+      END IF;
+    END IF;
+    IF OLD.status = 'realizado' AND (NEW.status IS DISTINCT FROM 'realizado') THEN
+      IF OLD.conta_id IS NOT NULL AND OLD.valor IS NOT NULL THEN
+        v_delta := CASE WHEN OLD.natureza = 'receita' THEN -OLD.valor ELSE OLD.valor END;
+        UPDATE public.financeiro_contas SET saldo_atual = COALESCE(saldo_atual,0) + v_delta WHERE id = OLD.conta_id;
+      END IF;
+    END IF;
+  ELSIF TG_OP = 'INSERT' THEN
+    IF NEW.status = 'realizado' AND NEW.conta_id IS NOT NULL AND NEW.valor IS NOT NULL THEN
+      v_delta := CASE WHEN NEW.natureza = 'receita' THEN NEW.valor ELSE -NEW.valor END;
+      UPDATE public.financeiro_contas SET saldo_atual = COALESCE(saldo_atual,0) + v_delta WHERE id = NEW.conta_id;
+    END IF;
+  ELSIF TG_OP = 'DELETE' THEN
+    IF OLD.status = 'realizado' AND OLD.conta_id IS NOT NULL AND OLD.valor IS NOT NULL THEN
+      v_delta := CASE WHEN OLD.natureza = 'receita' THEN -OLD.valor ELSE OLD.valor END;
+      UPDATE public.financeiro_contas SET saldo_atual = COALESCE(saldo_atual,0) + v_delta WHERE id = OLD.conta_id;
+    END IF;
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_saldo_lancamento ON public.financeiro_lancamentos;
+CREATE TRIGGER trg_saldo_lancamento
+  AFTER INSERT OR UPDATE OR DELETE ON public.financeiro_lancamentos
+  FOR EACH ROW EXECUTE FUNCTION public.trg_fn_saldo_lancamento();
+```
+
+> **Nota**: lançamentos já existentes com status=realizado **não** serão retroativamente ajustados — use "Sincronizar saldos" em Contas após criar o trigger se necessário.
+
+---
+
 ### Passo 2 — Colunas de identificação em empresa_membros
 
 ```sql

@@ -446,6 +446,7 @@ export function useUpsertLancamento() {
       qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
       qc.invalidateQueries({ queryKey: ["fin-fluxo-caixa"] });
       qc.invalidateQueries({ queryKey: ["fin-dre"] });
+      qc.invalidateQueries({ queryKey: ["fin-contas"] }); // saldo_atual atualizado pelo trigger
       toast.success("Lançamento salvo.");
     },
     onError: (e: Error) => toast.error(e.message),
