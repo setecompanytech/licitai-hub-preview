@@ -217,6 +217,7 @@ interface FiltrosLei14133 {
   ufs: string[];
   municipios: string[];
   cnpjs: string[];
+  uasgs: string[];
   // Novos filtros PNCP
   esferas: string[];
   poderes: string[];
@@ -243,6 +244,7 @@ const filtrosVazios: FiltrosLei14133 = {
   ufs: [],
   municipios: [],
   cnpjs: [],
+  uasgs: [],
   esferas: [],
   poderes: [],
   tiposInstrumento: [],
@@ -265,6 +267,7 @@ const STATUS_LABEL_TO_KEY: Record<string, string> = { Aberto: 'aberto', Aguardan
 export default function MonitoramentoEditais() {
   const [filtros, setFiltros] = useState<FiltrosLei14133>(filtrosVazios);
   const [tempCnpj, setTempCnpj] = useState('');
+  const [tempUasg, setTempUasg] = useState('');
   const [tempMunicipio, setTempMunicipio] = useState('');
 
   const [resultado, setResultado] = useState<ResultadoBusca | null>(null);
@@ -721,6 +724,7 @@ export default function MonitoramentoEditais() {
       );
       // CNPJs armazenados só com dígitos para comparação normalizada
       const cnpjSet = new Set(filtros.cnpjs.map(c => c.replace(/\D/g, '')));
+      const uasgSet = new Set(filtros.uasgs.map(u => String(u).trim()));
 
       // Pré-calcula sets para os novos filtros
       const esfSet = filtros.esferas.length > 0
@@ -745,6 +749,11 @@ export default function MonitoramentoEditais() {
         if (cnpjSet.size > 0) {
           const cnpjRow = String(r.cnpj_orgao || '').replace(/\D/g, '');
           if (!cnpjSet.has(cnpjRow)) return false;
+        }
+        if (uasgSet.size > 0) {
+          const codigoUnidade = String(r.codigo_unidade || '').trim();
+          const matches = Array.from(uasgSet).some(u => codigoUnidade === u || String(r.unidade_orgao || '').includes(u));
+          if (!matches) return false;
         }
         if (filtros.ano && filtros.numero) {
           const numAno = `${filtros.numero}/${filtros.ano}`;
@@ -950,6 +959,7 @@ export default function MonitoramentoEditais() {
   const limparFiltros = () => {
     setFiltros(filtrosVazios);
     setTempCnpj('');
+    setTempUasg('');
     setTempMunicipio('');
     setResultado(null);
     setBuscaRealizada(false);
@@ -997,6 +1007,7 @@ export default function MonitoramentoEditais() {
     if (filtros.ufs.length > 0) n++;
     if (filtros.municipios.length > 0) n++;
     if (filtros.cnpjs.length > 0) n++;
+    if (filtros.uasgs.length > 0) n++;
     if (filtros.esferas.length > 0) n++;
     if (filtros.poderes.length > 0) n++;
     if (filtros.tiposInstrumento.length > 0) n++;
@@ -1264,6 +1275,29 @@ export default function MonitoramentoEditais() {
               onRemove={(idx) => setFiltros(p => ({ ...p, cnpjs: p.cnpjs.filter((_, i) => i !== idx) }))}
               placeholder="Ex: 00.394.460/0232-90"
               hint="(máximo 5 CNPJs)"
+            />
+
+            {/* Linha 7: UASG */}
+            <ChipFreeInput
+              label="Cód. UASG (Unid. de Compra)"
+              valores={filtros.uasgs}
+              tempValue={tempUasg}
+              onTempChange={(v) => setTempUasg(v.replace(/\D/g, '').slice(0, 6))}
+              onAdd={(v) => {
+                const code = v.replace(/\D/g, '').trim();
+                if (!code) return;
+                if (filtros.uasgs.length >= 5) {
+                  toast.warning('Máximo de 5 UASGs');
+                  return;
+                }
+                if (!filtros.uasgs.includes(code)) {
+                  setFiltros(p => ({ ...p, uasgs: [...p.uasgs, code] }));
+                }
+                setTempUasg('');
+              }}
+              onRemove={(idx) => setFiltros(p => ({ ...p, uasgs: p.uasgs.filter((_, i) => i !== idx) }))}
+              placeholder="Ex: 153021"
+              hint="(máximo 5 UASGs)"
             />
 
             {/* Linha 7: Situação */}
