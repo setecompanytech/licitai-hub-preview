@@ -467,9 +467,36 @@ export default function MonitoramentoEditais() {
         cnpjs: filtros.cnpjs,
       });
 
+      // Lookup UASG → CNPJ/UF no cache para direcionar a busca no PNCP
+      let uasgCnpjs: string[] = [];
+      let uasgUfDesc: string | null = null;
+      if (filtros.uasgs.length > 0) {
+        try {
+          const { data: uasgRows } = await supabase
+            .from('pncp_editais_cache' as any)
+            .select('cnpj_orgao, uf')
+            .in('codigo_unidade' as any, filtros.uasgs)
+            .not('cnpj_orgao', 'is', null)
+            .limit(10);
+          if (uasgRows && uasgRows.length > 0) {
+            uasgCnpjs = [...new Set((uasgRows as any[]).map(r => r.cnpj_orgao).filter(Boolean))];
+            const ufsFound = [...new Set((uasgRows as any[]).map(r => r.uf).filter(Boolean))];
+            if (ufsFound.length === 1 && filtros.ufs.length === 0) uasgUfDesc = ufsFound[0] as string;
+            logCtx({ etapa: 'uasg_lookup', uasgs: filtros.uasgs, cnpjs: uasgCnpjs, uf: uasgUfDesc });
+          } else {
+            logCtx({ etapa: 'uasg_lookup', uasgs: filtros.uasgs, resultado: 'nao_encontrado_no_cache' });
+          }
+        } catch (e: any) {
+          console.warn('[UASG lookup] erro:', e?.message);
+        }
+      }
+
+      // CNPJs efetivos para o PNCP: filtro manual + descobertos via UASG
+      const cnpjsEfetivos = [...new Set([...filtros.cnpjs, ...uasgCnpjs])];
+
       // Quando há período informado, consulta a fonte oficial em tempo real.
       // Se a fonte não responder, volta para o cache PNCP local.
-      const ufsList = filtros.ufs.length > 0 ? filtros.ufs : [null];
+      const ufsList = filtros.ufs.length > 0 ? filtros.ufs : uasgUfDesc ? [uasgUfDesc] : [null];
       const modList = modalidadesEfetivas.length > 0 ? modalidadesEfetivas : [null];
       // Chave estável para deduplicação cross-fonte: prioriza pncp_id/numero_controle,
       // cai para id, e por último uma assinatura derivada (numero_compra + cnpj + ano)
@@ -558,8 +585,6 @@ export default function MonitoramentoEditais() {
         // Nesse caso pulamos o live e usamos apenas o cache local que tem busca por número.
         const isNumeroBusca = buscandoPorNumero && /^[\d/\-\.]+$/.test(filtros.numero.trim());
 
-        // A API pública do PNCP não suporta busca por número de edital (numero_compra).
-        // Nesse caso pulamos o live e usamos apenas o cache local que tem busca por número.
         if (isNumeroBusca) {
           logCtx({ etapa: 'busca_por_numero_direto_cache' });
           const cacheRes = await consultarCache(dataIniEfetiva, dataFimEfetiva);
@@ -593,7 +618,7 @@ export default function MonitoramentoEditais() {
                 modalidade: modalidade != null ? String(modalidade) : '',
                 situacao: 'todas',
                 esfera,
-                cnpjs: filtros.cnpjs.length > 0 ? filtros.cnpjs : undefined,
+                cnpjs: cnpjsEfetivos.length > 0 ? cnpjsEfetivos : undefined,
               },
             })
           )
@@ -900,6 +925,11 @@ export default function MonitoramentoEditais() {
         if (liveErr > 0 && liveOk === 0 && !usouCache) {
           toast.warning('PNCP temporariamente indisponível', {
             description: 'Não foi possível buscar editais agora. Tente novamente em alguns minutos.',
+          });
+        } else if (uasgSet.size > 0) {
+          toast.info('Nenhum edital encontrado para esta UASG', {
+            description: 'Verifique se o código está correto ou amplie o período de busca.',
+            duration: 5000,
           });
         } else if (cnpjSet.size > 0) {
           toast.info('Nenhum edital encontrado para este CNPJ', {
