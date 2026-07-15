@@ -244,17 +244,7 @@ async function buscarNoCache(params: BuscaParams, cors: HeadersInit): Promise<Re
       p_tamanho: CACHE_SAMPLE,
     });
 
-  // Tenta com filtro de data primeiro
-  let { data, error } = await queryRpc(params.dataInicial || null, params.dataFinal || null);
-  if (error) throw error;
-
-  // Se não encontrou nada com filtro de data, abre para todos os registros do cache
-  // (PNCP está fora do ar — melhor mostrar dados retroativos do que tela vazia)
-  if (!data || data.length === 0) {
-    const r2 = await queryRpc(null, null);
-    if (!r2.error) data = r2.data;
-  }
-
+  const { data, error } = await queryRpc(params.dataInicial || null, params.dataFinal || null);
   if (error) throw error;
 
   const mapped = aplicarFiltroSituacao(
