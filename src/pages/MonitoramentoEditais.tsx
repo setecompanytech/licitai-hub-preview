@@ -762,11 +762,17 @@ export default function MonitoramentoEditais() {
         // Emenda parlamentar
         if (filtros.emendaParlamentar === 'sim' && r.emenda_parlamentar === false) return false;
         if (filtros.emendaParlamentar === 'nao' && r.emenda_parlamentar === true) return false;
-        // Garantia final: rejeita itens fora do período efetivo, independente da fonte
+        // Garantia final: rejeita itens fora do período efetivo, independente da fonte.
+        // 1) Se o edital já encerrou ANTES do início do período selecionado → fora
+        if (r.data_encerramento_proposta) {
+          const enc = r.data_encerramento_proposta.slice(0, 10);
+          if (enc < dataIniEfetiva) return false;
+        }
+        // 2) Se a data de referência (publicação ou abertura) é posterior ao fim do período → fora
         const dataRef = r.data_publicacao_pncp || r.data_abertura_proposta;
         if (dataRef) {
           const d = dataRef.slice(0, 10);
-          if (d < dataIniEfetiva || d > dataFimEfetiva) return false;
+          if (d > dataFimEfetiva) return false;
         }
         return true;
       });
