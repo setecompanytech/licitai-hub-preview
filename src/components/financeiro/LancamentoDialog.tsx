@@ -9,7 +9,8 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Info, CheckCircle2 } from "lucide-react";
+import { Info, CheckCircle2, TrendingUp, TrendingDown, ArrowLeftRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   useContas,
   useCategorias,
@@ -65,13 +66,26 @@ const FORMAS_PAGAMENTO = [
   { value: "transferencia", label: "Transferência" },
 ];
 
+const TIPO_OPTIONS = [
+  { value: "a_pagar", label: "A Pagar", icon: TrendingDown },
+  { value: "a_receber", label: "A Receber", icon: TrendingUp },
+  { value: "movimento_bancario", label: "Mov. Bancário", icon: ArrowLeftRight },
+  { value: "transferencia", label: "Transferência", icon: ArrowLeftRight },
+] as const;
+
+const STATUS_OPTIONS = [
+  { value: "previsto", label: "Previsto", active: "bg-blue-500 text-white border-blue-500" },
+  { value: "realizado", label: "Realizado", active: "bg-emerald-500 text-white border-emerald-500" },
+  { value: "conciliado", label: "Conciliado", active: "bg-teal-600 text-white border-teal-600" },
+  { value: "em_atraso", label: "Em atraso", active: "bg-red-500 text-white border-red-500" },
+  { value: "cancelado", label: "Cancelado", active: "bg-zinc-500 text-white border-zinc-500" },
+] as const;
+
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   initial?: Partial<Lancamento> | null;
-  /** Pré-define o tipo (a_pagar / a_receber) ao abrir um novo */
   defaultTipo?: Tipo;
-  /** Callback opcional disparado após criar/editar (sem parcelamento). Recebe o registro salvo. */
   onSaved?: (lancamento: Lancamento) => void;
 };
 
@@ -106,7 +120,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   const [chaveAcessoNfe, setChaveAcessoNfe] = useState("");
   const [dataEmissao, setDataEmissao] = useState<string>("");
 
-  // Cobrança / acréscimos / descontos (estilo OMIE)
+  // Cobrança / acréscimos / descontos
   const [valorJuros, setValorJuros] = useState(0);
   const [valorMulta, setValorMulta] = useState(0);
   const [valorDesconto, setValorDesconto] = useState(0);
@@ -121,7 +135,6 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   const [intervaloDias, setIntervaloDias] = useState<number>(30);
   const [regraFds, setRegraFds] = useState<RegraFimSemana>("manter");
   const [diaFixo, setDiaFixo] = useState<string>("");
-  // Edições manuais da tabela de simulação (override por índice da parcela)
   const [simulacaoEdits, setSimulacaoEdits] = useState<Record<number, { vencimento?: string; valor?: number }>>({});
 
   // Departamento e projeto
@@ -168,7 +181,6 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     setSimulacaoEdits({});
   }, [open, initial, defaultTipo]);
 
-  // Sincroniza natureza padrão por tipo
   useEffect(() => {
     if (tipo === "a_receber") setNatureza("receita");
     else if (tipo === "a_pagar") setNatureza("despesa");
@@ -182,8 +194,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
   const editando = !!initial?.id;
   const podeParcelar = !editando && (tipo === "a_pagar" || tipo === "a_receber");
+  const temAcrescimos = valorJuros > 0 || valorMulta > 0 || valorDesconto > 0 || valorTarifa > 0;
 
-  // Simulação das parcelas/repetições (preview ao vivo, com possíveis edições manuais)
   const simulacao = useMemo(() => {
     if (!parcelar || !podeParcelar || qtdParcelas < 2 || !dataVencimento) return [];
     const base = calcularSerieParcelas({
@@ -256,16 +268,12 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     onOpenChange(false);
   };
 
-  // Em "A pagar" mostra despesa + movimentacao (transferências, tarifas).
-  // Em "A receber" mostra receita + movimentacao.
-  // Em "movimentacao" mostra todas (caso especial: aporte, transferência, etc.).
   const categoriasFiltradas = categorias.filter((c) => {
     if (tipo === "a_pagar") return c.natureza === "despesa" || c.natureza === "movimentacao";
     if (tipo === "a_receber") return c.natureza === "receita" || c.natureza === "movimentacao";
     return true;
   });
 
-  // Agrupa por natureza para exibição organizada no Select
   const categoriasAgrupadas = categoriasFiltradas.reduce<Record<string, typeof categoriasFiltradas>>((acc, c) => {
     const key = c.natureza || "movimentacao";
     if (!acc[key]) acc[key] = [];
@@ -289,473 +297,525 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {editando ? "Editar lançamento" : "Novo lançamento"}
-            <Badge variant="outline" className="text-xs">
-              {tipo === "a_pagar" ? "Conta a pagar" : tipo === "a_receber" ? "Conta a receber" : tipo}
-            </Badge>
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-0">
+        {/* Header colorido por tipo */}
+        <div className={cn(
+          "px-6 pt-5 pb-4 border-b",
+          tipo === "a_pagar" ? "bg-red-50/60 dark:bg-red-950/20" :
+          tipo === "a_receber" ? "bg-emerald-50/60 dark:bg-emerald-950/20" :
+          "bg-muted/30"
+        )}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              {editando ? "Editar lançamento" : "Novo lançamento"}
+            </DialogTitle>
+          </DialogHeader>
 
-        <Tabs defaultValue="geral" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="geral">Geral</TabsTrigger>
-            <TabsTrigger value="cobranca">Cobrança</TabsTrigger>
-            <TabsTrigger value="documento">Documento fiscal</TabsTrigger>
-            <TabsTrigger value="rateio" disabled={!editando}>Rateio</TabsTrigger>
-            <TabsTrigger value="parcelas" disabled={!podeParcelar}>Parcelamento</TabsTrigger>
-          </TabsList>
+          {/* Tipo como pills */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-3">
+            {TIPO_OPTIONS.map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => setTipo(t.value as Tipo)}
+                className={cn(
+                  "px-3 py-1 rounded-full text-xs font-medium transition-all border",
+                  tipo === t.value
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-background/70 text-muted-foreground border-border hover:bg-accent"
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
 
-          {/* ---------------- GERAL ---------------- */}
-          <TabsContent value="geral" className="space-y-3">
-            <div className="grid grid-cols-2 gap-4">
+          {/* Status como pills coloridos */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            {STATUS_OPTIONS.map((s) => (
+              <button
+                key={s.value}
+                type="button"
+                onClick={() => setStatus(s.value as Status)}
+                className={cn(
+                  "px-3 py-1 rounded-full text-xs font-medium transition-all border",
+                  status === s.value
+                    ? s.active
+                    : "bg-background/70 text-muted-foreground border-border hover:bg-accent"
+                )}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="px-6 pt-4 pb-2">
+          <Tabs defaultValue="geral" className="w-full">
+            <TabsList className="grid w-full grid-cols-4 mb-4">
+              <TabsTrigger value="geral">Geral</TabsTrigger>
+              <TabsTrigger value="documento">Documento</TabsTrigger>
+              <TabsTrigger value="rateio" disabled={!editando}>Rateio</TabsTrigger>
+              <TabsTrigger value="parcelas" disabled={!podeParcelar}>Parcelamento</TabsTrigger>
+            </TabsList>
+
+            {/* ===================== GERAL ===================== */}
+            <TabsContent value="geral" className="space-y-5 mt-0">
+
+              {/* Descrição */}
               <div className="space-y-1.5">
-                <Label>Tipo</Label>
-                <Select value={tipo} onValueChange={(v) => setTipo(v as Tipo)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="a_pagar">A pagar</SelectItem>
-                    <SelectItem value="a_receber">A receber</SelectItem>
-                    <SelectItem value="movimento_bancario">Movimento bancário</SelectItem>
-                    <SelectItem value="transferencia">Transferência</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Status</Label>
-                <Select value={status} onValueChange={(v) => setStatus(v as Status)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="previsto">Previsto</SelectItem>
-                    <SelectItem value="realizado">Realizado</SelectItem>
-                    <SelectItem value="conciliado">Conciliado</SelectItem>
-                    <SelectItem value="em_atraso">Em atraso</SelectItem>
-                    <SelectItem value="cancelado">Cancelado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="col-span-2 space-y-1.5">
                 <Label>Descrição *</Label>
-                <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: Pagamento fornecedor X" />
+                <Input
+                  value={descricao}
+                  onChange={(e) => setDescricao(e.target.value)}
+                  placeholder="Ex.: Pagamento fornecedor X"
+                  className="text-base"
+                  autoFocus
+                />
               </div>
 
-              <div className="space-y-1.5">
-                <Label>Valor *</Label>
-                <MoneyInput value={valor} onValueChange={setValor} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Conta</Label>
-                <Select value={contaId || "none"} onValueChange={(v) => setContaId(v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— Sem conta —</SelectItem>
-                    {contas.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Competência *</Label>
-                <Input type="date" value={dataCompetencia} onChange={(e) => setDataCompetencia(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Vencimento {parcelar && <span className="text-xs text-muted-foreground">(1ª parcela)</span>}</Label>
-                <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Pago / recebido em</Label>
-                <Input type="date" value={dataRealizado} onChange={(e) => setDataRealizado(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Categoria</Label>
-                <Select value={categoriaId || "none"} onValueChange={(v) => setCategoriaId(v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent className="max-h-[400px]">
-                    <SelectItem value="none">— Sem categoria —</SelectItem>
-                    {ordemGrupos.map(({ key, label }) => {
-                      const itens = categoriasAgrupadas[key];
-                      if (!itens || itens.length === 0) return null;
-                      return (
-                        <SelectGroup key={key}>
-                          <SelectLabel className="text-xs uppercase tracking-wide text-muted-foreground">
-                            {label}
-                          </SelectLabel>
-                          {itens
-                            .slice()
-                            .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || "", "pt-BR", { numeric: true }))
-                            .map((c) => (
-                              <SelectItem key={c.id} value={c.id}>
-                                {c.codigo} · {c.nome}
-                              </SelectItem>
-                            ))}
-                        </SelectGroup>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Departamento</Label>
-                <Select value={departamento || "none"} onValueChange={(v) => setDepartamento(v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— Não informado —</SelectItem>
-                    <SelectItem value="Administrativo">Administrativo</SelectItem>
-                    <SelectItem value="Comercial">Comercial</SelectItem>
-                    <SelectItem value="Financeiro">Financeiro</SelectItem>
-                    <SelectItem value="Jurídico">Jurídico</SelectItem>
-                    <SelectItem value="Operacional">Operacional</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Projeto</Label>
-                <Select value={projetoId || "none"} onValueChange={(v) => setProjetoId(v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— Sem projeto —</SelectItem>
-                    {projetos.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.codigo} · {p.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>{tipo === "a_pagar" ? "Fornecedor" : tipo === "a_receber" ? "Cliente" : "Pessoa"}</Label>
-                <Select value={pessoaId || "none"} onValueChange={(v) => setPessoaId(v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— Não informado —</SelectItem>
-                    {pessoasFiltradas.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.nome}
-                        {p.documento ? ` · ${p.documento}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Vendedor / responsável</Label>
-                <Select value={vendedorId || "none"} onValueChange={(v) => setVendedorId(v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— Não atribuído —</SelectItem>
-                    {membros.map((m) => (
-                      <SelectItem key={m.user_id} value={m.user_id}>
-                        {m.nome_completo || m.email || m.user_id.slice(0, 8)}
-                        {m.papel ? ` · ${m.papel}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="col-span-2 space-y-1.5">
-                <Label>Observações</Label>
-                <Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={2} />
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* ---------------- COBRANÇA ---------------- */}
-          <TabsContent value="cobranca" className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Forma de pagamento</Label>
-                <Select value={formaPagamento || "none"} onValueChange={(v) => setFormaPagamento(v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— Não informada —</SelectItem>
-                    {FORMAS_PAGAMENTO.map((f) => (
-                      <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Valor base</Label>
-                <MoneyInput value={valor} onValueChange={setValor} />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Juros (R$)</Label>
-                <MoneyInput value={valorJuros} onValueChange={setValorJuros} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Multa (R$)</Label>
-                <MoneyInput value={valorMulta} onValueChange={setValorMulta} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Desconto (R$)</Label>
-                <MoneyInput value={valorDesconto} onValueChange={setValorDesconto} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Tarifa bancária (R$)</Label>
-                <MoneyInput value={valorTarifa} onValueChange={setValorTarifa} />
-              </div>
-            </div>
-
-            <div className="rounded-md border bg-muted/40 p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Info className="w-4 h-4" />
-                Valor líquido a {tipo === "a_pagar" ? "pagar" : "receber"}
-              </div>
-              <div className="text-lg font-semibold tabular-nums">
-                {valorLiquido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* ---------------- DOCUMENTO ---------------- */}
-          <TabsContent value="documento" className="space-y-3">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Tipo de documento</Label>
-                <Select value={tipoDocumento || "none"} onValueChange={(v) => setTipoDocumento(v === "none" ? "" : (v as TipoDocumento))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— Não informado —</SelectItem>
-                    {TIPO_DOC_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Data de emissão</Label>
-                <Input type="date" value={dataEmissao} onChange={(e) => setDataEmissao(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Número do documento</Label>
-                <Input value={numeroDocumento} onChange={(e) => setNumeroDocumento(e.target.value)} placeholder="Ex.: 000123" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Série</Label>
-                <Input value={serieDocumento} onChange={(e) => setSerieDocumento(e.target.value)} placeholder="Ex.: 1" />
-              </div>
-              {(tipoDocumento === "nfe" || tipoDocumento === "nfce" || tipoDocumento === "nfse" || tipoDocumento === "cte") && (
-                <div className="col-span-2 space-y-1.5">
-                  <Label>Chave de acesso (44 dígitos)</Label>
-                  <Input
-                    value={chaveAcessoNfe}
-                    onChange={(e) => setChaveAcessoNfe(e.target.value.replace(/\D/g, "").slice(0, 44))}
-                    placeholder="00000000000000000000000000000000000000000000"
-                    maxLength={44}
-                  />
-                  {chaveAcessoNfe && chaveAcessoNfe.length !== 44 && (
-                    <p className="text-xs text-destructive">A chave deve ter 44 dígitos numéricos.</p>
-                  )}
+              {/* Valor + Conta + Forma de pagamento */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Valor *</Label>
+                  <MoneyInput value={valor} onValueChange={setValor} />
                 </div>
-              )}
-            </div>
-          </TabsContent>
-
-          {/* ---------------- PARCELAMENTO ---------------- */}
-          {/* ---------------- RATEIO ---------------- */}
-          <TabsContent value="rateio" className="space-y-3">
-            <RateioCentroCustoEditor lancamentoId={initial?.id ?? null} valorBase={Number(valor) || 0} />
-          </TabsContent>
-
-          {/* ---------------- PARCELAMENTO / REPETIÇÕES ---------------- */}
-          <TabsContent value="parcelas" className="space-y-4">
-            <div className="rounded-md border p-4 flex items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="font-medium">Incluir repetições / parcelamento</p>
-                <p className="text-xs text-muted-foreground">
-                  Para despesas fixas (ex.: aluguel, telefonia, energia) use{" "}
-                  <strong>Repetir o mesmo valor</strong>. Para parcelar uma compra,{" "}
-                  <strong>Dividir o valor</strong>. As repetições são geradas a partir do vencimento informado em <em>Geral</em>.
-                </p>
+                <div className="space-y-1.5">
+                  <Label>Conta</Label>
+                  <Select value={contaId || "none"} onValueChange={(v) => setContaId(v === "none" ? "" : v)}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Sem conta —</SelectItem>
+                      {contas.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Forma de pagamento</Label>
+                  <Select value={formaPagamento || "none"} onValueChange={(v) => setFormaPagamento(v === "none" ? "" : v)}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Não informada —</SelectItem>
+                      {FORMAS_PAGAMENTO.map((f) => (
+                        <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <Switch checked={parcelar} onCheckedChange={setParcelar} />
-            </div>
 
-            {parcelar && (
-              <>
+              {/* Datas */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Datas</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Competência *</Label>
+                    <Input type="date" value={dataCompetencia} onChange={(e) => setDataCompetencia(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>
+                      Vencimento{parcelar && <span className="text-xs text-muted-foreground ml-1">(1ª parcela)</span>}
+                    </Label>
+                    <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Pago / recebido em</Label>
+                    <Input type="date" value={dataRealizado} onChange={(e) => setDataRealizado(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Classificação */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Classificação</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => { setModoParc("dividir"); setSimulacaoEdits({}); }}
-                    className={`text-left rounded-md border p-3 transition-colors ${modoParc === "dividir" ? "border-primary ring-1 ring-primary/40 bg-primary/5" : "hover:bg-accent/40"}`}
-                  >
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      {modoParc === "dividir" && <CheckCircle2 className="w-4 h-4 text-primary" />}
-                      Dividir o valor em N parcelas
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Ex.: R$ 1.200 em 12x = R$ 100,00 cada. Última parcela ajusta centavos.
-                    </p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setModoParc("repetir"); setSimulacaoEdits({}); }}
-                    className={`text-left rounded-md border p-3 transition-colors ${modoParc === "repetir" ? "border-primary ring-1 ring-primary/40 bg-primary/5" : "hover:bg-accent/40"}`}
-                  >
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      {modoParc === "repetir" && <CheckCircle2 className="w-4 h-4 text-primary" />}
-                      Repetir o mesmo valor (despesa fixa)
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Cada repetição mantém o valor cheio (ex.: aluguel R$ 2.500 todo mês).
-                    </p>
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Quanto a sábados e domingos</Label>
-                    <Select value={regraFds} onValueChange={(v) => { setRegraFds(v as RegraFimSemana); setSimulacaoEdits({}); }}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="manter">Manter a data de vencimento</SelectItem>
-                        <SelectItem value="antecipar">Antecipar para dia útil</SelectItem>
-                        <SelectItem value="postergar">Postergar para dia útil</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Periodicidade</Label>
-                    <Select value={periodicidade} onValueChange={(v) => { setPeriodicidade(v as Periodicidade); setSimulacaoEdits({}); }}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="semanal">Semanal</SelectItem>
-                        <SelectItem value="quinzenal">Quinzenal</SelectItem>
-                        <SelectItem value="mensal">Mensal</SelectItem>
-                        <SelectItem value="bimestral">Bimestral</SelectItem>
-                        <SelectItem value="trimestral">Trimestral</SelectItem>
-                        <SelectItem value="semestral">Semestral</SelectItem>
-                        <SelectItem value="anual">Anual</SelectItem>
-                        <SelectItem value="dias">Período específico (dias)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {periodicidade === "dias" ? (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">A cada (dias)</Label>
-                      <Input
-                        type="number" min={1} max={365}
-                        value={intervaloDias}
-                        onChange={(e) => { setIntervaloDias(Math.max(1, parseInt(e.target.value || "30", 10))); setSimulacaoEdits({}); }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Repetir todo dia</Label>
-                      <Input
-                        type="number" min={1} max={31}
-                        placeholder="(usa o dia do venc.)"
-                        value={diaFixo}
-                        onChange={(e) => { setDiaFixo(e.target.value.replace(/\D/g, "").slice(0, 2)); setSimulacaoEdits({}); }}
-                        disabled={periodicidade === "semanal" || periodicidade === "quinzenal"}
-                      />
-                    </div>
-                  )}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Por (qtd. de repetições)</Label>
-                    <Input
-                      type="number" min={2} max={120}
-                      value={qtdParcelas}
-                      onChange={(e) => { setQtdParcelas(Math.max(2, parseInt(e.target.value || "2", 10))); setSimulacaoEdits({}); }}
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-md border overflow-hidden">
-                  <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b gap-2 flex-wrap">
-                    <div className="text-sm font-medium">
-                      Simulação das repetições
-                      <span className="text-xs text-muted-foreground ml-2">
-                        (clique no vencimento ou valor para ajustar manualmente)
-                      </span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Total da série: <strong className="text-foreground">{totalSerie.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
-                    </div>
-                  </div>
-                  <div className="max-h-72 overflow-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/20 text-xs text-muted-foreground sticky top-0">
-                        <tr>
-                          <th className="text-left font-medium px-3 py-2 w-28">Situação</th>
-                          <th className="text-left font-medium px-3 py-2 w-24">Parcela</th>
-                          <th className="text-left font-medium px-3 py-2">Vencimento</th>
-                          <th className="text-right font-medium px-3 py-2 w-40">Valor</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {simulacao.map((d, i) => {
-                          const dt = new Date(d.vencimento + "T12:00:00");
-                          const dow = dt.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
-                          const dataStr = dt.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+                    <Label>Categoria</Label>
+                    <Select value={categoriaId || "none"} onValueChange={(v) => setCategoriaId(v === "none" ? "" : v)}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent className="max-h-[400px]">
+                        <SelectItem value="none">— Sem categoria —</SelectItem>
+                        {ordemGrupos.map(({ key, label }) => {
+                          const itens = categoriasAgrupadas[key];
+                          if (!itens || itens.length === 0) return null;
                           return (
-                            <tr key={i} className="border-t hover:bg-accent/30">
-                              <td className="px-3 py-1.5">
-                                <span className="inline-flex items-center gap-1 text-xs">
-                                  <span className="w-2 h-2 rounded-full bg-amber-500" />
-                                  A vencer
-                                </span>
-                              </td>
-                              <td className="px-3 py-1.5 tabular-nums text-xs text-muted-foreground">
-                                {String(i + 1).padStart(3, "0")}/{String(qtdParcelas).padStart(3, "0")}
-                              </td>
-                              <td className="px-3 py-1.5">
-                                <input
-                                  type="date"
-                                  value={d.vencimento}
-                                  onChange={(e) => setSimulacaoEdits((prev) => ({ ...prev, [i]: { ...prev[i], vencimento: e.target.value } }))}
-                                  className="bg-transparent border-0 outline-none focus:ring-1 focus:ring-primary rounded px-1 py-0.5"
-                                />
-                                <span className="text-xs text-muted-foreground ml-2 capitalize">{dataStr} {dow}</span>
-                              </td>
-                              <td className="px-3 py-1.5 text-right">
-                                <input
-                                  type="number" step="0.01" min="0"
-                                  value={d.valor}
-                                  onChange={(e) => setSimulacaoEdits((prev) => ({ ...prev, [i]: { ...prev[i], valor: parseFloat(e.target.value || "0") } }))}
-                                  className="w-32 text-right bg-transparent border-0 outline-none focus:ring-1 focus:ring-primary rounded px-1 py-0.5 tabular-nums"
-                                />
-                              </td>
-                            </tr>
+                            <SelectGroup key={key}>
+                              <SelectLabel className="text-xs uppercase tracking-wide text-muted-foreground">
+                                {label}
+                              </SelectLabel>
+                              {itens
+                                .slice()
+                                .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || "", "pt-BR", { numeric: true }))
+                                .map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>
+                                    {c.codigo} · {c.nome}
+                                  </SelectItem>
+                                ))}
+                            </SelectGroup>
                           );
                         })}
-                        {simulacao.length === 0 && (
-                          <tr><td colSpan={4} className="px-3 py-6 text-center text-xs text-muted-foreground">
-                            Informe valor e data de vencimento na aba <strong>Geral</strong> para visualizar a simulação.
-                          </td></tr>
-                        )}
-                      </tbody>
-                    </table>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>{tipo === "a_pagar" ? "Fornecedor" : tipo === "a_receber" ? "Cliente" : "Pessoa"}</Label>
+                    <Select value={pessoaId || "none"} onValueChange={(v) => setPessoaId(v === "none" ? "" : v)}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— Não informado —</SelectItem>
+                        {pessoasFiltradas.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.nome}{p.documento ? ` · ${p.documento}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Departamento</Label>
+                    <Select value={departamento || "none"} onValueChange={(v) => setDepartamento(v === "none" ? "" : v)}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— Não informado —</SelectItem>
+                        <SelectItem value="Administrativo">Administrativo</SelectItem>
+                        <SelectItem value="Comercial">Comercial</SelectItem>
+                        <SelectItem value="Financeiro">Financeiro</SelectItem>
+                        <SelectItem value="Jurídico">Jurídico</SelectItem>
+                        <SelectItem value="Operacional">Operacional</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Projeto</Label>
+                    <Select value={projetoId || "none"} onValueChange={(v) => setProjetoId(v === "none" ? "" : v)}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— Sem projeto —</SelectItem>
+                        {projetos.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.codigo} · {p.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="col-span-2 space-y-1.5">
+                    <Label>Vendedor / responsável</Label>
+                    <Select value={vendedorId || "none"} onValueChange={(v) => setVendedorId(v === "none" ? "" : v)}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— Não atribuído —</SelectItem>
+                        {membros.map((m) => (
+                          <SelectItem key={m.user_id} value={m.user_id}>
+                            {m.nome_completo || m.email || m.user_id.slice(0, 8)}
+                            {m.papel ? ` · ${m.papel}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
+              </div>
 
-                <div className="text-xs text-muted-foreground flex items-start gap-2">
-                  <Info className="w-4 h-4 mt-0.5 shrink-0" />
-                  {modoParc === "repetir"
-                    ? <>Modo <strong>repetir</strong>: cada lançamento será criado com o valor cheio informado em <em>Geral</em>.</>
-                    : <>Modo <strong>dividir</strong>: o valor é distribuído igualmente entre as parcelas; a última recebe o ajuste de centavos.</>}
+              {/* Acréscimos e Descontos */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Acréscimos e Descontos</p>
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Juros (R$)</Label>
+                    <MoneyInput value={valorJuros} onValueChange={setValorJuros} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Multa (R$)</Label>
+                    <MoneyInput value={valorMulta} onValueChange={setValorMulta} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Desconto (R$)</Label>
+                    <MoneyInput value={valorDesconto} onValueChange={setValorDesconto} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Tarifa bancária (R$)</Label>
+                    <MoneyInput value={valorTarifa} onValueChange={setValorTarifa} />
+                  </div>
                 </div>
-              </>
-            )}
-          </TabsContent>
-        </Tabs>
+                {temAcrescimos && (
+                  <div className="flex items-center justify-end gap-2 rounded-md bg-muted/40 px-3 py-2 text-sm">
+                    <Info className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">
+                      Valor líquido a {tipo === "a_pagar" ? "pagar" : "receber"}:
+                    </span>
+                    <span className="font-semibold tabular-nums">
+                      {valorLiquido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </span>
+                  </div>
+                )}
+              </div>
 
-        <DialogFooter className="pt-2 border-t">
+              {/* Observações */}
+              <div className="space-y-1.5">
+                <Label>Observações</Label>
+                <Textarea
+                  value={observacoes}
+                  onChange={(e) => setObservacoes(e.target.value)}
+                  rows={2}
+                  placeholder="Informações adicionais..."
+                />
+              </div>
+            </TabsContent>
+
+            {/* ===================== DOCUMENTO FISCAL ===================== */}
+            <TabsContent value="documento" className="space-y-3 mt-0">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Tipo de documento</Label>
+                  <Select value={tipoDocumento || "none"} onValueChange={(v) => setTipoDocumento(v === "none" ? "" : (v as TipoDocumento))}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Não informado —</SelectItem>
+                      {TIPO_DOC_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Data de emissão</Label>
+                  <Input type="date" value={dataEmissao} onChange={(e) => setDataEmissao(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Número do documento</Label>
+                  <Input value={numeroDocumento} onChange={(e) => setNumeroDocumento(e.target.value)} placeholder="Ex.: 000123" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Série</Label>
+                  <Input value={serieDocumento} onChange={(e) => setSerieDocumento(e.target.value)} placeholder="Ex.: 1" />
+                </div>
+                {(tipoDocumento === "nfe" || tipoDocumento === "nfce" || tipoDocumento === "nfse" || tipoDocumento === "cte") && (
+                  <div className="col-span-2 space-y-1.5">
+                    <Label>Chave de acesso (44 dígitos)</Label>
+                    <Input
+                      value={chaveAcessoNfe}
+                      onChange={(e) => setChaveAcessoNfe(e.target.value.replace(/\D/g, "").slice(0, 44))}
+                      placeholder="00000000000000000000000000000000000000000000"
+                      maxLength={44}
+                    />
+                    {chaveAcessoNfe && chaveAcessoNfe.length !== 44 && (
+                      <p className="text-xs text-destructive">A chave deve ter 44 dígitos numéricos.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* ===================== RATEIO ===================== */}
+            <TabsContent value="rateio" className="space-y-3 mt-0">
+              <RateioCentroCustoEditor lancamentoId={initial?.id ?? null} valorBase={Number(valor) || 0} />
+            </TabsContent>
+
+            {/* ===================== PARCELAMENTO ===================== */}
+            <TabsContent value="parcelas" className="space-y-4 mt-0">
+              <div className="rounded-md border p-4 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="font-medium">Incluir repetições / parcelamento</p>
+                  <p className="text-xs text-muted-foreground">
+                    Para despesas fixas (ex.: aluguel, telefonia, energia) use{" "}
+                    <strong>Repetir o mesmo valor</strong>. Para parcelar uma compra,{" "}
+                    <strong>Dividir o valor</strong>.
+                  </p>
+                </div>
+                <Switch checked={parcelar} onCheckedChange={setParcelar} />
+              </div>
+
+              {parcelar && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => { setModoParc("dividir"); setSimulacaoEdits({}); }}
+                      className={cn(
+                        "text-left rounded-md border p-3 transition-colors",
+                        modoParc === "dividir" ? "border-primary ring-1 ring-primary/40 bg-primary/5" : "hover:bg-accent/40"
+                      )}
+                    >
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        {modoParc === "dividir" && <CheckCircle2 className="w-4 h-4 text-primary" />}
+                        Dividir o valor em N parcelas
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Ex.: R$ 1.200 em 12x = R$ 100,00 cada. Última parcela ajusta centavos.
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setModoParc("repetir"); setSimulacaoEdits({}); }}
+                      className={cn(
+                        "text-left rounded-md border p-3 transition-colors",
+                        modoParc === "repetir" ? "border-primary ring-1 ring-primary/40 bg-primary/5" : "hover:bg-accent/40"
+                      )}
+                    >
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        {modoParc === "repetir" && <CheckCircle2 className="w-4 h-4 text-primary" />}
+                        Repetir o mesmo valor (despesa fixa)
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Cada repetição mantém o valor cheio (ex.: aluguel R$ 2.500 todo mês).
+                      </p>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Quanto a sábados e domingos</Label>
+                      <Select value={regraFds} onValueChange={(v) => { setRegraFds(v as RegraFimSemana); setSimulacaoEdits({}); }}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="manter">Manter a data de vencimento</SelectItem>
+                          <SelectItem value="antecipar">Antecipar para dia útil</SelectItem>
+                          <SelectItem value="postergar">Postergar para dia útil</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Periodicidade</Label>
+                      <Select value={periodicidade} onValueChange={(v) => { setPeriodicidade(v as Periodicidade); setSimulacaoEdits({}); }}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="semanal">Semanal</SelectItem>
+                          <SelectItem value="quinzenal">Quinzenal</SelectItem>
+                          <SelectItem value="mensal">Mensal</SelectItem>
+                          <SelectItem value="bimestral">Bimestral</SelectItem>
+                          <SelectItem value="trimestral">Trimestral</SelectItem>
+                          <SelectItem value="semestral">Semestral</SelectItem>
+                          <SelectItem value="anual">Anual</SelectItem>
+                          <SelectItem value="dias">Período específico (dias)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {periodicidade === "dias" ? (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">A cada (dias)</Label>
+                        <Input
+                          type="number" min={1} max={365}
+                          value={intervaloDias}
+                          onChange={(e) => { setIntervaloDias(Math.max(1, parseInt(e.target.value || "30", 10))); setSimulacaoEdits({}); }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Repetir todo dia</Label>
+                        <Input
+                          type="number" min={1} max={31}
+                          placeholder="(usa o dia do venc.)"
+                          value={diaFixo}
+                          onChange={(e) => { setDiaFixo(e.target.value.replace(/\D/g, "").slice(0, 2)); setSimulacaoEdits({}); }}
+                          disabled={periodicidade === "semanal" || periodicidade === "quinzenal"}
+                        />
+                      </div>
+                    )}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Por (qtd. de repetições)</Label>
+                      <Input
+                        type="number" min={2} max={120}
+                        value={qtdParcelas}
+                        onChange={(e) => { setQtdParcelas(Math.max(2, parseInt(e.target.value || "2", 10))); setSimulacaoEdits({}); }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-md border overflow-hidden">
+                    <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b gap-2 flex-wrap">
+                      <div className="text-sm font-medium">
+                        Simulação das repetições
+                        <span className="text-xs text-muted-foreground ml-2">
+                          (clique no vencimento ou valor para ajustar manualmente)
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Total da série: <strong className="text-foreground">{totalSerie.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
+                      </div>
+                    </div>
+                    <div className="max-h-72 overflow-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/20 text-xs text-muted-foreground sticky top-0">
+                          <tr>
+                            <th className="text-left font-medium px-3 py-2 w-28">Situação</th>
+                            <th className="text-left font-medium px-3 py-2 w-24">Parcela</th>
+                            <th className="text-left font-medium px-3 py-2">Vencimento</th>
+                            <th className="text-right font-medium px-3 py-2 w-40">Valor</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {simulacao.map((d, i) => {
+                            const dt = new Date(d.vencimento + "T12:00:00");
+                            const dow = dt.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+                            const dataStr = dt.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+                            return (
+                              <tr key={i} className="border-t hover:bg-accent/30">
+                                <td className="px-3 py-1.5">
+                                  <span className="inline-flex items-center gap-1 text-xs">
+                                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                    A vencer
+                                  </span>
+                                </td>
+                                <td className="px-3 py-1.5 tabular-nums text-xs text-muted-foreground">
+                                  {String(i + 1).padStart(3, "0")}/{String(qtdParcelas).padStart(3, "0")}
+                                </td>
+                                <td className="px-3 py-1.5">
+                                  <input
+                                    type="date"
+                                    value={d.vencimento}
+                                    onChange={(e) => setSimulacaoEdits((prev) => ({ ...prev, [i]: { ...prev[i], vencimento: e.target.value } }))}
+                                    className="bg-transparent border-0 outline-none focus:ring-1 focus:ring-primary rounded px-1 py-0.5"
+                                  />
+                                  <span className="text-xs text-muted-foreground ml-2 capitalize">{dataStr} {dow}</span>
+                                </td>
+                                <td className="px-3 py-1.5 text-right">
+                                  <input
+                                    type="number" step="0.01" min="0"
+                                    value={d.valor}
+                                    onChange={(e) => setSimulacaoEdits((prev) => ({ ...prev, [i]: { ...prev[i], valor: parseFloat(e.target.value || "0") } }))}
+                                    className="w-32 text-right bg-transparent border-0 outline-none focus:ring-1 focus:ring-primary rounded px-1 py-0.5 tabular-nums"
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {simulacao.length === 0 && (
+                            <tr><td colSpan={4} className="px-3 py-6 text-center text-xs text-muted-foreground">
+                              Informe valor e data de vencimento na aba <strong>Geral</strong> para visualizar a simulação.
+                            </td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-muted-foreground flex items-start gap-2">
+                    <Info className="w-4 h-4 mt-0.5 shrink-0" />
+                    {modoParc === "repetir"
+                      ? <>Modo <strong>repetir</strong>: cada lançamento será criado com o valor cheio informado em <em>Geral</em>.</>
+                      : <>Modo <strong>dividir</strong>: o valor é distribuído igualmente entre as parcelas; a última recebe o ajuste de centavos.</>}
+                  </div>
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <DialogFooter className="px-6 py-4 border-t bg-muted/20">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={isSalvando || !descricao.trim()}>
-            {isSalvando ? "Salvando..." : parcelar && podeParcelar ? `Gerar ${qtdParcelas} ${modoParc === "repetir" ? "repetições" : "parcelas"}` : "Salvar"}
+            {isSalvando
+              ? "Salvando..."
+              : parcelar && podeParcelar
+                ? `Gerar ${qtdParcelas} ${modoParc === "repetir" ? "repetições" : "parcelas"}`
+                : "Salvar lançamento"}
           </Button>
         </DialogFooter>
       </DialogContent>

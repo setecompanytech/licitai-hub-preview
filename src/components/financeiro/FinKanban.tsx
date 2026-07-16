@@ -175,6 +175,14 @@ export default function FinKanban({ tipo }: Props) {
     0,
   );
 
+  const saldoContaAtual = useMemo(() => {
+    if (filtroConta === "todos") {
+      return contas.reduce((s, c) => s + Number((c as any).saldo_atual ?? 0), 0);
+    }
+    const c = contas.find((ct) => ct.id === filtroConta);
+    return Number((c as any)?.saldo_atual ?? 0);
+  }, [contas, filtroConta]);
+
   // ===== Seleção em lote =====
   const idsSelecionaveis = lancamentosFiltrados.filter((l) => classificar(l) !== "pago").map((l) => l.id);
   const totalSelecionado = lancamentosFiltrados
@@ -346,13 +354,24 @@ export default function FinKanban({ tipo }: Props) {
       {/* Cabeçalho com totalizador, busca e ações */}
       <Card>
         <CardContent className="pt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <p className="text-sm text-muted-foreground">
-              Total {tipo === "a_pagar" ? "a pagar" : "a receber"} em aberto
-            </p>
-            <p className="text-2xl font-bold tabular-nums">
-              {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-            </p>
+          <div className="flex flex-wrap items-center gap-6">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Total {tipo === "a_pagar" ? "a pagar" : "a receber"} em aberto
+              </p>
+              <p className="text-2xl font-bold tabular-nums">
+                {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </p>
+            </div>
+            <div className="h-10 w-px bg-border hidden sm:block" />
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Saldo atual {filtroConta !== "todos" ? `· ${contas.find((c) => c.id === filtroConta)?.nome ?? ""}` : "· todas as contas"}
+              </p>
+              <p className={cn("text-2xl font-bold tabular-nums", saldoContaAtual >= 0 ? "text-emerald-500" : "text-destructive")}>
+                {saldoContaAtual.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

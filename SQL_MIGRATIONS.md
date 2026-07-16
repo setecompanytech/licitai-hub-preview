@@ -250,7 +250,9 @@ ALTER TABLE public.financeiro_nfes_emitidas
 CREATE INDEX IF NOT EXISTS idx_nfes_pedido ON public.financeiro_nfes_emitidas(pedido_id);
 ```
 
-### Passo 3 — Trigger: saldo_atual da conta ao marcar lançamento como realizado
+### Passo 3 — Trigger: saldo_atual da conta ao marcar lançamento como realizado/conciliado
+
+> **IMPORTANTE**: rode este bloco no Supabase para ativar a dedução automática do saldo.
 
 ```sql
 CREATE OR REPLACE FUNCTION public.trg_fn_saldo_lancamento()
@@ -258,25 +260,27 @@ RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE v_delta NUMERIC;
 BEGIN
   IF TG_OP = 'UPDATE' THEN
-    IF NEW.status = 'realizado' AND (OLD.status IS DISTINCT FROM 'realizado') THEN
+    -- Status entrou em realizado/conciliado
+    IF NEW.status IN ('realizado', 'conciliado') AND OLD.status NOT IN ('realizado', 'conciliado') THEN
       IF NEW.conta_id IS NOT NULL AND NEW.valor IS NOT NULL THEN
         v_delta := CASE WHEN NEW.natureza = 'receita' THEN NEW.valor ELSE -NEW.valor END;
         UPDATE public.financeiro_contas SET saldo_atual = COALESCE(saldo_atual,0) + v_delta WHERE id = NEW.conta_id;
       END IF;
     END IF;
-    IF OLD.status = 'realizado' AND (NEW.status IS DISTINCT FROM 'realizado') THEN
+    -- Status saiu de realizado/conciliado (reabertura)
+    IF OLD.status IN ('realizado', 'conciliado') AND NEW.status NOT IN ('realizado', 'conciliado') THEN
       IF OLD.conta_id IS NOT NULL AND OLD.valor IS NOT NULL THEN
         v_delta := CASE WHEN OLD.natureza = 'receita' THEN -OLD.valor ELSE OLD.valor END;
         UPDATE public.financeiro_contas SET saldo_atual = COALESCE(saldo_atual,0) + v_delta WHERE id = OLD.conta_id;
       END IF;
     END IF;
   ELSIF TG_OP = 'INSERT' THEN
-    IF NEW.status = 'realizado' AND NEW.conta_id IS NOT NULL AND NEW.valor IS NOT NULL THEN
+    IF NEW.status IN ('realizado', 'conciliado') AND NEW.conta_id IS NOT NULL AND NEW.valor IS NOT NULL THEN
       v_delta := CASE WHEN NEW.natureza = 'receita' THEN NEW.valor ELSE -NEW.valor END;
       UPDATE public.financeiro_contas SET saldo_atual = COALESCE(saldo_atual,0) + v_delta WHERE id = NEW.conta_id;
     END IF;
   ELSIF TG_OP = 'DELETE' THEN
-    IF OLD.status = 'realizado' AND OLD.conta_id IS NOT NULL AND OLD.valor IS NOT NULL THEN
+    IF OLD.status IN ('realizado', 'conciliado') AND OLD.conta_id IS NOT NULL AND OLD.valor IS NOT NULL THEN
       v_delta := CASE WHEN OLD.natureza = 'receita' THEN -OLD.valor ELSE OLD.valor END;
       UPDATE public.financeiro_contas SET saldo_atual = COALESCE(saldo_atual,0) + v_delta WHERE id = OLD.conta_id;
     END IF;
@@ -291,7 +295,8 @@ CREATE TRIGGER trg_saldo_lancamento
   FOR EACH ROW EXECUTE FUNCTION public.trg_fn_saldo_lancamento();
 ```
 
-> **Nota**: lançamentos já existentes com status=realizado **não** serão retroativamente ajustados — use "Sincronizar saldos" em Contas após criar o trigger se necessário.
+> **Nota**: lançamentos já existentes com status=realizado/conciliado **não** serão retroativamente ajustados. Use "Sincronizar saldos" em Contas após criar o trigger.
+> O trigger agora cobre também `conciliado` além de `realizado`.
 
 ---
 
