@@ -21,6 +21,8 @@ import {
   useMembrosEmpresa,
   useFinProjetos,
   calcularSerieParcelas,
+  ajustarSaldoConta,
+  isStatusPago,
   type Lancamento,
   type Periodicidade,
   type RegraFimSemana,
@@ -219,6 +221,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
   const totalSerie = useMemo(() => simulacao.reduce((s, d) => s + (Number(d.valor) || 0), 0), [simulacao]);
 
+  const calcDelta = (nat: string, v: number) => (nat === "receita" ? v : -v);
+
   const handleSubmit = async () => {
     if (!descricao.trim()) {
       toast.error("Informe uma descrição para o lançamento.");
@@ -269,9 +273,35 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
         dia_fixo: diaFixo ? Math.max(1, Math.min(31, parseInt(diaFixo, 10))) : null,
         datas_customizadas: simulacao.length === qtdParcelas ? simulacao : undefined,
       });
+      // Parcelamento: se status já for pago, ajusta o saldo para cada parcela
+      if (isStatusPago(status) && contaId) {
+        for (const p of simulacao) {
+          await ajustarSaldoConta(contaId, calcDelta(natureza, Number(p.valor)));
+        }
+      }
     } else {
       const saved = await upsert.mutateAsync({ id: initial?.id, ...baseBody });
       if (saved && onSaved) onSaved(saved as unknown as Lancamento);
+
+      // Ajusta saldo da conta conforme transição de status
+      const oldStatus = initial?.status ?? null;
+      const oldContaId = initial?.conta_id ?? null;
+      const oldNatureza = initial?.natureza ?? natureza;
+      const oldValor = Number(initial?.valor ?? valor);
+      const newPago = isStatusPago(status);
+      const oldPago = isStatusPago(oldStatus);
+
+      if (newPago && !oldPago && contaId) {
+        // Entrou em pago
+        await ajustarSaldoConta(contaId, calcDelta(natureza, valor));
+      } else if (!newPago && oldPago && oldContaId) {
+        // Saiu de pago (reabertura)
+        await ajustarSaldoConta(oldContaId, -calcDelta(oldNatureza, oldValor));
+      } else if (newPago && oldPago && oldContaId !== contaId) {
+        // Mudou de conta enquanto pago: reverte da antiga, aplica na nova
+        if (oldContaId) await ajustarSaldoConta(oldContaId, -calcDelta(oldNatureza, oldValor));
+        if (contaId) await ajustarSaldoConta(contaId, calcDelta(natureza, valor));
+      }
     }
     onOpenChange(false);
   };

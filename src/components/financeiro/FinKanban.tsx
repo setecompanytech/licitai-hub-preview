@@ -34,6 +34,7 @@ import {
   useCategorias,
   usePessoas,
   useContas,
+  ajustarSaldoConta,
   type Lancamento,
 } from "@/hooks/useFinanceiro";
 import LancamentoDialog from "./LancamentoDialog";
@@ -204,7 +205,14 @@ export default function FinKanban({ tipo }: Props) {
     const ids = Array.from(selecionados);
     try {
       await Promise.all(
-        ids.map((id) => upsert.mutateAsync({ id, status: "realizado", data_realizado: hoje } as any)),
+        ids.map(async (id) => {
+          await upsert.mutateAsync({ id, status: "realizado", data_realizado: hoje } as any);
+          const lanc = lancamentos.find((x) => x.id === id);
+          if (lanc?.conta_id) {
+            const delta = lanc.natureza === "receita" ? Number(lanc.valor) : -Number(lanc.valor);
+            await ajustarSaldoConta(lanc.conta_id, delta);
+          }
+        }),
       );
       toast.success(`${ids.length} lançamento(s) marcados como ${tipo === "a_pagar" ? "pagos" : "recebidos"}.`);
       limparSelecao();
@@ -219,6 +227,10 @@ export default function FinKanban({ tipo }: Props) {
       status: "realizado",
       data_realizado: new Date().toISOString().slice(0, 10),
     } as any);
+    if (l.conta_id) {
+      const delta = l.natureza === "receita" ? Number(l.valor) : -Number(l.valor);
+      await ajustarSaldoConta(l.conta_id, delta);
+    }
   };
 
   const agendarExclusao = (l: LancamentoCard) => {
@@ -312,14 +324,22 @@ export default function FinKanban({ tipo }: Props) {
           status: "realizado",
           data_realizado: new Date().toISOString().slice(0, 10),
         } as any);
+        if (lanc.conta_id) {
+          const delta = lanc.natureza === "receita" ? Number(lanc.valor) : -Number(lanc.valor);
+          await ajustarSaldoConta(lanc.conta_id, delta);
+        }
         toast.success("Lançamento marcado como concluído.");
       } else {
-        // Tirar de "pago" → volta para previsto; recalcula coluna pelo vencimento
+        // Tirar de "pago" → volta para previsto; reverte saldo
         await upsert.mutateAsync({
           id,
           status: "previsto",
           data_realizado: null,
         } as any);
+        if (lanc.conta_id) {
+          const delta = lanc.natureza === "receita" ? -Number(lanc.valor) : Number(lanc.valor);
+          await ajustarSaldoConta(lanc.conta_id, delta);
+        }
         toast.success("Lançamento reaberto.");
       }
     } catch {

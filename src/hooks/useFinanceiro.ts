@@ -37,6 +37,22 @@ export function useEmpresaId() {
   return empresaAtiva?.id ?? null;
 }
 
+const STATUS_PAGO = ["realizado", "conciliado"] as const;
+export const isStatusPago = (s: string | null | undefined): boolean =>
+  STATUS_PAGO.includes(s as any);
+
+/** Incrementa/decrementa saldo_atual de uma conta de forma segura (read-then-write). */
+export async function ajustarSaldoConta(contaId: string, delta: number): Promise<void> {
+  if (!contaId || delta === 0) return;
+  const { data } = await supabase
+    .from("financeiro_contas")
+    .select("saldo_atual")
+    .eq("id", contaId)
+    .single();
+  const novo = Number(data?.saldo_atual ?? 0) + delta;
+  await supabase.from("financeiro_contas").update({ saldo_atual: novo }).eq("id", contaId);
+}
+
 // ----------------------------------------------------------------------------
 // Projetos (fin_projetos)
 // ----------------------------------------------------------------------------
