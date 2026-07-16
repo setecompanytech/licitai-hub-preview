@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import {
   useLancamentos,
+  useContas,
   useDeleteLancamento,
   type LancamentoFiltro,
   type Lancamento,
@@ -34,6 +35,7 @@ export default function FinLancamentos() {
     setFiltro((f) => ({ ...f, origemLoteId: loteParam }));
   }, [loteParam]);
   const { data: lancs = [], isLoading } = useLancamentos(filtro);
+  const { data: contas = [] } = useContas();
   const del = useDeleteLancamento();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -78,6 +80,18 @@ export default function FinLancamentos() {
               <SelectItem value="conciliado">Conciliado</SelectItem>
               <SelectItem value="em_atraso">Em atraso</SelectItem>
               <SelectItem value="cancelado">Cancelado</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={filtro.contaId ?? "todos"}
+            onValueChange={(v) => setFiltro((f) => ({ ...f, contaId: v }))}
+          >
+            <SelectTrigger className="w-[170px]"><SelectValue placeholder="Conta" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas as contas</SelectItem>
+              {contas.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Select

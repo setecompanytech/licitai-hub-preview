@@ -19,6 +19,7 @@ export type LancamentoFiltro = {
   dataInicio?: string;
   dataFim?: string;
   busca?: string;
+  contaId?: string;
   origemTipo?: Database["public"]["Enums"]["financeiro_origem_tipo"] | "todos";
   origemLoteId?: string;
   /**
@@ -393,6 +394,7 @@ export function useLancamentos(filtro: LancamentoFiltro = {}) {
         .limit(500);
       if (filtro.tipo && filtro.tipo !== "todos") q = q.eq("tipo", filtro.tipo);
       if (filtro.status && filtro.status !== "todos") q = q.eq("status", filtro.status);
+      if (filtro.contaId && filtro.contaId !== "todos") q = q.eq("conta_id", filtro.contaId);
       if (filtro.origemTipo && filtro.origemTipo !== "todos") q = q.eq("origem_tipo", filtro.origemTipo);
       if (filtro.origemLoteId) q = q.eq("origem_lote_id", filtro.origemLoteId);
       const campo = filtro.campoData ?? "competencia";
