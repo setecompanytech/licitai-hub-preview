@@ -247,7 +247,7 @@ export default function FinKanban({ tipo }: Props) {
       pendingTimersRef.current.delete(id);
       if (cancelado) return;
       try {
-        await del.mutateAsync(id);
+        await del.mutateAsync({ id, contaId: l.conta_id, valor: Number(l.valor), natureza: l.natureza, status: l.status });
       } catch (e) {
         // Em caso de falha, restaura na lista
         setPendingDeleteIds((prev) => {

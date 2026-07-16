@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, TrendingUp, TrendingDown, Wallet, Scale } from "lucide-react";
 import {
   useLancamentos,
   useContas,
@@ -40,7 +40,12 @@ export default function FinLancamentos() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Lancamento | null>(null);
-  const [confirmDel, setConfirmDel] = useState<string | null>(null);
+  const [confirmDel, setConfirmDel] = useState<Lancamento | null>(null);
+
+  const totalEntradas = useMemo(() => lancs.filter(l => l.natureza === "receita").reduce((s, l) => s + Number(l.valor), 0), [lancs]);
+  const totalSaidas   = useMemo(() => lancs.filter(l => l.natureza !== "receita").reduce((s, l) => s + Number(l.valor), 0), [lancs]);
+  const resultado     = totalEntradas - totalSaidas;
+  const contaSelecionada = (filtro.contaId && filtro.contaId !== "todos") ? contas.find(c => c.id === filtro.contaId) : null;
 
   return (
     <div className="space-y-3">
@@ -142,6 +147,67 @@ export default function FinLancamentos() {
         </CardContent>
       </Card>
 
+      {lancs.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-emerald-500/10">
+                <TrendingUp className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total entradas</p>
+                <p className="text-base font-semibold tabular-nums text-emerald-500">
+                  {totalEntradas.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-rose-500/10">
+                <TrendingDown className="w-4 h-4 text-rose-500" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total saídas</p>
+                <p className="text-base font-semibold tabular-nums text-rose-500">
+                  {totalSaidas.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${resultado >= 0 ? "bg-emerald-500/10" : "bg-rose-500/10"}`}>
+                <Scale className={`w-4 h-4 ${resultado >= 0 ? "text-emerald-500" : "text-rose-500"}`} />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Resultado</p>
+                <p className={`text-base font-semibold tabular-nums ${resultado >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                  {resultado.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Wallet className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  Saldo atual{contaSelecionada ? ` · ${contaSelecionada.nome}` : ""}
+                </p>
+                <p className="text-base font-semibold tabular-nums">
+                  {contaSelecionada
+                    ? Number(contaSelecionada.saldo_atual ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                    : "—"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -197,7 +263,7 @@ export default function FinLancamentos() {
                           <Button size="icon" variant="ghost" onClick={() => { setEditing(l); setDialogOpen(true); }}>
                             <Pencil className="w-4 h-4" />
                           </Button>
-                          <Button size="icon" variant="ghost" onClick={() => setConfirmDel(l.id)}>
+                          <Button size="icon" variant="ghost" onClick={() => setConfirmDel(l)}>
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
                         </td>
@@ -217,14 +283,24 @@ export default function FinLancamentos() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir lançamento?</AlertDialogTitle>
-            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+            <AlertDialogDescription>
+              {confirmDel?.descricao ? `"${confirmDel.descricao}" será removido permanentemente.` : "Esta ação não pode ser desfeita."}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
-                if (confirmDel) await del.mutateAsync(confirmDel);
-                setConfirmDel(null);
+                if (confirmDel) {
+                  await del.mutateAsync({
+                    id: confirmDel.id,
+                    contaId: confirmDel.conta_id,
+                    valor: Number(confirmDel.valor),
+                    natureza: confirmDel.natureza,
+                    status: confirmDel.status,
+                  });
+                  setConfirmDel(null);
+                }
               }}
             >
               Excluir

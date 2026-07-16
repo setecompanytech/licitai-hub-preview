@@ -314,3 +314,29 @@ CREATE POLICY "membros_update_self" ON public.empresa_membros
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 ```
+
+---
+
+## [2026-07-16] Recalcular saldo_atual de todas as contas com base nos lançamentos
+
+> Rode este bloco quando o `saldo_atual` de alguma conta estiver errado (ex.: lançamentos deletados sem reverter saldo, trigger ativo junto com código, etc.).
+> É seguro rodar a qualquer momento — apenas recalcula, não perde dados.
+
+```sql
+-- Recalcula saldo_atual = saldo_inicial + soma dos lancamentos realizados/conciliados
+UPDATE public.financeiro_contas fc
+SET saldo_atual = fc.saldo_inicial + COALESCE((
+  SELECT SUM(
+    CASE WHEN fl.natureza = 'receita' THEN fl.valor ELSE -fl.valor END
+  )
+  FROM public.financeiro_lancamentos fl
+  WHERE fl.conta_id = fc.id
+    AND fl.status IN ('realizado', 'conciliado')
+    AND fl.empresa_id = fc.empresa_id
+), 0);
+```
+
+> Se você também tem o trigger `trg_saldo_lancamento` ativo, remova-o antes de rodar este bloco para evitar dupla contagem:
+> ```sql
+> DROP TRIGGER IF EXISTS trg_saldo_lancamento ON public.financeiro_lancamentos;
+> ```

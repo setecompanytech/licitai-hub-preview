@@ -474,13 +474,20 @@ export function useUpsertLancamento() {
 export function useDeleteLancamento() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (payload: string | { id: string; contaId?: string | null; valor?: number; natureza?: string | null; status?: string | null }) => {
+      const id = typeof payload === "string" ? payload : payload.id;
+      // Reverte saldo antes de deletar se o lancamento estava pago/conciliado
+      if (typeof payload !== "string" && payload.contaId && isStatusPago(payload.status)) {
+        const delta = payload.natureza === "receita" ? -Number(payload.valor ?? 0) : Number(payload.valor ?? 0);
+        await ajustarSaldoConta(payload.contaId, delta);
+      }
       const { error } = await supabase.from("financeiro_lancamentos").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["fin-lancamentos"] });
       qc.invalidateQueries({ queryKey: ["fin-resumo"] });
+      qc.invalidateQueries({ queryKey: ["fin-contas"] });
       toast.success("Lançamento removido.");
     },
     onError: (e: Error) => toast.error(e.message),
