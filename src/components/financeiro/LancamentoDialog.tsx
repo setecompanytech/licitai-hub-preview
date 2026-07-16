@@ -9,7 +9,8 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Info, CheckCircle2, TrendingUp, TrendingDown, ArrowLeftRight } from "lucide-react";
+import { Info, CheckCircle2, TrendingUp, TrendingDown, ArrowLeftRight, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   useContas,
@@ -219,7 +220,14 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   const totalSerie = useMemo(() => simulacao.reduce((s, d) => s + (Number(d.valor) || 0), 0), [simulacao]);
 
   const handleSubmit = async () => {
-    if (!descricao.trim()) return;
+    if (!descricao.trim()) {
+      toast.error("Informe uma descrição para o lançamento.");
+      return;
+    }
+    if (!valor || valor <= 0) {
+      toast.error("Informe um valor maior que zero.");
+      return;
+    }
     const baseBody: any = {
       tipo,
       natureza,
@@ -377,8 +385,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
               {/* Valor + Conta + Forma de pagamento */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Valor *</Label>
-                  <MoneyInput value={valor} onValueChange={setValor} />
+                  <Label className={valor <= 0 ? "text-destructive" : ""}>Valor *</Label>
+                  <MoneyInput value={valor} onValueChange={setValor} className={valor <= 0 ? "border-destructive focus-visible:ring-destructive" : ""} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Conta</Label>
@@ -810,7 +818,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
         <DialogFooter className="px-6 py-4 border-t bg-muted/20">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={isSalvando || !descricao.trim()}>
+          <Button onClick={handleSubmit} disabled={isSalvando || !descricao.trim() || valor <= 0}>
             {isSalvando
               ? "Salvando..."
               : parcelar && podeParcelar
