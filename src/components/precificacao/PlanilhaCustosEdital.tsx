@@ -43,6 +43,9 @@ const FONTE_LABELS: Record<string, string> = {
   kabum: 'KaBuM!',
   leroy_merlin: 'Leroy Merlin',
   marketplace: 'Pesquisa Web',
+  ia_estimativa: 'Estimativa IA',
+  agent_ia: 'Agente IA',
+  historico_precos: 'Histórico',
 };
 
 const formatCurrency = (v: number | null) =>
@@ -506,11 +509,7 @@ export default function PlanilhaCustosEdital({
       .filter(it => it.fontes && it.fontes.length > 0)
       .flatMap(it => (it.fontes || []).map(f => [
         it.item,
-        f.fonte === 'mercadolivre' ? 'Mercado Livre' :
-        f.fonte === 'pncp_ata' ? 'PNCP (Ata)' :
-        f.fonte === 'pncp_contratacao' ? 'PNCP' :
-        f.fonte === 'kabum' ? 'KaBuM!' :
-        f.fonte,
+        FONTE_LABELS[f.fonte] ?? f.fonte,
         f.titulo,
         f.preco,
         f.url || '',
