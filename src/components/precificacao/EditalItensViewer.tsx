@@ -6,6 +6,7 @@ import EditalItensTable from '@/components/shared/EditalItensTable';
 import ReextrairEditalButton from '@/components/shared/ReextrairEditalButton';
 import RevisaoItensExtraidos from '@/components/precificacao/RevisaoItensExtraidos';
 import { useEditalExtraction, type LicitacaoItem } from '@/hooks/useEditalExtraction';
+import { useSugestaoMarcas } from '@/hooks/useSugestaoMarcas';
 import { toast } from 'sonner';
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 
 export default function EditalItensViewer({ licitacaoId }: Props) {
   const { fetchItens, updateItem, deleteItem } = useEditalExtraction();
+  const { sugestoesPorItem, fetchSugestoes } = useSugestaoMarcas();
   const [itens, setItens] = useState<LicitacaoItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [carregou, setCarregou] = useState(false);
@@ -24,11 +26,12 @@ export default function EditalItensViewer({ licitacaoId }: Props) {
     try {
       const dados = await fetchItens(licitacaoId);
       setItens(dados);
+      fetchSugestoes(licitacaoId);
     } finally {
       setLoading(false);
       setCarregou(true);
     }
-  }, [licitacaoId, fetchItens]);
+  }, [licitacaoId, fetchItens, fetchSugestoes]);
 
   useEffect(() => {
     carregar();
@@ -108,6 +111,7 @@ export default function EditalItensViewer({ licitacaoId }: Props) {
 
       <EditalItensTable
         itens={itens}
+        sugestoesPorItem={sugestoesPorItem}
         onUpdate={async (itemId, updates) => {
           await updateItem(itemId, updates);
           setItens(prev => prev.map(i => i.id === itemId ? { ...i, ...updates } : i));

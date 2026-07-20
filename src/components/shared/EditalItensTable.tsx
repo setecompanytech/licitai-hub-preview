@@ -4,9 +4,11 @@ import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Trash2, AlertTriangle, Pencil, Check, X, CheckCircle2, CircleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import type { LicitacaoItem } from '@/hooks/useEditalExtraction';
+import type { SugestaoMarca } from '@/hooks/useSugestaoMarcas';
 
 interface EditalItensTableProps {
   itens: LicitacaoItem[];
@@ -16,12 +18,28 @@ interface EditalItensTableProps {
   readOnly?: boolean;
   showOrigin?: boolean;
   compact?: boolean;
+  sugestoesPorItem?: Record<string, SugestaoMarca[]>;
 }
 
 const origemBadge: Record<string, { label: string; className: string }> = {
   ia: { label: 'IA', className: 'bg-primary/10 text-primary border-primary/20' },
   manual: { label: 'Manual', className: 'bg-muted text-muted-foreground border-border' },
   importado: { label: 'Importado', className: 'bg-accent/10 text-accent border-accent/20' },
+};
+
+const fonteLabel: Record<string, string> = {
+  historico_precos: 'Histórico',
+  itens_anteriores: 'Itens Ant.',
+  agente_ia: 'Agente IA',
+  pncp: 'PNCP',
+  historico: 'Histórico',
+};
+
+const scoreColor = (score: number) => {
+  if (score >= 90) return 'text-green-600 bg-green-50 border-green-200 dark:text-green-400 dark:bg-green-950';
+  if (score >= 70) return 'text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950';
+  if (score >= 50) return 'text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-950';
+  return 'text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-950';
 };
 
 function avaliarItem(item: LicitacaoItem): { nivel: 'completo' | 'parcial' | 'incompleto'; motivo: string } {
@@ -42,6 +60,7 @@ export default function EditalItensTable({
   readOnly = false,
   showOrigin = true,
   compact = false,
+  sugestoesPorItem,
 }: EditalItensTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<LicitacaoItem>>({});
@@ -176,16 +195,44 @@ export default function EditalItensTable({
             {formatCurrency((isEditing ? (editValues.valor_unitario ?? 0) * (editValues.quantidade ?? 0) : item.valor_unitario * item.quantidade))}
           </span>
         </TableCell>
-        <TableCell className="w-16 text-center">
+        <TableCell className="min-w-[140px]">
           {(() => {
+            const sugestoes = sugestoesPorItem?.[item.descricao];
+            const top = sugestoes?.[0];
+            if (top) {
+              return (
+                <TooltipProvider>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex flex-wrap gap-1">
+                      <Badge variant="outline" className="text-[9px] py-0 h-4">
+                        {fonteLabel[top.fonte] ?? top.fonte}
+                      </Badge>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge className={`text-[9px] py-0 h-4 cursor-help border ${scoreColor(top.score_confianca)}`}>
+                            {top.score_confianca}% confiança
+                          </Badge>
+                        </TooltipTrigger>
+                        {top.justificativa_ia && (
+                          <TooltipContent className="max-w-xs" side="left">
+                            <p className="text-xs">{top.justificativa_ia}</p>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    </div>
+                    {top.justificativa_ia && (
+                      <p className="text-[9px] text-muted-foreground line-clamp-2 leading-tight">
+                        {top.justificativa_ia}
+                      </p>
+                    )}
+                  </div>
+                </TooltipProvider>
+              );
+            }
             const { nivel, motivo } = avaliarItem(isEditing ? { ...item, ...editValues } as LicitacaoItem : item);
-            if (nivel === 'completo') return (
-              <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" title={motivo} />
-            );
-            if (nivel === 'parcial') return (
-              <AlertTriangle className="w-4 h-4 text-amber-500 mx-auto" title={motivo} />
-            );
-            return <CircleAlert className="w-4 h-4 text-destructive mx-auto" title={motivo} />;
+            if (nivel === 'completo') return <CheckCircle2 className="w-4 h-4 text-green-500" title={motivo} />;
+            if (nivel === 'parcial') return <AlertTriangle className="w-4 h-4 text-amber-500" title={motivo} />;
+            return <CircleAlert className="w-4 h-4 text-destructive" title={motivo} />;
           })()}
         </TableCell>
         {showOrigin && (
@@ -263,7 +310,7 @@ export default function EditalItensTable({
               <TableHead className="w-14 text-center text-[10px]">Und</TableHead>
               <TableHead className="w-28 text-right text-[10px]">Vlr Unit.</TableHead>
               <TableHead className="w-28 text-right text-[10px]">Vlr Total</TableHead>
-              <TableHead className="w-16 text-center text-[10px]">Status</TableHead>
+              <TableHead className="min-w-[140px] text-[10px]">Avaliação</TableHead>
               {showOrigin && <TableHead className="w-20 text-[10px]">Origem</TableHead>}
               {!readOnly && <TableHead className="w-20 text-[10px]">Ações</TableHead>}
             </TableRow>
